@@ -1,4 +1,8 @@
 'use strict';
+// Based on mocha v6.1.3 under the MIT license.
+// Original copyright (c) 2011-2018 JS Foundation and contributors,
+// https://js.foundation
+
 const Reporter = require('@arangodb/mocha/reporter');
 const { clean } = require('@arangodb/mocha/utils');
 

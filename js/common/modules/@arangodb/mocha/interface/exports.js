@@ -1,24 +1,11 @@
 'use strict';
+// Based on mocha v6.1.3 under the MIT license.
+// Original copyright (c) 2011-2018 JS Foundation and contributors,
+// https://js.foundation
+
 const Suite = require('@arangodb/mocha/suite');
 const Test = require('@arangodb/mocha/test');
 
-/**
- * Exports-style (as Node.js module) interface:
- *
- *     exports.Array = {
- *       '#indexOf()': {
- *         'should return -1 when the value is not present': function() {
- *
- *         },
- *
- *         'should return the correct index when the value is present': function() {
- *
- *         }
- *       }
- *     };
- *
- * @param {Suite} suite Root suite.
- */
 module.exports = function(suite) {
   var suites = [suite];
 
@@ -56,5 +43,3 @@ module.exports = function(suite) {
     }
   }
 };
-
-module.exports.description = 'Node.js module ("exports") style';

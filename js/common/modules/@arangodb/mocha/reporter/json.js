@@ -1,17 +1,11 @@
 'use strict';
+// Based on mocha v6.1.3 under the MIT license.
+// Original copyright (c) 2011-2018 JS Foundation and contributors,
+// https://js.foundation
+
 const Reporter = require('@arangodb/mocha/reporter');
 const { clean } = require('@arangodb/mocha/utils');
 
-/**
- * Constructs a new `JSON` reporter instance.
- *
- * @public
- * @class JSON
- * @memberof Mocha.reporters
- * @extends Mocha.reporters.Base
- * @param {Runner} runner - Instance triggers reporter actions.
- * @param {Object} [options] - runner options
- */
 class JsonReporter extends Reporter {
   constructor(runner, options) {
     super(runner, options);

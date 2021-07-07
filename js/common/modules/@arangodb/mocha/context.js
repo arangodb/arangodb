@@ -1,17 +1,9 @@
 'use strict';
-/**
- * @module Context
- */
+// Based on mocha v6.1.3 under the MIT license.
+// Original copyright (c) 2011-2018 JS Foundation and contributors,
+// https://js.foundation
 
-class Context {
-
-  /**
-   * Set or get the context `Runnable` to `runnable`.
-   *
-   * @private
-   * @param {Runnable} runnable
-   * @return {Context} context
-   */
+ class Context {
   runnable(runnable) {
     if (!arguments.length) {
       return this._runnable;
@@ -20,13 +12,6 @@ class Context {
     return this;
   }
 
-  /**
-   * Set or get test timeout `ms`.
-   *
-   * @private
-   * @param {number} ms
-   * @return {Context} self
-   */
   timeout(ms) {
     if (!arguments.length) {
       return this.runnable().timeout();
@@ -35,13 +20,6 @@ class Context {
     return this;
   }
 
-  /**
-   * Set test timeout `enabled`.
-   *
-   * @private
-   * @param {boolean} enabled
-   * @return {Context} self
-   */
   enableTimeouts(enabled) {
     if (!arguments.length) {
       return this.runnable().enableTimeouts();
@@ -50,13 +28,6 @@ class Context {
     return this;
   }
 
-  /**
-   * Set or get test slowness threshold `ms`.
-   *
-   * @private
-   * @param {number} ms
-   * @return {Context} self
-   */
   slow(ms) {
     if (!arguments.length) {
       return this.runnable().slow();
@@ -65,23 +36,10 @@ class Context {
     return this;
   }
 
-  /**
-   * Mark a test as skipped.
-   *
-   * @private
-   * @throws Pending
-   */
   skip() {
     this.runnable().skip();
   }
 
-  /**
-   * Set or get a number of allowed retries on failed tests
-   *
-   * @private
-   * @param {number} n
-   * @return {Context} self
-   */
   retries(n) {
     if (!arguments.length) {
       return this.runnable().retries();

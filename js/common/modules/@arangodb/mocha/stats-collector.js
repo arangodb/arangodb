@@ -1,38 +1,11 @@
 'use strict';
-
-/**
- * Provides a factory function for a {@link StatsCollector} object.
- * @module
- */
-
-/**
- * Test statistics collector.
- *
- * @public
- * @typedef {Object} StatsCollector
- * @property {number} suites - integer count of suites run.
- * @property {number} tests - integer count of tests run.
- * @property {number} passes - integer count of passing tests.
- * @property {number} pending - integer count of pending tests.
- * @property {number} failures - integer count of failed tests.
- * @property {Date} start - time when testing began.
- * @property {Date} end - time when testing concluded.
- * @property {number} duration - number of msecs that testing took.
- */
+// Based on mocha v6.1.3 under the MIT license.
+// Original copyright (c) 2011-2018 JS Foundation and contributors,
+// https://js.foundation
 
 var Date = global.Date;
 
-/**
- * Provides stats such as test duration, number of tests passed / failed etc., by listening for events emitted by `runner`.
- *
- * @private
- * @param {Runner} runner - Runner instance
- * @throws {TypeError} If falsy `runner`
- */
 function createStatsCollector(runner) {
-  /**
-   * @type StatsCollector
-   */
   var stats = {
     suites: 0,
     tests: 0,

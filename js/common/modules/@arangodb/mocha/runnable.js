@@ -1,4 +1,7 @@
 'use strict';
+// Based on mocha v6.1.3 under the MIT license.
+// Original copyright (c) 2011-2018 JS Foundation and contributors,
+// https://js.foundation
 
 const EventEmitter = require('events').EventEmitter;
 const Pending = require('@arangodb/mocha/pending');
@@ -12,13 +15,7 @@ function createInvalidExceptionError(message, value) {
   return err;
 }
 
-/**
- * Given `value`, return identity if truthy, otherwise create an "invalid exception" error and return that.
- * @param {*} [value] - Value to return, if present
- * @returns {*|Error} `value`, otherwise an `Error`
- * @private
- */
- function toValueOrError(value) {
+function toValueOrError(value) {
   return (
     value ||
     createInvalidExceptionError(
@@ -29,366 +26,236 @@ function createInvalidExceptionError(message, value) {
 }
 
 
-/**
- * Save timer references to avoid Sinon interfering (see GH-237).
- */
 var Date = global.Date;
 var toString = Object.prototype.toString;
 
 class Runnable extends EventEmitter {
-/**
- * Initialize a new `Runnable` with the given `title` and callback `fn`.
- *
- * @class
- * @extends external:EventEmitter
- * @public
- * @param {String} title
- * @param {Function} fn
- */
-constructor(title, fn) {
-  super();
-  this.title = title;
-  this.fn = fn;
-  this.body = (fn || '').toString();
-  this.async = fn && fn.length;
-  this.sync = !this.async;
-  this._timeout = 2000;
-  this._slow = 75;
-  this._enableTimeouts = true;
-  this.timedOut = false;
-  this._retries = -1;
-  this._currentRetry = 0;
-  this.pending = false;
-}
-
-/**
- * Get current timeout value in msecs.
- *
- * @private
- * @returns {number} current timeout threshold value
- */
-/**
- * @summary
- * Set timeout threshold value (msecs).
- *
- * @description
- * A string argument can use shorthand (e.g., "2s") and will be converted.
- * The value will be clamped to range [<code>0</code>, <code>2^<sup>31</sup>-1</code>].
- * If clamped value matches either range endpoint, timeouts will be disabled.
- *
- * @private
- * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setTimeout#Maximum_delay_value}
- * @param {number|string} ms - Timeout threshold value.
- * @returns {Runnable} this
- * @chainable
- */
-timeout(ms) {
-  if (!arguments.length) {
-    return this._timeout;
-  }
-  if (typeof ms === 'string') {
-    ms = milliseconds(ms);
+  constructor(title, fn) {
+    super();
+    this.title = title;
+    this.fn = fn;
+    this.body = (fn || '').toString();
+    this.async = fn && fn.length;
+    this.sync = !this.async;
+    this._timeout = 2000;
+    this._slow = 75;
+    this._enableTimeouts = true;
+    this.timedOut = false;
+    this._retries = -1;
+    this._currentRetry = 0;
+    this.pending = false;
   }
 
-  // Clamp to range
-  var INT_MAX = Math.pow(2, 31) - 1;
-  ms = Math.max(0, Math.min(ms, INT_MAX));
+  timeout(ms) {
+    if (!arguments.length) {
+      return this._timeout;
+    }
+    if (typeof ms === 'string') {
+      ms = milliseconds(ms);
+    }
 
-  // see #1652 for reasoning
-  if (ms === 0 || ms === INT_MAX) {
-    this._enableTimeouts = false;
+    var INT_MAX = Math.pow(2, 31) - 1;
+    ms = Math.max(0, Math.min(ms, INT_MAX));
+
+    if (ms === 0 || ms === INT_MAX) {
+      this._enableTimeouts = false;
+    }
+    this._timeout = ms;
+    return this;
   }
-  this._timeout = ms;
-  return this;
-}
 
-/**
- * Set or get slow `ms`.
- *
- * @private
- * @param {number|string} ms
- * @return {Runnable|number} ms or Runnable instance.
- */
-slow(ms) {
-  if (!arguments.length || typeof ms === 'undefined') {
-    return this._slow;
+  slow(ms) {
+    if (!arguments.length || typeof ms === 'undefined') {
+      return this._slow;
+    }
+    if (typeof ms === 'string') {
+      ms = milliseconds(ms);
+    }
+    this._slow = ms;
+    return this;
   }
-  if (typeof ms === 'string') {
-    ms = milliseconds(ms);
+
+  enableTimeouts(enabled) {
+    if (!arguments.length) {
+      return this._enableTimeouts;
+    }
+    this._enableTimeouts = enabled;
+    return this;
   }
-  this._slow = ms;
-  return this;
-}
 
-/**
- * Set and get whether timeout is `enabled`.
- *
- * @private
- * @param {boolean} enabled
- * @return {Runnable|boolean} enabled or Runnable instance.
- */
-enableTimeouts(enabled) {
-  if (!arguments.length) {
-    return this._enableTimeouts;
+  skip() {
+    throw new Pending('sync skip');
   }
-  this._enableTimeouts = enabled;
-  return this;
-}
 
-/**
- * Halt and mark as pending.
- *
- * @memberof Mocha.Runnable
- * @public
- */
-skip() {
-  throw new Pending('sync skip');
-}
-
-/**
- * Check if this runnable or its parent suite is marked as pending.
- *
- * @private
- */
-isPending() {
-  return this.pending || (this.parent && this.parent.isPending());
-}
-
-/**
- * Return `true` if this Runnable has failed.
- * @return {boolean}
- * @private
- */
-isFailed() {
-  return !this.isPending() && this.state === 'failed';
-}
-
-/**
- * Return `true` if this Runnable has passed.
- * @return {boolean}
- * @private
- */
-isPassed() {
-  return !this.isPending() && this.state === 'passed';
-}
-
-/**
- * Set or get number of retries.
- *
- * @private
- */
-retries(n) {
-  if (!arguments.length) {
-    return this._retries;
+  isPending() {
+    return this.pending || (this.parent && this.parent.isPending());
   }
-  this._retries = n;
-}
 
-/**
- * Set or get current retry
- *
- * @private
- */
-currentRetry(n) {
-  if (!arguments.length) {
-    return this._currentRetry;
+  isFailed() {
+    return !this.isPending() && this.state === 'failed';
   }
-  this._currentRetry = n;
-}
 
-/**
- * Return the full title generated by recursively concatenating the parent's
- * full title.
- *
- * @memberof Mocha.Runnable
- * @public
- * @return {string}
- */
-fullTitle() {
-  return this.titlePath().join(' ');
-}
+  isPassed() {
+    return !this.isPending() && this.state === 'passed';
+  }
 
-/**
- * Return the title path generated by concatenating the parent's title path with the title.
- *
- * @memberof Mocha.Runnable
- * @public
- * @return {string}
- */
-titlePath() {
-  return this.parent.titlePath().concat([this.title]);
-}
+  retries(n) {
+    if (!arguments.length) {
+      return this._retries;
+    }
+    this._retries = n;
+  }
 
-/**
- * Inspect the runnable void of private properties.
- *
- * @private
- * @return {string}
- */
-inspect() {
-  return JSON.stringify(
-    this,
-    function(key, val) {
-      if (key[0] === '_') {
+  currentRetry(n) {
+    if (!arguments.length) {
+      return this._currentRetry;
+    }
+    this._currentRetry = n;
+  }
+
+  fullTitle() {
+    return this.titlePath().join(' ');
+  }
+
+  titlePath() {
+    return this.parent.titlePath().concat([this.title]);
+  }
+
+  inspect() {
+    return JSON.stringify(
+      this,
+      function(key, val) {
+        if (key[0] === '_') {
+          return;
+        }
+        if (key === 'parent') {
+          return '#<Suite>';
+        }
+        if (key === 'ctx') {
+          return '#<Context>';
+        }
+        return val;
+      },
+      2
+    );
+  }
+
+  globals(globals) {
+    if (!arguments.length) {
+      return this._allowedGlobals;
+    }
+    this._allowedGlobals = globals;
+  }
+
+  run(fn) {
+    var self = this;
+    var start = new Date();
+    var ctx = this.ctx;
+    var finished;
+    var emitted;
+
+    if (ctx && ctx.runnable) {
+      ctx.runnable(this);
+    }
+
+    function multiple(err) {
+      if (emitted) {
         return;
       }
-      if (key === 'parent') {
-        return '#<Suite>';
+      emitted = true;
+      var msg = 'done() called multiple times';
+      if (err && err.message) {
+        err.message += " (and Mocha's " + msg + ')';
+        self.emit('error', err);
+      } else {
+        self.emit('error', new Error(msg));
       }
-      if (key === 'ctx') {
-        return '#<Context>';
+    }
+
+    function done(err) {
+      var ms = self.timeout();
+      if (self.timedOut) {
+        return;
       }
-      return val;
-    },
-    2
-  );
-}
 
-/**
- * Set or get a list of whitelisted globals for this test run.
- *
- * @private
- * @param {string[]} globals
- */
-globals(globals) {
-  if (!arguments.length) {
-    return this._allowedGlobals;
-  }
-  this._allowedGlobals = globals;
-}
+      if (finished) {
+        return multiple(err);
+      }
 
-/**
- * Run the test and invoke `fn(err)`.
- *
- * @param {Function} fn
- * @private
- */
-run(fn) {
-  var self = this;
-  var start = new Date();
-  var ctx = this.ctx;
-  var finished;
-  var emitted;
+      self.duration = new Date() - start;
+      finished = true;
+      if (!err && self.duration > ms && self._enableTimeouts) {
+        err = self._timeoutError(ms);
+      }
+      fn(err);
+    }
 
-  // Sometimes the ctx exists, but it is not runnable
-  if (ctx && ctx.runnable) {
-    ctx.runnable(this);
-  }
+    this.callback = done;
 
-  // called multiple times
-  function multiple(err) {
-    if (emitted) {
+    if (this.async) {
+      this.skip = function asyncSkip() {
+        done(new Pending('async skip call'));
+        throw new Pending('async skip; aborting execution');
+      };
+
+      if (this.allowUncaught) {
+        return callFnAsync(this.fn);
+      }
+      try {
+        callFnAsync(this.fn);
+      } catch (err) {
+        emitted = true;
+        done(toValueOrError(err));
+      }
       return;
     }
-    emitted = true;
-    var msg = 'done() called multiple times';
-    if (err && err.message) {
-      err.message += " (and Mocha's " + msg + ')';
-      self.emit('error', err);
-    } else {
-      self.emit('error', new Error(msg));
-    }
-  }
-
-  // finished
-  function done(err) {
-    var ms = self.timeout();
-    if (self.timedOut) {
-      return;
-    }
-
-    if (finished) {
-      return multiple(err);
-    }
-
-    self.duration = new Date() - start;
-    finished = true;
-    if (!err && self.duration > ms && self._enableTimeouts) {
-      err = self._timeoutError(ms);
-    }
-    fn(err);
-  }
-
-  // for .resetTimeout()
-  this.callback = done;
-
-  // explicit async with `done` argument
-  if (this.async) {
-    // allows skip() to be used in an explicit async context
-    this.skip = function asyncSkip() {
-      done(new Pending('async skip call'));
-      // halt execution.  the Runnable will be marked pending
-      // by the previous call, and the uncaught handler will ignore
-      // the failure.
-      throw new Pending('async skip; aborting execution');
-    };
 
     if (this.allowUncaught) {
-      return callFnAsync(this.fn);
+      if (!this.isPending()) {
+        this.fn(ctx);
+      }
+      done();
+      return;
     }
+
     try {
-      callFnAsync(this.fn);
+      if (!this.isPending()) {
+        this.fn(ctx);
+      }
+      done();
     } catch (err) {
       emitted = true;
       done(toValueOrError(err));
     }
-    return;
-  }
 
-  if (this.allowUncaught) {
-    if (!this.isPending()) {
-      this.fn(ctx);
-    }
-    done();
-    return;
-  }
-
-  // sync or promise-returning
-  try {
-    if (!this.isPending()) {
-      this.fn(ctx);
-    }
-    done();
-  } catch (err) {
-    emitted = true;
-    done(toValueOrError(err));
-  }
-
-  function callFnAsync(fn) {
-    fn.call(ctx, function(err) {
-      if (err instanceof Error || toString.call(err) === '[object Error]') {
-        return done(err);
-      }
-      if (err) {
-        if (Object.prototype.toString.call(err) === '[object Object]') {
-          return done(
-            new Error('done() invoked with non-Error: ' + JSON.stringify(err))
-          );
+    function callFnAsync(fn) {
+      fn.call(ctx, function(err) {
+        if (err instanceof Error || toString.call(err) === '[object Error]') {
+          return done(err);
         }
-        return done(new Error('done() invoked with non-Error: ' + err));
-      }
-      done();
-    });
+        if (err) {
+          if (Object.prototype.toString.call(err) === '[object Object]') {
+            return done(
+              new Error('done() invoked with non-Error: ' + JSON.stringify(err))
+            );
+          }
+          return done(new Error('done() invoked with non-Error: ' + err));
+        }
+        done();
+      });
+    }
   }
-}
 
-/**
- * Instantiates a "timeout" error
- *
- * @param {number} ms - Timeout (in milliseconds)
- * @returns {Error} a "timeout" error
- * @private
- */
-_timeoutError(ms) {
-  var msg =
-    'Timeout of ' +
-    ms +
-    'ms exceeded.';
-  if (this.file) {
-    msg += ' (' + this.file + ')';
+  _timeoutError(ms) {
+    var msg =
+      'Timeout of ' +
+      ms +
+      'ms exceeded.';
+    if (this.file) {
+      msg += ' (' + this.file + ')';
+    }
+    return new Error(msg);
   }
-  return new Error(msg);
-}
 }
 
 module.exports = Runnable;

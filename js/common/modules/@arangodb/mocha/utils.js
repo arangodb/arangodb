@@ -1,13 +1,8 @@
 'use strict';
+// Based on mocha v6.1.3 under the MIT license.
+// Original copyright (c) 2011-2018 JS Foundation and contributors,
+// https://js.foundation
 
-/**
- * Return a plain-object representation of `test`
- * free of cyclic properties etc.
- *
- * @private
- * @param {Object} test
- * @return {Object}
- */
 exports.clean = function clean(test) {
   var err = test.err || {};
   if (err instanceof Error) {
@@ -23,20 +18,12 @@ exports.clean = function clean(test) {
   };
 }
 
-/**
- * Replaces any circular references inside `obj` with '[object Object]'
- *
- * @private
- * @param {Object} obj
- * @return {Object}
- */
 function cleanCycles(obj) {
   var cache = [];
   return JSON.parse(
     JSON.stringify(obj, function(key, value) {
       if (typeof value === 'object' && value !== null) {
         if (cache.indexOf(value) !== -1) {
-          // Instead of going in a circle, we'll print [object Object]
           return '' + value;
         }
         cache.push(value);
@@ -47,13 +34,6 @@ function cleanCycles(obj) {
   );
 }
 
-/**
- * Transform an Error object into a JSON object.
- *
- * @private
- * @param {Error} err
- * @return {Object}
- */
 function errorJSON(err) {
   var res = {};
   Object.getOwnPropertyNames(err).forEach(function(key) {

@@ -1,4 +1,7 @@
 'use strict';
+// Based on mocha v6.1.3 under the MIT license.
+// Original copyright (c) 2011-2018 JS Foundation and contributors,
+// https://js.foundation
 
 /**
  * Module dependencies.
@@ -17,513 +20,313 @@ function createInvalidArgumentTypeError(message, argument, expected) {
 }
 
 class Suite extends EventEmitter {
-/**
- * Constructs a new `Suite` instance with the given `title`, `ctx`, and `isRoot`.
- *
- * @public
- * @class
- * @extends EventEmitter
- * @see {@link https://nodejs.org/api/events.html#events_class_eventemitter|EventEmitter}
- * @param {string} title - Suite title.
- * @param {Context} parentContext - Parent context instance.
- * @param {boolean} [isRoot=false] - Whether this is the root suite.
- */
-constructor(title, parentContext, isRoot) {
-  super();
-  if (typeof title !== "string") {
-    throw createInvalidArgumentTypeError(
-      'Suite argument "title" must be a string. Received type "' +
-        typeof title +
-        '"',
-      'title',
-      'string'
+  constructor(title, parentContext, isRoot) {
+    super();
+    if (typeof title !== "string") {
+      throw createInvalidArgumentTypeError(
+        'Suite argument "title" must be a string. Received type "' +
+          typeof title +
+          '"',
+        'title',
+        'string'
+      );
+    }
+    this.title = title;
+    this.ctx = Object.create(parentContext || null);
+    this.suites = [];
+    this.tests = [];
+    this.pending = false;
+    this._beforeEach = [];
+    this._beforeAll = [];
+    this._afterEach = [];
+    this._afterAll = [];
+    this.root = isRoot === true;
+    this._timeout = 2000;
+    this._enableTimeouts = true;
+    this._slow = 75;
+    this._bail = false;
+    this._retries = -1;
+    this._onlyTests = [];
+    this._onlySuites = [];
+    this.delayed = false;
+  }
+
+  clone() {
+    var suite = new Suite(this.title);
+    suite.ctx = this.ctx;
+    suite.root = this.root;
+    suite.timeout(this.timeout());
+    suite.retries(this.retries());
+    suite.enableTimeouts(this.enableTimeouts());
+    suite.slow(this.slow());
+    suite.bail(this.bail());
+    return suite;
+  }
+
+  timeout(ms) {
+    if (!arguments.length) {
+      return this._timeout;
+    }
+    if (ms.toString() === '0') {
+      this._enableTimeouts = false;
+    }
+    if (typeof ms === 'string') {
+      ms = milliseconds(ms);
+    }
+    this._timeout = parseInt(ms, 10);
+    return this;
+  }
+
+  retries(n) {
+    if (!arguments.length) {
+      return this._retries;
+    }
+    this._retries = parseInt(n, 10) || 0;
+    return this;
+  }
+
+  enableTimeouts(enabled) {
+    if (!arguments.length) {
+      return this._enableTimeouts;
+    }
+    this._enableTimeouts = enabled;
+    return this;
+  }
+
+  slow(ms) {
+    if (!arguments.length) {
+      return this._slow;
+    }
+    if (typeof ms === 'string') {
+      ms = milliseconds(ms);
+    }
+    this._slow = ms;
+    return this;
+  }
+
+  bail(bail) {
+    if (!arguments.length) {
+      return this._bail;
+    }
+    this._bail = bail;
+    return this;
+  }
+
+  isPending() {
+    return this.pending || (this.parent && this.parent.isPending());
+  }
+
+  _createHook(title, fn) {
+    var hook = new Hook(title, fn);
+    hook.parent = this;
+    hook.timeout(this.timeout());
+    hook.retries(this.retries());
+    hook.enableTimeouts(this.enableTimeouts());
+    hook.slow(this.slow());
+    hook.ctx = this.ctx;
+    hook.file = this.file;
+    return hook;
+  }
+
+  beforeAll(title, fn) {
+    if (this.isPending()) {
+      return this;
+    }
+    if (typeof title === 'function') {
+      fn = title;
+      title = fn.name;
+    }
+    title = '"before all" hook' + (title ? ': ' + title : '');
+
+    var hook = this._createHook(title, fn);
+    this._beforeAll.push(hook);
+    this.emit('beforeAll', hook);
+    return this;
+  }
+
+  afterAll(title, fn) {
+    if (this.isPending()) {
+      return this;
+    }
+    if (typeof title === 'function') {
+      fn = title;
+      title = fn.name;
+    }
+    title = '"after all" hook' + (title ? ': ' + title : '');
+
+    var hook = this._createHook(title, fn);
+    this._afterAll.push(hook);
+    this.emit('afterAll', hook);
+    return this;
+  }
+
+  beforeEach(title, fn) {
+    if (this.isPending()) {
+      return this;
+    }
+    if (typeof title === 'function') {
+      fn = title;
+      title = fn.name;
+    }
+    title = '"before each" hook' + (title ? ': ' + title : '');
+
+    var hook = this._createHook(title, fn);
+    this._beforeEach.push(hook);
+    this.emit('beforeEach', hook);
+    return this;
+  }
+
+  afterEach(title, fn) {
+    if (this.isPending()) {
+      return this;
+    }
+    if (typeof title === 'function') {
+      fn = title;
+      title = fn.name;
+    }
+    title = '"after each" hook' + (title ? ': ' + title : '');
+
+    var hook = this._createHook(title, fn);
+    this._afterEach.push(hook);
+    this.emit('afterEach', hook);
+    return this;
+  }
+
+  addSuite(suite) {
+    suite.parent = this;
+    suite.root = false;
+    suite.timeout(this.timeout());
+    suite.retries(this.retries());
+    suite.enableTimeouts(this.enableTimeouts());
+    suite.slow(this.slow());
+    suite.bail(this.bail());
+    this.suites.push(suite);
+    this.emit('suite', suite);
+    return this;
+  }
+
+  addTest(test) {
+    test.parent = this;
+    test.timeout(this.timeout());
+    test.retries(this.retries());
+    test.enableTimeouts(this.enableTimeouts());
+    test.slow(this.slow());
+    test.ctx = this.ctx;
+    this.tests.push(test);
+    this.emit('test', test);
+    return this;
+  }
+
+  fullTitle() {
+    return this.titlePath().join(' ');
+  }
+
+  titlePath() {
+    var result = [];
+    if (this.parent) {
+      result = result.concat(this.parent.titlePath());
+    }
+    if (!this.root) {
+      result.push(this.title);
+    }
+    return result;
+  }
+
+  total() {
+    return (
+      this.suites.reduce(function(sum, suite) {
+        return sum + suite.total();
+      }, 0) + this.tests.length
     );
   }
-  this.title = title;
-  function Context() {}
-  Context.prototype = parentContext;
-  this.ctx = new Context();
-  this.suites = [];
-  this.tests = [];
-  this.pending = false;
-  this._beforeEach = [];
-  this._beforeAll = [];
-  this._afterEach = [];
-  this._afterAll = [];
-  this.root = isRoot === true;
-  this._timeout = 2000;
-  this._enableTimeouts = true;
-  this._slow = 75;
-  this._bail = false;
-  this._retries = -1;
-  this._onlyTests = [];
-  this._onlySuites = [];
-  this.delayed = false;
-}
 
-/**
- * Return a clone of this `Suite`.
- *
- * @private
- * @return {Suite}
- */
-clone() {
-  var suite = new Suite(this.title);
-  suite.ctx = this.ctx;
-  suite.root = this.root;
-  suite.timeout(this.timeout());
-  suite.retries(this.retries());
-  suite.enableTimeouts(this.enableTimeouts());
-  suite.slow(this.slow());
-  suite.bail(this.bail());
-  return suite;
-}
-
-/**
- * Set or get timeout `ms` or short-hand such as "2s".
- *
- * @private
- * @todo Do not attempt to set value if `ms` is undefined
- * @param {number|string} ms
- * @return {Suite|number} for chaining
- */
-timeout(ms) {
-  if (!arguments.length) {
-    return this._timeout;
-  }
-  if (ms.toString() === '0') {
-    this._enableTimeouts = false;
-  }
-  if (typeof ms === 'string') {
-    ms = milliseconds(ms);
-  }
-  this._timeout = parseInt(ms, 10);
-  return this;
-}
-
-/**
- * Set or get number of times to retry a failed test.
- *
- * @private
- * @param {number|string} n
- * @return {Suite|number} for chaining
- */
-retries(n) {
-  if (!arguments.length) {
-    return this._retries;
-  }
-  this._retries = parseInt(n, 10) || 0;
-  return this;
-}
-
-/**
- * Set or get timeout to `enabled`.
- *
- * @private
- * @param {boolean} enabled
- * @return {Suite|boolean} self or enabled
- */
-enableTimeouts(enabled) {
-  if (!arguments.length) {
-    return this._enableTimeouts;
-  }
-  this._enableTimeouts = enabled;
-  return this;
-}
-
-/**
- * Set or get slow `ms` or short-hand such as "2s".
- *
- * @private
- * @param {number|string} ms
- * @return {Suite|number} for chaining
- */
-slow(ms) {
-  if (!arguments.length) {
-    return this._slow;
-  }
-  if (typeof ms === 'string') {
-    ms = milliseconds(ms);
-  }
-  this._slow = ms;
-  return this;
-}
-
-/**
- * Set or get whether to bail after first error.
- *
- * @private
- * @param {boolean} bail
- * @return {Suite|number} for chaining
- */
-bail(bail) {
-  if (!arguments.length) {
-    return this._bail;
-  }
-  this._bail = bail;
-  return this;
-}
-
-/**
- * Check if this suite or its parent suite is marked as pending.
- *
- * @private
- */
-isPending() {
-  return this.pending || (this.parent && this.parent.isPending());
-}
-
-/**
- * Generic hook-creator.
- * @private
- * @param {string} title - Title of hook
- * @param {Function} fn - Hook callback
- * @returns {Hook} A new hook
- */
-_createHook(title, fn) {
-  var hook = new Hook(title, fn);
-  hook.parent = this;
-  hook.timeout(this.timeout());
-  hook.retries(this.retries());
-  hook.enableTimeouts(this.enableTimeouts());
-  hook.slow(this.slow());
-  hook.ctx = this.ctx;
-  hook.file = this.file;
-  return hook;
-}
-
-/**
- * Run `fn(test[, done])` before running tests.
- *
- * @private
- * @param {string} title
- * @param {Function} fn
- * @return {Suite} for chaining
- */
-beforeAll(title, fn) {
-  if (this.isPending()) {
-    return this;
-  }
-  if (typeof title === 'function') {
-    fn = title;
-    title = fn.name;
-  }
-  title = '"before all" hook' + (title ? ': ' + title : '');
-
-  var hook = this._createHook(title, fn);
-  this._beforeAll.push(hook);
-  this.emit('beforeAll', hook);
-  return this;
-}
-
-/**
- * Run `fn(test[, done])` after running tests.
- *
- * @private
- * @param {string} title
- * @param {Function} fn
- * @return {Suite} for chaining
- */
-afterAll(title, fn) {
-  if (this.isPending()) {
-    return this;
-  }
-  if (typeof title === 'function') {
-    fn = title;
-    title = fn.name;
-  }
-  title = '"after all" hook' + (title ? ': ' + title : '');
-
-  var hook = this._createHook(title, fn);
-  this._afterAll.push(hook);
-  this.emit('afterAll', hook);
-  return this;
-}
-
-/**
- * Run `fn(test[, done])` before each test case.
- *
- * @private
- * @param {string} title
- * @param {Function} fn
- * @return {Suite} for chaining
- */
-beforeEach(title, fn) {
-  if (this.isPending()) {
-    return this;
-  }
-  if (typeof title === 'function') {
-    fn = title;
-    title = fn.name;
-  }
-  title = '"before each" hook' + (title ? ': ' + title : '');
-
-  var hook = this._createHook(title, fn);
-  this._beforeEach.push(hook);
-  this.emit('beforeEach', hook);
-  return this;
-}
-
-/**
- * Run `fn(test[, done])` after each test case.
- *
- * @private
- * @param {string} title
- * @param {Function} fn
- * @return {Suite} for chaining
- */
-afterEach(title, fn) {
-  if (this.isPending()) {
-    return this;
-  }
-  if (typeof title === 'function') {
-    fn = title;
-    title = fn.name;
-  }
-  title = '"after each" hook' + (title ? ': ' + title : '');
-
-  var hook = this._createHook(title, fn);
-  this._afterEach.push(hook);
-  this.emit('afterEach', hook);
-  return this;
-}
-
-/**
- * Add a test `suite`.
- *
- * @private
- * @param {Suite} suite
- * @return {Suite} for chaining
- */
-addSuite(suite) {
-  suite.parent = this;
-  suite.root = false;
-  suite.timeout(this.timeout());
-  suite.retries(this.retries());
-  suite.enableTimeouts(this.enableTimeouts());
-  suite.slow(this.slow());
-  suite.bail(this.bail());
-  this.suites.push(suite);
-  this.emit('suite', suite);
-  return this;
-}
-
-/**
- * Add a `test` to this suite.
- *
- * @private
- * @param {Test} test
- * @return {Suite} for chaining
- */
-addTest(test) {
-  test.parent = this;
-  test.timeout(this.timeout());
-  test.retries(this.retries());
-  test.enableTimeouts(this.enableTimeouts());
-  test.slow(this.slow());
-  test.ctx = this.ctx;
-  this.tests.push(test);
-  this.emit('test', test);
-  return this;
-}
-
-/**
- * Return the full title generated by recursively concatenating the parent's
- * full title.
- *
- * @memberof Suite
- * @public
- * @return {string}
- */
-fullTitle() {
-  return this.titlePath().join(' ');
-}
-
-/**
- * Return the title path generated by recursively concatenating the parent's
- * title path.
- *
- * @memberof Suite
- * @public
- * @return {string}
- */
-titlePath() {
-  var result = [];
-  if (this.parent) {
-    result = result.concat(this.parent.titlePath());
-  }
-  if (!this.root) {
-    result.push(this.title);
-  }
-  return result;
-}
-
-/**
- * Return the total number of tests.
- *
- * @memberof Suite
- * @public
- * @return {number}
- */
-total() {
-  return (
-    this.suites.reduce(function(sum, suite) {
-      return sum + suite.total();
-    }, 0) + this.tests.length
-  );
-}
-
-/**
- * Iterates through each suite recursively to find all tests. Applies a
- * function in the format `fn(test)`.
- *
- * @private
- * @param {Function} fn
- * @return {Suite}
- */
-eachTest(fn) {
-  this.tests.forEach(fn);
-  this.suites.forEach(function(suite) {
-    suite.eachTest(fn);
-  });
-  return this;
-}
-
-/**
- * This will run the root suite if we happen to be running in delayed mode.
- * @private
- */
-run() {
-  if (this.root) {
-    this.emit('run');
-  }
-}
-
-/**
- * Determines whether a suite has an `only` test or suite as a descendant.
- *
- * @private
- * @returns {Boolean}
- */
-hasOnly() {
-  return (
-    this._onlyTests.length > 0 ||
-    this._onlySuites.length > 0 ||
-    this.suites.some(function(suite) {
-      return suite.hasOnly();
-    })
-  );
-}
-
-/**
- * Filter suites based on `isOnly` logic.
- *
- * @private
- * @returns {Boolean}
- */
-filterOnly() {
-  if (this._onlyTests.length) {
-    // If the suite contains `only` tests, run those and ignore any nested suites.
-    this.tests = this._onlyTests;
-    this.suites = [];
-  } else {
-    // Otherwise, do not run any of the tests in this suite.
-    this.tests = [];
-    this._onlySuites.forEach(function(onlySuite) {
-      // If there are other `only` tests/suites nested in the current `only` suite, then filter that `only` suite.
-      // Otherwise, all of the tests on this `only` suite should be run, so don't filter it.
-      if (onlySuite.hasOnly()) {
-        onlySuite.filterOnly();
-      }
+  eachTest(fn) {
+    this.tests.forEach(fn);
+    this.suites.forEach(function(suite) {
+      suite.eachTest(fn);
     });
-    // Run the `only` suites, as well as any other suites that have `only` tests/suites as descendants.
-    var onlySuites = this._onlySuites;
-    this.suites = this.suites.filter(function(childSuite) {
-      return onlySuites.indexOf(childSuite) !== -1 || childSuite.filterOnly();
-    });
+    return this;
   }
-  // Keep the suite only if there is something to run
-  return this.tests.length > 0 || this.suites.length > 0;
-}
 
-/**
- * Adds a suite to the list of subsuites marked `only`.
- *
- * @private
- * @param {Suite} suite
- */
-appendOnlySuite(suite) {
-  this._onlySuites.push(suite);
-}
-
-/**
- * Adds a test to the list of tests marked `only`.
- *
- * @private
- * @param {Test} test
- */
-appendOnlyTest(test) {
-  this._onlyTests.push(test);
-}
-
-/**
- * Returns the array of hooks by hook name; see `HOOK_TYPE_*` 
- * @private
- */
-getHooks(name) {
-  return this['_' + name];
-}
-
-/**
- * Cleans up the references to all the deferred functions
- * (before/after/beforeEach/afterEach) and tests of a Suite.
- * These must be deleted otherwise a memory leak can happen,
- * as those functions may reference variables from closures,
- * thus those variables can never be garbage collected as long
- * as the deferred functions exist.
- *
- * @private
- */
-cleanReferences() {
-  function cleanArrReferences(arr) {
-    for (var i = 0; i < arr.length; i++) {
-      delete arr[i].fn;
+  run() {
+    if (this.root) {
+      this.emit('run');
     }
   }
 
-  if (Array.isArray(this._beforeAll)) {
-    cleanArrReferences(this._beforeAll);
+  hasOnly() {
+    return (
+      this._onlyTests.length > 0 ||
+      this._onlySuites.length > 0 ||
+      this.suites.some(function(suite) {
+        return suite.hasOnly();
+      })
+    );
   }
 
-  if (Array.isArray(this._beforeEach)) {
-    cleanArrReferences(this._beforeEach);
+  filterOnly() {
+    if (this._onlyTests.length) {
+      this.tests = this._onlyTests;
+      this.suites = [];
+    } else {
+      this.tests = [];
+      this._onlySuites.forEach(function(onlySuite) {
+        if (onlySuite.hasOnly()) {
+          onlySuite.filterOnly();
+        }
+      });
+      var onlySuites = this._onlySuites;
+      this.suites = this.suites.filter(function(childSuite) {
+        return onlySuites.indexOf(childSuite) !== -1 || childSuite.filterOnly();
+      });
+    }
+    return this.tests.length > 0 || this.suites.length > 0;
   }
 
-  if (Array.isArray(this._afterAll)) {
-    cleanArrReferences(this._afterAll);
+  appendOnlySuite(suite) {
+    this._onlySuites.push(suite);
   }
 
-  if (Array.isArray(this._afterEach)) {
-    cleanArrReferences(this._afterEach);
+  appendOnlyTest(test) {
+    this._onlyTests.push(test);
   }
 
-  for (var i = 0; i < this.tests.length; i++) {
-    delete this.tests[i].fn;
+  getHooks(name) {
+    return this['_' + name];
   }
-}
+
+  cleanReferences() {
+    function cleanArrReferences(arr) {
+      for (var i = 0; i < arr.length; i++) {
+        delete arr[i].fn;
+      }
+    }
+
+    if (Array.isArray(this._beforeAll)) {
+      cleanArrReferences(this._beforeAll);
+    }
+
+    if (Array.isArray(this._beforeEach)) {
+      cleanArrReferences(this._beforeEach);
+    }
+
+    if (Array.isArray(this._afterAll)) {
+      cleanArrReferences(this._afterAll);
+    }
+
+    if (Array.isArray(this._afterEach)) {
+      cleanArrReferences(this._afterEach);
+    }
+
+    for (var i = 0; i < this.tests.length; i++) {
+      delete this.tests[i].fn;
+    }
+  }
 }
 
 module.exports = Suite
 
-/**
- * Create a new `Suite` with the given `title` and parent `Suite`.
- *
- * @public
- * @param {Suite} parent - Parent suite (required!)
- * @param {string} title - Title
- * @return {Suite}
- */
- Suite.create = function(parent, title) {
+Suite.create = function(parent, title) {
   var suite = new Suite(title, parent.ctx);
   suite.parent = parent;
   title = suite.fullTitle();

@@ -1,32 +1,10 @@
 'use strict';
+// Based on mocha v6.1.3 under the MIT license.
+// Original copyright (c) 2011-2018 JS Foundation and contributors,
+// https://js.foundation
 
 const Test = require('@arangodb/mocha/test');
 
-/**
- * TDD-style interface:
- *
- *      suite('Array', function() {
- *        suite('#indexOf()', function() {
- *          suiteSetup(function() {
- *
- *          });
- *
- *          test('should return -1 when not present', function() {
- *
- *          });
- *
- *          test('should return the index when present', function() {
- *
- *          });
- *
- *          suiteTeardown(function() {
- *
- *          });
- *        });
- *      });
- *
- * @param {Suite} suite Root suite.
- */
 module.exports = function(suite) {
   var suites = [suite];
 
@@ -39,10 +17,6 @@ module.exports = function(suite) {
     context.suiteTeardown = common.after;
     context.run = mocha.options.delay && common.runWithSuite(suite);
 
-    /**
-     * Describe a "suite" with the given `title` and callback `fn` containing
-     * nested suites and/or tests.
-     */
     context.suite = function(title, fn) {
       return common.suite.create({
         title: title,
@@ -51,9 +25,6 @@ module.exports = function(suite) {
       });
     };
 
-    /**
-     * Pending suite.
-     */
     context.suite.skip = function(title, fn) {
       return common.suite.skip({
         title: title,
@@ -62,9 +33,6 @@ module.exports = function(suite) {
       });
     };
 
-    /**
-     * Exclusive test-case.
-     */
     context.suite.only = function(title, fn) {
       return common.suite.only({
         title: title,
@@ -73,10 +41,6 @@ module.exports = function(suite) {
       });
     };
 
-    /**
-     * Describe a specification or test-case with the given `title` and
-     * callback `fn` acting as a thunk.
-     */
     context.test = function(title, fn) {
       var suite = suites[0];
       if (suite.isPending()) {
@@ -88,10 +52,6 @@ module.exports = function(suite) {
       return test;
     };
 
-    /**
-     * Exclusive test-case.
-     */
-
     context.test.only = function(title, fn) {
       return common.test.only(mocha, context.test(title, fn));
     };
@@ -100,6 +60,3 @@ module.exports = function(suite) {
     context.test.retries = common.test.retries;
   });
 };
-
-module.exports.description =
-  'traditional "suite"/"test" instead of BDD\'s "describe"/"it"';
