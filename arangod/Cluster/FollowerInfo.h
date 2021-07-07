@@ -54,6 +54,20 @@ class FollowerInfo {
   // soon as we can guarantee at least so many followers locally.
   std::shared_ptr<std::vector<ServerID>> _failoverCandidates;
 
+  // The following map holds a random number for each follower, this
+  // random number is given and sent to the follower when it gets in sync
+  // (actually, when it acquires the exclusive lock to get in sync), and is
+  // then subsequently sent alongside every synchronous replication
+  // request. If the number does not match, the follower will refuse the
+  // replication request. This is to ensure that replication requests cannot
+  // be delayed into the "next" leader/follower relationship.
+  // And here is the proof that this works: The exclusive lock divides the
+  // write operations between "before" and "after". The id is changed
+  // when the exclusive lock is established. Therefore, it is OK for the
+  // replication requests to send along the "current" id, directly
+  // from this map.
+  std::unordered_map<ServerID, uint64_t> _followingTermId;
+
   // The agencyMutex is used to synchronise access to the agency.
   // the _dataLock is used to sync the access to local data.
   // The _canWriteLock is used to protect flag if we do have enough followers
@@ -134,6 +148,28 @@ class FollowerInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   Result remove(ServerID const& s);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief for each run of the "get-in-sync" protocol we generate a
+  /// random number to identify this "following term". This is created
+  /// when the follower fetches the exclusive lock to finally get in sync
+  /// and is stored in _followingTermId, so that it can be forwarded with
+  /// each synchronous replication request. The follower can then decline
+  /// the replication in case it is not "in the same term".
+  //////////////////////////////////////////////////////////////////////////////
+
+  uint64_t newFollowingTermId(ServerID const& s) noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief for each run of the "get-in-sync" protocol we generate a
+  /// random number to identify this "following term". This is created
+  /// when the follower fetches the exclusive lock to finally get in sync
+  /// and is stored in _followingTermId, so that it can be forwarded with
+  /// each synchronous replication request. The follower can then decline
+  /// the replication in case it is not "in the same term".
+  //////////////////////////////////////////////////////////////////////////////
+
+  uint64_t getFollowingTermId(ServerID const& s) const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clear follower list, no changes in agency necesary

@@ -320,7 +320,6 @@ void handlePlanShard(StorageEngine& engine, uint64_t planIndex, VPackSlice const
             {DATABASE, dbname},
             {COLLECTION, colname},
             {SHARD, shname},
-            {THE_LEADER, std::string()},
             {LOCAL_LEADER, std::string(localLeader)},
             {OLD_CURRENT_COUNTER, "0"},  // legacy, no longer used
             {PLAN_RAFT_INDEX, std::to_string(planIndex)}},
