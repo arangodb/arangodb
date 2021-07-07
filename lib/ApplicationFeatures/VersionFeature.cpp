@@ -24,15 +24,10 @@
 #include "ApplicationFeatures/VersionFeature.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/VPackStringBufferAdapter.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Rest/Version.h"
 
 #include <iostream>
-
-#include <velocypack/Dumper.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::rest;
 using namespace arangodb::options;
@@ -40,7 +35,9 @@ using namespace arangodb::options;
 namespace arangodb {
 
 VersionFeature::VersionFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Version"), _printVersion(false) {
+    : ApplicationFeature(server, "Version"), 
+      _printVersion(false),
+      _printVersionJson(false) {
   setOptional(false);
 
   startsAfter<ShellColorsFeature>();
@@ -67,13 +64,7 @@ void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
       builder.add("version", VPackValue(Version::getServerVersion()));
     }
 
-    basics::StringBuffer output;
-    basics::VPackStringBufferAdapter buffer(output.stringBuffer());
-    VPackOptions opts;
-    VPackDumper dumper(&buffer, &opts);
-    dumper.dump(builder.slice());
-    std::string s(output.c_str(), output.length());
-    std::cout << s << std::endl;
+    std::cout << builder.slice().toJson() << std::endl;
     exit(EXIT_SUCCESS);
   }
 
