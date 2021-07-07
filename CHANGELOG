@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fix locking of write transactions on DB servers.
+* Fix locking of AQL queries write queries on DB servers.
 
 * Enable process metrics on agent instances by default. Previously, some 
   metrics (including the metrics starting with `arangodb_process` prefix) were
@@ -220,9 +220,6 @@ devel
   minimum of required file descriptors. The system set upper bound is now
   honored and the soft limit will be set to either hard limit or system limit
   whichever is lower.
-
-* Allow an INSERT operation for a multi-shard collection to execute in 
-  parallel on different DB servers.
 
 * Fix BTS-409: return error 1948 when a negative edge was detected during or was
   used as default weight in a SHORTEST_PATH or a K_SHOTRTEST_PAHS traversal.

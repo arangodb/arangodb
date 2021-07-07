@@ -596,12 +596,13 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   // for the entire duration of the query. if this is the case, then the query
   // already has the lock, and it is ok if we lease the context here without 
   // acquiring it again.
-  bool openContextWithoutLock = 
-      ServerState::instance()->isDBServer() &&
-      (type == AccessMode::Type::READ) && 
-      (!_request->header(StaticStrings::AqlDocumentCall).empty());
+  bool const isSideUser =
+      (ServerState::instance()->isDBServer() &&
+       AccessMode::isRead(type) &&
+       !_request->header(StaticStrings::AqlDocumentCall).empty());
 
-  auto ctx = mgr->leaseManagedTrx(tid, type, openContextWithoutLock);
+  std::shared_ptr<transaction::Context> ctx = mgr->leaseManagedTrx(tid, type, isSideUser);
+  
   if (!ctx) {
     LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id " << tid << " not found";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction ") + std::to_string(tid.id()) + " not found");
@@ -610,6 +611,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   if (ServerState::instance()->isDBServer() &&
       !opOptions.isSynchronousReplicationFrom.empty()) {
     TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
+    // inject at least the required collection name
     trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName, type);
   } else {
     trx = std::make_unique<transaction::Methods>(std::move(ctx));
@@ -658,7 +660,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
     }
   }
 
-  auto ctx = mgr->leaseManagedTrx(tid, mode, false);
+  auto ctx = mgr->leaseManagedTrx(tid, mode, /*isSideUser*/ false);
   if (!ctx) {
     LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND,

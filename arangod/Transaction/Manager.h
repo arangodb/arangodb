@@ -30,6 +30,7 @@
 #include "Basics/ResultT.h"
 #include "Cluster/CallbackGuard.h"
 #include "Logger/LogMacros.h"
+#include "Transaction/SmartContext.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -85,6 +86,13 @@ class Manager final {
     bool intermediateCommits;
     /// @brief whether or not the transaction did expire at least once
     bool wasExpired;
+
+    /// @brief number of (reading) side users of the transaction. this number
+    /// is currently only increased on DB servers when they handle incoming
+    /// requests by the AQL document function. while this number is > 0, there
+    /// are still read requests ongoing, and the transaction status cannot be
+    /// changed to committed/aborted.
+    std::atomic<uint32_t> sideUsers;
     /// @brief  final TRX state that is valid if this is a tombstone
     /// necessary to avoid getting error on a 'diamond' commit or accidentally
     /// repeated commit / abort messages
@@ -93,8 +101,8 @@ class Manager final {
     double expiryTime;                        // time this expires
     std::shared_ptr<TransactionState> state;  /// Transaction, may be nullptr
     arangodb::cluster::CallbackGuard rGuard;
-    std::string user;                         /// user owning the transaction
-    std::string db;  /// database in which the transaction operates
+    std::string const user;                         /// user owning the transaction
+    std::string const db;  /// database in which the transaction operates
     /// cheap usage lock for _state
     mutable basics::ReadWriteSpinLock rwlock;
   };
@@ -151,11 +159,9 @@ class Manager final {
   Result beginTransaction(transaction::Hints hints, std::shared_ptr<TransactionState>& state);
 
   /// @brief lease the transaction, increases nesting
-  std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid,
-                                                        AccessMode::Type mode,
-                                                        bool openContextWithoutLock);
-  void returnManagedTrx(TransactionId) noexcept;
-
+  std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid, AccessMode::Type mode, bool isSideUser = false);
+  void returnManagedTrx(TransactionId, bool isSideUser = false) noexcept;
+  
   /// @brief get the meta transasction state
   transaction::Status getManagedTrxStatus(TransactionId, std::string const& database) const;
 
@@ -235,6 +241,8 @@ class Manager final {
   inline size_t getBucket(TransactionId tid) const noexcept {
     return std::hash<TransactionId>()(tid) % numBuckets;
   }
+
+  std::shared_ptr<ManagedContext> buildManagedContextUnderLock(TransactionId tid, ManagedTrx& mtrx);
 
   Result updateTransaction(TransactionId tid, transaction::Status status,
                            bool clearServers, std::string const& database = "" /* leave empty to operate across all databases */);
