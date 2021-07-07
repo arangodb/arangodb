@@ -32,6 +32,11 @@
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 11)
+#pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 namespace arangodb {
 
 // @brief Extension of Result which, on success, contains a value of type T.
@@ -263,3 +268,6 @@ class ResultT {
 
 }  // namespace arangodb
 
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 11)
+#pragma GCC diagnostic pop
+#endif
