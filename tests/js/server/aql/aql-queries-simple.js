@@ -1363,14 +1363,47 @@ function ahuacatlQuerySimpleTestSuite () {
       const expected = _.range(cnt, cnt + 10);
       assertEqual(expected, AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
     },
+    
+    testQueryWithManyNodes : function() {
+      let q = "LET x = NOOPT('testi')\n";
+      const cnt = 4000 - 4; // singleton + calculation + calculation + return
+      for (let i = 0; i < cnt; ++i) {
+        q += `FILTER x\n `;
+      }
+      q += "RETURN 1";
+      assertEqual([1], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
+    },
+    
+    testQueryWithTooManyNodes : function() {
+      let q = "LET x = NOOPT('testi')\n";
+      const cnt = 4000; // plus singleton + calculation + calculation + return
+      for (let i = 0; i < cnt; ++i) {
+        q += `FILTER x\n `;
+      }
+      q += "RETURN 1";
+      assertQueryError(errors.ERROR_QUERY_TOO_MUCH_NESTING.code, q);
+    },
+    
+    testQueryWithDeepExpression : function() {
+      let q = "RETURN 0";
+      const cnt = 1000 - 2; 
+      for (let i = 1; i <= cnt; ++i) {
+        q += " + " + i;
+      }
+      assertEqual([498501], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
+    },
+    
+    testQueryWithTooDeepExpression : function() {
+      let q = "RETURN 0";
+      const cnt = 1000; 
+      for (let i = 0; i < cnt; ++i) {
+        q += " + " + i;
+      }
+      assertQueryError(errors.ERROR_QUERY_TOO_MUCH_NESTING.code, q);
+    },
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQuerySimpleTestSuite);
 
 return jsunity.done();
-

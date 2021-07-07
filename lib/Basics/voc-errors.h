@@ -1005,6 +1005,12 @@ constexpr auto TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED                           
 /// beyond the allowed value.
 constexpr auto TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS                              = ErrorCode{1522};
 
+/// 1524: ERROR_QUERY_TOO_MUCH_NESTING
+/// "too much nesting or too many objects"
+/// Will be raised when a query contains expressions or other constructs with
+/// too many objects or that are too deeply nested.
+constexpr auto TRI_ERROR_QUERY_TOO_MUCH_NESTING                                  = ErrorCode{1524};
+
 /// 1540: ERROR_QUERY_FUNCTION_NAME_UNKNOWN
 /// "usage of unknown function '%s()'"
 /// Will be raised when an undefined function is called.
