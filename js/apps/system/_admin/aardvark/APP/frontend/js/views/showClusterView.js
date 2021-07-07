@@ -331,7 +331,7 @@
 
         stat.url = coord.get('protocol') + '://' +
         coord.get('address') +
-        '/_admin/clusterStatistics?DBserver=' +
+        '/_admin/cluster/statistics?DBserver=' +
         dbserver.get('name');
 
         statCollect.add(stat);

@@ -237,6 +237,81 @@ function randomTestSuite() {
       assertTrue(typeof key === "string");
       checkCancel(key);
     },
+    
+    testGarbageCollectionForJob: function () {
+      let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: 15 });
+      assertTrue(typeof key === "string");
+          
+      let stats = pregel.status(key);
+      assertTrue(stats.hasOwnProperty('id'));
+      assertEqual(stats.id, key);
+      assertEqual("_system", stats.database);
+      assertEqual("HITS", stats.algorithm);
+      assertTrue(stats.hasOwnProperty('created'));
+      assertTrue(stats.hasOwnProperty('ttl'));
+      assertEqual(15, stats.ttl);
+
+      let i = 1000;
+      do {
+        stats = pregel.status(key);
+        if (stats.state === "done") {
+          break;
+        }
+        internal.sleep(0.2);
+      } while (i-- >= 0);
+      assertEqual("done", stats.state);
+      assertTrue(stats.hasOwnProperty('expires'));
+      assertTrue(stats.expires > stats.created);
+      assertTrue(i > 0, "timeout in pregel execution");
+
+      // wait for garbage collection
+      i = 1000;
+      do {
+        try {
+          stats = pregel.status(key);
+          assertEqual("done", stats.state);
+        } catch (err) {
+          // fine.
+          break;
+        }
+        internal.sleep(0.2);
+      } while (i-- >= 0);
+      assertTrue(i > 0, "timeout in pregel execution");
+    },
+    
+    testAllJobsStatus: function () {
+      const initialIds = pregel.status().map((job) => job.id);
+
+      let ourJobs = [];
+      for (let i = 0; i < 5; ++i) {
+        let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: 5 });
+        assertTrue(typeof key === "string");
+        ourJobs.push(key);
+      }
+          
+      // wait for garbage collection
+      let i = 1000;
+      let found;
+      do {
+        let stats = pregel.status();
+        found = [];
+        stats.forEach((job) => {
+          if (initialIds.indexOf(job.id) === -1) {
+            assertEqual(5, job.ttl);
+            assertEqual("_system", job.database);
+            assertEqual("HITS", job.algorithm);
+            found.push(job.id);
+          }
+        });
+
+        if (found.length === 0) {
+          break;
+        }
+        internal.sleep(0.2);
+      } while (i-- >= 0);
+      assertTrue(i > 0, "timeout in pregel execution");
+      assertEqual(0, found.length);
+    },
 
   };
 }
