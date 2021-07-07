@@ -1335,6 +1335,34 @@ function ahuacatlQuerySimpleTestSuite () {
       });
     },
 
+    testLargeQuery : function() {
+      let q = "";
+      const cnt = 990;
+      for (let i = 0; i < cnt; ++i) {
+        q += `LET v${i} = NOOPT(1)\n`;
+      }
+      q += "RETURN v0";
+      for (let i = 1; i < cnt; ++i) {
+        q += ` + v${i}`;
+      }
+      assertEqual([cnt], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
+    },
+    
+    testLargeSubQuery : function() {
+      const _ = require('lodash');
+      let q = "FOR i IN 0..9 LET x = (\n";
+      const cnt = 900;
+      for (let i = 0; i < cnt; ++i) {
+        q += `LET v${i} = NOOPT(1)\n`;
+      }
+      q += "RETURN i + v0";
+      for (let i = 1; i < cnt; ++i) {
+        q += ` + v${i}`;
+      }
+      q += ")[0]\nRETURN x";
+      const expected = _.range(cnt, cnt + 10);
+      assertEqual(expected, AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
+    },
   };
 }
 

@@ -72,6 +72,7 @@ struct QueryOptions {
   size_t memoryLimit;
   size_t maxNumberOfPlans;
   size_t maxWarningCount;
+  size_t maxNodesPerCallstack;
   double maxRuntime; // query has to execute within the given time or will be killed
   double satelliteSyncWait;
   double ttl; // time until query cursor expires - avoids coursors to
@@ -106,6 +107,7 @@ struct QueryOptions {
   
   static size_t defaultMemoryLimit;
   static size_t defaultMaxNumberOfPlans;
+  static size_t defaultMaxNodesPerCallstack;
   static double defaultMaxRuntime;
   static double defaultTtl;
   static bool defaultFailOnWarning;

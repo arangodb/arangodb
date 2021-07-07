@@ -1,10 +1,13 @@
+/* jshint globalstrict:false, strict:false, maxlen: 200 */
+/* global fail, print */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Apache License, Version 2.0 (the "License")
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
@@ -18,30 +21,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+const { run, makeConfig, parameters } = require("./test-chaos-load-common.inc");
 
-#include "GeneralServer/RestHandler.h"
-
-#include "Rest/GeneralResponse.h"
-
-namespace arangodb {
-
-class RestRedirectHandler : public rest::RestHandler {
- public:
-  template<typename T>
-  explicit RestRedirectHandler(application_features::ApplicationServer& server,
-                           GeneralRequest* request, GeneralResponse* response, T newPrefix)
-    : RestHandler(server, request, response), _newPrefix(std::forward<T>(newPrefix)) {};
-
-  RestStatus execute() override;
-  char const* name() const override { return "RestRedirectHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
-  void handleError(basics::Exception const&) override;
- private:
-  std::string _newPrefix;
-};
-}  // namespace arangodb
-
+module.exports.getConfigs = () => [makeConfig(Array(parameters.length).fill(true))];
+module.exports.run = run;

@@ -1980,6 +1980,13 @@ function processQuery(query, explain, planIndex) {
     }
   };
 
+  const callstackSplit = function(node) {
+    if (node.isCallstackSplitEnabled) {
+      return annotation(' /* callstack split */');
+    }
+    return '';
+  };
+
   var constNess = function () {
     if (isConst) {
       return '   ' + annotation('/* const assignment */');
@@ -2029,10 +2036,10 @@ function processQuery(query, explain, planIndex) {
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
         pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
         pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ' +
-        indent(level, node.type === 'SingletonNode') + label(node);
+        indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
     } else {
       line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
-        indent(level, node.type === 'SingletonNode') + label(node);
+        indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
     }
 
     if (node.type === 'CalculationNode') {
