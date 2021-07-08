@@ -48,7 +48,6 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Rest/Version.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/HotBackupCommon.h"
@@ -90,10 +89,9 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include <algorithm>
-#include <memory>
 #include <numeric>
-#include <random>
 #include <vector>
+#include <random>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -614,7 +612,7 @@ void ClusterMethods::realNameFromSmartName(std::string&) { }
 /// fetched from ClusterInfo and with shuffle to mix it up.
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> distributeShardsEvenly(
+static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> DistributeShardsEvenly(
     ClusterInfo& ci, uint64_t numberOfShards, uint64_t replicationFactor,
     std::vector<std::string>& dbServers, bool warnAboutReplicationFactor) {
   auto shards =
@@ -685,20 +683,11 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
 /// @brief Clone shard distribution from other collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> cloneShardDistribution(
+static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> CloneShardDistribution(
     ClusterInfo& ci, std::shared_ptr<LogicalCollection> col,
     std::shared_ptr<LogicalCollection> const& other) {
   TRI_ASSERT(col);
   TRI_ASSERT(other);
-  if (col->vocbase().replicationVersion() == replication::Version::TWO) {
-    LOG_DEVEL << "TODO: FIXME: " << "distributeShardsLike is not yet implemented for replication 2.0.";
-    /*
-    // TODO implement this
-    ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "distributeShardsLike is not yet implemented for replication 2.0.");
-    */
-  }
 
   if (!other->distributeShardsLike().empty()) {
     CollectionNameResolver resolver(col->vocbase());
@@ -2580,86 +2569,6 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollection
 }
 #endif
 
-namespace {
-auto initializeShardMap(bool enforceReplicationFactor,
-                        std::shared_ptr<LogicalCollection> const& colToDistributeLike,
-                        std::vector<std::string>& dbServers,
-                        std::shared_ptr<LogicalCollection> const& col, ClusterInfo& ci)
-    -> std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> {
-  std::vector<std::string> avoid = col->avoidServers();
-  std::string distributeShardsLike = col->distributeShardsLike();
-  if (!distributeShardsLike.empty()) {
-    std::shared_ptr<LogicalCollection> myColToDistributeLike;
-
-    if (colToDistributeLike != nullptr) {
-      myColToDistributeLike = colToDistributeLike;
-    } else {
-      CollectionNameResolver resolver(col->vocbase());
-      myColToDistributeLike = resolver.getCollection(distributeShardsLike);
-      if (myColToDistributeLike == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                       "Collection not found: " + distributeShardsLike +
-                                           " in database " + col->vocbase().name());
-      }
-    }
-
-    return cloneShardDistribution(ci, col, myColToDistributeLike);
-  } else {
-    // system collections should never enforce replicationfactor
-    // to allow them to come up with 1 dbserver
-    if (col->system()) {
-      enforceReplicationFactor = false;
-    }
-
-    size_t replicationFactor = col->replicationFactor();
-    size_t writeConcern = col->writeConcern();
-    size_t numberOfShards = col->numberOfShards();
-
-    // the default behavior however is to bail out and inform the user
-    // that the requested replicationFactor is not possible right now
-    if (dbServers.size() < replicationFactor) {
-      TRI_ASSERT(writeConcern <= replicationFactor);
-      // => (dbServers.size() < writeConcern) is granted
-      LOG_TOPIC("9ce2e", DEBUG, Logger::CLUSTER)
-          << "Do not have enough DBServers for requested replicationFactor,"
-          << " nrDBServers: " << dbServers.size()
-          << " replicationFactor: " << replicationFactor;
-      if (enforceReplicationFactor) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
-      }
-    }
-
-    if (!avoid.empty()) {
-      // We need to remove all servers that are in the avoid list
-      if (dbServers.size() - avoid.size() < replicationFactor) {
-        LOG_TOPIC("03682", DEBUG, Logger::CLUSTER)
-            << "Do not have enough DBServers for requested "
-               "replicationFactor,"
-            << " (after considering avoid list),"
-            << " nrDBServers: " << dbServers.size() << " replicationFactor: " << replicationFactor
-            << " avoid list size: " << avoid.size();
-        // Not enough DBServers left
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
-      }
-      dbServers.erase(std::remove_if(dbServers.begin(), dbServers.end(),
-                                     [&](const std::string& x) {
-                                       return std::find(avoid.begin(), avoid.end(),
-                                                        x) != avoid.end();
-                                     }),
-                      dbServers.end());
-    }
-    // Constructing a random device can be expensive, and getting random
-    // numbers from it too, plus they may be scarce on servers. So let's
-    // use it only to initialize one PRNG per thread, once.
-    static thread_local auto rd = std::random_device{};
-    static thread_local auto g = std::mt19937{rd()};
-    std::shuffle(dbServers.begin(), dbServers.end(), g);
-    return distributeShardsEvenly(ci, numberOfShards, replicationFactor,
-                                  dbServers, !col->system());
-  }  // if - distributeShardsLike.empty()
-}
-}  // namespace
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Persist collection in Agency and trigger shard creation process
 ////////////////////////////////////////////////////////////////////////////////
@@ -2684,8 +2593,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
   // all collections have the same database name - ArangoDB does not
   // support cross-database operations and they cannot be triggered by
   // users)
-  auto const& vocbase = collections[0]->vocbase();
-  auto const& dbName = vocbase.name();
+  auto const dbName = collections[0]->vocbase().name();
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ClusterCollectionCreationInfo> infos;
@@ -2704,9 +2612,77 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       // We can only serve on Database at a time with this call.
       // We have the vocbase context around this calls anyways, so this is safe.
       TRI_ASSERT(col->vocbase().name() == dbName);
+      std::string distributeShardsLike = col->distributeShardsLike();
+      std::vector<std::string> avoid = col->avoidServers();
+      std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards = nullptr;
 
-      auto shards = initializeShardMap(enforceReplicationFactor,
-                                       colToDistributeLike, dbServers, col, ci);
+      if (!distributeShardsLike.empty()) {
+        std::shared_ptr<LogicalCollection> myColToDistributeLike;
+
+        if (colToDistributeLike != nullptr) {
+          myColToDistributeLike = colToDistributeLike;
+        } else {
+          CollectionNameResolver resolver(col->vocbase());
+          myColToDistributeLike = resolver.getCollection(distributeShardsLike);
+          if (myColToDistributeLike == nullptr) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+                                           "Collection not found: " + distributeShardsLike + " in database " + col->vocbase().name());
+          }
+        }
+
+        shards = CloneShardDistribution(ci, col, myColToDistributeLike);
+      } else {
+        // system collections should never enforce replicationfactor
+        // to allow them to come up with 1 dbserver
+        if (col->system()) {
+          enforceReplicationFactor = false;
+        }
+
+        size_t replicationFactor = col->replicationFactor();
+        size_t writeConcern = col->writeConcern();
+        size_t numberOfShards = col->numberOfShards();
+
+        // the default behavior however is to bail out and inform the user
+        // that the requested replicationFactor is not possible right now
+        if (dbServers.size() < replicationFactor) {
+          TRI_ASSERT(writeConcern <= replicationFactor);
+          // => (dbServers.size() < writeConcern) is granted
+          LOG_TOPIC("9ce2e", DEBUG, Logger::CLUSTER)
+              << "Do not have enough DBServers for requested replicationFactor,"
+              << " nrDBServers: " << dbServers.size()
+              << " replicationFactor: " << replicationFactor;
+          if (enforceReplicationFactor) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+          }
+        }
+
+        if (!avoid.empty()) {
+          // We need to remove all servers that are in the avoid list
+          if (dbServers.size() - avoid.size() < replicationFactor) {
+            LOG_TOPIC("03682", DEBUG, Logger::CLUSTER)
+                << "Do not have enough DBServers for requested "
+                   "replicationFactor,"
+                << " (after considering avoid list),"
+                << " nrDBServers: " << dbServers.size()
+                << " replicationFactor: " << replicationFactor
+                << " avoid list size: " << avoid.size();
+            // Not enough DBServers left
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+          }
+          dbServers.erase(std::remove_if(dbServers.begin(), dbServers.end(),
+                                         [&](const std::string& x) {
+                                           return std::find(avoid.begin(), avoid.end(),
+                                                            x) != avoid.end();
+                                         }),
+                          dbServers.end());
+        }
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(dbServers.begin(), dbServers.end(), g);
+        shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor,
+                                      dbServers, !col->system());
+      } // if - distributeShardsLike.empty()
+
 
       if (shards->empty() && !col->isSmart()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -2722,14 +2698,13 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       VPackBuilder velocy =
           col->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::List);
 
-      auto const* const serverState = ServerState::instance();
+      auto const serverState = ServerState::instance();
       infos.emplace_back(ClusterCollectionCreationInfo{
           std::to_string(col->id().id()), col->numberOfShards(),
-          col->replicationFactor(), col->writeConcern(), col->waitForSync(),
-          waitForSyncReplication, velocy.slice(), serverState->getId(),
-          serverState->getRebootId()});
+          col->replicationFactor(), col->writeConcern(), waitForSyncReplication,
+          velocy.slice(), serverState->getId(), serverState->getRebootId()});
       vpackData.emplace_back(velocy.steal());
-    }  // for col : collections
+    } // for col : collections
 
     // pass in the *endTime* here, not a timeout!
     Result res = ci.createCollectionsCoordinator(dbName, infos, endTime,
@@ -2765,6 +2740,8 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     }
   }
 
+  //ci.loadPlan();
+
   // Produce list of shared_ptr wrappers
 
   std::vector<std::shared_ptr<LogicalCollection>> usableCollectionPointers;
@@ -2786,9 +2763,9 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     }
   }
   return usableCollectionPointers;
-}
+}  
 
-static auto const apiStr = std::string("/_admin/backup/");
+std::string const apiStr("/_admin/backup/");
 
 arangodb::Result hotBackupList(network::ConnectionPool* pool,
                                std::vector<ServerID> const& dbServers, VPackSlice const idSlice,
