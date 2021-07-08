@@ -64,6 +64,8 @@ struct LogIndex : implement_compare<LogIndex> {
   constexpr explicit LogIndex(std::uint64_t value) noexcept : value{value} {}
   std::uint64_t value;
 
+  [[nodiscard]] auto saturatedDecrement() const noexcept -> LogIndex;
+
   [[nodiscard]] auto operator<=(LogIndex) const -> bool;
 
   auto operator+(std::uint64_t delta) const -> LogIndex;

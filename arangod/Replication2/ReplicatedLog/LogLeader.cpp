@@ -167,12 +167,8 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 
   for (auto& it : requests) {
     if (it.has_value()) {
-      // Capture self(shared_from_this()) instead of this
-      // additionally capture a weak pointer that will be locked
-      // when the request returns. If the locking is successful
-      // we are still in the same term.
       delayedFuture(it->_executionDelay).thenFinal([it = it, logMetrics](auto&&) mutable {
-        // we need to lock here, because we access _follower
+        // Let's check whether our log is still there, and abort otherwise
         auto guard = it->_parentLog.lock();
         if (guard == nullptr) {
           LOG_TOPIC("de312", DEBUG, Logger::REPLICATION2)
@@ -184,8 +180,11 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
         LOG_CTX("1b0ec", TRACE, it->_follower->logContext)
             << "sending append entries, messageId = " << messageId;
         auto startTime = std::chrono::steady_clock::now();
+        // Capture a weak pointer `parentLog` that will be locked
+        // when the request returns. If the locking is successful
+        // we are still in the same term.
         it->_follower->_impl->appendEntries(std::move(it->_request))
-            .thenFinal([parentLog = it->_parentLog, &follower = *it->_follower,
+            .thenFinal([parentLog = it->_parentLog, follower = it->_follower,
                         lastIndex = it->_lastIndex, currentCommitIndex = it->_currentCommitIndex,
                         currentTerm = it->_currentTerm, messageId = messageId, startTime,
                         logMetrics = logMetrics](futures::Try<AppendEntriesResult>&& res) noexcept {
@@ -199,7 +198,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                 using namespace std::chrono_literals;
                 auto const duration = endTime - startTime;
                 self->_logMetrics->replicatedLogAppendEntriesRttUs->count(duration / 1us);
-                LOG_CTX("8ff44", TRACE, follower.logContext)
+                LOG_CTX("8ff44", TRACE, follower->logContext)
                     << "received append entries response, messageId = " << messageId;
                 auto [preparedRequests, resolvedPromises] = std::invoke(
                     [&]() -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet> {
@@ -207,10 +206,10 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                       if (!guarded->_didResign) {
                         // Is throwing the right thing to do here? - No, we are in a finally
                         return guarded->handleAppendEntriesResponse(
-                            parentLog, follower, lastIndex, currentCommitIndex, currentTerm,
+                            parentLog, *follower, lastIndex, currentCommitIndex, currentTerm,
                             std::move(res), endTime - startTime, messageId);
                       } else {
-                        LOG_CTX("da116", DEBUG, follower.logContext)
+                        LOG_CTX("da116", DEBUG, follower->logContext)
                             << "received response from follower but leader "
                                "already resigned, messageId = "
                             << messageId;
@@ -500,7 +499,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
   req.leaderTerm = _self._currentTerm;
   req.leaderId = _self._id;
   req.waitForSync = _self._config.waitForSync;
-  req.messageId = ++follower.lastSendMessageId;
+  req.messageId = ++follower.lastSentMessageId;
 
   if (lastAcked) {
     req.prevLogIndex = lastAcked->logIndex();
@@ -534,7 +533,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
 
   follower.requestInFlight = true;
   auto preparedRequest = PreparedAppendEntryRequest{};
-  preparedRequest._follower = std::shared_ptr<FollowerInfo>(parentLog.lock(), &follower);
+  preparedRequest._follower = std::shared_ptr<FollowerInfo>(_self.shared_from_this(), &follower);
   preparedRequest._currentTerm = _self._currentTerm;
   preparedRequest._currentCommitIndex = currentCommitIndex;
   preparedRequest._lastIndex = lastIndex;
@@ -569,7 +568,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
 
   follower._lastRequestLatency = latency;
 
-  if (follower.lastSendMessageId == messageId) {
+  if (follower.lastSentMessageId == messageId) {
     LOG_CTX("35a32", TRACE, follower.logContext)
         << "received message " << messageId << " - no other requests in flight";
     // there is no request in flight currently
@@ -578,7 +577,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
   if (res.hasValue()) {
     auto& response = res.get();
     TRI_ASSERT(messageId == response.messageId);
-    if (follower.lastSendMessageId == response.messageId) {
+    if (follower.lastSentMessageId == response.messageId) {
       LOG_CTX("35134", TRACE, follower.logContext)
           << "received append entries response, messageId = " << response.messageId
           << ", errorCode = " << to_string(response.errorCode)
@@ -596,18 +595,15 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
           case AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
             follower.numErrorsSinceLastAnswer = 0;
             TRI_ASSERT(response.conflict.has_value());
-            follower.lastAckedEntry.index = response.conflict.value().index;
+            follower.lastAckedEntry.index = response.conflict.value().index.saturatedDecrement();
             LOG_CTX("33c6d", DEBUG, follower.logContext)
                 << "reset last acked index to " << follower.lastAckedEntry;
-            if (follower.lastAckedEntry.index > LogIndex{0}) {
-              follower.lastAckedEntry.index = LogIndex{follower.lastAckedEntry.index.value - 1};
-            }
             break;
           default:
             LOG_CTX("1bd0b", DEBUG, follower.logContext)
                 << "received error from follower, reason = " << to_string(response.reason)
                 << " message id = " << messageId;
-            follower.numErrorsSinceLastAnswer += 1;
+            ++follower.numErrorsSinceLastAnswer;
         }
       }
     } else {
@@ -615,7 +611,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
           << "received outdated response from follower "
           << follower._impl->getParticipantId() << ": "
           << response.messageId << ", expected " << messageId
-          << ", latest " << follower.lastSendMessageId;
+          << ", latest " << follower.lastSentMessageId;
     }
   } else if (res.hasException()) {
     ++follower.numErrorsSinceLastAnswer;
@@ -638,6 +634,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     TRI_ASSERT(false);
     FATAL_ERROR_EXIT();
   }
+
   // try sending the next batch
   return std::make_pair(prepareAppendEntries(parentLog), std::move(toBeResolved));
 }

@@ -51,6 +51,14 @@ auto replication2::operator<<(std::ostream& os, const LogIndex& idx) -> std::ost
   return os << idx.value;
 }
 
+auto LogIndex::saturatedDecrement() const noexcept -> LogIndex {
+  if (value > 0) {
+    return LogIndex{value - 1};
+  }
+
+  return LogIndex{0};
+}
+
 LogEntry::LogEntry(LogTerm logTerm, LogIndex logIndex, LogPayload payload)
     : _logTerm{logTerm}, _logIndex{logIndex}, _payload{std::move(payload)} {}
 
