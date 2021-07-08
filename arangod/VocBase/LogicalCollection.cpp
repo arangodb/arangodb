@@ -1242,6 +1242,10 @@ void LogicalCollection::setInternalValidatorTypes(uint64_t type) {
   _internalValidatorTypes = type;
 }
 
+uint64_t LogicalCollection::getInternalValidatorTypes() const {
+  return _internalValidatorTypes;
+}
+
 void LogicalCollection::addInternalValidator(std::unique_ptr<arangodb::ValidatorBase> validator) {
   // For the time beeing we only allow ONE internal validator.
   // This however is a non-necessary restriction and can be leveraged at any

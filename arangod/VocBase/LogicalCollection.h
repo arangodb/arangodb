@@ -348,6 +348,8 @@ class LogicalCollection : public LogicalDataSource {
   // (Technically no issue but will have side-effects on shards)
   void setInternalValidatorTypes(uint64_t type);
 
+  uint64_t getInternalValidatorTypes() const;
+
   bool isShard() const noexcept;
 
   bool isLocalSmartEdgeCollection() const noexcept;

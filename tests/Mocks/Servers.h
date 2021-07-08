@@ -212,6 +212,14 @@ class MockClusterServer : public MockServer,
       TRI_col_type_e type,
       VPackSlice additionalProperties = VPackSlice{VPackSlice::nullSlice()});
 
+#ifdef USE_ENTERPRISE
+  std::shared_ptr<LogicalCollection> createSmartCollection(
+      std::string const& dbName, std::string collectionName,
+      std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
+      TRI_col_type_e type,
+      VPackSlice additionalProperties = VPackSlice{VPackSlice::nullSlice()});
+#endif
+
   void buildCollectionProperties(VPackBuilder& props, std::string const& collectionName,
                                  std::string const& cid, TRI_col_type_e type,
                                  VPackSlice additionalProperties);

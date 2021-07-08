@@ -717,7 +717,8 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
     std::string const& dbName, std::string collectionName,
     std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
     TRI_col_type_e type, VPackSlice additionalProperties) {
-  std::string cid = std::to_string(_server.getFeature<ClusterFeature>().clusterInfo().uniqid());
+  std::string cid =
+      std::to_string(_server.getFeature<ClusterFeature>().clusterInfo().uniqid());
   auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = databaseFeature.lookupDatabase(dbName);
 
@@ -805,6 +806,8 @@ void MockDBServer::createShard(std::string const& dbName, std::string shardName,
 #ifndef USE_ENTERPRISE
     props->add(StaticStrings::ReplicationFactor, VPackValue(1));
 #endif
+    props->add(StaticStrings::InternalValidatorTypes,
+               VPackValue(clusterCollection.getInternalValidatorTypes()));
   }
   maintenance::ActionDescription ad(
       std::map<std::string, std::string>{{maintenance::NAME, maintenance::CREATE_COLLECTION},
