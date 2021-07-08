@@ -761,9 +761,11 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   auto changeInternalCollectionTypePlan(std::string const& dbName, std::string const& planId,
                                         LogicalCollection::InternalValidatorType type,
                                         Node& plan) -> void {
-    using namespace arangodb::cluster::paths;
-    auto path = aliases::plan()->collections()->database(dbName)->collection(planId);
-    auto vec = path->vec(SkipComponents(2));
+    auto path = arangodb::cluster::paths::aliases::plan()
+                    ->collections()
+                    ->database(dbName)
+                    ->collection(planId);
+    auto vec = path->vec(paths::SkipComponents(2));
     ASSERT_TRUE(plan.has(vec)) << "The underlying test plan is modified, it "
                                   "does not contain Database '"
                                << dbName << "' and Collection '" << planId << "' anymore.";
