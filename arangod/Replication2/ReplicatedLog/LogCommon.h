@@ -171,6 +171,7 @@ auto to_string(LogId logId) -> std::string;
 
 struct LogIterator {
   virtual ~LogIterator() = default;
+  virtual auto peek() -> std::optional<LogEntry> = 0;
   virtual auto next() -> std::optional<LogEntry> = 0;
 };
 
