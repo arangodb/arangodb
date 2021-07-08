@@ -1991,6 +1991,16 @@ IResearchLink::Stats IResearchLink::stats() const {
   return stats;
 }
 
+bool IResearchLink::Stats::operator == (const Stats& other) const {
+  // ignore numBufferedDocs
+  return
+      this->docsCount == other.docsCount &&
+      this->liveDocsCount == other.liveDocsCount &&
+      this->indexSize == other.indexSize &&
+      this->numSegments == other.numSegments &&
+      this->numFiles == other.numFiles;
+}
+
 void IResearchLink::toVelocyPackStats(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 

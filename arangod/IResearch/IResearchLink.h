@@ -293,6 +293,8 @@ class IResearchLink {
       std::string& result,
       const std::string& labels,
       const std::string& globalLabels) const;
+
+    bool operator == (const Stats& other) const;
   };
 
   ////////////////////////////////////////////////////////////////////////////////
