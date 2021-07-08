@@ -151,7 +151,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --database.directory cluster/data$PORT \
           --javascript.enabled false \
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-          --server.statistics false \
           --log.role true \
           --log.file cluster/$PORT.log \
           --log.force-direct false \
@@ -179,7 +178,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --database.directory cluster/data$PORT \
         --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-        --server.statistics false \
         --log.role true \
         --log.file cluster/$PORT.log \
         --log.force-direct false \
@@ -230,7 +228,6 @@ start() {
           --log.role true \
           --log.file cluster/$PORT.log \
           --log.level $LOG_LEVEL \
-          --server.statistics true \
           --javascript.startup-directory $SRC_DIR/js \
           --javascript.module-directory $SRC_DIR/enterprise/js \
           --javascript.app-path cluster/apps$PORT \
@@ -254,7 +251,6 @@ start() {
         --log.role true \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
-        --server.statistics true \
         --javascript.startup-directory $SRC_DIR/js \
         --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path cluster/apps$PORT \

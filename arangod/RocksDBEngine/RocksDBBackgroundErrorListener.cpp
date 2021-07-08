@@ -28,6 +28,9 @@
 
 namespace arangodb {
 
+RocksDBBackgroundErrorListener::RocksDBBackgroundErrorListener()
+    : _called(false) {}
+
 RocksDBBackgroundErrorListener::~RocksDBBackgroundErrorListener() = default;
 
 void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorReason reason,
@@ -37,10 +40,8 @@ void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorR
     return;
   }
 
-  if (!_called) {
-    _called = true;
-
-    std::string operation = "unknown";
+  if (!_called.exchange(true)) {
+    char const* operation = "unknown";
     switch (reason) {
       case rocksdb::BackgroundErrorReason::kFlush: {
         operation = "flush";
@@ -65,6 +66,13 @@ void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorR
         << " operation: " << (status != nullptr ? status->ToString() : "unknown error") 
         << "; The database will be put in read-only mode, and subsequent write errors are likely";
   }
+}
+
+void RocksDBBackgroundErrorListener::OnErrorRecoveryCompleted(rocksdb::Status /* old_bg_error */) {
+  _called.store(false, std::memory_order_relaxed);
+    
+  LOG_TOPIC("8ff56", WARN, Logger::ROCKSDB)
+      << "RocksDB resuming operations after background error";
 }
 
 }  // namespace arangodb
