@@ -237,9 +237,6 @@ static void handlePlanShard(
 
   bool shouldBeLeading = serverId == leaderId;
 
-  // TODO Implement this later correctly
-  // handleReplicationConfiguration(dbname, colname, shname, serverId, leaderId, shouldBeLeading, makeDirty, callNotify, actions);
-
   commonShrds.emplace(shname);
 
   auto const lcol = ldb.get(shname);
