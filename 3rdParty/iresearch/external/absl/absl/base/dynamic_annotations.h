@@ -194,7 +194,7 @@
 
 // Function prototypes of annotations provided by the compiler-based sanitizer
 // implementation.
-ABSL_INTERNAL_BEGIN_EXTERN_C
+IRESEARCH_ABSL_INTERNAL_BEGIN_EXTERN_C
 void AnnotateRWLockCreate(const char* file, int line,
                           const volatile void* lock);
 void AnnotateRWLockCreateStatic(const char* file, int line,
@@ -212,7 +212,7 @@ void AnnotateBenignRaceSized(const char* file, int line,
                              const char* description);
 void AnnotateThreadName(const char* file, int line, const char* name);
 void AnnotateEnableRaceDetection(const char* file, int line, int enable);
-ABSL_INTERNAL_END_EXTERN_C
+IRESEARCH_ABSL_INTERNAL_END_EXTERN_C
 
 #else  // IRESEARCH_ABSL_INTERNAL_RACE_ANNOTATIONS_ENABLED == 0
 
@@ -300,12 +300,12 @@ ABSL_INTERNAL_END_EXTERN_C
 
 // Function prototypes of annotations provided by the compiler-based sanitizer
 // implementation.
-ABSL_INTERNAL_BEGIN_EXTERN_C
+IRESEARCH_ABSL_INTERNAL_BEGIN_EXTERN_C
 void AnnotateIgnoreReadsBegin(const char* file, int line)
     IRESEARCH_ABSL_INTERNAL_IGNORE_READS_BEGIN_ATTRIBUTE;
 void AnnotateIgnoreReadsEnd(const char* file,
                             int line) IRESEARCH_ABSL_INTERNAL_IGNORE_READS_END_ATTRIBUTE;
-ABSL_INTERNAL_END_EXTERN_C
+IRESEARCH_ABSL_INTERNAL_END_EXTERN_C
 
 #elif defined(IRESEARCH_ABSL_INTERNAL_ANNOTALYSIS_ENABLED)
 
@@ -350,10 +350,10 @@ IRESEARCH_ABSL_INTERNAL_STATIC_INLINE void AbslInternalAnnotateIgnoreReadsEnd()
 
 // Function prototypes of annotations provided by the compiler-based sanitizer
 // implementation.
-ABSL_INTERNAL_BEGIN_EXTERN_C
+IRESEARCH_ABSL_INTERNAL_BEGIN_EXTERN_C
 void AnnotateIgnoreWritesBegin(const char* file, int line);
 void AnnotateIgnoreWritesEnd(const char* file, int line);
-ABSL_INTERNAL_END_EXTERN_C
+IRESEARCH_ABSL_INTERNAL_END_EXTERN_C
 
 #else
 
@@ -421,10 +421,10 @@ IRESEARCH_ABSL_NAMESPACE_END
 
 #ifdef __cplusplus
 #ifdef IRESEARCH_ABSL_HAVE_THREAD_SANITIZER
-ABSL_INTERNAL_BEGIN_EXTERN_C
+IRESEARCH_ABSL_INTERNAL_BEGIN_EXTERN_C
 int RunningOnValgrind();
 double ValgrindSlowdown();
-ABSL_INTERNAL_END_EXTERN_C
+IRESEARCH_ABSL_INTERNAL_END_EXTERN_C
 #else
 namespace iresearch_absl {
 IRESEARCH_ABSL_NAMESPACE_BEGIN
