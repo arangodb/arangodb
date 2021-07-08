@@ -788,8 +788,8 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
                                                 AppendEntriesErrorReason::LOST_LOG_CORE);
     }
 
-    // TODO The LogCore should know its last log index, and we should assert here
-    //      that the AppendEntriesRequest matches it.
+    // Note that the beginning of iter here is always (and must be) exactly the
+    // next index after the last one in the LogCore.
     return logCore->insertAsync(std::move(iter), request.waitForSync).thenValue(std::move(returnAppendEntriesResult));
   });
 }
