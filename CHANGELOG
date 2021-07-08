@@ -4,6 +4,27 @@ devel
 * Lower log level to warning, when take over shard leadership finds
   an agency Current entry is missing the server taking over.
 
+* APM-112: invalid use of OPTIONS in AQL queries will now raise a warning in
+  the query. 
+  The feature is useful to detect misspelled attribute names in OPTIONS, e.g.
+  
+      INSERT ... INTO collection 
+        OPTIONS { overwrightMode: 'ignore' } /* should be 'overwriteMode' */
+
+  It is also useful to detect the usage of valid OPTIONS attribute names that
+  are used for a wrong query part, e.g.
+  
+      FOR doc IN collection 
+        FILTER doc.value == 1234 
+        INSERT doc INTO other 
+          OPTIONS { indexHint: 'myIndex' } /* should be used above for FOR */
+
+  In case a wrong option attribute is used, a warning with code 1575 will be
+  raised. 
+  By default, warnings are reported but do not lead to the query being aborted. 
+  This can be toggled by the startup option `--query.fail-on-warnings` or the 
+  per-query runtime option `failOnWarnings`.
+
 * Added new command line-option `--version-json`. This will return the
   version information as json object.
 
