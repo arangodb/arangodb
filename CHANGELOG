@@ -1,6 +1,10 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Enable process metrics on agent instances by default. Previously, some metrics
+  (including the metrics starting with `arangodb_process` prefix) were not
+  returned by agent instances.
+
 * Fixed potential segfault in tcp/ssl socket handling (potentially fixes issue
   #14431).
 
