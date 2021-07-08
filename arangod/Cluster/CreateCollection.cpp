@@ -39,9 +39,6 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 
-#include <Replication2/ReplicatedLog/NetworkAttachedFollower.h>
-#include <Replication2/ReplicatedLog/LogLeader.h>
-#include <Replication2/ReplicatedLog/ReplicatedLog.h>
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -129,7 +126,7 @@ bool CreateCollection::first() {
             ? props.get(WAIT_FOR_SYNC_REPL).getBool()
             : cluster.createWaitsForSyncReplication();
 
-    bool writeConcern =
+    bool enforceReplFact =
         (props.get(ENF_REPL_FACT).isBool())
             ? props.get(ENF_REPL_FACT).getBool()
             : true;
@@ -157,7 +154,7 @@ bool CreateCollection::first() {
     std::shared_ptr<LogicalCollection> col;
     OperationOptions options(ExecContext::current());
     res.reset(Collections::create(vocbase, options, shard, type, docket.slice(),
-                                  waitForRepl, writeConcern, false, col));
+                                  waitForRepl, enforceReplFact, false, col));
     result(res);
     if (col) {
       LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
