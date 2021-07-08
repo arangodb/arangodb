@@ -1456,7 +1456,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
           std::string c = key.substr(pos + 1, pos2);
           std::string s = key.substr(pos2 + 1);  // shard name
-          auto const pdb = pit->second->slice();
+          TRI_ASSERT(pit->second->slice().isArray());
+          TRI_ASSERT(pit->second->slice().length() == 1);
+          auto const pdb = pit->second->slice()[0];
           auto const ldb = lit->second->slice();
 
           // Now find out if the shard appears in the Plan but not in Local:
