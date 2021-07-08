@@ -89,7 +89,7 @@ struct SimpleIterator : LogIterator {
   SimpleIterator(I begin, I end) : current(begin), end(end) {}
   ~SimpleIterator() override = default;
 
-  auto nextImpl() -> std::optional<LogEntry> override {
+  auto next() -> std::optional<LogEntry> override {
     if (current == end) {
       return std::nullopt;
     }
