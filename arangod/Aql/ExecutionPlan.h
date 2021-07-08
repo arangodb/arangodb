@@ -283,6 +283,15 @@ class ExecutionPlan {
   void increaseCounter(ExecutionNode::NodeType type) noexcept;
 
   bool fullCount() const noexcept;
+  
+  /// @brief parses modification options from an AST node
+  static ModificationOptions parseModificationOptions(QueryContext& query,
+                                                      char const* operationNode, AstNode const*,
+                                                      bool addWarnings);
+  
+  /// @brief registers a warning for an invalid OPTIONS attribute
+  static void invalidOptionAttribute(QueryContext& query,
+                                     char const* operationName, char const* name, size_t length);
 
  private:
   template <WalkerUniqueness U>
@@ -306,13 +315,8 @@ class ExecutionPlan {
 
   /// @brief create modification options by parsing an AST node
   /// and adding plan specific options.
-  ModificationOptions createModificationOptions(AstNode const*);
+  ModificationOptions createModificationOptions(char const* operationName, AstNode const*);
 
- public:
-  /// @brief parses modification options form an AST node
-  static ModificationOptions parseModificationOptions(AstNode const*);
-
- private:
   /// @brief create COLLECT options from an AST node
   CollectOptions createCollectOptions(AstNode const*);
 
