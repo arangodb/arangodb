@@ -242,9 +242,9 @@ void StatisticsFeature::start() {
     _statisticsHistory = false;
   } // if
 
-  if (_statisticsHistory) {
-    _statisticsWorker.reset(new StatisticsWorker(*vocbase));
+  _statisticsWorker.reset(new StatisticsWorker(*vocbase));
 
+  if (_statisticsHistory) {
     if (!_statisticsWorker->start()) {
       LOG_TOPIC("6ecdc", FATAL, arangodb::Logger::STATISTICS)
         << "could not start statistics worker";
@@ -262,7 +262,7 @@ void StatisticsFeature::stop() {
     }
   }
 
-  if (_statisticsWorker != nullptr) {
+  if (_statisticsHistory && _statisticsWorker != nullptr) {
     _statisticsWorker->beginShutdown();
 
     while (_statisticsWorker->isRunning()) {
