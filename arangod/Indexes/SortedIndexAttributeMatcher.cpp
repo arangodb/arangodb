@@ -333,30 +333,58 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
         // condition we have will make it even more selectivity. so in this case
         // we will re-use the selectivity estimate from the other index, and are
         // happy.
+        double otherEstimate = -1.0;
+  
         for (auto const& otherIdx : allIndexes) {
           auto const* other = otherIdx.get();
           if (other == idx || !other->hasSelectivityEstimate()) {
             continue;
           }
-          size_t matches = 0;
           auto const& otherFields = other->fields();
+          if (otherFields.size() > idx->fields().size()) {
+            // filter out too long other indexes
+            continue;
+          }
+          
+          size_t matches = 0;
           for (size_t i = 0; i < otherFields.size(); ++i) {
             if (otherFields[i] != idx->fields()[i]) {
               break;
             }
             ++matches;
-          }
-          if (matches == otherFields.size()) {
-            double estimate = other->selectivityEstimate();
-            if (estimate > 0.0) {
-              // reuse the estimate from the other index
-              estimatedItems = static_cast<double>(1.0 / estimate * values);
-            } else {
-              // use a guesstimate
-              estimatedItems /= equalityReductionFactor; 
+            
+            if (matches > found.size()) {
+              break;
             }
-            break;
           }
+              
+          if (matches == otherFields.size()) {
+            // the other index is a full prefix of our own index.
+            // now check if the other index actually satisfies the filter condition
+            std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> foundOther;
+            [[maybe_unused]] size_t valuesOther = 0; // ignored here
+            matchAttributes(otherIdx.get(), node, reference, foundOther, valuesOther, nonNullAttributes, false);
+
+            auto [attributesCoveredOther, attributesCoveredByEqualityOther, equalityReductionFactorOther, nonEqualityReductionFactorOther] = 
+                ::analyzeConditions(otherIdx.get(), foundOther);
+
+            // all attributes from the other index must be covered with equality lookups,
+            // otherwise we cannot use the other index' selectivity estimate
+            if (foundOther.size() == matches && attributesCoveredByEqualityOther == matches) {
+              double estimate = other->selectivityEstimate();
+              if (estimate > 0.0 && estimate > otherEstimate) {
+                otherEstimate = estimate;
+              }
+            }
+          } 
+        }
+
+        if (otherEstimate > 0.0) {
+          // reuse the estimate from the other index
+          estimatedItems = static_cast<double>(1.0 / otherEstimate * values);
+        } else {
+          // use a guesstimate
+          estimatedItems /= equalityReductionFactor; 
         }
           
         estimatedItems /= nonEqualityReductionFactor; 
@@ -364,7 +392,7 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
 
       // costs.estimatedItems is always set here, make it at least 1
       costs.estimatedItems = std::max(size_t(1), static_cast<size_t>(estimatedItems));
-      
+  
       // seek cost is O(log(n))
       costs.estimatedCosts = std::max(double(1.0),
                                       std::log2(double(itemsInIndex)) * values);

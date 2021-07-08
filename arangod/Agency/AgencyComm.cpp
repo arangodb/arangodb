@@ -622,8 +622,14 @@ std::string AgencyComm::version() {
                        AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout,
                        "/_api/version", VPackSlice::noneSlice());
 
-  if (result.successful() && result.slice().isString()) {
-    return result.slice().copyString();
+  if (result.successful()) {
+    VPackSlice r = result.slice();
+    if (r.isObject()) {
+      r = r.get("version");
+    }
+    if (r.isString()) {
+      return r.copyString();
+    }
   }
 
   return "";
