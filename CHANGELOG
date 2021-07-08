@@ -1,6 +1,11 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Add following term ids, which prevents old synchronous replication requests to
+  be accepted after a follower was dropped and has gotten in sync again.
+  This makes the chaos tests which delay synchronous replication requests more
+  reliable and prevent inconsistent shard replicas under bad network conditions.
+
 * Enable process metrics on agent instances by default. Previously, some metrics
   (including the metrics starting with `arangodb_process` prefix) were not
   returned by agent instances.
