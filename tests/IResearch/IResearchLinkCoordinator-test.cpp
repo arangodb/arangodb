@@ -119,11 +119,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": \"1\", \"name\": \"testCollection\", \"replicationFactor\":1, \"shards\":{} }");
 
-    EXPECT_TRUE(
-        ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
-                                       false, collectionJson->slice(), 0.0, false, nullptr,
-                                       arangodb::replication::Version::ONE, std::nullopt)
-            .ok());
+    EXPECT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                               collectionJson->slice(), 0.0, false, nullptr).ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((nullptr != logicalCollection));
