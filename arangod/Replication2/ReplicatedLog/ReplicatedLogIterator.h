@@ -50,7 +50,7 @@ class ReplicatedLogIterator : public LogIterator {
         _begin(_container.begin()),
         _end(_container.end()) {}
 
-  auto next() -> std::optional<LogEntry> override {
+  auto nextImpl() -> std::optional<LogEntry> override {
     if (_begin != _end) {
       auto const& res = *_begin;
       ++_begin;

@@ -173,7 +173,12 @@ auto to_string(LogId logId) -> std::string;
 
 struct LogIterator {
   virtual ~LogIterator() = default;
-  virtual auto next() -> std::optional<LogEntry> = 0;
+  auto next() -> std::optional<LogEntry>;
+  auto peek() -> std::optional<LogEntry>;
+  virtual auto nextImpl() -> std::optional<LogEntry> = 0;
+
+ private:
+  std::optional<std::optional<LogEntry>> _top;
 };
 
 struct LogConfig {

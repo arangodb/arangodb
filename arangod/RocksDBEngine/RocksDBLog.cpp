@@ -73,7 +73,7 @@ struct RocksDBLogIterator : replication2::LogIterator {
     _iter->Seek(first.string());
   }
 
-  auto next() -> std::optional<LogEntry> override {
+  auto nextImpl() -> std::optional<LogEntry> override {
     if (!_first) {
       _iter->Next();
     }

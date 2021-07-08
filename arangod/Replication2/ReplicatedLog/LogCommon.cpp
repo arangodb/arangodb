@@ -151,6 +151,23 @@ auto replication2::to_string(LogId logId) -> std::string {
   return std::to_string(logId.id());
 }
 
+auto replication2::LogIterator::next() -> std::optional<LogEntry> {
+  if (_top) {
+    auto res = std::move(*_top);
+    _top.reset();
+    return res;
+  } else {
+    return nextImpl();
+  }
+}
+auto replication2::LogIterator::peek() -> std::optional<LogEntry> {
+  if (!_top) {
+    _top = nextImpl();
+  }
+
+  return *_top;
+}
+
 auto replication2::to_string(LogTerm term) -> std::string {
   return std::to_string(term.value);
 }

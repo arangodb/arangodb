@@ -57,7 +57,7 @@ struct MockLogContainerIterator : LogIterator {
         _current(_store.lower_bound(start)),
         _end(_store.end()) {}
 
-  auto next() -> std::optional<LogEntry> override {
+  auto nextImpl() -> std::optional<LogEntry> override {
     if (_current == _end) {
       return std::nullopt;
     }
