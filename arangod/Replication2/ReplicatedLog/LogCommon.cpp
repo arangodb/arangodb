@@ -47,6 +47,10 @@ LogIndex::operator velocypack::Value() const noexcept {
   return velocypack::Value(value);
 }
 
+auto replication2::operator<<(std::ostream& os, const LogIndex& idx) -> std::ostream& {
+  return os << idx.value;
+}
+
 LogEntry::LogEntry(LogTerm logTerm, LogIndex logIndex, LogPayload payload)
     : _logTerm{logTerm}, _logIndex{logIndex}, _payload{std::move(payload)} {}
 
@@ -93,6 +97,10 @@ auto LogTerm::operator<=(LogTerm other) const -> bool {
 
 LogTerm::operator velocypack::Value() const noexcept {
   return velocypack::Value(value);
+}
+
+auto replication2::operator<<(std::ostream& os, const LogTerm& term) -> std::ostream& {
+    return os << term.value;
 }
 
 auto replication2::operator==(LogPayload const& left, LogPayload const& right) -> bool {

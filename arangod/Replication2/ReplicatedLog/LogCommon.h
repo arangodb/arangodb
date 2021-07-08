@@ -68,12 +68,12 @@ struct LogIndex : implement_compare<LogIndex> {
 
   auto operator+(std::uint64_t delta) const -> LogIndex;
 
-  friend auto operator<<(std::ostream& os, LogIndex const& idx) -> std::ostream& {
-    return os << idx.value;
-  }
+  friend auto operator<<(std::ostream& os, LogIndex const& idx) -> std::ostream&;
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
+
+auto operator<<(std::ostream& os, LogIndex const& idx) -> std::ostream&;
 
 struct LogTerm : implement_compare<LogTerm> {
   constexpr LogTerm() noexcept : value{0} {}
@@ -81,12 +81,12 @@ struct LogTerm : implement_compare<LogTerm> {
   std::uint64_t value;
   [[nodiscard]] auto operator<=(LogTerm) const -> bool;
 
-  friend auto operator<<(std::ostream& os, LogTerm const& term) -> std::ostream& {
-    return os << term.value;
-  }
+  friend auto operator<<(std::ostream& os, LogTerm const& term) -> std::ostream&;
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
+
+auto operator<<(std::ostream& os, LogTerm const& term) -> std::ostream&;
 
 auto to_string(LogTerm term) -> std::string;
 auto to_string(LogIndex index) -> std::string;

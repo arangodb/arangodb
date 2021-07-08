@@ -27,16 +27,19 @@
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 
-#include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
 
-namespace replication2::replicated_log {
+namespace replication2 {
+namespace replicated_log {
 struct LogStatus;
 }
+class LogId;
+}
+
 
 class HeartbeatThread;
 
