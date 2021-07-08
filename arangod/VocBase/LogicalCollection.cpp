@@ -378,7 +378,7 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
   return _sharding->shardIds();
 }
 
-void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept{
+void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept {
   TRI_ASSERT(_sharding != nullptr);
   _sharding->setShardMap(std::move(map));
 }
