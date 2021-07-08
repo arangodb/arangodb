@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include "Graph/TraverserOptions.h"
+
 #include <memory>
 #include <numeric>
 #include <unordered_map>
@@ -48,8 +50,9 @@ class PathResultInterface {
   virtual ~PathResultInterface() {}
 
   virtual auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
-  virtual auto toSchreierEntry(arangodb::velocypack::Builder& builder,
-                               size_t& currentLength)
+  virtual auto writeSmartGraphResult(arangodb::velocypack::Builder& builder,
+                                     size_t& currentLength,
+                                     traverser::TraverserOptions::Order const& order)
       -> void = 0;
 };
 

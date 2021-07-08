@@ -29,6 +29,8 @@
 
 // TODO Temporary include
 #include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
+#include "Graph/TraverserOptions.h"
+#include "Graph/Providers/TypeAliases.h"
 
 #include <numeric>
 #include <unordered_map>
@@ -58,8 +60,8 @@ class SingleProviderPathResult : public PathResultInterface {
   /**
    * @brief Appends this path as a SchreierVector entry into the given builder
    */
-  auto toSchreierEntry(arangodb::velocypack::Builder& builder, size_t& currentLength)
-      -> void override;
+  auto writeSmartGraphResult(arangodb::velocypack::Builder& builder, size_t& currentLength,
+                       traverser::TraverserOptions::Order const& traversalOrder) -> void override;
 
   auto isEmpty() const -> bool;
 
@@ -68,6 +70,13 @@ class SingleProviderPathResult : public PathResultInterface {
 
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;
+
+  // TODO: need to track memory here
+  // Outer vector -> Depth information
+  //   unordered_map -> VertexID => vector<Step*>
+  //
+  std::unordered_map<VertexType, std::vector<Step*>> _bfsLookupTable;
+  size_t _bfsCurrentDepth = 0;
 
   // Provider for the path
   ProviderType& _provider;
