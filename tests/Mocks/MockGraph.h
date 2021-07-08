@@ -87,8 +87,8 @@ class MockGraph {
   MockGraph() {}
   ~MockGraph() {}
 
-  void addEdge(std::string from, std::string to, double weight = 1.0);
-  void addEdge(size_t from, size_t to, double weight = 1.0);
+  EdgeDef addEdge(std::string from, std::string to, double weight = 1.0);
+  EdgeDef addEdge(size_t from, size_t to, double weight = 1.0);
 
   auto edges() const -> std::vector<EdgeDef> const& { return _edges; }
   auto vertices() const -> std::unordered_set<VertexDef, hashVertexDef> const& {
