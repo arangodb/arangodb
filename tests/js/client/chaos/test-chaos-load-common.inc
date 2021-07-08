@@ -268,12 +268,12 @@ function BaseChaosSuite(testOpts) {
               let o = opts();
               let d = docs();
               log(`RUNNING INSERT WITH ${d.length} DOCS. OPTIONS: ${JSON.stringify(o)}`);
-              d = d.length == 1 ? d[0] : d;
+              d = d.length === 1 ? d[0] : d;
               c.insert(d, o);
             } else {
               let d = docs();
               log(`RUNNING REMOVE WITH ${d.length} DOCS`);
-              d = d.length == 1 ? d[0] : d;
+              d = d.length === 1 ? d[0] : d;
               c.remove(d);
             }
           } catch (err) {}
@@ -319,7 +319,7 @@ const makeConfig = (paramValues) => {
     opts["with" + params[j]] = paramValues[j];
   }
   return { suffix: suffix, options: opts };
-}
+};
 
 const run = () => {
   if (!global.currentTestConfig) {
@@ -339,7 +339,7 @@ const run = () => {
   jsunity.run(func);
 
   return jsunity.done();
-}
+};
 
 module.exports.parameters = params;
 module.exports.makeConfig = makeConfig;
