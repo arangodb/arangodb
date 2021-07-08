@@ -90,6 +90,7 @@ class RocksDBLog : public replication2::PersistedLog, public std::enable_shared_
       -> std::unique_ptr<replication2::LogIterator> override;
   auto removeFront(replication2::LogIndex stop) -> Result override;
   auto removeBack(replication2::LogIndex start) -> Result override;
+  auto readEnd() const -> replication2::LogEntry override;
 
 
   uint64_t objectId() const { return _objectId; }

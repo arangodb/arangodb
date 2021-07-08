@@ -52,7 +52,7 @@ auto MockLog::insert(LogIterator& iter, WriteOptions const&) -> arangodb::Result
 
 template <typename I>
 struct MockLogContainerIterator : LogIterator {
-  MockLogContainerIterator(MockLog::storeType store, LogIndex start)
+  MockLogContainerIterator(MockLog::StoreType store, LogIndex start)
       : _store(std::move(store)),
         _current(_store.lower_bound(start)),
         _end(_store.end()) {}
@@ -64,14 +64,14 @@ struct MockLogContainerIterator : LogIterator {
     return (_current++)->second;
   }
 
-  MockLog::storeType _store;
+  MockLog::StoreType _store;
   I _current;
   I _end;
 };
 
 auto MockLog::read(replication2::LogIndex start)
 -> std::unique_ptr<LogIterator> {
-  return std::make_unique<MockLogContainerIterator<iteratorType>>(_storage, start);
+  return std::make_unique<MockLogContainerIterator<IteratorType>>(_storage, start);
 }
 
 auto MockLog::removeFront(replication2::LogIndex stop)
@@ -99,7 +99,7 @@ void MockLog::setEntry(replication2::LogIndex idx, replication2::LogTerm term,
 
 MockLog::MockLog(replication2::LogId id) : MockLog(id, {}) {}
 
-MockLog::MockLog(replication2::LogId id, MockLog::storeType storage)
+MockLog::MockLog(replication2::LogId id, MockLog::StoreType storage)
     : PersistedLog(id), _storage(std::move(storage)) {}
 
 AsyncMockLog::AsyncMockLog(replication2::LogId id)
@@ -113,6 +113,14 @@ void MockLog::setEntry(replication2::LogEntry entry) {
 
 auto MockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter, WriteOptions const& opts) -> futures::Future<Result> {
   return insert(*iter, opts);
+}
+
+auto MockLog::readEnd() const -> replication2::LogEntry {
+  if (_storage.empty()) {
+    return LogEntry::rootEntry();
+  }
+
+  return _storage.rbegin()->second;
 }
 
 auto AsyncMockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter, WriteOptions const& opts)

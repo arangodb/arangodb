@@ -139,6 +139,10 @@ class LogEntry {
 
   LogEntry(LogTerm, LogIndex, LogPayload);
 
+  // Get the root log entry. This is the same for all logs, with term 0, index 0,
+  // and an empty payload.
+  static auto rootEntry() -> LogEntry;
+
   [[nodiscard]] auto logTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto logPayload() const noexcept -> LogPayload const&;

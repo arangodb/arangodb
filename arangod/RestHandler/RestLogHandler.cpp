@@ -169,7 +169,7 @@ auto sendTailRequest(network::ConnectionPool* pool, std::string const& server,
                 iter(VPackSlice(buffer->data()).get("result")),
                 end(iter.end()) {}
 
-          auto next() -> std::optional<LogEntry> override {
+          auto nextImpl() -> std::optional<LogEntry> override {
             if (iter != end) {
               return LogEntry::fromVelocyPack(*iter++);
             }

@@ -63,6 +63,9 @@ struct alignas(64) LogCore {
   [[nodiscard]] auto read(LogIndex first) const -> std::unique_ptr<LogIterator>;
   auto removeBack(LogIndex first) -> Result;
 
+  // First index that's not persisted
+  auto end() const -> LogIndex;
+
   auto releasePersistedLog() && -> std::shared_ptr<PersistedLog>;
 
   auto logId() const noexcept -> LogId;
@@ -70,6 +73,7 @@ struct alignas(64) LogCore {
  private:
   std::shared_ptr<PersistedLog> _persistedLog;
   mutable basics::UnshackledMutex _operationMutex;
+  replication2::LogIndex _end;
 };
 
 }  // namespace arangodb::replication2::replicated_log
