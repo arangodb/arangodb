@@ -1,6 +1,12 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Fix startup issues with encryption-at-rest enabled when there were empty (0
+  byte) RocksDB WAL files present. Such empty files caused RocksDB to abort the
+  startup, reporting corruption. However, empty WAL files are possible in case
+  of server crashes etc. Now, if a WAL file is completely empty, there will be
+  no attempt to read the encryption meta data from it, so the startup succeeds.
+
 * Fixes a bug in the maintenance's error-handling code. A shard error would
   result in log messages like
     ```
