@@ -117,9 +117,15 @@ void RestAqlHandler::setupClusterQuery() {
   
   TRI_IF_FAILURE("Query::setupTimeoutFailSequence") {
     // simulate lock timeout during query setup
-    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    uint32_t r = 100;
+    TRI_IF_FAILURE("Query::setupTimeoutFailSequenceRandom") {
+      r = RandomGenerator::interval(uint32_t(100));
+    }
+    if (r >= 96) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    }
   }
-
+  
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
@@ -236,8 +242,6 @@ void RestAqlHandler::setupClusterQuery() {
     options.ttl = _queryRegistry->defaultTTL();
   }
 
-  // simon: making this write breaks queries where DOCUMENT function
-  // is used in a coordinator-snippet above a DBServer-snippet
   AccessMode::Type access = AccessMode::Type::READ;
 
   // TODO: technically we could change the code in prepareClusterQuery to parse

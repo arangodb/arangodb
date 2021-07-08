@@ -424,6 +424,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     // nullptr only happens on controlled shutdown
     return {TRI_ERROR_SHUTTING_DOWN};
   }
+  
+  // remember which servers we add during our setup request
+  ::arangodb::containers::HashSet<std::string> serversAdded;
 
   transaction::Methods& trx = _query.trxForOptimization();
   std::vector<arangodb::futures::Future<Result>> networkCalls{};
@@ -439,9 +442,15 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   }
   
   TRI_IF_FAILURE("Query::setupTimeoutFailSequence") {
-    options.timeout = network::Timeout(0.5);
+    double t = 0.5;
+    TRI_IF_FAILURE("Query::setupTimeoutFailSequenceRandom") {
+      if (RandomGenerator::interval(uint32_t(100)) >= 95) {
+        t = 3.0;
+      }
+    }
+    options.timeout = network::Timeout(t);
   }
-  
+    
   /// cluster global query id, under which the query will be registered
   /// on DB servers from 3.8 onwards.
   QueryId clusterQueryId = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo().uniqid();
@@ -462,6 +471,13 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       continue;
     }
 
+    if (!trx.state()->knownServers().contains(server)) {
+      // we are about to add this server to the transaction.
+      // remember it, so we can roll the addition back for
+      // the second setup request if we need to
+      serversAdded.emplace(server);
+    }
+
     networkCalls.emplace_back(
         buildSetupRequest(trx, server, infoSlice, didCreateEngine, snippetIds,
                           serverToQueryId, serverToQueryIdLock, pool, options));
@@ -475,7 +491,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
             // We can directly report a non TRI_ERROR_LOCK_TIMEOUT
             // error as we need to abort after.
             // Otherwise we need to report 
-            Result res{TRI_ERROR_NO_ERROR};
+            Result res;
             for (auto const& tryRes : responses) {
               auto response = tryRes.get();
               if (response.fail()) {
@@ -490,7 +506,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
             }
             // Return what we have, this will be ok() if and only
             // if none of the requests failed.
-            // If will be LOCK_TIMEOUT if and only if the only error
+            // It will be LOCK_TIMEOUT if and only if the only error
             // we see was LOCK_TIMEOUT.
             return res;
           });
@@ -502,16 +518,37 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       return fastPathResult.get();
     }
 
+    // we got a lock timeout response for the fast path locking...
     {
       // in case of fast path failure, we need to cleanup engines
       auto requests = cleanupEngines(fastPathResult.get().errorNumber(), _query.vocbase().name(), serverToQueryId);
-      // Wait for all requests to complete.
+      // Wait for all cleanup requests to complete.
       // So we know that all Transactions are aborted.
-      // We do NOT care for the actual result.
-      futures::collectAll(requests).wait();
-      snippetIds.clear();
+      Result res;
+      for (auto& tryRes : requests) {
+        network::Response const& response = tryRes.get(); 
+        if (response.fail()) {
+          // note first error, but continue iterating over all results
+          res.reset(response.combinedResult());
+        }
+      }
+      if (res.fail()) {
+        // unable to do a proper cleanup.
+        // it is not safe to go on here.
+        cleanupGuard.cancel();
+        cleanupReason = res.errorNumber();
+        return res;
+      }
     }
-  
+
+    // fast path locking rolled back successfully!
+    snippetIds.clear();
+ 
+    // revert the addition of servers by us
+    for (auto const& s : serversAdded) {
+      trx.state()->removeKnownServer(s);
+    }
+
     // we must generate a new query id, because the fast path setup has failed
     clusterQueryId = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo().uniqid();
 
@@ -521,7 +558,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
         << "Potential deadlock detected, using slow path for locking. This "
            "is expected if exclusive locks are used.";
 
-    trx.state()->coordinatorRerollTransactionId();
 
     // Make sure we always use the same ordering on servers
     std::sort(engineInformation.begin(), engineInformation.end(),
@@ -692,7 +728,7 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
   builder.openObject();
-  builder.add("code", VPackValue(to_string(errorCode)));
+  builder.add("code", VPackValue(errorCode));
   builder.close();
   requests.reserve(serverQueryIds.size());
   for (auto const& [server, queryId] : serverQueryIds) {
