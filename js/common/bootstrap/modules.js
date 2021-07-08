@@ -564,7 +564,8 @@
           new internal.ArangoError({
             errorNum: internal.errors.ERROR_MODULE_FAILURE.code,
             errorMessage: msg
-          })
+          }),
+          {cause: e}
         );
       }
       throw e;
