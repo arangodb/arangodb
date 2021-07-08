@@ -1243,14 +1243,6 @@ Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
   return {};
 }
 
-void LogicalCollection::setReplicatedLogId(replication2::LogId logId) {
-  _replicatedLogId = logId;
-}
-
-auto LogicalCollection::replicatedLogId() const noexcept -> std::optional<replication2::LogId> const& {
-  return _replicatedLogId;
-}
-
 void LogicalCollection::setInternalValidatorTypes(uint64_t type) {
   _internalValidatorTypes = type;
 }

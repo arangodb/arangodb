@@ -488,7 +488,7 @@ set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
   StorageEngine/PhysicalCollection.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
-)
+        StorageEngine/StorageEngine.cpp)
 
 set(LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES
   StorageEngine/ReplicationIterator.cpp
@@ -550,7 +550,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/AgencyMethods.cpp
   Replication2/ReplicatedLog/AgencyLogSpecification.cpp
   Replication2/ReplicatedLog/Algorithms.cpp
-  Replication2/ReplicatedLog/Common.cpp
+        Replication2/ReplicatedLog/LogCommon.cpp
   Replication2/ReplicatedLog/InMemoryLog.cpp
   Replication2/ReplicatedLog/LogCore.cpp
   Replication2/ReplicatedLog/LogFollower.cpp

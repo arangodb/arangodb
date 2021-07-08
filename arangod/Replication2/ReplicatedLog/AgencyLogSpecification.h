@@ -23,7 +23,7 @@
 
 #include "Agency/AgencyPaths.h"
 #include "Cluster/ClusterTypes.h"
-#include "Replication2/ReplicatedLog/Common.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 #include <velocypack/Builder.h>

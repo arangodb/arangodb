@@ -26,7 +26,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Replication2/ReplicatedLog/Common.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb::futures {
 template <typename T>

@@ -42,7 +42,7 @@
 #pragma warning(pop)
 #endif
 
-#include "Replication2/ReplicatedLog/Common.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb {

@@ -29,7 +29,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
-#include "Replication2/ReplicatedLog/Common.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -345,8 +344,6 @@ class LogicalCollection : public LogicalDataSource {
   /// returns false for all collections with no data backing.
   bool useSyncByRevision() const;
 
-  auto replicatedLogId() const noexcept -> std::optional<replication2::LogId> const&;
-
   /// @brief set the internal validator types. This should be handled with care
   /// and be set before the collection is persisted into the Agency.
   /// The value should not be modified at runtime.
@@ -368,8 +365,6 @@ class LogicalCollection : public LogicalDataSource {
                                             Serialization context) const override;
 
   Result updateSchema(VPackSlice schema);
-
-  void setReplicatedLogId(replication2::LogId logId);
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
@@ -435,10 +430,6 @@ class LogicalCollection : public LogicalDataSource {
   std::unique_ptr<KeyGenerator> _keyGenerator;
 
   std::unique_ptr<PhysicalCollection> _physical;
-
-  // If using the new replication (set via database option), this holds the
-  // id of the corresponding replicated log.
-  std::optional<replication2::LogId> _replicatedLogId;
 
   mutable arangodb::Mutex _infoLock;  // lock protecting the info
 

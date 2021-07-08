@@ -23,8 +23,8 @@
 #pragma once
 
 #include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/Common.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"

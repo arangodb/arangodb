@@ -71,6 +71,8 @@ struct LogIndex : implement_compare<LogIndex> {
   friend auto operator<<(std::ostream& os, LogIndex const& idx) -> std::ostream& {
     return os << idx.value;
   }
+
+  [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
 
 struct LogTerm : implement_compare<LogTerm> {
@@ -82,6 +84,8 @@ struct LogTerm : implement_compare<LogTerm> {
   friend auto operator<<(std::ostream& os, LogTerm const& term) -> std::ostream& {
     return os << term.value;
   }
+
+  [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
 
 auto to_string(LogTerm term) -> std::string;

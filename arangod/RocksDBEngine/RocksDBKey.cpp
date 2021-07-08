@@ -25,9 +25,9 @@
 #include "RocksDBKey.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "Replication2/ReplicatedLog/Common.h"
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;

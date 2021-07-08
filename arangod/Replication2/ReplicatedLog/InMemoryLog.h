@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/Common.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 #include <Containers/ImmerMemoryPolicy.h>
 

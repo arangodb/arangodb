@@ -28,7 +28,6 @@
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/MaintenanceFeature.h"
-#include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 namespace arangodb {
@@ -57,9 +56,12 @@ constexpr int SYNCHRONIZE_PRIORITY = 1;
 
 using Transactions = std::vector<std::pair<VPackBuilder, VPackBuilder>>;
 // database -> LogId -> LogStatus
-using ReplicatedLogStatusMap = std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>;
-using ReplicatedLogStatusMapByDatabase = std::unordered_map<DatabaseID, ReplicatedLogStatusMap>;
-using ReplicatedLogSpecMap = std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::agency::LogPlanSpecification>;
+using ReplicatedLogStatusMap =
+    std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>;
+using ReplicatedLogStatusMapByDatabase =
+    std::unordered_map<DatabaseID, ReplicatedLogStatusMap>;
+using ReplicatedLogSpecMap =
+    std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::agency::LogPlanSpecification>;
 using ReplicatedLogSpecByDatabase = std::unordered_map<DatabaseID, ReplicatedLogStatusMap>;
 
 auto diffReplicatedLogs(DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,

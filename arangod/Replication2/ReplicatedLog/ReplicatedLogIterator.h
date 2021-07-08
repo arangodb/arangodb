@@ -37,7 +37,7 @@
 #pragma warning(pop)
 #endif
 
-#include "Common.h"
+#include "LogCommon.h"
 
 namespace arangodb::replication2::replicated_log {
 

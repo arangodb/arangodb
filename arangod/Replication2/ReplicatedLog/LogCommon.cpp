@@ -20,7 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Common.h"
+#include "LogCommon.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -42,6 +42,11 @@ auto LogIndex::operator<=(LogIndex other) const -> bool {
 auto LogIndex::operator+(std::uint64_t delta) const -> LogIndex {
   return LogIndex(this->value + delta);
 }
+
+LogIndex::operator velocypack::Value() const noexcept {
+  return velocypack::Value(value);
+}
+
 LogEntry::LogEntry(LogTerm logTerm, LogIndex logIndex, LogPayload payload)
     : _logTerm{logTerm}, _logIndex{logIndex}, _payload{std::move(payload)} {}
 
@@ -84,6 +89,10 @@ auto LogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
 
 auto LogTerm::operator<=(LogTerm other) const -> bool {
   return value <= other.value;
+}
+
+LogTerm::operator velocypack::Value() const noexcept {
+  return velocypack::Value(value);
 }
 
 auto replication2::operator==(LogPayload const& left, LogPayload const& right) -> bool {

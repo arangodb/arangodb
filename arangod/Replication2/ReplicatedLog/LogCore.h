@@ -29,7 +29,7 @@
 #include <Basics/UnshackledMutex.h>
 #include <Futures/Future.h>
 
-#include "Replication2/ReplicatedLog/Common.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb::replication2 {
 struct PersistedLog;

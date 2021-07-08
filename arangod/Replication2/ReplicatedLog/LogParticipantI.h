@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Replication2/DeferredExecution.h"
-#include "Replication2/ReplicatedLog/Common.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/types.h"
 

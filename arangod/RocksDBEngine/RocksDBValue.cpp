@@ -27,8 +27,8 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
-#include "Replication2/ReplicatedLog/Common.h"
 
 #include "Transaction/Helpers.h"
 
