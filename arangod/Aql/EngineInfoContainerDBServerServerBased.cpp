@@ -552,6 +552,16 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     // we must generate a new query id, because the fast path setup has failed
     clusterQueryId = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo().uniqid();
 
+    if (trx.isMainTransaction() && !trx.state()->isReadOnlyTransaction()) {
+      // when we are not in a streaming transaction, it is ok to roll a new trx id.
+      // it is not ok to change the trx id inside a streaming transaction,
+      // because then the caller would not be able to "talk" to the transaction
+      // any further.
+      // note: read-only transactions do not need to reroll their id, as there will
+      // be no locks taken.
+      trx.state()->coordinatorRerollTransactionId();
+    }
+
     // set back to default lock timeout for slow path fallback
     _query.setLockTimeout(oldLockTimeout);
     LOG_TOPIC("f5022", DEBUG, Logger::AQL)
@@ -614,7 +624,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
     QueryId& globalQueryId) const {
   if (!response.isObject() || !response.get("result").isObject()) {
     LOG_TOPIC("0c3f2", WARN, Logger::AQL) << "Received error information from "
-                                          << server << " : " << response.toJson();
+                                          << server << ": " << response.toJson();
     if (response.hasKey(StaticStrings::ErrorNum) &&
         response.hasKey(StaticStrings::ErrorMessage)) {
       return network::resultFromBody(response, TRI_ERROR_CLUSTER_AQL_COMMUNICATION)
