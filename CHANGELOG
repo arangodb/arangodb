@@ -1,5 +1,11 @@
 devel
 -----
+* Adapt various places related to handling of execution plans non-recursive
+  in order to avoid stack overflows. This allows us now to execute much larger
+  queries.
+
+* Lower log level to warning, when take over shard leadership finds
+  an agency Current entry is missing the server taking over.
 
 * Add hard-coded complexity limits for AQL queries, in order to prevent
   programmatically generated large queries from causing trouble (too deep
@@ -268,8 +274,8 @@ devel
 	this way the system does only need to produce a path that is allowed to
 	be passed through.
 	e.g.
- 
-	  FOR v,e,p IN 10 OUTBOUND @start GRAPH "myGraph"
+
+    FOR v,e,p IN 10 OUTBOUND @start GRAPH "myGraph"
 		  FILTER v.isRelevant == true
 			RETURN p
 

@@ -426,10 +426,9 @@ bool TraversalNode::allDirectionsEqual() const {
   return true;
 }
 
-void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                       std::unordered_set<ExecutionNode const*>& seen) const {
+void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
-  GraphNode::toVelocyPackHelper(nodes, flags, seen);
+  GraphNode::doToVelocyPack(nodes, flags);
   // In variable
   if (usesInVariable()) {
     nodes.add(VPackValue("inVariable"));
@@ -535,9 +534,6 @@ void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
       }
     }
   }
-
-  // And close it:
-  nodes.close();
 }
 
 /// @brief creates corresponding ExecutionBlock

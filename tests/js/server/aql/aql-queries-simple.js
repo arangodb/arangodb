@@ -1336,30 +1336,25 @@ function ahuacatlQuerySimpleTestSuite () {
     },
 
     testLargeQuery : function() {
-      let q = "";
-      const cnt = 990;
-      for (let i = 0; i < cnt; ++i) {
-        q += `LET v${i} = NOOPT(1)\n`;
-      }
-      q += "RETURN v0";
+      let q = "LET v0 = NOOPT(1)";
+      const cnt = 2000;
       for (let i = 1; i < cnt; ++i) {
-        q += ` + v${i}`;
+        q += `LET v${i} = NOOPT(v${i- 1} + 1)\n`;
       }
+      q += `RETURN v${cnt - 1}`;
       assertEqual([cnt], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
     },
     
     testLargeSubQuery : function() {
       const _ = require('lodash');
       let q = "FOR i IN 0..9 LET x = (\n";
-      const cnt = 900;
-      for (let i = 0; i < cnt; ++i) {
-        q += `LET v${i} = NOOPT(1)\n`;
-      }
-      q += "RETURN i + v0";
+      q += "LET v0 = NOOPT(1)\n";
+      const cnt = 2000;
       for (let i = 1; i < cnt; ++i) {
-        q += ` + v${i}`;
+        q += `LET v${i} = NOOPT(v${i- 1} + 1)\n`;
       }
-      q += ")[0]\nRETURN x";
+      q += `RETURN v${cnt - 1})[0]\n`;
+      q += "RETURN i + x";
       const expected = _.range(cnt, cnt + 10);
       assertEqual(expected, AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
     },
