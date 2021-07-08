@@ -107,6 +107,9 @@ struct TermIndexPair : implement_compare<TermIndexPair> {
   friend auto operator<<(std::ostream& os, TermIndexPair const& pair) -> std::ostream&;
 };
 
+auto operator<=(TermIndexPair const& left, TermIndexPair const& right) noexcept -> bool;
+auto operator<<(std::ostream& os, TermIndexPair const& pair) -> std::ostream&;
+
 struct LogPayload {
   explicit LogPayload(velocypack::UInt8Buffer dummy) : dummy(std::move(dummy)) {}
   explicit LogPayload(velocypack::Slice slice);
@@ -120,6 +123,9 @@ struct LogPayload {
   // just a placeholder for now
   velocypack::UInt8Buffer dummy;
 };
+
+auto operator==(LogPayload const&, LogPayload const&) -> bool;
+auto operator!=(LogPayload const&, LogPayload const&) -> bool;
 
 // just a placeholder for now, must have a hash<>
 using ParticipantId = std::string;
@@ -180,6 +186,9 @@ struct LogConfig {
   friend auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
   friend auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 };
+
+auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
+auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 
 }  // namespace arangodb::replication2
 

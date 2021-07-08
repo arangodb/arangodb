@@ -64,6 +64,10 @@ struct MessageId : implement_compare<MessageId> {
   std::uint64_t value;
 };
 
+auto operator<=(MessageId, MessageId) noexcept -> bool;
+auto operator++(MessageId& id) -> MessageId&;
+auto operator<<(std::ostream& os, MessageId id) -> std::ostream&;
+
 struct AppendEntriesResult {
   LogTerm const logTerm;
   ErrorCode const errorCode;
