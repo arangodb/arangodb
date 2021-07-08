@@ -648,6 +648,7 @@ bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
   return ((this->getType() == other.getType()) && (_id == other._id) &&
           (_depth == other._depth) &&
           (isInSplicedSubquery() == other.isInSplicedSubquery()) &&
+          (_dependencies.size() == other._dependencies.size()) &&
           (std::equal(_dependencies.begin(), _dependencies.end(),
                       other._dependencies.begin(), [](ExecutionNode* const l, ExecutionNode* const r) {
             return l->isEqualTo(*r);
@@ -812,9 +813,7 @@ ExecutionNode const* ExecutionNode::getLoop() const {
 }
 
 /// @brief serialize this ExecutionNode to VelocyPack
-/// Note: The builder has to be an Array Element that is still Open.
 void ExecutionNode::toVelocyPack(arangodb::velocypack::Builder& builder, unsigned flags) const {
-  TRI_ASSERT(builder.isOpenArray());
   VPackObjectBuilder objectGuard(&builder);
 
   builder.add("type", VPackValue(getTypeString()));
@@ -2033,8 +2032,19 @@ SubqueryNode::SubqueryNode(ExecutionPlan* plan, arangodb::velocypack::Slice cons
 
 /// @brief doToVelocyPack, for SubqueryNode
 void SubqueryNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
-  // since we have spliced subqueries this should never be called!
+  // Since we have spliced subqueries this should never be called.
+  // However, we still keep the old implementation around in case it is needed
+  // again at some point (e.g., if we want to serialize nodes during optimization)
   TRI_ASSERT(false);
+  {
+    VPackObjectBuilder guard(&nodes, "subquery");
+    nodes.add(VPackValue("nodes"));
+    _subquery->allToVelocyPack(nodes, flags);
+  }
+  nodes.add(VPackValue("outVariable"));
+  _outVariable->toVelocyPack(nodes);
+
+  nodes.add("isConst", VPackValue(const_cast<SubqueryNode*>(this)->isConst()));
 }
 
 /// @brief invalidate the cost estimation for the node and its dependencies

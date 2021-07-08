@@ -369,6 +369,9 @@ class ExecutionNode {
   /// include addition information of the register plan for explain
   static constexpr unsigned SERIALIZE_REGISTER_INFORMATION = 1 << 4;
 
+  /// @brief serialize this ExecutionNode to VelocyPack
+  void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
+
   /// @brief exports this ExecutionNode with all its dependencies to VelocyPack.
   /// This function implicitly creates an array and serializes all nodes top-down,
   /// i.e., the upmost dependency will be the first, and this node will be the last
@@ -486,9 +489,6 @@ class ExecutionNode {
   auto getRegsToKeepStack() const -> RegIdSetStack;
 
  protected:
-  /// @brief serialize this ExecutionNode to VelocyPack
-  void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
-
   /// @brief serialize this ExecutionNode to VelocyPack.
   /// This function is called as part of `toVelocyPack` and must be overriden in
   /// order to serialize type specific information.
