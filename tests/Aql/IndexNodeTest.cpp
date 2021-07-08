@@ -482,21 +482,16 @@ TEST_F(IndexNodeTest, constructIndexNode) {
 
     // deserialization
     arangodb::aql::IndexNode indNode(
-      const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
-      createJson->slice());
+      const_cast<arangodb::aql::ExecutionPlan*>(query.plan()), createJson->slice());
     ASSERT_TRUE(indNode.isLateMaterialized());
 
     // serialization and deserialization
     {
       VPackBuilder builder;
-      std::unordered_set<arangodb::aql::ExecutionNode const*> seen;
-      {
-        VPackArrayBuilder guard(&builder);
-        indNode.toVelocyPackHelper(builder, arangodb::aql::ExecutionNode::SERIALIZE_DETAILS, seen);
-      }
+      static_cast<arangodb::aql::ExecutionNode&>(indNode).toVelocyPack(builder, arangodb::aql::ExecutionNode::SERIALIZE_DETAILS);
 
       arangodb::aql::IndexNode indNodeDeserialized(
-        const_cast<arangodb::aql::ExecutionPlan*>(query.plan()), createJson->slice());
+        const_cast<arangodb::aql::ExecutionPlan*>(query.plan()), builder.slice());
       ASSERT_TRUE(indNodeDeserialized.isLateMaterialized());
     }
 

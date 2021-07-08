@@ -153,18 +153,14 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
                                                               queryId());
 }
 
-/// @brief toVelocyPack, for RemoteNode
-void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                    std::unordered_set<ExecutionNode const*>& seen) const {
+/// @brief doToVelocyPack, for RemoteNode
+void RemoteNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
-  DistributeConsumerNode::toVelocyPackHelperInternal(nodes, flags, seen);
+  DistributeConsumerNode::doToVelocyPack(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("server", VPackValue(_server));
   nodes.add("queryId", VPackValue(_queryId));
-
-  // And close it:
-  nodes.close();
 }
 
 /// @brief estimateCost
@@ -202,16 +198,10 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
                                                                std::move(executorInfos));
 }
 
-/// @brief toVelocyPack, for ScatterNode
-void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                     std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+/// @brief doToVelocyPack, for ScatterNode
+void ScatterNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // serialize clients
   writeClientsToVelocyPack(nodes);
-  // And close it:
-  nodes.close();
 }
 
 bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
@@ -312,23 +302,15 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
                                                                   std::move(infos));
 }
 
-/// @brief toVelocyPack, for DistributedNode
-void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
-                                        std::unordered_set<ExecutionNode const*>& seen) const {
+/// @brief doToVelocyPack, for DistributeNode
+void DistributeNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(builder, flags, seen);
-
+  ScatterNode::doToVelocyPack(builder, flags);
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder, flags);
 
-  // serialize clients
-  writeClientsToVelocyPack(builder);
-
   builder.add(VPackValue("variable"));
-  _variable->toVelocyPack(builder);;
-
-  // And close it:
-  builder.close();
+  _variable->toVelocyPack(builder);
 }
 
 void DistributeNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
@@ -435,12 +417,8 @@ GatherNode::GatherNode(ExecutionPlan* plan, ExecutionNodeId id,
       _parallelism(parallelism),
       _limit(0) {}
 
-/// @brief toVelocyPack, for GatherNode
-void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                    std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+/// @brief doToVelocyPack, for GatherNode
+void GatherNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add("parallelism", VPackValue(toString(_parallelism)));
 
   if (_elements.empty()) {
@@ -467,9 +445,6 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
       }
     }
   }
-
-  // And close it:
-  nodes.close();
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -656,11 +631,8 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
   }
 }
 
-/// @brief toVelocyPack, for SingleRemoteOperationNode
-void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                                   std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
+/// @brief doToVelocyPack, for SingleRemoteOperationNode
+void SingleRemoteOperationNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(nodes);
 
   // add collection information
@@ -702,9 +674,6 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
 
   nodes.add("projections", VPackValue(VPackValueType::Array));
   // TODO: support projections?
-  nodes.close();
-
-  // And close it:
   nodes.close();
 }
 
