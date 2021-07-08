@@ -58,17 +58,10 @@ struct MockLogContainerIterator : LogIterator {
         _end(_store.end()) {}
 
   auto next() -> std::optional<LogEntry> override {
-    if (_current != _end) {
-      return (_current++)->second;
+    if (_current == _end) {
+      return std::nullopt;
     }
-    return std::nullopt;
-  }
-
-  auto peek() -> std::optional<LogEntry> override {
-    if (_current != _end) {
-      return _current->second;
-    }
-    return std::nullopt;
+    return (_current++)->second;
   }
 
   MockLog::storeType _store;

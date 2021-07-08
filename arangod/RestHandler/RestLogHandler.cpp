@@ -176,13 +176,6 @@ auto sendTailRequest(network::ConnectionPool* pool, std::string const& server,
             return std::nullopt;
           }
 
-          auto peek() -> std::optional<LogEntry> override {
-            if (iter != end) {
-              return LogEntry::fromVelocyPack(*iter);
-            }
-            return std::nullopt;
-          }
-
          private:
           std::shared_ptr<velocypack::Buffer<uint8_t>> buffer;
           VPackArrayIterator iter;

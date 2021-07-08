@@ -90,19 +90,11 @@ struct SimpleIterator : LogIterator {
   ~SimpleIterator() override = default;
 
   auto next() -> std::optional<LogEntry> override {
-    if (current != end) {
-      return *(current++);
+    if (current == end) {
+      return std::nullopt;
     }
 
-    return std::nullopt;
-  }
-
-  auto peek() -> std::optional<LogEntry> override {
-    if (current != end) {
-      return *current;
-    }
-
-    return std::nullopt;
+    return *(current++);
   }
 
   I current, end;

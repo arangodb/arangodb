@@ -59,13 +59,6 @@ class ReplicatedLogIterator : public LogIterator {
     return std::nullopt;
   }
 
-  auto peek() -> std::optional<LogEntry> override {
-    if (_begin != _end) {
-      return *_begin;
-    }
-    return std::nullopt;
-  }
-
  private:
   log_type _container;
   log_type::const_iterator _begin;
