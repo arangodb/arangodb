@@ -157,7 +157,6 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::writeSmartGrap
     }
   } else if (traversalOrder == traverser::TraverserOptions::Order::BFS) {
     // _bfsLookupTable - std::unordered_map<VertexType, std::vector<Step*>> // TODO remove
-    bool writeToBuilder = false;
 
     auto writeStepIntoLookupTable = [&](Step* step) {
       // link step to previous
@@ -171,7 +170,33 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::writeSmartGrap
     };
 
     auto writeDepthIntoBuilder = [&](size_t depth) {
+      VPackArrayBuilder arrayGuard(&result);
+      // 1.) Write current depth
+      result.add(VPackValue(_bfsCurrentDepth));
 
+      for (auto const& entry : _bfsLookupTable) {
+        VertexRef vertexName = entry.first;
+
+        auto relatedSteps = entry.second;
+        TRI_ASSERT(relatedSteps.size() > 0);
+
+        // 2.) Write Vertex itself into Builder
+        // we can use at(0) because any relation points to our origin vertex, we just need at least one entry
+        auto vertexStep = _store.getStepReference(relatedSteps.at(0)->getPrevious());
+        _provider.addVertexToBuilder(vertexStep.getVertex(), result);
+
+        // Now iterate through all collected steps and write them into the result builder
+        // Format is:
+        // I. Edge Content itself
+        // II. cursorID (clarify) // TODO: CHECK IMPORTANT CURSOR ID
+        // III. nextVertexID (our related step vertex id)
+        for (Step* step : relatedSteps) {
+          LOG_DEVEL << step;
+          _provider.addEdgeToBuilder(step->getEdge(), result);
+          result.add(VPackValue(0)); // TODO: CHECK IMPORTANT CURSOR ID
+          result.add(VPackValue(step->getVertexIdentifier().begin()));
+        }
+      }
     };
 
     if (_step->isFirst()) {
