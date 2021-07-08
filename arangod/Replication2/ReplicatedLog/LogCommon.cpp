@@ -62,10 +62,6 @@ auto LogIndex::saturatedDecrement() const noexcept -> LogIndex {
 LogEntry::LogEntry(LogTerm logTerm, LogIndex logIndex, LogPayload payload)
     : _logTerm{logTerm}, _logIndex{logIndex}, _payload{std::move(payload)} {}
 
-auto LogEntry::rootEntry() -> LogEntry {
-  return LogEntry(LogTerm(0), LogIndex(0), LogPayload(""));
-}
-
 auto LogEntry::logTerm() const noexcept -> LogTerm { return _logTerm; }
 
 auto LogEntry::logIndex() const noexcept -> LogIndex { return _logIndex; }

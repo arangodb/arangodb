@@ -49,7 +49,6 @@ struct PersistedLog {
   virtual auto read(LogIndex start) -> std::unique_ptr<LogIterator> = 0;
   virtual auto removeFront(LogIndex stop) -> Result = 0;
   virtual auto removeBack(LogIndex start) -> Result = 0;
-  virtual auto readEnd() const -> replication2::LogEntry = 0;
 
   virtual auto drop() -> Result = 0;
 

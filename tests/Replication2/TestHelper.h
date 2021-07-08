@@ -45,10 +45,10 @@ namespace arangodb::replication2 {
 using namespace replicated_log;
 
 struct MockLog : replication2::PersistedLog {
-  using StoreType = std::map<replication2::LogIndex, replication2::LogEntry>;
+  using storeType = std::map<replication2::LogIndex, replication2::LogEntry>;
 
   explicit MockLog(replication2::LogId id);
-  MockLog(replication2::LogId id, StoreType storage);
+  MockLog(replication2::LogId id, storeType storage);
 
   auto insert(replication2::LogIterator& iter, WriteOptions const&) -> Result override;
   auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
@@ -58,16 +58,15 @@ struct MockLog : replication2::PersistedLog {
   auto removeFront(replication2::LogIndex stop) -> Result override;
   auto removeBack(replication2::LogIndex start) -> Result override;
   auto drop() -> Result override;
-  auto readEnd() const -> replication2::LogEntry override;
 
   void setEntry(replication2::LogIndex idx, replication2::LogTerm term,
                 replication2::LogPayload payload);
   void setEntry(replication2::LogEntry);
 
-  [[nodiscard]] StoreType getStorage() const { return _storage; }
+  [[nodiscard]] storeType getStorage() const { return _storage; }
  private:
-  using IteratorType = StoreType::iterator;
-  StoreType _storage;
+  using iteratorType = storeType::iterator;
+  storeType _storage;
 };
 
 struct AsyncMockLog : MockLog {

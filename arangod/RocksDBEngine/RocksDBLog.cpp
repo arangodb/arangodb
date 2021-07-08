@@ -165,32 +165,6 @@ auto RocksDBLog::insertSingleWrites(LogIterator& iter) -> Result {
   return Result();
 }
 
-auto RocksDBLog::readEnd() const -> replication2::LogEntry {
-  auto bounds = getBounds();
-  auto upperBound = bounds.end();
-  rocksdb::ReadOptions opts;
-  opts.prefix_same_as_start = true;
-  opts.iterate_upper_bound = &upperBound;
-  auto iter = std::unique_ptr<rocksdb::Iterator>(
-      _persistor->_db->NewIterator(opts, _persistor->_cf));
-
-  iter->SeekToLast();
-
-  if (iter->Valid()) {
-    return LogEntry(RocksDBValue::logTerm(iter->value()),
-                    RocksDBKey::logIndex(iter->key()),
-                    RocksDBValue::logPayload(iter->value()));
-  } else {
-    auto s = iter->status();
-    if (!s.ok()) {
-      auto res = rocksutils::convertStatus(s);
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
-    }
-
-    return LogEntry::rootEntry();
-  }
-}
-
 RocksDBLogPersistor::RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf,
                                          rocksdb::DB* db, std::shared_ptr<Executor> executor)
     : _cf(cf), _db(db), _executor(std::move(executor)) {
