@@ -2730,7 +2730,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
           std::invoke([&]() -> std::optional<std::shared_ptr<ReplicatedLogsMap>> {
             if (vocbase.replicationVersion() == replication::Version::TWO) {
               auto replicatedLogs = initializeReplicatedLogs(*col, *shards, ci);
-              col->setReplicatedLogsMap(replicatedLogs);
+              // col->setReplicatedLogsMap(replicatedLogs);
               return replicatedLogs;
             } else {
               return std::nullopt;
