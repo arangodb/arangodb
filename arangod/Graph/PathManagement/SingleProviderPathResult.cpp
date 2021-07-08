@@ -107,120 +107,131 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
 }
 
 template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::writeSmartGraphResult(
-    arangodb::velocypack::Builder& result, size_t& currentLength,
-    traverser::TraverserOptions::Order const& traversalOrder) -> void {
-  if (traversalOrder == traverser::TraverserOptions::Order::DFS) {
-    size_t prevIndex = 0;
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::writeSmartGraphDFSResult(
+    arangodb::velocypack::Builder& result, size_t& currentLength) -> void {
+  size_t prevIndex = 0;
 
-    auto writeDFSStepToBuilder = [&](Step& step) {
-      VPackArrayBuilder arrayGuard(&result);
-      // Create a VPackValue based on the char* inside the HashedStringRef, will save us a String copy each time.
-      result.add(VPackValue(step.getVertex().getID().begin()));
+  auto writeDFSStepToBuilder = [&](Step& step) {
+    VPackArrayBuilder arrayGuard(&result);
+    // Create a VPackValue based on the char* inside the HashedStringRef, will save us a String copy each time.
+    result.add(VPackValue(step.getVertex().getID().begin()));
 
-      // Index position of previous step
-      result.add(VPackValue(prevIndex));
-      // The depth of the current step
-      result.add(VPackValue(step.getDepth()));
+    // Index position of previous step
+    result.add(VPackValue(prevIndex));
+    // The depth of the current step
+    result.add(VPackValue(step.getDepth()));
 
-      bool isResponsible = step.isResponsible(_provider.trx());
-      // Print if we have a loose end here (looseEnd := this server is NOT responsible)
-      result.add(VPackValue(!isResponsible));
-      if (isResponsible) {
-        // This server needs to provide the data for the vertex
-        _provider.addVertexToBuilder(step.getVertex(), result);
-      } else {
-        result.add(VPackSlice::nullSlice());
-      }
-
-      _provider.addEdgeToBuilder(step.getEdge(), result);
-    };  // TODO: Create method instead of lambda
-
-    std::vector<Step*> toWrite{};
-
-    _store.modifyReversePath(*_step, [&](Step& step) -> bool {
-      if (!step.hasLocalSchreierIndex()) {
-        toWrite.emplace_back(&step);
-        return true;
-      } else {
-        prevIndex = step.getLocalSchreierIndex();
-        return false;
-      }
-    });
-
-    for (auto it = toWrite.rbegin(); it != toWrite.rend(); it++) {
-      TRI_ASSERT(!(*it)->hasLocalSchreierIndex());
-      writeDFSStepToBuilder(**it);
-
-      prevIndex = currentLength;
-      (*it)->setLocalSchreierIndex(currentLength++);
-    }
-  } else if (traversalOrder == traverser::TraverserOptions::Order::BFS) {
-    // _bfsLookupTable - std::unordered_map<VertexType, std::vector<Step*>> // TODO remove
-
-    auto writeStepIntoLookupTable = [&](Step* step) {
-      // link step to previous
-      VertexRef previousEntry =
-          _store.getStepReference(_step->getPrevious()).getVertexIdentifier();
-      // we must have a valid inserted VertexID in our map in case we insert into _bfsLookupTable
-      TRI_ASSERT(_bfsLookupTable.find(previousEntry) != _bfsLookupTable.end());
-      _bfsLookupTable.at(previousEntry).emplace_back(_step);
-
-      // create additional entry for step itself
-    };
-
-    auto writeDepthIntoBuilder = [&](size_t depth) {
-      VPackArrayBuilder arrayGuard(&result);
-      // 1.) Write current depth
-      result.add(VPackValue(_bfsCurrentDepth));
-
-      for (auto const& entry : _bfsLookupTable) {
-        VertexRef vertexName = entry.first;
-
-        auto relatedSteps = entry.second;
-        TRI_ASSERT(relatedSteps.size() > 0);
-
-        // 2.) Write Vertex itself into Builder
-        // we can use at(0) because any relation points to our origin vertex, we just need at least one entry
-        auto vertexStep = _store.getStepReference(relatedSteps.at(0)->getPrevious());
-        _provider.addVertexToBuilder(vertexStep.getVertex(), result);
-
-        // Now iterate through all collected steps and write them into the result builder
-        // Format is:
-        // I. Edge Content itself
-        // II. cursorID (clarify) // TODO: CHECK IMPORTANT CURSOR ID
-        // III. nextVertexID (our related step vertex id)
-        for (Step* step : relatedSteps) {
-          LOG_DEVEL << step;
-          _provider.addEdgeToBuilder(step->getEdge(), result);
-          result.add(VPackValue(0)); // TODO: CHECK IMPORTANT CURSOR ID
-          result.add(VPackValue(step->getVertexIdentifier().begin()));
-        }
-      }
-    };
-
-    if (_step->isFirst()) {
-      TRI_ASSERT(_bfsCurrentDepth == 0);
-      _bfsLookupTable.insert({_step->getVertexIdentifier(), {}});
-      _bfsCurrentDepth++;
+    bool isResponsible = step.isResponsible(_provider.trx());
+    // Print if we have a loose end here (looseEnd := this server is NOT responsible)
+    result.add(VPackValue(!isResponsible));
+    if (isResponsible) {
+      // This server needs to provide the data for the vertex
+      _provider.addVertexToBuilder(step.getVertex(), result);
     } else {
-      // means we're in depth > 0
+      result.add(VPackSlice::nullSlice());
+    }
 
-      // get the location of previous entry
-      if (_step->getDepth() - _bfsCurrentDepth == 1) {
-        // B, C and D got written
-        writeStepIntoLookupTable(_step);
-      } else {
-        // we finalized a depth of range [0, 1] -> this means we can write a complete depth set into the builder
-        writeDepthIntoBuilder(_bfsCurrentDepth);
+    _provider.addEdgeToBuilder(step.getEdge(), result);
+  };  // TODO: Create method instead of lambda
 
-        // additionally, this means we'll start a new depth here (increase depth information)
-        _bfsCurrentDepth++;
+  std::vector<Step*> toWrite{};
 
-        // We do not need old information which is stored in our _bfsLookupTable (clear now).
-        _bfsLookupTable.clear();
-        writeStepIntoLookupTable(_step);
+  _store.modifyReversePath(*_step, [&](Step& step) -> bool {
+    if (!step.hasLocalSchreierIndex()) {
+      toWrite.emplace_back(&step);
+      return true;
+    } else {
+      prevIndex = step.getLocalSchreierIndex();
+      return false;
+    }
+  });
+
+  for (auto it = toWrite.rbegin(); it != toWrite.rend(); it++) {
+    TRI_ASSERT(!(*it)->hasLocalSchreierIndex());
+    writeDFSStepToBuilder(**it);
+
+    prevIndex = currentLength;
+    (*it)->setLocalSchreierIndex(currentLength++);
+  }
+}
+
+template <class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::writeSmartGraphBFSResult(
+    std::unordered_map<VertexType, std::vector<std::unique_ptr<PathResultInterface>>>& bfsLookupTable,
+    size_t& bfsCurrentDepth) -> void {
+  if constexpr (std::is_same_v<Step, ClusterProvider::Step>) {
+    // TODO: before removing this, check why we're compiling SingleProviderPathResult for ClusterProvider
+    TRI_ASSERT(false);
+    return;
+  }
+
+  auto writeStepIntoLookupTable = [&](Step* step) {
+    // link step to previous
+    VertexRef previousEntry =
+        _store.getStepReference(_step->getPrevious()).getVertexIdentifier();
+    TRI_ASSERT(bfsLookupTable.find(previousEntry) != bfsLookupTable.end());
+    bfsLookupTable.at(previousEntry).emplace_back(_step);
+    LOG_DEVEL << "Wrote step " << _step->getVertexIdentifier() << " into bfsLookupTable";
+
+    // TODO: create additional entry for step itself // TODO MIssing right now
+  };
+
+  auto writeDepthIntoBuilder = [&](size_t depth) {
+    VPackArrayBuilder arrayGuard(&result);
+    // 1.) Write current depth
+    result.add(VPackValue(bfsCurrentDepth));
+
+    for (auto const& entry : bfsLookupTable) {
+      VertexRef vertexName = entry.first;
+
+      auto relatedSteps = entry.second;
+      TRI_ASSERT(relatedSteps.size() > 0);
+
+      // 2.) Write Vertex itself into Builder
+      // we can use at(0) because any relation points to our origin vertex, we just need at least one entry
+      auto vertexStep =
+          _store.getStepReference(relatedSteps.at(0).get()._step->getPrevious());
+      _provider.addVertexToBuilder(vertexStep.getVertex(), result);
+
+      // Now iterate through all collected steps and write them into the result builder
+      // Format is:
+      // I. Edge Content itself
+      // II. cursorID (clarify) // TODO: CHECK IMPORTANT CURSOR ID
+      // III. nextVertexID (our related step vertex id)
+      for (Step* step : relatedSteps) {
+        _provider.addEdgeToBuilder(step->getEdge(), result);
+        result.add(VPackValue(0));  // TODO: CHECK IMPORTANT CURSOR ID
+        result.add(VPackValue(step->getVertexIdentifier().begin()));
       }
+    }
+  };
+
+  // OPEN TODO: currently only the first step is beeing proper initialized. This is missing right now.
+
+  LOG_DEVEL << " == HANDLING STEP == " << _step->getVertexIdentifier().begin();
+  if (_step->isFirst()) {
+    LOG_DEVEL << "handled first step";
+    TRI_ASSERT(bfsCurrentDepth == 0);
+    bfsLookupTable.insert({_step->getVertexIdentifier(), {}});
+  } else {
+    // means we're not in initial step
+    LOG_DEVEL << "=> Step depth: " << _step->getDepth() << " ,iteration: " << bfsCurrentDepth;
+
+    // get the location of previous entry
+    if (_step->getDepth() - bfsCurrentDepth == 1) {
+      // B, C and D got written
+      writeStepIntoLookupTable(_step);
+    } else {
+      LOG_DEVEL << "finalizing - will write into builder";
+      // we finalized a depth of range [0, 1] -> this means we can write a complete depth set into the builder
+      writeDepthIntoBuilder(bfsCurrentDepth);
+
+      // additionally, this means we'll start a new depth here (increase depth information)
+      bfsCurrentDepth++;
+
+      // We do not need old information which is stored in our _bfsLookupTable (clear now).
+      bfsLookupTable.clear();
+      writeStepIntoLookupTable(_step);
     }
   }
 }
