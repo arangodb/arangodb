@@ -383,11 +383,6 @@ void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept{
   _sharding->setShardMap(std::move(map));
 }
 
-void LogicalCollection::setReplicatedLogsMap(std::shared_ptr<ReplicatedLogsMap> map) noexcept {
-  TRI_ASSERT(_sharding != nullptr);
-  _sharding->setReplicatedLogsMap(std::move(map));
-}
-
 ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
                                                  bool docComplete, std::string& shardID) {
   bool usesDefaultShardKeys;

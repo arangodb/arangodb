@@ -822,7 +822,6 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   auto cid = std::to_string(collection->id().id());
   ClusterInfo& ci =
       collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-
   auto res = ci.dropCollectionCoordinator(databaseName, cid, 300.0);
 
   if (!res.ok()) {

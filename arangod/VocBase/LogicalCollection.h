@@ -45,7 +45,6 @@ namespace arangodb {
 typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
-using ReplicatedLogsMap = std::unordered_map<ShardID, replication2::LogId>;
 
 class FollowerInfo;
 class Index;
@@ -193,7 +192,6 @@ class LogicalCollection : public LogicalDataSource {
 
   // mutation options for sharding
   void setShardMap(std::shared_ptr<ShardMap> map) noexcept;
-  void setReplicatedLogsMap(std::shared_ptr<ReplicatedLogsMap> map) noexcept;
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   // query shard for a given document
