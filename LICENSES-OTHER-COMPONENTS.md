@@ -1886,9 +1886,9 @@ License Id: MIT
 #### ms
 
 Name: ms
-Version: 2.1.1
+Version: 2.1.3
 Project Home: https://github.com/zeit/ms
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/ms/license.md
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ms/license.md
 License Name: MIT License
 License Id: MIT
 
