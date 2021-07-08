@@ -1,6 +1,9 @@
 devel
 -----
 
+* Lower log level to warning, when take over shard leadership finds
+  an agency Current entry is missing the server taking over.
+
 * APM-112: invalid use of OPTIONS in AQL queries will now raise a warning in
   the query. 
   The feature is useful to detect misspelled attribute names in OPTIONS, e.g.
@@ -255,8 +258,8 @@ devel
 	this way the system does only need to produce a path that is allowed to
 	be passed through.
 	e.g.
- 
-	  FOR v,e,p IN 10 OUTBOUND @start GRAPH "myGraph"
+
+    FOR v,e,p IN 10 OUTBOUND @start GRAPH "myGraph"
 		  FILTER v.isRelevant == true
 			RETURN p
 
