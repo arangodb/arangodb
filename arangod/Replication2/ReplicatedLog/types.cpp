@@ -23,11 +23,13 @@
 #include "types.h"
 
 #include <Basics/Exceptions.h>
-#include <Basics/debugging.h>
 #include <Basics/StaticStrings.h>
+#include <Basics/application-exit.h>
+#include <Basics/debugging.h>
 #include <Basics/overload.h>
 #include <Basics/voc-errors.h>
 #include <Containers/ImmerMemoryPolicy.h>
+#include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -84,18 +86,18 @@ auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice) -> L
   return stats;
 }
 
-auto arangodb::replication2::replicated_log::to_string(replicated_log::AppendEntriesErrorReason reason) noexcept
+auto arangodb::replication2::replicated_log::to_string(AppendEntriesErrorReason reason) noexcept
     -> std::string_view {
   switch (reason) {
-    case replicated_log::AppendEntriesErrorReason::NONE:
+    case AppendEntriesErrorReason::NONE:
       return {};
-    case replicated_log::AppendEntriesErrorReason::INVALID_LEADER_ID:
+    case AppendEntriesErrorReason::INVALID_LEADER_ID:
       return "leader id was invalid";
-    case replicated_log::AppendEntriesErrorReason::LOST_LOG_CORE:
+    case AppendEntriesErrorReason::LOST_LOG_CORE:
       return "term has changed and an internal state was lost";
-    case replicated_log::AppendEntriesErrorReason::WRONG_TERM:
+    case AppendEntriesErrorReason::WRONG_TERM:
       return "current term is different from leader term";
-    case replicated_log::AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
+    case AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
       return "previous log index did not match";
     case AppendEntriesErrorReason::MESSAGE_OUTDATED:
       return "message was outdated";
@@ -104,4 +106,8 @@ auto arangodb::replication2::replicated_log::to_string(replicated_log::AppendEnt
     case AppendEntriesErrorReason::COMMUNICATION_ERROR:
       return "communicating with participant failed - network error";
   }
+  LOG_TOPIC("c2058", FATAL, Logger::REPLICATION2)
+      << "Invalid AppendEntriesErrorReason "
+      << static_cast<std::underlying_type_t<decltype(reason)>>(reason);
+  FATAL_ERROR_ABORT();
 }

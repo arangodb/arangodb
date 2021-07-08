@@ -206,7 +206,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                       if (!guarded->_didResign) {
                         // Is throwing the right thing to do here? - No, we are in a finally
                         return guarded->handleAppendEntriesResponse(
-                            parentLog, *follower, lastIndex, currentCommitIndex, currentTerm,
+                            *follower, lastIndex, currentCommitIndex, currentTerm,
                             std::move(res), endTime - startTime, messageId);
                       } else {
                         LOG_CTX("da116", DEBUG, follower->logContext)
@@ -421,19 +421,17 @@ auto replicated_log::LogLeader::getParticipantId() const noexcept -> Participant
 }
 
 auto replicated_log::LogLeader::runAsyncStep() -> void {
-  auto preparedRequests =
-      _guardedLeaderData.doUnderLock([self = weak_from_this()](auto& leaderData) {
-        if (leaderData._didResign) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
-        }
-        return leaderData.prepareAppendEntries(self);
-      });
+  auto preparedRequests = _guardedLeaderData.doUnderLock([](auto& leaderData) {
+    if (leaderData._didResign) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
+    return leaderData.prepareAppendEntries();
+  });
   executeAppendEntriesRequests(std::move(preparedRequests), _logMetrics);
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
-    std::weak_ptr<LogLeader> const& parentLog, LogIndex newIndex,
-    std::shared_ptr<QuorumData> const& quorum) -> ResolvedPromiseSet {
+    LogIndex newIndex, std::shared_ptr<QuorumData> const& quorum) -> ResolvedPromiseSet {
   LOG_CTX("a9a7e", TRACE, _self._logContext)
       << "updating commit index to " << newIndex << "with quorum " << quorum->quorum;
   auto oldIndex = _commitIndex;
@@ -459,19 +457,16 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   }
 }
 
-auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntries(std::weak_ptr<LogLeader> const& parentLog)
+auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntries()
     -> std::vector<std::optional<PreparedAppendEntryRequest>> {
   auto appendEntryRequests = std::vector<std::optional<PreparedAppendEntryRequest>>{};
   appendEntryRequests.reserve(_follower.size());
   std::transform(_follower.begin(), _follower.end(), std::back_inserter(appendEntryRequests),
-                 [this, &parentLog](auto& follower) {
-                   return prepareAppendEntry(parentLog, follower);
-                 });
+                 [this](auto& follower) { return prepareAppendEntry(follower); });
   return appendEntryRequests;
 }
 
-auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
-    std::weak_ptr<LogLeader> const& parentLog, FollowerInfo& follower)
+auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerInfo& follower)
     -> std::optional<PreparedAppendEntryRequest> {
   if (follower.requestInFlight) {
     LOG_CTX("1d7b6", TRACE, follower.logContext)
@@ -537,7 +532,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
   preparedRequest._currentTerm = _self._currentTerm;
   preparedRequest._currentCommitIndex = currentCommitIndex;
   preparedRequest._lastIndex = lastIndex;
-  preparedRequest._parentLog = parentLog;
+  preparedRequest._parentLog = _self.weak_from_this();
   preparedRequest._request = std::move(req);
   if (follower.numErrorsSinceLastAnswer > 0) {
     using namespace std::chrono_literals;
@@ -553,9 +548,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
-    std::weak_ptr<LogLeader> const& parentLog, FollowerInfo& follower,
-    TermIndexPair lastIndex, LogIndex currentCommitIndex, LogTerm currentTerm,
-    futures::Try<AppendEntriesResult>&& res,
+    FollowerInfo& follower, TermIndexPair lastIndex, LogIndex currentCommitIndex,
+    LogTerm currentTerm, futures::Try<AppendEntriesResult>&& res,
     std::chrono::steady_clock::duration latency, MessageId messageId)
     -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet> {
   if (currentTerm != _self._currentTerm) {
@@ -588,7 +582,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
         follower.numErrorsSinceLastAnswer = 0;
         follower.lastAckedEntry = lastIndex;
         follower.lastAckedCommitIndex = currentCommitIndex;
-        toBeResolved = checkCommitIndex(parentLog);
+        toBeResolved = checkCommitIndex();
       } else {
         TRI_ASSERT(response.reason != AppendEntriesErrorReason::NONE);
         switch (response.reason) {
@@ -636,7 +630,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
   }
 
   // try sending the next batch
-  return std::make_pair(prepareAppendEntries(parentLog), std::move(toBeResolved));
+  return std::make_pair(prepareAppendEntries(), std::move(toBeResolved));
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::getLogIterator(LogIndex fromIdx) const
@@ -646,14 +640,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLogIterator(LogIndex fromI
   return _inMemoryLog.getIteratorFrom(fromIdx);
 }
 
-auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(
-    std::weak_ptr<LogLeader> const& parentLog) -> ResolvedPromiseSet {
+auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> ResolvedPromiseSet {
   auto const quorum_size = _self._config.writeConcern;
 
   std::vector<std::pair<LogIndex, ParticipantId>> indexes;
   std::transform(_follower.begin(), _follower.end(),
                  std::back_inserter(indexes), [](FollowerInfo const& f) {
-                   return std::make_pair(f.lastAckedEntry.index, f._impl->getParticipantId());
+                   return std::make_pair(f.lastAckedEntry.index,
+                                         f._impl->getParticipantId());
                  });
   TRI_ASSERT(indexes.size() == _follower.size());
 
@@ -686,7 +680,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex(
 
     auto const quorum_data =
         std::make_shared<QuorumData>(commitIndex, _self._currentTerm, std::move(quorum));
-    return updateCommitIndexLeader(parentLog, commitIndex, quorum_data);
+    return updateCommitIndexLeader(commitIndex, quorum_data);
   }
   return {};
 }
@@ -699,7 +693,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const ->
   return result;
 }
 
-replicated_log::LogLeader::GuardedLeaderData::GuardedLeaderData(replicated_log::LogLeader const& self,
+replicated_log::LogLeader::GuardedLeaderData::GuardedLeaderData(replicated_log::LogLeader& self,
                                                                 InMemoryLog inMemoryLog)
     : _self(self), _inMemoryLog(std::move(inMemoryLog)) {}
 
@@ -816,7 +810,7 @@ auto replicated_log::LogLeader::LocalFollower::resign() && noexcept -> std::uniq
 
 replicated_log::LogLeader::FollowerInfo::FollowerInfo(std::shared_ptr<AbstractFollower> impl,
                                                       TermIndexPair lastLogIndex,
-                                                      LoggerContext logContext)
+                                                      LoggerContext const& logContext)
     : _impl(std::move(impl)),
       lastAckedEntry(lastLogIndex),
       logContext(logContext.with<logContextKeyLogComponent>("follower-info")

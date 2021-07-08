@@ -116,7 +116,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   struct alignas(64) FollowerInfo {
     explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl,
-                          TermIndexPair lastLogIndex, LoggerContext logContext);
+                          TermIndexPair lastLogIndex, LoggerContext const& logContext);
 
     std::chrono::steady_clock::duration _lastRequestLatency{};
     std::shared_ptr<AbstractFollower> _impl;
@@ -178,7 +178,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   struct alignas(128) GuardedLeaderData {
     ~GuardedLeaderData() = default;
-    GuardedLeaderData(LogLeader const& self, InMemoryLog inMemoryLog);
+    GuardedLeaderData(LogLeader& self, InMemoryLog inMemoryLog);
 
     GuardedLeaderData() = delete;
     GuardedLeaderData(GuardedLeaderData const&) = delete;
@@ -186,31 +186,30 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     auto operator=(GuardedLeaderData const&) -> GuardedLeaderData& = delete;
     auto operator=(GuardedLeaderData&&) -> GuardedLeaderData& = delete;
 
-    [[nodiscard]] auto prepareAppendEntry(std::weak_ptr<LogLeader> const& parentLog,
-                                          FollowerInfo& follower)
+    [[nodiscard]] auto prepareAppendEntry(FollowerInfo& follower)
         -> std::optional<PreparedAppendEntryRequest>;
-    [[nodiscard]] auto prepareAppendEntries(std::weak_ptr<LogLeader> const& parentLog)
+    [[nodiscard]] auto prepareAppendEntries()
         -> std::vector<std::optional<PreparedAppendEntryRequest>>;
 
     [[nodiscard]] auto handleAppendEntriesResponse(
-        std::weak_ptr<LogLeader> const& parentLog, FollowerInfo& follower,
-        TermIndexPair lastIndex, LogIndex currentCommitIndex, LogTerm currentTerm,
-        futures::Try<AppendEntriesResult>&& res, std::chrono::steady_clock::duration latency,
-        MessageId messageId)
+        FollowerInfo& follower, TermIndexPair lastIndex, LogIndex currentCommitIndex,
+        LogTerm currentTerm, futures::Try<AppendEntriesResult>&& res,
+        std::chrono::steady_clock::duration latency, MessageId messageId)
         -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet>;
 
-    [[nodiscard]] auto checkCommitIndex(std::weak_ptr<LogLeader> const& parentLog)
+    [[nodiscard]] auto checkCommitIndex()
         -> ResolvedPromiseSet;
 
-    [[nodiscard]] auto updateCommitIndexLeader(std::weak_ptr<LogLeader> const& parentLog, LogIndex newIndex,
-                                 std::shared_ptr<QuorumData> const& quorum) -> ResolvedPromiseSet;
+    [[nodiscard]] auto updateCommitIndexLeader(LogIndex newIndex,
+                                               std::shared_ptr<QuorumData> const& quorum)
+        -> ResolvedPromiseSet;
 
     [[nodiscard]] auto getLogIterator(LogIndex fromIdx) const
         -> std::unique_ptr<LogIterator>;
 
     [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
 
-    LogLeader const& _self;
+    LogLeader& _self;
     InMemoryLog _inMemoryLog;
     std::vector<FollowerInfo> _follower{};
     WaitForQueue _waitForQueue{};
