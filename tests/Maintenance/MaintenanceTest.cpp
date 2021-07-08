@@ -33,6 +33,7 @@
 #include "Cluster/ResignShardLeadership.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
+#include "Replication2/ReplicatedLog/LogStatus.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
