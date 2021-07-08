@@ -24,6 +24,8 @@
 #include "IndexHint.h"
 
 #include "Aql/AstNode.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/QueryContext.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 
@@ -45,36 +47,6 @@ std::string const FieldForced("forced");
 std::string const FieldHint("hint");
 std::string const FieldType("type");
 
-bool extractForced(arangodb::aql::AstNode const* node) {
-  using arangodb::aql::AstNode;
-  using arangodb::aql::AstNodeType;
-  using arangodb::aql::AstNodeValueType;
-
-  bool forced = false;
-
-  if (node->type == AstNodeType::NODE_TYPE_OBJECT) {
-    for (size_t i = 0; i < node->numMembers(); i++) {
-      AstNode const* child = node->getMember(i);
-
-      if (child->type == AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
-        VPackStringRef name(child->getStringValue(), child->getStringLength());
-
-        if (name == arangodb::StaticStrings::IndexHintOptionForce) {
-          TRI_ASSERT(child->numMembers() > 0);
-          AstNode const* value = child->getMember(0);
-
-          if (value->type == AstNodeType::NODE_TYPE_VALUE &&
-              value->value.type == AstNodeValueType::VALUE_TYPE_BOOL) {
-            forced = value->value.value._bool;
-          }
-        }
-      }
-    }
-  }
-
-  return forced;
-}
-
 arangodb::aql::IndexHint::HintType fromTypeName(std::string const& typeName) {
   if (::TypeSimple == typeName) {
     return arangodb::aql::IndexHint::HintType::Simple;
@@ -89,16 +61,19 @@ arangodb::aql::IndexHint::HintType fromTypeName(std::string const& typeName) {
 namespace arangodb {
 namespace aql {
 
-IndexHint::IndexHint() : _type{HintType::None}, _forced{false} {}
+IndexHint::IndexHint() 
+    : _type{HintType::None}, _forced{false} {}
 
-IndexHint::IndexHint(AstNode const* node)
-    : _type{HintType::None}, _forced{::extractForced(node)} {
+IndexHint::IndexHint(QueryContext& query, AstNode const* node)
+    : IndexHint() {
   if (node->type == AstNodeType::NODE_TYPE_OBJECT) {
     for (size_t i = 0; i < node->numMembers(); i++) {
       AstNode const* child = node->getMember(i);
 
       if (child->type == AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
         VPackStringRef name(child->getStringValue(), child->getStringLength());
+
+        bool handled = false;
 
         if (name == StaticStrings::IndexHintOption) {
           TRI_ASSERT(child->numMembers() > 0);
@@ -108,9 +83,8 @@ IndexHint::IndexHint(AstNode const* node)
               value->value.type == AstNodeValueType::VALUE_TYPE_STRING) {
             _type = HintType::Simple;
             _hint.simple.emplace_back(value->getStringValue(), value->getStringLength());
-          }
-
-          if (value->type == AstNodeType::NODE_TYPE_ARRAY) {
+            handled = true;
+          } else  if (value->type == AstNodeType::NODE_TYPE_ARRAY) {
             _type = HintType::Simple;
             for (size_t j = 0; j < value->numMembers(); j++) {
               AstNode const* member = value->getMember(j);
@@ -118,9 +92,23 @@ IndexHint::IndexHint(AstNode const* node)
                   member->value.type == AstNodeValueType::VALUE_TYPE_STRING) {
                 _hint.simple.emplace_back(member->getStringValue(),
                                           member->getStringLength());
+                handled = true;
               }
             }
           }
+        } else if (name == arangodb::StaticStrings::IndexHintOptionForce) {
+          TRI_ASSERT(child->numMembers() > 0);
+          AstNode const* value = child->getMember(0);
+
+          if (value->type == AstNodeType::NODE_TYPE_VALUE &&
+              value->value.type == AstNodeValueType::VALUE_TYPE_BOOL) {
+            _forced = value->value.value._bool;
+            handled = true;
+          }
+        }
+
+        if (!handled) {
+          ExecutionPlan::invalidOptionAttribute(query, "FOR", name.data(), name.size());
         }
       }
     }

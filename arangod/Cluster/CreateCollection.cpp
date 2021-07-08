@@ -168,7 +168,7 @@ bool CreateCollection::first() {
         std::vector<std::string> noFollowers;
         col->followers()->takeOverLeadership(noFollowers, nullptr);
       } else {
-        col->followers()->setTheLeader(leader);
+        col->followers()->setTheLeader(LEADER_NOT_YET_KNOWN);
       }
     }
 

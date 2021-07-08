@@ -46,6 +46,7 @@ Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, 
 void insertDistributeInputCalculation(ExecutionPlan& plan);
 
 void enableAsyncPrefetching(ExecutionPlan& plan);
+void activateCallstackSplit(ExecutionPlan& plan);
 
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);

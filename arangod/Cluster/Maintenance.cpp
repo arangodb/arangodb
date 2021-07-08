@@ -327,7 +327,6 @@ static void handlePlanShard(
             {DATABASE, dbname},
             {COLLECTION, colname},
             {SHARD, shname},
-            {THE_LEADER, std::string()},
             {LOCAL_LEADER, std::string(localLeader)},
             {OLD_CURRENT_COUNTER, "0"},  // legacy, no longer used
             {PLAN_RAFT_INDEX, std::to_string(planIndex)}},

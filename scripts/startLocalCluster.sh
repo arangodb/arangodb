@@ -239,7 +239,6 @@ start() {
           --log.role true \
           --log.file cluster/$PORT.log \
           --log.level $LOG_LEVEL \
-          --server.statistics true \
           --javascript.startup-directory $SRC_DIR/js \
           --javascript.module-directory $SRC_DIR/enterprise/js \
           --javascript.app-path cluster/apps$PORT \
@@ -265,7 +264,6 @@ start() {
         --log.role true \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
-        --server.statistics true \
         --javascript.startup-directory $SRC_DIR/js \
         --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path cluster/apps$PORT \

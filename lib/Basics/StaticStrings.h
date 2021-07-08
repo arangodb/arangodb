@@ -314,6 +314,7 @@ class StaticStrings {
   static std::string const RevisionTreeRanges;
   static std::string const RevisionTreeResume;
   static std::string const RevisionTreeVersion;
+  static std::string const FollowingTermId;
 
   // Replication 2.0
   static std::string const Config;

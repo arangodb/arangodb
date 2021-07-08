@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Cluster/FollowerInfo.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Rest/CommonDefines.h"
@@ -498,7 +499,8 @@ class Methods {
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options, VPackSlice value, TRI_voc_document_operation_e operation,
       std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops,
-      std::unordered_set<size_t> const& excludePositions);
+      std::unordered_set<size_t> const& excludePositions,
+      FollowerInfo& followerInfo);
 
  private:
   /// @brief transaction hints

@@ -146,9 +146,6 @@ class QueryContext {
   /// @brief current resources and limits used by query
   arangodb::ResourceMonitor _resourceMonitor;
 
-  /// @brief registers/unregisters query base ovehead
-  arangodb::ResourceUsageScope _baseOverHeadTracker;
-  
   TRI_voc_tick_t const _queryId;
   
   /// @brief thread-safe query warnings collector

@@ -96,10 +96,6 @@ using namespace arangodb::statistics;
 StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
     : Thread(vocbase.server(), "StatisticsWorker"), _gcTask(GC_STATS), _vocbase(vocbase) {
 
-  // statistics queries don't work on DB servers, so we should not 
-  // run the StatisticsWorker on DB servers! 
-  TRI_ASSERT(!ServerState::instance()->isDBServer());
-
   _bytesSentDistribution.openArray();
 
   for (auto const& val : BytesSentDistributionCuts) {

@@ -24,8 +24,11 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -34,6 +37,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Scheduler/Scheduler.h"
 
 struct TRI_vocbase_t;
 
@@ -60,7 +64,6 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
   void start() override final;
   void beginShutdown() override final;
-  void stop() override final;
   void unprepare() override final;
 
   bool isStopping() const noexcept;
@@ -68,6 +71,8 @@ class PregelFeature final : public application_features::ApplicationFeature {
   uint64_t createExecutionNumber();
   void addConductor(std::shared_ptr<Conductor>&&, uint64_t executionNumber);
   std::shared_ptr<Conductor> conductor(uint64_t executionNumber);
+
+  void garbageCollectConductors();
 
   void addWorker(std::shared_ptr<IWorker>&&, uint64_t executionNumber);
   std::shared_ptr<IWorker> worker(uint64_t executionNumber);
@@ -80,9 +85,9 @@ class PregelFeature final : public application_features::ApplicationFeature {
   }
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
-                                     VPackSlice const& body, VPackBuilder& outResponse);
+                              VPackSlice const& body, VPackBuilder& outResponse);
   void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
-                                  VPackSlice const& body, VPackBuilder& outBuilder);
+                           VPackSlice const& body, VPackBuilder& outBuilder);
 
   uint64_t numberOfActiveConductors() const;
 
@@ -90,8 +95,14 @@ class PregelFeature final : public application_features::ApplicationFeature {
     _softShutdownOngoing.store(true, std::memory_order_relaxed);
   }
 
+  Result toVelocyPack(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
+                      bool allDatabases, bool fanout) const;
+
  private:
+  void scheduleGarbageCollection();
+
   mutable Mutex _mutex;
+  
   std::unique_ptr<RecoveryManager> _recoveryManager;
   /// @brief _recoveryManagerPtr always points to the same object as _recoveryManager, but allows
   /// the pointer to be read atomically. This is necessary because _recoveryManager is initialized
@@ -99,8 +110,16 @@ class PregelFeature final : public application_features::ApplicationFeature {
   /// pointer. This only works because _recoveryManager is only initialzed once and lives until the
   /// owning PregelFeature instance is also destroyed.
   std::atomic<RecoveryManager*> _recoveryManagerPtr{nullptr};
+  
+  Scheduler::WorkHandle _gcHandle;
 
-  std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<Conductor>>> _conductors;
+  struct ConductorEntry {
+    std::string user;
+    std::chrono::steady_clock::time_point expires;
+    std::shared_ptr<Conductor> conductor;
+  };
+
+  std::unordered_map<uint64_t, ConductorEntry> _conductors;
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>> _workers;
 
   std::atomic<bool> _softShutdownOngoing;
