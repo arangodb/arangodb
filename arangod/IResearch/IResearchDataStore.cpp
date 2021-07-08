@@ -132,12 +132,13 @@ using irs::async_utils::read_write_mutex;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
+template<typename FieldIteratorType, typename MetaType>
 inline Result insertDocument(irs::index_writer::documents_context& ctx,
                              transaction::Methods const& trx,
-                             FieldIterator& body,
+                             FieldIteratorType& body,
                              velocypack::Slice const& document,
                              LocalDocumentId const& documentId,
-                             IResearchLinkMeta const& meta,
+                             MetaType const& meta,
                              IndexId id) {
   body.reset(document, meta);  // reset reusable container to doc
 
@@ -580,12 +581,14 @@ IResearchDataStore::IResearchDataStore(IndexId iid, LogicalCollection& collectio
   };
 }
 
+/*
 IResearchDataStore::IResearchDataStore(IndexId iid, LogicalCollection& collection,
                                        IResearchLinkMeta&& meta)
   : IResearchDataStore(iid, collection) {
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
   _comparer.reset(_meta._sort);
 }
+*/
  
 IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
   // '_dataStore' can be asynchronously modified
@@ -1208,11 +1211,12 @@ Result IResearchDataStore::remove(
 
   return {};
 }
-
+template<typename FieldIteratorType, typename MetaType>
 Result IResearchDataStore::insert(
     transaction::Methods& trx,
     LocalDocumentId const& documentId,
-    velocypack::Slice const doc) {
+    velocypack::Slice const doc,
+    MetaType const& meta) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -1226,29 +1230,29 @@ Result IResearchDataStore::insert(
     return {};
   }
 
-  auto insertImpl = [this, &trx, &doc, &documentId](
+  auto insertImpl = [&meta, &trx, &doc, &documentId, id = id()](
                         irs::index_writer::documents_context& ctx) -> Result {
     try {
-      FieldIterator body(trx, _meta._collectionName, _id);
+      FieldIteratorType body(trx, meta._collectionName, id);
 
-      return insertDocument(ctx, trx, body, doc, documentId, _meta, id());
+      return insertDocument(ctx, trx, body, doc, documentId, meta, id);
     } catch (basics::Exception const& e) {
       return {
           e.code(),
           "caught exception while inserting document into arangosearch link '" +
-              std::to_string(id().id()) + "', revision '" +
+              std::to_string(id.id()) + "', revision '" +
               std::to_string(documentId.id()) + "': " + e.what()};
     } catch (std::exception const& e) {
       return {
           TRI_ERROR_INTERNAL,
           "caught exception while inserting document into arangosearch link '" +
-              std::to_string(id().id()) + "', revision '" +
+              std::to_string(id.id()) + "', revision '" +
               std::to_string(documentId.id()) + "': " + e.what()};
     } catch (...) {
       return {
           TRI_ERROR_INTERNAL,
           "caught exception while inserting document into arangosearch link '" +
-              std::to_string(id().id()) + "', revision '" +
+              std::to_string(id.id()) + "', revision '" +
               std::to_string(documentId.id()) + "'"};
     }
   };
@@ -1477,6 +1481,18 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
 
   return dataPath;
 }
+
+template Result IResearchDataStore::insert<FieldIterator, IResearchLinkMeta>(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const doc,
+    IResearchLinkMeta const& meta);
+
+template Result IResearchDataStore::insert<InvertedIndexFieldIterator, InvertedIndexFieldMeta>(
+    transaction::Methods& trx,
+    LocalDocumentId const& documentId,
+    velocypack::Slice const doc,
+    InvertedIndexFieldMeta const& meta);
 
 } // namespace iresearch
 } // namespace arangodb

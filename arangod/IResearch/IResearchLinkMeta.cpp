@@ -979,5 +979,287 @@ size_t IResearchLinkMeta::memory() const noexcept {
   return size;
 }
 
+bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationServer& server,
+                                     velocypack::Slice const& slice,
+                                     bool readAnalyzerDefinition,
+                                     std::string& errorField,
+                                     irs::string_ref const defaultVocbase) {
+  // copied part begin FIXME: verify and move to common base class if possible
+  {
+    // optional stored values
+    static VPackStringRef const fieldName("storedValues");
+
+    auto const field = slice.get(fieldName);
+    if (readAnalyzerDefinition && !_storedValues.fromVelocyPack(field, errorField)) {
+      return false;
+    }
+  }
+  {
+    // optional sort compression
+    static VPackStringRef const fieldName("primarySortCompression");
+    auto const field = slice.get(fieldName);
+
+    if (readAnalyzerDefinition &&
+        (_sortCompression = columnCompressionFromString(getStringRef(field))) == nullptr) {
+      return false;
+    }
+  }
+  {
+    // clear existing definitions
+    _analyzerDefinitions.clear();
+
+    // optional object list
+    static const std::string fieldName("analyzerDefinitions");
+
+    // load analyzer definitions if requested (used on cluster)
+    // @note must load definitions before loading 'analyzers' to ensure presence
+    if (readAnalyzerDefinition) {
+      auto field = slice.get(fieldName);
+
+      if (!field.isArray()) {
+        errorField = fieldName;
+
+        return false;
+      }
+
+      for (velocypack::ArrayIterator itr(field); itr.valid(); ++itr) {
+        auto value = *itr;
+
+        if (!value.isObject()) {
+          errorField = fieldName + "[" + std::to_string(itr.index()) + "]";
+
+          return false;
+        }
+
+        std::string name;
+
+        {
+          // required string value
+          static const std::string subFieldName("name");
+
+          if (!value.hasKey(subFieldName)  // missing required filed
+              || !value.get(subFieldName).isString()) {
+            errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
+
+            return false;
+          }
+
+          name = value.get(subFieldName).copyString();
+          if (!defaultVocbase.null()) {
+            name = IResearchAnalyzerFeature::normalize(name, defaultVocbase, true);
+          }
+        }
+        irs::string_ref type;
+
+        {
+          // required string value
+          static const std::string subFieldName("type");
+
+          if (!value.hasKey(subFieldName)  // missing required filed
+              || !value.get(subFieldName).isString()) {
+            errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
+
+            return false;
+          }
+
+          type = getStringRef(value.get(subFieldName));
+        }
+
+        VPackSlice properties;
+
+        {
+          // optional string value
+          static const std::string subFieldName("properties");
+
+          if (value.hasKey(subFieldName)) {
+            auto subField = value.get(subFieldName);
+
+            if (!subField.isObject() && !subField.isNull()) {
+              errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
+
+              return false;
+            }
+
+            properties = subField;
+          }
+        }
+
+        irs::flags features;
+
+        {
+          // optional string list
+          static const std::string subFieldName("features");
+
+          if (value.hasKey(subFieldName)) {
+            auto subField = value.get(subFieldName);
+
+            if (!subField.isArray()) {
+              errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
+
+              return false;
+            }
+
+            for (velocypack::ArrayIterator subItr(subField); subItr.valid(); ++subItr) {
+              auto subValue = *subItr;
+
+              if (!subValue.isString() && !subValue.isNull()) {
+                errorField = fieldName + "[" + std::to_string(itr.index()) +
+                             "]." + subFieldName + "[" +
+                             std::to_string(subItr.index()) + +"]";
+
+                return false;
+              }
+
+              const auto featureName = getStringRef(subValue);
+              const auto feature = irs::attributes::get(featureName);
+
+              if (!feature) {
+                errorField = fieldName + "[" + std::to_string(itr.index()) +
+                             "]." + subFieldName + "." + std::string(featureName);
+
+                return false;
+              }
+
+              features.add(feature.id());
+            }
+          }
+        }
+
+        arangodb::AnalyzersRevision::Revision revision{arangodb::AnalyzersRevision::MIN};
+        auto const revisionSlice = value.get(arangodb::StaticStrings::AnalyzersRevision);
+        if (!revisionSlice.isNone()) {
+          if (revisionSlice.isNumber()) {
+            revision = revisionSlice.getNumber<arangodb::AnalyzersRevision::Revision>();
+          } else {
+            errorField = arangodb::StaticStrings::AnalyzersRevision;
+            return false;
+          }
+        }
+
+        AnalyzerPool::ptr analyzer;
+        auto const res =
+            IResearchAnalyzerFeature::createAnalyzerPool(analyzer, name, type, properties,
+                                                         revision, features);
+
+        if (res.fail() || !analyzer) {
+          errorField = fieldName + "[" + std::to_string(itr.index()) + "]";
+          if (res.fail()) {
+            errorField.append(": ").append(res.errorMessage());
+          }
+          return false;
+        }
+        _analyzerDefinitions.emplace(analyzer);
+      }
+    }
+  }
+  // end of the copied part
+  static const std::string fieldsFieldName("fields");
+  // for index there is no recursive struct and fields array is mandatory
+  auto field = slice.get(fieldsFieldName);
+  if (!field.isArray() || field.isEmptyArray()) {
+    errorField = fieldsFieldName;
+    return false;
+  }
+  auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
+  VPackBuilder surrogateFields;
+  for (VPackArrayIterator itr(field); itr.valid(); itr.next()) {
+    auto val = itr.value();
+    if (val.isString()) {
+      try {
+        std::vector<basics::AttributeName> fieldParts;
+        TRI_ParseAttributeString(val.stringView(), fieldParts, false);
+        _fields.emplace_back(fieldParts, IResearchAnalyzerFeature::identity());  // FIXME: deduplicate
+      } catch (arangodb::basics::Exception const& err) {
+        LOG_TOPIC("1d04c", ERR, iresearch::TOPIC)
+            << "Error parsing attribute: " << err.what();
+        errorField =
+            fieldsFieldName + "[" + basics::StringUtils::itoa(itr.index()) + "]";
+        return false;
+      }
+    } else if (val.isObject()) {
+      auto nameSlice = val.get("name");
+      if (nameSlice.isString()) {
+        std::vector<basics::AttributeName> fieldParts;
+        try {
+          TRI_ParseAttributeString(nameSlice.stringRef(), fieldParts, false);
+        } catch (arangodb::basics::Exception const& err) {
+          LOG_TOPIC("84c20", ERR, iresearch::TOPIC)
+              << "Error parsing attribute: " << err.what();
+          errorField = fieldsFieldName + "[" +
+                       basics::StringUtils::itoa(itr.index()) + "]";
+          return false;
+        }
+        // and now set analyzers to the last one
+        if (val.hasKey("analyzer")) {
+          auto analyzerSlice = val.get("analyzer");
+          if (analyzerSlice.isString()) {
+            auto name = analyzerSlice.copyString();
+            auto shortName = name;
+            if (!defaultVocbase.null()) {
+              name = IResearchAnalyzerFeature::normalize(name, defaultVocbase);
+              shortName = IResearchAnalyzerFeature::normalize(name, defaultVocbase, false);
+            }
+            AnalyzerPool::ptr analyzer;
+            bool found = false;
+            if (!_analyzerDefinitions.empty()) {
+              auto it = _analyzerDefinitions.find(irs::string_ref(name));
+
+              if (it != _analyzerDefinitions.end()) {
+                analyzer = *it;
+                found = static_cast<bool>(analyzer);
+
+                if (ADB_UNLIKELY(!found)) {
+                  TRI_ASSERT(false);               // should not happen
+                  _analyzerDefinitions.erase(it);  // remove null analyzer
+                }
+              }
+            }
+            if (!found) {
+              // for cluster only check cache to avoid ClusterInfo locking issues
+              // analyzer should have been populated via 'analyzerDefinitions' above
+              analyzer = analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST,
+                                       ServerState::instance()->isClusterRole());
+            }
+            if (!analyzer) {
+              errorField = fieldsFieldName + "[" +
+                           basics::StringUtils::itoa(itr.index()) + "]" +
+                           ".analyzer";
+              LOG_TOPIC("2d79d", ERR, iresearch::TOPIC)
+                  << "Error loading analyzer '" << name << "' requested in " << errorField;
+              return false;
+            }
+            if (!found) {
+              // save in referencedAnalyzers
+              _analyzerDefinitions.emplace(analyzer);
+            }
+            _fields.emplace_back(fieldParts, analyzer);
+          } else {
+            errorField = fieldsFieldName + "[" + basics::StringUtils::itoa(itr.index()) +
+                         "]" + ".analyzer";
+            return false;
+          }
+        } else {
+          _fields.emplace_back(fieldParts, IResearchAnalyzerFeature::identity());
+        }
+      } else {
+        errorField =
+            fieldsFieldName + "[" + basics::StringUtils::itoa(itr.index()) + "]";
+        return false;
+      }
+    } else {
+      errorField =
+          fieldsFieldName + "[" + basics::StringUtils::itoa(itr.index()) + "]";
+      return false;
+    }
+  }
+  return false;
+}
+
+bool  InvertedIndexFieldMeta::json(arangodb::application_features::ApplicationServer& server,
+  arangodb::velocypack::Builder& builder,
+  TRI_vocbase_t const* defaultVocbase = nullptr) const {
+  return false;
+}
+
 }  // namespace iresearch
 }  // namespace arangodb

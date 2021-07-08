@@ -37,7 +37,7 @@ namespace iresearch {
 
 class IResearchInvertedIndex  : public IResearchDataStore {
  public:
-  explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection, IResearchLinkMeta&& meta);
+  explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection, InvertedIndexFieldMeta&& meta);
 
   void toVelocyPack(application_features::ApplicationServer& server,
                     TRI_vocbase_t const* defaultVocbase,
@@ -49,7 +49,7 @@ class IResearchInvertedIndex  : public IResearchDataStore {
   
   Result init(InitCallback const& initCallback = {});
 
-  static std::vector<std::vector<arangodb::basics::AttributeName>> fields(IResearchLinkMeta const& meta);
+  static std::vector<std::vector<arangodb::basics::AttributeName>> fields(InvertedIndexFieldMeta const& meta);
 
   bool matchesFieldsDefinition(VPackSlice other) const;
 
@@ -78,6 +78,8 @@ class IResearchInvertedIndex  : public IResearchDataStore {
 
   aql::AstNode* specializeCondition(aql::AstNode* node,
                                     aql::Variable const* reference) const;
+
+  InvertedIndexFieldMeta _meta;
 };
 } // namespace iresearch
 } // namespace arangodb

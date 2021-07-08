@@ -295,6 +295,48 @@ struct IResearchLinkMeta : public FieldMeta {
   size_t memory() const noexcept;
 };  // IResearchLinkMeta
 
+struct InvertedIndexFieldMeta {
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initialize InvertedIndexFieldMeta with values from a JSON description
+  ///        return success or set 'errorField' to specific field with error
+  ///        on failure state is undefined
+  /// @param server underlying application server
+  /// @param slice input definition
+  /// @param readAnalyzerDefinition allow reading analyzer definitions instead
+  ///                               of just name
+  /// @param errorField field causing error (out-param)
+  /// @param defaultVocbase fallback vocbase for analyzer name normalization
+  ///                       nullptr == do not normalize
+  ////////////////////////////////////////////////////////////////////////////////
+  bool init(arangodb::application_features::ApplicationServer& server,
+            velocypack::Slice const& slice,
+            bool readAnalyzerDefinition,
+            std::string& errorField,
+            irs::string_ref const defaultVocbase);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a JSON description 
+  /// @param server underlying application server
+  /// @param builder output buffer
+  /// @param defaultVocbase fallback vocbase for analyzer name normalization
+  ///                       nullptr == do not normalize
+  /// @param defaultVocbase fallback vocbase
+  ////////////////////////////////////////////////////////////////////////////////
+  bool json(arangodb::application_features::ApplicationServer& server,
+            arangodb::velocypack::Builder& builder,
+            TRI_vocbase_t const* defaultVocbase = nullptr) const;
+
+
+  using FieldRecord = std::pair<std::vector<basics::AttributeName>, FieldMeta::Analyzer>;
+  using Fields = std::vector<FieldRecord>;
+
+  std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
+  Fields _fields;
+  IResearchViewSort _sort; // sort condition associated with the link
+  IResearchViewStoredValues _storedValues; // stored values associated with the link
+  irs::type_info::type_id _sortCompression{getDefaultCompression()};
+}; // InvertedIndexFieldMeta
+
 }  // namespace iresearch
 }  // namespace arangodb
 

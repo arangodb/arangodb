@@ -158,7 +158,7 @@ class IResearchDataStore {
   };
 
   IResearchDataStore(IndexId iid, LogicalCollection& collection);
-  IResearchDataStore(IndexId iid, LogicalCollection& collection, IResearchLinkMeta&& meta);
+  //IResearchDataStore(IndexId iid, LogicalCollection& collection, IResearchLinkMeta&& meta);
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief 'this' for the lifetime of the link data-store
   ///        for use with asynchronous calls, e.g. callbacks, view
@@ -223,9 +223,11 @@ class IResearchDataStore {
   /// @brief insert an ArangoDB document into an iResearch View using '_meta' params
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
+  template<typename FieldIteratorType, typename MetaType>
   Result insert(transaction::Methods& trx,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const doc);
+                velocypack::Slice const doc,
+                MetaType const& meta);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update runtine data processing properties
@@ -356,7 +358,6 @@ class IResearchDataStore {
   std::mutex _commitMutex; // prevents data store sequential commits
   std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
   VPackComparer _comparer;
-  IResearchLinkMeta const _meta;
 };
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,

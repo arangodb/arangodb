@@ -29,7 +29,7 @@
 namespace arangodb {
 namespace iresearch {
 
-class IResearchRocksDBInvertedIndex : public IResearchInvertedIndex, public RocksDBIndex {
+class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex, public RocksDBIndex {
  public:
   IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection, uint64_t objectId,
                                 std::string const& name, IResearchLinkMeta&& meta);
@@ -106,7 +106,8 @@ class IResearchRocksDBInvertedIndex : public IResearchInvertedIndex, public Rock
                 VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
-    return IResearchDataStore::insert(trx, documentId, doc);
+    return IResearchDataStore::insert<InvertedIndexFieldIterator, 
+                                      InvertedIndexFieldMeta>(trx, documentId, doc, _meta);
   }
 
   Result remove(transaction::Methods& trx,

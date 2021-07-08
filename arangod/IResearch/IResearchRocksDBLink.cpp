@@ -136,6 +136,5 @@ std::shared_ptr<IResearchRocksDBLink::IndexFactory> IResearchRocksDBLink::create
   return std::shared_ptr<IResearchRocksDBLink::IndexFactory>(
       new IResearchRocksDBLink::IndexFactory(server));
 }
-
 }  // namespace iresearch
 }  // namespace arangodb

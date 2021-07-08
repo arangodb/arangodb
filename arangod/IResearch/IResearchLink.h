@@ -158,6 +158,7 @@ class IResearchLink : public IResearchDataStore {
 
  private:
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
+  IResearchLinkMeta const _meta;
 };  // IResearchLink
 
 }  // namespace iresearch

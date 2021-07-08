@@ -79,7 +79,7 @@ struct CheckFieldsAccess {
                      std::hash<std::vector<basics::AttributeName>>,
                      std::equal_to<std::vector<basics::AttributeName>>> _fields;
 };
-
+/*
 class FieldsBuilder {
  public:
   explicit FieldsBuilder(std::vector<std::vector<basics::AttributeName>>& fields) : _fields(fields) {}
@@ -140,6 +140,7 @@ bool visitFields(
   }
   return true;
 }
+*/
 
 constexpr irs::payload NoPayload;
 
@@ -281,8 +282,8 @@ namespace arangodb {
 namespace iresearch {
 
 arangodb::iresearch::IResearchInvertedIndex::IResearchInvertedIndex(
-    IndexId iid, LogicalCollection& collection, IResearchLinkMeta&& meta)
-  : IResearchDataStore(iid, collection, std::move(meta)) {}
+    IndexId iid, LogicalCollection& collection, InvertedIndexFieldMeta&& meta)
+  : IResearchDataStore(iid, collection), _meta(std::move(meta)) {}
 
 // Analyzer names storing
 //  - forPersistence ::<analyzer> from system and <analyzer> for local and definitions are stored.
@@ -292,8 +293,8 @@ void IResearchInvertedIndex::toVelocyPack(
     TRI_vocbase_t const* defaultVocbase,
     velocypack::Builder& builder,
     bool forPersistence) const {
-  if (_dataStore._meta.json(builder, nullptr, nullptr) &&
-    _meta.json(server, builder, forPersistence, nullptr, defaultVocbase, nullptr, true)) {
+  if (_dataStore._meta.json(builder, nullptr, nullptr)) {
+    //_meta.json(server, builder, forPersistence, nullptr, defaultVocbase, nullptr, true)) {
   } else {
     THROW_ARANGO_EXCEPTION(Result(
         TRI_ERROR_INTERNAL,
@@ -301,10 +302,11 @@ void IResearchInvertedIndex::toVelocyPack(
   }
 }
 
-std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex::fields(IResearchLinkMeta const& meta) {
+std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex::fields(InvertedIndexFieldMeta const& meta) {
   std::vector<std::vector<arangodb::basics::AttributeName>> res;
-  FieldsBuilder fb(res);
-  visitFields({0, irs::hashed_string_ref::NIL}, meta, fb);
+  for (auto const& f : meta._fields) {
+    res.push_back(f.first);
+  }
   return res;
 }
 
@@ -342,10 +344,6 @@ AnalyzerPool::ptr IResearchInvertedIndex::findAnalyzer(AnalyzerPool const& analy
 }
 
 bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
-  std::vector<std::vector<basics::AttributeName>> myFields;
-  FieldsBuilderWithAnalyzer fb(myFields);
-  visitFields({0, irs::hashed_string_ref::NIL}, _meta, fb);
-  TRI_ASSERT(fb._analyzerNames.size() == myFields.size());
   auto value = other.get(arangodb::StaticStrings::IndexFields);
 
   if (!value.isArray()) {
@@ -353,7 +351,7 @@ bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
   }
 
   size_t const n = static_cast<size_t>(value.length());
-  auto const count = myFields.size();
+  auto const count =_meta._fields.size();
   if (n != count) {
     return false;
   }
@@ -379,10 +377,9 @@ bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
     auto in = name.stringRef();
     irs::string_ref analyzerName = analyzer.stringView();
     TRI_ParseAttributeString(in, translate, false);
-    size_t fieldIdx{0};
-    for (auto const& f : myFields) {
-      if (fb._analyzerNames[fieldIdx++] == analyzerName) {
-        if (arangodb::basics::AttributeName::isIdentical(f, translate, false)) {
+    for (auto const& f : _meta._fields) {
+      if (f.second._shortName == analyzerName) { // FIXME check case custom1 <> _system::custom1
+        if (arangodb::basics::AttributeName::isIdentical(f.first, translate, false)) {
           matched++;
           break;
         }

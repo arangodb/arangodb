@@ -212,6 +212,50 @@ class FieldIterator {
 }; // FieldIterator
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief allows to iterate over the provided VPack accoring the specified
+///        IResearchInvertedIndexMeta
+////////////////////////////////////////////////////////////////////////////////
+class InvertedIndexFieldIterator {
+ public:
+  // must match interface of FieldIterator to make usable template insert implementation
+  Field const& operator*() const noexcept { return _value; }
+
+  InvertedIndexFieldIterator& operator++() {
+    next();
+    return *this;
+  }
+
+  explicit InvertedIndexFieldIterator(arangodb::transaction::Methods& trx, irs::string_ref collection, IndexId indexId);
+
+  bool valid() const noexcept { return _fieldsMeta && _begin != _end; }
+
+  void reset(velocypack::Slice slice,
+             InvertedIndexFieldMeta const& fieldsMeta) {
+    _slice = slice;
+    _fieldsMeta = &fieldsMeta;
+    _begin = _fieldsMeta->_fields.begin();
+    _end = _fieldsMeta->_fields.end();
+  }
+
+ private:
+  void next();
+  InvertedIndexFieldMeta::Fields::const_iterator _begin;
+  InvertedIndexFieldMeta::Fields::const_iterator _end;
+  InvertedIndexFieldMeta const* _fieldsMeta;
+  Field _value;  // iterator's value
+  VPackSlice _slice; // input slice
+  VPackSlice _valueSlice;
+
+  // Support for outputting primitive type from analyzer
+  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
+                                         VPackSlice slice);
+
+  irs::analysis::analyzer* _currentTypedAnalyzer{nullptr};
+  VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
+  PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief represents stored primary key of the ArangoDB document
 ////////////////////////////////////////////////////////////////////////////////
 struct DocumentPrimaryKey {
