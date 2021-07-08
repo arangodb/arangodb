@@ -168,25 +168,48 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
   for (auto& it : requests) {
     if (it.has_value()) {
       delayedFuture(it->_executionDelay).thenFinal([it = it, logMetrics](auto&&) mutable {
+        // _follower is an alias of _parentLog
+        TRI_ASSERT(!it->_parentLog.owner_before(it->_follower) &&
+                   !it->_follower.owner_before(it->_parentLog));
         // Let's check whether our log is still there, and abort otherwise
-        auto guard = it->_parentLog.lock();
-        if (guard == nullptr) {
+        auto logLeader = it->_parentLog.lock();
+        auto follower = it->_follower.lock();
+        // as mentioned before, both are owning the same object, thus:
+        TRI_ASSERT((follower == nullptr) == (logLeader == nullptr));
+        if (logLeader == nullptr) {
+          // TODO Can we provide more information here without too much overhead?
           LOG_TOPIC("de312", DEBUG, Logger::REPLICATION2)
-              << "parent log already gone, messageId = " << it->_request.messageId;
+              << "parent log already gone, not sending any more "
+                 "AppendEntryRequests";
           return;
         }
 
-        auto messageId = it->_request.messageId;
-        LOG_CTX("1b0ec", TRACE, it->_follower->logContext)
+        auto [request, lastIndex] =
+            logLeader->_guardedLeaderData.doUnderLock([&](auto const& self) {
+              auto lastAvailableIndex = self._inMemoryLog.getLastTermIndexPair();
+              LOG_CTX("71801", TRACE, follower->logContext)
+                  << "last acked index = " << follower->lastAckedEntry
+                  << ", current index = " << lastAvailableIndex
+                  << ", last acked commit index = " << follower->lastAckedCommitIndex
+                  << ", current commit index = " << self._commitIndex;
+              // We can only get here if there is some new information for this follower
+              TRI_ASSERT(follower->lastAckedEntry.index != lastAvailableIndex.index ||
+                         self._commitIndex != follower->lastAckedCommitIndex);
+
+              return self.createAppendEntriesRequest(*follower, lastAvailableIndex);
+            });
+
+        auto messageId = request.messageId;
+        LOG_CTX("1b0ec", TRACE, follower->logContext)
             << "sending append entries, messageId = " << messageId;
         auto startTime = std::chrono::steady_clock::now();
         // Capture a weak pointer `parentLog` that will be locked
         // when the request returns. If the locking is successful
         // we are still in the same term.
-        it->_follower->_impl->appendEntries(std::move(it->_request))
-            .thenFinal([parentLog = it->_parentLog, follower = it->_follower,
-                        lastIndex = it->_lastIndex, currentCommitIndex = it->_currentCommitIndex,
-                        currentTerm = it->_currentTerm, messageId = messageId, startTime,
+        follower->_impl->appendEntries(std::move(request))
+            .thenFinal([weakParentLog = it->_parentLog, weakFollower = it->_follower,
+                        lastIndex = lastIndex, currentCommitIndex = request.leaderCommit,
+                        currentTerm = logLeader->_currentTerm, messageId = messageId, startTime,
                         logMetrics = logMetrics](futures::Try<AppendEntriesResult>&& res) noexcept {
               // This has to remain noexcept, because the code below is not exception safe
               auto const endTime = std::chrono::steady_clock::now();
@@ -194,7 +217,9 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
               // TODO report (endTime - startTime) to
               //      server().getFeature<ReplicatedLogFeature>().metricReplicatedLogAppendEntriesRtt(),
               //      probably implicitly so tests can be done as well
-              if (auto self = parentLog.lock()) {
+              if (auto self = weakParentLog.lock()) {
+                // If we successfully acquired parentLog, this cannot fail.
+                auto follower = weakFollower.lock();
                 using namespace std::chrono_literals;
                 auto const duration = endTime - startTime;
                 self->_logMetrics->replicatedLogAppendEntriesRttUs->count(duration / 1us);
@@ -474,7 +499,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerIn
     return std::nullopt;  // wait for the request to return
   }
 
-  auto currentCommitIndex = _commitIndex;
   auto lastAvailableIndex = _inMemoryLog.getLastTermIndexPair();
   LOG_CTX("8844a", TRACE, follower.logContext)
       << "last acked index = " << follower.lastAckedEntry
@@ -487,6 +511,28 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerIn
     return std::nullopt;  // nothing to replicate
   }
 
+  auto parentLog = _self.shared_from_this();
+  follower.requestInFlight = true;
+  auto preparedRequest = PreparedAppendEntryRequest{};
+  preparedRequest._follower = std::shared_ptr<FollowerInfo>(parentLog, &follower);
+  preparedRequest._parentLog = parentLog;
+  if (follower.numErrorsSinceLastAnswer > 0) {
+    using namespace std::chrono_literals;
+    // Capped exponential backoff. Wait for 100us, 200us, 400us, ...
+    // until at most 100us * 2 ** 17 == 13.11s.
+    preparedRequest._executionDelay = 100us * (1u << std::min(follower.numErrorsSinceLastAnswer, std::size_t{17}));
+    LOG_CTX("2a6f7", DEBUG, follower.logContext)
+        << follower.numErrorsSinceLastAnswer << " requests failed, last one was "
+        << follower.lastSentMessageId << " - waiting "
+        << preparedRequest._executionDelay / 1ms << "ms before sending next message.";
+  }
+
+  return preparedRequest;
+}
+
+auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
+    replicated_log::LogLeader::FollowerInfo& follower, TermIndexPair const& lastAvailableIndex) const
+    -> std::pair<AppendEntriesRequest, TermIndexPair> {
   auto const lastAcked = _inMemoryLog.getEntryByIndex(follower.lastAckedEntry.index);
 
   AppendEntriesRequest req;
@@ -517,34 +563,16 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerIn
   }
 
   auto isEmptyAppendEntries = req.entries.empty();
-  auto lastIndex =
-      isEmptyAppendEntries ? lastAvailableIndex : req.entries.back().logTermIndexPair();
+  auto lastIndex = isEmptyAppendEntries ? lastAvailableIndex
+                                        : req.entries.back().logTermIndexPair();
 
   LOG_CTX("af3c6", TRACE, follower.logContext)
-      << "preparing append entries with " << req.entries.size()
+      << "creating append entries request with " << req.entries.size()
       << " entries , prevLogTerm = " << req.prevLogTerm
       << ", prevLogIndex = " << req.prevLogIndex
       << ", leaderCommit = " << req.leaderCommit;
 
-  follower.requestInFlight = true;
-  auto preparedRequest = PreparedAppendEntryRequest{};
-  preparedRequest._follower = std::shared_ptr<FollowerInfo>(_self.shared_from_this(), &follower);
-  preparedRequest._currentTerm = _self._currentTerm;
-  preparedRequest._currentCommitIndex = currentCommitIndex;
-  preparedRequest._lastIndex = lastIndex;
-  preparedRequest._parentLog = _self.weak_from_this();
-  preparedRequest._request = std::move(req);
-  if (follower.numErrorsSinceLastAnswer > 0) {
-    using namespace std::chrono_literals;
-    // Capped exponential backoff. Wait for 100us, 200us, 400us, ...
-    // until at most 100us * 2 ** 17 == 13.11s.
-    preparedRequest._executionDelay = 100us * (1u << std::min(follower.numErrorsSinceLastAnswer, std::size_t{17}));
-    LOG_CTX("2a6f7", DEBUG, follower.logContext)
-        << "requests failed " << follower.numErrorsSinceLastAnswer
-        << " - waiting " << preparedRequest._executionDelay / 1ms << "ms before sending message " << preparedRequest._request.messageId;
-  }
-
-  return preparedRequest;
+  return std::make_pair(std::move(req), lastIndex);
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(

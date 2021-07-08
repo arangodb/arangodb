@@ -152,21 +152,11 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   struct PreparedAppendEntryRequest {
     // TODO Write a constructor, delete the default constructor
-    // TODO Make this a weak_ptr. It will always be an alias of _parentLog.
-    std::shared_ptr<FollowerInfo> _follower;
-    // TODO Currently, the AppendEntriesRequest is built before we wait for
-    //      the _executionDelay. This is suboptimal in the sense that we might
-    //      be able to squeeze some additional log entries in the request if we
-    //      build it only after the wait.
-    //      So the task is to remove _request from this struct, and only build
-    //      it right before the request should actually be sent.
-    AppendEntriesRequest _request;
     std::weak_ptr<LogLeader> _parentLog;
-    TermIndexPair _lastIndex;
-    LogIndex _currentCommitIndex;
-    // TODO _currentTerm is probably not necessary here, we could read it in
-    //     executeAppendEntries, as we don't need to acquire the lock to read it.
-    LogTerm _currentTerm;
+    // This weak_ptr will always be an alias of _parentLog. It's thus not
+    // strictly necessary, but makes it more clear that we do share ownership
+    // of this particular FollowerInfo.
+    std::weak_ptr<FollowerInfo> _follower;
     std::chrono::steady_clock::duration _executionDelay;
   };
 
@@ -208,6 +198,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
         -> std::unique_ptr<LogIterator>;
 
     [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
+
+    [[nodiscard]] auto createAppendEntriesRequest(FollowerInfo& follower,
+                                                  TermIndexPair const& lastAvailableIndex) const
+        -> std::pair<AppendEntriesRequest, TermIndexPair>;
 
     LogLeader& _self;
     InMemoryLog _inMemoryLog;
