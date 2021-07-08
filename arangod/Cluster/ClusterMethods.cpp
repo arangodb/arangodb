@@ -2658,17 +2658,6 @@ auto initializeShardMap(bool enforceReplicationFactor,
                                   dbServers, !col->system());
   }  // if - distributeShardsLike.empty()
 }
-
-auto initializeReplicatedLogs(LogicalCollection const& col, ShardMap const& shards,
-                              ClusterInfo& ci) -> std::shared_ptr<ReplicatedLogsMap> {
-  auto replicatedLogsMap = std::make_shared<ReplicatedLogsMap>();
-  for (auto const& it : shards) {
-    auto const& [key, value] = it;
-    replicatedLogsMap->try_emplace(key, ci.uniqid());
-  }
-
-  return replicatedLogsMap;
-}
 }  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2726,17 +2715,6 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
 
       col->setShardMap(shards);
 
-      auto replicatedLogs =
-          std::invoke([&]() -> std::optional<std::shared_ptr<ReplicatedLogsMap>> {
-            if (vocbase.replicationVersion() == replication::Version::TWO) {
-              auto replicatedLogs = initializeReplicatedLogs(*col, *shards, ci);
-              col->setReplicatedLogsMap(replicatedLogs);
-              return replicatedLogs;
-            } else {
-              return std::nullopt;
-            }
-          });
-
       std::unordered_set<std::string> const ignoreKeys{
           "allowUserKeys", "cid",     "globallyUniqueId", "count",
           "planId",        "version", "objectId"};
@@ -2749,14 +2727,13 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
           std::to_string(col->id().id()), col->numberOfShards(),
           col->replicationFactor(), col->writeConcern(), col->waitForSync(),
           waitForSyncReplication, velocy.slice(), serverState->getId(),
-          serverState->getRebootId(), replicatedLogs});
+          serverState->getRebootId()});
       vpackData.emplace_back(velocy.steal());
     }  // for col : collections
 
     // pass in the *endTime* here, not a timeout!
     Result res = ci.createCollectionsCoordinator(dbName, infos, endTime,
-                                                 isNewDatabase, colToDistributeLike,
-                                                 vocbase.replicationVersion());
+                                                 isNewDatabase, colToDistributeLike);
 
     if (res.ok()) {
       // success! exit the loop and go on

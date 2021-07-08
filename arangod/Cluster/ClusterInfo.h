@@ -673,8 +673,7 @@ class ClusterInfo final {
       uint64_t writeConcern, bool waitForSync, bool waitForReplication,
       velocypack::Slice const& json, double timeout, bool isNewDatabase,
       std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
-      replication::Version replicationVersion,
-      std::optional<std::shared_ptr<std::unordered_map<ShardID, replication2::LogId>>> replicatedLogs);
+      replication::Version replicationVersion);
 
   /// @brief this method does an atomic check of the preconditions for the
   /// collections to be created, using the currently loaded plan. it populates
@@ -691,8 +690,7 @@ class ClusterInfo final {
   Result createCollectionsCoordinator(std::string const& databaseName,
                                       std::vector<ClusterCollectionCreationInfo>& infos,
                                       double endTime, bool isNewDatabase,
-                                      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
-                                      replication::Version replicationVersion);
+                                      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
 
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////

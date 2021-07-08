@@ -2706,15 +2706,13 @@ Result ClusterInfo::createCollectionCoordinator(
     bool waitForSync, bool waitForReplication, velocypack::Slice const& json,
     double timeout, bool isNewDatabase,
     std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
-    replication::Version replicationVersion,
-    std::optional<std::shared_ptr<std::unordered_map<ShardID, replication2::LogId>>> replicatedLogs) {
+    replication::Version replicationVersion) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   auto const* const serverState = ServerState::instance();
   std::vector<ClusterCollectionCreationInfo> infos{
       ClusterCollectionCreationInfo{collectionID, numberOfShards, replicationFactor,
                                     writeConcern, waitForSync, waitForReplication, json,
-                                    serverState->getId(), serverState->getRebootId(),
-                                    std::move(replicatedLogs)}};
+                                    serverState->getId(), serverState->getRebootId()}};
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   return createCollectionsCoordinator(databaseName, infos, endTime,

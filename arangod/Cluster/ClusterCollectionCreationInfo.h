@@ -44,8 +44,7 @@ struct ClusterCollectionCreationInfo {
   ClusterCollectionCreationInfo(
       std::string cID, uint64_t shards, uint64_t replicationFactor,
       uint64_t writeConcern, bool waitForSync, bool waitForRep,
-      velocypack::Slice const& slice, std::string coordinatorId, RebootId rebootId,
-      std::optional<std::shared_ptr<std::unordered_map<ShardID, replication2::LogId>>> replicatedLogs);
+      velocypack::Slice const& slice, std::string coordinatorId, RebootId rebootId);
 
   std::string const collectionID;
   uint64_t numberOfShards;
@@ -56,7 +55,6 @@ struct ClusterCollectionCreationInfo {
   velocypack::Slice const json;
   std::string name;
   ClusterCollectionCreationState state;
-  std::optional<std::shared_ptr<std::unordered_map<ShardID, replication2::LogId>>> replicatedLogs;
 
  class CreatorInfo : public velocypack::Serializable {
    public:
