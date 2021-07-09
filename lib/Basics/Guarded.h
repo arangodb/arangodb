@@ -20,8 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_UTILITIES_GUARDED_H
-#define LIB_UTILITIES_GUARDED_H
+#pragma once
 
 #include "Basics/system-compiler.h"
 
@@ -272,5 +271,3 @@ auto Guarded<T, M, L>::tryLockedGuard() const
 }
 
 }  // namespace arangodb
-
-#endif  // LIB_UTILITIES_GUARDED_H
