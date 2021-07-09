@@ -164,6 +164,11 @@ class Guarded {
   // TODO add more types of "get guard" (like try or eventual)
 
  private:
+  template <class F, class R = std::invoke_result_t<F, value_type&>,
+            class Q = std::conditional_t<std::is_void_v<R>, std::monostate, R>>
+  [[nodiscard]] static auto tryCallUnderLock(M& Mutex, F&& callback, T& value)
+      -> std::optional<Q>;
+
   value_type _value;
   mutable mutex_type _mutex;
 };
@@ -191,14 +196,14 @@ auto Guarded<T, M, L>::doUnderLock(F&& callback) const -> R {
 
 template <class T, class M, template <class> class L>
 template <class F, class R, class Q>
-auto Guarded<T, M, L>::tryUnderLock(F&& callback) -> std::optional<Q> {
-  auto guard = lock_type(_mutex, std::try_to_lock);
+auto Guarded<T, M, L>::tryCallUnderLock(M& mutex, F&& callback, T& value) -> std::optional<Q> {
+  auto guard = lock_type(mutex, std::try_to_lock);
 
   if (guard.owns_lock()) {
     if constexpr (!std::is_void_v<R>) {
-      return std::forward<F>(callback)(_value);
+      return std::forward<F>(callback)(value);
     } else {
-      std::forward<F>(callback)(_value);
+      std::forward<F>(callback)(value);
       return std::monostate{};
     }
   } else {
@@ -208,19 +213,14 @@ auto Guarded<T, M, L>::tryUnderLock(F&& callback) -> std::optional<Q> {
 
 template <class T, class M, template <class> class L>
 template <class F, class R, class Q>
-auto Guarded<T, M, L>::tryUnderLock(F&& callback) const -> std::optional<Q> {
-  auto guard = lock_type(_mutex, std::try_to_lock);
+auto Guarded<T, M, L>::tryUnderLock(F&& callback) -> std::optional<Q> {
+  return tryCallUnderLock(_mutex, std::forward<F>(callback), _value);
+}
 
-  if (guard.owns_lock()) {
-    if constexpr (!std::is_void_v<R>) {
-      return std::forward<F>(callback)(_value);
-    } else {
-      std::forward<F>(callback)(_value);
-      return std::monostate{};
-    }
-  } else {
-    return std::nullopt;
-  }
+template <class T, class M, template <class> class L>
+template <class F, class R, class Q>
+auto Guarded<T, M, L>::tryUnderLock(F&& callback) const -> std::optional<Q> {
+  return tryCallUnderLock(_mutex, std::forward<F>(callback), _value);
 }
 
 template <class T, class M, template <class> class L>
