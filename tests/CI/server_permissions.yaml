@@ -1,7 +1,7 @@
 test:
-        name: dump_with_crashes
+        name: server_permissions
 
-        weight: 250
+        weight: 500
 
         options:
                 - dumpAgencyOnError: true

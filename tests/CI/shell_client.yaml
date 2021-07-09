@@ -1,4 +1,6 @@
-shell_client:
+test:
+        name: shell_client
+
         weight: 750
 
         options:

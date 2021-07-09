@@ -1,4 +1,6 @@
-dump_maskings:
+test:
+        name: dump_maskings
+
         weight: 250
 
         options:

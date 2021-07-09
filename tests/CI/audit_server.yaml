@@ -1,5 +1,5 @@
 test:
-        name: dump_with_crashes
+        name: audit_client
 
         weight: 250
 

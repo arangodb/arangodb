@@ -1,4 +1,6 @@
-dump:
+test:
+        name: dump
+
         weight: 250
 
         options:

@@ -1,4 +1,6 @@
-shell_client_aql:
+test:
+        name: shell_client_aql
+
         weight: 750
 
         options:

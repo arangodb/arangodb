@@ -1,4 +1,6 @@
-dump_authentication:
+test:
+        name: dump_authentication
+
         weight: 250
 
         options:

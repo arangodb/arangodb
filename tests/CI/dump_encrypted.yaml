@@ -1,4 +1,6 @@
-dump_encrypted:
+test:
+        name: dump_encrypted
+
         weight: 250
 
         options:

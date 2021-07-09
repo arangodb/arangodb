@@ -1,4 +1,6 @@
-shell_server_aql:
+test:
+        name: shell_server_aql
+
         options:
                 - dumpAgencyOnError: true
 

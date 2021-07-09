@@ -1,4 +1,6 @@
-dump_no_envelope:
+test:
+        name: dump_no_envelope
+
         weight: 250
 
         options:

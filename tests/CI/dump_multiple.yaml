@@ -1,4 +1,6 @@
-dump_multiple:
+test:
+        name: dump_multiple
+
         weight: 250
 
         options:

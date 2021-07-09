@@ -1,4 +1,6 @@
-shell_server:
+test:
+        name: shell_server
+
         weight: 750
 
         options:

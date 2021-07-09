@@ -1,15 +1,13 @@
 test:
-        name: dump_jwt
+        name: upgrade_data_3.3.*
 
-        weight: 250
+        weight: 1000
 
         options:
                 - dumpAgencyOnError: true
 
         required:
-                - mode:
-                        - single-server
-                        - cluster
+                - mode: single-server
 
         runs:
                 - PR
