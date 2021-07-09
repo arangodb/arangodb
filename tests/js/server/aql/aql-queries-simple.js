@@ -1385,7 +1385,7 @@ function ahuacatlQuerySimpleTestSuite () {
       for (let i = 1; i <= cnt; ++i) {
         q += " + " + i;
       }
-      assertEqual([498501], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
+      assertEqual([124251], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
     },
     
     testQueryWithTooDeepExpression : function() {

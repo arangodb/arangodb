@@ -129,7 +129,7 @@ TEST_F(AqlQueryLimitsTest, testDeepRecursion) {
   auto slice = queryResult.data->slice();
   EXPECT_TRUE(slice.isArray());
   EXPECT_EQ(1, slice.length());
-  EXPECT_EQ(498501, slice[0].getNumber<int64_t>());
+  EXPECT_EQ(124251, slice[0].getNumber<int64_t>());
 }
 
 TEST_F(AqlQueryLimitsTest, testTooDeepRecursion) {
