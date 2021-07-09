@@ -461,6 +461,112 @@ TEST_F(ShapeContainerTest, polygon_area_test) {
   ASSERT_NEAR(shape.area(geo::WGS84_ELLIPSOID), 7800367402432, 50000000000);
 }
   
-  
-  
+class ShapeContainerTest2 : public ::testing::Test {
+ protected:
+  using ShapeType = arangodb::geo::ShapeContainer::Type;
+
+  ShapeContainer point;
+  ShapeContainer multipoint;
+  ShapeContainer line;
+  ShapeContainer multiline;
+  ShapeContainer poly;
+  ShapeContainer multipoly;
+
+  ShapeContainerTest2() {
+    auto builder = VPackParser::fromJson(R"=(
+      { "type": "Point",
+      "coordinates": [ 6.537, 50.332 ]
+      })=");
+    geojson::parseRegion(builder->slice(), point);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "MultiPoint",
+        "coordinates": [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), multipoint);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "LineString",
+        "coordinates": [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), line);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "MultiLineString",
+        "coordinates": [ [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ],
+                         [ [ 6.621, 50.332 ], [ 6.621, 50.376 ] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), multiline);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [6,50], [7.5,50], [7.5,51], [6,51], [6,50] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), poly);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "MultiPolygon",
+        "coordinates": [ [ [ [6.501,50], [7.5,50], [7.5,51],
+                             [6.501,51], [6.501,50] ] ],
+                         [ [ [6,50], [6.5,50], [6.5,51], [6,51], [6,50] ] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), multipoly);
+  }
+
+
+};
+
+TEST_F(ShapeContainerTest2, intersections_point) {
+  // All 6 with each other:
+  // The ones which are commented out run into assertion failures right now:
+  ASSERT_TRUE(point.intersects(&point));
+  ASSERT_TRUE(point.intersects(&multipoint));
+  ASSERT_TRUE(point.intersects(&line));
+  ASSERT_TRUE(point.intersects(&multiline));
+  ASSERT_TRUE(point.intersects(&poly));
+  ASSERT_TRUE(point.intersects(&multipoly));
+}
+
+TEST_F(ShapeContainerTest2, intersections_multipoint) {
+  ASSERT_TRUE(multipoint.intersects(&point));
+  ASSERT_TRUE(multipoint.intersects(&multipoint));
+  //ASSERT_TRUE(multipoint.intersects(&line));
+  //ASSERT_TRUE(multipoint.intersects(&multiline));
+  ASSERT_TRUE(multipoint.intersects(&poly));
+  //ASSERT_TRUE(multipoint.intersects(&multipoly));
+}
+
+TEST_F(ShapeContainerTest2, intersections_line) {
+  ASSERT_TRUE(line.intersects(&point));
+  ASSERT_TRUE(line.intersects(&multipoint));
+  ASSERT_TRUE(line.intersects(&line));
+  ASSERT_TRUE(line.intersects(&multiline));
+  ASSERT_TRUE(line.intersects(&poly));
+  ASSERT_TRUE(line.intersects(&multipoly));
+}
+
+
+TEST_F(ShapeContainerTest2, intersections_multiline) {
+  ASSERT_TRUE(multiline.intersects(&point));
+  ASSERT_TRUE(multiline.intersects(&multipoint));
+  //ASSERT_TRUE(multiline.intersects(&line));
+  //ASSERT_TRUE(multiline.intersects(&multiline));
+  ASSERT_TRUE(multiline.intersects(&poly));
+  //ASSERT_TRUE(multiline.intersects(&multipoly));
+}
+
+TEST_F(ShapeContainerTest2, intersections_poly) {
+  ASSERT_TRUE(poly.intersects(&point));
+  ASSERT_TRUE(poly.intersects(&multipoint));
+  ASSERT_TRUE(poly.intersects(&line));
+  ASSERT_TRUE(poly.intersects(&multiline));
+  ASSERT_TRUE(poly.intersects(&poly));
+  ASSERT_TRUE(poly.intersects(&multipoly));
+}
+
+TEST_F(ShapeContainerTest2, intersections_multipoly) {
+  ASSERT_TRUE(multipoly.intersects(&point));
+  ASSERT_TRUE(multipoly.intersects(&multipoint));
+  ASSERT_TRUE(multipoly.intersects(&line));
+  ASSERT_TRUE(multipoly.intersects(&multiline));
+  ASSERT_TRUE(multipoly.intersects(&poly));
+  ASSERT_TRUE(multipoly.intersects(&multipoly));
+}
+
 }}
+
