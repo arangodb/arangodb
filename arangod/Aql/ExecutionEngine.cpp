@@ -182,7 +182,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
     // put it into our cache:
     cache.try_emplace(en, eb);
   }
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
 /// @brief create the engine

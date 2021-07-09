@@ -1177,6 +1177,7 @@ ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode, bool sync) {
       _sharedState->waitForAsyncWakeup();
       state = cleanupTrxAndEngines(errorCode);
     }
+    return state;
   }
 
   return cleanupTrxAndEngines(errorCode);

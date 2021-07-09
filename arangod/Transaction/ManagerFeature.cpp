@@ -41,34 +41,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-namespace {
-void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
-                            std::function<void(bool)>& gcfunc) {
-  bool queued = false;
-  {
-    std::lock_guard<std::mutex> guard(mutex);
-    std::tie(queued, workItem) =
-        arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
-            [&gcfunc]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
-              auto off = std::chrono::seconds(2);
-              // The RequestLane needs to be something which is `HIGH` priority, otherwise
-              // all threads executing this might be blocking, waiting for a lock to be
-              // released.
-              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::CLUSTER_INTERNAL,
-                                                                       off, gcfunc);
-            },
-            arangodb::Logger::TRANSACTIONS,
-            "queue transaction garbage collection");
-  }
-  if (!queued) {
-    LOG_TOPIC("f8b3d", FATAL, arangodb::Logger::TRANSACTIONS)
-        << "Failed to queue transaction garbage collection, for 5 minutes, "
-           "exiting.";
-    FATAL_ERROR_EXIT();
-  }
-}
-}  // namespace
-
 namespace arangodb {
 namespace transaction {
 
@@ -78,8 +50,6 @@ std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "TransactionManager"),
-      _workItem(nullptr),
-      _gcfunc(),
       _streamingLockTimeout(8.0),
       _streamingIdleTimeout(defaultStreamingIdleTimeout),
       _numExpiredTransactions(
@@ -99,7 +69,7 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
     MANAGER->garbageCollect(/*abortAll*/false);
 
     if (!this->server().isStopping()) {
-      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
+      queueGarbageCollection();
     }
   };
 }
@@ -140,7 +110,7 @@ void ManagerFeature::prepare() {
 void ManagerFeature::start() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {  // is nullptr in catch tests
-    ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
+    queueGarbageCollection();
   }
 }
   
@@ -189,6 +159,31 @@ void ManagerFeature::stop() {
 
 void ManagerFeature::unprepare() {
   MANAGER.reset();
+}
+
+void ManagerFeature::queueGarbageCollection() {
+  auto [queued, workItem] =
+        arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
+            [this]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
+              auto off = std::chrono::seconds(2);
+              // The RequestLane needs to be something which is `HIGH` priority, otherwise
+              // all threads executing this might be blocking, waiting for a lock to be
+              // released.
+              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::CLUSTER_INTERNAL,
+                                                                       off, _gcfunc);
+            },
+            arangodb::Logger::TRANSACTIONS,
+            "queue transaction garbage collection");
+
+  if (queued) {
+    std::lock_guard<std::mutex> guard(_workItemMutex);
+    _workItem = std::move(workItem);
+  } else {
+    LOG_TOPIC("f8b3d", FATAL, arangodb::Logger::TRANSACTIONS)
+        << "Failed to queue transaction garbage collection, for 5 minutes, "
+           "exiting.";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void ManagerFeature::trackExpired(uint64_t numExpired) {
