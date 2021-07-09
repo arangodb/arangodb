@@ -1,22 +1,22 @@
 shell_server_aql:
-	options:
-		- dumpAgencyOnError: true
+        options:
+                - dumpAgencyOnError: true
 
         variants:
-		- name: cluster
+                - name: cluster
                   weight: 20000
-		  buckets: 15
+                  buckets: 15
                   required:
                         - mode: cluster
-		  runs:
-			- PR
-			- Full
+                  runs:
+                        - PR
+                        - Full
 
                 - name: single
                   weight: 2500
-		  buckets: 5
+                  buckets: 5
                   required:
                         - mode: single-server
-		  runs:
-			- PR
-			- Full
+                  runs:
+                        - PR
+                        - Full

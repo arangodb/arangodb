@@ -1,34 +1,36 @@
 shell_client_aql:
         weight: 750
 
-	options:
-		- dumpAgencyOnError: true
+        options:
+                - dumpAgencyOnError: true
 
         variants:
-		- name: cluster
+                - name: cluster
                   required:
                         - mode: cluster
-		  runs:
-			- PR
-			- Full
+                  runs:
+                        - Full
 
                 - name: http
                   arguments: http
                   required:
                         - mode: single-server
-		  runs:
-			- PR
+                  runs:
+                        - PR
+                        - Full
 
                 - name: http2
                   arguments: http2 --http2 true
                   required:
                         - mode: single-server
-		  runs:
-			- PR
+                  runs:
+                        - PR
+                        - Full
 
                 - name: vst
                   arguments: vst --vst true
                   required:
                         - mode: single-server
-		  runs:
-			- PR
+                  runs:
+                        - PR
+                        - Full

@@ -1,14 +1,14 @@
 dump_multiple:
         weight: 250
 
-	options:
-		- dumpAgencyOnError: true
+        options:
+                - dumpAgencyOnError: true
 
- 	required:
+        required:
                 - mode:
-			- single-server
-			- cluster
+                        - single-server
+                        - cluster
 
-	runs:
-		- PR
-		- Full
+        runs:
+                - PR
+                - Full
