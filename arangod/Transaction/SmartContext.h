@@ -76,12 +76,17 @@ class SmartContext : public Context {
   TransactionId const _globalId;
   std::shared_ptr<arangodb::TransactionState> _state;
 };
+
+struct TransactionContextSideUser {};
   
 /// @brief Acquire a transaction from the Manager
 struct ManagedContext final : public SmartContext {
   
   ManagedContext(TransactionId globalId, std::shared_ptr<TransactionState> state,
-                 bool responsibleForCommit, bool cloned = false);
+                 bool responsibleForCommit, bool cloned);
+  
+  ManagedContext(TransactionId globalId, std::shared_ptr<TransactionState> state,
+                 TransactionContextSideUser /*sideUser*/);
   
   ~ManagedContext();
   
@@ -94,9 +99,10 @@ struct ManagedContext final : public SmartContext {
   
   std::shared_ptr<Context> clone() const override;
   
-private:
-  const bool _responsibleForCommit;
-  const bool _cloned;
+ private:
+  bool const _responsibleForCommit;
+  bool const _cloned;
+  bool const _isSideUser;
 };
 
 /// Used for a standalone AQL query. Always creates the state first.

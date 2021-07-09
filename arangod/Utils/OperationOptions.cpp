@@ -42,6 +42,7 @@ OperationOptions::OperationOptions()
       isRestore(false),
       checkUniqueConstraintsInPreflight(false),
       truncateCompact(true),
+      documentCallFromAql(false),
       _context(nullptr) {}
 
 OperationOptions::OperationOptions(ExecContext const& context)

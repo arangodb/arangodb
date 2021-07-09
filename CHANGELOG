@@ -1,11 +1,5 @@
 devel
 -----
-* Adapt various places related to handling of execution plans non-recursive
-  in order to avoid stack overflows. This allows us now to execute much larger
-  queries.
-
-* Lower log level to warning, when take over shard leadership finds
-  an agency Current entry is missing the server taking over.
 
 * Add hard-coded complexity limits for AQL queries, in order to prevent
   programmatically generated large queries from causing trouble (too deep
@@ -18,7 +12,16 @@ devel
     The expression recursion is limited to 500 levels.
   - a limit for the number of execution nodes in the initial query 
     execution plan. 
-    The number of execution nodes is limited to 3,000.
+    The number of execution nodes is limited to 4,000.
+
+* Adapt various places related to handling of execution plans non-recursive
+  in order to avoid stack overflows. This allows us now to execute much larger
+  queries.
+
+* Lower log level to warning, when take over shard leadership finds
+  an agency Current entry is missing the server taking over.
+
+* Fix locking of AQL queries write queries on DB servers.
 
 * APM-112: invalid use of OPTIONS in AQL queries will now raise a warning in
   the query. 
@@ -82,6 +85,13 @@ devel
 * Enable process metrics on agent instances by default. Previously, some 
   metrics (including the metrics starting with `arangodb_process` prefix) were
   not returned by agent instances.
+
+* APM-107: Added metric "rocksdb_read_only" to determine whether RocksDB is
+  currently in read-only mode due to a background error. The metric will have
+  a value of "1" if RocksDB is in read-only mode and "0" if RocksDB is in 
+  normal operations mode. If the metric value is "1" it means all writes into
+  RocksDB will fail, so inspecting the logfiles and acting on the actual error
+  situation is required.
 
 * Fix potential memleak in Pregel conductor garbage collection.
 
