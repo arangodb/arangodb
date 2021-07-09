@@ -86,42 +86,48 @@ class Counter : public Metric {
   mutable Metrics::buffer_type _b;
 };
 
-template<typename T> class AtomicMetric : public Metric {
+template<typename T>
+class AtomicMetric : public Metric {
 
-public:
-
+ public:
+  AtomicMetric() {}
   AtomicMetric(T&& val, std::string const& name, std::string const& help,
         std::string const& labels = std::string())
-    : Metric(name, help, labels), stats(std::move(val)) { }
+    : Metric(name, help, labels), stats(std::forward<T>(val)) { }
 
-  ~AtomicMetric() = default;
-
-  void store(T newStats) {
+  void store(T&& newStats) {
     std::lock_guard<std::mutex> lock(mutex);
-    stats = newStats;
+    stats = std::forward<T>(newStats);
     return;
   }
 
-  T load() const noexcept {
+  T load() const {
     std::lock_guard<std::mutex> lock(mutex);
     return stats;
   }
 
-  virtual std::string type() const override { return "atomic_metric"; }
+  std::string type() const override { return "atomic_metric"; }
 
   void toPrometheus(std::string& result,
                     std::string const& globalLabels,
                     std::string const& alternativeName) const override {
-    std::unique_lock<std::mutex> mutex_lock(mutex);
-    auto tmpStats = stats;
-    mutex_lock.unlock();
-    tmpStats.toPrometheus(result, labels(), globalLabels);
-    return;
+    load().toPrometheus(result, labels(), globalLabels);
   }
 
-private:
+ private:
   T stats;
   mutable std::mutex mutex;
+};
+
+template <typename T>
+class DummyMetric : public AtomicMetric<T> {
+ public:
+  DummyMetric() : AtomicMetric<T>(T(), "", "", "") {}
+
+  void toPrometheus(std::string& result,
+                    std::string const& globalLabels,
+                    std::string const& alternativeName) const override {}
+  std::string type() const override { return "dummy_metric"; }
 };
 
 template<typename T> class Gauge : public Metric {

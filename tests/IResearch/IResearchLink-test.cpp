@@ -869,15 +869,12 @@ TEST_F(IResearchLinkTest, test_write) {
   EXPECT_ANY_THROW((reader.reopen()));
 }
 
-using stats_t = arangodb::iresearch::IResearchLink::Stats;
+using stats_t = arangodb::iresearch::IResearchLink::LinkStats;
 void getStatsFromFolder(std::string_view path,
                         size_t& indexSize,
-                        size_t& numFiles,
-                        std::string d = "") {
+                        size_t& numFiles) {
 
-  // this crunch will be fixed later
-  std::string str = std::string("^_") + d + "$";
-  const std::regex regex(d.empty() ? "^_\\d+$" : str);
+  const std::regex regex("^_\\d+$");
   std::smatch match;
 
   for (auto& p: fs::directory_iterator(path)) {
@@ -893,16 +890,23 @@ void getStatsFromFolder(std::string_view path,
   return;
 }
 
+bool operator == (const stats_t& lhs, const stats_t& rhs) {
+  // ignore numBufferedDocs
+  return
+      lhs.docsCount == rhs.docsCount &&
+      lhs.liveDocsCount == rhs.liveDocsCount &&
+      lhs.indexSize == rhs.indexSize &&
+      lhs.numSegments == rhs.numSegments &&
+      lhs.numFiles == rhs.numFiles;
+}
+
 TEST_F(IResearchLinkTest, test_write_and_metrics1) {
   static std::vector<std::string> const EMPTY;
   auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\" }");
   auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"ghia\": \"jkla\" }");
   auto doc2 = arangodb::velocypack::Parser::fromJson("{ \"1234\": \"56789\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-  std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
-                           (std::string("database-") + std::to_string(vocbase.id()))) /=
-                          std::string("arangosearch-42"))
-                             .utf8();
+
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
       "\"includeAllFields\": true }");
@@ -924,20 +928,18 @@ TEST_F(IResearchLinkTest, test_write_and_metrics1) {
   ASSERT_TRUE((false == !view));
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
-
-  dataPath =
+  std::string dataPath =
       ((((irs::utf8_path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
           .utf8();
+
   irs::fs_directory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
-  auto reader = irs::directory_reader::open(directory);
 
-  EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     stats_t expectedStat;
     // insert
@@ -951,7 +953,6 @@ TEST_F(IResearchLinkTest, test_write_and_metrics1) {
       EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice())
                        .ok()));
       EXPECT_TRUE((l->commit().ok()));
-      EXPECT_EQ(0, reader.reopen().live_docs_count());
 
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE((l->commit().ok()));
@@ -972,11 +973,9 @@ TEST_F(IResearchLinkTest, test_write_and_metrics1) {
                        .ok()));
 
       EXPECT_TRUE((l->commit().ok()));
-      EXPECT_EQ(1, reader.reopen().live_docs_count());
 
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE((l->commit().ok()));
-      EXPECT_EQ(2, reader.reopen().live_docs_count());
 
       ++expectedStat.docsCount;
       ++expectedStat.liveDocsCount;
@@ -995,16 +994,27 @@ TEST_F(IResearchLinkTest, test_write_and_metrics1) {
                        .ok()));
 
       EXPECT_TRUE((l->commit().ok()));
-      EXPECT_EQ(2, reader.reopen().live_docs_count());
 
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE((l->commit().ok()));
-      EXPECT_EQ(3, reader.reopen().live_docs_count());
 
       ++expectedStat.docsCount;
       ++expectedStat.liveDocsCount;
 
       actualStat = l->stats();
+
+      std::string realStr;
+      l->stats().toPrometheus(realStr, "", "");
+      std::string expectedStr;
+      expectedStr.reserve(1024);
+
+      expectedStr += "arangodb_arangosearch_docs_count{ } 3\n";
+      expectedStr += "arangodb_arangosearch_live_docs_count{ } 3\n";
+      expectedStr += "arangodb_arangosearch_index_size{ } 1949\n";
+      expectedStr += "arangodb_arangosearch_segments_count{ } 3\n";
+      expectedStr += "arangodb_arangosearch_files_count{ } 16\n";
+
+      ASSERT_EQ(realStr, expectedStr);
     }
 
     // get other stats
@@ -1018,8 +1028,7 @@ TEST_F(IResearchLinkTest, test_write_and_metrics1) {
     ASSERT_TRUE(expectedStat == actualStat);
   }
 
-  logicalCollection->dropIndex(link->id());
-  EXPECT_ANY_THROW((reader.reopen()));
+  //logicalCollection->dropIndex(link->id());
 }
 
 TEST_F(IResearchLinkTest, test_write_and_metrics2) {
@@ -1028,10 +1037,7 @@ TEST_F(IResearchLinkTest, test_write_and_metrics2) {
   auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"ghia\": \"jkla\" }");
   auto doc2 = arangodb::velocypack::Parser::fromJson("{ \"1234\": \"56789\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-  std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
-                           (std::string("database-") + std::to_string(vocbase.id()))) /=
-                          std::string("arangosearch-42"))
-                             .utf8();
+
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
       "\"includeAllFields\": true }");
@@ -1054,7 +1060,7 @@ TEST_F(IResearchLinkTest, test_write_and_metrics2) {
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath =
+  std::string dataPath =
       ((((irs::utf8_path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
@@ -1064,9 +1070,6 @@ TEST_F(IResearchLinkTest, test_write_and_metrics2) {
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
-  auto reader = irs::directory_reader::open(directory);
-
-  EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     // insert doc in first segment, don't commit
     {
@@ -1080,7 +1083,6 @@ TEST_F(IResearchLinkTest, test_write_and_metrics2) {
                        .ok()));
 
       EXPECT_TRUE((trx.commit().ok()));
-      //EXPECT_TRUE((l->commit().ok()));
     }
 
     // insert another doc in first segment, now commit
@@ -1137,6 +1139,19 @@ TEST_F(IResearchLinkTest, test_write_and_metrics2) {
       stats_t actualStats = l->stats();
 
       ASSERT_TRUE(expectedStats == actualStats);
+
+      std::string realStr;
+      l->stats().toPrometheus(realStr, "", "");
+      std::string expectedStr;
+      expectedStr.reserve(1024);
+
+      expectedStr += "arangodb_arangosearch_docs_count{ } 3\n";
+      expectedStr += "arangodb_arangosearch_live_docs_count{ } 3\n";
+      expectedStr += "arangodb_arangosearch_index_size{ } 1443\n";
+      expectedStr += "arangodb_arangosearch_segments_count{ } 2\n";
+      expectedStr += "arangodb_arangosearch_files_count{ } 11\n";
+
+      ASSERT_EQ(realStr, expectedStr);
     }
 
     // delete second doc from second segment, commit
@@ -1152,47 +1167,32 @@ TEST_F(IResearchLinkTest, test_write_and_metrics2) {
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE((l->commit().ok()));
 
-
-      // enable consolidation
-      auto consJson = arangodb::velocypack::Parser::fromJson(
-      R"({
-        "consolidationIntervalMsec": 10
-      })");
-      view->properties(consJson->slice(), true);
-
-      // make consolidation
-      stats_t actualStats;
-
-      // wait until consolidation will be processed
-      auto begin = std::chrono::steady_clock::now();
-      auto now = begin;
-      auto diff = std::chrono::duration_cast<std::chrono::microseconds>(now - begin).count();
-
-      do {
-        EXPECT_TRUE((l->commit().ok()));
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        actualStats = l->stats();
-        now = std::chrono::steady_clock::now();
-        diff = std::chrono::duration_cast<std::chrono::seconds>(now - begin).count();
-      }  while (diff < 50 && actualStats.docsCount != actualStats.liveDocsCount);
+      stats_t actualStats = l->stats();
 
       // check link metrics
       stats_t expectedStats;
-      expectedStats.docsCount = 2;
+      expectedStats.docsCount = 3;
       expectedStats.liveDocsCount = 2;
-      getStatsFromFolder(dataPath,
-                         expectedStats.indexSize,
-                         expectedStats.numFiles, "5");
-
-      ++expectedStats.numFiles;
-      expectedStats.numSegments = 1; // 1 segment after consolidation
+      expectedStats.numFiles = 12;
+      expectedStats.numSegments = 2; // we have 2 segments
+      expectedStats.indexSize = 1491;
 
       ASSERT_TRUE(expectedStats == actualStats);
+
+      std::string realStr;
+      l->stats().toPrometheus(realStr, R"(view="foo", collection="bar", "shard"="s0001")", "test");
+      std::string expectedStr;
+expectedStr += "arangodb_arangosearch_docs_count{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 3\n";
+expectedStr += "arangodb_arangosearch_live_docs_count{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 2\n";
+expectedStr += "arangodb_arangosearch_index_size{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 1491\n";
+expectedStr += "arangodb_arangosearch_segments_count{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 2\n";
+expectedStr += "arangodb_arangosearch_files_count{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 12\n";
+
+      ASSERT_EQ(realStr, expectedStr);
     }
   }
 
   logicalCollection->dropIndex(link->id());
-  EXPECT_ANY_THROW((reader.reopen()));
 }
 
 TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {

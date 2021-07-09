@@ -67,7 +67,7 @@ using namespace arangodb::iresearch;
 
 using irs::async_utils::read_write_mutex;
 
-DECLARE_ATOMIC_METRIC(arangodb_arangosearch_link_stats, IResearchLink::Stats, "Stats of documents in link");
+DECLARE_ATOMIC_METRIC(arangodb_arangosearch_link_stats, IResearchLink::LinkStats, "Stats of documents in link");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the link state for a given TransactionState
@@ -613,7 +613,7 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _id(iid),
       _lastCommittedTick(0),
       _createdInRecovery(false),
-      _linkStats(nullptr) {
+      _linkStats(new DummyMetric<LinkStats>()) {
 
   auto* key = this;
 
@@ -867,10 +867,11 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
     // update reader
     TRI_ASSERT(_dataStore._reader != reader);
     _dataStore._reader = reader;
-    Stats curr_stats = stats();
 
     // update stats
-    _linkStats->store(curr_stats);
+    if (ADB_LIKELY(_linkStats)) {
+      _linkStats->store(stats());
+    }
 
     // update last committed tick
     impl.tick(_lastCommittedTick);
@@ -1243,6 +1244,11 @@ Result IResearchLink::init(
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
   _comparer.reset(_meta._sort);
 
+  // delete dummy metric from linkStats
+  if (_linkStats) {
+    delete _linkStats;
+  }
+  // init _linkStats with AtomicMetric
   _linkStats = &_collection.vocbase().server()
             .getFeature<arangodb::MetricsFeature>().add(arangodb_arangosearch_link_stats{});
 
@@ -1874,9 +1880,6 @@ bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
 
 Result IResearchLink::unload() {
 
-  _collection.vocbase().server()
-    .getFeature<arangodb::MetricsFeature>().remove(arangodb_arangosearch_link_stats{});
-
   // this code is used by the MMFilesEngine
   // if the collection is in the process of being removed then drop it from the view
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
@@ -1887,6 +1890,11 @@ Result IResearchLink::unload() {
 
   std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
+
+  // remove statistic from MetricsFeature
+  _collection.vocbase().server()
+    .getFeature<arangodb::MetricsFeature>().remove(arangodb_arangosearch_link_stats{});
+  _linkStats = nullptr;
 
   try {
     if (_dataStore) {
@@ -1927,7 +1935,7 @@ AnalyzerPool::ptr IResearchLink::findAnalyzer(AnalyzerPool const& analyzer) cons
   return nullptr;
 }
 
-void IResearchLink::Stats::toPrometheus(std::string &result,
+void IResearchLink::LinkStats::toPrometheus(std::string &result,
                                         const std::string &labels,
                                         const std::string &globalLabels) const {
 
@@ -1940,24 +1948,24 @@ void IResearchLink::Stats::toPrometheus(std::string &result,
   }
   annotation += "} ";
 
-  auto write_metric = [&result, &annotation](std::string_view metricName, size_t value) {
+  auto writeMetric = [&result, &annotation](std::string_view metricName, size_t value) {
     result.append(metricName.data(), metricName.size());
     result += annotation;
     result += std::to_string(value);
     result += '\n';
   };
 
-  write_metric("arangodb_arangosearch_docs_count", docsCount);
-  write_metric("arangodb_arangosearch_live_docs_count", liveDocsCount);
-  write_metric("arangodb_arangosearch_index_size", indexSize);
-  write_metric("arangodb_arangosearch_segments_count", numSegments);
-  write_metric("arangodb_arangosearch_files_count", this->numFiles);
+  writeMetric("arangodb_arangosearch_docs_count", docsCount);
+  writeMetric("arangodb_arangosearch_live_docs_count", liveDocsCount);
+  writeMetric("arangodb_arangosearch_index_size", indexSize);
+  writeMetric("arangodb_arangosearch_segments_count", numSegments);
+  writeMetric("arangodb_arangosearch_files_count", this->numFiles);
 
   return;
 }
 
-IResearchLink::Stats IResearchLink::stats() const {
-  Stats stats;
+IResearchLink::LinkStats IResearchLink::stats() const {
+  LinkStats stats;
 
   // '_dataStore' can be asynchronously modified
   auto lock = _asyncSelf->lock();
@@ -1989,16 +1997,6 @@ IResearchLink::Stats IResearchLink::stats() const {
   }
 
   return stats;
-}
-
-bool IResearchLink::Stats::operator == (const Stats& other) const {
-  // ignore numBufferedDocs
-  return
-      this->docsCount == other.docsCount &&
-      this->liveDocsCount == other.liveDocsCount &&
-      this->indexSize == other.indexSize &&
-      this->numSegments == other.numSegments &&
-      this->numFiles == other.numFiles;
 }
 
 void IResearchLink::toVelocyPackStats(VPackBuilder& builder) const {

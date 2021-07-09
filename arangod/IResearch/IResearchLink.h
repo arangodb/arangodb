@@ -77,6 +77,15 @@ class AsyncLinkHandle {
   std::atomic<bool> _asyncTerminate{false}; // trigger termination of long-running async jobs
 }; // AsyncLinkHandle
 
+struct Stats {
+  size_t docsCount{};       // total number of documents
+  size_t liveDocsCount{};   // number of live documents
+  size_t numBufferedDocs{}; // number of buffered docs
+  size_t indexSize{};       // size of the index in bytes
+  size_t numSegments{};     // number of segments
+  size_t numFiles{};        // number of files
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView
@@ -281,26 +290,17 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief index stats
   //////////////////////////////////////////////////////////////////////////////
-  struct Stats {
-    size_t docsCount{};       // total number of documents
-    size_t liveDocsCount{};   // number of live documents
-    size_t numBufferedDocs{}; // number of buffered docs
-    size_t indexSize{};       // size of the index in bytes
-    size_t numSegments{};     // number of segments
-    size_t numFiles{};        // number of files
-
+  struct LinkStats : Stats {
     void toPrometheus (
       std::string& result,
       const std::string& labels,
       const std::string& globalLabels) const;
-
-    bool operator == (const Stats& other) const;
   };
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get index stats for current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  Stats stats() const;
+  LinkStats stats() const;
 
  protected:
   ////////////////////////////////////////////////////////////////////////////////
@@ -419,7 +419,7 @@ class IResearchLink {
   std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
   bool _createdInRecovery; // link was created based on recovery marker
-  AtomicMetric<Stats>* _linkStats; // metric
+  AtomicMetric<LinkStats>* _linkStats; // metric for link statistics
 };  // IResearchLink
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,

@@ -118,20 +118,3 @@ TEST_F(MetricsFeatureTest, test_gauge) {
   thatMetric = &labeledGauge;
 
 }
-
-TEST_F(MetricsFeatureTest, test_atomic_metric) {
-
-  auto& atomicMetric = feature.add(ATOMIC_METRIC{});
-  auto& labeledAtomicMetric = feature.add(ATOMIC_METRIC{}.withLabel("label", "label"));
-
-  std::string s;
-  atomicMetric.toPrometheus(s, "", "");
-  std::cout << s << std::endl;
-  s.clear();
-  labeledAtomicMetric.toPrometheus(s, "", "");
-  std::cout << s << std::endl;
-
-  thisMetric = &atomicMetric;
-  thatMetric = &labeledAtomicMetric;
-
-}
