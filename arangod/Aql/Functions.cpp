@@ -845,7 +845,8 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
 
 /// @brief Helper function to get a document by it's identifier
 ///        Lazy Locks the collection if necessary.
-void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionName,
+void getDocumentByIdentifier(transaction::Methods* trx, OperationOptions const& options,
+                             std::string& collectionName,
                              std::string const& identifier, bool ignoreError,
                              VPackBuilder& result) {
   transaction::BuilderLeaser searchBuilder(trx);
@@ -874,7 +875,7 @@ void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionN
 
   Result res;
   try {
-    res = trx->documentFastPath(collectionName, searchBuilder->slice(), result);
+    res = trx->documentFastPath(collectionName, searchBuilder->slice(), options, result);
   } catch (arangodb::basics::Exception const& ex) {
     res.reset(ex.code());
   }
@@ -6604,6 +6605,9 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, AstNode const
   // cppcheck-suppress variableScope
   static char const* AFN = "DOCUMENT";
 
+  OperationOptions options;
+  options.documentCallFromAql = true;
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   if (parameters.size() == 1) {
@@ -6612,7 +6616,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, AstNode const
     if (id.isString()) {
       std::string identifier(id.slice().copyString());
       std::string colName;
-      ::getDocumentByIdentifier(trx, colName, identifier, true, *builder.get());
+      ::getDocumentByIdentifier(trx, options, colName, identifier, true, *builder.get());
       if (builder->isEmpty()) {
         // not found
         return AqlValue(AqlValueHintNull());
@@ -6627,7 +6631,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, AstNode const
         if (next.isString()) {
           std::string identifier = next.copyString();
           std::string colName;
-          ::getDocumentByIdentifier(trx, colName, identifier, true, *builder.get());
+          ::getDocumentByIdentifier(trx, options, colName, identifier, true, *builder.get());
         }
       }
       builder->close();
@@ -6647,7 +6651,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, AstNode const
   if (id.isString()) {
     transaction::BuilderLeaser builder(trx);
     std::string identifier(id.slice().copyString());
-    ::getDocumentByIdentifier(trx, collectionName, identifier, true, *builder.get());
+    ::getDocumentByIdentifier(trx, options, collectionName, identifier, true, *builder.get());
     if (builder->isEmpty()) {
       return AqlValue(AqlValueHintNull());
     }
@@ -6663,7 +6667,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, AstNode const
     for (auto const& next : VPackArrayIterator(idSlice)) {
       if (next.isString()) {
         std::string identifier(next.copyString());
-        ::getDocumentByIdentifier(trx, collectionName, identifier, true,
+        ::getDocumentByIdentifier(trx, options, collectionName, identifier, true,
                                   *builder.get());
       }
     }
