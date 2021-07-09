@@ -1,0 +1,14 @@
+dump_no_envelope:
+        weight: 250
+
+	options:
+		- dumpAgencyOnError: true
+
+ 	required:
+                - mode:
+			- single-server
+			- cluster
+
+	runs:
+		- PR
+		- Full

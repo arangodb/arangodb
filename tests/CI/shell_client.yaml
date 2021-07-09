@@ -1,0 +1,40 @@
+shell_client:
+        weight: 750
+
+	options:
+		- dumpAgencyOnError: true
+
+        variants:
+		- name: cluster
+		  buckets: 5
+                  required:
+                        - mode: cluster
+		  runs:
+			- PR
+			- Full
+
+                - name: http
+                  arguments: http
+		  options:
+			- encryptionAtRest: true
+                  required:
+                        - mode: single-server
+		  runs:
+			- PR
+			- Full
+
+                - name: http2
+                  arguments: http2 --http2 true
+                  required:
+                        - mode: single-server
+		  runs:
+			- PR
+			- Full
+
+                - name: vst
+                  arguments: vst --vst true
+                  required:
+                        - mode: single-server
+		  runs:
+			- PR
+			- Full

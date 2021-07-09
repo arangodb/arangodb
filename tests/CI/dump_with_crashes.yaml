@@ -1,0 +1,14 @@
+dump_with_crashes:
+        weight: 250
+
+	options:
+		- dumpAgencyOnError: true
+
+ 	required:
+                - mode:
+			- single-server
+			- cluster
+
+	runs:
+		- PR
+		- Full
