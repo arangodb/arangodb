@@ -44,21 +44,18 @@ class TraversalStats;
 namespace graph {
 
 // TODO Temporary, just Make everything compile
-// IMPORTANT - DO NOT TEMPLATE THIS CLASSES
+// IMPORTANT - DO NOT TEMPLATE THIS CLASS
 class PathResultInterface {
  public:
   PathResultInterface() {}
   virtual ~PathResultInterface() {}
 
   virtual auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
-  virtual auto writeSmartGraphDFSResult(arangodb::velocypack::Builder& builder,
-                                        size_t& currentLength) -> void = 0;
-  virtual auto writeSmartGraphBFSResult(
-      std::unordered_map<VertexType, std::vector<std::unique_ptr<PathResultInterface>>>& bfsLookupTable,
-      size_t& _bfsCurrentDepth) -> void = 0;
+  virtual auto toSchreierEntry(arangodb::velocypack::Builder& builder,
+                               size_t& currentLength) -> void = 0;
 };
 
-// IMPORTANT - DO NOT TEMPLATE THIS CLASSES
+// IMPORTANT - DO NOT TEMPLATE THIS CLASS
 class TraversalEnumerator {
  public:
   using VertexRef = arangodb::velocypack::HashedStringRef;

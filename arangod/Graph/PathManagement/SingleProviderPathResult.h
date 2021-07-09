@@ -45,7 +45,7 @@ namespace graph {
 
 template <class ProviderType, class PathStoreType, class Step>
 class SingleProviderPathResult : public PathResultInterface {
-  using VertexRef = arangodb::velocypack::HashedStringRef;
+  using VertexRef = arangodb::velocypack::HashedStringRef; // TODO might remove
 
  public:
   SingleProviderPathResult(Step* step, ProviderType& provider, PathStoreType& store);
@@ -60,17 +60,13 @@ class SingleProviderPathResult : public PathResultInterface {
   /**
    * @brief Appends this path as a SchreierVector entry into the given builder
    */
-  auto writeSmartGraphDFSResult(arangodb::velocypack::Builder& builder,
+  auto toSchreierEntry(arangodb::velocypack::Builder& builder,
                                 size_t& currentLength) -> void override;
 
-  /**
-   * @brief Builds a lookup table which can be used to populate a builder later
-   */
-  auto writeSmartGraphBFSResult(
-      std::unordered_map<VertexType, std::vector<std::unique_ptr<PathResultInterface>>>& bfsLookupTable,
-      size_t& bfsCurrentDepth) -> void override;
-
   auto isEmpty() const -> bool;
+  ProviderType* getProvider() {return &_provider;}
+  PathStoreType* getStore() {return &_store;}
+  Step* getStep() {return _step;}
 
  private:
   Step* _step;

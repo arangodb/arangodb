@@ -107,7 +107,7 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
 }
 
 template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::writeSmartGraphDFSResult(
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toSchreierEntry(
     arangodb::velocypack::Builder& result, size_t& currentLength) -> void {
   size_t prevIndex = 0;
 
@@ -156,87 +156,6 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::writeSmartGrap
 }
 
 template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::writeSmartGraphBFSResult(
-    std::unordered_map<VertexType, std::vector<std::unique_ptr<PathResultInterface>>>& bfsLookupTable,
-    size_t& bfsCurrentDepth) -> void {
-  if constexpr (std::is_same_v<Step, ClusterProvider::Step>) {
-    // TODO: before removing this, check why we're compiling SingleProviderPathResult for ClusterProvider
-    TRI_ASSERT(false);
-    return;
-  }
-
-  auto writeStepIntoLookupTable = [&](Step* step) {
-    // link step to previous
-    VertexRef previousEntry =
-        _store.getStepReference(_step->getPrevious()).getVertexIdentifier();
-    TRI_ASSERT(bfsLookupTable.find(previousEntry) != bfsLookupTable.end());
-    bfsLookupTable.at(previousEntry).emplace_back(_step);
-    LOG_DEVEL << "Wrote step " << _step->getVertexIdentifier() << " into bfsLookupTable";
-
-    // TODO: create additional entry for step itself // TODO MIssing right now
-  };
-
-  auto writeDepthIntoBuilder = [&](size_t depth) {
-    VPackArrayBuilder arrayGuard(&result);
-    // 1.) Write current depth
-    result.add(VPackValue(bfsCurrentDepth));
-
-    for (auto const& entry : bfsLookupTable) {
-      VertexRef vertexName = entry.first;
-
-      auto relatedSteps = entry.second;
-      TRI_ASSERT(relatedSteps.size() > 0);
-
-      // 2.) Write Vertex itself into Builder
-      // we can use at(0) because any relation points to our origin vertex, we just need at least one entry
-      auto vertexStep =
-          _store.getStepReference(relatedSteps.at(0).get()._step->getPrevious());
-      _provider.addVertexToBuilder(vertexStep.getVertex(), result);
-
-      // Now iterate through all collected steps and write them into the result builder
-      // Format is:
-      // I. Edge Content itself
-      // II. cursorID (clarify) // TODO: CHECK IMPORTANT CURSOR ID
-      // III. nextVertexID (our related step vertex id)
-      for (Step* step : relatedSteps) {
-        _provider.addEdgeToBuilder(step->getEdge(), result);
-        result.add(VPackValue(0));  // TODO: CHECK IMPORTANT CURSOR ID
-        result.add(VPackValue(step->getVertexIdentifier().begin()));
-      }
-    }
-  };
-
-  // OPEN TODO: currently only the first step is beeing proper initialized. This is missing right now.
-
-  LOG_DEVEL << " == HANDLING STEP == " << _step->getVertexIdentifier().begin();
-  if (_step->isFirst()) {
-    LOG_DEVEL << "handled first step";
-    TRI_ASSERT(bfsCurrentDepth == 0);
-    bfsLookupTable.insert({_step->getVertexIdentifier(), {}});
-  } else {
-    // means we're not in initial step
-    LOG_DEVEL << "=> Step depth: " << _step->getDepth() << " ,iteration: " << bfsCurrentDepth;
-
-    // get the location of previous entry
-    if (_step->getDepth() - bfsCurrentDepth == 1) {
-      // B, C and D got written
-      writeStepIntoLookupTable(_step);
-    } else {
-      LOG_DEVEL << "finalizing - will write into builder";
-      // we finalized a depth of range [0, 1] -> this means we can write a complete depth set into the builder
-      writeDepthIntoBuilder(bfsCurrentDepth);
-
-      // additionally, this means we'll start a new depth here (increase depth information)
-      bfsCurrentDepth++;
-
-      // We do not need old information which is stored in our _bfsLookupTable (clear now).
-      bfsLookupTable.clear();
-      writeStepIntoLookupTable(_step);
-    }
-  }
-}
-
-template <class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::isEmpty() const
     -> bool {
   return false;
@@ -253,6 +172,7 @@ template class ::arangodb::graph::SingleProviderPathResult<
     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<::arangodb::graph::SingleServerProvider::Step>>,
     ::arangodb::graph::SingleServerProvider::Step>;
 
+// TODO: check if cluster is needed here
 /* ClusterProvider Section */
 template class ::arangodb::graph::SingleProviderPathResult<
     ::arangodb::graph::ClusterProvider, ::arangodb::graph::PathStore<::arangodb::graph::ClusterProvider::Step>,
