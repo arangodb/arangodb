@@ -41,18 +41,7 @@ DistributeConsumerNode::DistributeConsumerNode(ExecutionPlan* plan,
       _isResponsibleForInitializeCursor(
           base.get("isResponsibleForInitializeCursor").getBoolean()) {}
 
-void DistributeConsumerNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                                std::unordered_set<ExecutionNode const*>& seen) const {
-  // Local variant
-  toVelocyPackHelperInternal(nodes, flags, seen);
-  // And close it:
-  nodes.close();
-}
-
-void DistributeConsumerNode::toVelocyPackHelperInternal(
-    VPackBuilder& nodes, unsigned flags, std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
+void DistributeConsumerNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add("distributeId", VPackValue(_distributeId));
   nodes.add("isResponsibleForInitializeCursor", VPackValue(_isResponsibleForInitializeCursor));
 }
