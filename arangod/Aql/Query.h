@@ -206,7 +206,6 @@ class Query : public QueryContext {
   aql::ServerQueryIdList& serverQueryIds() { return _serverQueryIds; }
   aql::ExecutionStats& executionStats() { return _execStats; }
 
-
   // Debug method to kill a query at a specific position
   // during execution. It internally asserts that the query
   // is actually visible through other APIS (e.g. current queries)

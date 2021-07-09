@@ -76,6 +76,9 @@ RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, Transac
       _numUpdates(0),
       _numRemoves(0),
       _numRollbacks(0),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _users(0),
+#endif
       _parallel(false) {}
 
 /// @brief free a transaction container
@@ -83,6 +86,16 @@ RocksDBTransactionState::~RocksDBTransactionState() {
   cleanupTransaction();
   _status = transaction::Status::ABORTED;
 }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void RocksDBTransactionState::use() noexcept {
+  TRI_ASSERT(_users.fetch_add(1, std::memory_order_relaxed) == 0);
+}
+
+void RocksDBTransactionState::unuse() noexcept {
+  TRI_ASSERT(_users.fetch_sub(1, std::memory_order_relaxed) == 1); 
+}
+#endif
 
 /// @brief start a transaction
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
@@ -751,7 +764,18 @@ rocksdb::SequenceNumber RocksDBTransactionState::beginSeq() const {
   rocksdb::TransactionDB* db = engine.db();
   return db->GetLatestSequenceNumber();
 }
-  
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+RocksDBTransactionStateGuard::RocksDBTransactionStateGuard(RocksDBTransactionState* state) noexcept
+    : _state(state) {
+  _state->use();
+}
+
+RocksDBTransactionStateGuard::~RocksDBTransactionStateGuard() {
+  _state->unuse();
+}
+#endif
+
 /// @brief constructor, leases a builder
 RocksDBKeyLeaser::RocksDBKeyLeaser(transaction::Methods* trx)
     : _ctx(trx->transactionContextPtr()),
