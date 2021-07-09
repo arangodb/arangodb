@@ -88,7 +88,7 @@ class Ast {
   ~Ast();
 
   /// @brief maximum nesting level for expressions
-  static constexpr uint64_t maxExpressionNesting = 1000;
+  static constexpr uint64_t maxExpressionNesting = 500;
 
   /// @brief return the query
   QueryContext& query() const { return _query; }

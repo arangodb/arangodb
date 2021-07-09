@@ -1361,7 +1361,7 @@ function ahuacatlQuerySimpleTestSuite () {
     
     testQueryWithManyNodes : function() {
       let q = "LET x = NOOPT('testi')\n";
-      const cnt = 4000 - 4; // singleton + calculation + calculation + return
+      const cnt = 3000 - 4; // singleton + calculation + calculation + return
       for (let i = 0; i < cnt; ++i) {
         q += `FILTER x\n `;
       }
@@ -1371,7 +1371,7 @@ function ahuacatlQuerySimpleTestSuite () {
     
     testQueryWithTooManyNodes : function() {
       let q = "LET x = NOOPT('testi')\n";
-      const cnt = 4000; // plus singleton + calculation + calculation + return
+      const cnt = 3000; // plus singleton + calculation + calculation + return
       for (let i = 0; i < cnt; ++i) {
         q += `FILTER x\n `;
       }
@@ -1381,7 +1381,7 @@ function ahuacatlQuerySimpleTestSuite () {
     
     testQueryWithDeepExpression : function() {
       let q = "RETURN 0";
-      const cnt = 1000 - 2; 
+      const cnt = 500 - 2; 
       for (let i = 1; i <= cnt; ++i) {
         q += " + " + i;
       }
@@ -1390,7 +1390,7 @@ function ahuacatlQuerySimpleTestSuite () {
     
     testQueryWithTooDeepExpression : function() {
       let q = "RETURN 0";
-      const cnt = 1000; 
+      const cnt = 500; 
       for (let i = 0; i < cnt; ++i) {
         q += " + " + i;
       }
