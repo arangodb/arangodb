@@ -65,7 +65,7 @@ class ExecutionPlan {
   /// (at the time the initial execution plan is created). we have to limit
   /// this to prevent super-long runtimes for query optimization and
   /// execution)
-  static constexpr uint64_t maxPlanNodes = 3000;
+  static constexpr uint64_t maxPlanNodes = 4000;
 
   /// @brief create an execution plan from an AST
   /// note: tracking memory usage requires accessing the Ast/Query objects,

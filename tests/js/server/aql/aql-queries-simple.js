@@ -1359,9 +1359,19 @@ function ahuacatlQuerySimpleTestSuite () {
       assertEqual(expected, AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
     },
     
+    testQueryWithManyInitializeCursors : function() {
+      let q = "LET x = NOOPT([1])\n";
+      const cnt = 999;
+      for (let i = 0; i < cnt; ++i) {
+        q += `FOR s${i} IN x\n `;
+      }
+      q += "RETURN 1";
+      assertEqual([1], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
+    },
+    
     testQueryWithManyNodes : function() {
       let q = "LET x = NOOPT('testi')\n";
-      const cnt = 3000 - 4; // singleton + calculation + calculation + return
+      const cnt = 4000 - 4; // singleton + calculation + calculation + return
       for (let i = 0; i < cnt; ++i) {
         q += `FILTER x\n `;
       }
@@ -1371,7 +1381,7 @@ function ahuacatlQuerySimpleTestSuite () {
     
     testQueryWithTooManyNodes : function() {
       let q = "LET x = NOOPT('testi')\n";
-      const cnt = 3000; // plus singleton + calculation + calculation + return
+      const cnt = 4000; // plus singleton + calculation + calculation + return
       for (let i = 0; i < cnt; ++i) {
         q += `FILTER x\n `;
       }
