@@ -529,6 +529,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
         network::Response const& response = tryRes.get(); 
         if (response.fail()) {
           // note first error, but continue iterating over all results
+          LOG_TOPIC("2d319", DEBUG, Logger::AQL)
+              << "received error from server " << response.destination 
+              << " during query cleanup: " << response.combinedResult().errorMessage();
           res.reset(response.combinedResult());
         }
       }
