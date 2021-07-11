@@ -57,9 +57,9 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(Logical
                + errField + "': " + definition.toString()));
      return nullptr;
   }
-  IResearchLinkMeta fieldsMeta;
+  InvertedIndexFieldMeta fieldsMeta;
   if (!fieldsMeta.init(_server, definition, false, errField,
-                        collection.vocbase().name(), IResearchLinkMeta::DEFAULT(), nullptr, true)) {
+                        collection.vocbase().name())) {
     LOG_TOPIC("18c17", ERR, iresearch::TOPIC)
       << (errField.empty() ?
            (std::string("failed to initialize index from definition: ") + definition.toString())
@@ -176,7 +176,7 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(velocypack::Builder& norm
 }
 
 IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
-    IndexId id, LogicalCollection& collection, uint64_t objectId, std::string const& name, IResearchLinkMeta&& meta)
+    IndexId id, LogicalCollection& collection, uint64_t objectId, std::string const& name, InvertedIndexFieldMeta && meta)
     : IResearchInvertedIndex(id, collection, std::move(meta)),
       RocksDBIndex(id, collection, name, IResearchInvertedIndex::fields(_meta), false, false,
                    RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid), objectId, false) {}

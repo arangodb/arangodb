@@ -1168,7 +1168,9 @@ bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationSer
       try {
         std::vector<basics::AttributeName> fieldParts;
         TRI_ParseAttributeString(val.stringView(), fieldParts, false);
-        _fields.emplace_back(fieldParts, IResearchAnalyzerFeature::identity());  // FIXME: deduplicate
+        _fields.emplace_back(std::move(fieldParts),
+                             FieldMeta::Analyzer(IResearchAnalyzerFeature::identity(),
+                                                 std::string(IResearchAnalyzerFeature::identity()->name())));  // FIXME: deduplicate
       } catch (arangodb::basics::Exception const& err) {
         LOG_TOPIC("1d04c", ERR, iresearch::TOPIC)
             << "Error parsing attribute: " << err.what();
@@ -1232,14 +1234,16 @@ bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationSer
               // save in referencedAnalyzers
               _analyzerDefinitions.emplace(analyzer);
             }
-            _fields.emplace_back(fieldParts, analyzer);
+            _fields.emplace_back(std::move(fieldParts), FieldMeta::Analyzer(analyzer, std::move(shortName)));
           } else {
             errorField = fieldsFieldName + "[" + basics::StringUtils::itoa(itr.index()) +
                          "]" + ".analyzer";
             return false;
           }
         } else {
-          _fields.emplace_back(fieldParts, IResearchAnalyzerFeature::identity());
+          _fields.emplace_back(std::move(fieldParts),
+                               FieldMeta::Analyzer(IResearchAnalyzerFeature::identity(),
+                                                   std::string(IResearchAnalyzerFeature::identity()->name())));
         }
       } else {
         errorField =
@@ -1257,7 +1261,7 @@ bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationSer
 
 bool  InvertedIndexFieldMeta::json(arangodb::application_features::ApplicationServer& server,
   arangodb::velocypack::Builder& builder,
-  TRI_vocbase_t const* defaultVocbase = nullptr) const {
+  TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
   return false;
 }
 

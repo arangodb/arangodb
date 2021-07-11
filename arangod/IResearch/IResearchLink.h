@@ -148,6 +148,12 @@ class IResearchLink : public IResearchDataStore {
   /// false otherwise
   bool setCollectionName(irs::string_ref name) noexcept;
 
+  Result insert(transaction::Methods& trx,
+                LocalDocumentId const& documentId,
+                velocypack::Slice const doc) {
+     return IResearchDataStore::insert<FieldIterator, IResearchLinkMeta>(trx, documentId, doc, _meta);
+  }
+
  protected:
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -155,10 +161,10 @@ class IResearchLink : public IResearchDataStore {
   /// after
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLink(IndexId iid, LogicalCollection& collection);
-
+  
  private:
-  std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
   IResearchLinkMeta const _meta;
+  std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
 };  // IResearchLink
 
 }  // namespace iresearch

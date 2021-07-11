@@ -227,7 +227,7 @@ class InvertedIndexFieldIterator {
 
   explicit InvertedIndexFieldIterator(arangodb::transaction::Methods& trx, irs::string_ref collection, IndexId indexId);
 
-  bool valid() const noexcept { return _fieldsMeta && _begin != _end; }
+  bool valid() const noexcept { return !_valueSlice.isNone(); }
 
   void reset(velocypack::Slice slice,
              InvertedIndexFieldMeta const& fieldsMeta) {
@@ -235,17 +235,25 @@ class InvertedIndexFieldIterator {
     _fieldsMeta = &fieldsMeta;
     _begin = _fieldsMeta->_fields.begin();
     _end = _fieldsMeta->_fields.end();
+    next();
   }
 
  private:
   void next();
+  bool setValue(VPackSlice const value,
+                FieldMeta::Analyzer const& valueAnalyzer);
+  void setNullValue(VPackSlice const value);
+  void setNumericValue(VPackSlice const value);
+  void setBoolValue(VPackSlice const value);
   InvertedIndexFieldMeta::Fields::const_iterator _begin;
   InvertedIndexFieldMeta::Fields::const_iterator _end;
-  InvertedIndexFieldMeta const* _fieldsMeta;
+  InvertedIndexFieldMeta const* _fieldsMeta{nullptr};
   Field _value;  // iterator's value
   VPackSlice _slice; // input slice
   VPackSlice _valueSlice;
-
+  arangodb::transaction::Methods* _trx;
+  irs::string_ref _collection;
+  IndexId _indexId;
   // Support for outputting primitive type from analyzer
   using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
                                          VPackSlice slice);
@@ -253,6 +261,9 @@ class InvertedIndexFieldIterator {
   irs::analysis::analyzer* _currentTypedAnalyzer{nullptr};
   VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
+  std::vector<VPackArrayIterator> _arrayStack;
+  std::string _nameBuffer;
+  AnalyzerPool::ptr _currentAnalyzer{nullptr};
 };
 
 ////////////////////////////////////////////////////////////////////////////////

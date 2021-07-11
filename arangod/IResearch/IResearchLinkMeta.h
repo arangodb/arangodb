@@ -335,6 +335,7 @@ struct InvertedIndexFieldMeta {
   IResearchViewSort _sort; // sort condition associated with the link
   IResearchViewStoredValues _storedValues; // stored values associated with the link
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
+  irs::string_ref _collectionName;
 }; // InvertedIndexFieldMeta
 
 }  // namespace iresearch

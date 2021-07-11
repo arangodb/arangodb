@@ -32,7 +32,7 @@ namespace iresearch {
 class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex, public RocksDBIndex {
  public:
   IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection, uint64_t objectId,
-                                std::string const& name, IResearchLinkMeta&& meta);
+                                std::string const& name, InvertedIndexFieldMeta&& meta);
 
   Index::IndexType type() const override { return  Index::TRI_IDX_TYPE_INVERTED_INDEX; }
 

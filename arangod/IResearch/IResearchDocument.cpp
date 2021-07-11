@@ -34,6 +34,7 @@
 #include "IResearch/IResearchPrimaryKeyFilter.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/IResearchVPackTermAttribute.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 #include "Transaction/Helpers.h"
@@ -666,7 +667,7 @@ setAnalyzers:
   return true;
 }
 
-  StoredValue::StoredValue(transaction::Methods const& t, irs::string_ref cn,
+StoredValue::StoredValue(transaction::Methods const& t, irs::string_ref cn,
                            VPackSlice const doc, IndexId lid)
     : trx(t), document(doc), collection(cn),
       linkId(lid), isDBServer(ServerState::instance()->isDBServer()) {}
@@ -704,6 +705,251 @@ bool StoredValue::write(irs::data_output& out) const {
       // a builder is destroyed but a buffer is alive
     }
     out.write_bytes(slice.start(), slice.byteSize());
+  }
+  return true;
+}
+
+InvertedIndexFieldIterator::InvertedIndexFieldIterator(arangodb::transaction::Methods& trx,
+                                                       irs::string_ref collection,
+                                                       IndexId indexId)
+  : _trx(&trx), _collection(collection), _indexId(indexId) {}
+
+void InvertedIndexFieldIterator::next() {
+  TRI_ASSERT(valid());
+  if (_currentTypedAnalyzer) {
+    if (_currentTypedAnalyzer->next()) {
+      TRI_ASSERT(_primitiveTypeResetter);
+      TRI_ASSERT(_currentTypedAnalyzerValue);
+      TRI_ASSERT(_value._analyzer.get());
+      _primitiveTypeResetter(_value._analyzer.get(), _currentTypedAnalyzerValue->value);
+      return;
+    } else {
+      _currentTypedAnalyzer = nullptr;
+    }
+  }
+  _valueSlice = VPackSlice::noneSlice();
+  while (_begin != _end) {
+    while (!_arrayStack.empty() && _valueSlice.isNone()) {
+      if (_arrayStack.back().valid()) {
+        _valueSlice = *_arrayStack.back();
+        _arrayStack.back()++;
+      } else {
+        _arrayStack.pop_back();
+      }
+    }
+    if (_arrayStack.empty()) {
+      TRI_ASSERT(_valueSlice.isNone());
+      if (!_nameBuffer.empty()) {
+        if (++_begin == _end) {
+          TRI_ASSERT(!valid());
+          return; // exhausted
+        }
+        _nameBuffer.clear();
+      }
+      _valueSlice = get(_slice, _begin->first, arangodb::velocypack::Slice::noneSlice());
+    }
+    if (!_valueSlice.isNone()) {
+      if (_nameBuffer.empty()) {
+        bool isFirst = true;
+        for (auto& a : _begin->first) {
+          if (!isFirst) {
+            _nameBuffer += NESTING_LEVEL_DELIMITER;
+          }
+          _nameBuffer.append(a.name);
+          isFirst = false;
+        }
+        _currentAnalyzer = _begin->second._pool;
+      }
+      TRI_ASSERT(_currentAnalyzer);
+      switch (_valueSlice.type()) {
+        case VPackValueType::Null:
+          setNullValue(_valueSlice);
+          return;
+        case VPackValueType::Bool:
+          setBoolValue(_valueSlice);
+          return;
+        case VPackValueType::Object:
+          if (setValue(_valueSlice, _begin->second)){
+            return;
+          }
+          break;
+        case VPackValueType::Array: {
+          if (setValue(_valueSlice, _begin->second)){
+            return;
+          } else {
+            _arrayStack.push_back(VPackArrayIterator(_valueSlice));
+          }
+        } break;
+        case VPackValueType::Double:
+        case VPackValueType::Int:
+        case VPackValueType::UInt:
+        case VPackValueType::SmallInt:
+          setNumericValue(_valueSlice);
+          return;
+        case VPackValueType::String: {
+          setValue(_valueSlice, _begin->second);
+          return;
+        }
+      }
+    }
+  }
+}
+
+void InvertedIndexFieldIterator::setBoolValue(VPackSlice const value) {
+  TRI_ASSERT(value.isBool());
+
+  arangodb::iresearch::kludge::mangleBool(_nameBuffer);
+
+  // init stream
+  auto stream = BoolStreamPool.emplace();
+  stream->reset(value.getBool());
+
+  // set field properties
+  _value._name = _nameBuffer;
+  _value._analyzer = stream.release();  // FIXME don't use shared_ptr
+  _value._features = &irs::flags::empty_instance();
+}
+
+void InvertedIndexFieldIterator::setNumericValue(VPackSlice const value) {
+  TRI_ASSERT(value.isNumber());
+
+  arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
+
+  // init stream
+  auto stream = NumericStreamPool.emplace();
+  stream->reset(value.getNumber<double>());
+
+  // set field properties
+  _value._name = _nameBuffer;
+  _value._analyzer = stream.release();  // FIXME don't use shared_ptr
+  _value._features = &NumericStreamFeatures;
+}
+
+void InvertedIndexFieldIterator::setNullValue(VPackSlice const value) {
+  TRI_ASSERT(value.isNull());
+
+  arangodb::iresearch::kludge::mangleNull(_nameBuffer);
+
+  // init stream
+  auto stream = NullStreamPool.emplace();
+  stream->reset();
+
+  // set field properties
+  _value._name = _nameBuffer;
+  _value._analyzer = stream.release();  // FIXME don't use shared_ptr
+  _value._features = &irs::flags::empty_instance();
+}
+
+bool InvertedIndexFieldIterator::setValue(VPackSlice const value,
+                             FieldMeta::Analyzer const& valueAnalyzer) {
+  TRI_ASSERT(value.isObject()
+            || value.isArray()
+            || value.isString());
+
+  auto& pool = valueAnalyzer._pool;
+
+  if (!pool) {
+    LOG_TOPIC("189db", WARN, iresearch::TOPIC)
+        << "got nullptr analyzer factory";
+
+    return false;
+  }
+
+  irs::string_ref valueRef;
+  AnalyzerValueType valueType{AnalyzerValueType::Undefined};
+
+  switch (value.type()) {
+    case VPackValueType::Array: {
+      valueRef = iresearch::ref<char>(value);
+      valueType = AnalyzerValueType::Array;
+    } break;
+    case VPackValueType::Object: {
+      valueRef = iresearch::ref<char>(value);
+      valueType = AnalyzerValueType::Object;
+    } break;
+    case VPackValueType::String: {
+      valueRef = iresearch::getStringRef(value);
+      valueType = AnalyzerValueType::String;
+    } break;
+    default:
+      TRI_ASSERT(false);
+      return false;
+  }
+
+  if (!pool->accepts(valueType)) {
+    return false;
+  }
+
+  // init stream
+  auto analyzer = pool->get();
+
+  if (!analyzer) {
+    LOG_TOPIC("22eeb", WARN, arangodb::iresearch::TOPIC)
+        << "got nullptr from analyzer factory, name '" << pool->name() << "'";
+    return false;
+  }
+  if (!analyzer->reset(valueRef)) {
+      return false;
+  }
+  // set field properties
+  switch (pool->returnType()) {
+    case AnalyzerValueType::Bool:
+      {
+        if (!analyzer->next()) {
+          return false;
+        }
+        _currentTypedAnalyzer = analyzer.get();
+        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
+        TRI_ASSERT(_currentTypedAnalyzerValue);
+        setBoolValue(_currentTypedAnalyzerValue->value);
+        _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          auto bool_stream = dynamic_cast<irs::boolean_token_stream*>(stream);
+          TRI_ASSERT(bool_stream);
+#else
+          auto bool_stream = static_cast<irs::boolean_token_stream*>(stream);
+#endif
+          TRI_ASSERT(slice.isBool());
+          bool_stream->reset(slice.getBool());
+        };
+      }
+      break;
+    case AnalyzerValueType::Number:
+      {
+        if (!analyzer->next()) {
+          return false;
+        }
+        _currentTypedAnalyzer = analyzer.get();
+        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
+        TRI_ASSERT(_currentTypedAnalyzerValue);
+        setNumericValue(_currentTypedAnalyzerValue->value);
+        _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          auto number_stream = dynamic_cast<irs::numeric_token_stream*>(stream);
+          TRI_ASSERT(number_stream);
+#else
+          auto number_stream = static_cast<irs::numeric_token_stream*>(stream);
+#endif
+          TRI_ASSERT(slice.isNumber());
+          number_stream->reset(slice.getNumber<double>());
+        };
+      }
+      break;
+    default:
+      iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
+      _value._analyzer = analyzer;
+      _value._features = &(pool->features());
+      _value._name = _nameBuffer;
+      break;
+  }
+  auto* storeFunc = pool->storeFunc();
+  if (storeFunc) {
+    auto const valueSlice = storeFunc(analyzer.get(), value, _buffer);
+
+    if (!value.isNone()) { // valueSlice?????
+      _value._value = iresearch::ref<irs::byte_type>(valueSlice);
+      _value._storeValues = std::max(ValueStorage::VALUE, _value._storeValues);
+    }
   }
   return true;
 }

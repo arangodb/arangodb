@@ -63,7 +63,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
                 VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
-    return IResearchLink::insert<FieldIterator, IResearchLinkMeta>(trx, documentId, doc, _meta);
+    return IResearchLink::insert(trx, documentId, doc);
   }
 
   bool isSorted() const override { return IResearchLink::isSorted(); }
