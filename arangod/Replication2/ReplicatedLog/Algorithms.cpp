@@ -124,8 +124,8 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
 
       if (numberOfAvailableParticipants >= requiredNumberOfAvailableParticipants) {
         auto const numParticipants = newLeaderSet.size();
-        if (numParticipants == 0 ||
-            numParticipants > std::numeric_limits<uint16_t>::max()) [[unlikely]] {
+        if (ADB_UNLIKELY(numParticipants == 0 ||
+                         numParticipants > std::numeric_limits<uint16_t>::max())) {
           ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_NUMERIC_OVERFLOW,
               basics::StringUtils::concatT(
