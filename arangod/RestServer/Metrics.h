@@ -90,18 +90,20 @@ template<typename T>
 class AtomicMetric : public Metric {
 
  public:
-  AtomicMetric() {}
+  AtomicMetric() { }
   AtomicMetric(T&& val, std::string const& name, std::string const& help,
         std::string const& labels = std::string())
     : Metric(name, help, labels), stats(std::forward<T>(val)) { }
 
-  void store(T&& newStats) {
+  ~AtomicMetric() { }
+
+  virtual void store(T&& newStats) {
     std::lock_guard<std::mutex> lock(mutex);
     stats = std::forward<T>(newStats);
     return;
   }
 
-  T load() const {
+  virtual T load() const {
     std::lock_guard<std::mutex> lock(mutex);
     return stats;
   }
@@ -117,17 +119,6 @@ class AtomicMetric : public Metric {
  private:
   T stats;
   mutable std::mutex mutex;
-};
-
-template <typename T>
-class DummyMetric : public AtomicMetric<T> {
- public:
-  DummyMetric() : AtomicMetric<T>(T(), "", "", "") {}
-
-  void toPrometheus(std::string& result,
-                    std::string const& globalLabels,
-                    std::string const& alternativeName) const override {}
-  std::string type() const override { return "dummy_metric"; }
 };
 
 template<typename T> class Gauge : public Metric {

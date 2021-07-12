@@ -86,6 +86,24 @@ struct Stats {
   size_t numFiles{};        // number of files
 };
 
+template <typename T>
+class DummyMetric : public AtomicMetric<T> {
+ public:
+  DummyMetric() : AtomicMetric<T>(T(), "", "", "") {}
+
+  void toPrometheus(std::string& result,
+                    std::string const& globalLabels,
+                    std::string const& alternativeName) const override {}
+
+  virtual void store(T&& newStats) override{}
+
+  virtual T load() const override {
+    return T();
+  }
+
+  std::string type() const override { return "dummy_metric"; }
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView
@@ -420,6 +438,9 @@ class IResearchLink {
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
   bool _createdInRecovery; // link was created based on recovery marker
   AtomicMetric<LinkStats>* _linkStats; // metric for link statistics
+  std::atomic<bool> is_dummy;
+
+  inline static DummyMetric<IResearchLink::LinkStats> _dummyStats = DummyMetric<IResearchLink::LinkStats>();
 };  // IResearchLink
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,

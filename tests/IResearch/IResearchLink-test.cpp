@@ -1028,7 +1028,7 @@ TEST_F(IResearchLinkTest, test_write_and_metrics1) {
     ASSERT_TRUE(expectedStat == actualStat);
   }
 
-  //logicalCollection->dropIndex(link->id());
+  logicalCollection->dropIndex(link->id());
 }
 
 TEST_F(IResearchLinkTest, test_write_and_metrics2) {
@@ -1182,11 +1182,11 @@ TEST_F(IResearchLinkTest, test_write_and_metrics2) {
       std::string realStr;
       l->stats().toPrometheus(realStr, R"(view="foo", collection="bar", "shard"="s0001")", "test");
       std::string expectedStr;
-expectedStr += "arangodb_arangosearch_docs_count{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 3\n";
-expectedStr += "arangodb_arangosearch_live_docs_count{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 2\n";
-expectedStr += "arangodb_arangosearch_index_size{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 1491\n";
-expectedStr += "arangodb_arangosearch_segments_count{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 2\n";
-expectedStr += "arangodb_arangosearch_files_count{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 12\n";
+      expectedStr += "arangodb_arangosearch_docs_count{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 3\n";
+      expectedStr += "arangodb_arangosearch_live_docs_count{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 2\n";
+      expectedStr += "arangodb_arangosearch_index_size{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 1491\n";
+      expectedStr += "arangodb_arangosearch_segments_count{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 2\n";
+      expectedStr += "arangodb_arangosearch_files_count{ test, view=\"foo\", collection=\"bar\", \"shard\"=\"s0001\"} 12\n";
 
       ASSERT_EQ(realStr, expectedStr);
     }

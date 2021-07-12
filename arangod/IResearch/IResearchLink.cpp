@@ -612,10 +612,14 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid),
       _lastCommittedTick(0),
-      _createdInRecovery(false),
-      _linkStats(new DummyMetric<LinkStats>()) {
+      _createdInRecovery(false){
+
+  _linkStats = &_dummyStats;
+  is_dummy.store(true);
 
   auto* key = this;
+
+  TRI_ASSERT(_linkStats != nullptr);
 
   // initialize transaction callback
   _trxCallback = [key](transaction::Methods& trx, transaction::Status status)->void {
@@ -869,9 +873,7 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
     _dataStore._reader = reader;
 
     // update stats
-    if (ADB_LIKELY(_linkStats)) {
-      _linkStats->store(stats());
-    }
+    _linkStats->store(stats());
 
     // update last committed tick
     impl.tick(_lastCommittedTick);
@@ -1037,6 +1039,11 @@ Result IResearchLink::init(
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
             "error finding view for link '" + std::to_string(_id.id()) + "'"};
   }
+
+  // init _linkStats with AtomicMetric
+  _linkStats = &_collection.vocbase().server()
+            .getFeature<arangodb::MetricsFeature>().add(arangodb_arangosearch_link_stats{});
+  is_dummy.store(false);
 
   auto viewId = definition.get(StaticStrings::ViewIdField).copyString();
   auto& vocbase = _collection.vocbase();
@@ -1243,14 +1250,6 @@ Result IResearchLink::init(
   const_cast<std::string&>(_viewGuid) = std::move(viewId);
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
   _comparer.reset(_meta._sort);
-
-  // delete dummy metric from linkStats
-  if (_linkStats) {
-    delete _linkStats;
-  }
-  // init _linkStats with AtomicMetric
-  _linkStats = &_collection.vocbase().server()
-            .getFeature<arangodb::MetricsFeature>().add(arangodb_arangosearch_link_stats{});
 
   return {};
 }
@@ -1894,7 +1893,8 @@ Result IResearchLink::unload() {
   // remove statistic from MetricsFeature
   _collection.vocbase().server()
     .getFeature<arangodb::MetricsFeature>().remove(arangodb_arangosearch_link_stats{});
-  _linkStats = nullptr;
+
+  _linkStats = &_dummyStats;
 
   try {
     if (_dataStore) {
