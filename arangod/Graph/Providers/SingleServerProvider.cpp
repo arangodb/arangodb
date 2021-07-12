@@ -128,7 +128,7 @@ auto SingleServerProvider<Step>::expand(Step const& step, size_t previous,
   _cursor->rearm(vertex.getID(), 0);
   _cursor->readAll(
       *this, _stats, step.getDepth(),
-      [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
+      [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
         VertexType id = _cache.persistString(([&]() -> auto {
           if (edge.isString()) {
             return VertexType(edge);
@@ -143,7 +143,11 @@ auto SingleServerProvider<Step>::expand(Step const& step, size_t previous,
         // TODO: Adjust log output
         LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
             << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> " << id;
-        callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
+        if constexpr (std::is_same_v<enterprise::SmartGraphStep, Step>) {  // TODO: eventually move to EE
+          callback(Step{id, std::move(eid), previous, step.getDepth() + 1, cursorID});
+        } else {
+          callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
+        }
       });
 }
 

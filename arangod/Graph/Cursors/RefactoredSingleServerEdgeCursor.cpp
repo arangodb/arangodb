@@ -174,7 +174,7 @@ RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
       tmpLookupVec.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
                                 idxCond.getMemberToUpdate(),
                                 idxCond.getExpression(), cursorID);
-      cursorID++;  // TODO Check usage of CursorID
+      cursorID++;  // TODO Check usage of CursorID - might need to reset here before to 0
     }
     _depthLookupInfo.try_emplace(depth, std::move(tmpLookupVec));
   }
@@ -255,6 +255,7 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(SingleServerProvider<Step>&
           return false;
         }
 
+        // TODO: Check _currentCursor - currently it is just index position. We might want to adjust this.
         callback(std::move(edgeToken), edge, _currentCursor);
         return true;
       });
@@ -283,6 +284,7 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(SingleServerProvider<Step>&
                        return false;
                      }
 
+                     // TODO: Check _currentCursor - currently it is just index position. We might want to adjust this.
                      callback(std::move(edgeToken), edgeDoc, _currentCursor);
                      return true;
                    })

@@ -81,6 +81,8 @@ class RefactoredSingleServerEdgeCursor {
     aql::Expression* _expression;
     aql::AstNode* _indexCondition;
     size_t _cursorID;
+    // TODO: Currently unused. We need to enable this later and replace it with the _currentCursor usage. For more info:
+    // TODO: Check _currentCursor - currently it is just index position. We might want to adjust this.
 
     std::unique_ptr<IndexIterator> _cursor;
 
@@ -111,8 +113,8 @@ class RefactoredSingleServerEdgeCursor {
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
 
  public:
-  void readAll(SingleServerProvider<StepType>& provider, aql::TraversalStats& stats,
-               size_t depth, Callback const& callback);
+  void readAll(SingleServerProvider<StepType>& provider,
+               aql::TraversalStats& stats, size_t depth, Callback const& callback);
 
   void rearm(VertexType vertex, uint64_t depth);
 
