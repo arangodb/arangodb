@@ -32,7 +32,7 @@ var MochaSuite = require('@arangodb/mocha/suite');
 var MochaRunner = require('@arangodb/mocha/runner');
 var createStatsCollector = require('@arangodb/mocha/stats-collector');
 
-const reporters = {
+exports.reporters = {
   stream: require('@arangodb/mocha/reporter/stream'),
   suite: require('@arangodb/mocha/reporter/suite'),
   xunit: require('@arangodb/mocha/reporter/xunit'),
@@ -45,11 +45,11 @@ exports.run = function runMochaTests (run, files, reporterName, grep) {
     files = [files];
   }
 
-  if (reporterName && !reporters[reporterName]) {
+  if (reporterName && !exports.reporters[reporterName]) {
     throw new Error(`Unknown test reporter: "${
       reporterName
     }". Known reporters: ${
-      Object.keys(reporters).join(', ')
+      Object.keys(exports.reporters).join(', ')
     }`);
   }
 
@@ -89,7 +89,7 @@ exports.run = function runMochaTests (run, files, reporterName, grep) {
   var globals = Object.getOwnPropertyNames(global);
   var objectProps = Object.getOwnPropertyNames(Object.prototype);
 
-  var Reporter = reporters[reporterName || "default"];
+  var Reporter = exports.reporters[reporterName || "default"];
   var reporter, runner;
 
   try {
