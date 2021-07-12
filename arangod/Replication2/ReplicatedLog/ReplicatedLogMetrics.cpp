@@ -81,7 +81,7 @@ ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
               metricsFeature)) {
 #ifndef ARANGODB_USE_GOOGLE_TESTS
   static_assert(!mock);
-  static_assert(!isNullptrT);
+  static_assert(!std::is_null_pointer_v<MFP>);
 #endif
 }
 
@@ -102,6 +102,6 @@ MeasureTimeGuard::~MeasureTimeGuard() { fire(); }
 
 template arangodb::replication2::replicated_log::ReplicatedLogMetrics::ReplicatedLogMetrics(
     arangodb::MetricsFeature*);
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 template arangodb::replication2::replicated_log::ReplicatedLogMetrics::ReplicatedLogMetrics(std::nullptr_t);
-
-
+#endif

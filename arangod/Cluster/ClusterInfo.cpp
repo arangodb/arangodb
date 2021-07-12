@@ -5663,6 +5663,24 @@ CollectionID ClusterInfo::getCollectionNameForShard(ShardID const& shardId) {
   return StaticStrings::Empty;
 }
 
+auto ClusterInfo::getReplicatedLogLeader(DatabaseID const& database, replication2::LogId id) const
+-> std::optional<ServerID> {
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  if (auto it = _newStuffByDatabase.find(database); it != std::end(_newStuffByDatabase)) {
+    if (auto it2 = it->second->replicatedLogs.find(id);
+        it2 != std::end(it->second->replicatedLogs)) {
+      if (auto const& term = it2->second->currentTerm) {
+        if (auto const& leader = term->leader) {
+          return leader->serverId;
+        }
+      }
+    }
+  }
+
+  return std::nullopt;
+}
+
 arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
   AgencyCommResult dump = _agency.dump();
 

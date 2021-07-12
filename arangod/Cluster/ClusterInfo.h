@@ -962,9 +962,6 @@ class ClusterInfo final {
   auto getReplicatedLogLeader(DatabaseID const& database, replication2::LogId) const
       -> std::optional<ServerID>;
 
-  auto getCollectionGroupById(DatabaseID const& database, replication2::agency::CollectionGroupId id)
-    -> std::shared_ptr<replication2::agency::CollectionGroup const>;
-
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
    *
