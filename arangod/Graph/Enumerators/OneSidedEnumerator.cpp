@@ -291,11 +291,27 @@ template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise
 template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
     SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, false>>;
 
-// Tracing
+// DFS Tracing
 template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
     SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, true>>;
 template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
     SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, true>>;
 template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, true>>;
+
+// Breath First Search
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, false>>;
+
+// BFS Tracing
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
     SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, true>>;
 #endif
