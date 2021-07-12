@@ -369,12 +369,14 @@ class ExecutionNode {
   /// include addition information of the register plan for explain
   static constexpr unsigned SERIALIZE_REGISTER_INFORMATION = 1 << 4;
 
-  /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
-  void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags, bool keepTopLevelOpen) const;
+  /// @brief serialize this ExecutionNode to VelocyPack
+  void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
 
-  /// @brief toVelocyPack
-  virtual void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                                  std::unordered_set<ExecutionNode const*>& seen) const = 0;
+  /// @brief exports this ExecutionNode with all its dependencies to VelocyPack.
+  /// This function implicitly creates an array and serializes all nodes top-down,
+  /// i.e., the upmost dependency will be the first, and this node will be the last
+  /// in the array.
+  void allToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
 
   /** Variables used and set are disjunct!
    *   Variables that are read from must be returned by the
@@ -487,6 +489,12 @@ class ExecutionNode {
   auto getRegsToKeepStack() const -> RegIdSetStack;
 
  protected:
+  /// @brief serialize this ExecutionNode to VelocyPack.
+  /// This function is called as part of `toVelocyPack` and must be overriden in
+  /// order to serialize type specific information.
+  virtual void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const = 0;
+
+
   /// @brief set the id, use with care! The purpose is to use a cloned node
   /// together with the original in the same plan.
   void setId(ExecutionNodeId id);
@@ -498,10 +506,6 @@ class ExecutionNode {
   /// @brief factory for sort elements
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
                               arangodb::velocypack::Slice const& slice, char const* which);
-
-  /// @brief toVelocyPackHelper, for a generic node
-  void toVelocyPackHelperGeneric(arangodb::velocypack::Builder&, unsigned flags,
-                                 std::unordered_set<ExecutionNode const*>& seen) const;
 
   RegisterId variableToRegisterId(Variable const*) const;
 
@@ -574,6 +578,9 @@ class ExecutionNode {
  public:
   /// @brief used as "type traits" for ExecutionNodes and derived classes
   static constexpr bool IsExecutionNode = true;
+
+private:
+  bool doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst);
 };
 
 /// @brief class SingletonNode
@@ -589,10 +596,6 @@ class SingletonNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final;
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -607,6 +610,10 @@ class SingletonNode : public ExecutionNode {
 
   /// @brief the cost of a singleton is 1
   CostEstimate estimateCost() const override final;
+  
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 };
 
 /// @brief class EnumerateCollectionNode
@@ -626,10 +633,6 @@ class EnumerateCollectionNode : public ExecutionNode,
 
   /// @brief return the type of the node
   NodeType getType() const override final;
-
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -656,6 +659,10 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief user hint regarding which index ot use
   IndexHint const& hint() const;
 
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+
  private:
   /// @brief whether or not we want random iteration
   bool _random;
@@ -677,10 +684,6 @@ class EnumerateListNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
-
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -708,6 +711,10 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief return out variable
   Variable const* outVariable() const;
 
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+
  private:
   /// @brief input variable to read from
   Variable const* _inVariable;
@@ -727,10 +734,6 @@ class LimitNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
-
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -754,6 +757,10 @@ class LimitNode : public ExecutionNode {
 
   /// @brief return the limit value
   size_t limit() const;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
   /// @brief the offset
@@ -782,10 +789,6 @@ class CalculationNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final;
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -813,6 +816,10 @@ class CalculationNode : public ExecutionNode {
   virtual std::vector<Variable const*> getVariablesSetHere() const override final;
 
   bool isDeterministic() override final;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
   /// @brief output variable to write to
@@ -845,10 +852,6 @@ class SubqueryNode : public ExecutionNode {
 
   /// @brief return the out variable
   Variable const* outVariable() const;
-
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -887,6 +890,10 @@ class SubqueryNode : public ExecutionNode {
   bool isConst();
   bool mayAccessCollections();
 
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+
  private:
   /// @brief we need to have an expression and where to write the result
   ExecutionNode* _subquery;
@@ -908,10 +915,6 @@ class FilterNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override;
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -930,6 +933,10 @@ class FilterNode : public ExecutionNode {
   void getVariablesUsedHere(VarSet& vars) const override final;
 
   Variable const* inVariable() const;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
   /// @brief input variable to read from
@@ -971,10 +978,6 @@ class ReturnNode : public ExecutionNode {
   /// @brief tell the node to count the returned values
   void setCount();
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -998,6 +1001,10 @@ class ReturnNode : public ExecutionNode {
 
   bool returnInheritedResults() const;
 
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+
  private:
   /// @brief the variable produced by Return
   Variable const* _inVariable;
@@ -1018,10 +1025,6 @@ class NoResultsNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final;
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -1033,6 +1036,10 @@ class NoResultsNode : public ExecutionNode {
 
   /// @brief the cost of a NoResults is 0
   CostEstimate estimateCost() const override final;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 };
 
 
@@ -1049,10 +1056,6 @@ class AsyncNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final;
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -1064,6 +1067,10 @@ class AsyncNode : public ExecutionNode {
 
   /// @brief the cost of a AsyncNode is whatever is 0
   CostEstimate estimateCost() const override final;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 };
 
 namespace materialize {
@@ -1077,10 +1084,6 @@ class MaterializeNode : public ExecutionNode {
  public:
   /// @brief return the type of the node
   NodeType getType() const override final { return ExecutionNode::MATERIALIZE; }
-
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -1104,6 +1107,9 @@ class MaterializeNode : public ExecutionNode {
     return *_outVariable;
   }
  protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const override;
+
   template <typename T>
   auto getReadableInputRegisters(T collectionSource, RegisterId inNmDocId) const
       -> RegIdSet;
@@ -1135,10 +1141,6 @@ class MaterializeMultiNode : public MaterializeNode {
 
   MaterializeMultiNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -1150,6 +1152,10 @@ class MaterializeMultiNode : public MaterializeNode {
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const override final;
 
  private:
   /// @brief input variable non-materialized collection ids
@@ -1164,10 +1170,6 @@ class MaterializeSingleNode : public MaterializeNode, public CollectionAccessing
 
   MaterializeSingleNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -1176,6 +1178,10 @@ class MaterializeSingleNode : public MaterializeNode, public CollectionAccessing
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const override final;
 };
 
 MaterializeNode* createMaterializeNode(ExecutionPlan* plan,
