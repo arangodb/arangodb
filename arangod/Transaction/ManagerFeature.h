@@ -60,6 +60,8 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   void trackExpired(uint64_t numExpired);
 
  private:
+  void queueGarbageCollection();
+
   static constexpr double defaultStreamingIdleTimeout = 60.0;
   static constexpr double maxStreamingIdleTimeout = 120.0;
 
