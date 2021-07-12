@@ -124,7 +124,7 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
       if (numberOfAvailableParticipants >= requiredNumberOfAvailableParticipants) {
         TRI_ASSERT(!newLeaderSet.empty());
         // Randomly select one of the best participants
-        auto const& newLeader = newLeaderSet.at(RandomGenerator::interval(newLeaderSet.size() - 1));
+        auto const& newLeader = newLeaderSet.at(RandomGenerator::interval(std::size_t{newLeaderSet.size() - 1}));
         auto const& record = info.at(newLeader);
 
         // we can elect a new leader
