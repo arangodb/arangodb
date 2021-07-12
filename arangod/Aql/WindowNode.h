@@ -113,10 +113,6 @@ class WindowNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final;
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief calculate the aggregate registers
   void calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
                               RegIdSet& readableInputRegisters,
@@ -148,6 +144,10 @@ class WindowNode : public ExecutionNode {
 
   // does this WINDOW need to look at rows following the current one
   bool needsFollowingRows() const;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
   WindowBounds _bounds;

@@ -47,9 +47,6 @@ class SubqueryEndNode : public ExecutionNode {
 
   Variable const* outVariable() const { return _outVariable; }
 
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
       std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
@@ -75,6 +72,9 @@ class SubqueryEndNode : public ExecutionNode {
   // noone should ever ask this node whether it is a modification
   // node
   bool isModificationNode() const override;
+
+ protected:
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
   Variable const* _inVariable;

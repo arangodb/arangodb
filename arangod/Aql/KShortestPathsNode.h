@@ -80,10 +80,6 @@ class KShortestPathsNode : public virtual GraphNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return K_SHORTEST_PATHS; }
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -150,6 +146,10 @@ class KShortestPathsNode : public virtual GraphNode {
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into graph::ShortestPathOptions*)
   auto options() const -> graph::ShortestPathOptions*;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
   void kShortestPathsCloneHelper(ExecutionPlan& plan, KShortestPathsNode& c,

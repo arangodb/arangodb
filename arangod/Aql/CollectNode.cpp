@@ -85,12 +85,8 @@ CollectNode::CollectNode(
 
 CollectNode::~CollectNode() = default;
 
-/// @brief toVelocyPack, for CollectNode
-void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                     std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+/// @brief doToVelocyPack, for CollectNode
+void CollectNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // group variables
   nodes.add(VPackValue("groups"));
   {
@@ -148,9 +144,6 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   nodes.add("specialized", VPackValue(_specialized));
   nodes.add(VPackValue("collectOptions"));
   _options.toVelocyPack(nodes);
-
-  // And close it:
-  nodes.close();
 }
 
 void CollectNode::calcExpressionRegister(arangodb::aql::RegisterId& expressionRegister,
