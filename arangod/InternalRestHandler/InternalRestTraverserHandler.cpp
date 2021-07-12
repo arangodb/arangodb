@@ -32,10 +32,6 @@
 #include "Rest/GeneralResponse.h"
 #include "Transaction/StandaloneContext.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Cluster/SmartGraphEngine.h"
-#endif
-
 #include <Logger/LogMacros.h>
 #include <chrono>
 #include <thread>
@@ -240,8 +236,7 @@ void InternalRestTraverserHandler::queryEngine() {
     // Safe cast BaseTraverserEngines are all of type TRAVERSER
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
-    auto searchInput = enterprise::SmartTraversalInput::parseDFSInput(body);
-    eng->smartSearchNew(searchInput, result);  // TODO: Rename/Refactor. smartSearchNew does both (DFS & BFS)
+    eng->smartSearchNew(body, result);  // TODO: Rename/Refactor. smartSearchNew does both (DFS & BFS)
     LOG_DEVEL << "New: " << result.toJson();
   } else if (option == "smartSearchBFS") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
@@ -258,8 +253,7 @@ void InternalRestTraverserHandler::queryEngine() {
 
     LOG_DEVEL << "New: ";
     VPackBuilder other;
-    auto searchInput = enterprise::SmartTraversalInput::parseBFSInput(body);
-    eng->smartSearchNew(searchInput, other);  // TODO: Rename/Refactor. smartSearchNew does both (DFS & BFS)
+    eng->smartSearchNew(body, other);  // TODO: Rename/Refactor. smartSearchNew does both (DFS & BFS)
     LOG_DEVEL << other.toJson();
   } else if (option == "smartSearchWeighted") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
