@@ -59,7 +59,8 @@ class RefactoredSingleServerEdgeCursor {
  public:
   struct LookupInfo {
     LookupInfo(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-               std::optional<size_t> memberToUpdate, aql::Expression* expression);
+               std::optional<size_t> memberToUpdate,
+               aql::Expression* expression, size_t cursorID);
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&) = delete;
@@ -77,6 +78,7 @@ class RefactoredSingleServerEdgeCursor {
     transaction::Methods::IndexHandle _idxHandle;
     aql::Expression* _expression;
     aql::AstNode* _indexCondition;
+    size_t _cursorID;
 
     std::unique_ptr<IndexIterator> _cursor;
 

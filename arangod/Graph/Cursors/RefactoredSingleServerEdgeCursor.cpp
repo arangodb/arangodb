@@ -44,10 +44,11 @@ IndexIteratorOptions defaultIndexIteratorOptions;
 
 RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(
     transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-    std::optional<size_t> memberToUpdate, aql::Expression* expression)
+    std::optional<size_t> memberToUpdate, aql::Expression* expression, size_t cursorID)
     : _idxHandle(std::move(idx)),
       _expression(expression),
       _indexCondition(condition),
+      _cursorID(cursorID),
       _cursor(nullptr),
       _conditionMemberToUpdate(memberToUpdate) {}
 
@@ -55,6 +56,7 @@ RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(LookupInfo&& other) noe
     : _idxHandle(std::move(other._idxHandle)),
       _expression(std::move(other._expression)),
       _indexCondition(other._indexCondition),
+      _cursorID(other._cursorID),
       _cursor(std::move(other._cursor)){};
 
 RefactoredSingleServerEdgeCursor::LookupInfo::~LookupInfo() = default;
@@ -133,9 +135,12 @@ RefactoredSingleServerEdgeCursor::RefactoredSingleServerEdgeCursor(
   TRI_ASSERT(!globalIndexConditions.empty());
   _lookupInfo.reserve(globalIndexConditions.size());
   _depthLookupInfo.reserve(depthBasedIndexConditions.size());
+
+  size_t cursorID = 0;
   for (auto const& idxCond : globalIndexConditions) {
     _lookupInfo.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
-                             idxCond.getMemberToUpdate(), idxCond.getExpression());
+                             idxCond.getMemberToUpdate(), idxCond.getExpression(), cursorID);
+    cursorID++;  // TODO Check usage of CursorID
   }
   for (auto const& obj : depthBasedIndexConditions) {
     auto& [depth, idxCondArray] = obj;
@@ -143,7 +148,9 @@ RefactoredSingleServerEdgeCursor::RefactoredSingleServerEdgeCursor(
     std::vector<LookupInfo> tmpLookupVec;
     for (auto const& idxCond : idxCondArray) {
       tmpLookupVec.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
-                                idxCond.getMemberToUpdate(), idxCond.getExpression());
+                                idxCond.getMemberToUpdate(),
+                                idxCond.getExpression(), cursorID);
+      cursorID++;  // TODO Check usage of CursorID
     }
     _depthLookupInfo.try_emplace(depth, std::move(tmpLookupVec));
   }
