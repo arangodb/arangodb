@@ -264,6 +264,7 @@ class InvertedIndexFieldIterator {
   std::vector<VPackArrayIterator> _arrayStack;
   std::string _nameBuffer;
   AnalyzerPool::ptr _currentAnalyzer{nullptr};
+  VPackBuffer<uint8_t> _buffer; // buffer for stored values
 };
 
 ////////////////////////////////////////////////////////////////////////////////
