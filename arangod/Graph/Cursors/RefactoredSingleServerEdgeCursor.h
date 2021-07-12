@@ -53,8 +53,10 @@ struct IndexAccessor;
 
 struct EdgeDocumentToken;
 
-struct SingleServerProvider;
+template <class StepType>
+class SingleServerProvider;
 
+template <class StepType>
 class RefactoredSingleServerEdgeCursor {
  public:
   struct LookupInfo {
@@ -109,7 +111,7 @@ class RefactoredSingleServerEdgeCursor {
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
 
  public:
-  void readAll(SingleServerProvider& provider, aql::TraversalStats& stats,
+  void readAll(SingleServerProvider<StepType>& provider, aql::TraversalStats& stats,
                size_t depth, Callback const& callback);
 
   void rearm(VertexType vertex, uint64_t depth);

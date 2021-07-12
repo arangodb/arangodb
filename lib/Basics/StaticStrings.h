@@ -334,6 +334,7 @@ class StaticStrings {
 
   // aql api strings
   static std::string const SerializationFormat;
+  static std::string const AqlDocumentCall;
   static std::string const AqlRemoteExecute;
   static std::string const AqlRemoteCallStack;
   static std::string const AqlRemoteLimit;

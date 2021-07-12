@@ -84,8 +84,7 @@ class ExecutionEngine {
   EngineId engineId() const {
     return _engineId;
   }
-
-
+  
   /// @brief get the root block
   TEST_VIRTUAL ExecutionBlock* root() const;
 

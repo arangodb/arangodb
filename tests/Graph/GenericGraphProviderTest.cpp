@@ -32,6 +32,7 @@
 
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/TraverserOptions.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -50,7 +51,7 @@ static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
 // Add more providers here
 using TypesToTest =
-    ::testing::Types<MockGraphProvider, SingleServerProvider, ClusterProvider>;
+    ::testing::Types<MockGraphProvider, SingleServerProvider<SingleServerProviderStep>, ClusterProvider>;
 
 template <class ProviderType>
 class GraphProviderTest : public ::testing::Test {
@@ -93,7 +94,7 @@ class GraphProviderTest : public ::testing::Test {
                                MockGraphProviderOptions{graph, MockGraphProvider::LooseEndBehaviour::NEVER},
                                resourceMonitor);
     }
-    if constexpr (std::is_same_v<ProviderType, SingleServerProvider>) {
+    if constexpr (std::is_same_v<ProviderType, SingleServerProvider<SingleServerProviderStep>>) {
       s = std::make_unique<GraphTestSetup>();
       singleServer =
           std::make_unique<MockGraphDatabase>(s->server, "testVocbase");
@@ -119,7 +120,7 @@ class GraphProviderTest : public ::testing::Test {
           std::make_pair(std::move(usedIndexes),
                          std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
           *_expressionContext.get(), _emptyShardMap);
-      return SingleServerProvider(*query.get(), std::move(opts), resourceMonitor);
+      return SingleServerProvider<SingleServerProviderStep>(*query.get(), std::move(opts), resourceMonitor);
     }
     if constexpr (std::is_same_v<ProviderType, ClusterProvider>) {
       // Prepare the DBServerResponses
@@ -243,7 +244,7 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
   TraversalStats stats = testee.stealStats();
   EXPECT_EQ(stats.getFiltered(), 0);
 
-  if constexpr (std::is_same_v<TypeParam, SingleServerProvider> ||
+  if constexpr (std::is_same_v<TypeParam, SingleServerProvider<SingleServerProviderStep>> ||
                 std::is_same_v<TypeParam, MockGraphProvider>) {
     EXPECT_EQ(stats.getHttpRequests(), 0);
   } else if (std::is_same_v<TypeParam, ClusterProvider>) {
@@ -287,7 +288,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
   {
     TraversalStats stats = testee.stealStats();
     EXPECT_EQ(stats.getFiltered(), 0);
-    if constexpr (std::is_same_v<TypeParam, SingleServerProvider> ||
+    if constexpr (std::is_same_v<TypeParam, SingleServerProvider<SingleServerProviderStep>> ||
                   std::is_same_v<TypeParam, MockGraphProvider>) {
       EXPECT_EQ(stats.getHttpRequests(), 0);
     } else if (std::is_same_v<TypeParam, ClusterProvider>) {
@@ -349,7 +350,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
   {
     TraversalStats stats = testee.stealStats();
     EXPECT_EQ(stats.getFiltered(), 0);
-    if constexpr (std::is_same_v<TypeParam, SingleServerProvider> ||
+    if constexpr (std::is_same_v<TypeParam, SingleServerProvider<SingleServerProviderStep>> ||
                   std::is_same_v<TypeParam, MockGraphProvider>) {
       EXPECT_EQ(stats.getHttpRequests(), 0);
     } else if (std::is_same_v<TypeParam, ClusterProvider>) {
@@ -370,7 +371,7 @@ TYPED_TEST(GraphProviderTest, destroy_engines) {
 
   testee.destroyEngines();
   TraversalStats statsAfterSteal = testee.stealStats();
-  if constexpr (std::is_same_v<TypeParam, SingleServerProvider> ||
+  if constexpr (std::is_same_v<TypeParam, SingleServerProvider<SingleServerProviderStep>> ||
                 std::is_same_v<TypeParam, MockGraphProvider>) {
     EXPECT_EQ(statsAfterSteal.getHttpRequests(), 0);
   } else if (std::is_same_v<TypeParam, ClusterProvider>) {
