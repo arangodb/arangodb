@@ -172,7 +172,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexCon
     _provider.addVertexToBuilder(step.getVertex(), _tmpObjectBuilder);
 
     // evaluate expression
-    bool satifiesCondition = evaluateExpression(expr, _tmpObjectBuilder.slice());
+    bool satifiesCondition = evaluateVertexExpression(expr, _tmpObjectBuilder.slice());
     if (!satifiesCondition) {
       return ValidationResult{ValidationResult::Type::FILTER};
     }
@@ -181,7 +181,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexCon
 }
 
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateExpression(
+auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexExpression(
     arangodb::aql::Expression* expression, VPackSlice value) -> bool {
   if (expression == nullptr) {
     return true;

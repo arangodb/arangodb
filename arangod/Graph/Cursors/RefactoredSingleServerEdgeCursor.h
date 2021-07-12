@@ -114,7 +114,7 @@ class RefactoredSingleServerEdgeCursor {
 
   void rearm(VertexType vertex, uint64_t depth);
 
-  bool evaluateExpression(arangodb::aql::Expression* expression, VPackSlice value);
+  bool evaluateEdgeExpression(arangodb::aql::Expression* expression, VPackSlice value);
 };
 }  // namespace graph
 }  // namespace arangodb

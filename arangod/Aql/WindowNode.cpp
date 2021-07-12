@@ -329,12 +329,8 @@ WindowNode::WindowNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 
 WindowNode::~WindowNode() = default;
 
-/// @brief toVelocyPack, for CollectNode
-void WindowNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                    std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+/// @brief doToVelocyPack, for CollectNode
+void WindowNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   if (_rangeVariable) {
     nodes.add(VPackValue("rangeVariable"));
     _rangeVariable->toVelocyPack(nodes);
@@ -355,9 +351,6 @@ void WindowNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   }
 
   _bounds.toVelocyPack(nodes);
-
-  // And close it:
-  nodes.close();
 }
 
 void WindowNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
@@ -492,8 +485,14 @@ CostEstimate WindowNode::estimateCost() const {
   // we never return more rows than above
   CostEstimate estimate = _dependencies.at(0)->getCost();
   if (_rangeVariable == nullptr) {
-    int64_t numRows = 1 + _bounds.numPrecedingRows() + _bounds.numFollowingRows();
-    estimate.estimatedCost += double(numRows * numRows) * _aggregateVariables.size();
+    uint64_t numRows = 1;
+    if ( _bounds.unboundedPreceding()) {
+      numRows += estimate.estimatedNrItems;
+    } else {
+      numRows += std::min<uint64_t>(estimate.estimatedNrItems, _bounds.numPrecedingRows());
+    }
+    numRows += _bounds.numFollowingRows();
+    estimate.estimatedCost += double(numRows) * double(numRows) * _aggregateVariables.size();
   } else {  // guestimate
     estimate.estimatedCost += 4 * _aggregateVariables.size();
   }

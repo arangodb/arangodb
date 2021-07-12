@@ -987,6 +987,9 @@ else () # NOT MSVC
     message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
     set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
+    endif()
   elseif (CMAKE_COMPILER_IS_CLANG)
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
@@ -1033,7 +1036,7 @@ else () # NOT MSVC
   # CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}.
   # there is no need to repeat the base flags in the build-type specific flags!
   set(CMAKE_C_FLAGS                  "${EXTRA_C_FLAGS}"                                CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C debug flags")
+  set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -Og -D_DEBUG=1"               CACHE INTERNAL "C debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
   set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
   set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C release with debug info flags")
@@ -1044,7 +1047,7 @@ else () # NOT MSVC
   # CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}.
   # there is no need to repeat the base flags in the build-type specific flags!
   set(CMAKE_CXX_FLAGS                "${EXTRA_CXX_FLAGS}"                              CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -Og -D_DEBUG=1"               CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")

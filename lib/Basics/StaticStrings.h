@@ -314,6 +314,7 @@ class StaticStrings {
   static std::string const RevisionTreeRanges;
   static std::string const RevisionTreeResume;
   static std::string const RevisionTreeVersion;
+  static std::string const FollowingTermId;
 
   // generic attribute names
   static std::string const AttrCoordinator;
@@ -333,6 +334,7 @@ class StaticStrings {
 
   // aql api strings
   static std::string const SerializationFormat;
+  static std::string const AqlDocumentCall;
   static std::string const AqlRemoteExecute;
   static std::string const AqlRemoteCallStack;
   static std::string const AqlRemoteLimit;

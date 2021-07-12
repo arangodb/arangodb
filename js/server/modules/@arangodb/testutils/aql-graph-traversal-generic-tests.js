@@ -2567,7 +2567,7 @@ function testCompleteGraphDfsUniqueEdgesPathD2(testGraph) {
   checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
-function testCompleteGraphDfsUniqueVerticesPathD3(testGraph) {
+function completeGraphDfsUniqueVerticesPathD3Helper(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "path"}
@@ -2639,6 +2639,19 @@ function testCompleteGraphDfsUniqueVerticesPathD3(testGraph) {
   const actualPaths = res.toArray();
 
   checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+}
+
+function testCompleteGraphDfsUniqueVerticesPathD3(testGraph) {
+  completeGraphDfsUniqueVerticesPathD3Helper(testGraph);
+}
+
+function testCompleteGraphDfsUniqueVerticesPathD3NotHasExtra(testGraph) {
+  internal.debugSetFailAt("RocksDBEdgeIndex::disableHasExtra");
+  try {
+    completeGraphDfsUniqueVerticesPathD3Helper(testGraph);
+  } finally {
+    internal.debugRemoveFailAt("RocksDBEdgeIndex::disableHasExtra");
+  }
 }
 
 function testCompleteGraphDfsUniqueVerticesUniqueEdgesPathD2(testGraph) {
@@ -5784,6 +5797,41 @@ function testEmptyGraphKPathsOutbound(testGraph) {
   assertEqual(foundPaths.length, 0);
 }
 
+function testEmptyGraphShortestPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.emptyGraph.name()));
+  const query = aql`
+        FOR v, e IN OUTBOUND SHORTEST_PATH ${testGraph.nonExistingVertex() + "0"} 
+        TO ${testGraph.nonExistingVertex() + "1"}  
+        GRAPH ${testGraph.name()} 
+        RETURN v.key
+      `;
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  assertEqual(actualPath.length, 0);
+}
+
+const testEmptyGraphBfsPath = (testGraph) => testEmptyGraphMode(testGraph, "bfs");
+const testEmptyGraphWeightedPath = (testGraph) => testEmptyGraphMode(testGraph, "weighted");
+const testEmptyGraphDfsPath = (testGraph) => testEmptyGraphMode(testGraph, "dfs");
+
+function testEmptyGraphMode(testGraph, mode) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.emptyGraph.name()));
+  const query = aql`
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.nonExistingVertex()} GRAPH ${testGraph.name()} 
+    OPTIONS {order: ${mode}}
+    RETURN p.vertices
+  `;
+
+  const expectedPaths = [ [null] ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+  require('internal').print(actualPaths);
+  assertEqual(actualPaths, expectedPaths);
+}
+
 const testsByGraph = {
   openDiamond: {
     testOpenDiamondDfsUniqueVerticesPath,
@@ -5871,6 +5919,7 @@ const testsByGraph = {
     testCompleteGraphDfsUniqueVerticesPathD1,
     testCompleteGraphDfsUniqueVerticesPathD2,
     testCompleteGraphDfsUniqueVerticesPathD3,
+    testCompleteGraphDfsUniqueVerticesPathD3NotHasExtra,
     testCompleteGraphDfsUniqueEdgesPathD1,
     testCompleteGraphDfsUniqueEdgesPathD2,
     testCompleteGraphDfsUniqueVerticesUniqueEdgesPathD2,
@@ -6024,7 +6073,11 @@ const testsByGraph = {
     testUnconnectedGraphKPathsOutboundInvalidFromVertex
   },
   emptyGraph: {
-    testEmptyGraphKPathsOutbound
+    testEmptyGraphKPathsOutbound,
+    testEmptyGraphShortestPath,
+    testEmptyGraphBfsPath,
+    testEmptyGraphDfsPath,
+    testEmptyGraphWeightedPath,
   }
 };
 
