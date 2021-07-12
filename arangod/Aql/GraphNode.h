@@ -113,9 +113,6 @@ class GraphNode : public ExecutionNode {
  public:
   ~GraphNode() override = default;
 
-  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override;
-
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;
 
@@ -201,8 +198,10 @@ class GraphNode : public ExecutionNode {
     _collectionToShard[coll] = std::vector<std::string>{shard};
   }
 
- public:
   graph::Graph const* graph() const noexcept;
+
+ protected:  
+  void doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const override;
 
  private:
   void addEdgeCollection(aql::Collections const& collections,

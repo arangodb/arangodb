@@ -987,6 +987,8 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
                                  OperationOptions& options) {
+  RocksDBTransactionStateGuard transactionStateGuard(RocksDBTransactionState::toState(trx));
+
   TRI_ASSERT(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction());
 
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_insert_sec, _statistics, options);
@@ -1053,6 +1055,8 @@ Result RocksDBCollection::update(transaction::Methods* trx,
                                  velocypack::Slice newSlice,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                                  ManagedDocumentResult& previousMdr) {
+  RocksDBTransactionStateGuard transactionStateGuard(RocksDBTransactionState::toState(trx));
+
   TRI_ASSERT(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction());
 
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_update_sec, _statistics, options);
@@ -1164,6 +1168,8 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   velocypack::Slice newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
+  RocksDBTransactionStateGuard transactionStateGuard(RocksDBTransactionState::toState(trx));
+
   TRI_ASSERT(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction());
 
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_sec, _statistics, options);
@@ -1274,6 +1280,8 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
+  RocksDBTransactionStateGuard transactionStateGuard(RocksDBTransactionState::toState(&trx));
+
   TRI_ASSERT(!RocksDBTransactionState::toState(&trx)->isReadOnlyTransaction());
   
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_sec, _statistics, options);

@@ -469,7 +469,7 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
 
   bool returnOld = false;
   if (options->type == NODE_TYPE_OBJECT) {
-    auto ops = ExecutionPlan::parseModificationOptions(options);
+    auto ops = ExecutionPlan::parseModificationOptions(query(), "INSERT", options, /*addWarnings*/ false);
     returnOld = ops.isOverwriteModeUpdateReplace();
   }
 

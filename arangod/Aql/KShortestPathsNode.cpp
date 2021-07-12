@@ -269,10 +269,8 @@ void KShortestPathsNode::setStartInVariable(Variable const* inVariable) {
   _startVertexId = "";
 }
 
-void KShortestPathsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                            std::unordered_set<ExecutionNode const*>& seen) const {
-  GraphNode::toVelocyPackHelper(nodes, flags, seen);  // call base class method
-
+void KShortestPathsNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+  GraphNode::doToVelocyPack(nodes, flags);  // call base class method
   nodes.add(StaticStrings::GraphQueryShortestPathType,
             VPackValue(arangodb::graph::ShortestPathType::toString(_shortestPathType)));
 
@@ -305,9 +303,6 @@ void KShortestPathsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   TRI_ASSERT(_toCondition != nullptr);
   nodes.add(VPackValue("toCondition"));
   _toCondition->toVelocyPack(nodes, flags);
-
-  // And close it:
-  nodes.close();
 }
 
 /// @brief creates corresponding ExecutionBlock

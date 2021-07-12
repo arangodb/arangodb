@@ -483,6 +483,7 @@ void QueryRegistry::registerSnippets(SnippetList const& snippets) {
 
 void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
+  int iterations = 0;
 
   while (true) {
     WRITE_LOCKER(guard, _lock);
@@ -494,8 +495,6 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
         continue;
       }
       if (it->second._isOpen) { // engine still in use
-        LOG_TOPIC("33cfb", WARN, arangodb::Logger::AQL)
-          << "engine snippet '" << it->first << "' is still in use";
         continue;
       }
       _engines.erase(it);
@@ -505,6 +504,15 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
     if (remain == 0) {
       break;
     }
+    if (iterations == 0) {
+      LOG_TOPIC("33cfb", DEBUG, arangodb::Logger::AQL)
+          << remain << " engine snippet(s) still in use on query shutdown";
+    } else if (iterations == 100) {
+      LOG_TOPIC("df7c7", WARN, arangodb::Logger::AQL)
+          << remain << " engine snippet(s) still in use on query shutdown";
+    }
+    ++iterations;
+
     std::this_thread::yield();
   }
 }
