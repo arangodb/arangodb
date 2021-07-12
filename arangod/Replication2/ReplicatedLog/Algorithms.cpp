@@ -24,6 +24,7 @@
 #include "Algorithms.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
@@ -122,9 +123,18 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
       election.participantsAvailable = numberOfAvailableParticipants;
 
       if (numberOfAvailableParticipants >= requiredNumberOfAvailableParticipants) {
-        TRI_ASSERT(!newLeaderSet.empty());
+        auto const numParticipants = newLeaderSet.size();
+        if (numParticipants == 0 ||
+            numParticipants > std::numeric_limits<uint16_t>::max()) [[unlikely]] {
+          ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_NUMERIC_OVERFLOW,
+              basics::StringUtils::concatT(
+                  "Number of participants out of range, should be between ", 1,
+                  " and ", std::numeric_limits<uint16_t>::max(), ", but is ", numParticipants));
+        }
+        auto const maxIdx = static_cast<uint16_t>(numParticipants - 1);
         // Randomly select one of the best participants
-        auto const& newLeader = newLeaderSet.at(RandomGenerator::interval(std::size_t{newLeaderSet.size() - 1}));
+        auto const& newLeader = newLeaderSet.at(RandomGenerator::interval(maxIdx));
         auto const& record = info.at(newLeader);
 
         // we can elect a new leader
