@@ -48,6 +48,7 @@
 #include "Graph/Queues/QueueTracer.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
 #include "Indexes/Index.h"
 #include "OptimizerUtils.h"
 #include "Utils/CollectionNameResolver.h"
@@ -360,13 +361,14 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {
-        using KPathRefactored = KPathEnumerator<SingleServerProvider>;
+        using KPathRefactored =
+            KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>;
 
         auto kPathUnique = std::make_unique<KPathRefactored>(
-            SingleServerProvider{opts->query(), forwardProviderOptions,
-                                 opts->query().resourceMonitor()},
-            SingleServerProvider{opts->query(), backwardProviderOptions,
-                                 opts->query().resourceMonitor()},
+            SingleServerProvider<SingleServerProviderStep>{opts->query(), forwardProviderOptions,
+                                                           opts->query().resourceMonitor()},
+            SingleServerProvider<SingleServerProviderStep>{opts->query(), backwardProviderOptions,
+                                                           opts->query().resourceMonitor()},
             std::move(enumeratorOptions), std::move(validatorOptions),
             opts->query().resourceMonitor());
 
@@ -378,12 +380,13 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
             &engine, this, std::move(registerInfos), std::move(executorInfos));
       } else {
         // TODO: implement better initialization with less duplicate code
-        using TracedKPathRefactored = TracedKPathEnumerator<SingleServerProvider>;
+        using TracedKPathRefactored =
+            TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>;
         auto kPathUnique = std::make_unique<TracedKPathRefactored>(
-            ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions,
-                                                 opts->query().resourceMonitor()},
-            ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions,
-                                                 opts->query().resourceMonitor()},
+            ProviderTracer<SingleServerProvider<SingleServerProviderStep>>{
+                opts->query(), forwardProviderOptions, opts->query().resourceMonitor()},
+            ProviderTracer<SingleServerProvider<SingleServerProviderStep>>{
+                opts->query(), backwardProviderOptions, opts->query().resourceMonitor()},
             std::move(enumeratorOptions), std::move(validatorOptions),
             opts->query().resourceMonitor());
 

@@ -26,60 +26,33 @@
 
 #include "Aql/QueryContext.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
 #include "Transaction/Helpers.h"
 
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#endif
 
 #include <vector>
 
 using namespace arangodb;
 using namespace arangodb::graph;
 
-namespace arangodb {
+// TODO: remove
+/*namespace arangodb {
 namespace graph {
-auto operator<<(std::ostream& out, SingleServerProvider::Step const& step) -> std::ostream& {
-  out << step._vertex.getID();
-  return out;
+auto operator<<(std::ostream& out, typename SingleServerProvider::Step const&
+step) -> std::ostream& { out << step._vertex.getID(); return out;
 }
 }  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb*/
 
-SingleServerProvider::Step::Step(VertexType v) : _vertex(v), _edge() {}
-
-SingleServerProvider::Step::Step(VertexType v, size_t depth)
-    : BaseStep(std::numeric_limits<size_t>::max(), depth), _vertex(v), _edge() {}
-
-SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t prev)
-    : BaseStep(prev), _vertex(v), _edge(std::move(edge)) {}
-
-SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t prev, size_t depth)
-    : BaseStep(prev, depth), _vertex(v), _edge(std::move(edge)) {}
-
-SingleServerProvider::Step::~Step() = default;
-
-VertexType const& SingleServerProvider::Step::Vertex::getID() const {
-  return _vertex;
-}
-
-EdgeDocumentToken const& SingleServerProvider::Step::Edge::getID() const {
-  return _token;
-}
-
-bool SingleServerProvider::Step::Edge::isValid() const {
-  return getID().isValid();
-};
-
-#ifndef USE_ENTERPRISE
-bool SingleServerProvider::Step::isResponsible(transaction::Methods* trx) const {
-  return true;
-};
-#endif
-
-
-
-void SingleServerProvider::addEdgeToBuilder(Step::Edge const& edge,
-                                            arangodb::velocypack::Builder& builder) {
+template <class Step>
+void SingleServerProvider<Step>::addEdgeToBuilder(typename Step::Edge const& edge,
+                                                  arangodb::velocypack::Builder& builder) {
   if (edge.isValid()) {
     insertEdgeIntoResult(edge.getID(), builder);
   } else {
@@ -87,14 +60,10 @@ void SingleServerProvider::addEdgeToBuilder(Step::Edge const& edge,
   }
 };
 
-void SingleServerProvider::Step::Edge::addToBuilder(SingleServerProvider& provider,
-                                                    arangodb::velocypack::Builder& builder) const {
-  provider.insertEdgeIntoResult(getID(), builder);
-}
-
-SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryContext,
-                                           BaseProviderOptions opts,
-                                           arangodb::ResourceMonitor& resourceMonitor)
+template <class Step>
+SingleServerProvider<Step>::SingleServerProvider(arangodb::aql::QueryContext& queryContext,
+                                                 BaseProviderOptions opts,
+                                                 arangodb::ResourceMonitor& resourceMonitor)
     : _trx(std::make_unique<arangodb::transaction::Methods>(queryContext.newTrxContext())),
       _opts(std::move(opts)),
       _cache(_trx.get(), &queryContext, resourceMonitor, _stats,
@@ -104,7 +73,8 @@ SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryCon
   _cursor = buildCursor(opts.expressionContext());
 }
 
-void SingleServerProvider::activateCache(bool enableDocumentCache) {
+template <class Step>
+void SingleServerProvider<Step>::activateCache(bool enableDocumentCache) {
   // Do not call this twice.
   // TRI_ASSERT(_cache == nullptr);
   // TODO: enableDocumentCache check + opts check + cacheManager check
@@ -123,7 +93,8 @@ void SingleServerProvider::activateCache(bool enableDocumentCache) {
   //  _cache = new RefactoredTraverserCache(query());
 }
 
-auto SingleServerProvider::startVertex(VertexType vertex, size_t depth) -> Step {
+template <class Step>
+auto SingleServerProvider<Step>::startVertex(VertexType vertex, size_t depth) -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Start Vertex:" << vertex;
 
@@ -132,7 +103,8 @@ auto SingleServerProvider::startVertex(VertexType vertex, size_t depth) -> Step 
   return Step(_cache.persistString(vertex), depth);
 }
 
-auto SingleServerProvider::fetch(std::vector<Step*> const& looseEnds)
+template <class Step>
+auto SingleServerProvider<Step>::fetch(std::vector<Step*> const& looseEnds)
     -> futures::Future<std::vector<Step*>> {
   // Should never be called in SingleServer case
   TRI_ASSERT(false);
@@ -144,8 +116,10 @@ auto SingleServerProvider::fetch(std::vector<Step*> const& looseEnds)
   return futures::makeFuture(std::move(result));
 }
 
-auto SingleServerProvider::expand(Step const& step, size_t previous,
-                                  std::function<void(Step)> const& callback) -> void {
+template <class Step>
+auto SingleServerProvider<Step>::expand(Step const& step, size_t previous,
+                                        std::function<void(Step)> const& callback)
+    -> void {
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
   TRI_ASSERT(_cursor != nullptr);
@@ -173,34 +147,45 @@ auto SingleServerProvider::expand(Step const& step, size_t previous,
       });
 }
 
-void SingleServerProvider::addVertexToBuilder(Step::Vertex const& vertex,
-                                              arangodb::velocypack::Builder& builder) {
+template <class Step>
+void SingleServerProvider<Step>::addVertexToBuilder(typename Step::Vertex const& vertex,
+                                                    arangodb::velocypack::Builder& builder) {
   _cache.insertVertexIntoResult(_stats, vertex.getID(), builder);
 };
 
-void SingleServerProvider::insertEdgeIntoResult(EdgeDocumentToken edge,
-                                                arangodb::velocypack::Builder& builder) {
+template <class Step>
+void SingleServerProvider<Step>::insertEdgeIntoResult(EdgeDocumentToken edge,
+                                                      arangodb::velocypack::Builder& builder) {
   _cache.insertEdgeIntoResult(edge, builder);
 }
 
-std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor(
+template <class Step>
+std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> SingleServerProvider<Step>::buildCursor(
     arangodb::aql::FixedVarExpressionContext& expressionContext) {
-  return std::make_unique<RefactoredSingleServerEdgeCursor>(
+  return std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
       trx(), _opts.tmpVar(), _opts.indexInformations().first,
       _opts.indexInformations().second, expressionContext);
 }
 
-arangodb::transaction::Methods* SingleServerProvider::trx() {
+template <class Step>
+arangodb::transaction::Methods* SingleServerProvider<Step>::trx() {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_trx->state() != nullptr);
   TRI_ASSERT(_trx->transactionContextPtr() != nullptr);
   return _trx.get();
 }
 
-arangodb::aql::TraversalStats SingleServerProvider::stealStats() {
+template <class Step>
+arangodb::aql::TraversalStats SingleServerProvider<Step>::stealStats() {
   auto t = _stats;
   // Placement new of stats, do not reallocate space.
   _stats.~TraversalStats();
   new (&_stats) aql::TraversalStats{};
   return t;
 }
+
+template class arangodb::graph::SingleServerProvider<SingleServerProviderStep>;
+
+#ifdef USE_ENTERPRISE
+template class arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>;
+#endif

@@ -129,19 +129,6 @@ class ClusterProvider {
       return collectionNameResult.get().first;
     };
 
-    /* to be moved-out later into seperate step */
-    void setLocalSchreierIndex(size_t index) {
-      TRI_ASSERT(index != std::numeric_limits<size_t>::max());
-      TRI_ASSERT(!hasLocalSchreierIndex());
-      _localSchreierIndex = index;
-    }
-
-    bool hasLocalSchreierIndex() const {
-      return _localSchreierIndex != std::numeric_limits<size_t>::max();
-    }
-
-    std::size_t getLocalSchreierIndex() const { return _localSchreierIndex; }
-
     bool isResponsible(transaction::Methods* trx) const;
 
     friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;

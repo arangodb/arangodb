@@ -34,10 +34,6 @@
 #include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
 
-#include "Transaction/Methods.h"
-
-#include <vector>
-
 namespace arangodb {
 
 namespace futures {
@@ -59,94 +55,11 @@ namespace graph {
 // TODO: we need to control from the outside if and which parts of the vertex - (will be implemented in the future via template parameters)
 // data should be returned. This is most-likely done via a template parameter like
 // this: template<ProduceVertexData>
-struct SingleServerProvider {
+template <class StepType>
+class SingleServerProvider {
+ public:
   using Options = BaseProviderOptions;
-  class Step : public arangodb::graph::BaseStep<Step> {
-   public:
-    class Vertex {
-     public:
-      explicit Vertex(VertexType v) : _vertex(v) {}
-
-      VertexType const& getID() const;
-
-      bool operator<(Vertex const& other) const noexcept {
-        return _vertex < other._vertex;
-      }
-
-      bool operator>(Vertex const& other) const noexcept {
-        return _vertex > other._vertex;
-      }
-
-     private:
-      VertexType _vertex;
-    };
-
-    class Edge {
-     public:
-      explicit Edge(EdgeDocumentToken tkn) noexcept : _token(std::move(tkn)) {}
-      Edge() noexcept : _token() {}
-
-      void addToBuilder(SingleServerProvider& provider,
-                        arangodb::velocypack::Builder& builder) const;
-      EdgeDocumentToken const& getID() const;
-      bool isValid() const;
-
-     private:
-      EdgeDocumentToken _token;
-    };
-
-    Step(VertexType v);
-    Step(VertexType v, EdgeDocumentToken edge, size_t prev);
-    Step(VertexType v, EdgeDocumentToken edge, size_t prev, size_t depth);
-    Step(VertexType v, size_t depth);
-    ~Step();
-
-    bool operator<(Step const& other) const noexcept {
-      return _vertex < other._vertex;
-    }
-
-    Vertex const& getVertex() const { return _vertex; }
-    Edge const& getEdge() const { return _edge; }
-
-    std::string toString() const {
-      return "<Step><Vertex>: " + _vertex.getID().toString();
-    }
-    bool isProcessable() const { return !isLooseEnd(); }
-    bool isLooseEnd() const { return false; }
-
-    VertexType getVertexIdentifier() const { return _vertex.getID(); }
-
-    std::string getCollectionName() const {
-      auto collectionNameResult = extractCollectionName(_vertex.getID());
-      if (collectionNameResult.fail()) {
-        THROW_ARANGO_EXCEPTION(collectionNameResult.result());
-      }
-      return collectionNameResult.get().first;
-    };
-
-    void setLocalSchreierIndex(size_t index) {
-      TRI_ASSERT(index != std::numeric_limits<size_t>::max());
-      TRI_ASSERT(!hasLocalSchreierIndex());
-      _localSchreierIndex = index;
-    }
-
-    bool hasLocalSchreierIndex() const {
-       return _localSchreierIndex != std::numeric_limits<size_t>::max();
-    }
-
-    std::size_t getLocalSchreierIndex() const {
-      return _localSchreierIndex;
-    }
-
-    bool isResponsible(transaction::Methods* trx) const;
-
-    friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
-
-   private:
-    Vertex _vertex;
-    Edge _edge;
-    size_t _localSchreierIndex = std::numeric_limits<size_t>::max();
-  };
+  using Step = StepType;
 
  public:
   SingleServerProvider(arangodb::aql::QueryContext& queryContext, Options opts,
@@ -165,8 +78,9 @@ struct SingleServerProvider {
 
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
 
-  void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder);
-  void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder);
+  void addVertexToBuilder(typename Step::Vertex const& vertex,
+                          arangodb::velocypack::Builder& builder);
+  void addEdgeToBuilder(typename Step::Edge const& edge, arangodb::velocypack::Builder& builder);
 
   void destroyEngines(){};
 
@@ -177,7 +91,7 @@ struct SingleServerProvider {
  private:
   void activateCache(bool enableDocumentCache);
 
-  std::unique_ptr<RefactoredSingleServerEdgeCursor> buildCursor(
+  std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> buildCursor(
       arangodb::aql::FixedVarExpressionContext& expressionContext);
 
  private:
@@ -185,7 +99,7 @@ struct SingleServerProvider {
   // alive - Note: _trx must be first here because it is used in _cursor
   std::unique_ptr<arangodb::transaction::Methods> _trx;
 
-  std::unique_ptr<RefactoredSingleServerEdgeCursor> _cursor;
+  std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> _cursor;
 
   BaseProviderOptions _opts;
 

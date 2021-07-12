@@ -27,6 +27,7 @@
 
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -35,14 +36,31 @@
 // TODO: Needed for the IndexAccessor, should be modified
 #include "Graph/Providers/SingleServerProvider.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::graph;
 
 namespace {
 IndexIteratorOptions defaultIndexIteratorOptions;
-}
 
-RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(
+#ifdef USE_ENTERPRISE
+static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge) {
+  // for skipInaccessibleCollections we need to check the edge
+  // document, in that case nextWithExtra has no benefit
+  TRI_ASSERT(edge.isString());
+  arangodb::velocypack::StringRef str(edge);
+  size_t pos = str.find('/');
+  TRI_ASSERT(pos != std::string::npos);
+  return trx->isInaccessibleCollection(str.substr(0, pos).toString());
+}
+#endif
+}  // namespace
+
+template <class Step>
+RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(
     transaction::Methods::IndexHandle idx, aql::AstNode* condition,
     std::optional<size_t> memberToUpdate, aql::Expression* expression)
     : _idxHandle(std::move(idx)),
@@ -51,19 +69,23 @@ RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(
       _cursor(nullptr),
       _conditionMemberToUpdate(memberToUpdate) {}
 
-RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(LookupInfo&& other) noexcept
+template <class Step>
+RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(LookupInfo&& other) noexcept
     : _idxHandle(std::move(other._idxHandle)),
       _expression(std::move(other._expression)),
       _indexCondition(other._indexCondition),
       _cursor(std::move(other._cursor)){};
 
-RefactoredSingleServerEdgeCursor::LookupInfo::~LookupInfo() = default;
+template <class Step>
+RefactoredSingleServerEdgeCursor<Step>::LookupInfo::~LookupInfo() = default;
 
-aql::Expression* RefactoredSingleServerEdgeCursor::LookupInfo::getExpression() {
+template <class Step>
+aql::Expression* RefactoredSingleServerEdgeCursor<Step>::LookupInfo::getExpression() {
   return _expression;
 }
 
-void RefactoredSingleServerEdgeCursor::LookupInfo::rearmVertex(
+template <class Step>
+void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     VertexType vertex, transaction::Methods* trx, arangodb::aql::Variable const* tmpVar) {
   auto& node = _indexCondition;
   // We need to rewire the search condition for the new vertex
@@ -107,23 +129,25 @@ void RefactoredSingleServerEdgeCursor::LookupInfo::rearmVertex(
   // check if the underlying index iterator supports rearming
   if (_cursor != nullptr && _cursor->canRearm()) {
     // rearming supported
-    if (!_cursor->rearm(node, tmpVar, ::defaultIndexIteratorOptions)) {
+    if (!_cursor->rearm(node, tmpVar, defaultIndexIteratorOptions)) {
       _cursor = std::make_unique<EmptyIndexIterator>(_cursor->collection(), trx);
     }
   } else {
     // rearming not supported - we need to throw away the index iterator
     // and create a new one
-    _cursor = trx->indexScanForCondition(_idxHandle, node, tmpVar, ::defaultIndexIteratorOptions);
+    _cursor = trx->indexScanForCondition(_idxHandle, node, tmpVar, defaultIndexIteratorOptions);
   }
 }
 
-IndexIterator& RefactoredSingleServerEdgeCursor::LookupInfo::cursor() {
+template <class Step>
+IndexIterator& RefactoredSingleServerEdgeCursor<Step>::LookupInfo::cursor() {
   // If this kicks in, you forgot to call rearm with a specific vertex
   TRI_ASSERT(_cursor != nullptr);
   return *_cursor;
 }
 
-RefactoredSingleServerEdgeCursor::RefactoredSingleServerEdgeCursor(
+template <class Step>
+RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
     transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
     std::vector<IndexAccessor> const& globalIndexConditions,
     std::unordered_map<uint64_t, std::vector<IndexAccessor>> const& depthBasedIndexConditions,
@@ -149,30 +173,21 @@ RefactoredSingleServerEdgeCursor::RefactoredSingleServerEdgeCursor(
   }
 }
 
-RefactoredSingleServerEdgeCursor::~RefactoredSingleServerEdgeCursor() {}
+template <class Step>
+RefactoredSingleServerEdgeCursor<Step>::~RefactoredSingleServerEdgeCursor() {}
 
-#ifdef USE_ENTERPRISE
-static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge) {
-  // for skipInaccessibleCollections we need to check the edge
-  // document, in that case nextWithExtra has no benefit
-  TRI_ASSERT(edge.isString());
-  arangodb::velocypack::StringRef str(edge);
-  size_t pos = str.find('/');
-  TRI_ASSERT(pos != std::string::npos);
-  return trx->isInaccessibleCollection(str.substr(0, pos).toString());
-}
-#endif
-
-void RefactoredSingleServerEdgeCursor::rearm(VertexType vertex, uint64_t /*depth*/) {
+template <class Step>
+void RefactoredSingleServerEdgeCursor<Step>::rearm(VertexType vertex, uint64_t /*depth*/) {
   _currentCursor = 0;
   for (auto& info : _lookupInfo) {
     info.rearmVertex(vertex, _trx, _tmpVar);
   }
 }
 
-void RefactoredSingleServerEdgeCursor::readAll(SingleServerProvider& provider,
-                                               aql::TraversalStats& stats, size_t depth,
-                                               Callback const& callback) {
+template <class Step>
+void RefactoredSingleServerEdgeCursor<Step>::readAll(SingleServerProvider<Step>& provider,
+                                                     aql::TraversalStats& stats, size_t depth,
+                                                     Callback const& callback) {
   TRI_ASSERT(!_lookupInfo.empty());
   VPackBuilder tmpBuilder;
 
@@ -270,8 +285,9 @@ void RefactoredSingleServerEdgeCursor::readAll(SingleServerProvider& provider,
   }
 }
 
-bool RefactoredSingleServerEdgeCursor::evaluateEdgeExpression(arangodb::aql::Expression* expression,
-                                                              VPackSlice value) {
+template <class Step>
+bool RefactoredSingleServerEdgeCursor<Step>::evaluateExpression(arangodb::aql::Expression* expression,
+                                                                VPackSlice value) {
   if (expression == nullptr) {
     return true;
   }
@@ -289,3 +305,9 @@ bool RefactoredSingleServerEdgeCursor::evaluateEdgeExpression(arangodb::aql::Exp
 
   return res.toBoolean();
 }
+
+template class arangodb::graph::RefactoredSingleServerEdgeCursor<SingleServerProviderStep>;
+
+#ifdef USE_ENTERPRISE
+template class arangodb::graph::RefactoredSingleServerEdgeCursor<enterprise::SmartGraphStep>;
+#endif
