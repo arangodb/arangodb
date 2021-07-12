@@ -27,6 +27,8 @@
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "RocksDBKeyBounds.h"
 
+#include <array>
+
 namespace arangodb {
 
 
