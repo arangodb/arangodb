@@ -147,7 +147,7 @@ class Runner extends EventEmitter {
     hook.originalTitle = hook.originalTitle || hook.title;
     if (hook.ctx && hook.ctx.currentTest) {
       hook.title =
-        hook.originalTitle + ' for ' + `"hook.ctx.currentTest.title"`;
+        hook.originalTitle + ' for ' + `"${hook.ctx.currentTest.title}"`;
     } else {
       var parentTitle;
       if (hook.parent.title) {
