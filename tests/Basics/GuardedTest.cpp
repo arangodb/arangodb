@@ -25,6 +25,7 @@
 #include "Basics/Guarded.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/ScopeGuard.h"
 
 #include <Basics/UnshackledMutex.h>
 #include <atomic>
@@ -52,6 +53,35 @@ class GuardedTest : public ::testing::Test {
 
 TYPED_TEST_CASE_P(GuardedTest);
 
+// Test helper that acquires a lock;
+// then executes a callback that tries to acquire the same lock;
+// then release the lock.
+template <typename GuardedType, typename F>
+static auto testWaitForLock(F&& callback) {
+  auto guardedObj = GuardedType{1};
+  std::atomic<bool> holds_lock = true;
+  std::atomic<bool> waiting = false;
+
+  // get a lock
+  auto boxedGuard = std::make_unique<typename GuardedType::mutex_guard_type>(
+      guardedObj.getLockedGuard());
+  // start the thread tries to access the value, but needs to wait for the lock
+  auto thread = std::thread(callback, &guardedObj, &holds_lock, &waiting);
+  using namespace std::chrono_literals;
+  while (!waiting.load(std::memory_order_acquire)) {
+    std::this_thread::sleep_for(1us);
+  }
+  // give the thread a little time
+  std::this_thread::sleep_for(1ms);
+
+  // now release the lock
+  holds_lock.store(false, std::memory_order_release);
+  boxedGuard.reset();
+
+  // the thread should now finish quickly
+  thread.join();
+}
+
 TYPED_TEST_P(GuardedTest, test_copy_allows_access) {
   auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
   auto const value = guardedObj.copy();
@@ -60,8 +90,18 @@ TYPED_TEST_P(GuardedTest, test_copy_allows_access) {
 }
 
 TYPED_TEST_P(GuardedTest, test_copy_waits_for_access) {
-  // TODO Get a lock first, then assert that trying to copy waits for the lock
-  //      to be released.
+  using GuardedType = typename TestFixture::template Guarded<UnderGuard>;
+
+  auto const copyValue = [](GuardedType* guardedObj,
+                            std::atomic<bool>* holds_lock, std::atomic<bool>* waiting) {
+    ASSERT_TRUE(holds_lock->load(std::memory_order_acquire));
+    waiting->store(true, std::memory_order_release);
+    auto v = guardedObj->copy();
+    ASSERT_TRUE(!holds_lock->load(std::memory_order_acquire));
+    ASSERT_EQ(1, v.val);
+  };
+
+  testWaitForLock<GuardedType>(copyValue);
 }
 
 TYPED_TEST_P(GuardedTest, test_assign_allows_access) {
@@ -77,8 +117,18 @@ TYPED_TEST_P(GuardedTest, test_assign_allows_access) {
 }
 
 TYPED_TEST_P(GuardedTest, test_assign_waits_for_access) {
-  // TODO Get a lock first, then assert that trying to assign waits for the lock
-  //      to be released.
+  using GuardedType = typename TestFixture::template Guarded<UnderGuard>;
+
+  auto const assignValue = [](GuardedType* guardedObj,
+                            std::atomic<bool>* holds_lock, std::atomic<bool>* waiting) {
+    ASSERT_TRUE(holds_lock->load(std::memory_order_acquire));
+    waiting->store(true, std::memory_order_release);
+    guardedObj->assign(UnderGuard{2});
+    ASSERT_TRUE(!holds_lock->load(std::memory_order_acquire));
+    ASSERT_EQ(2, guardedObj->copy().val);
+  };
+
+  testWaitForLock<GuardedType>(assignValue);
 }
 
 TYPED_TEST_P(GuardedTest, test_guard_allows_access) {
@@ -94,9 +144,20 @@ TYPED_TEST_P(GuardedTest, test_guard_allows_access) {
 }
 
 TYPED_TEST_P(GuardedTest, test_guard_waits_for_access) {
-  auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
-  // TODO Get a lock first, then assert that trying to get a guard waits for the
-  //      lock to be released.
+  using GuardedType = typename TestFixture::template Guarded<UnderGuard>;
+
+  auto const acquireGuard = [](GuardedType* guardedObj,
+                              std::atomic<bool>* holds_lock, std::atomic<bool>* waiting) {
+    ASSERT_TRUE(holds_lock->load(std::memory_order_acquire));
+    waiting->store(true, std::memory_order_release);
+    {
+      auto guard = guardedObj->getLockedGuard();
+      ASSERT_TRUE(!holds_lock->load(std::memory_order_acquire));
+      ASSERT_EQ(1, guard.get().val);
+    }
+  };
+
+  testWaitForLock<GuardedType>(acquireGuard);
 }
 
 TYPED_TEST_P(GuardedTest, test_do_allows_access) {
