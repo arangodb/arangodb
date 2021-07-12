@@ -129,9 +129,9 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(velocypack::Builder& norm
         TRI_ERROR_BAD_PARAMETER,
         std::string("failed to initialize index from definition: ") + definition.toString());
   }
-  IResearchLinkMeta tmpLinkMeta;
+  InvertedIndexFieldMeta tmpLinkMeta;
   if (!tmpLinkMeta.init(_server, definition, false, errField,
-                        vocbase.name(), IResearchLinkMeta::DEFAULT(), nullptr, true)) {
+                        vocbase.name())) {
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         errField.empty()
@@ -139,7 +139,7 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(velocypack::Builder& norm
         : (std::string("failed to initialize index from definition, error in attribute '")
           + errField + "': " + definition.toString()));
   }
-  if (!tmpLinkMeta.json(_server, normalized, false, nullptr, &vocbase, nullptr, true)) {
+  if (!tmpLinkMeta.json(_server, normalized, &vocbase)) {
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string("failed to initialize index from definition: ") + definition.toString());

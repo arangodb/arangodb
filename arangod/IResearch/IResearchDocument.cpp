@@ -517,7 +517,7 @@ bool FieldIterator::setValue(VPackSlice const value,
   if (storeFunc) {
     auto const valueSlice = storeFunc(analyzer.get(), value, _buffer);
 
-    if (!value.isNone()) {
+    if (!valueSlice.isNone()) {
       _value._value = iresearch::ref<irs::byte_type>(valueSlice);
       _value._storeValues = std::max(ValueStorage::VALUE, _value._storeValues);
     }
@@ -946,7 +946,7 @@ bool InvertedIndexFieldIterator::setValue(VPackSlice const value,
   if (storeFunc) {
     auto const valueSlice = storeFunc(analyzer.get(), value, _buffer);
 
-    if (!value.isNone()) { // valueSlice?????
+    if (!valueSlice.isNone()) {
       _value._value = iresearch::ref<irs::byte_type>(valueSlice);
       _value._storeValues = std::max(ValueStorage::VALUE, _value._storeValues);
     }

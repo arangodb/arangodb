@@ -139,7 +139,6 @@ struct FieldMeta {
   /// @param defaults inherited defaults
   /// @param mask if set reflects which fields were initialized from JSON
   /// @param referencedAnalyzers analyzers referenced in this link
-  /// @param forInvertedIndex defines meta usage for inverted index and not the link
   ////////////////////////////////////////////////////////////////////////////////
   bool init(arangodb::application_features::ApplicationServer& server,
             velocypack::Slice const& slice,
@@ -147,8 +146,7 @@ struct FieldMeta {
             irs::string_ref const defaultVocbase,
             FieldMeta const& defaults = DEFAULT(),
             Mask* mask = nullptr,
-            std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers = nullptr,
-            bool forInvertedIndex = false);
+            std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a FieldMeta object
@@ -163,14 +161,12 @@ struct FieldMeta {
   /// @param ignoreEqual values to ignore if equal
   /// @param defaultVocbase fallback vocbase
   /// @param mask if set reflects which fields were initialized from JSON
-  /// @param forInvertedIndex defines meta usage for inverted index and not the link
   ////////////////////////////////////////////////////////////////////////////////
   bool json(arangodb::application_features::ApplicationServer& server,
             arangodb::velocypack::Builder& builder,
             FieldMeta const* ignoreEqual = nullptr,
             TRI_vocbase_t const* defaultVocbase = nullptr,
-            Mask const* mask = nullptr,
-            bool forInvertedIndex = false) const;
+            Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this FieldMeta
@@ -254,7 +250,6 @@ struct IResearchLinkMeta : public FieldMeta {
   ///                       nullptr == do not normalize
   /// @param defaults inherited defaults
   /// @param mask if set reflects which fields were initialized from JSON
-  /// @param forInvertedIndex defines meta usage for inverted index and not the link
   ////////////////////////////////////////////////////////////////////////////////
   bool init(
       arangodb::application_features::ApplicationServer& server,
@@ -263,8 +258,7 @@ struct IResearchLinkMeta : public FieldMeta {
       std::string& errorField,
       irs::string_ref const defaultVocbase = irs::string_ref::NIL,
       IResearchLinkMeta const& defaults = DEFAULT(),
-      Mask* mask = nullptr,
-      bool forInvertedIndex = false);
+      Mask* mask = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLinkMeta object
@@ -278,7 +272,6 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
   /// @param mask if set reflects which fields were initialized from JSON
-  /// @param forInvertedIndex defines meta usage for inverted index and not the link
   ////////////////////////////////////////////////////////////////////////////////
   bool json(
       arangodb::application_features::ApplicationServer& server,
@@ -286,8 +279,7 @@ struct IResearchLinkMeta : public FieldMeta {
       bool writeAnalyzerDefinition,
       IResearchLinkMeta const* ignoreEqual = nullptr,
       TRI_vocbase_t const* defaultVocbase = nullptr,
-      Mask const* mask = nullptr,
-      bool forInvertedIndex = false) const;
+      Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this IResearchLinkMeta
@@ -318,12 +310,13 @@ struct InvertedIndexFieldMeta {
   /// @brief fill and return a JSON description 
   /// @param server underlying application server
   /// @param builder output buffer
+  /// @param writeAnalyzerDefinition output full analyzer definition instead of just name
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
   /// @param defaultVocbase fallback vocbase
   ////////////////////////////////////////////////////////////////////////////////
   bool json(arangodb::application_features::ApplicationServer& server,
-            arangodb::velocypack::Builder& builder,
+            arangodb::velocypack::Builder& builder, bool writeAnalyzerDefinition,
             TRI_vocbase_t const* defaultVocbase = nullptr) const;
 
 

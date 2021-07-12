@@ -298,7 +298,12 @@ void IResearchInvertedIndex::toVelocyPack(
   } else {
     THROW_ARANGO_EXCEPTION(Result(
         TRI_ERROR_INTERNAL,
-        std::string("Failed to generate inverted index definition")));
+        std::string("Failed to generate inverted index store definition")));
+  }
+  if (!_meta.json(server, builder, forPersistence, defaultVocbase)) {
+    THROW_ARANGO_EXCEPTION(Result(
+        TRI_ERROR_INTERNAL,
+        std::string("Failed to generate inverted index field definition")));
   }
 }
 

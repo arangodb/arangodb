@@ -151,8 +151,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
                      irs::string_ref const defaultVocbase,
                      FieldMeta const& defaults /*= DEFAULT()*/,
                      Mask* mask /*= nullptr*/,
-                     std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers /*= nullptr*/,
-                     bool forInvertedIndex /*= false*/) {
+                     std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers /*= nullptr*/) {
   if (!slice.isObject()) {
     return false;
   }
@@ -163,7 +162,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
     mask = &tmpMask;
   }
 
-  if (!forInvertedIndex) {
+  {
     // optional string list
     static const std::string fieldName("analyzers");
 
@@ -262,7 +261,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
     }
   }
 
-  if (!forInvertedIndex) {
+  {
     // optional bool
     static const std::string fieldName("includeAllFields");
 
@@ -283,7 +282,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
     }
   }
 
-  if (!forInvertedIndex) {
+  {
     // optional bool
     static const std::string fieldName("trackListPositions");
 
@@ -345,158 +344,49 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
   // .............................................................................
   // process fields last since children inherit from parent
   // .............................................................................
-  if (forInvertedIndex) {
-    // for index there is no recursive struct and fields array is mandatory
-    if (mask->_fields) {
-      auto field = slice.get(fieldsFieldName);
-      if (!field.isArray() || field.isEmptyArray()) {
-        errorField = fieldsFieldName;
-        return false;
-      }
-      auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
-      VPackBuilder surrogateFields;
-      for (VPackArrayIterator itr(field); itr.valid(); itr.next()) {
-        auto val = itr.value();
-        if (val.isString()) {
-          try {
-            std::vector<basics::AttributeName> fieldParts;
-            TRI_ParseAttributeString(val.stringView(), fieldParts, false);
-            FieldMeta* lastSubField = this;    
-            for (auto const& fieldPart : fieldParts) {
-              lastSubField = lastSubField->_fields[fieldPart.name].get();
-            }
-            // and now set analyzers to the last one 
-            lastSubField->_analyzers = defaults._analyzers;
-          } catch (arangodb::basics::Exception const &err) {
-            LOG_TOPIC("1d04c", ERR, iresearch::TOPIC)
-              << "Error parsing attribute: " << err.what();
-            errorField = fieldsFieldName + "[" +
-                         basics::StringUtils::itoa(itr.index()) + "]";
-            return false;
-          }
-        } else if (val.isObject()) {
-          auto nameSlice = val.get("name");
-          if (nameSlice.isString()) {
-            std::vector<basics::AttributeName> fieldParts;
-            TRI_ParseAttributeString(nameSlice.stringRef(), fieldParts, false);
-            FieldMeta* lastSubField = this;    
-            for (auto const& fieldPart : fieldParts) {
-              lastSubField = lastSubField->_fields[fieldPart.name].get();
-            }
-            // and now set analyzers to the last one 
-            if (val.hasKey("analyzer")) {
-              auto analyzerSlice = val.get("analyzer");
-              if (analyzerSlice.isString()) {
-                auto name = analyzerSlice.copyString();
-                auto shortName = name;
-                if (!defaultVocbase.null()) {
-                  name = IResearchAnalyzerFeature::normalize(name, defaultVocbase);
-                  shortName = IResearchAnalyzerFeature::normalize(name, defaultVocbase, false);
-                }
-                AnalyzerPool::ptr analyzer;
-                bool found = false;
-                if (referencedAnalyzers) {
-                  auto it = referencedAnalyzers->find(irs::string_ref(name));
-
-                  if (it != referencedAnalyzers->end()) {
-                    analyzer = *it;
-                    found = static_cast<bool>(analyzer);
-
-                    if (ADB_UNLIKELY(!found)) {
-                      TRI_ASSERT(false); // should not happen
-                      referencedAnalyzers->erase(it); // remove null analyzer
-                    }
-                  }
-                }
-                if (!found) {
-                  // for cluster only check cache to avoid ClusterInfo locking issues
-                  // analyzer should have been populated via 'analyzerDefinitions' above
-                  analyzer = analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST, ServerState::instance()->isClusterRole());
-                }
-                if (!analyzer) {
-                  errorField = fieldsFieldName + "[" +
-                               basics::StringUtils::itoa(itr.index()) + "]" +
-                               ".analyzer";
-                  LOG_TOPIC("2d79d", ERR, iresearch::TOPIC)
-                    << "Error loading analyzer '" << name << "' requested in "
-                    << errorField;
-                  return false;
-                }
-                if (!found && referencedAnalyzers) {
-                  // save in referencedAnalyzers
-                  referencedAnalyzers->emplace(analyzer);
-                }
-                if (lastSubField->_analyzers.empty() || 
-                    shortName != lastSubField->_analyzers.front()._shortName) {
-                  lastSubField->_analyzers.clear(); // remove default identity
-                  lastSubField->_analyzers.emplace_back(analyzer, std::move(shortName));
-                }
-              } else {
-                errorField = fieldsFieldName + "[" +
-                             basics::StringUtils::itoa(itr.index()) + "]" +
-                             ".analyzer";
-                return false;
-              }
-            } else {
-              lastSubField->_analyzers = defaults._analyzers;
-            }
-          } else {
-            errorField = fieldsFieldName + "[" +
-                         basics::StringUtils::itoa(itr.index()) + "]";
-            return false;
-          }
-
-        } else {
-          errorField = fieldsFieldName + "[" +
-                       basics::StringUtils::itoa(itr.index()) + "]";
-          return false;
-        }
-      }
-    }
+ 
+  if (!mask->_fields) {
+    _fields = defaults._fields;
   } else {
-    if (!mask->_fields) {
-      _fields = defaults._fields;
-    } else {
-      auto field = slice.get(fieldsFieldName);
+    auto field = slice.get(fieldsFieldName);
 
-      if (!field.isObject()) {
-        errorField = fieldsFieldName;
+    if (!field.isObject()) {
+      errorField = fieldsFieldName;
+
+      return false;
+    }
+
+    auto subDefaults = *this;
+
+    subDefaults._fields.clear();  // do not inherit fields and overrides from this field
+    _fields.clear();  // reset to match either defaults or read values exactly
+
+    for (velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
+      auto key = itr.key();
+      auto value = itr.value();
+
+      if (!key.isString()) {
+        errorField = fieldsFieldName + "[" +
+                      basics::StringUtils::itoa(itr.index()) + "]";
 
         return false;
       }
 
-      auto subDefaults = *this;
+      auto name = key.copyString();
 
-      subDefaults._fields.clear();  // do not inherit fields and overrides from this field
-      _fields.clear();  // reset to match either defaults or read values exactly
+      if (!value.isObject()) {
+        errorField = fieldsFieldName + "." + name;
 
-      for (velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
-        auto key = itr.key();
-        auto value = itr.value();
+        return false;
+      }
 
-        if (!key.isString()) {
-          errorField = fieldsFieldName + "[" +
-                       basics::StringUtils::itoa(itr.index()) + "]";
+      std::string childErrorField;
 
-          return false;
-        }
+      if (!_fields[name]->init(server, value, childErrorField, defaultVocbase,
+                                subDefaults, nullptr, referencedAnalyzers)) {
+        errorField = fieldsFieldName + "." + name + "." + childErrorField;
 
-        auto name = key.copyString();
-
-        if (!value.isObject()) {
-          errorField = fieldsFieldName + "." + name;
-
-          return false;
-        }
-
-        std::string childErrorField;
-
-        if (!_fields[name]->init(server, value, childErrorField, defaultVocbase,
-                                 subDefaults, nullptr, referencedAnalyzers)) {
-          errorField = fieldsFieldName + "." + name + "." + childErrorField;
-
-          return false;
-        }
+        return false;
       }
     }
   }
@@ -508,8 +398,7 @@ bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
                      velocypack::Builder& builder,
                      FieldMeta const* ignoreEqual /*= nullptr*/,
                      TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
-                     Mask const* mask /*= nullptr*/,
-                     bool forInvertedIndex /*= false*/) const {
+                     Mask const* mask /*= nullptr*/) const {
   if (!builder.isOpenObject()) {
     return false;
   }
@@ -517,7 +406,7 @@ bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
   std::map<std::string, AnalyzerPool::ptr> analyzers;
 
   if ((!ignoreEqual || !equalAnalyzers(_analyzers, ignoreEqual->_analyzers)) &&
-      (!mask || mask->_analyzers) && !forInvertedIndex) {
+      (!mask || mask->_analyzers)) {
     velocypack::Builder analyzersBuilder;
 
     analyzersBuilder.openArray();
@@ -559,56 +448,29 @@ bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
 
   if (!mask || mask->_fields) {  // fields are not inherited from parent
     velocypack::Builder fieldsBuilder;
-    if (forInvertedIndex) {
-      fieldsBuilder.openArray();
-      TRI_ASSERT(!_fields.empty());
-      for (auto& entry : _fields) {
-        VPackObjectBuilder fieldObject(&fieldsBuilder);
-        auto subFieldBegin = entry.value().get()->_fields.begin();
-        auto subFieldEnd = entry.value().get()->_fields.end();
-        std::string name(entry.key().c_str(), entry.key().size());
-        TRI_ASSERT(entry.value().get()->_analyzers.size() < 2);
-        std::string const* analyzerNamePtr = !entry.value().get()->_analyzers.empty()?
-                                             &entry.value().get()->_analyzers.front()._shortName:
-                                             nullptr;
-        FieldMeta const* last = entry.value().get();
-        for (;subFieldBegin != subFieldEnd; ++subFieldBegin) {
-          name.append(".");
-          name.append(subFieldBegin.key().c_str(), subFieldBegin.key().size());
-          TRI_ASSERT(subFieldBegin.value().get()->_analyzers.size() < 2);
-          last = entry.value().get();
-        }
-        fieldsBuilder.add("name", VPackValue(name));
-        if (!last->_analyzers.empty()) {
-          fieldsBuilder.add("analyzer", VPackValue(last->_analyzers.front()._pool->name()));
-        }
+    Mask fieldMask(true); // output all non-matching fields
+    auto subDefaults = *this; // make modifable copy
+
+    subDefaults._fields.clear(); // do not inherit fields and overrides from this field
+    fieldsBuilder.openObject();
+
+    for (auto& entry : _fields) {
+      fieldMask._fields = !entry.value()->_fields.empty(); // do not output empty fields on subobjects
+      fieldsBuilder.add( // add sub-object
+        arangodb::velocypack::StringRef(entry.key().c_str(), entry.key().size()), // field name
+        velocypack::Value(velocypack::ValueType::Object));
+
+      if (!entry.value()->json(server, fieldsBuilder, &subDefaults, defaultVocbase, &fieldMask)) {
+        return false;
       }
-    } else {
-      Mask fieldMask(true); // output all non-matching fields
-      auto subDefaults = *this; // make modifable copy
-
-      subDefaults._fields.clear(); // do not inherit fields and overrides from this field
-      fieldsBuilder.openObject();
-
-      for (auto& entry : _fields) {
-        fieldMask._fields = !entry.value()->_fields.empty(); // do not output empty fields on subobjects
-        fieldsBuilder.add( // add sub-object
-          arangodb::velocypack::StringRef(entry.key().c_str(), entry.key().size()), // field name
-          velocypack::Value(velocypack::ValueType::Object));
-
-        if (!entry.value()->json(server, fieldsBuilder, &subDefaults, defaultVocbase, &fieldMask)) {
-          return false;
-        }
-
-        fieldsBuilder.close();
-      }
+      fieldsBuilder.close();
     }
     fieldsBuilder.close();
     builder.add("fields", fieldsBuilder.slice());
   }
 
   if ((!ignoreEqual || _includeAllFields != ignoreEqual->_includeAllFields) &&
-      (!mask || mask->_includeAllFields) && !forInvertedIndex) {
+      (!mask || mask->_includeAllFields)) {
     builder.add("includeAllFields", velocypack::Value(_includeAllFields));
   }
 
@@ -704,8 +566,7 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
                              std::string& errorField,
                              irs::string_ref const defaultVocbase /*= irs::string_ref::NIL*/,
                              IResearchLinkMeta const& defaults /*= DEFAULT()*/,
-                             Mask* mask /*= nullptr*/,
-                             bool forInvertedIndex /*= false*/) {
+                             Mask* mask /*= nullptr*/) {
   if (!slice.isObject()) {
     return false;
   }
@@ -911,7 +772,7 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
     _collectionName = field.copyString();
   }
 
-  return FieldMeta::init(server, slice, errorField, defaultVocbase, defaults, mask, &_analyzerDefinitions, forInvertedIndex);
+  return FieldMeta::init(server, slice, errorField, defaultVocbase, defaults, mask, &_analyzerDefinitions);
 }
 
 bool IResearchLinkMeta::json(arangodb::application_features::ApplicationServer& server,
@@ -919,8 +780,7 @@ bool IResearchLinkMeta::json(arangodb::application_features::ApplicationServer& 
                              bool writeAnalyzerDefinition,
                              IResearchLinkMeta const* ignoreEqual /*= nullptr*/,
                              TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
-                             Mask const* mask /*= nullptr*/,
-                             bool forInvertedIndex /*= false*/) const {
+                             Mask const* mask /*= nullptr*/) const {
   if (!builder.isOpenObject()) {
     return false;
   }
@@ -964,7 +824,7 @@ bool IResearchLinkMeta::json(arangodb::application_features::ApplicationServer& 
      addStringRef(builder, StaticStrings::CollectionNameField, _collectionName);
   }
 
-  return FieldMeta::json(server, builder, ignoreEqual, defaultVocbase, mask, forInvertedIndex);
+  return FieldMeta::json(server, builder, ignoreEqual, defaultVocbase, mask);
 }
 
 size_t IResearchLinkMeta::memory() const noexcept {
@@ -1161,7 +1021,6 @@ bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationSer
     return false;
   }
   auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
-  VPackBuilder surrogateFields;
   for (VPackArrayIterator itr(field); itr.valid(); itr.next()) {
     auto val = itr.value();
     if (val.isString()) {
@@ -1256,13 +1115,59 @@ bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationSer
       return false;
     }
   }
-  return false;
+  return true;
 }
 
 bool  InvertedIndexFieldMeta::json(arangodb::application_features::ApplicationServer& server,
   arangodb::velocypack::Builder& builder,
+  bool writeAnalyzerDefinition,
   TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
-  return false;
+  if (!builder.isOpenObject()) {
+    return false;
+  }
+
+  if (writeAnalyzerDefinition) {
+    velocypack::ArrayBuilder arrayScope(&builder, "primarySort");
+    if (!_sort.toVelocyPack(builder)) {
+      return false;
+    }
+  }
+
+  if (writeAnalyzerDefinition) {
+    velocypack::ArrayBuilder arrayScope(&builder, "storedValues");
+    if (!_storedValues.toVelocyPack(builder)) {
+      return false;
+    }
+  }
+
+  if (writeAnalyzerDefinition && _sortCompression) {
+    addStringRef(builder, "primarySortCompression", columnCompressionToString(_sortCompression));
+  }
+
+  // output definitions if 'writeAnalyzerDefinition' requested and not maked
+  // this should be the case for the default top-most call
+  if (writeAnalyzerDefinition) {
+    VPackArrayBuilder arrayScope(&builder, "analyzerDefinitions");
+
+    for (auto& entry : _analyzerDefinitions) {
+      TRI_ASSERT(entry); // ensured by emplace into 'analyzers' above
+      entry->toVelocyPack(builder, defaultVocbase);
+    }
+  }
+  velocypack::Builder fieldsBuilder;
+  {
+    VPackArrayBuilder fieldsArray(&fieldsBuilder);
+    TRI_ASSERT(!_fields.empty());
+    for (auto& entry : _fields) {
+      VPackObjectBuilder fieldObject(&fieldsBuilder);
+      std::string name;
+      TRI_AttributeNamesToString(entry.first, name, false);
+      fieldsBuilder.add("name", VPackValue(name));
+      fieldsBuilder.add("analyzer", VPackValue(entry.second._pool->name()));
+    }
+  }
+  builder.add(arangodb::StaticStrings::IndexFields, fieldsBuilder.slice());
+  return true;
 }
 
 }  // namespace iresearch

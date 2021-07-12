@@ -227,7 +227,7 @@ class InvertedIndexFieldIterator {
 
   explicit InvertedIndexFieldIterator(arangodb::transaction::Methods& trx, irs::string_ref collection, IndexId indexId);
 
-  bool valid() const noexcept { return !_valueSlice.isNone(); }
+  bool valid() const noexcept { return _fieldsMeta && _begin != _end;}
 
   void reset(velocypack::Slice slice,
              InvertedIndexFieldMeta const& fieldsMeta) {
