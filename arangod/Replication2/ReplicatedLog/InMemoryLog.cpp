@@ -130,6 +130,12 @@ replicated_log::InMemoryLog::InMemoryLog(LoggerContext const& logContext,
 
 replicated_log::InMemoryLog::InMemoryLog(log_type log) : _log(std::move(log)) {}
 
+#if (_MSC_VER >= 1)
+// suppress false positive warning:
+#pragma warning(push)
+// function assumed not to throw an exception but does
+#pragma warning(disable : 4297)
+#endif
 replicated_log::InMemoryLog::InMemoryLog(replicated_log::InMemoryLog&& other) noexcept try
     : _log(std::move(other._log)) {
   // Note that immer::flex_vector is currently not nothrow move-assignable,
@@ -156,6 +162,9 @@ replicated_log::InMemoryLog::InMemoryLog(replicated_log::InMemoryLog&& other) no
          "guaranteed. The process will terminate now.";
   FATAL_ERROR_ABORT();
 }
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
 
 auto replicated_log::InMemoryLog::operator=(replicated_log::InMemoryLog&& other) noexcept
     -> replicated_log::InMemoryLog& try {

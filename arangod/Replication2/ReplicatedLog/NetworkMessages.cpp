@@ -49,6 +49,12 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
+#if (_MSC_VER >= 1)
+// suppress false positive warning:
+#pragma warning(push)
+// function assumed not to throw an exception but does
+#pragma warning(disable : 4297)
+#endif
 AppendEntriesRequest::AppendEntriesRequest(AppendEntriesRequest&& other) noexcept try
     : leaderTerm(other.leaderTerm),
       leaderId(std::move(other.leaderId)),
@@ -83,6 +89,9 @@ AppendEntriesRequest::AppendEntriesRequest(AppendEntriesRequest&& other) noexcep
          "longer be guaranteed. The process will terminate now.";
   FATAL_ERROR_ABORT();
 }
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
 
 auto AppendEntriesRequest::operator=(replicated_log::AppendEntriesRequest&& other) noexcept
     -> AppendEntriesRequest& try {
