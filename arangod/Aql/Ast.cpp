@@ -2055,7 +2055,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     AqlFunctionsInternalCache aqlFunctionsInternalCache;
     transaction::Methods& trx;
     int64_t stopOptimizationRequests = 0;
-    int64_t nestingLevel = 0;  // only use for subqueries
+    int64_t nestingLevel = 0;  // only used for subqueries
     int64_t filterDepth = -1;  // -1 = not in filter
     uint64_t recursionDepth = 0;  // current depth of the tree we walk
     bool hasSeenAnyWriteNode = false;
