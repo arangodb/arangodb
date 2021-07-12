@@ -372,17 +372,17 @@ std::pair<bool, bool> findIndexHandleForAndNode(
       return;
     }
 
-    double totalCost = filterCost;
     if (!sortCondition.isEmpty()) {
       // only take into account the costs for sorting if there is actually
       // something to sort
-      if (supportsSort) {
-        totalCost += sortCost;
-      } else {
-        totalCost +=
-            Index::SortCosts::defaultCosts(itemsInIndex).estimatedCosts;
+      if (!supportsSort) {
+        sortCost = Index::SortCosts::defaultCosts(itemsInIndex).estimatedCosts;
       }
+    } else {
+      sortCost = 0.0;
     }
+      
+    double totalCost = filterCost + sortCost;
 
     // the more attributes an index contains, the more useful it will be for projections.
     double projectionsFactor = 1.0 - ((idx->fields().size() - 1) * 0.02);
@@ -398,13 +398,13 @@ std::pair<bool, bool> findIndexHandleForAndNode(
         << ", supportsFilter: " << supportsFilter
         << ", supportsSort: " << supportsSort
         << ", projectionsFactor: " << projectionsFactor
-        << ", filterCost: " << filterCost
-        << ", sortCost: " << sortCost
-        << ", totalCost: " << totalCost
         << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess
         << ", isUnidirectional: " << sortCondition.isUnidirectional()
         << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch()
-        << ", itemsInIndex/estimatedItems: " << itemsInIndex;
+        << ", itemsInIndex/estimatedItems: " << itemsInIndex
+        << ", filterCost: " << filterCost
+        << ", sortCost: " << sortCost
+        << ", totalCost: " << totalCost;
 
     if (bestIndex == nullptr || totalCost < bestCost) {
       bestIndex = idx;
@@ -452,6 +452,12 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     return std::make_pair(false, false);
   }
 
+  LOG_TOPIC("1d732", TRACE, Logger::FIXME)
+      << "selected index: " << bestIndex.get()
+      << ", isSorted: " << bestIndex->isSorted()
+      << ", isSparse: " << bestIndex->sparse()
+      << ", fields: " << bestIndex->fields().size();
+  
   // intentionally commented out here. can be enabled during development
   // LOG_TOPIC("4b655", TRACE, Logger::FIXME) << "- picked: " << bestIndex.get();
 

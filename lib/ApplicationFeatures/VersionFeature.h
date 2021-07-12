@@ -38,6 +38,7 @@ class VersionFeature final : public application_features::ApplicationFeature {
 
  private:
   bool _printVersion;
+  bool _printVersionJson;
 };
 
 }  // namespace arangodb

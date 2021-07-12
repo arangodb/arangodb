@@ -360,6 +360,7 @@ std::string const StaticStrings::BackupSearchToDeleteName(
 
 // aql api strings
 std::string const StaticStrings::SerializationFormat("serializationFormat");
+std::string const StaticStrings::AqlDocumentCall("x-arango-aql-document-aql");
 std::string const StaticStrings::AqlRemoteExecute("execute");
 std::string const StaticStrings::AqlRemoteCallStack("callStack");
 std::string const StaticStrings::AqlRemoteLimit("limit");

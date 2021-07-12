@@ -317,9 +317,16 @@ void FollowerInfo::takeOverLeadership(std::vector<ServerID> const& previousInsyn
         std::make_shared<std::vector<ServerID>>(previousInsyncFollowers);
     auto myEntry =
         std::find(failoverCandidates->begin(), failoverCandidates->end(), ourselves);
+
+    // We expect of course to be one of the fail over candidates. However, if the creation
+    // of the TakeOverLeadership job and it's start leading here are timewise apart, chances
+    // are that Current has been changed in the meantime. The assertion should remain here
+    // to detect any errors during CI.
     if (myEntry == failoverCandidates->end()) {
-      LOG_TOPIC("c9422", ERR, Logger::CLUSTER)
-          << "invalid failover candidates for FollowerInfo of shard " 
+      LOG_TOPIC("c9422", WARN, Logger::CLUSTER)
+          << "invalid failover candidates for FollowerInfo of shard - "
+          << "can happen, when scheduling and starting the leadership "
+          << "takeover are timewise apart, so that the Current entry has expired. "
           << _docColl->vocbase().name() << "/" << _docColl->name() 
           << ". our id: " << ourselves << ", failover candidates: "
           << *failoverCandidates << ", previous in-sync followers: "
