@@ -75,14 +75,14 @@ class RefactoredSingleServerEdgeCursor {
     IndexIterator& cursor();
     aql::Expression* getExpression();
 
+    size_t getCursorID() const;
+
    private:
     // NOTE: The expression can be nullptr!
     transaction::Methods::IndexHandle _idxHandle;
     aql::Expression* _expression;
     aql::AstNode* _indexCondition;
     size_t _cursorID;
-    // TODO: Currently unused. We need to enable this later and replace it with the _currentCursor usage. For more info:
-    // TODO: Check _currentCursor - currently it is just index position. We might want to adjust this.
 
     std::unique_ptr<IndexIterator> _cursor;
 
@@ -105,7 +105,6 @@ class RefactoredSingleServerEdgeCursor {
 
  private:
   aql::Variable const* _tmpVar;
-  size_t _currentCursor;
   std::vector<LookupInfo> _lookupInfo;
   std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
@@ -119,6 +118,9 @@ class RefactoredSingleServerEdgeCursor {
   void rearm(VertexType vertex, uint64_t depth);
 
   bool evaluateEdgeExpression(arangodb::aql::Expression* expression, VPackSlice value);
+
+ private:
+  auto getLookupInfos(uint64_t depth) -> std::vector<LookupInfo>&;
 };
 }  // namespace graph
 }  // namespace arangodb

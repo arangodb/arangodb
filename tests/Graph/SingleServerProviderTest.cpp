@@ -78,7 +78,8 @@ class SingleServerProviderTest : public ::testing::Test {
   SingleServerProviderTest() {}
   ~SingleServerProviderTest() {}
 
-  auto makeProvider(MockGraph const& graph) -> arangodb::graph::SingleServerProvider<SingleServerProviderStep> {
+  auto makeProvider(MockGraph const& graph)
+      -> arangodb::graph::SingleServerProvider<SingleServerProviderStep> {
     // Setup code for each provider type
     s = std::make_unique<GraphTestSetup>();
     singleServer =
@@ -97,7 +98,7 @@ class SingleServerProviderTest : public ::testing::Test {
 
     std::vector<IndexAccessor> usedIndexes{};
     auto expr = conditionKeyMatches(stringToMatch);
-    usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, expr});
+    usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, expr, 0});
 
     _expressionContext =
         std::make_unique<arangodb::aql::FixedVarExpressionContext>(*_trx, *query, _functionsCache);

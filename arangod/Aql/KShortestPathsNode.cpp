@@ -538,7 +538,7 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes
 
         indexAccessors.emplace_back(indexToUse,
                                     _toCondition->clone(options()->query().ast()),
-                                    0, nullptr);
+                                    0, nullptr, i);
         break;
       }
       case TRI_EDGE_OUT: {
@@ -554,7 +554,7 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes
 
         indexAccessors.emplace_back(indexToUse,
                                     _fromCondition->clone(options()->query().ast()),
-                                    0, nullptr);
+                                    0, nullptr, i);
         break;
       }
       case TRI_EDGE_ANY:
@@ -587,7 +587,7 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsed
 
         indexAccessors.emplace_back(indexToUse,
                                     _fromCondition->clone(options()->query().ast()),
-                                    0, nullptr);
+                                    0, nullptr, i);
         break;
       }
       case TRI_EDGE_OUT: {
@@ -603,7 +603,7 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsed
 
         indexAccessors.emplace_back(indexToUse,
                                     _toCondition->clone(options()->query().ast()),
-                                    0, nullptr);
+                                    0, nullptr, i);
         break;
       }
       case TRI_EDGE_ANY:
