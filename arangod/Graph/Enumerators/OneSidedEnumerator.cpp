@@ -67,8 +67,10 @@ auto OneSidedEnumerator<Configuration>::destroyEngines() -> void {
 }
 
 template <class Configuration>
-void OneSidedEnumerator<Configuration>::clear() {
-  _interior.reset();
+void OneSidedEnumerator<Configuration>::clear(bool keepPathStore) {
+  if (!keepPathStore) {
+    _interior.reset();
+  }
   _queue.clear();
   _results.clear();
 }
@@ -142,8 +144,8 @@ bool OneSidedEnumerator<Configuration>::isDone() const {
  * @param source The source vertex to start the paths
  */
 template <class Configuration>
-void OneSidedEnumerator<Configuration>::reset(VertexRef source, size_t depth) {
-  clear();
+void OneSidedEnumerator<Configuration>::reset(VertexRef source, size_t depth, bool keepPathStore) {
+  clear(keepPathStore);
   auto firstStep = _provider.startVertex(source, depth);
   _queue.append(std::move(firstStep));
 }

@@ -163,6 +163,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexCon
   // evaluate if vertex collection is allowed
   bool isAllowed = evaluateVertexRestriction(step);
   if (!isAllowed) {
+    if (_options.hasCompatibility38IncludeFirstVertex() && step.isFirst()) {
+      return ValidationResult{ValidationResult::Type::PRUNE};
+    }
     return ValidationResult{ValidationResult::Type::FILTER};
   }
 
@@ -174,6 +177,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexCon
     // evaluate expression
     bool satifiesCondition = evaluateVertexExpression(expr, _tmpObjectBuilder.slice());
     if (!satifiesCondition) {
+      if (_options.hasCompatibility38IncludeFirstVertex() && step.isFirst()) {
+        return ValidationResult{ValidationResult::Type::PRUNE};
+      }
       return ValidationResult{ValidationResult::Type::FILTER};
     }
   }
