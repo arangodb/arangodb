@@ -19,8 +19,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGODB3_ROCKSDBLOG_H
-#define ARANGODB3_ROCKSDBLOG_H
+#ifndef ARANGODB3_ROCKSDBPERSISTEDLOG_H
+#define ARANGODB3_ROCKSDBPERSISTEDLOG_H
 
 #include <rocksdb/db.h>
 
@@ -78,10 +78,10 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   std::shared_ptr<Executor> _executor;
 };
 
-class RocksDBLog : public replication2::PersistedLog, public std::enable_shared_from_this<RocksDBLog> {
+class RocksDBPersistedLog : public replication2::PersistedLog, public std::enable_shared_from_this<RocksDBPersistedLog> {
  public:
-  ~RocksDBLog() override = default;
-  RocksDBLog(replication2::LogId id, uint64_t objectId, std::shared_ptr<RocksDBLogPersistor> persistor);
+  ~RocksDBPersistedLog() override = default;
+  RocksDBPersistedLog(replication2::LogId id, uint64_t objectId, std::shared_ptr<RocksDBLogPersistor> persistor);
 
   auto insert(replication2::LogIterator& iter, WriteOptions const&) -> Result override;
   auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
@@ -108,4 +108,4 @@ class RocksDBLog : public replication2::PersistedLog, public std::enable_shared_
 
 }  // namespace arangodb
 
-#endif  // ARANGODB3_ROCKSDBLOG_H
+#endif  // ARANGODB3_ROCKSDBPERSISTEDLOG_H

@@ -28,7 +28,7 @@
 #include <Basics/RocksDBUtils.h>
 #include <Basics/files.h>
 #include <RocksDBEngine/RocksDBFormat.h>
-#include <RocksDBEngine/RocksDBLog.h>
+#include <RocksDBEngine/RocksDBPersistedLog.h>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -61,15 +61,15 @@ struct RocksDBLogTest : testing::Test {
     TRI_RemoveDirectory(_path.c_str());
   }
 
-  auto createLog(LogId id) -> std::unique_ptr<RocksDBLog> {
+  auto createLog(LogId id) -> std::unique_ptr<RocksDBPersistedLog> {
     if (id > _maxLogId) {
       _maxLogId = id;
     }
 
-    return std::make_unique<RocksDBLog>(id, id.id(), _persistor);
+    return std::make_unique<RocksDBPersistedLog>(id, id.id(), _persistor);
   }
 
-  auto createUniqueLog() -> std::unique_ptr<RocksDBLog> {
+  auto createUniqueLog() -> std::unique_ptr<RocksDBPersistedLog> {
     return createLog(LogId{_maxLogId.id() + 1});
   }
 
