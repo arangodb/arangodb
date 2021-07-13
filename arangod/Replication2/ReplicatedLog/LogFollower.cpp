@@ -94,10 +94,9 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
   }
 
   // It is always allowed to replace the log entirely
-  if (req.prevLogIndex > LogIndex{0}) {
+  if (req.prevLogEntry.index > LogIndex{0}) {
     if (auto conflict =
-            algorithms::detectConflict(data._inMemoryLog,
-                                       TermIndexPair{req.prevLogTerm, req.prevLogIndex});
+            algorithms::detectConflict(data._inMemoryLog, req.prevLogEntry);
         conflict.has_value()) {
       auto [reason, next] = *conflict;
 
@@ -134,13 +133,13 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     // as a copy, then modify the log on disk. This is an atomic operation. If
     // it fails, we forget the new state. Otherwise we replace the old in memory
     // state with the new value.
-    auto newInMemoryLog = self->_inMemoryLog.takeSnapshotUpToAndIncluding(req.prevLogIndex);
+    auto newInMemoryLog = self->_inMemoryLog.takeSnapshotUpToAndIncluding(req.prevLogEntry.index);
 
-    if (self->_inMemoryLog.getLastIndex() != req.prevLogIndex) {
-      auto res = self->_logCore->removeBack(req.prevLogIndex + 1);
+    if (self->_inMemoryLog.getLastIndex() != req.prevLogEntry.index) {
+      auto res = self->_logCore->removeBack(req.prevLogEntry.index + 1);
       if (!res.ok()) {
         LOG_CTX("f17b8", ERR, _loggerContext)
-            << "failed to remove log entries after " << req.prevLogIndex;
+            << "failed to remove log entries after " << req.prevLogEntry.index;
         return AppendEntriesResult::withPersistenceError(_currentTerm, req.messageId, res);
       }
     }
@@ -200,7 +199,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
 
       LOG_CTX("dd72d", TRACE, self->_follower._loggerContext)
           << "appended " << req.entries.size() << " log entries after "
-          << req.prevLogIndex << ", leader commit index = " << req.leaderCommit;
+          << req.prevLogEntry.index << ", leader commit index = " << req.leaderCommit;
     }
 
     auto action = std::invoke([&]() noexcept -> DeferredAction {
@@ -350,8 +349,6 @@ auto replicated_log::LogFollower::getLogIterator(LogIndex fromIdx) const
 }
 
 replicated_log::LogFollower::~LogFollower() {
-  // TODO It'd be more accurate to do this in resign(), and here only conditionally
-  //      depending on whether we still own the LogCore.
   _logMetrics->replicatedLogFollowerNumber->fetch_sub(1);
 }
 

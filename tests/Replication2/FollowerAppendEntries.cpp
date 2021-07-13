@@ -51,8 +51,7 @@ TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
     AppendEntriesRequest request;
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{5};
-    request.prevLogIndex = LogIndex{0};
-    request.prevLogTerm = LogTerm{0};
+    request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
@@ -71,8 +70,7 @@ TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
     AppendEntriesRequest request;
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{5};
-    request.prevLogIndex = LogIndex{1};
-    request.prevLogTerm = LogTerm{1};
+    request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.leaderCommit = LogIndex{1};
     request.messageId = ++nextMessageId;
     request.entries = {};
@@ -95,8 +93,7 @@ TEST_F(FollowerAppendEntriesTest, wrong_term) {
     AppendEntriesRequest request;
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{4};
-    request.prevLogIndex = LogIndex{0};
-    request.prevLogTerm = LogTerm{0};
+    request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
@@ -119,8 +116,7 @@ TEST_F(FollowerAppendEntriesTest, missing_prev_log_index) {
     AppendEntriesRequest request;
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{5};
-    request.prevLogIndex = LogIndex{1};
-    request.prevLogTerm = LogTerm{1};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{1}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"some payload"})};
@@ -144,8 +140,7 @@ TEST_F(FollowerAppendEntriesTest, missmatch_prev_log_term) {
     AppendEntriesRequest request;
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{5};
-    request.prevLogIndex = LogIndex{0};
-    request.prevLogTerm = LogTerm{0};
+    request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
@@ -163,8 +158,7 @@ TEST_F(FollowerAppendEntriesTest, missmatch_prev_log_term) {
     AppendEntriesRequest request;
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{5};
-    request.prevLogIndex = LogIndex{1};
-    request.prevLogTerm = LogTerm{3};
+    request.prevLogEntry = TermIndexPair{LogTerm{3}, LogIndex{1}};
     request.leaderCommit = LogIndex{1};
     request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{5}, LogIndex{2}, LogPayload{"some payload"})};
@@ -187,8 +181,7 @@ TEST_F(FollowerAppendEntriesTest, wrong_leader_name) {
     AppendEntriesRequest request;
     request.leaderId = "odlLeader";
     request.leaderTerm = LogTerm{5};
-    request.prevLogIndex = LogIndex{0};
-    request.prevLogTerm = LogTerm{0};
+    request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
@@ -213,8 +206,7 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
     AppendEntriesRequest request;
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{5};
-    request.prevLogIndex = LogIndex{0};
-    request.prevLogTerm = LogTerm{0};
+    request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
@@ -232,8 +224,7 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
     AppendEntriesRequest request;
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{5};
-    request.prevLogIndex = LogIndex{1};
-    request.prevLogTerm = LogTerm{1};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{1}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{5}, LogIndex{2}, LogPayload{"some payload"})};
@@ -257,8 +248,7 @@ TEST_F(FollowerAppendEntriesTest, outdated_message_id) {
     AppendEntriesRequest request;
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{5};
-    request.prevLogIndex = LogIndex{0};
-    request.prevLogTerm = LogTerm{0};
+    request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.leaderCommit = LogIndex{0};
     request.messageId = MessageId{5};
     request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
@@ -275,8 +265,7 @@ TEST_F(FollowerAppendEntriesTest, outdated_message_id) {
     AppendEntriesRequest request;
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{5};
-    request.prevLogIndex = LogIndex{1};
-    request.prevLogTerm = LogTerm{1};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{1}};
     request.leaderCommit = LogIndex{0};
     request.messageId = MessageId{4};
     request.entries = {LogEntry(LogTerm{5}, LogIndex{2}, LogPayload{"some payload"})};

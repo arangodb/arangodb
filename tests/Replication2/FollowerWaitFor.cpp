@@ -50,8 +50,7 @@ TEST_F(FollowerWaitForTest, update_send_append_entries){
     AppendEntriesRequest request;
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{5};
-    request.prevLogIndex = LogIndex{0};
-    request.prevLogTerm = LogTerm{0};
+    request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
     request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
@@ -71,8 +70,7 @@ TEST_F(FollowerWaitForTest, update_send_append_entries){
     AppendEntriesRequest request;
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{5};
-    request.prevLogIndex = LogIndex{1};
-    request.prevLogTerm = LogTerm{1};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{1}};
     request.leaderCommit = LogIndex{1};
     request.messageId = ++nextMessageId;
     request.entries = {};

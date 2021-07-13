@@ -80,8 +80,6 @@ replicated_log::LogLeader::LogLeader(LoggerContext logContext, std::shared_ptr<R
 }
 
 replicated_log::LogLeader::~LogLeader() {
-  // TODO It'd be more accurate to do this in resign(), and here only conditionally
-  //      depending on whether we still own the LogCore.
   _logMetrics->replicatedLogLeaderNumber->fetch_sub(1);
   tryHardToClearQueue();
 }
@@ -177,8 +175,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
         // as mentioned before, both are owning the same object, thus:
         TRI_ASSERT((follower == nullptr) == (logLeader == nullptr));
         if (logLeader == nullptr) {
-          // TODO Can we provide more information here without too much overhead?
-          LOG_TOPIC("de312", DEBUG, Logger::REPLICATION2)
+          LOG_TOPIC("de312", TRACE, Logger::REPLICATION2)
               << "parent log already gone, not sending any more "
                  "AppendEntryRequests";
           return;
@@ -214,9 +211,6 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
               // This has to remain noexcept, because the code below is not exception safe
               auto const endTime = std::chrono::steady_clock::now();
 
-              // TODO report (endTime - startTime) to
-              //      server().getFeature<ReplicatedLogFeature>().metricReplicatedLogAppendEntriesRtt(),
-              //      probably implicitly so tests can be done as well
               if (auto self = weakParentLog.lock()) {
                 // If we successfully acquired parentLog, this cannot fail.
                 auto follower = weakFollower.lock();
@@ -242,19 +236,18 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                       return {};
                     });
 
-                // TODO execute this in a different context
-                for (auto& promise : resolvedPromises._set) {
-                  promise.second.setValue(resolvedPromises._quorum);
-                }
-
                 auto const commitTp =
-                    LogEntry::clock::now();  // TODO Take a more exact measurement
+                    LogEntry::clock::now();
                 for (auto const& it : resolvedPromises._commitedLogEntries) {
                   using namespace std::chrono_literals;
                   auto const entryDuration = commitTp - it.insertTp();
                   logMetrics->replicatedLogInsertsRtt->count(entryDuration / 1us);
                 }
 
+                for (auto& promise : resolvedPromises._set) {
+                  TRI_ASSERT(promise.second.valid());
+                  promise.second.setValue(resolvedPromises._quorum);
+                }
                 executeAppendEntriesRequests(std::move(preparedRequests), logMetrics);
               } else {
                 LOG_TOPIC("de300", DEBUG, Logger::REPLICATION2)
@@ -545,11 +538,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   req.messageId = ++follower.lastSentMessageId;
 
   if (lastAcked) {
-    req.prevLogIndex = lastAcked->logIndex();
-    req.prevLogTerm = lastAcked->logTerm();
+    req.prevLogEntry.index = lastAcked->logIndex();
+    req.prevLogEntry.term = lastAcked->logTerm();
   } else {
-    req.prevLogIndex = LogIndex{0};
-    req.prevLogTerm = LogTerm{0};
+    req.prevLogEntry.index = LogIndex{0};
+    req.prevLogEntry.term = LogTerm{0};
   }
 
   {
@@ -570,8 +563,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
 
   LOG_CTX("af3c6", TRACE, follower.logContext)
       << "creating append entries request with " << req.entries.size()
-      << " entries , prevLogTerm = " << req.prevLogTerm
-      << ", prevLogIndex = " << req.prevLogIndex
+      << " entries , prevLogEntry.term = " << req.prevLogEntry.term
+      << ", prevLogEntry.index = " << req.prevLogEntry.index
       << ", leaderCommit = " << req.leaderCommit;
 
   return std::make_pair(std::move(req), lastIndex);
@@ -781,8 +774,8 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
 
   auto messageLogContext =
       _logContext.with<logContextKeyMessageId>(request.messageId)
-          .with<logContextKeyPrevLogIdx>(request.prevLogIndex)
-          .with<logContextKeyPrevLogTerm>(request.prevLogTerm)
+          .with<logContextKeyPrevLogIdx>(request.prevLogEntry.index)
+          .with<logContextKeyPrevLogTerm>(request.prevLogEntry.term)
           .with<logContextKeyLeaderCommit>(request.leaderCommit);
 
   auto returnAppendEntriesResult =
