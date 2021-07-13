@@ -326,7 +326,7 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(std::string const& nameOrId) const
       noexcept;
 
-  // TODO not yet implemented
+  /// @brief looks up a replicated log by identifier
   std::shared_ptr<arangodb::replication2::replicated_log::LogParticipantI> lookupLog(
       arangodb::replication2::LogId id) const noexcept;
 

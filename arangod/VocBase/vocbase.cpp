@@ -2078,6 +2078,17 @@ auto TRI_vocbase_t::ensureReplicatedLog(arangodb::replication2::LogId id,
   return res.get();
 }
 
+std::shared_ptr<arangodb::replication2::replicated_log::LogParticipantI> TRI_vocbase_t::lookupLog(
+    arangodb::replication2::LogId id) const noexcept {
+  try {
+    if (auto log = getReplicatedLogById(id)) {
+      return log->getParticipant();
+    }
+  } catch (...) {
+  }
+  return nullptr;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
