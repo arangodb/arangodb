@@ -263,11 +263,6 @@ auto RocksDBLogPersistor::persist(std::shared_ptr<arangodb::replication2::Persis
 
   Lane& lane = _lanes[options.waitForSync ? 0 : 1];
 
-  auto lambda =
-      fu2::unique_function<void() noexcept>{[self = shared_from_this(), &lane]() noexcept {
-        self->runPersistorWorker(lane);
-      }};
-
   {
     std::unique_lock guard(lane._persistorMutex);
     lane._pendingPersistRequests.emplace_back(std::move(log), std::move(iter), std::move(p));
@@ -275,12 +270,30 @@ auto RocksDBLogPersistor::persist(std::shared_ptr<arangodb::replication2::Persis
     //      maybe we want to limit it for each lane as well?
 
     // TODO add options for max number of persistor threads for replicated logs
-    if (lane._activePersistorThreads == 0 ||
-        (lane._pendingPersistRequests.size() > 100 && lane._activePersistorThreads < 2)) {
-      // start a new worker thread
-      lane._activePersistorThreads += 1;
-      guard.unlock();
-      _executor->operator()(std::move(lambda));
+    while (true) {
+      auto lambda = fu2::unique_function<void() noexcept>{
+          [self = shared_from_this(), &lane]() noexcept {
+            self->runPersistorWorker(lane);
+          }};
+
+      if (lane._activePersistorThreads == 0 ||
+          (lane._pendingPersistRequests.size() > 100 && lane._activePersistorThreads < 2)) {
+        // start a new worker thread
+        lane._activePersistorThreads += 1;
+        guard.unlock();
+        try {
+          _executor->operator()(std::move(lambda));  // may throw an QUEUE_FULL exception
+          break;
+        } catch (std::exception const& e) {
+          LOG_TOPIC("213cb", WARN, Logger::REPLICATION2)
+              << "Could not post persistence request onto the scheduler: " << e.what();
+        } catch (...) {
+          LOG_TOPIC("8553d", WARN, Logger::REPLICATION2)
+              << "Could not post persistence request onto the scheduler.";
+        }
+        guard.lock();
+        lane._activePersistorThreads -= 1;
+      }
     }
   }
   return f;

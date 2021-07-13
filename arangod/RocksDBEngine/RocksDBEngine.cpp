@@ -887,26 +887,10 @@ void RocksDBEngine::start() {
     explicit SchedulerExecutor(arangodb::application_features::ApplicationServer& server)
         : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
 
-    void operator()(fu2::unique_function<void() noexcept> func) noexcept override {
-      while (true) {
-        try {
-          bool queued =
-              _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
-          if (queued) {
-            break;
-          }
-        } catch (std::exception const& e) {
-          LOG_TOPIC("a9d27", WARN, Logger::ROCKSDB)
-              << "failed to post replicated log persistence request onto the "
-                 "scheduler: "
-              << e.what();
-        } catch (...) {
-          LOG_TOPIC("a9d28", WARN, Logger::ROCKSDB)
-              << "failed to post replicated log persistence request onto the "
-                 "scheduler";
-        }
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(50ms);
+    void operator()(fu2::unique_function<void() noexcept> func) override {
+      if (bool queued =
+            _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func)); !queued) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
       }
     }
 
