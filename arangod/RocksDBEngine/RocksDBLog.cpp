@@ -270,6 +270,7 @@ auto RocksDBLogPersistor::persist(std::shared_ptr<arangodb::replication2::Persis
     //      maybe we want to limit it for each lane as well?
 
     // TODO add options for max number of persistor threads for replicated logs
+    size_t num_retries = 0;
     while (true) {
       auto lambda = fu2::unique_function<void() noexcept>{
           [self = shared_from_this(), &lane]() noexcept {
@@ -293,6 +294,12 @@ auto RocksDBLogPersistor::persist(std::shared_ptr<arangodb::replication2::Persis
         }
         guard.lock();
         lane._activePersistorThreads -= 1;
+        guard.unlock();
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(
+            100us * (1 << std::min(num_retries, static_cast<size_t>(15))));
+        num_retries += 1;
+        guard.lock();
       }
     }
   }
