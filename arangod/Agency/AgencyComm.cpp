@@ -179,7 +179,11 @@ AgencyOperation::AgencyOperation(std::string const& key,
 
 AgencyOperation::AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                                  std::shared_ptr<velocypack::Builder> value)
-    : AgencyOperation(std::move(key), opType, value->slice()) {
+    : AgencyOperation(key, opType, value->slice()) {
+  // The constructor we're delegating to should not initialize holder, but
+  // only _value.
+  TRI_ASSERT(_holder == nullptr);
+  TRI_ASSERT(_value.start() == value->slice().start());
   _holder = std::move(value);
 }
 
