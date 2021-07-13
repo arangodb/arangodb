@@ -499,7 +499,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerIn
     return std::nullopt;  // wait for the request to return
   }
 
-  auto lastAvailableIndex = _inMemoryLog.getLastTermIndexPair();
+  auto const lastAvailableIndex = _inMemoryLog.getLastTermIndexPair();
   LOG_CTX("8844a", TRACE, follower.logContext)
       << "last acked index = " << follower.lastAckedEntry
       << ", current index = " << lastAvailableIndex
@@ -511,23 +511,25 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerIn
     return std::nullopt;  // nothing to replicate
   }
 
-  auto parentLog = _self.shared_from_this();
   follower.requestInFlight = true;
-  auto preparedRequest = PreparedAppendEntryRequest{};
-  preparedRequest._follower = std::shared_ptr<FollowerInfo>(parentLog, &follower);
-  preparedRequest._parentLog = parentLog;
-  if (follower.numErrorsSinceLastAnswer > 0) {
+  auto const executionDelay = std::invoke([&] {
     using namespace std::chrono_literals;
-    // Capped exponential backoff. Wait for 100us, 200us, 400us, ...
-    // until at most 100us * 2 ** 17 == 13.11s.
-    preparedRequest._executionDelay = 100us * (1u << std::min(follower.numErrorsSinceLastAnswer, std::size_t{17}));
-    LOG_CTX("2a6f7", DEBUG, follower.logContext)
-        << follower.numErrorsSinceLastAnswer << " requests failed, last one was "
-        << follower.lastSentMessageId << " - waiting "
-        << preparedRequest._executionDelay / 1ms << "ms before sending next message.";
-  }
+    if (follower.numErrorsSinceLastAnswer > 0) {
+      // Capped exponential backoff. Wait for 100us, 200us, 400us, ...
+      // until at most 100us * 2 ** 17 == 13.11s.
+      auto executionDelay =
+          100us * (1u << std::min(follower.numErrorsSinceLastAnswer, std::size_t{17}));
+      LOG_CTX("2a6f7", DEBUG, follower.logContext)
+          << follower.numErrorsSinceLastAnswer << " requests failed, last one was "
+          << follower.lastSentMessageId << " - waiting " << executionDelay / 1ms
+          << "ms before sending next message.";
+      return executionDelay;
+    } else {
+      return 0us;
+    }
+  });
 
-  return preparedRequest;
+  return PreparedAppendEntryRequest{_self.shared_from_this(), follower, executionDelay};
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
@@ -835,6 +837,13 @@ auto replicated_log::LogLeader::LocalFollower::resign() && noexcept -> std::uniq
     return logCore;
   });
 }
+
+replicated_log::LogLeader::PreparedAppendEntryRequest::PreparedAppendEntryRequest(
+    std::shared_ptr<LogLeader> const& logLeader, FollowerInfo& follower,
+    std::chrono::steady_clock::duration executionDelay)
+    : _parentLog(logLeader),
+      _follower(std::shared_ptr<FollowerInfo>(logLeader, &follower)),
+      _executionDelay(executionDelay) {}
 
 replicated_log::LogLeader::FollowerInfo::FollowerInfo(std::shared_ptr<AbstractFollower> impl,
                                                       TermIndexPair lastLogIndex,
