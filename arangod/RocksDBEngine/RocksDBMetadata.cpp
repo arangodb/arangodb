@@ -33,6 +33,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-compiler.h"
+#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
@@ -41,8 +42,12 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <chrono>
+#include <thread>
 
 using namespace arangodb;
 
@@ -112,6 +117,7 @@ Result RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumbe
     try {
       auto crosslist = _blockersBySeq.emplace(seq, trxId);
       if (!crosslist.second) {
+        _blockers.erase(trxId);
         return res.reset(TRI_ERROR_INTERNAL);
       }
       LOG_TOPIC("1587a", TRACE, Logger::ENGINES)
@@ -196,23 +202,32 @@ void RocksDBMetadata::removeBlocker(TransactionId trxId) {
 bool RocksDBMetadata::hasBlockerUpTo(rocksdb::SequenceNumber seq) const {
   READ_LOCKER(locker, _blockerLock);
 
-  auto it = _blockersBySeq.lower_bound(std::make_pair(seq, TransactionId(0)));
-  if (it == _blockersBySeq.end()) {
+  if (_blockersBySeq.empty()) {
     return false;
   }
-  // here, it->first can only be greater or equal to seq, but anyway.
-  return it->first <= seq;
+
+  // _blockersBySeq is sorted by sequence number first, then transaction id
+  // if the seq no if the first item is already less equal to our search
+  // value, we can abort the search. all following items in _blockersBySeq
+  // will only have the same or higher sequence numbers.
+  return _blockersBySeq.begin()->first <= seq;
 }
 
-
 /// @brief returns the largest safe seq to squash updates against
-rocksdb::SequenceNumber RocksDBMetadata::committableSeq(rocksdb::SequenceNumber maxCommitSeq) const {
-  READ_LOCKER(locker, _blockerLock);
+rocksdb::SequenceNumber RocksDBMetadata::committableSeq(rocksdb::SequenceNumber maxCommitSeq) {
+  WRITE_LOCKER(locker, _blockerLock);
   // if we have a blocker use the lowest counter
   rocksdb::SequenceNumber committable = maxCommitSeq;
   if (!_blockersBySeq.empty()) {
     auto it = _blockersBySeq.begin();
     committable = std::min(it->first, maxCommitSeq);
+  } else {
+    // TODO: determine if we need this else branch for correctness, otherwise make
+    // this method const again and make it use a READ_LOCKER
+     _maxBlockersSequenceNumber = std::max(maxCommitSeq, _maxBlockersSequenceNumber);
+    TRI_ASSERT(committable <= _maxBlockersSequenceNumber);
+    LOG_TOPIC("e5048", TRACE, Logger::ENGINES)
+        << "[" << this << "] committableSeq updated to " << _maxBlockersSequenceNumber;
   }
   LOG_TOPIC("1587d", TRACE, Logger::ENGINES)
       << "[" << this << "] committableSeq determined to be " << committable;
@@ -335,9 +350,34 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   const rocksdb::SequenceNumber maxCommitSeq = committableSeq(appliedSeq);
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // simulate another transaction coming along and trying to commit while
+  // we are serializing
+  TransactionId trxId = TransactionId::none();
+  
+  TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+    auto& selector = coll.vocbase().server().getFeature<EngineSelectorFeature>();
+    auto& engine = selector.engine<RocksDBEngine>();
+    auto blockerSeq = engine.db()->GetLatestSequenceNumber();
+    trxId = TransactionId(transaction::Context::makeTransactionId());
+    placeBlocker(trxId, blockerSeq);
+  }
+  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
+    if (trxId.isSet()) {
+      removeBlocker(trxId);
+    }
+  });
+#endif
+
   TRI_ASSERT(maxCommitSeq <= appliedSeq);
   TRI_ASSERT(maxCommitSeq != UINT64_MAX);
   TRI_ASSERT(maxCommitSeq > 0);
+  
+  TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+    std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
+  }
+    
   bool didWork = applyAdjustments(maxCommitSeq);
   appliedSeq = maxCommitSeq;
 

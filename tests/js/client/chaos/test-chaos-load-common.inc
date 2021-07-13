@@ -155,6 +155,15 @@ function BaseChaosSuite(testOpts) {
           debugSetFailAt(getEndpointById(server.id), "Query::setupTimeout");
         }
       }
+      if (testOpts.withDelays) {
+        let servers = getDBServers();
+        assertTrue(servers.length > 0);
+        for (const server of servers) {
+          debugSetFailAt(getEndpointById(server.id), "TransactionChaos::randomSleep");
+          debugSetFailAt(getEndpointById(server.id), "TransactionChaos::randomSync");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBMetaCollection::forceSerialization");
+        }
+      }
     },
 
     tearDown: function () {
@@ -178,7 +187,7 @@ function BaseChaosSuite(testOpts) {
         const docs = () => {
           let result = [];
           const max = 2000;
-          const r = Math.floor(Math.random() * max) + 1;
+          let r = Math.floor(Math.random() * max) + 1;
           if (r > (max * 0.8)) {
             // we want ~20% of all requests to be single document operations
             r = 1;
@@ -291,7 +300,7 @@ function BaseChaosSuite(testOpts) {
 }
 
 // truncate is disabled because it does not work reliably ATM
-const params = ["IntermediateCommits", "FailurePoints", /*"Truncate",*/ "VaryingOverwriteMode", "StreamingTransactions"];
+const params = ["IntermediateCommits", "FailurePoints", "Delays", /*"Truncate",*/ "VaryingOverwriteMode", "StreamingTransactions"];
 
 const makeConfig = (paramValues) => {
   let suffix = "";
