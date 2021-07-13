@@ -35,7 +35,7 @@ namespace arangodb {
 struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   struct Executor {
     virtual ~Executor() = default;
-    virtual void operator()(fu2::unique_function<void() noexcept>) noexcept = 0;
+    virtual void operator()(fu2::unique_function<void() noexcept>) = 0;
   };
 
   RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf, rocksdb::DB* db,
