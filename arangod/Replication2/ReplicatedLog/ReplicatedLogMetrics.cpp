@@ -47,16 +47,16 @@ ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
     : replicatedLogNumber(
           createMetric<arangodb_replication2_replicated_log_number, mock>(metricsFeature)),
       replicatedLogAppendEntriesRttUs(
-          createMetric<arangodb_replication2_replicated_log_append_entries_rtt_us, mock>(
+          createMetric<arangodb_replication2_replicated_log_append_entries_rtt, mock>(
               metricsFeature)),
       replicatedLogFollowerAppendEntriesRtUs(
-          createMetric<arangodb_replication2_replicated_log_follower_append_entries_rt_us, mock>(
+          createMetric<arangodb_replication2_replicated_log_follower_append_entries_rt, mock>(
               metricsFeature)),
       replicatedLogCreationNumber(
-          createMetric<arangodb_replication2_replicated_log_creation_number, mock>(
+          createMetric<arangodb_replication2_replicated_log_creation_total, mock>(
               metricsFeature)),
       replicatedLogDeletionNumber(
-          createMetric<arangodb_replication2_replicated_log_deletion_number, mock>(
+          createMetric<arangodb_replication2_replicated_log_deletion_total, mock>(
               metricsFeature)),
       replicatedLogLeaderNumber(
           createMetric<arangodb_replication2_replicated_log_leader_number, mock>(
@@ -68,10 +68,10 @@ ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
           createMetric<arangodb_replication2_replicated_log_inactive_number, mock>(
               metricsFeature)),
       replicatedLogLeaderTookOverNumber(
-          createMetric<arangodb_replication2_replicated_log_leader_took_over_number, mock>(
+          createMetric<arangodb_replication2_replicated_log_leader_took_over_total, mock>(
               metricsFeature)),
       replicatedLogStartedFollowingNumber(
-          createMetric<arangodb_replication2_replicated_log_started_following_number, mock>(
+          createMetric<arangodb_replication2_replicated_log_started_following_total, mock>(
               metricsFeature)),
       replicatedLogInsertsBytes(
           createMetric<arangodb_replication2_replicated_log_inserts_bytes, mock>(

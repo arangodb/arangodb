@@ -1,4 +1,4 @@
-name: arangodb_replication2_replicated_log_append_entries_rtt_us
+name: arangodb_replication2_replicated_log_append_entries_rtt
 introducedIn: "3.9.0"
 help: |
   Histogram of the RTT of appendEntries requests in us.
