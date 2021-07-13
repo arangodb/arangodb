@@ -888,7 +888,10 @@ void RocksDBEngine::start() {
         : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
-      std::ignore = _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
+      if (bool queued =
+            _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func)); !queued) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
+      }
     }
 
     Scheduler* _scheduler;

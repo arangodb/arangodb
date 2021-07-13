@@ -255,6 +255,8 @@ class AgencyOperation {
 
   AgencyOperation(std::string const& key, AgencySimpleOperationType opType);
 
+  // Note that this constructor does not copy the Slice, so it has to stay valid
+  // at least as long as the AgencyOperation might be used!
   AgencyOperation(std::string const& key, AgencyValueOperationType opType, velocypack::Slice value);
 
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
@@ -271,6 +273,8 @@ class AgencyOperation {
     _opType.value = opType;
   }
 
+  // Note that this constructor does not copy the Slices, so they have to stay
+  // valid at least as long as the AgencyOperation might be used!
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                   velocypack::Slice newValue, velocypack::Slice oldValue);
 
@@ -279,6 +283,8 @@ class AgencyOperation {
   AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
                   AgencySimpleOperationType opType);
 
+  // Note that this constructor does not copy the Slice, so it has to stay valid
+  // at least as long as the AgencyOperation might be used!
   AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
                   AgencyValueOperationType opType, velocypack::Slice value);
 
@@ -296,6 +302,8 @@ class AgencyOperation {
     _opType.value = opType;
   }
 
+  // Note that this constructor does not copy the Slices, so they have to stay
+  // valid at least as long as the AgencyOperation might be used!
   AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
                   AgencyValueOperationType opType, velocypack::Slice newValue,
                   velocypack::Slice oldValue);

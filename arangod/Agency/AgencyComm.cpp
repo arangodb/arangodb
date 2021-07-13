@@ -179,8 +179,9 @@ AgencyOperation::AgencyOperation(std::string const& key,
 
 AgencyOperation::AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                                  std::shared_ptr<velocypack::Builder> value)
-    : AgencyOperation(std::move(key), opType, value->slice()) {
+    : AgencyOperation(key, opType, value->slice()) {
   _holder = std::move(value);
+  TRI_ASSERT(_holder->slice().start() == _value.start());
 }
 
 AgencyOperation::AgencyOperation(std::string const& key, AgencyValueOperationType opType,
@@ -214,6 +215,7 @@ AgencyOperation::AgencyOperation(std::shared_ptr<cluster::paths::Path const> con
                                  std::shared_ptr<velocypack::Builder> value)
     : AgencyOperation(path, opType, value->slice()) {
   _holder = std::move(value);
+  TRI_ASSERT(_holder->slice().start() == _value.start());
 }
 
 AgencyOperation::AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,

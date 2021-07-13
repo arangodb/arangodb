@@ -300,6 +300,11 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   CreateDatabaseInfo createInfo(server, exec);
   arangodb::Result res = createInfo.load(dbName, options, users);
 
+  if (!res.ok()) {
+    events::CreateDatabase(dbName, res, exec);
+    return res;
+  }
+
   if (createInfo.replicationVersion() == replication::Version::TWO &&
       !replication2::EnableReplication2) {
     using namespace std::string_view_literals;
@@ -308,11 +313,6 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
     // Should not happen during testing
     TRI_ASSERT(false);
     return Result(TRI_ERROR_NOT_IMPLEMENTED, message);
-  }
-
-  if (!res.ok()) {
-    events::CreateDatabase(dbName, res, exec);
-    return res;
   }
 
   if (ServerState::instance()->isCoordinator() /* REVIEW! && !localDatabase*/) {
