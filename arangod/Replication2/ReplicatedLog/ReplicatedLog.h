@@ -104,13 +104,6 @@ struct alignas(64) ReplicatedLog {
     }
   }
 
-  // TODO delete this again, it's a workaround
-  bool isUnconfigured() const {
-    auto leaderPtr =
-        std::dynamic_pointer_cast<LogUnconfiguredParticipant>(getParticipant());
-    return leaderPtr != nullptr;
-  }
-
  private:
   LoggerContext const _logContext = LoggerContext(Logger::REPLICATION2);
   mutable std::mutex _mutex;

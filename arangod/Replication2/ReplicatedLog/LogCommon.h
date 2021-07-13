@@ -132,7 +132,6 @@ auto operator!=(LogPayload const&, LogPayload const&) -> bool;
 // just a placeholder for now, must have a hash<>
 using ParticipantId = std::string;
 
-// TODO This should probably be moved into a separate file
 class LogEntry {
  public:
   using clock = std::chrono::steady_clock;

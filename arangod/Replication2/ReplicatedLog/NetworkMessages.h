@@ -94,20 +94,17 @@ struct AppendEntriesResult {
 struct AppendEntriesRequest {
   using EntryContainer = ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy>;
 
-  // TODO reorder members for a more efficient layout
   LogTerm leaderTerm;
   ParticipantId leaderId;
-  // TODO assert index == 0 <=> term == 0
-  LogTerm prevLogTerm;
-  LogIndex prevLogIndex;
+  TermIndexPair prevLogEntry;
   LogIndex leaderCommit;
   MessageId messageId;
-  bool waitForSync = false;
   EntryContainer entries{};
+  bool waitForSync = false;
 
   AppendEntriesRequest() = default;
-  AppendEntriesRequest(LogTerm leaderTerm, ParticipantId leaderId, LogTerm prevLogTerm,
-                       LogIndex prevLogIndex, LogIndex leaderCommit,
+  AppendEntriesRequest(LogTerm leaderTerm, ParticipantId leaderId,
+                       TermIndexPair prevLogEntry, LogIndex leaderCommit,
                        MessageId messageId, bool waitForSync, EntryContainer entries);
   ~AppendEntriesRequest() noexcept = default;
 

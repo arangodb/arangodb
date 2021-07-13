@@ -93,8 +93,8 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
     EXPECT_EQ(req.messageId, MessageId{1});
     EXPECT_EQ(req.entries.size(), 1);
     EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
-    EXPECT_EQ(req.prevLogTerm, LogTerm{0});
-    EXPECT_EQ(req.prevLogIndex, LogIndex{0});
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
     EXPECT_EQ(req.leaderCommit, LogIndex{0});
   }
@@ -117,8 +117,8 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
     EXPECT_EQ(req.messageId, MessageId{2});
     EXPECT_EQ(req.entries.size(), 0);
     EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
-    EXPECT_EQ(req.prevLogTerm, LogTerm{4});
-    EXPECT_EQ(req.prevLogIndex, LogIndex{1});
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{1});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
     EXPECT_EQ(req.leaderCommit, LogIndex{1});
   }
@@ -141,8 +141,8 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
     EXPECT_EQ(req.messageId, MessageId{1});
     EXPECT_EQ(req.entries.size(), 1);
     EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
-    EXPECT_EQ(req.prevLogTerm, LogTerm{0});
-    EXPECT_EQ(req.prevLogIndex, LogIndex{0});
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
     EXPECT_EQ(req.leaderCommit, LogIndex{0});
   }
@@ -163,8 +163,8 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
     EXPECT_EQ(req.messageId, MessageId{2});
     EXPECT_EQ(req.entries.size(), 1);
     EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
-    EXPECT_EQ(req.prevLogTerm, LogTerm{0});
-    EXPECT_EQ(req.prevLogIndex, LogIndex{0});
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
     EXPECT_EQ(req.leaderCommit, LogIndex{0});
   }
@@ -191,8 +191,8 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set) {
     EXPECT_EQ(req.messageId, MessageId{1});
     EXPECT_EQ(req.entries.size(), 1);
     EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
-    EXPECT_EQ(req.prevLogTerm, LogTerm{0});
-    EXPECT_EQ(req.prevLogIndex, LogIndex{0});
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
     EXPECT_EQ(req.leaderCommit, LogIndex{0});
     EXPECT_TRUE(req.waitForSync);
@@ -216,8 +216,8 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
     EXPECT_EQ(req.messageId, MessageId{1});
     EXPECT_EQ(req.entries.size(), 1);
     EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
-    EXPECT_EQ(req.prevLogTerm, LogTerm{0});
-    EXPECT_EQ(req.prevLogIndex, LogIndex{0});
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
     EXPECT_EQ(req.leaderCommit, LogIndex{0});
     EXPECT_FALSE(req.waitForSync);
