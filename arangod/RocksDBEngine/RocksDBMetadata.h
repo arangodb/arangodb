@@ -109,7 +109,7 @@ struct RocksDBMetadata final {
   void removeBlocker(TransactionId trxId);
 
   /// @brief returns the largest safe seq to squash updates against
-  rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber maxCommitSeq);
+  rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber maxCommitSeq) const;
 
   /// @brief buffer a counter adjustment
   void adjustNumberDocuments(rocksdb::SequenceNumber seq, RevisionId revId, int64_t adj);

@@ -214,20 +214,13 @@ bool RocksDBMetadata::hasBlockerUpTo(rocksdb::SequenceNumber seq) const {
 }
 
 /// @brief returns the largest safe seq to squash updates against
-rocksdb::SequenceNumber RocksDBMetadata::committableSeq(rocksdb::SequenceNumber maxCommitSeq) {
-  WRITE_LOCKER(locker, _blockerLock);
+rocksdb::SequenceNumber RocksDBMetadata::committableSeq(rocksdb::SequenceNumber maxCommitSeq) const {
+  READ_LOCKER(locker, _blockerLock);
   // if we have a blocker use the lowest counter
   rocksdb::SequenceNumber committable = maxCommitSeq;
   if (!_blockersBySeq.empty()) {
     auto it = _blockersBySeq.begin();
     committable = std::min(it->first, maxCommitSeq);
-  } else {
-    // TODO: determine if we need this else branch for correctness, otherwise make
-    // this method const again and make it use a READ_LOCKER
-     _maxBlockersSequenceNumber = std::max(maxCommitSeq, _maxBlockersSequenceNumber);
-    TRI_ASSERT(committable <= _maxBlockersSequenceNumber);
-    LOG_TOPIC("e5048", TRACE, Logger::ENGINES)
-        << "[" << this << "] committableSeq updated to " << _maxBlockersSequenceNumber;
   }
   LOG_TOPIC("1587d", TRACE, Logger::ENGINES)
       << "[" << this << "] committableSeq determined to be " << committable;

@@ -955,11 +955,9 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
     auto checkIterators = [&]() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE      
       TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || 
-                 (insertIt == _revisionInsertBuffers.end() && (_revisionInsertBuffers.empty() || _revisionInsertBuffers.begin()->first > commitSeq)) ||
-                 (_revisionInsertBuffers.size() >= 2 && std::prev(insertIt)->first > commitSeq));
+                 _revisionInsertBuffers.empty() || _revisionInsertBuffers.begin()->first > commitSeq);
       TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || 
-                 (removeIt == _revisionRemovalBuffers.end() && (_revisionRemovalBuffers.empty() || _revisionRemovalBuffers.begin()->first > commitSeq)) ||
-                 (_revisionRemovalBuffers.size() >= 2 && std::prev(removeIt)->first > commitSeq));
+                 _revisionRemovalBuffers.empty() || _revisionRemovalBuffers.begin()->first > commitSeq);
 #endif
     };
 
