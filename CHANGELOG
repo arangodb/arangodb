@@ -1,6 +1,13 @@
 devel
 -----
 
+* Fix startup issues with encryption-at-rest enabled when there were empty
+  (0 byte) RocksDB WAL files present. Such empty files caused RocksDB to
+  abort the startup, reporting corruption. However, empty WAL files are 
+  possible in case of server crashes etc. Now, if a WAL file is completely
+  empty, there will be no attempt to read the encryption meta data from it,
+  so the startup succeeds.
+
 * Remove _msg/please-upgrade handler.
 
 * Updated JavaScript dependencies, including breaking changes to non-public
