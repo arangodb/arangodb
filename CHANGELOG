@@ -1,6 +1,8 @@
 v3.6.15 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to 0.15.0-1.
+
 * On a failure during synchronous replication, do not remove the failed follower
   from the list of known servers in the transaction.
   If we do, we would not be able to send the commit/abort to the follower later.
