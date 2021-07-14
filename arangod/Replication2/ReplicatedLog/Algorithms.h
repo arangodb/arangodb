@@ -66,8 +66,8 @@ struct LogActionContext {
       -> std::shared_ptr<replication2::replicated_log::AbstractFollower> = 0;
 };
 
-auto updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId,
-                         RebootId rebootId, LogId logId,
-                         agency::LogPlanSpecification const* spec) -> arangodb::Result;
+auto updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId, RebootId rebootId,
+                         LogId logId, agency::LogPlanSpecification const* spec) noexcept
+    -> arangodb::Result;
 
 }  // namespace arangodb::replication2::algorithms
