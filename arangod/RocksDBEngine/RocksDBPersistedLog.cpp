@@ -19,9 +19,9 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#include <Basics/ScopeGuard.h>
 #include <Basics/Exceptions.h>
 #include <Basics/RocksDBUtils.h>
+#include <Basics/ScopeGuard.h>
 #include <Basics/debugging.h>
 
 #include "RocksDBKey.h"
@@ -32,12 +32,12 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 RocksDBPersistedLog::RocksDBPersistedLog(replication2::LogId id, uint64_t objectId,
-                       std::shared_ptr<RocksDBLogPersistor> persistor)
+                                         std::shared_ptr<RocksDBLogPersistor> persistor)
     : PersistedLog(id), _objectId(objectId), _persistor(std::move(persistor)) {}
 
 auto RocksDBPersistedLog::insert(LogIterator& iter, WriteOptions const& options) -> Result {
   rocksdb::WriteBatch wb;
-  auto res = insertWithBatch(iter, wb);
+  auto res = prepareWriteBatch(iter, wb);
   if (!res.ok()) {
     return res;
   }
@@ -47,8 +47,8 @@ auto RocksDBPersistedLog::insert(LogIterator& iter, WriteOptions const& options)
   }
 
   if (options.waitForSync) {
-    // At this point we have to make sure that every previous log entry is synced
-    // as well. Otherwise we might get holes in the log.
+    // At this point we have to make sure that every previous log entry is
+    // synced as well. Otherwise we might get holes in the log.
     if (auto s = _persistor->_db->SyncWAL(); !s.ok()) {
       return rocksutils::convertStatus(s);
     }
@@ -129,8 +129,8 @@ auto RocksDBPersistedLog::removeBack(replication2::LogIndex start) -> Result {
   return rocksutils::convertStatus(s);
 }
 
-auto RocksDBPersistedLog::insertWithBatch(replication2::LogIterator& iter,
-                                 rocksdb::WriteBatch& wb) -> Result {
+auto RocksDBPersistedLog::prepareWriteBatch(replication2::LogIterator& iter,
+                                            rocksdb::WriteBatch& wb) -> Result {
   while (auto entry = iter.next()) {
     auto key = RocksDBKey{};
     key.constructLogEntry(_objectId, entry->logIndex());
@@ -145,36 +145,18 @@ auto RocksDBPersistedLog::insertWithBatch(replication2::LogIterator& iter,
 }
 
 auto RocksDBPersistedLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter,
-                             WriteOptions const& opts) -> futures::Future<Result> {
+                                      WriteOptions const& opts) -> futures::Future<Result> {
   RocksDBLogPersistor::WriteOptions wo;
   wo.waitForSync = opts.waitForSync;
   return _persistor->persist(shared_from_this(), std::move(iter), wo);
 }
 
-auto RocksDBPersistedLog::insertSingleWrites(LogIterator& iter) -> Result {
-  while (auto entry = iter.next()) {
-    auto key = RocksDBKey{};
-    key.constructLogEntry(_objectId, entry->logIndex());
-    auto value = RocksDBValue::LogEntry(entry->logTerm(), entry->logPayload());
-    auto s = _persistor->_db->Put(rocksdb::WriteOptions{}, _persistor->_cf, key.string(), value.string());
-    if (!s.ok()) {
-      return rocksutils::convertStatus(s);
-    }
-  }
-
-  return Result();
-}
-
 RocksDBLogPersistor::RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf,
                                          rocksdb::DB* db, std::shared_ptr<Executor> executor)
-    : _cf(cf), _db(db), _executor(std::move(executor)) {
-  // enable wait for sync on lane 0
-  _lanes[0]._waitForSync = true;
-}
+    : _cf(cf), _db(db), _executor(std::move(executor)) {}
 
 void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
-  // TODO check this code for exception safety
-  // This function is noexcept so in case a exception bubbles up we
+  // This function is noexcept so in case an exception bubbles up we
   // rather crash instead of losing one thread.
   while (true) {
     std::vector<PersistRequest> pendingRequests;
@@ -190,27 +172,33 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
       std::swap(pendingRequests, lane._pendingPersistRequests);
     }
 
-    auto current = pendingRequests.begin();
-    auto start = current;
+    auto nextReqToWrite = pendingRequests.begin();
+    auto nextReqToResolve = nextReqToWrite;
     try {
-      // catch to result is not noexcept
       auto result = basics::catchToResult([&] {
         rocksdb::WriteBatch wb;
 
-        while (current != std::end(pendingRequests)) {
+        while (nextReqToWrite != std::end(pendingRequests)) {
           wb.Clear();
 
-          start = current;
-          // We have to make sure that we do not split a single iterator in
-          // multiple write batches. Otherwise the in-memory-log could be out
-          // of sync.
-          while (wb.Count() < 1000 && current != std::end(pendingRequests)) {
-            auto* log_ptr = dynamic_cast<RocksDBPersistedLog*>(current->log.get());
+          // For simplicity, a single LogIterator of a specific PersistRequest
+          // (i.e. *nextReqToWrite->iter) is always written as a whole in a write batch.
+          // This is not strictly necessary for correctness, as long as an error
+          // is reported when any LogEntry is not written. Because then, the
+          // write will be retried, and it does not hurt that the persisted log
+          // already has some entries that are not yet confirmed (which may be
+          // overwritten later). This could still be improved upon a little by
+          // reporting up to which entry was written successfully.
+          while (wb.Count() < 1000 && nextReqToWrite != std::end(pendingRequests)) {
+            auto* log_ptr =
+                dynamic_cast<RocksDBPersistedLog*>(nextReqToWrite->log.get());
             TRI_ASSERT(log_ptr != nullptr);
-            if (auto res = log_ptr->insertWithBatch(*current->iter, wb); res.fail()) {
+            if (auto res = log_ptr->prepareWriteBatch(*nextReqToWrite->iter, wb);
+                res.fail()) {
               return res;
             }
-            ++current;
+            TRI_ASSERT(nextReqToWrite->iter->next() == std::nullopt);
+            ++nextReqToWrite;
           }
           {
             if (auto s = _db->Write({}, &wb); !s.ok()) {
@@ -226,9 +214,9 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
             }
           }
 
-          // resolve all promises in [start, current)
-          for (auto it = start; it != current; ++it) {
-            it->promise.setValue(TRI_ERROR_NO_ERROR);
+          // resolve all promises in [nextReqToResolve, nextReqToWrite)
+          for (; nextReqToResolve != nextReqToWrite; ++nextReqToResolve) {
+            nextReqToResolve->promise.setValue(TRI_ERROR_NO_ERROR);
           }
         }
 
@@ -237,17 +225,31 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
 
       // resolve all promises with the result
       if (result.fail()) {
-        for (; start != std::end(pendingRequests); ++start) {
-          if (!start->promise.isFulfilled()) {
-            start->promise.setValue(result);
+        for (; nextReqToResolve != std::end(pendingRequests); ++nextReqToResolve) {
+          // If a promise is fulfilled before (with a value), nextReqToResolve
+          // should always be increased as well; meaning we only exactly iterate
+          // over the unfulfilled promises here.
+          TRI_ASSERT(!nextReqToResolve->promise.isFulfilled());
+          // TODO Discuss whether, keeping in mind the above comment, we rather
+          //      want to check isFulfilled or not, in case of doubt aborting
+          //      due to noexcept.
+          if (!nextReqToResolve->promise.isFulfilled()) {
+            nextReqToResolve->promise.setValue(result);
           }
         }
       }
     } catch (...) {
       auto ex_ptr = std::current_exception();
-      for (; start != std::end(pendingRequests); ++start) {
-        if (!start->promise.isFulfilled()) {
-          start->promise.setException(ex_ptr);
+      for (; nextReqToResolve != std::end(pendingRequests); ++nextReqToResolve) {
+        // If a promise is fulfilled before (with either a value or an error),
+        // nextReqToResolve should always be increased as well; meaning we only
+        // exactly iterate over the unfulfilled promises here.
+        TRI_ASSERT(!nextReqToResolve->promise.isFulfilled());
+        // TODO Discuss whether, keeping in mind the above comment, we rather
+        //      want to check isFulfilled or not, in case of doubt aborting
+        //      due to noexcept.
+        if (!nextReqToResolve->promise.isFulfilled()) {
+          nextReqToResolve->promise.setException(ex_ptr);
         }
       }
     }
@@ -256,16 +258,17 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
 
 auto RocksDBLogPersistor::persist(std::shared_ptr<arangodb::replication2::PersistedLog> log,
                                   std::unique_ptr<arangodb::replication2::LogIterator> iter,
-                                  WriteOptions const& options)
-    -> futures::Future<Result> {
+                                  WriteOptions const& options) -> futures::Future<Result> {
   auto p = futures::Promise<Result>{};
   auto f = p.getFuture();
 
   Lane& lane = _lanes[options.waitForSync ? 0 : 1];
+  TRI_ASSERT(lane._waitForSync == options.waitForSync);
 
   {
     std::unique_lock guard(lane._persistorMutex);
-    lane._pendingPersistRequests.emplace_back(std::move(log), std::move(iter), std::move(p));
+    lane._pendingPersistRequests.emplace_back(std::move(log), std::move(iter),
+                                              std::move(p));
     // TODO this code limits the total amount of threads working in the persistor
     //      maybe we want to limit it for each lane as well?
 
@@ -283,7 +286,7 @@ auto RocksDBLogPersistor::persist(std::shared_ptr<arangodb::replication2::Persis
         lane._activePersistorThreads += 1;
         guard.unlock();
         try {
-          _executor->operator()(std::move(lambda));  // may throw an QUEUE_FULL exception
+          _executor->operator()(std::move(lambda));  // may throw a QUEUE_FULL exception
           break;
         } catch (std::exception const& e) {
           LOG_TOPIC("213cb", WARN, Logger::REPLICATION2)
