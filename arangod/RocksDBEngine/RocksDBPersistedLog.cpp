@@ -174,83 +174,63 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
 
     auto nextReqToWrite = pendingRequests.begin();
     auto nextReqToResolve = nextReqToWrite;
-    try {
-      auto result = basics::catchToResult([&] {
-        rocksdb::WriteBatch wb;
 
-        while (nextReqToWrite != std::end(pendingRequests)) {
-          wb.Clear();
+    auto result = basics::catchToResult([&] {
+      rocksdb::WriteBatch wb;
 
-          // For simplicity, a single LogIterator of a specific PersistRequest
-          // (i.e. *nextReqToWrite->iter) is always written as a whole in a write batch.
-          // This is not strictly necessary for correctness, as long as an error
-          // is reported when any LogEntry is not written. Because then, the
-          // write will be retried, and it does not hurt that the persisted log
-          // already has some entries that are not yet confirmed (which may be
-          // overwritten later). This could still be improved upon a little by
-          // reporting up to which entry was written successfully.
-          while (wb.Count() < 1000 && nextReqToWrite != std::end(pendingRequests)) {
-            auto* log_ptr =
-                dynamic_cast<RocksDBPersistedLog*>(nextReqToWrite->log.get());
-            TRI_ASSERT(log_ptr != nullptr);
-            if (auto res = log_ptr->prepareWriteBatch(*nextReqToWrite->iter, wb);
-                res.fail()) {
-              return res;
-            }
-            TRI_ASSERT(nextReqToWrite->iter->next() == std::nullopt);
-            ++nextReqToWrite;
+      while (nextReqToWrite != std::end(pendingRequests)) {
+        wb.Clear();
+
+        // For simplicity, a single LogIterator of a specific PersistRequest
+        // (i.e. *nextReqToWrite->iter) is always written as a whole in a write batch.
+        // This is not strictly necessary for correctness, as long as an error
+        // is reported when any LogEntry is not written. Because then, the
+        // write will be retried, and it does not hurt that the persisted log
+        // already has some entries that are not yet confirmed (which may be
+        // overwritten later). This could still be improved upon a little by
+        // reporting up to which entry was written successfully.
+        while (wb.Count() < 1000 && nextReqToWrite != std::end(pendingRequests)) {
+          auto* log_ptr =
+              dynamic_cast<RocksDBPersistedLog*>(nextReqToWrite->log.get());
+          TRI_ASSERT(log_ptr != nullptr);
+          if (auto res = log_ptr->prepareWriteBatch(*nextReqToWrite->iter, wb);
+              res.fail()) {
+            return res;
           }
-          {
-            if (auto s = _db->Write({}, &wb); !s.ok()) {
+          TRI_ASSERT(nextReqToWrite->iter->next() == std::nullopt);
+          ++nextReqToWrite;
+        }
+        {
+          if (auto s = _db->Write({}, &wb); !s.ok()) {
+            return rocksutils::convertStatus(s);
+          }
+
+          if (lane._waitForSync) {
+            if (auto s = _db->SyncWAL(); !s.ok()) {
+              // At this point we have to make sure that every previous log entry is synced
+              // as well. Otherwise we might get holes in the log.
               return rocksutils::convertStatus(s);
             }
-
-            if (lane._waitForSync) {
-              if (auto s = _db->SyncWAL(); !s.ok()) {
-                // At this point we have to make sure that every previous log entry is synced
-                // as well. Otherwise we might get holes in the log.
-                return rocksutils::convertStatus(s);
-              }
-            }
-          }
-
-          // resolve all promises in [nextReqToResolve, nextReqToWrite)
-          for (; nextReqToResolve != nextReqToWrite; ++nextReqToResolve) {
-            nextReqToResolve->promise.setValue(TRI_ERROR_NO_ERROR);
           }
         }
 
-        return Result{TRI_ERROR_NO_ERROR};
-      });
-
-      // resolve all promises with the result
-      if (result.fail()) {
-        for (; nextReqToResolve != std::end(pendingRequests); ++nextReqToResolve) {
-          // If a promise is fulfilled before (with a value), nextReqToResolve
-          // should always be increased as well; meaning we only exactly iterate
-          // over the unfulfilled promises here.
-          TRI_ASSERT(!nextReqToResolve->promise.isFulfilled());
-          // TODO Discuss whether, keeping in mind the above comment, we rather
-          //      want to check isFulfilled or not, in case of doubt aborting
-          //      due to noexcept.
-          if (!nextReqToResolve->promise.isFulfilled()) {
-            nextReqToResolve->promise.setValue(result);
-          }
+        // resolve all promises in [nextReqToResolve, nextReqToWrite)
+        for (; nextReqToResolve != nextReqToWrite; ++nextReqToResolve) {
+          nextReqToResolve->promise.setValue(TRI_ERROR_NO_ERROR);
         }
       }
-    } catch (...) {
-      auto ex_ptr = std::current_exception();
+
+      return Result{TRI_ERROR_NO_ERROR};
+    });
+
+    // resolve all promises with the result
+    if (result.fail()) {
       for (; nextReqToResolve != std::end(pendingRequests); ++nextReqToResolve) {
-        // If a promise is fulfilled before (with either a value or an error),
-        // nextReqToResolve should always be increased as well; meaning we only
-        // exactly iterate over the unfulfilled promises here.
+        // If a promise is fulfilled before (with a value), nextReqToResolve
+        // should always be increased as well; meaning we only exactly iterate
+        // over the unfulfilled promises here.
         TRI_ASSERT(!nextReqToResolve->promise.isFulfilled());
-        // TODO Discuss whether, keeping in mind the above comment, we rather
-        //      want to check isFulfilled or not, in case of doubt aborting
-        //      due to noexcept.
-        if (!nextReqToResolve->promise.isFulfilled()) {
-          nextReqToResolve->promise.setException(ex_ptr);
-        }
+        nextReqToResolve->promise.setValue(result);
       }
     }
   }
