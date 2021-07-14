@@ -1,6 +1,12 @@
 devel
 -----
 
+* Always remove blocker object for revision trees in case of replication 
+  failures.
+
+* Fix invalid assertion for insert/removal buffers positioning and internals of
+  `hasBlockerUpTo` function.
+
 * Fix startup issues with encryption-at-rest enabled when there were empty
   (0 byte) RocksDB WAL files present. Such empty files caused RocksDB to
   abort the startup, reporting corruption. However, empty WAL files are 
