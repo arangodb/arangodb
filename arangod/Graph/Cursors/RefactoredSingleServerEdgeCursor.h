@@ -66,7 +66,7 @@ class RefactoredSingleServerEdgeCursor {
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&) = delete;
-    LookupInfo(LookupInfo&&) noexcept;
+    LookupInfo(LookupInfo&&);
     LookupInfo& operator=(LookupInfo const&) = delete;
 
     void rearmVertex(VertexType vertex, transaction::Methods* trx,

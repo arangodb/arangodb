@@ -71,12 +71,7 @@ RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(
       _conditionMemberToUpdate(memberToUpdate) {}
 
 template <class Step>
-RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(LookupInfo&& other) noexcept
-    : _idxHandle(std::move(other._idxHandle)),
-      _expression(std::move(other._expression)),
-      _indexCondition(other._indexCondition),
-      _cursorID(other._cursorID),
-      _cursor(std::move(other._cursor)){};
+RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(LookupInfo&& other) = default;
 
 template <class Step>
 RefactoredSingleServerEdgeCursor<Step>::LookupInfo::~LookupInfo() = default;

@@ -237,7 +237,6 @@ void InternalRestTraverserHandler::queryEngine() {
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
     eng->smartSearchNew(body, result);  // TODO: Rename/Refactor. smartSearchNew does both (DFS & BFS)
-    //LOG_DEVEL << "New: " << result.toJson(); // TODO: REMOVE LOG DEVEL
   } else if (option == "smartSearchBFS") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -248,12 +247,7 @@ void InternalRestTraverserHandler::queryEngine() {
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
 
-    VPackBuilder other;
-    // eng->smartSearchBFS(body, other);
-    // LOG_DEVEL << "Original: " << other.toJson(); // TODO REMOVE LOG DEVEL
-
     eng->smartSearchNew(body, result);  // TODO: Rename/Refactor. smartSearchNew does both (DFS & BFS)
-    // LOG_DEVEL << "Refactored: " << result.toJson(); // TODO REMOVE LOG DEVEL
   } else if (option == "smartSearchWeighted") {
     if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
