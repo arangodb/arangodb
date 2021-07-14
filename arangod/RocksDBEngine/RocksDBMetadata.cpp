@@ -207,7 +207,7 @@ bool RocksDBMetadata::hasBlockerUpTo(rocksdb::SequenceNumber seq) const {
   }
 
   // _blockersBySeq is sorted by sequence number first, then transaction id
-  // if the seq no if the first item is already less equal to our search
+  // if the seq no in the first item is already less equal to our search
   // value, we can abort the search. all following items in _blockersBySeq
   // will only have the same or higher sequence numbers.
   return _blockersBySeq.begin()->first <= seq;
