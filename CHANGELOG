@@ -1,6 +1,12 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Always remove blocker object for revision trees in case of replication 
+  failures.
+
+* Fix invalid assertion for insert/removal buffers positioning and internals of
+  `hasBlockerUpTo` function.
+
 * Updated arangosync to 2.4.0.
 
 * For cluster AQL queries, let the coordinator determine the query id to be used
