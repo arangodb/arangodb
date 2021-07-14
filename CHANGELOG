@@ -1,5 +1,8 @@
 devel
 -----
+
+* Remove _msg/please-upgrade handler.
+
 * Updated JavaScript dependencies, including breaking changes to non-public
   modules. We recommend always bundling your own copy of third-party modules,
   even ones listed as public.
