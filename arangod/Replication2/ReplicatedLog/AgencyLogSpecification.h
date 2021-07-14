@@ -81,9 +81,9 @@ struct LogCurrentLocalState {
 
 struct LogCurrentSupervisionElection {
   enum class ErrorCode {
-    OK,
-    SERVER_NOT_GOOD,
-    TERM_NOT_CONFIRMED,
+    OK = 0,
+    SERVER_NOT_GOOD = 1,
+    TERM_NOT_CONFIRMED = 2,
   };
 
   LogTerm term;

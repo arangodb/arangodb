@@ -180,7 +180,7 @@ struct LogConfig {
   bool waitForSync = false;
 
   auto toVelocyPack(velocypack::Builder&) const -> void;
-  LogConfig(velocypack::Slice);
+  explicit LogConfig(velocypack::Slice);
   LogConfig() noexcept = default;
   LogConfig(std::size_t writeConcern, bool waitForSync) noexcept;
 
