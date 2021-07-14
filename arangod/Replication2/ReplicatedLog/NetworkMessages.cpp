@@ -58,12 +58,11 @@ using namespace arangodb::replication2::replicated_log;
 AppendEntriesRequest::AppendEntriesRequest(AppendEntriesRequest&& other) noexcept try
     : leaderTerm(other.leaderTerm),
       leaderId(std::move(other.leaderId)),
-      prevLogTerm(other.prevLogTerm),
-      prevLogIndex(other.prevLogIndex),
+      prevLogEntry(other.prevLogEntry),
       leaderCommit(other.leaderCommit),
       messageId(other.messageId),
-      waitForSync(other.waitForSync),
-      entries(std::move(other.entries)) {
+      entries(std::move(other.entries)),
+      waitForSync(other.waitForSync) {
   // Note that immer::flex_vector is currently not nothrow move-assignable,
   // though it probably does not throw any exceptions. However, we *need* this
   // to be noexcept, otherwise we cannot keep the persistent and in-memory state
@@ -107,8 +106,7 @@ auto AppendEntriesRequest::operator=(replicated_log::AppendEntriesRequest&& othe
   // rethrowing) the process if an exception is caught.
   leaderTerm = other.leaderTerm;
   leaderId = std::move(other.leaderId);
-  prevLogTerm = other.prevLogTerm;
-  prevLogIndex = other.prevLogIndex;
+  prevLogEntry = other.prevLogEntry;
   leaderCommit = other.leaderCommit;
   messageId = other.messageId;
   waitForSync = other.waitForSync;
@@ -237,8 +235,8 @@ void replicated_log::AppendEntriesRequest::toVelocyPack(velocypack::Builder& bui
     velocypack::ObjectBuilder ob(&builder);
     builder.add("leaderTerm", VPackValue(leaderTerm.value));
     builder.add("leaderId", VPackValue(leaderId));
-    builder.add("prevLogTerm", VPackValue(prevLogTerm.value));
-    builder.add("prevLogIndex", VPackValue(prevLogIndex.value));
+    builder.add(VPackValue("prevLogEntry"));
+    prevLogEntry.toVelocyPack(builder);
     builder.add("leaderCommit", VPackValue(leaderCommit.value));
     builder.add("messageId", VPackValue(messageId));
     builder.add("waitForSync", VPackValue(waitForSync));
@@ -254,8 +252,7 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slic
 -> AppendEntriesRequest {
   auto leaderTerm = LogTerm{slice.get("leaderTerm").getNumericValue<size_t>()};
   auto leaderId = ParticipantId{slice.get("leaderId").copyString()};
-  auto prevLogTerm = LogTerm{slice.get("prevLogTerm").getNumericValue<size_t>()};
-  auto prevLogIndex = LogIndex{slice.get("prevLogIndex").getNumericValue<size_t>()};
+  auto prevLogEntry = TermIndexPair::fromVelocyPack(slice.get("prevLogEntry"));
   auto leaderCommit = LogIndex{slice.get("leaderCommit").getNumericValue<size_t>()};
   auto messageId = MessageId{slice.get("messageId").getNumericValue<uint64_t>()};
   auto waitForSync = slice.get("waitForSync").extract<bool>();
@@ -267,20 +264,19 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slic
     return std::move(transientEntries).persistent();
   });
 
-  return AppendEntriesRequest{leaderTerm,        leaderId,     prevLogTerm,
-                              prevLogIndex,      leaderCommit, messageId,
-                              waitForSync, std::move(entries)};
+  return AppendEntriesRequest{leaderTerm,        leaderId,  prevLogEntry,
+                              leaderCommit,      messageId, waitForSync,
+                              std::move(entries)};
 }
 
 replicated_log::AppendEntriesRequest::AppendEntriesRequest(
-    LogTerm leaderTerm, ParticipantId leaderId, LogTerm prevLogTerm,
-    LogIndex prevLogIndex, LogIndex leaderCommit,
-    replicated_log::MessageId messageId, bool waitForSync, EntryContainer entries)
+    LogTerm leaderTerm, ParticipantId leaderId, TermIndexPair prevLogEntry,
+    LogIndex leaderCommit, replicated_log::MessageId messageId,
+    bool waitForSync, EntryContainer entries)
     : leaderTerm(leaderTerm),
       leaderId(std::move(leaderId)),
-      prevLogTerm(prevLogTerm),
-      prevLogIndex(prevLogIndex),
+      prevLogEntry(prevLogEntry),
       leaderCommit(leaderCommit),
       messageId(messageId),
-      waitForSync(waitForSync),
-      entries(std::move(entries)) {}
+      entries(std::move(entries)),
+      waitForSync(waitForSync) {}

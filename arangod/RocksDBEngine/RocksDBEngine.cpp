@@ -68,10 +68,10 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBLog.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
+#include "RocksDBEngine/RocksDBPersistedLog.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
@@ -2379,7 +2379,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       auto logId = arangodb::replication2::LogId{
           it.get(StaticStrings::DataSourcePlanId).getNumericValue<uint64_t>()};
       auto objectId = it.get(StaticStrings::ObjectId).getNumericValue<uint64_t>();
-      auto log = std::make_shared<RocksDBLog>(logId, objectId, _logPersistor);
+      auto log = std::make_shared<RocksDBPersistedLog>(logId, objectId, _logPersistor);
       StorageEngine::registerReplicatedLog(*vocbase, logId, log);
     }
   } catch (std::exception const& ex) {
@@ -3011,7 +3011,7 @@ auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase, arangodb::replic
                             RocksDBColumnFamilyManager::Family::Definitions),
                         key.string(), value.string());
   if (s.ok()) {
-    auto log = std::make_shared<RocksDBLog>(logId, objectId, _logPersistor);
+    auto log = std::make_shared<RocksDBPersistedLog>(logId, objectId, _logPersistor);
     return {log};
   }
 

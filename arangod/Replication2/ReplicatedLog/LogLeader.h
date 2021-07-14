@@ -151,7 +151,11 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   };
 
   struct PreparedAppendEntryRequest {
-    // TODO Write a constructor, delete the default constructor
+    PreparedAppendEntryRequest() = delete;
+    PreparedAppendEntryRequest(std::shared_ptr<LogLeader> const& logLeader,
+                               FollowerInfo& follower,
+                               std::chrono::steady_clock::duration executionDelay);
+
     std::weak_ptr<LogLeader> _parentLog;
     // This weak_ptr will always be an alias of _parentLog. It's thus not
     // strictly necessary, but makes it more clear that we do share ownership

@@ -25,17 +25,17 @@
 #include <Basics/debugging.h>
 
 #include "RocksDBKey.h"
-#include "RocksDBLog.h"
+#include "RocksDBPersistedLog.h"
 #include "RocksDBValue.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-RocksDBLog::RocksDBLog(replication2::LogId id, uint64_t objectId,
+RocksDBPersistedLog::RocksDBPersistedLog(replication2::LogId id, uint64_t objectId,
                        std::shared_ptr<RocksDBLogPersistor> persistor)
     : PersistedLog(id), _objectId(objectId), _persistor(std::move(persistor)) {}
 
-auto RocksDBLog::insert(LogIterator& iter, WriteOptions const& options) -> Result {
+auto RocksDBPersistedLog::insert(LogIterator& iter, WriteOptions const& options) -> Result {
   rocksdb::WriteBatch wb;
   auto res = insertWithBatch(iter, wb);
   if (!res.ok()) {
@@ -60,7 +60,7 @@ auto RocksDBLog::insert(LogIterator& iter, WriteOptions const& options) -> Resul
 struct RocksDBLogIterator : replication2::LogIterator {
   ~RocksDBLogIterator() override = default;
 
-  RocksDBLogIterator(RocksDBLog* log, rocksdb::DB* db,
+  RocksDBLogIterator(RocksDBPersistedLog* log, rocksdb::DB* db,
                      rocksdb::ColumnFamilyHandle* cf, LogIndex start)
       : _bounds(log->getBounds()), _upperBound(_bounds.end()) {
     rocksdb::ReadOptions opts;
@@ -100,16 +100,16 @@ struct RocksDBLogIterator : replication2::LogIterator {
   bool _first = true;
 };
 
-auto RocksDBLog::read(LogIndex start) -> std::unique_ptr<LogIterator> {
+auto RocksDBPersistedLog::read(LogIndex start) -> std::unique_ptr<LogIterator> {
   return std::make_unique<RocksDBLogIterator>(this, _persistor->_db, _persistor->_cf, start);
 }
 
-auto RocksDBLog::drop() -> Result {
+auto RocksDBPersistedLog::drop() -> Result {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-auto RocksDBLog::removeFront(replication2::LogIndex stop) -> Result {
+auto RocksDBPersistedLog::removeFront(replication2::LogIndex stop) -> Result {
   auto last = RocksDBKey();
   last.constructLogEntry(_objectId, LogIndex{stop.value});
 
@@ -119,7 +119,7 @@ auto RocksDBLog::removeFront(replication2::LogIndex stop) -> Result {
   return rocksutils::convertStatus(s);
 }
 
-auto RocksDBLog::removeBack(replication2::LogIndex start) -> Result {
+auto RocksDBPersistedLog::removeBack(replication2::LogIndex start) -> Result {
   auto first = RocksDBKey();
   first.constructLogEntry(_objectId, LogIndex{start.value});
 
@@ -129,7 +129,7 @@ auto RocksDBLog::removeBack(replication2::LogIndex start) -> Result {
   return rocksutils::convertStatus(s);
 }
 
-auto RocksDBLog::insertWithBatch(replication2::LogIterator& iter,
+auto RocksDBPersistedLog::insertWithBatch(replication2::LogIterator& iter,
                                  rocksdb::WriteBatch& wb) -> Result {
   while (auto entry = iter.next()) {
     auto key = RocksDBKey{};
@@ -144,14 +144,14 @@ auto RocksDBLog::insertWithBatch(replication2::LogIterator& iter,
   return Result();
 }
 
-auto RocksDBLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter,
+auto RocksDBPersistedLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter,
                              WriteOptions const& opts) -> futures::Future<Result> {
   RocksDBLogPersistor::WriteOptions wo;
   wo.waitForSync = opts.waitForSync;
   return _persistor->persist(shared_from_this(), std::move(iter), wo);
 }
 
-auto RocksDBLog::insertSingleWrites(LogIterator& iter) -> Result {
+auto RocksDBPersistedLog::insertSingleWrites(LogIterator& iter) -> Result {
   while (auto entry = iter.next()) {
     auto key = RocksDBKey{};
     key.constructLogEntry(_objectId, entry->logIndex());
@@ -205,7 +205,7 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
           // multiple write batches. Otherwise the in-memory-log could be out
           // of sync.
           while (wb.Count() < 1000 && current != std::end(pendingRequests)) {
-            auto* log_ptr = dynamic_cast<RocksDBLog*>(current->log.get());
+            auto* log_ptr = dynamic_cast<RocksDBPersistedLog*>(current->log.get());
             TRI_ASSERT(log_ptr != nullptr);
             if (auto res = log_ptr->insertWithBatch(*current->iter, wb); res.fail()) {
               return res;
