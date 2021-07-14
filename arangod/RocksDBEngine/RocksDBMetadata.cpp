@@ -349,7 +349,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   // we are serializing
   TransactionId trxId = TransactionId::none();
   
-  TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+  TRI_IF_FAILURE("TransactionChaos::blockerOnSync") {
     auto& selector = coll.vocbase().server().getFeature<EngineSelectorFeature>();
     auto& engine = selector.engine<RocksDBEngine>();
     auto blockerSeq = engine.db()->GetLatestSequenceNumber();

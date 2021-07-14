@@ -159,6 +159,7 @@ function BaseChaosSuite(testOpts) {
         let servers = getDBServers();
         assertTrue(servers.length > 0);
         for (const server of servers) {
+          debugSetFailAt(getEndpointById(server.id), "TransactionChaos::blockerOnSync");
           debugSetFailAt(getEndpointById(server.id), "TransactionChaos::randomSleep");
           debugSetFailAt(getEndpointById(server.id), "TransactionChaos::randomSync");
           debugSetFailAt(getEndpointById(server.id), "RocksDBMetaCollection::forceSerialization");
