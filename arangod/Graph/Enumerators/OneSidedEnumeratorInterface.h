@@ -51,8 +51,6 @@ class PathResultInterface {
   virtual ~PathResultInterface() {}
 
   virtual auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
-  virtual auto toSchreierEntry(arangodb::velocypack::Builder& builder,
-                               size_t& currentLength) -> void = 0;
 };
 
 // IMPORTANT - DO NOT TEMPLATE THIS CLASS

@@ -57,12 +57,6 @@ class SingleProviderPathResult : public PathResultInterface {
 
   auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void override;
 
-  /**
-   * @brief Appends this path as a SchreierVector entry into the given builder
-   */
-  auto toSchreierEntry(arangodb::velocypack::Builder& builder, size_t& currentLength)
-      -> void override;
-
   auto isEmpty() const -> bool;
   ProviderType* getProvider() { return &_provider; }
   PathStoreType* getStore() { return &_store; }
