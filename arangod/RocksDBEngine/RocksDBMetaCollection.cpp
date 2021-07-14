@@ -953,12 +953,10 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
     auto removeIt = _revisionRemovalBuffers.begin();
 
     auto checkIterators = [&]() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE      
       TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || 
                  _revisionInsertBuffers.empty() || _revisionInsertBuffers.begin()->first > commitSeq);
       TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || 
                  _revisionRemovalBuffers.empty() || _revisionRemovalBuffers.begin()->first > commitSeq);
-#endif
     };
 
     auto it = _revisionTruncateBuffer.begin();  // sorted ASC
