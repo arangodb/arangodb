@@ -48,10 +48,8 @@ class SmartGraphStep;
 
 template <class ProviderType, class PathStoreType, class Step>
 SingleProviderPathResult<ProviderType, PathStoreType, Step>::SingleProviderPathResult(
-    Step* step, ProviderType& provider, PathStoreType& store)
-    : _step(step), _provider(provider), _store(store) {
-  TRI_ASSERT(_step != nullptr);
-}
+    Step step, ProviderType& provider, PathStoreType& store)
+    : _step(std::move(step)), _provider(provider), _store(store) {}
 
 template <class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::clear() -> void {
@@ -87,7 +85,7 @@ template <class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
     arangodb::velocypack::Builder& builder) -> void {
   if (_vertices.empty()) {
-    _store.visitReversePath(*_step, [&](Step const& s) -> bool {
+    _store.visitReversePath(_step, [&](Step const& s) -> bool {
       prependVertex(s.getVertex());
       if (s.getEdge().isValid()) {
         prependEdge(s.getEdge());
@@ -124,10 +122,10 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toSchreierEntr
   } else {
     size_t prevIndex = 0;
 
-  auto writeDFSStepToBuilder = [&](Step& step) {
-    VPackArrayBuilder arrayGuard(&result);
-    // Create a VPackValue based on the char* inside the HashedStringRef, will save us a String copy each time.
-    result.add(VPackValue(step.getVertex().getID().begin()));
+    auto writeDFSStepToBuilder = [&](Step& step) {
+      VPackArrayBuilder arrayGuard(&result);
+      // Create a VPackValue based on the char* inside the HashedStringRef, will save us a String copy each time.
+      result.add(VPackValue(step.getVertex().getID().begin()));
 
       // Index position of previous step
       result.add(VPackValue(prevIndex));
@@ -149,7 +147,7 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toSchreierEntr
 
     std::vector<Step*> toWrite{};
 
-    _store.modifyReversePath(*_step, [&](Step& step) -> bool {
+    _store.modifyReversePath(_step, [&](Step& step) -> bool {
       if (!step.hasLocalSchreierIndex()) {
         toWrite.emplace_back(&step);
         return true;

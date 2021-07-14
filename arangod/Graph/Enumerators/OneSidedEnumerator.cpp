@@ -100,7 +100,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> vo
     // This server cannot decide on this specific vertex.
     // Include it in results, to report back that we
     // found this undecided path
-    _results.push_back(&step);
+    _results.emplace_back(step);
     return;
   }
   ValidationResult res = _validator.validatePath(step);
@@ -113,7 +113,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> vo
       << "<= " << _options.getMaxDepth();
   if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered()) {
     // Include it in results.
-    _results.push_back(&step);
+    _results.emplace_back(step);
   } else {
     _stats.incrFiltered();
   }
@@ -170,7 +170,7 @@ auto OneSidedEnumerator<Configuration>::getNextPath()
     searchMoreResults();
 
     while (!_results.empty()) {
-      auto* step = _results.back();
+      auto step = std::move(_results.back());
       _results.pop_back();
       return std::make_unique<ResultPathType>(step, _provider, _interior);
     }
@@ -219,9 +219,9 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
   if (!_resultsFetched && !_results.empty()) {
     std::vector<Step*> looseEnds{};
 
-    for (auto* vertex : _results) {
-      if (!vertex->isProcessable()) {
-        looseEnds.emplace_back(vertex);
+    for (auto& vertex : _results) {
+      if (!vertex.isProcessable()) {
+        looseEnds.emplace_back(&vertex);
       }
     }
 
