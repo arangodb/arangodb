@@ -1,6 +1,8 @@
 v3.7.13 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to 0.15.0-1.
+
 * Fix startup issues with encryption-at-rest enabled when there were empty (0
   byte) RocksDB WAL files present. Such empty files caused RocksDB to abort the
   startup, reporting corruption. However, empty WAL files are possible in case
