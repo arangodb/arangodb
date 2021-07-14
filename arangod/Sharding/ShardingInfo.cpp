@@ -672,12 +672,13 @@ auto ShardingInfo::replicatedLogs() const -> std::shared_ptr<ReplicatedLogsMap> 
           ? "Thus the access is expected, but non-existence is not."
           : "Thus the non-existence is expected, but the access is not.";
 
-  ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      (concatT("Access to ShardingInfo::replicatedLogs of collection ",
-               _collection->name(),
-               " failed: Does not exist. The containing database is ",
-               _collection->vocbase().name(), " and uses replication version ",
-               versionToString(_collection->vocbase().replicationVersion()),
-               ". ", detail)));
+  abortOrThrow(TRI_ERROR_INTERNAL,
+               concatT("Access to ShardingInfo::replicatedLogs of collection ",
+                       _collection->name(),
+                       " failed: Does not exist. The containing database is ",
+                       _collection->vocbase().name(),
+                       " and uses replication version ",
+                       versionToString(_collection->vocbase().replicationVersion()),
+                       ". ", detail),
+               ADB_HERE);
 }

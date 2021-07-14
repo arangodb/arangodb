@@ -126,11 +126,12 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
         auto const numParticipants = newLeaderSet.size();
         if (ADB_UNLIKELY(numParticipants == 0 ||
                          numParticipants > std::numeric_limits<uint16_t>::max())) {
-          ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(
+          abortOrThrow(
               TRI_ERROR_NUMERIC_OVERFLOW,
               basics::StringUtils::concatT(
                   "Number of participants out of range, should be between ", 1,
-                  " and ", std::numeric_limits<uint16_t>::max(), ", but is ", numParticipants));
+                  " and ", std::numeric_limits<uint16_t>::max(), ", but is ", numParticipants),
+              ADB_HERE);
         }
         auto const maxIdx = static_cast<uint16_t>(numParticipants - 1);
         // Randomly select one of the best participants

@@ -30,92 +30,29 @@
 #include <utility>
 
 #include "Basics/Result.h"
+#include "Basics/SourceLocation.h"
+#include "Basics/StringUtils.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
 
 /// @brief throws an arango exception with an error code
 #define THROW_ARANGO_EXCEPTION(code) \
-  throw ::arangodb::basics::Exception(code, __FILE__, __LINE__)
+  throw ::arangodb::basics::Exception(code, ADB_HERE)
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                                   \
-  throw arangodb::basics::Exception(                                               \
-      code, ::arangodb::basics::Exception::FillExceptionString(code, __VA_ARGS__), \
-      __FILE__, __LINE__)
+#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...) \
+  throw ::arangodb::basics::Exception::createWithParams(ADB_HERE, code, __VA_ARGS__)
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                                          \
-  do {                                                                                            \
-    auto const errnoStr = TRI_errno_string(code);                                                 \
-    throw ::arangodb::basics::Exception(code,                                                     \
-                                        ::arangodb::basics::Exception::FillFormatExceptionString( \
-                                            "%*s: " format, errnoStr.size(),                      \
-                                            errnoStr.data(), __VA_ARGS__),                        \
-                                        __FILE__, __LINE__);                                      \
-  } while (0)
+#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...) \
+  throw ::arangodb::basics::Exception::createWithFormat(ADB_HERE, format, __VA_ARGS__)
 
 /// @brief throws an arango exception with an error code and an already-built
 /// error message
 #define THROW_ARANGO_EXCEPTION_MESSAGE(code, message) \
-  throw ::arangodb::basics::Exception(code, message, __FILE__, __LINE__)
-
-/// @brief throws an arango result if the result fails
-#define THROW_ARANGO_EXCEPTION_IF_FAIL(expression)                                          \
-  do {                                                                                      \
-    auto&& expressionResult = (expression);                                                 \
-    if (expressionResult.fail()) {                                                          \
-      throw ::arangodb::basics::Exception(std::move(expressionResult), __FILE__, __LINE__); \
-    }                                                                                       \
-  } while (0)
-
-// Fix MSVC's preprocessor...
-#define EXPAND_(args) args
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-#define THROW_AND_CATCH_(THROW_MACRO, ...)                                  \
-  do {                                                                      \
-    try {                                                                   \
-      EXPAND_(THROW_MACRO(__VA_ARGS__));                                    \
-    } catch (::arangodb::basics::Exception const& ex) {                     \
-      LOG_TOPIC("fa7a1", FATAL, ::arangodb::Logger::CRASH) << ex.message(); \
-      TRI_ASSERT(false);                                                    \
-    } catch (...) {                                                         \
-      TRI_ASSERT(false);                                                    \
-    }                                                                       \
-  } while (0)
-
-#define ASSERT_OR_THROW_ARANGO_EXCEPTION(...) \
-  THROW_AND_CATCH_(THROW_ARANGO_EXCEPTION, __VA_ARGS__)
-
-#define ASSERT_OR_THROW_ARANGO_EXCEPTION_PARAMS(...) \
-  THROW_AND_CATCH_(THROW_ARANGO_EXCEPTION_PARAMS, __VA_ARGS__)
-
-#define ASSERT_OR_THROW_ARANGO_EXCEPTION_FORMAT(...) \
-  THROW_AND_CATCH_(THROW_ARANGO_EXCEPTION_FORMAT, __VA_ARGS__)
-
-#define ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(...) \
-  THROW_AND_CATCH_(THROW_ARANGO_EXCEPTION_MESSAGE, __VA_ARGS__)
-
-#define ASSERT_OR_THROW_ARANGO_EXCEPTION_IF_FAIL(...) \
-  THROW_AND_CATCH_(THROW_ARANGO_EXCEPTION_IF_FAIL, __VA_ARGS__)
-
-#else
-
-#define ASSERT_OR_THROW_ARANGO_EXCEPTION(...) \
-  EXPAND_(THROW_ARANGO_EXCEPTION(__VA_ARGS__))
-#define ASSERT_OR_THROW_ARANGO_EXCEPTION_PARAMS(...) \
-  EXPAND_(THROW_ARANGO_EXCEPTION_PARAMS(__VA_ARGS__))
-#define ASSERT_OR_THROW_ARANGO_EXCEPTION_FORMAT(...) \
-  EXPAND_(THROW_ARANGO_EXCEPTION_FORMAT(__VA_ARGS__))
-#define ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(...) \
-  EXPAND_(THROW_ARANGO_EXCEPTION_MESSAGE(__VA_ARGS__))
-#define ASSERT_OR_THROW_ARANGO_EXCEPTION_IF_FAIL(...) \
-  EXPAND_(THROW_ARANGO_EXCEPTION_IF_FAIL(__VA_ARGS__))
-
-#endif
+  throw ::arangodb::basics::Exception(code, message, ADB_HERE)
 
 namespace arangodb::basics {
 
@@ -126,17 +63,46 @@ class Exception final : public virtual std::exception {
   static std::string FillFormatExceptionString(char const* format, ...);
 
  public:
+  // primary constructor
+  Exception(ErrorCode code, std::string&& errorMessage, SourceLocation location) noexcept;
+
+  // convenience constructors
+  Exception(ErrorCode code, SourceLocation location);
+  Exception(Result const&, SourceLocation location);
+  Exception(Result&&, SourceLocation location) noexcept;
+  Exception(ErrorCode code, std::string_view errorMessage, SourceLocation location);
+  Exception(ErrorCode code, char const* errorMessage, SourceLocation location);
+
+  // I think we should get rid of the following (char*,int) versions as opposed
+  // to the SourceLocation ones, to keep it a little clearer.
   Exception(ErrorCode code, char const* file, int line);
   Exception(Result const&, char const* file, int line);
-  Exception(Result&&, char const* file, int line);
-
+  Exception(Result&&, char const* file, int line) noexcept;
   Exception(ErrorCode code, std::string_view errorMessage, char const* file, int line);
-
-  Exception(ErrorCode code, std::string&& errorMessage, char const* file, int line);
-
+  Exception(ErrorCode code, std::string&& errorMessage, char const* file, int line) noexcept;
   Exception(ErrorCode code, char const* errorMessage, char const* file, int line);
 
   ~Exception() override = default;
+  Exception(Exception const&) = default;
+  Exception(Exception&&) = default;
+
+  template <typename... Args>
+  Exception createWithParams(SourceLocation location, ErrorCode code, Args... args) {
+    return Exception(code, ::arangodb::basics::Exception::FillExceptionString(code, args...),
+                     location);
+  }
+  template <typename... Args>
+  Exception createWithFormat(SourceLocation location, ErrorCode code,
+                             const char* fmt, Args... args) {
+    auto const errnoStr = TRI_errno_string(code);
+    // TODO Move this into the .cpp file to avoid including StringUtils. To do
+    //      that, make this into a C-style variadic function, rather than a
+    //      variadic template.
+    auto message = StringUtils::concatT(
+        errnoStr, ": ",
+        ::arangodb::basics::Exception::FillFormatExceptionString(fmt, args...));
+    return Exception(code, std::move(message), location);
+  }
 
  public:
   [[nodiscard]] char const* what() const noexcept override;
@@ -148,9 +114,11 @@ class Exception final : public virtual std::exception {
   void appendLocation() noexcept;
 
  protected:
+  // TODO Because _errorMessage is a string, Exception is not
+  //      nothrow-copy-constructible. Maybe it'd be better to use a
+  //      shared_ptr<string> instead?
   std::string _errorMessage;
-  char const* _file;
-  int const _line;
+  SourceLocation _location;
   ErrorCode const _code;
 };
 
@@ -178,9 +146,9 @@ Result catchToResult(F&& fn, ErrorCode defaultError = TRI_ERROR_INTERNAL) noexce
     } catch (...) {
       result.reset(defaultError);
     }
-  } catch(std::exception const& e) {
+  } catch (std::exception const& e) {
     helper::dieWithLogMessage(e.what());
-  } catch(...) {
+  } catch (...) {
     helper::dieWithLogMessage(nullptr);
   }
   return result;
@@ -193,6 +161,30 @@ Result catchVoidToResult(F&& fn, ErrorCode defaultError = TRI_ERROR_INTERNAL) no
     return Result{TRI_ERROR_NO_ERROR};
   };
   return catchToResult(wrapped, defaultError);
+}
+
+void throwIfFail(SourceLocation location, Result const& res) {
+  if (res.fail()) {
+    throw ::arangodb::basics::Exception(res, location);
+  }
+}
+
+void throwIfFail(SourceLocation location, Result&& res) {
+  throw Exception(ErrorCode{1}, location);
+  if (res.fail()) {
+    throw ::arangodb::basics::Exception(std::move(res), location);
+  }
+}
+
+// @brief Throws the passed exception, but in maintainer mode, logs the error
+// and aborts instead.
+[[noreturn]] void abortOrThrowException(Exception e);
+
+// @brief Forwards arguments to an Exception constructor and calls
+// abortOrThrowException
+template <typename... Args>
+[[noreturn]] void abortOrThrow(Args... args) {
+  abortOrThrowException(Exception(std::forward<Args>(args)...));
 }
 
 }  // namespace arangodb::basics

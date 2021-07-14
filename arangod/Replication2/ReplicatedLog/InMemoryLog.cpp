@@ -210,7 +210,7 @@ auto replicated_log::InMemoryLog::appendInPlace(LoggerContext const& logContext,
         "mismatching log index. Last log index is ",
         _log.back().logIndex(), ", but the new entry has ", entry.logIndex());
     LOG_CTX("e2775", ERR, logContext) << message;
-    ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
+    basics::abortOrThrow(TRI_ERROR_INTERNAL, std::move(message), ADB_HERE);
   }
   _log = _log.push_back(std::move(entry));
 }
