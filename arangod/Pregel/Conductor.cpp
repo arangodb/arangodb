@@ -589,7 +589,7 @@ static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID
     allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
 
     for (auto const& shard : *shardIDs) {
-      std::shared_ptr<std::vector<ServerID>> servers = ci.getResponsibleServer(shard);
+      std::shared_ptr<std::vector<ServerID> const> servers = ci.getResponsibleServer(shard);
       if (servers->size() > 0) {
         serverMap[(*servers)[0]][lc->name()].push_back(shard);
       }
