@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertFalse, assertTrue, assertEqual, ArangoAgency */
+/*global fail, assertFalse, assertTrue, assertEqual, assertMatch, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the agency communication layer
@@ -64,6 +64,11 @@ function AgencySuite () {
       }
       catch (err) {
       }
+    },
+    
+    testVersion : function () {
+      let result = agency.version();
+      assertMatch(/^\d\.\d/, result);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

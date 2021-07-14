@@ -588,16 +588,30 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
       }
     }
   }
+ 
+  // if we have a read operation and the x-arango-aql-document-call header is set,
+  // it means this is a request by the DOCUMENT function inside an AQL query. in 
+  // this case, we cannot be sure to lease the transaction context successfully, 
+  // because the AQL query may have already acquired the write lock on the context
+  // for the entire duration of the query. if this is the case, then the query
+  // already has the lock, and it is ok if we lease the context here without 
+  // acquiring it again.
+  bool const isSideUser =
+      (ServerState::instance()->isDBServer() &&
+       AccessMode::isRead(type) &&
+       !_request->header(StaticStrings::AqlDocumentCall).empty());
 
-  auto ctx = mgr->leaseManagedTrx(tid, type);
+  std::shared_ptr<transaction::Context> ctx = mgr->leaseManagedTrx(tid, type, isSideUser);
+  
   if (!ctx) {
-    LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid.id()) + "' not found");
+    LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id " << tid << " not found";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction ") + std::to_string(tid.id()) + " not found");
   }
   std::unique_ptr<transaction::Methods> trx;
   if (ServerState::instance()->isDBServer() &&
       !opOptions.isSynchronousReplicationFrom.empty()) {
     TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
+    // inject at least the required collection name
     trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName, type);
   } else {
     trx = std::make_unique<transaction::Methods>(std::move(ctx));
@@ -605,7 +619,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   return trx;
 }
 
-/// @brief create proper transaction context, inclusing the proper IDs
+/// @brief create proper transaction context, including the proper IDs
 std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
@@ -646,7 +660,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
     }
   }
 
-  auto ctx = mgr->leaseManagedTrx(tid, mode);
+  auto ctx = mgr->leaseManagedTrx(tid, mode, /*isSideUser*/ false);
   if (!ctx) {
     LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND,

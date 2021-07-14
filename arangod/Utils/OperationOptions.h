@@ -135,6 +135,11 @@ struct OperationOptions {
   // defaults to true.
   bool truncateCompact;
 
+  // whether or not this request is a DOCUMENT() call from inside AQL. only set
+  // for exactly this case on a coordinator, in order to make it set a special
+  // header when putting together the requests for DB servers
+  bool documentCallFromAql;
+
   // get associated execution context
   ExecContext const& context() const;
 

@@ -329,12 +329,8 @@ WindowNode::WindowNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 
 WindowNode::~WindowNode() = default;
 
-/// @brief toVelocyPack, for CollectNode
-void WindowNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                    std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+/// @brief doToVelocyPack, for CollectNode
+void WindowNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   if (_rangeVariable) {
     nodes.add(VPackValue("rangeVariable"));
     _rangeVariable->toVelocyPack(nodes);
@@ -355,9 +351,6 @@ void WindowNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   }
 
   _bounds.toVelocyPack(nodes);
-
-  // And close it:
-  nodes.close();
 }
 
 void WindowNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,

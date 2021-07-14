@@ -2148,15 +2148,9 @@ TEST_F(IResearchViewNodeTest, serialize) {
 
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
-    node.toVelocyPack(builder, flags, false);  // object with array of objects
+    node.toVelocyPack(builder, flags);  // object with array of objects
 
-    auto const slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    auto const nodesSlice = slice.get("nodes");
-    EXPECT_TRUE(nodesSlice.isArray());
-    arangodb::velocypack::ArrayIterator it(nodesSlice);
-    EXPECT_EQ(1, it.size());
-    auto nodeSlice = it.value();
+    auto nodeSlice = builder.slice();
 
     // constructor
     {
@@ -2238,15 +2232,9 @@ TEST_F(IResearchViewNodeTest, serialize) {
 
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
-    node.toVelocyPack(builder, flags, false);  // object with array of objects
+    node.toVelocyPack(builder, flags);  // object with array of objects
 
-    auto const slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    auto const nodesSlice = slice.get("nodes");
-    EXPECT_TRUE(nodesSlice.isArray());
-    arangodb::velocypack::ArrayIterator it(nodesSlice);
-    ASSERT_EQ(1, it.size());
-    auto nodeSlice = it.value();
+    auto nodeSlice = builder.slice();
 
     // constructor
     {
@@ -2316,15 +2304,9 @@ TEST_F(IResearchViewNodeTest, serialize) {
 
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
-    node.toVelocyPack(builder, flags, false);  // object with array of objects
+    node.toVelocyPack(builder, flags);  // object with array of objects
 
-    auto const slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    auto const nodesSlice = slice.get("nodes");
-    EXPECT_TRUE(nodesSlice.isArray());
-    arangodb::velocypack::ArrayIterator it(nodesSlice);
-    ASSERT_EQ(1, it.size());
-    auto nodeSlice = it.value();
+    auto nodeSlice = builder.slice();
 
     // constructor
     {
@@ -2417,15 +2399,9 @@ TEST_F(IResearchViewNodeTest, serialize) {
 
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
-    node.toVelocyPack(builder, flags, false);  // object with array of objects
+    node.toVelocyPack(builder, flags);  // object with array of objects
 
-    auto const slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    auto const nodesSlice = slice.get("nodes");
-    EXPECT_TRUE(nodesSlice.isArray());
-    arangodb::velocypack::ArrayIterator it(nodesSlice);
-    ASSERT_EQ(1, it.size());
-    auto nodeSlice = it.value();
+    auto nodeSlice = builder.slice();
 
     // constructor
     {
@@ -2473,15 +2449,9 @@ TEST_F(IResearchViewNodeTest, serialize) {
 
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
-    node.toVelocyPack(builder, flags, false);  // object with array of objects
+    node.toVelocyPack(builder, flags);  // object with array of objects
 
-    auto const slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    auto const nodesSlice = slice.get("nodes");
-    EXPECT_TRUE(nodesSlice.isArray());
-    arangodb::velocypack::ArrayIterator it(nodesSlice);
-    ASSERT_EQ(1, it.size());
-    auto nodeSlice = it.value();
+    auto nodeSlice = builder.slice();
 
     // constructor
     {
@@ -2545,15 +2515,9 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
 
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
-    node.toVelocyPack(builder, flags, false);  // object with array of objects
+    node.toVelocyPack(builder, flags);  // object with array of objects
 
-    auto const slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    auto const nodesSlice = slice.get("nodes");
-    EXPECT_TRUE(nodesSlice.isArray());
-    arangodb::velocypack::ArrayIterator it(nodesSlice);
-    EXPECT_EQ(1, it.size());
-    auto nodeSlice = it.value();
+    auto nodeSlice = builder.slice();
 
     // constructor
     {
@@ -2634,15 +2598,9 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
 
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
-    node.toVelocyPack(builder, flags, false);  // object with array of objects
+    node.toVelocyPack(builder, flags);  // object with array of objects
 
-    auto const slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    auto const nodesSlice = slice.get("nodes");
-    EXPECT_TRUE(nodesSlice.isArray());
-    arangodb::velocypack::ArrayIterator it(nodesSlice);
-    EXPECT_EQ(1, it.size());
-    auto nodeSlice = it.value();
+    auto nodeSlice = builder.slice();
 
     // constructor
     {
@@ -2714,15 +2672,9 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
 
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
-    node.toVelocyPack(builder, flags, false);  // object with array of objects
+    node.toVelocyPack(builder, flags);  // object with array of objects
 
-    auto const slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    auto const nodesSlice = slice.get("nodes");
-    EXPECT_TRUE(nodesSlice.isArray());
-    arangodb::velocypack::ArrayIterator it(nodesSlice);
-    ASSERT_EQ(1, it.size());
-    auto nodeSlice = it.value();
+    auto nodeSlice = builder.slice();
 
     // constructor
     {
