@@ -27,7 +27,7 @@ const fs = require('fs');
 const vary = require('vary');
 const httperr = require('http-errors');
 const statuses = require('statuses');
-const mediaTyper = require('media-typer');
+const ct = require('content-type');
 const mimeTypes = require('mime-types');
 const typeIs = require('type-is');
 const contentDisposition = require('content-disposition');
@@ -391,7 +391,7 @@ module.exports =
       }
 
       if (handler) {
-        const result = handler.forClient(body, this, mediaTyper.parse(contentType));
+        const result = handler.forClient(body, this, contentType);
         if (result.headers || result.data) {
           contentType = result.headers['content-type'] || contentType;
           this.set(result.headers);

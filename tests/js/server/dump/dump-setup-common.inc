@@ -1,4 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000, unused:false */
+/*global assertEqual, assertUndefined, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup collections for dump/reload tests
@@ -114,7 +115,7 @@ function createMany() {
 
 function createOrder() {
   // we update & modify the order
-  c = db._create("UnitTestsDumpOrder");
+  let c = db._create("UnitTestsDumpOrder");
   c.save({ _key: "one", value: 1 });
   c.save({ _key: "two", value: 2 });
   c.save({ _key: "three", value: 3 });
@@ -158,9 +159,9 @@ function createModifyCollection() {
 
 function createMultiShard() {
   // more than one shard:
-  c = db._create("UnitTestsDumpShards", { numberOfShards : 9 });
-  l = [];
-  for (i = 0; i < 1000; ++i) {
+  let c = db._create("UnitTestsDumpShards", { numberOfShards : 9 });
+  let l = [];
+  for (let i = 0; i < 1000; ++i) {
     l.push({ _key : String(7 + (i*42)), value: i, more: { value: [ i, i ] } });
   }
   c.save(l);

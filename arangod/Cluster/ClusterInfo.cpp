@@ -5238,7 +5238,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
 /// it is still not there an empty string is returned as an error.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(ShardID const& shardID) {
+std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(ShardID const& shardID) {
   int tries = 0;
 
   if (!_currentProt.isValid) {

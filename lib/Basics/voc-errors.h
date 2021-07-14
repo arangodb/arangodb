@@ -1005,6 +1005,12 @@ constexpr auto TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED                           
 /// beyond the allowed value.
 constexpr auto TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS                              = ErrorCode{1522};
 
+/// 1524: ERROR_QUERY_TOO_MUCH_NESTING
+/// "too much nesting or too many objects"
+/// Will be raised when a query contains expressions or other constructs with
+/// too many objects or that are too deeply nested.
+constexpr auto TRI_ERROR_QUERY_TOO_MUCH_NESTING                                  = ErrorCode{1524};
+
 /// 1539: ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE
 /// "unknown OPTIONS attribute used"
 /// Will be raised when an unknown attribute is used inside an OPTIONS clause.
