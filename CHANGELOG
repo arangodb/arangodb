@@ -1,4 +1,4 @@
-v3.8.0 (XXXX-XX-XX)
+v3.8.0 (2021-07-14)
 -------------------
 
 * Always remove blocker object for revision trees in case of replication
