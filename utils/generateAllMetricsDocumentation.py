@@ -6,6 +6,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from itertools import chain
 
 from yaml import load, dump, YAMLError
 try:
@@ -55,49 +56,52 @@ if "template.yaml" in YAMLFILES:
 
 # Read list of metrics from source:
 METRICSLIST = []
-LINEMATCHCOUNTER = re.compile(r"DECLARE_COUNTER\s*\(\s*([a-z_A-Z0-9]+)\s*,")
-LINEMATCHGAUGE = re.compile(r"DECLARE_GAUGE\s*\(\s*([a-z_A-Z0-9]+)\s*,")
-LINEMATCHHISTOGRAM = re.compile(r"DECLARE_HISTOGRAM\s*\(\s*([a-z_A-Z0-9]+)\s*,")
-HEADERCOUNTER = re.compile(r"DECLARE_COUNTER\s*\(")
-HEADERGAUGE = re.compile(r"DECLARE_GAUGE\s*\(")
-HEADERHISTOGRAM = re.compile(r"DECLARE_HISTOGRAM\s*\(")
+LINEMATCHCOUNTER = re.compile(r"^\s*DECLARE_COUNTER\s*\(\s*([a-z_A-Z0-9]+)\s*,")
+LINEMATCHGAUGE = re.compile(r"^\s*DECLARE_GAUGE\s*\(\s*([a-z_A-Z0-9]+)\s*,")
+LINEMATCHHISTOGRAM = re.compile(r"^\s*DECLARE_HISTOGRAM\s*\(\s*([a-z_A-Z0-9]+)\s*,")
+HEADERCOUNTER = re.compile(r"^\s*DECLARE_COUNTER\s*\(")
+HEADERGAUGE = re.compile(r"^\s*DECLARE_GAUGE\s*\(")
+HEADERHISTOGRAM = re.compile(r"^\s*DECLARE_HISTOGRAM\s*\(")
 NAMEMATCH = re.compile(r"^\s*([a-z_A-Z0-9]+)\s*,")
 
-for rootdir in ("arangod", "lib"):
-    for f in Path(rootdir).glob("**/*.cpp"):
-        continuation = False
-        with open(f, encoding="utf-8") as s:
-            while True:
-                l = s.readline()
-                if not continuation:
-                    if l == "":
-                        break
-                    m = LINEMATCHCOUNTER.search(l)
-                    if m:
-                        METRICSLIST.append(m.group(1))
-                        continue
-                    m = LINEMATCHGAUGE.search(l)
-                    if m:
-                        METRICSLIST.append(m.group(1))
-                        continue
-                    m = LINEMATCHHISTOGRAM.search(l)
-                    if m:
-                        METRICSLIST.append(m.group(1))
-                        continue
-                    m = HEADERCOUNTER.search(l)
-                    if m:
-                        continuation = True
-                    m = HEADERGAUGE.search(l)
-                    if m:
-                        continuation = True
-                    m = HEADERHISTOGRAM.search(l)
-                    if m:
-                        continuation = True
-                else:
-                    continuation = False
-                    m = NAMEMATCH.search(l)
-                    if m:
-                        METRICSLIST.append(m.group(1))
+files = chain(*[ Path(rootdir).glob(pattern)
+            for rootdir in ["arangod", "lib"]
+            for pattern in ["**/*.cpp", "**/*.h"] ])
+
+for f in files:
+    continuation = False
+    with open(f, encoding="utf-8") as s:
+        while True:
+            l = s.readline()
+            if not continuation:
+                if l == "":
+                    break
+                m = LINEMATCHCOUNTER.search(l)
+                if m:
+                    METRICSLIST.append(m.group(1))
+                    continue
+                m = LINEMATCHGAUGE.search(l)
+                if m:
+                    METRICSLIST.append(m.group(1))
+                    continue
+                m = LINEMATCHHISTOGRAM.search(l)
+                if m:
+                    METRICSLIST.append(m.group(1))
+                    continue
+                m = HEADERCOUNTER.search(l)
+                if m:
+                    continuation = True
+                m = HEADERGAUGE.search(l)
+                if m:
+                    continuation = True
+                m = HEADERHISTOGRAM.search(l)
+                if m:
+                    continuation = True
+            else:
+                continuation = False
+                m = NAMEMATCH.search(l)
+                if m:
+                    METRICSLIST.append(m.group(1))
 if len(METRICSLIST) == 0:
     print("Did not find any metrics in arangod/RestServer/MetricsFeature.h!")
     sys.exit(2)

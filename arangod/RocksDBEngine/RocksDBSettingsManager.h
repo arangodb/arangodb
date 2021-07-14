@@ -65,11 +65,15 @@ class RocksDBSettingsManager {
 
   bool lockForSync(bool force);
 
- private:
   RocksDBEngine& _engine;
 
-  /// @brief a reusable builder, used inside sync() to serialize objects
+  /// @brief a reusable builder, used inside sync() to serialize objects.
+  /// implicitly protected by _syncing.
   arangodb::velocypack::Builder _tmpBuilder;
+
+  /// @brief a reusable string object used for serialization.
+  /// implicitly protected by _syncing.
+  std::string _scratch;
 
   /// @brief last sync sequence number
   std::atomic<rocksdb::SequenceNumber> _lastSync;
