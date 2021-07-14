@@ -399,6 +399,7 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
           << vocbase.name() << "/" << cIter->logical->name() 
           << ", an offet of " << adjustment << " will be applied";
       auto adjustSeq = _engine.db()->GetLatestSequenceNumber();
+      TRI_ASSERT(adjustSeq >= blockerSeq);
       if (adjustSeq <= blockerSeq) {
         adjustSeq = ::forceWrite(_engine);
         TRI_ASSERT(adjustSeq > blockerSeq);
@@ -476,6 +477,7 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
           << vocbase.name() << "/" << cIter->logical->name() 
           << ", an offet of " << adjustment << " will be applied";
       auto adjustSeq = _engine.db()->GetLatestSequenceNumber();
+      TRI_ASSERT(adjustSeq >= blockerSeq);
       if (adjustSeq <= blockerSeq) {
         adjustSeq = ::forceWrite(_engine);
         TRI_ASSERT(adjustSeq > blockerSeq);
@@ -615,6 +617,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
           << vocbase.name() << "/" << cIter->logical->name() 
           << ", an offet of " << adjustment << " will be applied";
       auto adjustSeq = _engine.db()->GetLatestSequenceNumber();
+      TRI_ASSERT(adjustSeq >= blockerSeq);
       if (adjustSeq <= blockerSeq) {
         adjustSeq = ::forceWrite(_engine);
         TRI_ASSERT(adjustSeq > blockerSeq);
