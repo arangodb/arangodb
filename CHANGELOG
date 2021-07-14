@@ -1,11 +1,13 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
-* Always remove blocker object for revision trees in case of replication 
+* Always remove blocker object for revision trees in case of replication
   failures.
 
 * Fix invalid assertion for insert/removal buffers positioning and internals of
   `hasBlockerUpTo` function.
+
+* Updated ArangoDB Starter to 0.15.0-1.
 
 * Updated arangosync to 2.4.0.
 
