@@ -712,7 +712,9 @@ bool StoredValue::write(irs::data_output& out) const {
 InvertedIndexFieldIterator::InvertedIndexFieldIterator(arangodb::transaction::Methods& trx,
                                                        irs::string_ref collection,
                                                        IndexId indexId)
-  : _trx(&trx), _collection(collection), _indexId(indexId) {}
+  : _trx(&trx), _collection(collection), _indexId(indexId) {
+  _value._storeValues = ValueStorage::ID; // we need id column for range queries
+}
 
 void InvertedIndexFieldIterator::next() {
   TRI_ASSERT(valid());

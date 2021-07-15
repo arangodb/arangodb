@@ -241,7 +241,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
     QueryContext const queryCtx = { _trx, nullptr, nullptr,
                                     nullptr, _reader, _variable};
     irs::Or root;
-    auto rv = FilterFactory::filter(&root, queryCtx, _condition);
+    auto rv = FilterFactory::filter(&root, queryCtx, _condition, false);
 
     if (rv.fail()) {
       arangodb::velocypack::Builder builder;

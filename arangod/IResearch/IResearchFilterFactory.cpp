@@ -243,6 +243,17 @@ Result malformedNode(aql::AstNodeType type) {
 
 } // error
 
+void setupAllTypedFilter(irs::Or& disjunction, 
+                         std::string&& mangledName,
+                         irs::boost_t boost) {
+  auto& allDocs = disjunction.add<irs::by_column_existence>();
+  *allDocs.mutable_field() = std::move(mangledName);
+  allDocs.boost(boost);
+  auto* opts = allDocs.mutable_options();
+  opts->prefix_match = false;
+}
+
+
 bool setupGeoFilter(FieldMeta::Analyzer const& a,
                     S2RegionTermIndexer::Options& opts) {
   if (!a._pool) {
@@ -774,31 +785,79 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
 template<bool Min>
 Result byRange(irs::boolean_filter* filter, std::string name, const ScopedAqlValue& value,
                bool const incl, QueryContext const& /*ctx*/, FilterContext const& filterCtx) {
+
+  // ArangoDB type order
+  // null  <  bool  <  number  <  string  <  array/list  <  object/document
   switch (value.type()) {
     case arangodb::iresearch::SCOPED_VALUE_TYPE_NULL: {
       if (filter) {
-        auto& range = filter->add<irs::by_range>();
+        irs::by_range* range{nullptr};
+        if (filterCtx.isSearchFilter || !Min) {
+          range = &filter->add<irs::by_range>();
+        } else {
+          auto& rangeOr  = filter->add<irs::Or>();
+          range = &rangeOr.add<irs::by_range>();
+          // all number, bool and string fields ae greater by data order
+          {
+            auto stringName = name;  // intentional copy as mangling is inplace!
+            kludge::mangleString(stringName);
+            setupAllTypedFilter(rangeOr, std::move(stringName), filterCtx.boost);
+          }
+          {
+            auto numberName = name;  // intentional copy as mangling is inplace!
+            kludge::mangleNumeric(numberName);
+            setupAllTypedFilter(rangeOr, std::move(numberName), filterCtx.boost);
+          }
+          {
+            auto boolName = name;  // intentional copy as mangling is inplace!
+            kludge::mangleBool(boolName);
+            setupAllTypedFilter(rangeOr, std::move(boolName), filterCtx.boost);
+          }
+        }
 
         kludge::mangleNull(name);
-        *range.mutable_field() = std::move(name);
-        range.boost(filterCtx.boost);
-        auto* opts = range.mutable_options();
+        *range->mutable_field() = std::move(name);
+        range->boost(filterCtx.boost);
+        auto* opts = range->mutable_options();
         irs::assign(Min ? opts->range.min : opts->range.max,
                     irs::null_token_stream::value_null());
         (Min ? opts->range.min_type : opts->range.max_type) =
             incl ? irs::BoundType::INCLUSIVE  : irs::BoundType::EXCLUSIVE;
       }
-
       return {};
     }
     case arangodb::iresearch::SCOPED_VALUE_TYPE_BOOL: {
       if (filter) {
-        auto& range = filter->add<irs::by_range>();
-
+        irs::by_range* range{nullptr};
+        if (filterCtx.isSearchFilter) {
+          range = &filter->add<irs::by_range>();
+        } else {
+          auto& rangeOr  = filter->add<irs::Or>();
+          range = &rangeOr.add<irs::by_range>();
+          if constexpr (Min) {
+            // all number and string fields ae greater by data order 
+            {
+              auto stringName = name; // intentional copy as mangling is inplace!
+              kludge::mangleString(stringName);
+              setupAllTypedFilter(rangeOr, std::move(stringName), filterCtx.boost);
+            }
+            {
+              auto numberName = name; // intentional copy as mangling is inplace!
+              kludge::mangleNumeric(numberName);
+              setupAllTypedFilter(rangeOr, std::move(numberName), filterCtx.boost);
+            }
+          } else {
+            // all null sub-field is ok )
+            auto nullName = name; // intentional copy as mangling is inplace!
+            kludge::mangleNull(nullName);
+            setupAllTypedFilter(rangeOr, std::move(nullName), filterCtx.boost);
+          }
+        }
+        TRI_ASSERT(range);
         kludge::mangleBool(name);
-        *range.mutable_field() = std::move(name);
-        range.boost(filterCtx.boost);
-        auto* opts = range.mutable_options();
+        *range->mutable_field() = std::move(name);
+        range->boost(filterCtx.boost);
+        auto* opts = range->mutable_options();
         irs::assign(Min ? opts->range.min : opts->range.max,
                     irs::boolean_token_stream::value(value.getBoolean()));
         (Min ? opts->range.min_type : opts->range.max_type) =
@@ -816,15 +875,38 @@ Result byRange(irs::boolean_filter* filter, std::string name, const ScopedAqlVal
           return {TRI_ERROR_BAD_PARAMETER, "could not parse double value"};
         }
 
-        auto& range = filter->add<irs::by_granular_range>();
+        irs::by_granular_range* range{nullptr};
+        if (filterCtx.isSearchFilter) {
+          range = &filter->add<irs::by_granular_range>();
+        } else {
+          auto& rangeOr = filter->add<irs::Or>();
+          range = &rangeOr.add<irs::by_granular_range>();
+          if constexpr (Min) {
+            auto stringName = name;  // intentional copy as mangling is inplace!
+            kludge::mangleString(stringName);
+            setupAllTypedFilter(rangeOr, std::move(stringName), filterCtx.boost);
+          } else {
+            {
+              auto boolName = name;  // intentional copy as mangling is inplace!
+              kludge::mangleBool(boolName);
+              setupAllTypedFilter(rangeOr, std::move(boolName), filterCtx.boost);
+            }
+            {
+              // all null sub-field is ok )
+              auto nullName = name;  // intentional copy as mangling is inplace!
+              kludge::mangleNull(nullName);
+              setupAllTypedFilter(rangeOr, std::move(nullName), filterCtx.boost);
+            }
+          }
+        }
         irs::numeric_token_stream stream;
 
         kludge::mangleNumeric(name);
-        *range.mutable_field() = std::move(name);
-        range.boost(filterCtx.boost);
+        *range->mutable_field() = std::move(name);
+        range->boost(filterCtx.boost);
 
         stream.reset(dblValue);
-        auto* opts = range.mutable_options();
+        auto* opts = range->mutable_options();
         irs::set_granular_term(Min ? opts->range.min : opts->range.max,
                                stream);
         (Min ? opts->range.min_type : opts->range.max_type) =
@@ -842,13 +924,35 @@ Result byRange(irs::boolean_filter* filter, std::string name, const ScopedAqlVal
           return {TRI_ERROR_BAD_PARAMETER, "could not parse string value"};
         }
 
-        auto& range = filter->add<irs::by_range>();
+        irs::by_range* range{nullptr};
+        if (filterCtx.isSearchFilter || Min) {
+          range = &filter->add<irs::by_range>();
+        } else {
+          auto& rangeOr = filter->add<irs::Or>();
+          range = &rangeOr.add<irs::by_range>();
+          {
+            auto boolName = name;  // intentional copy as mangling is inplace!
+            kludge::mangleBool(boolName);
+            setupAllTypedFilter(rangeOr, std::move(boolName), filterCtx.boost);
+          }
+          {
+            // all null sub-field is ok )
+            auto nullName = name;  // intentional copy as mangling is inplace!
+            kludge::mangleNull(nullName);
+            setupAllTypedFilter(rangeOr, std::move(nullName), filterCtx.boost);
+          }
+          {
+            auto numberName = name;  // intentional copy as mangling is inplace!
+            kludge::mangleNumeric(numberName);
+            setupAllTypedFilter(rangeOr, std::move(numberName), filterCtx.boost);
+          }
+        }
 
         TRI_ASSERT(filterCtx.analyzer._pool);
         kludge::mangleField(name, filterCtx.isSearchFilter, filterCtx.analyzer);
-        *range.mutable_field() = std::move(name);
-        range.boost(filterCtx.boost);
-        auto* opts = range.mutable_options();
+        *range->mutable_field() = std::move(name);
+        range->boost(filterCtx.boost);
+        auto* opts = range->mutable_options();
         irs::assign(Min ? opts->range.min : opts->range.max,
                     irs::ref_cast<irs::byte_type>(strValue));
         (Min ? opts->range.min_type : opts->range.max_type) =
@@ -4104,7 +4208,7 @@ namespace iresearch {
     irs::boolean_filter* filter,
     QueryContext const& ctx,
     aql::AstNode const& node,
-    bool allowByExpressionFilter /*= true*/) {
+    bool forSearch /*= true*/) {
   if (node.willUseV8()) {
     return {
       TRI_ERROR_NOT_IMPLEMENTED,
@@ -4115,7 +4219,7 @@ namespace iresearch {
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
   FieldMeta::Analyzer analyzer = FieldMeta::Analyzer();
-  FilterContext const filterCtx(analyzer, irs::no_boost(), allowByExpressionFilter);
+  FilterContext const filterCtx(analyzer, irs::no_boost(), forSearch);
 
   const auto res = ::filter(filter, ctx, filterCtx, node);
 
