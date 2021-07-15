@@ -48,10 +48,6 @@ class DistributeConsumerNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override { return DISTRIBUTE_CONSUMER; }
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -92,8 +88,8 @@ class DistributeConsumerNode : public ExecutionNode {
   }
 
  protected:
-  void toVelocyPackHelperInternal(arangodb::velocypack::Builder& nodes, unsigned flags,
-                                  std::unordered_set<ExecutionNode const*>& seen) const;
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override;
 
  private:
   /// @brief our own distributeId. If it is set, we will fetch only ata for

@@ -4207,7 +4207,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
       bool eligible = true;
       for (auto const& it : current->getVariablesSetHere()) {
-        if (std::find(used.begin(), used.end(), it) != used.end()) {
+        if (used.contains(it)) {
           eligible = false;
           break;
         }

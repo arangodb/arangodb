@@ -514,11 +514,7 @@ std::string const& GraphNode::collectionToShardName(std::string const& collName)
   return found->second;
 }
 
-void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                   std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // Vocbase
   nodes.add("database", VPackValue(_vocbase->name()));
 

@@ -34,12 +34,14 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "Statistics/ServerStatistics.h"
@@ -76,6 +78,9 @@ RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, Transac
       _numUpdates(0),
       _numRemoves(0),
       _numRollbacks(0),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _users(0),
+#endif
       _parallel(false) {}
 
 /// @brief free a transaction container
@@ -83,6 +88,16 @@ RocksDBTransactionState::~RocksDBTransactionState() {
   cleanupTransaction();
   _status = transaction::Status::ABORTED;
 }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void RocksDBTransactionState::use() noexcept {
+  TRI_ASSERT(_users.fetch_add(1, std::memory_order_relaxed) == 0);
+}
+
+void RocksDBTransactionState::unuse() noexcept {
+  TRI_ASSERT(_users.fetch_sub(1, std::memory_order_relaxed) == 1); 
+}
+#endif
 
 /// @brief start a transaction
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
@@ -249,6 +264,7 @@ void RocksDBTransactionState::prepareCollections() {
   auto& engine = selector.engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
+
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
     coll->prepareTransaction(id(), preSeq);
@@ -356,6 +372,17 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   TRI_ASSERT(x > 0);
 
   prepareCollections();
+
+  TRI_IF_FAILURE("TransactionChaos::randomSync") {
+    if (RandomGenerator::interval(uint32_t(1000)) > 950) {
+      auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+      auto& engine = selector.engine<RocksDBEngine>();
+      auto* sm = engine.settingsManager();
+      if (sm) {
+        sm->sync(true);  // force
+      }
+    }
+  }
 
   // if we fail during commit, make sure we remove blockers, etc.
   auto cleanupCollTrx = scopeGuard([this]() { cleanupCollections(); });
@@ -751,7 +778,18 @@ rocksdb::SequenceNumber RocksDBTransactionState::beginSeq() const {
   rocksdb::TransactionDB* db = engine.db();
   return db->GetLatestSequenceNumber();
 }
-  
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+RocksDBTransactionStateGuard::RocksDBTransactionStateGuard(RocksDBTransactionState* state) noexcept
+    : _state(state) {
+  _state->use();
+}
+
+RocksDBTransactionStateGuard::~RocksDBTransactionStateGuard() {
+  _state->unuse();
+}
+#endif
+
 /// @brief constructor, leases a builder
 RocksDBKeyLeaser::RocksDBKeyLeaser(transaction::Methods* trx)
     : _ctx(trx->transactionContextPtr()),

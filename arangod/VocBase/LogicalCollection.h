@@ -191,7 +191,7 @@ class LogicalCollection : public LogicalDataSource {
   TEST_VIRTUAL std::shared_ptr<ShardMap> shardIds() const;
 
   // mutation options for sharding
-  void setShardMap(std::shared_ptr<ShardMap> const& map);
+  void setShardMap(std::shared_ptr<ShardMap> map) noexcept;
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   // query shard for a given document

@@ -447,7 +447,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options
       ->addOption("--rocksdb.limit-open-files-at-startup",
                   "limit the amount of .sst files RocksDB will inspect at "
-                  "startup, in order to startup reduce IO",
+                  "startup, in order to reduce startup IO",
                   new BooleanParameter(&_limitOpenFilesAtStartup),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30405);

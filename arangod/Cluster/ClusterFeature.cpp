@@ -623,7 +623,7 @@ void ClusterFeature::start() {
       << (_forceOneShard ? " with one-shard mode" : "")
       << ". Agency version: " << version << ", Agency endpoints: " << endpoints
       << ", server id: '" << myId << "', internal endpoint / address: " << _myEndpoint
-      << "', advertised endpoint: " << _myAdvertisedEndpoint << ", role: " << role;
+      << "', advertised endpoint: " << _myAdvertisedEndpoint << ", role: " << ServerState::roleToString(role);
 
   auto [acb, idx] = _agencyCache->read(
     std::vector<std::string>{AgencyCommHelper::path("Sync/HeartbeatIntervalMs")});

@@ -35,43 +35,89 @@
 
 /// @brief throws an arango exception with an error code
 #define THROW_ARANGO_EXCEPTION(code) \
-  throw arangodb::basics::Exception(code, __FILE__, __LINE__)
+  throw ::arangodb::basics::Exception(code, __FILE__, __LINE__)
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                                                         \
-  throw arangodb::basics::Exception(code,                                                                \
-                                    arangodb::basics::Exception::FillExceptionString(code, __VA_ARGS__), \
-                                    __FILE__, __LINE__)
+#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                                   \
+  throw arangodb::basics::Exception(                                               \
+      code, ::arangodb::basics::Exception::FillExceptionString(code, __VA_ARGS__), \
+      __FILE__, __LINE__)
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                                      \
-  do {                                                                                        \
-    auto const errnoStr = TRI_errno_string(code);                                             \
-    throw arangodb::basics::Exception(code,                                                   \
-                                      arangodb::basics::Exception::FillFormatExceptionString( \
-                                          "%*s: " format, errnoStr.size(),                    \
-                                          errnoStr.data(), __VA_ARGS__),                      \
-                                      __FILE__, __LINE__);                                    \
+#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                                          \
+  do {                                                                                            \
+    auto const errnoStr = TRI_errno_string(code);                                                 \
+    throw ::arangodb::basics::Exception(code,                                                     \
+                                        ::arangodb::basics::Exception::FillFormatExceptionString( \
+                                            "%*s: " format, errnoStr.size(),                      \
+                                            errnoStr.data(), __VA_ARGS__),                        \
+                                        __FILE__, __LINE__);                                      \
   } while (0)
 
 /// @brief throws an arango exception with an error code and an already-built
 /// error message
 #define THROW_ARANGO_EXCEPTION_MESSAGE(code, message) \
-  throw arangodb::basics::Exception(code, message, __FILE__, __LINE__)
+  throw ::arangodb::basics::Exception(code, message, __FILE__, __LINE__)
 
 /// @brief throws an arango result if the result fails
-#define THROW_ARANGO_EXCEPTION_IF_FAIL(expression)                                        \
-  do {                                                                                    \
-    auto&& expressionResult = (expression);                                               \
-    if (expressionResult.fail()) {                                                        \
-      throw arangodb::basics::Exception(std::move(expressionResult), __FILE__, __LINE__); \
-    }                                                                                     \
+#define THROW_ARANGO_EXCEPTION_IF_FAIL(expression)                                          \
+  do {                                                                                      \
+    auto&& expressionResult = (expression);                                                 \
+    if (expressionResult.fail()) {                                                          \
+      throw ::arangodb::basics::Exception(std::move(expressionResult), __FILE__, __LINE__); \
+    }                                                                                       \
   } while (0)
 
-namespace arangodb {
-namespace basics {
+// Fix MSVC's preprocessor...
+#define EXPAND_(args) args
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+#define THROW_AND_CATCH_(THROW_MACRO, ...)                                  \
+  do {                                                                      \
+    try {                                                                   \
+      EXPAND_(THROW_MACRO(__VA_ARGS__));                                    \
+    } catch (::arangodb::basics::Exception const& ex) {                     \
+      LOG_TOPIC("fa7a1", FATAL, ::arangodb::Logger::CRASH) << ex.message(); \
+      TRI_ASSERT(false);                                                    \
+    } catch (...) {                                                         \
+      TRI_ASSERT(false);                                                    \
+    }                                                                       \
+  } while (0)
+
+#define ASSERT_OR_THROW_ARANGO_EXCEPTION(...) \
+  THROW_AND_CATCH_(THROW_ARANGO_EXCEPTION, __VA_ARGS__)
+
+#define ASSERT_OR_THROW_ARANGO_EXCEPTION_PARAMS(...) \
+  THROW_AND_CATCH_(THROW_ARANGO_EXCEPTION_PARAMS, __VA_ARGS__)
+
+#define ASSERT_OR_THROW_ARANGO_EXCEPTION_FORMAT(...) \
+  THROW_AND_CATCH_(THROW_ARANGO_EXCEPTION_FORMAT, __VA_ARGS__)
+
+#define ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(...) \
+  THROW_AND_CATCH_(THROW_ARANGO_EXCEPTION_MESSAGE, __VA_ARGS__)
+
+#define ASSERT_OR_THROW_ARANGO_EXCEPTION_IF_FAIL(...) \
+  THROW_AND_CATCH_(THROW_ARANGO_EXCEPTION_IF_FAIL, __VA_ARGS__)
+
+#else
+
+#define ASSERT_OR_THROW_ARANGO_EXCEPTION(...) \
+  EXPAND_(THROW_ARANGO_EXCEPTION(__VA_ARGS__))
+#define ASSERT_OR_THROW_ARANGO_EXCEPTION_PARAMS(...) \
+  EXPAND_(THROW_ARANGO_EXCEPTION_PARAMS(__VA_ARGS__))
+#define ASSERT_OR_THROW_ARANGO_EXCEPTION_FORMAT(...) \
+  EXPAND_(THROW_ARANGO_EXCEPTION_FORMAT(__VA_ARGS__))
+#define ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(...) \
+  EXPAND_(THROW_ARANGO_EXCEPTION_MESSAGE(__VA_ARGS__))
+#define ASSERT_OR_THROW_ARANGO_EXCEPTION_IF_FAIL(...) \
+  EXPAND_(THROW_ARANGO_EXCEPTION_IF_FAIL(__VA_ARGS__))
+
+#endif
+
+namespace arangodb::basics {
 
 /// @brief arango exception type
 class Exception final : public virtual std::exception {
@@ -90,12 +136,12 @@ class Exception final : public virtual std::exception {
 
   Exception(ErrorCode code, char const* errorMessage, char const* file, int line);
 
-  ~Exception() = default;
+  ~Exception() override = default;
 
  public:
-  char const* what() const noexcept override;
-  std::string const& message() const noexcept;
-  ErrorCode code() const noexcept;
+  [[nodiscard]] char const* what() const noexcept override;
+  [[nodiscard]] std::string const& message() const noexcept;
+  [[nodiscard]] ErrorCode code() const noexcept;
   void addToMessage(std::string const&);
 
  private:
@@ -135,6 +181,4 @@ Result catchVoidToResult(F&& fn, ErrorCode defaultError = TRI_ERROR_INTERNAL) {
   return catchToResult(wrapped, defaultError);
 }
 
-}  // namespace basics
-}  // namespace arangodb
-
+}  // namespace arangodb::basics
