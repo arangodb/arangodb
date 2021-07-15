@@ -562,7 +562,7 @@ std::string mangleString(std::string name, std::string_view suffix) {
 
 std::string mangleStringIdentity(std::string name) {
   arangodb::iresearch::kludge::mangleField(
-    name, arangodb::iresearch::FieldMeta::Analyzer());
+    name, true, arangodb::iresearch::FieldMeta::Analyzer());
 
   return name;
 }

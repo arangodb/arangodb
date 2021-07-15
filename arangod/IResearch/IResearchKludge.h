@@ -43,10 +43,12 @@ void mangleAnalyzer(std::string& name);
 void mangleNull(std::string& name);
 void mangleBool(std::string& name);
 void mangleNumeric(std::string& name);
+void mangleString(std::string& name);
 
 void mangleField(
-  std::string& name,
-  iresearch::FieldMeta::Analyzer const& analyzer);
+    std::string& name,
+    bool isSearchFilter,
+    iresearch::FieldMeta::Analyzer const& analyzer);
 
 }  // namespace kludge
 }  // namespace iresearch

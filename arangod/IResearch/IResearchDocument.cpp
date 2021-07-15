@@ -507,7 +507,7 @@ bool FieldIterator::setValue(VPackSlice const value,
       }
       break;
     default:
-      iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
+      iresearch::kludge::mangleField(_nameBuffer, true, valueAnalyzer);
       _value._analyzer = analyzer;
       _value._features = &(pool->features());
       _value._name = _nameBuffer;
@@ -936,7 +936,7 @@ bool InvertedIndexFieldIterator::setValue(VPackSlice const value,
       }
       break;
     default:
-      iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
+      iresearch::kludge::mangleField(_nameBuffer, false, valueAnalyzer);
       _value._analyzer = analyzer;
       _value._features = &(pool->features());
       _value._name = _nameBuffer;

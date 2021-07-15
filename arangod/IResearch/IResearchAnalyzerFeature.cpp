@@ -1406,6 +1406,10 @@ void AnalyzerPool::setKey(irs::string_ref const& key) {
   _key = irs::string_ref(_config.c_str() + keyOffset, key.size());
 }
 
+bool AnalyzerPool::requireMangled() const noexcept {
+    return isGeoAnalyzer(_type);
+}
+
 irs::analysis::analyzer::ptr AnalyzerPool::get() const noexcept {
   try {
     // FIXME do not use shared_ptr

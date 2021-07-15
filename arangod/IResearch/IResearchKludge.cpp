@@ -36,6 +36,7 @@ const char ANALYZER_DELIMITER = '\1';
 irs::string_ref const NULL_SUFFIX("\0_n", 3);
 irs::string_ref const BOOL_SUFFIX("\0_b", 3);
 irs::string_ref const NUMERIC_SUFFIX("\0_d", 3);
+irs::string_ref const STRING_SUFFIX("\0_s", 3);
 
 void mangleType(std::string& name) { name += TYPE_DELIMITER; }
 
@@ -53,11 +54,20 @@ void mangleNumeric(std::string& name) {
   name.append(NUMERIC_SUFFIX.c_str(), NUMERIC_SUFFIX.size());
 }
 
+void mangleString(std::string& name) {
+  name.append(STRING_SUFFIX.c_str(), STRING_SUFFIX.size());
+}
+
 void mangleField(
     std::string& name,
+    bool isSearchFilter,
     iresearch::FieldMeta::Analyzer const& analyzer) {
-  name += ANALYZER_DELIMITER;
-  name += analyzer._shortName;
+  if (isSearchFilter || analyzer._pool->requireMangled()) {
+    name += ANALYZER_DELIMITER;
+    name += analyzer._shortName;
+  } else {
+    mangleString(name);
+  }
 }
 
 }  // namespace kludge
