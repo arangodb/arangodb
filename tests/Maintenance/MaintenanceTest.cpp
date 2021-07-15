@@ -50,6 +50,7 @@
 using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace arangodb::maintenance;
+using namespace arangodb::cluster;
 
 #ifndef _WIN32
 char const* planStr =
@@ -558,7 +559,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
                     ->collection(planId)
                     ->shards();
 
-    auto vec = path->vec(2);
+    auto vec = path->vec(paths::SkipComponents(2));
     TRI_ASSERT(plan.has(vec));
     auto const& shardList = plan(vec);
     std::unordered_set<std::string> res;
@@ -589,7 +590,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
                     ->collection(planId)
                     ->shards();
 
-    auto vec = path->vec(2);
+    auto vec = path->vec(paths::SkipComponents(2));
     ASSERT_TRUE(plan.has(vec)) << "The underlying test plan is modified, it "
                                   "does not contain Database '"
                                << dbName << "' and Collection '" << planId << "' anymore.";
@@ -764,7 +765,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
                     ->collections()
                     ->database(dbName)
                     ->collection(planId);
-    auto vec = path->vec(2);
+    auto vec = path->vec(paths::SkipComponents(2));
     ASSERT_TRUE(plan.has(vec)) << "The underlying test plan is modified, it "
                                   "does not contain Database '"
                                << dbName << "' and Collection '" << planId << "' anymore.";
