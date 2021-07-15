@@ -47,7 +47,7 @@
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
 #define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...) \
-  throw ::arangodb::basics::Exception::createWithFormat(ADB_HERE, format, __VA_ARGS__)
+  throw ::arangodb::basics::Exception::createWithFormat(ADB_HERE, code, format, __VA_ARGS__)
 
 /// @brief throws an arango exception with an error code and an already-built
 /// error message
@@ -87,13 +87,13 @@ class Exception final : public virtual std::exception {
   Exception(Exception&&) = default;
 
   template <typename... Args>
-  Exception createWithParams(SourceLocation location, ErrorCode code, Args... args) {
+  static Exception createWithParams(SourceLocation location, ErrorCode code, Args... args) {
     return Exception(code, ::arangodb::basics::Exception::FillExceptionString(code, args...),
                      location);
   }
   template <typename... Args>
-  Exception createWithFormat(SourceLocation location, ErrorCode code,
-                             const char* fmt, Args... args) {
+  static Exception createWithFormat(SourceLocation location, ErrorCode code,
+                                    const char* fmt, Args... args) {
     auto const errnoStr = TRI_errno_string(code);
     // TODO Move this into the .cpp file to avoid including StringUtils. To do
     //      that, make this into a C-style variadic function, rather than a
