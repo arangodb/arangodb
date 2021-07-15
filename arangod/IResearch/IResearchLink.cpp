@@ -62,6 +62,8 @@ using namespace std::literals;
 
 namespace {
 
+arangodb::iresearch::DummyMetric<arangodb::iresearch::IResearchLink::LinkStats> _dummyStats;
+
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
@@ -612,14 +614,11 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid),
       _lastCommittedTick(0),
-      _createdInRecovery(false){
+      _createdInRecovery(false) {
 
   _linkStats = &_dummyStats;
-  is_dummy.store(true);
 
   auto* key = this;
-
-  TRI_ASSERT(_linkStats != nullptr);
 
   // initialize transaction callback
   _trxCallback = [key](transaction::Methods& trx, transaction::Status status)->void {
@@ -663,6 +662,8 @@ IResearchLink::~IResearchLink() {
         << "failed to unload arangosearch link in link destructor: "
         << res.errorNumber() << " " << res.errorMessage();
   }
+
+  std::cout << "--------------------------------------------------------" << std::endl;
 }
 
 bool IResearchLink::operator==(LogicalView const& view) const noexcept {
@@ -872,7 +873,6 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
     TRI_ASSERT(_dataStore._reader != reader);
     _dataStore._reader = reader;
 
-    // update stats
     _linkStats->store(stats());
 
     // update last committed tick
@@ -950,6 +950,7 @@ Result IResearchLink::consolidateUnsafe(
 }
 
 Result IResearchLink::drop() {
+  std::cout << "DROP()" << std::endl;
   // the lookup and unlink is valid for single-server only (that is the only scenario where links are persisted)
   // on coordinator and db-server the IResearchView is immutable and lives in ClusterInfo
   // therefore on coordinator and db-server a new plan will already have an IResearchView without the link
@@ -980,6 +981,23 @@ Result IResearchLink::drop() {
 
   std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
+
+  std::string view, col, shard;
+
+  getLinkLabels(view, col, shard);
+
+  auto tmpStats = arangodb_arangosearch_link_stats{};
+  tmpStats.addLabel("viewId", view);
+  tmpStats.addLabel("collName", col);
+  tmpStats.addLabel("shardName", shard);
+
+  std::cout << "drop: " << tmpStats.key().labels << std::endl;
+
+  // remove statistic from MetricsFeature
+  _collection.vocbase().server()
+    .getFeature<arangodb::MetricsFeature>().remove(std::move(tmpStats));
+
+  _linkStats = &_dummyStats;
 
   try {
     if (_dataStore) {
@@ -1017,6 +1035,9 @@ bool IResearchLink::hasSelectivityEstimate() const {
 Result IResearchLink::init(
     velocypack::Slice const& definition,
     InitCallback const& initCallback /* = { }*/ ) {
+  std::cout << "INIT()" << std::endl;
+  std::cout << "Definition: " << definition.toString() << std::endl;
+  std::cout << _id << std::endl;
   // disassociate from view if it has not been done yet
   if (!unload().ok()) {
     return { TRI_ERROR_INTERNAL, "failed to unload link" };
@@ -1040,13 +1061,8 @@ Result IResearchLink::init(
             "error finding view for link '" + std::to_string(_id.id()) + "'"};
   }
 
-  // init _linkStats with AtomicMetric
-  _linkStats = &_collection.vocbase().server()
-            .getFeature<arangodb::MetricsFeature>().add(arangodb_arangosearch_link_stats{});
-  is_dummy.store(false);
-
-  auto viewId = definition.get(StaticStrings::ViewIdField).copyString();
   auto& vocbase = _collection.vocbase();
+  auto viewId = definition.get(StaticStrings::ViewIdField).copyString();
   bool const sorted = !meta._sort.empty();
   auto const& storedValuesColumns = meta._storedValues.columns();
   TRI_ASSERT(meta._sortCompression);
@@ -1250,6 +1266,21 @@ Result IResearchLink::init(
   const_cast<std::string&>(_viewGuid) = std::move(viewId);
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
   _comparer.reset(_meta._sort);
+
+  std::string view, col, shard;
+
+  getLinkLabels(view, col, shard);
+
+  auto tmpStats = arangodb_arangosearch_link_stats{};
+  tmpStats.addLabel("viewId", view);
+  tmpStats.addLabel("collName", col);
+  tmpStats.addLabel("shardName", shard);
+
+  std::cout << "init: " << tmpStats.key().labels << std::endl;
+
+  // init _linkStats with AtomicMetric
+  _linkStats = &_collection.vocbase().server()
+            .getFeature<arangodb::MetricsFeature>().add(std::move(tmpStats));
 
   return {};
 }
@@ -1537,6 +1568,23 @@ void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
 
   ++_maintenanceState->pendingConsolidations;
   task.schedule(delay);
+}
+
+void IResearchLink::getLinkLabels(std::string& view,
+                                  std::string& col,
+                                  std::string& shard) {
+
+  view = _viewGuid;
+  if (ServerState::instance()->isDBServer()) {
+    //std::cout << "server" << std::endl;
+    col = _meta._collectionName;
+    shard = _collection.name();
+  } else if (ServerState::instance()->isSingleServer()) {
+    //std::cout << "single" << std::endl;
+    col = _collection.name();
+    shard = "";
+  }
+
 }
 
 Result IResearchLink::insert(
@@ -1879,6 +1927,7 @@ bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
 
 Result IResearchLink::unload() {
 
+  std::cout << "UNLOAD()" << std::endl;
   // this code is used by the MMFilesEngine
   // if the collection is in the process of being removed then drop it from the view
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
@@ -1890,9 +1939,20 @@ Result IResearchLink::unload() {
   std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
+  std::string view, col, shard;
+
+  getLinkLabels(view, col, shard);
+
+  auto tmpStats = arangodb_arangosearch_link_stats{};
+  tmpStats.addLabel("viewId", view);
+  tmpStats.addLabel("collName", col);
+  tmpStats.addLabel("shardName", shard);
+
+  std::cout << "unload: " << tmpStats.key().labels << std::endl;
+
   // remove statistic from MetricsFeature
   _collection.vocbase().server()
-    .getFeature<arangodb::MetricsFeature>().remove(arangodb_arangosearch_link_stats{});
+    .getFeature<arangodb::MetricsFeature>().remove(std::move(tmpStats));
 
   _linkStats = &_dummyStats;
 

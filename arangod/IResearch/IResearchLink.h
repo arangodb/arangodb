@@ -422,6 +422,8 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   void scheduleConsolidation(std::chrono::milliseconds delay);
 
+  void getLinkLabels(std::string& view, std::string& col, std::string& shard);
+
   StorageEngine* _engine;
   VPackComparer _comparer;
   IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
@@ -438,9 +440,6 @@ class IResearchLink {
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
   bool _createdInRecovery; // link was created based on recovery marker
   AtomicMetric<LinkStats>* _linkStats; // metric for link statistics
-  std::atomic<bool> is_dummy;
-
-  inline static DummyMetric<IResearchLink::LinkStats> _dummyStats = DummyMetric<IResearchLink::LinkStats>();
 };  // IResearchLink
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
