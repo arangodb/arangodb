@@ -1375,10 +1375,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   auto context = arangodb::transaction::StandaloneContext::Create(coll->vocbase());
   TransactionId blockerId = context->generateId();
   physical->placeRevisionTreeBlocker(blockerId);
-  
-  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
-    physical->removeRevisionTreeBlocker(blockerId);
-  });
   std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
   transaction::Options options;
   TRI_IF_FAILURE("IncrementalReplicationFrequentIntermediateCommit") {
@@ -1431,9 +1427,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     guard.fire();
     return fetchCollectionSyncByKeys(coll, leaderColl, maxTick);
   }
-  // make sure revision tree blocker is removed
-  blockerGuard.fire();
-
+  physical->removeRevisionTreeBlocker(blockerId);
   std::vector<std::pair<std::uint64_t, std::uint64_t>> ranges =
       treeLeader->diff(*treeLocal);
   if (ranges.empty()) {

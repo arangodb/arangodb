@@ -126,9 +126,6 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
 
     if (!serverState->isSingleServer()) {
       result.add("persistedId", VPackValue(serverState->getPersistedId()));
-      if (auto rid = serverState->getRebootId(); rid.initialized()) {
-        result.add("rebootId", VPackValue(rid.value()));
-      }
 
       if (!serverState->isAgent()) {
         result.add("address", VPackValue(serverState->getEndpoint()));

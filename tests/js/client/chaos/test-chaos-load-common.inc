@@ -159,16 +159,6 @@ function BaseChaosSuite(testOpts) {
           debugSetFailAt(getEndpointById(server.id), "Query::setupTimeoutFailSequence");
         }
       }
-      if (testOpts.withDelays) {
-        let servers = getDBServers();
-        assertTrue(servers.length > 0);
-        for (const server of servers) {
-          debugSetFailAt(getEndpointById(server.id), "TransactionChaos::blockerOnSync");
-          debugSetFailAt(getEndpointById(server.id), "TransactionChaos::randomSleep");
-          debugSetFailAt(getEndpointById(server.id), "TransactionChaos::randomSync");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBMetaCollection::forceSerialization");
-        }
-      }
     },
 
     tearDown: function () {
@@ -318,7 +308,7 @@ function BaseChaosSuite(testOpts) {
 }
 
 // truncate is disabled because it does not work reliably ATM
-const params = ["IntermediateCommits", "FailurePoints", "Delays", /*"Truncate",*/ "VaryingOverwriteMode", "StreamingTransactions"];
+const params = ["IntermediateCommits", "FailurePoints", /*"Truncate",*/ "VaryingOverwriteMode", "StreamingTransactions"];
 
 const makeConfig = (paramValues) => {
   let suffix = "";

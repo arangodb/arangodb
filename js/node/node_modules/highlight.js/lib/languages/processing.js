@@ -1,14 +1,5 @@
-/*
-Language: Processing
-Description: Processing is a flexible software sketchbook and a language for learning how to code within the context of the visual arts.
-Author: Erik Paluka <erik.paluka@gmail.com>
-Website: https://processing.org
-Category: graphics
-*/
-
-function processing(hljs) {
+module.exports = function(hljs) {
   return {
-    name: 'Processing',
     keywords: {
       keyword: 'BufferedReader PVector PFont PImage PGraphics HashMap boolean byte char color ' +
         'double float int long String Array FloatDict FloatList IntDict IntList JSONArray JSONObject ' +
@@ -53,6 +44,4 @@ function processing(hljs) {
       hljs.C_NUMBER_MODE
     ]
   };
-}
-
-module.exports = processing;
+};

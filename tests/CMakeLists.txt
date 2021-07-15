@@ -131,9 +131,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/NgramPosSimilarityFunctionTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/ProjectionsTest.cpp
-  Aql/QueryCursorTest.cpp
   Aql/QueryHelper.cpp
-  Aql/QueryLimitsTest.cpp
+  Aql/QueryCursorTest.cpp
   Aql/RegisterPlanTest.cpp
   Aql/RemoteExecutorTest.cpp
   Aql/RemoveExecutorTest.cpp

@@ -1,30 +1,5 @@
-/*
-Language: Julia REPL
-Description: Julia REPL sessions
-Author: Morten Piibeleht <morten.piibeleht@gmail.com>
-Website: https://julialang.org
-Requires: julia.js
-
-The Julia REPL code blocks look something like the following:
-
-  julia> function foo(x)
-             x + 1
-         end
-  foo (generic function with 1 method)
-
-They start on a new line with "julia>". Usually there should also be a space after this, but
-we also allow the code to start right after the > character. The code may run over multiple
-lines, but the additional lines must start with six spaces (i.e. be indented to match
-"julia>"). The rest of the code is assumed to be output from the executed code and will be
-left un-highlighted.
-
-Using simply spaces to identify line continuations may get a false-positive if the output
-also prints out six spaces, but such cases should be rare.
-*/
-
-function juliaRepl(hljs) {
+module.exports = function(hljs) {
   return {
-    name: 'Julia REPL',
     contains: [
       {
         className: 'meta',
@@ -45,6 +20,4 @@ function juliaRepl(hljs) {
       }
     ]
   }
-}
-
-module.exports = juliaRepl;
+};

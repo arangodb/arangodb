@@ -420,7 +420,7 @@ void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      .setIntroducedIn(30707);
 }
 
-auto MetricsFeature::doAdd(metrics::Builder& builder) -> std::shared_ptr<::Metric> {
+::Metric& MetricsFeature::doAdd(metrics::Builder& builder) {
   auto metric = builder.build();
   auto key = builder.key();
   bool success = false;
@@ -434,8 +434,7 @@ auto MetricsFeature::doAdd(metrics::Builder& builder) -> std::shared_ptr<::Metri
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, builder.type() + builder.name() + " already exists");
   }
-
-  return metric;
+  return *metric;
 }
 
 

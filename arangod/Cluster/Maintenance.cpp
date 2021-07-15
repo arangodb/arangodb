@@ -1465,14 +1465,12 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
           std::string c = key.substr(pos + 1, pos2);
           std::string s = key.substr(pos2 + 1);  // shard name
-          TRI_ASSERT(pit->second->slice().isArray());
-          TRI_ASSERT(pit->second->slice().length() == 1);
-          auto const pdb = pit->second->slice()[0];
+          auto const pdb = pit->second->slice();
           auto const ldb = lit->second->slice();
 
           // Now find out if the shard appears in the Plan but not in Local:
-          std::vector<std::string> const planPath{
-              AgencyCommHelper::path(), PLAN, COLLECTIONS, d, c, "shards", s};
+          std::vector<std::string> const planPath {
+            AgencyCommHelper::path(), PLAN, COLLECTIONS, d, c, "shards", s};
 
           if (!pdb.isObject()) {
             LOG_TOPIC("2647d", WARN, Logger::MAINTENANCE) 

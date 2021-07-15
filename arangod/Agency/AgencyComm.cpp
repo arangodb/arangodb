@@ -178,51 +178,8 @@ AgencyOperation::AgencyOperation(std::string const& key,
 }
 
 AgencyOperation::AgencyOperation(std::string const& key, AgencyValueOperationType opType,
-                                 std::shared_ptr<velocypack::Builder> value)
-    : AgencyOperation(key, opType, value->slice()) {
-  _holder = std::move(value);
-  TRI_ASSERT(_holder->slice().start() == _value.start());
-}
-
-AgencyOperation::AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                                  VPackSlice newValue, VPackSlice oldValue)
     : _key(AgencyCommHelper::path(key)), _opType(), _value(newValue), _value2(oldValue) {
-  _opType.type = AgencyOperationType::Type::VALUE;
-  _opType.value = opType;
-}
-
-AgencyOperation::AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path)
-    : _key(path->str()), _opType() {
-  _opType.type = AgencyOperationType::Type::READ;
-}
-AgencyOperation::AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
-                                 AgencySimpleOperationType opType)
-    : _key(path->str()), _opType() {
-  _opType.type = AgencyOperationType::Type::SIMPLE;
-  _opType.simple = opType;
-}
-
-AgencyOperation::AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
-                                 AgencyValueOperationType opType,
-                                 velocypack::Slice const value)
-    : _key(path->str()), _opType(), _value(value) {
-  _opType.type = AgencyOperationType::Type::VALUE;
-  _opType.value = opType;
-}
-
-AgencyOperation::AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
-                                 AgencyValueOperationType opType,
-                                 std::shared_ptr<velocypack::Builder> value)
-    : AgencyOperation(path, opType, value->slice()) {
-  _holder = std::move(value);
-  TRI_ASSERT(_holder->slice().start() == _value.start());
-}
-
-AgencyOperation::AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
-                                 AgencyValueOperationType opType,
-                                 velocypack::Slice const newValue,
-                                 velocypack::Slice const oldValue)
-    : _key(path->str()), _opType(), _value(newValue), _value2(oldValue) {
   _opType.type = AgencyOperationType::Type::VALUE;
   _opType.value = opType;
 }

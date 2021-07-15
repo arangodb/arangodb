@@ -4,7 +4,7 @@ var baseToString = require('./_baseToString'),
     stringToArray = require('./_stringToArray'),
     toString = require('./toString');
 
-/** Used to match leading whitespace. */
+/** Used to match leading and trailing whitespace. */
 var reTrimStart = /^\s+/;
 
 /**

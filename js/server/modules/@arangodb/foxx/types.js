@@ -31,8 +31,8 @@ const DEFAULT_CHARSET = 'utf-8';
 
 module.exports = new Map([
   [mimeTypes.lookup('text'), {
-    fromClient(body, req, typeParameters) {
-      body = stringifyBuffer(body, (typeParameters || {}).charset);
+    fromClient(body, req, type) {
+      body = stringifyBuffer(body, type.parameters.charset);
       return body;
     },
     forClient(body) {
@@ -45,9 +45,9 @@ module.exports = new Map([
     }
   }],
   [mimeTypes.lookup('json'), {
-    fromClient(body, req, typeParameters) {
+    fromClient(body, req, type) {
       if (!body || !body.length) return undefined;
-      body = stringifyBuffer(body, (typeParameters || {}).charset);
+      body = stringifyBuffer(body, type.parameters.charset);
       return JSON.parse(body);
     },
     forClient(body) {
@@ -60,8 +60,8 @@ module.exports = new Map([
     }
   }],
   ['application/x-www-form-urlencoded', {
-    fromClient(body, req, typeParameters) {
-      body = stringifyBuffer(body, (typeParameters || {}).charset);
+    fromClient(body, req, type) {
+      body = stringifyBuffer(body, type.parameters.charset);
       return querystring.parse(body);
     },
     forClient(body) {

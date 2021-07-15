@@ -26,7 +26,7 @@ const _ = require('lodash');
 const joi = require('joi');
 const assert = require('assert');
 const typeIs = require('type-is');
-const ct = require('content-type');
+const mediaTyper = require('media-typer');
 const requestParts = require('internal').requestParts;
 
 exports.validateParams = function validateParams (typeDefs, rawParams, type) {
@@ -76,9 +76,10 @@ exports.parseRequestBody = function parseRequestBody (def, req) {
     actualType = def.contentTypes[0] || indicatedType;
   }
 
-  actualType = ct.parse(actualType);
+  const parsedType = mediaTyper.parse(actualType);
+  actualType = mediaTyper.format(_.pick(parsedType, ['type', 'subtype', 'suffix']));
 
-  if (actualType.type.startsWith('multipart/')) {
+  if (parsedType.type === 'multipart') {
     body = requestParts(req._raw);
   }
 
@@ -88,11 +89,11 @@ exports.parseRequestBody = function parseRequestBody (def, req) {
     const value = entry[1];
     let match;
     if (key instanceof RegExp) {
-      match = actualType.type.test(key);
+      match = actualType.test(key);
     } else if (typeof key === 'function') {
-      match = key(actualType.type, actualType.parameters);
+      match = key(actualType);
     } else {
-      match = typeIs.is(key, actualType.type);
+      match = typeIs.is(key, actualType);
     }
     if (match && value.fromClient) {
       handler = value;
@@ -101,7 +102,7 @@ exports.parseRequestBody = function parseRequestBody (def, req) {
   }
 
   if (handler) {
-    body = handler.fromClient(body, req, actualType.parameters);
+    body = handler.fromClient(body, req, parsedType);
   }
 
   return body;

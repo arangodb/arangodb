@@ -184,14 +184,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   template <typename MetricBuilder>
-  auto add(MetricBuilder&& builder) -> typename MetricBuilder::metric_t& {
-    return static_cast<typename MetricBuilder::metric_t&>(*doAdd(builder));
-  }
-
-  template <typename MetricBuilder>
-  auto addShared(MetricBuilder&& builder)
-      -> std::shared_ptr<typename MetricBuilder::metric_t> {
-    return std::static_pointer_cast<typename MetricBuilder::metric_t>(doAdd(builder));
+  auto& add(MetricBuilder&& builder) {
+    return static_cast<typename MetricBuilder::metric_t&>(doAdd(builder));
   }
 
   template <typename MetricBuilder>
@@ -205,6 +199,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
  private:
   Metric& doAdd(metrics::Builder& builder);
+  bool doRemove(const metrics::Builder& builder);
 
   registry_type _registry;
 

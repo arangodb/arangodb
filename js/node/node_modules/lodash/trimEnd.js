@@ -2,8 +2,10 @@ var baseToString = require('./_baseToString'),
     castSlice = require('./_castSlice'),
     charsEndIndex = require('./_charsEndIndex'),
     stringToArray = require('./_stringToArray'),
-    toString = require('./toString'),
-    trimmedEndIndex = require('./_trimmedEndIndex');
+    toString = require('./toString');
+
+/** Used to match leading and trailing whitespace. */
+var reTrimEnd = /\s+$/;
 
 /**
  * Removes trailing whitespace or specified characters from `string`.
@@ -27,7 +29,7 @@ var baseToString = require('./_baseToString'),
 function trimEnd(string, chars, guard) {
   string = toString(string);
   if (string && (guard || chars === undefined)) {
-    return string.slice(0, trimmedEndIndex(string) + 1);
+    return string.replace(reTrimEnd, '');
   }
   if (!string || !(chars = baseToString(chars))) {
     return string;

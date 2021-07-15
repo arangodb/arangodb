@@ -36,14 +36,11 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <Containers/ImmerMemoryPolicy.h>
-
 #include "EvalResult.h"
 
 namespace arangodb::greenspun {
 
-using VariableBindings =
-    ::immer::map<std::string, VPackSlice, std::hash<std::string>, std::equal_to<>, arangodb::immer::arango_memory_policy>;
+using VariableBindings = immer::map<std::string, VPackSlice>;
 
 struct StackFrame {
   VariableBindings bindings;

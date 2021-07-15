@@ -63,7 +63,6 @@ else
         JSDIR=$(grep startup-directory /etc/arangodb3/arangosh.conf  |sed "s;.*= *;;")
         mkdir -p "${JSDIR}/node/node_modules/"
         cp -a js/node/node_modules/eslint "${JSDIR}/node/node_modules/"
-        cp -a js/node/node_modules/ms "${JSDIR}/node/node_modules/"
      fi
 fi
 

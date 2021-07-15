@@ -1,6 +1,5 @@
 /**
  * GitHub Gist Theme
- * Author : Anthony Attard - https://github.com/AnthonyAttard
  * Author : Louis Barranqueiro - https://github.com/LouisBarranqueiro
  */
 
@@ -17,6 +16,7 @@
   color: #969896;
 }
 
+.hljs-string,
 .hljs-variable,
 .hljs-template-variable,
 .hljs-strong,
@@ -28,7 +28,7 @@
 .hljs-keyword,
 .hljs-selector-tag,
 .hljs-type {
-  color: #d73a49;
+  color: #a71d5d;
 }
 
 .hljs-literal,
@@ -53,7 +53,7 @@
 .hljs-selector-class,
 .hljs-selector-attr,
 .hljs-selector-pseudo {
-  color: #6f42c1;
+  color: #795da3;
 }
 
 .hljs-addition {
@@ -68,12 +68,4 @@
 
 .hljs-link {
   text-decoration: underline;
-}
-
-.hljs-number {
-  color: #005cc5;
-}
-
-.hljs-string {
-  color: #032f62;
 }

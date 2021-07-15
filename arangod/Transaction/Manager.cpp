@@ -1170,6 +1170,7 @@ bool Manager::garbageCollect(bool abortAll) {
   for (TransactionId tid : toAbort) {
     LOG_TOPIC("6fbaf", INFO, Logger::TRANSACTIONS) << "garbage collecting "
                                                    << "transaction " << tid;
+    LOG_TOPIC("1df7f", DEBUG, Logger::TRANSACTIONS) << "garbage-collecting expired transaction " << tid;
     try {
       Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
       // updateTransaction can return TRI_ERROR_TRANSACTION_ABORTED when it
