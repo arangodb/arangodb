@@ -77,9 +77,6 @@ std::string const& Exception::message() const noexcept { return _errorMessage; }
 /// @brief returns the error code
 ErrorCode Exception::code() const noexcept { return _code; }
 
-/// @brief adds to the message
-void Exception::addToMessage(std::string const& more) { _errorMessage += more; }
-
 /// @brief return exception message
 char const* Exception::what() const noexcept { return _errorMessage.c_str(); }
 

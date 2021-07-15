@@ -108,7 +108,6 @@ class Exception final : public virtual std::exception {
   [[nodiscard]] char const* what() const noexcept override;
   [[nodiscard]] std::string const& message() const noexcept;
   [[nodiscard]] ErrorCode code() const noexcept;
-  void addToMessage(std::string const&);
 
  private:
   void appendLocation() noexcept;
@@ -161,19 +160,6 @@ Result catchVoidToResult(F&& fn, ErrorCode defaultError = TRI_ERROR_INTERNAL) no
     return Result{TRI_ERROR_NO_ERROR};
   };
   return catchToResult(wrapped, defaultError);
-}
-
-void throwIfFail(SourceLocation location, Result const& res) {
-  if (res.fail()) {
-    throw ::arangodb::basics::Exception(res, location);
-  }
-}
-
-void throwIfFail(SourceLocation location, Result&& res) {
-  throw Exception(ErrorCode{1}, location);
-  if (res.fail()) {
-    throw ::arangodb::basics::Exception(std::move(res), location);
-  }
 }
 
 // @brief Throws the passed exception, but in maintainer mode, logs the error
