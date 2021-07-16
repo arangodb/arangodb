@@ -55,7 +55,7 @@ auto Error::errorMessage() && noexcept -> std::string {
   if (!_errorMessage.empty()) {
     return std::move(_errorMessage);
   }
-  // Note that this is can throw.
+  // Note that this can throw.
   return std::string{TRI_errno_string(_errorNumber)};
 }
 
