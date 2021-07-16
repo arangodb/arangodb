@@ -257,7 +257,7 @@ void InternalRestTraverserHandler::queryEngine() {
     // Safe cast BaseTraverserEngines are all of type TRAVERSER
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
-    eng->smartSearchWeighted(body, result);
+    eng->smartSearchNew(body, result);
   } else {
     // PATH Info wrong other error
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "");
