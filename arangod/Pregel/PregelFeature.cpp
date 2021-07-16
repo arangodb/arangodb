@@ -521,11 +521,12 @@ uint64_t PregelFeature::numberOfActiveConductors() const {
 Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
                                    arangodb::velocypack::Builder& result, 
                                    bool allDatabases, bool fanout) const {
-  Result res;
+  std::vector<std::shared_ptr<Conductor>> conductors;
 
-  result.openArray();
+  // make a copy of all conductor shared-ptrs under the mutex
   {
     MUTEX_LOCKER(guard, _mutex);
+    conductors.reserve(_conductors.size());
   
     for (auto const& p : _conductors) {
       auto const& ce = p.second;
@@ -533,9 +534,17 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
         continue;
       }
 
-      ce.conductor->toVelocyPack(result);
+      conductors.emplace_back(ce.conductor);
     }
   }
+
+  // release lock, and now velocypackify all conductors
+  result.openArray();
+  for (auto const& c : conductors) {
+    c->toVelocyPack(result);
+  }
+  
+  Result res;
   
   if (ServerState::instance()->isCoordinator() && fanout) {
     // coordinator case, fan out to other coordinators!
