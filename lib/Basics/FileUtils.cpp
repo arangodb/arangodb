@@ -444,6 +444,13 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
                             std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
                             std::string& error) {
   bool rc_bool = true;
+  
+  // these strings will be recycled over and over
+  std::string dst = target + TRI_DIR_SEPARATOR_STR;
+  size_t const dstPrefixLength = dst.size();
+  std::string src = source + TRI_DIR_SEPARATOR_STR;
+  size_t const srcPrefixLength = src.size();
+
 
 #ifdef TRI_HAVE_WIN32_LIST_FILES
   struct _wfinddata_t oneItem;
@@ -475,12 +482,6 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
   }
 
   struct dirent* oneItem = nullptr;
-
-  // these strings will be recycled over and over
-  std::string dst = target + TRI_DIR_SEPARATOR_STR;
-  size_t dstPrefixLength = dst.size();
-  std::string src = source + TRI_DIR_SEPARATOR_STR;
-  size_t srcPrefixLength = src.size();
 
   // do not use readdir_r() here anymore as it is not safe and deprecated
   // in newer versions of libc:
