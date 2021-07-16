@@ -151,6 +151,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   }
 
   bool canBeGarbageCollected() const;
+  
+  uint64_t executionNumber() const { return _executionNumber; }
 
  private:
   void cancelNoLock();

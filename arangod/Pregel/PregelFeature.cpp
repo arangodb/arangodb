@@ -335,18 +335,33 @@ std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
 
 void PregelFeature::garbageCollectConductors() try {
   // iterate over all conductors and remove the ones which can be garbage-collected
-  MUTEX_LOCKER(guard, _mutex);
-  for (auto it = _conductors.begin(); it != _conductors.end(); /*no hoisting*/) {
-    if (it->second.conductor->canBeGarbageCollected()) {
-      uint64_t executionNumber = it->first;
+  std::vector<std::shared_ptr<Conductor>> conductors;
 
-      it->second.conductor->cancel();
-      it = _conductors.erase(it);
-      
-      _workers.erase(executionNumber);
-    } else {
-      ++it;
+  // copy out shared-ptrs of Conductors under the mutex
+  {
+    MUTEX_LOCKER(guard, _mutex);
+    for (auto const& it : _conductors) {
+      if (it.second.conductor->canBeGarbageCollected()) {
+        if (conductors.empty()) {
+          conductors.reserve(8);
+        }
+        conductors.emplace_back(it.second.conductor);
+      }
     }
+  }
+
+  // cancel and kill conductors without holding the mutex
+  // permanently
+  for (auto& c : conductors) {
+    c->cancel();
+  }
+    
+  MUTEX_LOCKER(guard, _mutex);
+  for (auto& c : conductors) {
+    uint64_t executionNumber = c->executionNumber();
+    
+    _conductors.erase(executionNumber);
+    _workers.erase(executionNumber);
   }
 } catch (...) {}
 
@@ -521,11 +536,12 @@ uint64_t PregelFeature::numberOfActiveConductors() const {
 Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
                                    arangodb::velocypack::Builder& result, 
                                    bool allDatabases, bool fanout) const {
-  Result res;
+  std::vector<std::shared_ptr<Conductor>> conductors;
 
-  result.openArray();
+  // make a copy of all conductor shared-ptrs under the mutex
   {
     MUTEX_LOCKER(guard, _mutex);
+    conductors.reserve(_conductors.size());
   
     for (auto const& p : _conductors) {
       auto const& ce = p.second;
@@ -533,9 +549,17 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
         continue;
       }
 
-      ce.conductor->toVelocyPack(result);
+      conductors.emplace_back(ce.conductor);
     }
   }
+
+  // release lock, and now velocypackify all conductors
+  result.openArray();
+  for (auto const& c : conductors) {
+    c->toVelocyPack(result);
+  }
+  
+  Result res;
   
   if (ServerState::instance()->isCoordinator() && fanout) {
     // coordinator case, fan out to other coordinators!
