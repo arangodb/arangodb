@@ -286,8 +286,8 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(SingleServerProvider<Step>&
 }
 
 template <class Step>
-bool RefactoredSingleServerEdgeCursor<Step>::evaluateExpression(arangodb::aql::Expression* expression,
-                                                                VPackSlice value) {
+bool RefactoredSingleServerEdgeCursor<Step>::evaluateEdgeExpression(arangodb::aql::Expression* expression,
+                                                                    VPackSlice value) {
   if (expression == nullptr) {
     return true;
   }

@@ -508,6 +508,13 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       continue;
     }
 
+    if (!trx.state()->knownServers().contains(server)) {
+      // we are about to add this server to the transaction.
+      // remember it, so we can roll the addition back for
+      // the second setup request if we need to
+      serversAdded.emplace(server);
+    }
+
     networkCalls.emplace_back(
         buildSetupRequest(trx, server, infoSlice, didCreateEngine, snippetIds,
                           serverToQueryId, serverToQueryIdLock, pool, options));
@@ -548,6 +555,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       return fastPathResult.get();
     }
 
+    // we got a lock timeout response for the fast path locking...
     {
       // in case of fast path failure, we need to cleanup engines
       auto requests = cleanupEngines(fastPathResult.get().errorNumber(),
@@ -603,8 +611,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     LOG_TOPIC("f5022", DEBUG, Logger::AQL)
         << "Potential deadlock detected, using slow path for locking. This "
            "is expected if exclusive locks are used.";
-
-    trx.state()->coordinatorRerollTransactionId();
 
     // Make sure we always use the same ordering on servers
     std::sort(engineInformation.begin(), engineInformation.end(),
