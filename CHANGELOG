@@ -1,6 +1,18 @@
 devel
 -----
 
+* Slightly increase internal AQL query and transaction timeout on DB servers 
+  from 3 to 5 minutes.
+  Previously, queries and transactions on DB servers could expire quicker,
+  which led to spurious "query ID not found" or "transaction ID not found"
+  errors on DB servers for multi-server queries/transactions with unbalanced 
+  access patterns for the different participating DB servers.
+  The timeouts on coordinators remain unchanged, so any queries/transactions
+  that are abandoned will be aborted there, which will also be propagated to
+  DB servers. In addition, if a particpating server in an AQL query becomes
+  unavailable, the coordinator is now notified of that and will terminate the
+  query more eagerly.
+
 * Add hard-coded complexity limits for AQL queries, in order to prevent
   programmatically generated large queries from causing trouble (too deep
   recursion, enormous memory usage, long query optimization and distribution
@@ -35,7 +47,6 @@ devel
 
   - accepts: 1.3.5 -> 1.3.7
   - ansi_up: 4.0.3 -> 5.0.1
-  - chalk: 1.1.3 -> 4.1.1
   - content-type: (added) -> 1.0.4
   - error-stack-parser: 2.0.2 -> 2.0.6
   - highlight.js: 9.15.6 -> 10.7.3
@@ -342,12 +353,12 @@ devel
   indefinitely when LIMIT is less than number of available documents.
 
 * Bug-Fix (MacOs): In MacOs there is an upper bound for descriptors defined by
-  the system, which is independend of the settings in `ulimit -n`. If the
+  the system, which is independent of the settings in `ulimit -n`. If the
   hard limit is set above this upper bound value ArangoDB tries to raise the
   soft limit to the hard limit on boot. This will fail due to the system
   limit. This could cause ArangoDB to not start, asking you to lower the
-  minimum of required file descriptors. The system set upper bound is now
-  honored and the soft limit will be set to either hard limit or system limit
+  minimum of required file descriptors. The system-set upper bound is now
+  honored and the soft limit will be set to either hard limit or system limit,
   whichever is lower.
 
 * Fix BTS-409: return error 1948 when a negative edge was detected during or was
@@ -394,32 +405,6 @@ devel
 
 * Fixed ES-881: ensure that LDAP options for async, referrals and restart set
   the off value correctly. Otherwise, this can result in an "operations error".
-
-* Updated JavaScript dependencies, including breaking changes to non-public
-  modules. Note that this removes underscore, which was previously listed as a
-  public module in ArangoDB 2. We recommend always bundling your own copy of
-  third-party modules, even ones listed as public.
-
-  - accepts: 1.3.5 -> 1.3.7
-  - ansi_up: 4.0.3 -> 5.0.1
-  - chalk: 1.1.3 -> 4.1.1
-  - content-type: (added) -> 1.0.4
-  - error-stack-parser: 2.0.2 -> 2.0.6
-  - highlight.js: 9.15.6 -> 10.7.2
-  - http-errors: 1.7.2 -> 1.8.0
-  - iconv-lite: 0.4.24 -> 0.6.2
-  - js-yaml: 3.13.1 -> 3.14.1
-  - lodash: 4.17.13 -> 4.17.21
-  - marked: 0.6.2 -> removed
-  - media-typer: 0.3.0 -> removed
-  - mime-types: 2.1.22 -> 2.1.30
-  - netmask: 1.0.6 -> 2.0.2
-  - qs: 6.7.0 -> 6.10.1
-  - range-parser: 1.2.0 -> 1.2.1
-  - semver: 6.0.0 -> 7.3.5
-  - timezone: 1.0.22 -> 1.0.23
-  - type-is: 1.6.16 -> 1.6.18
-  - underscore: 1.9.1 -> removed
 
 * Fixed DEVSUP-764 (SEARCH-7): inconsistent BM25 scoring for LEVENSHTEIN_MATCH
   function.
