@@ -931,7 +931,6 @@ arangodb::Result IResearchView::unlink(DataSourceId cid) noexcept {
     read_write_mutex::write_mutex mutex(_mutex);  // '_links' can be asynchronously read
     auto lock = irs::make_lock_guard(mutex);
     auto itr = _links.find(cid);
-
     if (itr == _links.end()) {
       return arangodb::Result();  // already unlinked
     }

@@ -662,8 +662,6 @@ IResearchLink::~IResearchLink() {
         << "failed to unload arangosearch link in link destructor: "
         << res.errorNumber() << " " << res.errorMessage();
   }
-
-  std::cout << "--------------------------------------------------------" << std::endl;
 }
 
 bool IResearchLink::operator==(LogicalView const& view) const noexcept {
@@ -950,7 +948,6 @@ Result IResearchLink::consolidateUnsafe(
 }
 
 Result IResearchLink::drop() {
-  std::cout << "DROP()" << std::endl;
   // the lookup and unlink is valid for single-server only (that is the only scenario where links are persisted)
   // on coordinator and db-server the IResearchView is immutable and lives in ClusterInfo
   // therefore on coordinator and db-server a new plan will already have an IResearchView without the link
@@ -958,7 +955,6 @@ Result IResearchLink::drop() {
   if (ServerState::instance()->isSingleServer()) {
     auto logicalView = _collection.vocbase().lookupView(_viewGuid);
     auto* view = LogicalView::cast<IResearchView>(logicalView.get());
-
     // may occur if the link was already unlinked from the view via another instance
     // this behavior was seen user-access-right-drop-view-arangosearch-spec.js
     // where the collection drop was called through REST,
@@ -990,8 +986,6 @@ Result IResearchLink::drop() {
   tmpStats.addLabel("viewId", view);
   tmpStats.addLabel("collName", col);
   tmpStats.addLabel("shardName", shard);
-
-  std::cout << "drop: " << tmpStats.key().labels << std::endl;
 
   // remove statistic from MetricsFeature
   _collection.vocbase().server()
@@ -1035,9 +1029,6 @@ bool IResearchLink::hasSelectivityEstimate() const {
 Result IResearchLink::init(
     velocypack::Slice const& definition,
     InitCallback const& initCallback /* = { }*/ ) {
-  std::cout << "INIT()" << std::endl;
-  std::cout << "Definition: " << definition.toString() << std::endl;
-  std::cout << _id << std::endl;
   // disassociate from view if it has not been done yet
   if (!unload().ok()) {
     return { TRI_ERROR_INTERNAL, "failed to unload link" };
@@ -1275,8 +1266,6 @@ Result IResearchLink::init(
   tmpStats.addLabel("viewId", view);
   tmpStats.addLabel("collName", col);
   tmpStats.addLabel("shardName", shard);
-
-  std::cout << "init: " << tmpStats.key().labels << std::endl;
 
   // init _linkStats with AtomicMetric
   _linkStats = &_collection.vocbase().server()
@@ -1576,11 +1565,9 @@ void IResearchLink::getLinkLabels(std::string& view,
 
   view = _viewGuid;
   if (ServerState::instance()->isDBServer()) {
-    //std::cout << "server" << std::endl;
     col = _meta._collectionName;
     shard = _collection.name();
   } else if (ServerState::instance()->isSingleServer()) {
-    //std::cout << "single" << std::endl;
     col = _collection.name();
     shard = "";
   }
@@ -1926,8 +1913,6 @@ bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
 }
 
 Result IResearchLink::unload() {
-
-  std::cout << "UNLOAD()" << std::endl;
   // this code is used by the MMFilesEngine
   // if the collection is in the process of being removed then drop it from the view
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
@@ -1947,8 +1932,6 @@ Result IResearchLink::unload() {
   tmpStats.addLabel("viewId", view);
   tmpStats.addLabel("collName", col);
   tmpStats.addLabel("shardName", shard);
-
-  std::cout << "unload: " << tmpStats.key().labels << std::endl;
 
   // remove statistic from MetricsFeature
   _collection.vocbase().server()
