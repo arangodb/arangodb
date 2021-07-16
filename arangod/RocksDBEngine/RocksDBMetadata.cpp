@@ -100,8 +100,6 @@ RocksDBMetadata::RocksDBMetadata()
  * @param  seq   The sequence number immediately prior to call
  */
 rocksdb::SequenceNumber RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
-  TRI_ASSERT(trxId.isSet());
-
   WRITE_LOCKER(locker, _blockerLock);
 
   seq = std::max(seq, _maxBlockersSequenceNumber);
