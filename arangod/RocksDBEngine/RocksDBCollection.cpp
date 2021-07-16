@@ -740,7 +740,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
     rocksdb::Status s =
-    batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+      batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }

@@ -173,6 +173,11 @@ struct RocksDBMetadata final {
   std::atomic<RevisionId> _revisionId;
 };
 
+/// helper class for acquiring and releasing a blocker.
+/// constructing an object of this class will do nothing, but once
+/// placeBlocker() is called, the object takes care of releasing the
+/// blocker upon destruction. An acquired blocker can also be released
+/// prematurely by calling releaseBlocker().
 class RocksDBBlockerGuard {
  public:
   explicit RocksDBBlockerGuard(LogicalCollection* collection);
@@ -182,7 +187,13 @@ class RocksDBBlockerGuard {
   RocksDBBlockerGuard(RocksDBBlockerGuard&&) noexcept;
   RocksDBBlockerGuard& operator=(RocksDBBlockerGuard&&) noexcept;
 
+  /// @brief can be called with or without a transaction id.
+  /// it is not allowed to call placeBlocker() if a blocker is already
+  /// acquired by the object.
   rocksdb::SequenceNumber placeBlocker(TransactionId id = TransactionId::none());
+
+  /// @brief releases an acquired blocker. will do nothing if no
+  /// blocker is currently acquired by the object.
   void releaseBlocker() noexcept;
 
  private:

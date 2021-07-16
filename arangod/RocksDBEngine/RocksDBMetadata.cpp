@@ -100,6 +100,8 @@ RocksDBMetadata::RocksDBMetadata()
  * @param  seq   The sequence number immediately prior to call
  */
 rocksdb::SequenceNumber RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
+  TRI_ASSERT(trxId.isSet());
+
   WRITE_LOCKER(locker, _blockerLock);
 
   seq = std::max(seq, _maxBlockersSequenceNumber);
@@ -115,14 +117,15 @@ rocksdb::SequenceNumber RocksDBMetadata::placeBlocker(TransactionId trxId, rocks
     if (!_blockersBySeq.emplace(seq, trxId).second) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate sequence number for crosslist in placeBlocker");
     }
-    LOG_TOPIC("1587a", TRACE, Logger::ENGINES)
-        << "[" << this << "] placed blocker (" << trxId.id() << ", " << seq << ")";
   } catch (...) {
     _blockers.erase(trxId);
     throw;
   }
 
   _maxBlockersSequenceNumber = seq;
+    
+  LOG_TOPIC("1587a", TRACE, Logger::ENGINES)
+      << "[" << this << "] placed blocker (" << trxId.id() << ", " << seq << ")";
   return seq;
 }
 
@@ -790,7 +793,8 @@ rocksdb::SequenceNumber RocksDBBlockerGuard::placeBlocker(TransactionId trxId) {
 
   auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
   // placeBlocker() may increase the blockerSeq
-  blockerSeq = rcoll->meta().placeBlocker(_trxId, blockerSeq);
+  blockerSeq = rcoll->meta().placeBlocker(trxId, blockerSeq);
+  // only set _trxId if placing the blocker succeeded
   _trxId = trxId;
   return blockerSeq;
 }
