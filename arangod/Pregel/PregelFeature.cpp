@@ -335,18 +335,33 @@ std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
 
 void PregelFeature::garbageCollectConductors() try {
   // iterate over all conductors and remove the ones which can be garbage-collected
-  MUTEX_LOCKER(guard, _mutex);
-  for (auto it = _conductors.begin(); it != _conductors.end(); /*no hoisting*/) {
-    if (it->second.conductor->canBeGarbageCollected()) {
-      uint64_t executionNumber = it->first;
+  std::vector<std::shared_ptr<Conductor>> conductors;
 
-      it->second.conductor->cancel();
-      it = _conductors.erase(it);
-      
-      _workers.erase(executionNumber);
-    } else {
-      ++it;
+  // copy out shared-ptrs of Conductors under the mutex
+  {
+    MUTEX_LOCKER(guard, _mutex);
+    for (auto const& it : _conductors) {
+      if (it.second.conductor->canBeGarbageCollected()) {
+        if (conductors.empty()) {
+          conductors.reserve(8);
+        }
+        conductors.emplace_back(it.second.conductor);
+      }
     }
+  }
+
+  // cancel and kill conductors without holding the mutex
+  // permanently
+  for (auto& c : conductors) {
+    c->cancel();
+  }
+    
+  MUTEX_LOCKER(guard, _mutex);
+  for (auto& c : conductors) {
+    uint64_t executionNumber = c->executionNumber();
+    
+    _conductors.erase(executionNumber);
+    _workers.erase(executionNumber);
   }
 } catch (...) {}
 
