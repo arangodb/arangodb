@@ -346,6 +346,11 @@ class IResearchDataStore {
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
     irs::type_info::type_id primarySortCompression);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief wait for all outstanding commit/consolidate operations and closes data store
+  //////////////////////////////////////////////////////////////////////////////
+  Result shutdownDataStore();
+
   LogicalCollection& _collection; // the linked collection
   IndexId const _id;                 // the index identifier
   StorageEngine* _engine;

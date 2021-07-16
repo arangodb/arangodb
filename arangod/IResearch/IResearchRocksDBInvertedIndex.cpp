@@ -202,6 +202,10 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(VPackBuilder & builder,
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
 }
 
+Result IResearchRocksDBInvertedIndex::drop() {
+  return shutdownDataStore();
+}
+
 bool IResearchRocksDBInvertedIndex::matchesDefinition(arangodb::velocypack::Slice const& other) const {
   TRI_ASSERT(other.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

@@ -69,6 +69,8 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex, publi
     return IResearchInvertedIndex::inProgress();
   }
 
+  Result drop() override;
+
   void load() override {}
   void unload() override {}
 

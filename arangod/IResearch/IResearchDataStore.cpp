@@ -827,6 +827,29 @@ Result IResearchDataStore::consolidateUnsafe(
   return {};
 }
 
+Result IResearchDataStore::shutdownDataStore() {
+  std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
+  _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
+
+  try {
+    if (_dataStore) {
+      _dataStore.resetDataStore();
+    }
+  } catch (basics::Exception const& e) {
+    return {e.code(), "caught exception while unloading arangosearch data store '" +
+                          std::to_string(id().id()) + "': " + e.what()};
+  } catch (std::exception const& e) {
+    return {TRI_ERROR_INTERNAL,
+            "caught exception while removing arangosearch data store '" +
+                std::to_string(id().id()) + "': " + e.what()};
+  } catch (...) {
+    return {TRI_ERROR_INTERNAL,
+            "caught exception while removing arangosearch data store '" +
+                std::to_string(id().id()) + "'"};
+  }
+
+  return {};
+}
 
 Result IResearchDataStore::initDataStore(InitCallback const& initCallback, bool sorted,
                                     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
