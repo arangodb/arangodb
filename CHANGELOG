@@ -1,6 +1,12 @@
 devel
 -----
 
+* Make `--javascript.copy-installation` also copy the `node_modules` sub
+  directory. This is required so we have a full copy of the JavaScript
+  dependencies and not one that excludes some infrequently changed modules.
+  In addition, file copying now intentionally excludes .map files as they
+  are not needed. 
+
 * Slightly increase internal AQL query and transaction timeout on DB servers 
   from 3 to 5 minutes.
   Previously, queries and transactions on DB servers could expire quicker,
