@@ -50,6 +50,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -61,10 +62,14 @@ using namespace std::literals;
 
 namespace {
 
+arangodb::iresearch::DummyMetric<arangodb::iresearch::IResearchLink::LinkStats> _dummyStats;
+
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
 using irs::async_utils::read_write_mutex;
+
+DECLARE_ATOMIC_METRIC(arangodb_arangosearch_link_stats, IResearchLink::LinkStats, "Stats of documents in link");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the link state for a given TransactionState
@@ -411,7 +416,7 @@ void CommitTask::operator()() {
   if (res.ok()) {
     LOG_TOPIC("7e323", TRACE, iresearch::TOPIC)
         << "successful sync of arangosearch link '" << id
-        << "', run id '" << size_t(&runId) << "', took: " << 
+        << "', run id '" << size_t(&runId) << "', took: " <<
         std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::steady_clock::now() - syncStart).count()
         << "ms";
@@ -429,7 +434,7 @@ void CommitTask::operator()() {
         if (res.ok()) {
           LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
               << "successful cleanup of arangosearch link '" << id
-              << "', run id '" << size_t(&runId) << "', took: " << 
+              << "', run id '" << size_t(&runId) << "', took: " <<
               std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - cleanupStart).count()
               << "ms";
@@ -567,7 +572,7 @@ void ConsolidationTask::operator()() {
     }
     LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
         << "successful consolidation of arangosearch link '" << link->id()
-        << "', run id '" << size_t(&runId) << "', took: " << 
+        << "', run id '" << size_t(&runId) << "', took: " <<
         std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::steady_clock::now() - consolidationStart).count()
         << "ms";
@@ -610,6 +615,9 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _id(iid),
       _lastCommittedTick(0),
       _createdInRecovery(false) {
+
+  _linkStats = &_dummyStats;
+
   auto* key = this;
 
   // initialize transaction callback
@@ -863,6 +871,8 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
     TRI_ASSERT(_dataStore._reader != reader);
     _dataStore._reader = reader;
 
+    _linkStats->store(stats());
+
     // update last committed tick
     impl.tick(_lastCommittedTick);
 
@@ -945,7 +955,6 @@ Result IResearchLink::drop() {
   if (ServerState::instance()->isSingleServer()) {
     auto logicalView = _collection.vocbase().lookupView(_viewGuid);
     auto* view = LogicalView::cast<IResearchView>(logicalView.get());
-
     // may occur if the link was already unlinked from the view via another instance
     // this behavior was seen user-access-right-drop-view-arangosearch-spec.js
     // where the collection drop was called through REST,
@@ -968,6 +977,21 @@ Result IResearchLink::drop() {
 
   std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
+
+  std::string view, col, shard;
+
+  getLinkLabels(view, col, shard);
+
+  auto tmpStats = arangodb_arangosearch_link_stats{};
+  tmpStats.addLabel("viewId", view);
+  tmpStats.addLabel("collName", col);
+  tmpStats.addLabel("shardName", shard);
+
+  // remove statistic from MetricsFeature
+  _collection.vocbase().server()
+    .getFeature<arangodb::MetricsFeature>().remove(std::move(tmpStats));
+
+  _linkStats = &_dummyStats;
 
   try {
     if (_dataStore) {
@@ -1028,8 +1052,8 @@ Result IResearchLink::init(
             "error finding view for link '" + std::to_string(_id.id()) + "'"};
   }
 
-  auto viewId = definition.get(StaticStrings::ViewIdField).copyString();
   auto& vocbase = _collection.vocbase();
+  auto viewId = definition.get(StaticStrings::ViewIdField).copyString();
   bool const sorted = !meta._sort.empty();
   auto const& storedValuesColumns = meta._storedValues.columns();
   TRI_ASSERT(meta._sortCompression);
@@ -1233,6 +1257,19 @@ Result IResearchLink::init(
   const_cast<std::string&>(_viewGuid) = std::move(viewId);
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
   _comparer.reset(_meta._sort);
+
+  std::string view, col, shard;
+
+  getLinkLabels(view, col, shard);
+
+  auto tmpStats = arangodb_arangosearch_link_stats{};
+  tmpStats.addLabel("viewId", view);
+  tmpStats.addLabel("collName", col);
+  tmpStats.addLabel("shardName", shard);
+
+  // init _linkStats with AtomicMetric
+  _linkStats = &_collection.vocbase().server()
+            .getFeature<arangodb::MetricsFeature>().add(std::move(tmpStats));
 
   return {};
 }
@@ -1520,6 +1557,21 @@ void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
 
   ++_maintenanceState->pendingConsolidations;
   task.schedule(delay);
+}
+
+void IResearchLink::getLinkLabels(std::string& view,
+                                  std::string& col,
+                                  std::string& shard) {
+
+  view = _viewGuid;
+  if (ServerState::instance()->isDBServer()) {
+    col = _meta._collectionName;
+    shard = _collection.name();
+  } else if (ServerState::instance()->isSingleServer()) {
+    col = _collection.name();
+    shard = "";
+  }
+
 }
 
 Result IResearchLink::insert(
@@ -1872,6 +1924,21 @@ Result IResearchLink::unload() {
   std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
+  std::string view, col, shard;
+
+  getLinkLabels(view, col, shard);
+
+  auto tmpStats = arangodb_arangosearch_link_stats{};
+  tmpStats.addLabel("viewId", view);
+  tmpStats.addLabel("collName", col);
+  tmpStats.addLabel("shardName", shard);
+
+  // remove statistic from MetricsFeature
+  _collection.vocbase().server()
+    .getFeature<arangodb::MetricsFeature>().remove(std::move(tmpStats));
+
+  _linkStats = &_dummyStats;
+
   try {
     if (_dataStore) {
       _dataStore.resetDataStore();
@@ -1911,8 +1978,37 @@ AnalyzerPool::ptr IResearchLink::findAnalyzer(AnalyzerPool const& analyzer) cons
   return nullptr;
 }
 
-IResearchLink::Stats IResearchLink::stats() const {
-  Stats stats;
+void IResearchLink::LinkStats::toPrometheus(std::string &result,
+                                        const std::string &labels,
+                                        const std::string &globalLabels) const {
+
+  std::string annotation = "{ " + globalLabels;
+  if (!labels.empty()) {
+    if (!globalLabels.empty()) {
+      annotation += ", ";
+    }
+    annotation += labels;
+  }
+  annotation += "} ";
+
+  auto writeMetric = [&result, &annotation](std::string_view metricName, size_t value) {
+    result.append(metricName.data(), metricName.size());
+    result += annotation;
+    result += std::to_string(value);
+    result += '\n';
+  };
+
+  writeMetric("arangodb_arangosearch_docs_count", docsCount);
+  writeMetric("arangodb_arangosearch_live_docs_count", liveDocsCount);
+  writeMetric("arangodb_arangosearch_index_size", indexSize);
+  writeMetric("arangodb_arangosearch_segments_count", numSegments);
+  writeMetric("arangodb_arangosearch_files_count", this->numFiles);
+
+  return;
+}
+
+IResearchLink::LinkStats IResearchLink::stats() const {
+  LinkStats stats;
 
   // '_dataStore' can be asynchronously modified
   auto lock = _asyncSelf->lock();

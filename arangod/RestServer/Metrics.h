@@ -86,6 +86,40 @@ class Counter : public Metric {
   mutable Metrics::buffer_type _b;
 };
 
+template<typename T>
+class AtomicMetric : public Metric {
+
+ public:
+  AtomicMetric() { }
+  AtomicMetric(T&& val, std::string const& name, std::string const& help,
+        std::string const& labels = std::string())
+    : Metric(name, help, labels), stats(std::forward<T>(val)) { }
+
+  ~AtomicMetric() { }
+
+  virtual void store(T&& newStats) {
+    std::lock_guard<std::mutex> lock(mutex);
+    stats = std::forward<T>(newStats);
+    return;
+  }
+
+  virtual T load() const {
+    std::lock_guard<std::mutex> lock(mutex);
+    return stats;
+  }
+
+  std::string type() const override { return "atomic_metric"; }
+
+  void toPrometheus(std::string& result,
+                    std::string const& globalLabels,
+                    std::string const& alternativeName) const override {
+    load().toPrometheus(result, labels(), globalLabels);
+  }
+
+ private:
+  T stats;
+  mutable std::mutex mutex;
+};
 
 template<typename T> class Gauge : public Metric {
  public:

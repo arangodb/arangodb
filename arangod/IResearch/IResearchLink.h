@@ -34,6 +34,7 @@
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "Transaction/Status.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -75,6 +76,33 @@ class AsyncLinkHandle {
   ResourceMutexT<IResearchLink> _link;
   std::atomic<bool> _asyncTerminate{false}; // trigger termination of long-running async jobs
 }; // AsyncLinkHandle
+
+struct Stats {
+  size_t docsCount{};       // total number of documents
+  size_t liveDocsCount{};   // number of live documents
+  size_t numBufferedDocs{}; // number of buffered docs
+  size_t indexSize{};       // size of the index in bytes
+  size_t numSegments{};     // number of segments
+  size_t numFiles{};        // number of files
+};
+
+template <typename T>
+class DummyMetric : public AtomicMetric<T> {
+ public:
+  DummyMetric() : AtomicMetric<T>(T(), "", "", "") {}
+
+  void toPrometheus(std::string& result,
+                    std::string const& globalLabels,
+                    std::string const& alternativeName) const override {}
+
+  virtual void store(T&& newStats) override{}
+
+  virtual T load() const override {
+    return T();
+  }
+
+  std::string type() const override { return "dummy_metric"; }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB
@@ -119,7 +147,6 @@ class IResearchLink {
   };
 
   virtual ~IResearchLink();
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief does this IResearch Link reference the supplied view
   ////////////////////////////////////////////////////////////////////////////////
@@ -264,7 +291,7 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   Result init(velocypack::Slice const& definition,
               InitCallback const& initCallback = {});
-              
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get stored values
   ////////////////////////////////////////////////////////////////////////////////
@@ -273,23 +300,25 @@ class IResearchLink {
   /// @brief sets the _collectionName in Link meta. Used in cluster only to store
   /// linked collection name (as shard name differs from the cluster-wide collection name)
   /// @param name  collectioName to set. Should match existing value of  the _collectionName
-  /// if it is not empty. 
+  /// if it is not empty.
   /// @return true if name not existed in link before and was actually set by this call,
   /// false otherwise
   bool setCollectionName(irs::string_ref name) noexcept;
 
- protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief index stats
   //////////////////////////////////////////////////////////////////////////////
-  struct Stats {
-    size_t docsCount{};       // total number of documents
-    size_t liveDocsCount{};   // number of live documents
-    size_t numBufferedDocs{}; // number of buffered docs
-    size_t indexSize{};       // size of the index in bytes
-    size_t numSegments{};     // number of segments
-    size_t numFiles{};        // number of files
+  struct LinkStats : Stats {
+    void toPrometheus (
+      std::string& result,
+      const std::string& labels,
+      const std::string& globalLabels) const;
   };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get index stats for current snapshot
+  ////////////////////////////////////////////////////////////////////////////////
+  LinkStats stats() const;
 
  protected:
   ////////////////////////////////////////////////////////////////////////////////
@@ -302,11 +331,6 @@ class IResearchLink {
   /// @brief link was created during recovery
   ////////////////////////////////////////////////////////////////////////////////
   bool createdInRecovery() const noexcept { return _createdInRecovery; }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief get index stats for current snapshot
-  ////////////////////////////////////////////////////////////////////////////////
-  Stats stats() const;
 
  private:
   friend struct CommitTask;
@@ -351,8 +375,8 @@ class IResearchLink {
     std::atomic<bool> _inRecovery{ false }; // data store is in recovery
     operator bool() const noexcept { return _directory && _writer; }
 
-    void resetDataStore() noexcept { // reset all underlying readers to release file handles 
-      _reader.reset(); 
+    void resetDataStore() noexcept { // reset all underlying readers to release file handles
+      _reader.reset();
       _writer.reset();
       _directory.reset();
     }
@@ -398,6 +422,8 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   void scheduleConsolidation(std::chrono::milliseconds delay);
 
+  void getLinkLabels(std::string& view, std::string& col, std::string& shard);
+
   StorageEngine* _engine;
   VPackComparer _comparer;
   IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
@@ -413,6 +439,7 @@ class IResearchLink {
   std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
   bool _createdInRecovery; // link was created based on recovery marker
+  AtomicMetric<LinkStats>* _linkStats; // metric for link statistics
 };  // IResearchLink
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
