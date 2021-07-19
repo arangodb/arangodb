@@ -29,6 +29,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Cluster/CallbackGuard.h"
 #include "Containers/SmallVector.h"
 
 #include <memory>
@@ -137,6 +138,8 @@ class ExecutionEngine {
   
   bool waitForSatellites(aql::QueryContext& query, Collection const* collection) const;
   
+  std::vector<arangodb::cluster::CallbackGuard>& rebootTrackers();
+  
 #ifdef USE_ENTERPRISE
   static void parallelizeTraversals(aql::Query& query, ExecutionPlan& plan,
                                     std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>& aliases);
@@ -172,6 +175,9 @@ class ExecutionEngine {
 
   /// @brief root block of the engine
   ExecutionBlock* _root;
+      
+  /// @brief reboot trackers for DB servers participating in the query
+  std::vector<arangodb::cluster::CallbackGuard> _rebootTrackers;
 
   /// @brief the register the final result of the query is stored in
   RegisterId _resultRegister;

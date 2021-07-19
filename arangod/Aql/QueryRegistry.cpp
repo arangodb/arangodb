@@ -49,6 +49,8 @@ QueryRegistry::~QueryRegistry() {
 
 /// @brief insert
 void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard) {
+  TRI_ASSERT(!ServerState::instance()->isSingleServer());
+
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->state() != QueryExecutionState::ValueType::INITIALIZATION);
   LOG_TOPIC("77778", DEBUG, arangodb::Logger::AQL)

@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef ARANGOD_GENERAL_SERVER_ACCEPTORUNIXDOMAIN_H
-#define ARANGOD_GENERAL_SERVER_ACCEPTORUNIXDOMAIN_H 1
 
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/AsioSocket.h"
@@ -50,5 +48,3 @@ class AcceptorUnixDomain final : public Acceptor {
 };
 }  // namespace rest
 }  // namespace arangodb
-
-#endif

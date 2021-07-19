@@ -31,7 +31,6 @@
 
 namespace arangodb {
 
-
 struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   struct Executor {
     virtual ~Executor() = default;
@@ -47,8 +46,7 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
 
   auto persist(std::shared_ptr<arangodb::replication2::PersistedLog> log,
                std::unique_ptr<arangodb::replication2::LogIterator> iter,
-               WriteOptions const& options)
-  -> futures::Future<Result>;
+               WriteOptions const& options) -> futures::Future<Result>;
 
   struct PersistRequest {
     PersistRequest(std::shared_ptr<arangodb::replication2::PersistedLog> log,
@@ -61,47 +59,55 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   };
 
   struct Lane {
-    Lane() = default;
+    Lane() = delete;
+
+    struct WaitForSync{};
+    struct DontWaitForSync{};
+    explicit Lane(WaitForSync) : _waitForSync(true) {}
+    explicit Lane(DontWaitForSync) : _waitForSync(false) {}
+
     std::mutex _persistorMutex;
     std::vector<PersistRequest> _pendingPersistRequests;
-    bool _waitForSync = false;
     std::atomic<unsigned> _activePersistorThreads = 0;
+    bool const _waitForSync;
   };
-
 
   void runPersistorWorker(Lane& lane) noexcept;
 
-  std::array<Lane, 2> _lanes = {};
+  std::array<Lane, 2> _lanes = {Lane{Lane::WaitForSync{}}, Lane{Lane::DontWaitForSync{}}};
 
   rocksdb::ColumnFamilyHandle* const _cf;
   rocksdb::DB* const _db;
   std::shared_ptr<Executor> _executor;
 };
 
-class RocksDBPersistedLog : public replication2::PersistedLog, public std::enable_shared_from_this<RocksDBPersistedLog> {
+class RocksDBPersistedLog : public replication2::PersistedLog,
+                            public std::enable_shared_from_this<RocksDBPersistedLog> {
  public:
   ~RocksDBPersistedLog() override = default;
-  RocksDBPersistedLog(replication2::LogId id, uint64_t objectId, std::shared_ptr<RocksDBLogPersistor> persistor);
+  RocksDBPersistedLog(replication2::LogId id, uint64_t objectId,
+                      std::shared_ptr<RocksDBLogPersistor> persistor);
 
   auto insert(replication2::LogIterator& iter, WriteOptions const&) -> Result override;
   auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
-  auto insertWithBatch(replication2::LogIterator& iter, rocksdb::WriteBatch& batch) -> Result;
-  auto insertSingleWrites(replication2::LogIterator& iter) -> Result;
   auto read(replication2::LogIndex start)
       -> std::unique_ptr<replication2::LogIterator> override;
   auto removeFront(replication2::LogIndex stop) -> Result override;
   auto removeBack(replication2::LogIndex start) -> Result override;
 
+  // On success, iter will be completely consumed and written to wb.
+  auto prepareWriteBatch(replication2::LogIterator& iter, rocksdb::WriteBatch& wb) -> Result;
 
   uint64_t objectId() const { return _objectId; }
 
   auto drop() -> Result override;
 
+  RocksDBKeyBounds getBounds() const {
+    return RocksDBKeyBounds::LogRange(_objectId);
+  }
 
-  RocksDBKeyBounds getBounds() const { return RocksDBKeyBounds::LogRange(_objectId); }
-
- protected:
+ private:
   uint64_t const _objectId;
   std::shared_ptr<RocksDBLogPersistor> _persistor;
 };

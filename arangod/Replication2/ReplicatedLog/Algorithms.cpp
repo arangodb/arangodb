@@ -228,7 +228,7 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
 
 auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId,
                                      RebootId rebootId, LogId logId,
-                                     agency::LogPlanSpecification const* spec)
+                                     agency::LogPlanSpecification const* spec) noexcept
     -> arangodb::Result {
   return basics::catchToResult([&]() -> Result {
     if (spec == nullptr) {
