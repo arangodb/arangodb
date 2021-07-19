@@ -155,16 +155,7 @@ std::string Exception::FillFormatExceptionString(char const* format, ...) {
   FATAL_ERROR_EXIT();
 }
 
-[[noreturn]] void ::arangodb::basics::abortOrThrowException(Exception e) {
-#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-  throw e;
-#else
-  try {
-    throw std::move(e);
-  } catch (::arangodb::basics::Exception const& ex) {
-    LOG_TOPIC("fa7a1", FATAL, ::arangodb::Logger::CRASH) << ex.message();
-    TRI_ASSERT(false);
-  }
+[[noreturn]] void ::arangodb::basics::helper::logAndAbort(const char* what) {
+  LOG_TOPIC("fa7a1", FATAL, ::arangodb::Logger::CRASH) << what;
   TRI_ASSERT(false);
-#endif
 }

@@ -162,9 +162,21 @@ Result catchVoidToResult(F&& fn, ErrorCode defaultError = TRI_ERROR_INTERNAL) no
   return catchToResult(wrapped, defaultError);
 }
 
+namespace helper {
+// just so we don't have to include logger into this header
+[[noreturn]] void logAndAbort(char const* what);
+}
+
 // @brief Throws the passed exception, but in maintainer mode, logs the error
 // and aborts instead.
-[[noreturn]] void abortOrThrowException(Exception e);
+template <typename E>
+[[noreturn]] void abortOrThrowException(E&& e) {
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+  throw std::forward<E>(e);
+#else
+  helper::logAndAbort(e.what());
+#endif
+}
 
 // @brief Forwards arguments to an Exception constructor and calls
 // abortOrThrowException
