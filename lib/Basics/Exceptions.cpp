@@ -158,4 +158,5 @@ std::string Exception::FillFormatExceptionString(char const* format, ...) {
 [[noreturn]] void ::arangodb::basics::helper::logAndAbort(const char* what) {
   LOG_TOPIC("fa7a1", FATAL, ::arangodb::Logger::CRASH) << what;
   TRI_ASSERT(false);
+  FATAL_ERROR_ABORT();
 }
