@@ -321,7 +321,7 @@ class Graph {
   /// @brief the names of all orphanCollections
   std::set<std::string> _orphanColls;
 
-  /// @brief the names of all orphanCollections
+  /// @brief the names of all satelliteCollections
   std::set<std::string> _satelliteColls;
 
   /// @brief the names of all edgeCollections

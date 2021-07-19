@@ -157,6 +157,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t);
 
+  bool checkSmartDestination(VPackSlice edge, velocypack::StringRef sourceVertex);
+
   bool destinationCollectionAllowed(velocypack::Slice edge, velocypack::StringRef sourceVertex);
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);

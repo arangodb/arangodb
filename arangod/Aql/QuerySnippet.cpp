@@ -656,6 +656,8 @@ auto QuerySnippet::prepareFirstBranch(
           if (localGraphNode->isDisjoint()) {
             if (found->second == server) {
               myExp.emplace(shard);
+            } else if (aqlCollection->isSatellite()) {
+              myExp.emplace(shard);
             } else {
               // the target server does not have anything to do with the particular
               // collection (e.g. because the collection's shards are all on other

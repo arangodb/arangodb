@@ -765,6 +765,10 @@ bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vert
   return evaluateExpression(expression, vertex);
 }
 
+bool TraverserOptions::checkSmartDestination(VPackSlice edge, velocypack::StringRef sourceVertex) {
+  return false;
+}
+
 bool TraverserOptions::destinationCollectionAllowed(VPackSlice edge,
                                                     velocypack::StringRef sourceVertex) {
   if (hasVertexCollectionRestrictions()) {
@@ -777,6 +781,9 @@ bool TraverserOptions::destinationCollectionAllowed(VPackSlice edge,
       return false;
     }
   }
+#ifdef USE_ENTERPRISE
+  checkSmartDestination(edge, sourceVertex);
+#endif
 
   return true;
 }
