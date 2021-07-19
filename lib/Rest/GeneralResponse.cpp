@@ -314,6 +314,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_QUERY_FAIL_CALLED):
     case static_cast<int>(TRI_ERROR_QUERY_INVALID_DATE_VALUE):
     case static_cast<int>(TRI_ERROR_QUERY_MULTI_MODIFY):
+    case static_cast<int>(TRI_ERROR_QUERY_TOO_MUCH_NESTING):
     case static_cast<int>(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS):
     case static_cast<int>(TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE):
     case static_cast<int>(TRI_ERROR_QUERY_DISALLOWED_DYNAMIC_CALL):
