@@ -7,6 +7,15 @@ devel
   In addition, file copying now intentionally excludes .map files as they
   are not needed. 
 
+* Fixed BTS-408: treat positive or negative signed numbers as constants 
+  immediately during AQL query parsing. 
+  Previously, a value of `-1` was parsed initially as `unary minus(value(1))`,
+  which was not treated in the same way as a constant value `value(-1)`. 
+  The value was later optimized to just `value(-1)`, but this only happened 
+  during constant-folding after parsing. Any operations that referred to 
+  the unfolded values during parsing thus did not treat such values as
+  constants. 
+
 * Slightly increase internal AQL query and transaction timeout on DB servers 
   from 3 to 5 minutes.
   Previously, queries and transactions on DB servers could expire quicker,

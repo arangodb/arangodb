@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertMatch, AQL_EXPLAIN */
+/*global assertEqual, assertTrue, assertMatch, fail, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for invalid OPTIONS attributes
@@ -80,6 +80,8 @@ function aqlOptionsVerificationSuite () {
         [ prefix + "{ indexHint: [] } RETURN 1", "indexHint" ],
         [ prefix + "{ waitForSync: true } RETURN 1", "waitForSync" ],
         [ prefix + "{ waitForSync: false } RETURN 1", "waitForSync" ],
+        [ prefix + "{ waitForSync: +1 } RETURN 1", "waitForSync" ],
+        [ prefix + "{ waitForSync: -1 } RETURN 1", "waitForSync" ],
         [ prefix + "{ method: 'hash' } RETURN 1", "method" ],
         [ prefix + "{ tititi: 'piff' } RETURN 1", "tititi" ],
       ];
@@ -106,7 +108,19 @@ function aqlOptionsVerificationSuite () {
         [ prefix + "{ tititi: 'piff' } RETURN 1", "tititi" ],
       ];
 
-      checkQueries("FOR", queries);
+      // arangosearch only likes boolean attributes for its waitForSync value
+      try {
+        AQL_EXPLAIN(prefix + "{ waitForSync: +1 } RETURN 1");
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+      try {
+        AQL_EXPLAIN(prefix + "{ waitForSync: -1 } RETURN 1");
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
     },
     
     testTraversal : function () {
@@ -130,6 +144,8 @@ function aqlOptionsVerificationSuite () {
         [ prefix + "{ bfs: true, order: 'bfs' } RETURN 1", "order" ],
         [ prefix + "{ waitForSync: true } RETURN 1", "waitForSync" ],
         [ prefix + "{ waitForSync: false } RETURN 1", "waitForSync" ],
+        [ prefix + "{ waitForSync: +1 } RETURN 1", "waitForSync" ],
+        [ prefix + "{ waitForSync: -1 } RETURN 1", "waitForSync" ],
         [ prefix + "{ method: 'hash' } RETURN 1", "method" ],
         [ prefix + "{ tititi: 'piff' } RETURN 1", "tititi" ],
       ];
@@ -144,7 +160,10 @@ function aqlOptionsVerificationSuite () {
         [ prefix + "{ defaultWeight: 42.5 } RETURN 1" ],
         [ prefix + "{ weightAttribute: false } RETURN 1", "weightAttribute" ],
         [ prefix + "{ defaultWeight: false } RETURN 1", "defaultWeight" ],
+        [ prefix + "{ waitForSync: false } RETURN 1", "waitForSync" ],
         [ prefix + "{ waitForSync: true } RETURN 1", "waitForSync" ],
+        [ prefix + "{ waitForSync: +1 } RETURN 1", "waitForSync" ],
+        [ prefix + "{ waitForSync: -1 } RETURN 1", "waitForSync" ],
         [ prefix + "{ method: 'hash' } RETURN 1", "method" ],
         [ prefix + "{ tititi: 'piff' } RETURN 1", "tititi" ],
       ];
@@ -158,7 +177,10 @@ function aqlOptionsVerificationSuite () {
         [ prefix + "{ method: 'sorted' } RETURN x" ],
         [ prefix + "{ method: 'hash' } RETURN x" ],
         [ prefix + "{ method: 'foxx' } RETURN x", "method" ],
+        [ prefix + "{ waitForSync: false } RETURN x", "waitForSync" ],
         [ prefix + "{ waitForSync: true } RETURN x", "waitForSync" ],
+        [ prefix + "{ waitForSync: +1 } RETURN x", "waitForSync" ],
+        [ prefix + "{ waitForSync: -1 } RETURN x", "waitForSync" ],
         [ prefix + "{ tititi: 'piff' } RETURN x", "tititi" ],
       ];
 
@@ -170,6 +192,8 @@ function aqlOptionsVerificationSuite () {
       const queries = [
         [ prefix + "{ waitForSync: false }" ],
         [ prefix + "{ waitForSync: true }" ],
+        [ prefix + "{ waitForSync: +1 }" ],
+        [ prefix + "{ waitForSync: -1 }" ],
         [ prefix + "{ skipDocumentValidation: true }" ],
         [ prefix + "{ keepNull: true }" ],
         [ prefix + "{ mergeObjects: true }" ],
@@ -191,6 +215,8 @@ function aqlOptionsVerificationSuite () {
       const queries = [
         [ prefix + "{ waitForSync: false }" ],
         [ prefix + "{ waitForSync: true }" ],
+        [ prefix + "{ waitForSync: +1 }" ],
+        [ prefix + "{ waitForSync: -1 }" ],
         [ prefix + "{ skipDocumentValidation: true }" ],
         [ prefix + "{ keepNull: true }" ],
         [ prefix + "{ mergeObjects: true }" ],
@@ -212,6 +238,8 @@ function aqlOptionsVerificationSuite () {
       const queries = [
         [ prefix + "{ waitForSync: false }" ],
         [ prefix + "{ waitForSync: true }" ],
+        [ prefix + "{ waitForSync: +1 }" ],
+        [ prefix + "{ waitForSync: -1 }" ],
         [ prefix + "{ skipDocumentValidation: true }" ],
         [ prefix + "{ keepNull: true }" ],
         [ prefix + "{ mergeObjects: true }" ],
@@ -233,6 +261,8 @@ function aqlOptionsVerificationSuite () {
       const queries = [
         [ prefix + "{ waitForSync: false }" ],
         [ prefix + "{ waitForSync: true }" ],
+        [ prefix + "{ waitForSync: +1 }" ],
+        [ prefix + "{ waitForSync: -1 }" ],
         [ prefix + "{ skipDocumentValidation: true }" ],
         [ prefix + "{ keepNull: true }" ],
         [ prefix + "{ mergeObjects: true }" ],
@@ -254,6 +284,8 @@ function aqlOptionsVerificationSuite () {
       const queries = [
         [ prefix + "{ waitForSync: false }" ],
         [ prefix + "{ waitForSync: true }" ],
+        [ prefix + "{ waitForSync: +1 }" ],
+        [ prefix + "{ waitForSync: -1 }" ],
         [ prefix + "{ skipDocumentValidation: true }" ],
         [ prefix + "{ keepNull: true }" ],
         [ prefix + "{ mergeObjects: true }" ],
