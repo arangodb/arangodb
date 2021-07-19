@@ -109,7 +109,7 @@ class GraphProviderTest : public ::testing::Test {
       auto indexCondition = singleServer->buildOutboundCondition(query.get(), tmpVar);
 
       std::vector<IndexAccessor> usedIndexes{};
-      usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr});
+      usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr, 0});
 
       _expressionContext =
           std::make_unique<arangodb::aql::FixedVarExpressionContext>(*_trx.get(), *query,
@@ -120,7 +120,8 @@ class GraphProviderTest : public ::testing::Test {
           std::make_pair(std::move(usedIndexes),
                          std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
           *_expressionContext.get(), _emptyShardMap);
-      return SingleServerProvider<SingleServerProviderStep>(*query.get(), std::move(opts), resourceMonitor);
+      return SingleServerProvider<SingleServerProviderStep>(*query.get(), std::move(opts),
+                                                            resourceMonitor);
     }
     if constexpr (std::is_same_v<ProviderType, ClusterProvider>) {
       // Prepare the DBServerResponses

@@ -125,26 +125,32 @@ auto SingleServerProvider<Step>::expand(Step const& step, size_t previous,
   TRI_ASSERT(_cursor != nullptr);
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
-  _cursor->rearm(vertex.getID(), 0);
-  _cursor->readAll(
-      *this, _stats, step.getDepth(),
-      [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
-        VertexType id = _cache.persistString(([&]() -> auto {
-          if (edge.isString()) {
-            return VertexType(edge);
-          } else {
-            VertexType other(transaction::helpers::extractFromFromDocument(edge));
-            if (other == vertex.getID()) {  // TODO: Check getId - discuss
-              other = VertexType(transaction::helpers::extractToFromDocument(edge));
-            }
-            return other;
-          }
-        })());
-        // TODO: Adjust log output
-        LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
-            << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> " << id;
-        callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
-      });
+  _cursor->rearm(vertex.getID(), step.getDepth());
+  _cursor->readAll(*this, _stats, step.getDepth(), [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
+    VertexType id = _cache.persistString(([&]() -> auto {
+      if (edge.isString()) {
+        return VertexType(edge);
+      } else {
+        VertexType other(transaction::helpers::extractFromFromDocument(edge));
+        if (other == vertex.getID()) {  // TODO: Check getId - discuss
+          other = VertexType(transaction::helpers::extractToFromDocument(edge));
+        }
+        return other;
+      }
+    })());
+    // TODO: Adjust log output
+    LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
+        << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> " << id;
+#ifdef USE_ENTERPRISE
+    if constexpr (std::is_same_v<arangodb::graph::enterprise::SmartGraphStep, Step>) {
+      callback(Step{id, std::move(eid), previous, step.getDepth() + 1, cursorID});
+    } else {
+      callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
+    }
+#else
+    callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
+#endif
+  });
 }
 
 template <class Step>

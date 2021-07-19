@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueueTracer.h"
-#include <Enterprise/Graph/Steps/SmartGraphStep.h>
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"

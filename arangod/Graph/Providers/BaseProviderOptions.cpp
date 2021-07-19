@@ -28,8 +28,12 @@ using namespace arangodb::graph;
 
 IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
                              aql::AstNode* condition, std::optional<size_t> memberToUpdate,
-                             std::shared_ptr<arangodb::aql::Expression> expression)
-    : _idx(idx), _indexCondition(condition), _memberToUpdate(memberToUpdate) {
+                             std::shared_ptr<arangodb::aql::Expression> expression,
+                             size_t cursorId)
+    : _idx(idx),
+      _indexCondition(condition),
+      _memberToUpdate(memberToUpdate),
+      _cursorId(cursorId) {
   if (expression != nullptr) {
     _expression = std::move(expression);
   }
@@ -48,6 +52,8 @@ transaction::Methods::IndexHandle IndexAccessor::indexHandle() const {
 std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
   return _memberToUpdate;
 }
+
+size_t IndexAccessor::cursorId() const { return _cursorId; }
 
 BaseProviderOptions::BaseProviderOptions(
     aql::Variable const* tmpVar,

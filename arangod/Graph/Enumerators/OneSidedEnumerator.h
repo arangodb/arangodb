@@ -60,7 +60,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
  private:
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
-  using ResultList = std::vector<Step*>;
+  using ResultList = std::vector<Step>;
   using GraphOptions = arangodb::graph::OneSidedEnumeratorOptions;
 
  public:
@@ -72,7 +72,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
 
   ~OneSidedEnumerator();
 
-  void clear() override;
+  void clear(bool keepPathStore) override;
 
   /**
    * @brief Quick test if the finder can prove there is no more data available.
@@ -92,7 +92,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
    * @param source The source vertex to start the paths
    * @param depth The depth we're starting the search at
    */
-  void reset(VertexRef source, size_t depth = 0) override;
+  void reset(VertexRef source, size_t depth = 0, bool keepPathStore = false) override;
 
   /**
    * @brief Get the next path, if available written into the result build.

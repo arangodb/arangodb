@@ -29,6 +29,8 @@
 
 // TODO Temporary include
 #include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
+#include "Graph/Providers/TypeAliases.h"
+#include "Graph/TraverserOptions.h"
 
 #include <numeric>
 #include <unordered_map>
@@ -43,10 +45,10 @@ namespace graph {
 
 template <class ProviderType, class PathStoreType, class Step>
 class SingleProviderPathResult : public PathResultInterface {
-  using VertexRef = arangodb::velocypack::HashedStringRef;
+  using VertexRef = arangodb::velocypack::HashedStringRef;  // TODO might remove
 
  public:
-  SingleProviderPathResult(Step* step, ProviderType& provider, PathStoreType& store);
+  SingleProviderPathResult(Step step, ProviderType& provider, PathStoreType& store);
   auto clear() -> void;
   auto appendVertex(typename Step::Vertex v) -> void;
   auto prependVertex(typename Step::Vertex v) -> void;
@@ -55,16 +57,13 @@ class SingleProviderPathResult : public PathResultInterface {
 
   auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void override;
 
-  /**
-   * @brief Appends this path as a SchreierVector entry into the given builder
-   */
-  auto toSchreierEntry(arangodb::velocypack::Builder& builder, size_t& currentLength)
-      -> void override;
-
   auto isEmpty() const -> bool;
+  ProviderType* getProvider() { return &_provider; }
+  PathStoreType* getStore() { return &_store; }
+  Step& getStep() { return _step; }
 
  private:
-  Step* _step;
+  Step _step;
 
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;

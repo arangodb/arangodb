@@ -62,19 +62,16 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge)
 template <class Step>
 RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(
     transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-    std::optional<size_t> memberToUpdate, aql::Expression* expression)
+    std::optional<size_t> memberToUpdate, aql::Expression* expression, size_t cursorID)
     : _idxHandle(std::move(idx)),
       _expression(expression),
       _indexCondition(condition),
+      _cursorID(cursorID),
       _cursor(nullptr),
       _conditionMemberToUpdate(memberToUpdate) {}
 
 template <class Step>
-RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(LookupInfo&& other) noexcept
-    : _idxHandle(std::move(other._idxHandle)),
-      _expression(std::move(other._expression)),
-      _indexCondition(other._indexCondition),
-      _cursor(std::move(other._cursor)){};
+RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(LookupInfo&& other) = default;
 
 template <class Step>
 RefactoredSingleServerEdgeCursor<Step>::LookupInfo::~LookupInfo() = default;
@@ -82,6 +79,11 @@ RefactoredSingleServerEdgeCursor<Step>::LookupInfo::~LookupInfo() = default;
 template <class Step>
 aql::Expression* RefactoredSingleServerEdgeCursor<Step>::LookupInfo::getExpression() {
   return _expression;
+}
+
+template <class Step>
+size_t RefactoredSingleServerEdgeCursor<Step>::LookupInfo::getCursorID() const {
+  return _cursorID;
 }
 
 template <class Step>
@@ -152,22 +154,28 @@ RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
     std::vector<IndexAccessor> const& globalIndexConditions,
     std::unordered_map<uint64_t, std::vector<IndexAccessor>> const& depthBasedIndexConditions,
     arangodb::aql::FixedVarExpressionContext& expressionContext)
-    : _tmpVar(tmpVar), _currentCursor(0), _trx(trx), _expressionCtx(expressionContext) {
+    : _tmpVar(tmpVar), _trx(trx), _expressionCtx(expressionContext) {
   // We need at least one indexCondition, otherwise nothing to serve
   TRI_ASSERT(!globalIndexConditions.empty());
   _lookupInfo.reserve(globalIndexConditions.size());
   _depthLookupInfo.reserve(depthBasedIndexConditions.size());
+
   for (auto const& idxCond : globalIndexConditions) {
     _lookupInfo.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
-                             idxCond.getMemberToUpdate(), idxCond.getExpression());
+                             idxCond.getMemberToUpdate(),
+                             idxCond.getExpression(), idxCond.cursorId());
   }
   for (auto const& obj : depthBasedIndexConditions) {
+    // Need to reset cursor ID.
+    // The cursorID relates to the used collection
+    // not the condition
     auto& [depth, idxCondArray] = obj;
 
     std::vector<LookupInfo> tmpLookupVec;
     for (auto const& idxCond : idxCondArray) {
       tmpLookupVec.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
-                                idxCond.getMemberToUpdate(), idxCond.getExpression());
+                                idxCond.getMemberToUpdate(),
+                                idxCond.getExpression(), idxCond.cursorId());
     }
     _depthLookupInfo.try_emplace(depth, std::move(tmpLookupVec));
   }
@@ -177,9 +185,8 @@ template <class Step>
 RefactoredSingleServerEdgeCursor<Step>::~RefactoredSingleServerEdgeCursor() {}
 
 template <class Step>
-void RefactoredSingleServerEdgeCursor<Step>::rearm(VertexType vertex, uint64_t /*depth*/) {
-  _currentCursor = 0;
-  for (auto& info : _lookupInfo) {
+void RefactoredSingleServerEdgeCursor<Step>::rearm(VertexType vertex, uint64_t depth) {
+  for (auto& info : getLookupInfos(depth)) {
     info.rearmVertex(vertex, _trx, _tmpVar);
   }
 }
@@ -188,7 +195,7 @@ template <class Step>
 void RefactoredSingleServerEdgeCursor<Step>::readAll(SingleServerProvider<Step>& provider,
                                                      aql::TraversalStats& stats, size_t depth,
                                                      Callback const& callback) {
-  TRI_ASSERT(!_lookupInfo.empty());
+  TRI_ASSERT(!getLookupInfos(depth).empty());
   VPackBuilder tmpBuilder;
 
   auto evaluateEdgeExpressionHelper = [&](aql::Expression* expression,
@@ -201,36 +208,16 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(SingleServerProvider<Step>&
     return evaluateEdgeExpression(expression, edge);
   };
 
-  auto evaluateLookupInfos = [&](EdgeDocumentToken const& edgeToken,
-                                 VPackSlice const& edge) -> bool {
-    bool foundDepthInfo =
-        (_depthLookupInfo.find(depth) == _depthLookupInfo.end()) ? false : true;
-    if (foundDepthInfo && _depthLookupInfo.at(depth).size() > 0 &&
-        _depthLookupInfo.at(depth)[_currentCursor].getExpression() != nullptr) {
-      if (!evaluateEdgeExpressionHelper(
-              _depthLookupInfo.at(depth)[_currentCursor].getExpression(), edgeToken, edge)) {
-        stats.incrFiltered();
-        return false;
-      }
-    } else {
-      // eval global expression if available AND only if no depth specific expression needs to be handled before
-      if (_lookupInfo[_currentCursor].getExpression() != nullptr) {
-        if (!evaluateEdgeExpressionHelper(_lookupInfo[_currentCursor].getExpression(),
-                                          edgeToken, edge)) {
-          stats.incrFiltered();
-          return false;
-        }
-      }
-    }
+  for (auto& lookupInfo : getLookupInfos(depth)) {
+    auto cursorID = lookupInfo.getCursorID();
+    // we can only have a cursorID that is within the amount of collections in use.
+    TRI_ASSERT(cursorID < _lookupInfo.size());
 
-    return true;
-  };
-
-  for (_currentCursor = 0; _currentCursor < _lookupInfo.size(); ++_currentCursor) {
-    auto& cursor = _lookupInfo[_currentCursor].cursor();
+    auto& cursor = lookupInfo.cursor();
     LogicalCollection* collection = cursor.collection();
     auto cid = collection->id();
     bool hasExtra = cursor.hasExtra();
+    auto* expression = lookupInfo.getExpression();
 
     if (hasExtra) {
       cursor.allExtra([&](LocalDocumentId const& token, VPackSlice edge) {
@@ -242,13 +229,14 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(SingleServerProvider<Step>&
 #endif
 
         EdgeDocumentToken edgeToken(cid, token);
-        // eval depth-based expression first if available
-        bool needToRead = evaluateLookupInfos(edgeToken, edge);
-        if (!needToRead) {
+        // evaluate expression if available
+        if (expression != nullptr &&
+            !evaluateEdgeExpressionHelper(expression, edgeToken, edge)) {
+          stats.incrFiltered();
           return false;
         }
 
-        callback(std::move(edgeToken), edge, _currentCursor);
+        callback(std::move(edgeToken), edge, cursorID);
         return true;
       });
     } else {
@@ -271,12 +259,15 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(SingleServerProvider<Step>&
 #endif
                      // eval depth-based expression first if available
                      EdgeDocumentToken edgeToken(cid, token);
-                     bool needToRead = evaluateLookupInfos(edgeToken, edgeDoc);
-                     if (!needToRead) {
+
+                     // evaluate expression if available
+                     if (expression != nullptr &&
+                         !evaluateEdgeExpressionHelper(expression, edgeToken, edgeDoc)) {
+                       stats.incrFiltered();
                        return false;
                      }
 
-                     callback(std::move(edgeToken), edgeDoc, _currentCursor);
+                     callback(std::move(edgeToken), edgeDoc, cursorID);
                      return true;
                    })
             .ok();
@@ -304,6 +295,16 @@ bool RefactoredSingleServerEdgeCursor<Step>::evaluateEdgeExpression(arangodb::aq
   TRI_ASSERT(res.isBoolean());
 
   return res.toBoolean();
+}
+
+template <class Step>
+auto RefactoredSingleServerEdgeCursor<Step>::getLookupInfos(uint64_t depth)
+    -> std::vector<LookupInfo>& {
+  auto const& depthInfo = _depthLookupInfo.find(depth);
+  if (depthInfo == _depthLookupInfo.end()) {
+    return _lookupInfo;
+  }
+  return depthInfo->second;
 }
 
 template class arangodb::graph::RefactoredSingleServerEdgeCursor<SingleServerProviderStep>;

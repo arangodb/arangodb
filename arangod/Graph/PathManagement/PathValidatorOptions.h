@@ -76,6 +76,17 @@ class PathValidatorOptions {
 
   aql::FixedVarExpressionContext& getExpressionContext();
 
+  // @brief Only required for rolling upgrades 3.8 => 3.9
+  // If a graph is asked for the first vertex and that is filtered
+  // it can be removed for 3.9 => nextVersion.
+  void compatibility38IncludeFirstVertex() {
+    _compatibility38IncludeFirstVertex = true;
+  }
+
+  bool hasCompatibility38IncludeFirstVertex() const {
+    return _compatibility38IncludeFirstVertex;
+  }
+
  private:
   std::shared_ptr<aql::Expression> _allVerticesExpression;
   std::unordered_map<uint64_t, std::shared_ptr<aql::Expression>> _vertexExpressionOnDepth;
@@ -83,6 +94,8 @@ class PathValidatorOptions {
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
 
   std::vector<std::string> _allowedVertexCollections;
+
+  bool _compatibility38IncludeFirstVertex = false;
 };
 }  // namespace graph
 }  // namespace arangodb

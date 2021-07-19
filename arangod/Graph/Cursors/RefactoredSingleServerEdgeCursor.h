@@ -61,11 +61,12 @@ class RefactoredSingleServerEdgeCursor {
  public:
   struct LookupInfo {
     LookupInfo(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-               std::optional<size_t> memberToUpdate, aql::Expression* expression);
+               std::optional<size_t> memberToUpdate,
+               aql::Expression* expression, size_t cursorID);
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&) = delete;
-    LookupInfo(LookupInfo&&) noexcept;
+    LookupInfo(LookupInfo&&);
     LookupInfo& operator=(LookupInfo const&) = delete;
 
     void rearmVertex(VertexType vertex, transaction::Methods* trx,
@@ -74,11 +75,14 @@ class RefactoredSingleServerEdgeCursor {
     IndexIterator& cursor();
     aql::Expression* getExpression();
 
+    size_t getCursorID() const;
+
    private:
     // NOTE: The expression can be nullptr!
     transaction::Methods::IndexHandle _idxHandle;
     aql::Expression* _expression;
     aql::AstNode* _indexCondition;
+    size_t _cursorID;
 
     std::unique_ptr<IndexIterator> _cursor;
 
@@ -101,7 +105,6 @@ class RefactoredSingleServerEdgeCursor {
 
  private:
   aql::Variable const* _tmpVar;
-  size_t _currentCursor;
   std::vector<LookupInfo> _lookupInfo;
   std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
@@ -109,12 +112,15 @@ class RefactoredSingleServerEdgeCursor {
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
 
  public:
-  void readAll(SingleServerProvider<StepType>& provider, aql::TraversalStats& stats,
-               size_t depth, Callback const& callback);
+  void readAll(SingleServerProvider<StepType>& provider,
+               aql::TraversalStats& stats, size_t depth, Callback const& callback);
 
   void rearm(VertexType vertex, uint64_t depth);
 
   bool evaluateEdgeExpression(arangodb::aql::Expression* expression, VPackSlice value);
+
+ private:
+  auto getLookupInfos(uint64_t depth) -> std::vector<LookupInfo>&;
 };
 }  // namespace graph
 }  // namespace arangodb

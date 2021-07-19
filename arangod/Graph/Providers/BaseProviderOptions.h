@@ -43,12 +43,13 @@ namespace graph {
 struct IndexAccessor {
   IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
                 std::optional<size_t> memberToUpdate,
-                std::shared_ptr<arangodb::aql::Expression> expression);
+                std::shared_ptr<arangodb::aql::Expression> expression, size_t cursorId);
 
   aql::AstNode* getCondition() const;
   aql::Expression* getExpression() const;
   transaction::Methods::IndexHandle indexHandle() const;
   std::optional<size_t> getMemberToUpdate() const;
+  size_t cursorId() const;
 
  private:
   transaction::Methods::IndexHandle _idx;
@@ -57,6 +58,7 @@ struct IndexAccessor {
 
   // TODO: This needs to be changed BEFORE merge
   std::shared_ptr<arangodb::aql::Expression> _expression;
+  size_t _cursorId;
 };
 
 struct BaseProviderOptions {
