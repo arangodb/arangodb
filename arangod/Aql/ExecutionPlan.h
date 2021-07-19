@@ -60,8 +60,13 @@ class ExecutionPlan {
 
   /// @brief destroy the plan, frees all assigned nodes
   ~ExecutionPlan();
+ 
+  /// @brief maximum number of execution nodes allowed per query
+  /// (at the time the initial execution plan is created). we have to limit
+  /// this to prevent super-long runtimes for query optimization and
+  /// execution)
+  static constexpr uint64_t maxPlanNodes = 4000;
 
- public:
   /// @brief create an execution plan from an AST
   /// note: tracking memory usage requires accessing the Ast/Query objects,
   /// which can be inherently unsafe when running within the gtest unit tests.

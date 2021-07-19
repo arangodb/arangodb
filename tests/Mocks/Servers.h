@@ -128,6 +128,7 @@ class MockServer {
  private:
   bool _started;
   arangodb::ServerState::RoleEnum _oldRole;
+  bool _originalMockingState;
 };
 
 /// @brief a server with almost no features added (Metrics are available

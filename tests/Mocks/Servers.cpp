@@ -188,7 +188,8 @@ MockServer::MockServer(arangodb::ServerState::RoleEnum myRole, bool injectCluste
       _started(false) {
   _oldRole = arangodb::ServerState::instance()->getRole();
   arangodb::ServerState::instance()->setRole(myRole);
-  if (arangodb::ServerState::instance()->isCoordinator()) {
+  _originalMockingState = arangodb::ClusterEngine::Mocking;
+  if (injectClusterIndexes && arangodb::ServerState::instance()->isCoordinator()) {
     arangodb::ClusterEngine::Mocking = true;
   }
   init();
@@ -198,9 +199,7 @@ MockServer::~MockServer() {
   stopFeatures();
   _server.setStateUnsafe(_oldApplicationServerState);
 
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    arangodb::ClusterEngine::Mocking = false;
-  }
+  arangodb::ClusterEngine::Mocking = _originalMockingState;
   arangodb::ServerState::instance()->setRole(_oldRole);
   arangodb::ServerState::instance()->setRebootId(_oldRebootId);
 }

@@ -21,10 +21,11 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/CleanupFunctions.h"
-
-#include "Basics/Common.h"
 #include "Basics/application-exit.h"
+
+#include "Basics/CleanupFunctions.h"
+#include "Basics/Common.h"
+#include "Logger/Logger.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -45,4 +46,29 @@ void TRI_Application_Exit_SetExit(TRI_ExitFunction_t exitFunction) {
   } else {
     TRI_EXIT_FUNCTION = defaultExitFunction;
   }
+}
+
+[[noreturn]] void FATAL_ERROR_EXIT_CODE(int code) noexcept {
+  try {
+    arangodb::basics::CleanupFunctions::run(code, nullptr);
+    arangodb::Logger::flush();
+    arangodb::Logger::shutdown();
+    TRI_EXIT_FUNCTION(code, nullptr);
+  } catch (...) {
+  }
+  exit(code);
+}
+
+[[noreturn]] void FATAL_ERROR_EXIT() noexcept {
+  FATAL_ERROR_EXIT_CODE(EXIT_FAILURE);
+}
+
+[[noreturn]] void FATAL_ERROR_ABORT() noexcept {
+  try {
+    arangodb::basics::CleanupFunctions::run(500, nullptr);
+    arangodb::Logger::flush();
+    arangodb::Logger::shutdown();
+  } catch (...) {
+  }
+  std::abort();
 }

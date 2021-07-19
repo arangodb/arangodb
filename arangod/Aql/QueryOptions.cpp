@@ -38,7 +38,7 @@ using namespace arangodb::aql;
 
 size_t QueryOptions::defaultMemoryLimit = 0;
 size_t QueryOptions::defaultMaxNumberOfPlans = 128;
-size_t QueryOptions::defaultMaxNodesPerCallstack = 250;
+size_t QueryOptions::defaultMaxNodesPerCallstack = 200;
 double QueryOptions::defaultMaxRuntime = 0.0;
 double QueryOptions::defaultTtl;
 bool QueryOptions::defaultFailOnWarning = false;

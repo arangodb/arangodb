@@ -141,11 +141,15 @@ auto SingleServerProvider<Step>::expand(Step const& step, size_t previous,
     // TODO: Adjust log output
     LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
         << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> " << id;
-    if constexpr (std::is_same_v<enterprise::SmartGraphStep, Step>) {  // TODO: eventually move to EE
+#ifdef USE_ENTERPRISE
+    if constexpr (std::is_same_v<arangodb::graph::enterprise::SmartGraphStep, Step>) {
       callback(Step{id, std::move(eid), previous, step.getDepth() + 1, cursorID});
     } else {
       callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
     }
+#else
+    callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
+#endif
   });
 }
 

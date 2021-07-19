@@ -72,5 +72,5 @@ void SingleServerProviderStep::Edge::addToBuilder(SingleServerProvider<SingleSer
 }
 
 #ifndef USE_ENTERPRISE
-bool Step::isResponsible(transaction::Methods* trx) const { return true; };
+bool SingleServerProviderStep::isResponsible(transaction::Methods* trx) const { return true; };
 #endif
