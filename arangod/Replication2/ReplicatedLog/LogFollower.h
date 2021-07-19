@@ -53,7 +53,7 @@ class LogFollower : public LogParticipantI,
               std::optional<ParticipantId> leaderId, InMemoryLog inMemoryLog);
 
   // follower only
-  auto appendEntries(AppendEntriesRequest) -> futures::Future<AppendEntriesResult> override;
+  [[nodiscard]] auto appendEntries(AppendEntriesRequest) -> futures::Future<AppendEntriesResult> override;
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
   [[nodiscard]] auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
@@ -89,8 +89,8 @@ class LogFollower : public LogParticipantI,
   // Using the UnshackledMutex this is no longer required.
   Guarded<GuardedFollowerData, arangodb::basics::UnshackledMutex> _guardedFollowerData;
 
-  auto appendEntriesPreFlightChecks(GuardedFollowerData const&,
-                                    AppendEntriesRequest const&) const noexcept
+  [[nodiscard]] auto appendEntriesPreFlightChecks(GuardedFollowerData const&,
+                                                  AppendEntriesRequest const&) const noexcept
       -> std::optional<AppendEntriesResult>;
 };
 

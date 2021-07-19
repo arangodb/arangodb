@@ -61,6 +61,7 @@
 #endif
 #include <immer/flex_vector.hpp>
 #include <immer/flex_vector_transient.hpp>
+#include <utility>
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
@@ -407,7 +408,6 @@ auto replicated_log::LogLeader::insert(LogPayload payload) -> LogIndex {
     auto logEntry = LogEntry{_currentTerm, index, std::move(payload)};
     logEntry.setInsertTp(insertTp);
     leaderData._inMemoryLog.appendInPlace(_logContext, std::move(logEntry));
-    //leaderData._inMemoryLog._log = leaderData._inMemoryLog._log.push_back(std::move(logEntry));
     _logMetrics->replicatedLogInsertsBytes->count(payloadSize);
     return index;
   });

@@ -44,38 +44,39 @@ typedef std::string ServerShortName;  // Short name of a server
 
 class RebootId {
  public:
+  explicit constexpr RebootId() noexcept = delete;
   explicit constexpr RebootId(uint64_t rebootId) noexcept : _value(rebootId) {}
-  uint64_t value() const noexcept { return _value; }
+  [[nodiscard]] uint64_t value() const noexcept { return _value; }
 
-  bool initialized() const noexcept { return value() != 0; }
+  [[nodiscard]] bool initialized() const noexcept { return value() != 0; }
 
-  bool operator==(RebootId other) const noexcept {
+  [[nodiscard]] bool operator==(RebootId other) const noexcept {
     return value() == other.value();
   }
-  bool operator!=(RebootId other) const noexcept {
+  [[nodiscard]] bool operator!=(RebootId other) const noexcept {
     return value() != other.value();
   }
-  bool operator<(RebootId other) const noexcept {
+  [[nodiscard]] bool operator<(RebootId other) const noexcept {
     return value() < other.value();
   }
-  bool operator>(RebootId other) const noexcept {
+  [[nodiscard]] bool operator>(RebootId other) const noexcept {
     return value() > other.value();
   }
-  bool operator<=(RebootId other) const noexcept {
+  [[nodiscard]] bool operator<=(RebootId other) const noexcept {
     return value() <= other.value();
   }
-  bool operator>=(RebootId other) const noexcept {
+  [[nodiscard]] bool operator>=(RebootId other) const noexcept {
     return value() >= other.value();
   }
 
-  static constexpr RebootId max() noexcept {
+  [[nodiscard]] static constexpr RebootId max() noexcept {
     return RebootId{std::numeric_limits<decltype(_value)>::max()};
   }
   
   std::ostream& print(std::ostream& o) const;
 
  private:
-  uint64_t _value;
+  uint64_t _value{};
 };
 
 namespace velocypack {

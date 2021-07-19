@@ -54,20 +54,20 @@ enum class AppendEntriesErrorReason {
   COMMUNICATION_ERROR,
 };
 
-auto to_string(AppendEntriesErrorReason reason) noexcept -> std::string_view;
+[[nodiscard]] auto to_string(AppendEntriesErrorReason reason) noexcept -> std::string_view;
 
 struct LogStatistics {
   TermIndexPair spearHead{};
   LogIndex commitIndex{};
 
   void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> LogStatistics;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice) -> LogStatistics;
 };
 
 struct AbstractFollower {
   virtual ~AbstractFollower() = default;
   [[nodiscard]] virtual auto getParticipantId() const noexcept -> ParticipantId const& = 0;
-  virtual auto appendEntries(AppendEntriesRequest)
+  [[nodiscard]] virtual auto appendEntries(AppendEntriesRequest)
       -> futures::Future<AppendEntriesResult> = 0;
 };
 

@@ -74,16 +74,17 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   ~LogLeader() override;
 
   // Used in tests, forwards to overload below
-  static auto construct(LoggerContext const& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-                        ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-                        std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-                        std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
+  [[nodiscard]] static auto construct(
+      LoggerContext const& logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+      ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+      std::vector<std::shared_ptr<AbstractFollower>> const& followers,
+      std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
 
-  static auto construct(LogConfig config, std::unique_ptr<LogCore> logCore,
-                        std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-                        ParticipantId id, LogTerm term, LoggerContext const& logContext,
-                        std::shared_ptr<ReplicatedLogMetrics> logMetrics)
-      -> std::shared_ptr<LogLeader>;
+  [[nodiscard]] static auto construct(
+      LogConfig config, std::unique_ptr<LogCore> logCore,
+      std::vector<std::shared_ptr<AbstractFollower>> const& followers,
+      ParticipantId id, LogTerm term, LoggerContext const& logContext,
+      std::shared_ptr<ReplicatedLogMetrics> logMetrics) -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload) -> LogIndex;
   auto insert(LogPayload, bool waitForSync) -> LogIndex;
@@ -100,7 +101,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
 
-  auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
+  [[nodiscard]] auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
 
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const&;
 
@@ -139,10 +140,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
     auto operator=(LocalFollower&&) noexcept -> LocalFollower& = delete;
 
     [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
-    auto appendEntries(AppendEntriesRequest request)
+    [[nodiscard]] auto appendEntries(AppendEntriesRequest request)
         -> arangodb::futures::Future<AppendEntriesResult> override;
 
-    auto resign() && noexcept -> std::unique_ptr<LogCore>;
+    [[nodiscard]] auto resign() && noexcept -> std::unique_ptr<LogCore>;
 
    private:
     LogLeader& _leader;
@@ -227,9 +228,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   // a single mutex.
   Guarded<GuardedLeaderData> _guardedLeaderData;
 
-  static auto instantiateFollowers(LoggerContext, std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-                                   std::shared_ptr<LocalFollower> const& localFollower,
-                                   TermIndexPair lastEntry) -> std::vector<FollowerInfo>;
+  [[nodiscard]] static auto instantiateFollowers(
+      LoggerContext, std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+      std::shared_ptr<LocalFollower> const& localFollower,
+      TermIndexPair lastEntry) -> std::vector<FollowerInfo>;
 
   auto acquireMutex() -> Guard;
   auto acquireMutex() const -> ConstGuard;
