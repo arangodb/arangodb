@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef ARANGOD_NETWORK_CLUSTER_UTILS_H
-#define ARANGOD_NETWORK_CLUSTER_UTILS_H 1
 
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -55,5 +53,3 @@ OperationResult clusterResultRemove(arangodb::fuerte::StatusCode code,
 
 }  // namespace network
 }  // namespace arangodb
-
-#endif
