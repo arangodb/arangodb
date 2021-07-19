@@ -187,8 +187,8 @@
 #define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
-#define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atimespec.tv_sec
-#define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtimespec.tv_sec
+#define TRI_STAT_ATIME_SEC(statbuf) (statbuf).st_atimespec.tv_sec
+#define TRI_STAT_MTIME_SEC(statbuf) (statbuf).st_mtimespec.tv_sec
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
@@ -333,8 +333,8 @@
 #define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
-#define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atimespec.tv_sec
-#define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtimespec.tv_sec
+#define TRI_STAT_ATIME_SEC(statbuf) (statbuf).st_atimespec.tv_sec
+#define TRI_STAT_MTIME_SEC(statbuf) (statbuf).st_mtimespec.tv_sec
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
@@ -492,8 +492,8 @@
 #define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
-#define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atim.tv_sec
-#define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtim.tv_sec
+#define TRI_STAT_ATIME_SEC(statbuf) (statbuf).st_atim.tv_sec
+#define TRI_STAT_MTIME_SEC(statbuf) (statbuf).st_mtim.tv_sec
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))

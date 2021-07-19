@@ -1,6 +1,12 @@
 devel
 -----
 
+* Make `--javascript.copy-installation` also copy the `node_modules` sub
+  directory. This is required so we have a full copy of the JavaScript
+  dependencies and not one that excludes some infrequently changed modules.
+  In addition, file copying now intentionally excludes .map files as they
+  are not needed. 
+
 * Fixed BTS-408: treat positive or negative signed numbers as constants 
   immediately during AQL query parsing. 
   Previously, a value of `-1` was parsed initially as `unary minus(value(1))`,
