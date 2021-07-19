@@ -163,28 +163,17 @@ auto TestReplicatedLog::becomeFollower(ParticipantId const& id, LogTerm term, Pa
 
 auto TestReplicatedLog::becomeLeader(LogConfig config, ParticipantId id, LogTerm term,
                                      std::vector<std::shared_ptr<AbstractFollower>> const& follower)
-    -> std::shared_ptr<DelayedLogLeader> {
-  auto ptr = ReplicatedLog::becomeLeader(config, std::move(id), term, follower);
-  return std::make_shared<DelayedLogLeader>(ptr);
+    -> std::shared_ptr<LogLeader> {
+  return ReplicatedLog::becomeLeader(config, std::move(id), term, follower);
 }
 
 auto TestReplicatedLog::becomeLeader(ParticipantId const& id, LogTerm term,
                                      std::vector<std::shared_ptr<AbstractFollower>> const& follower,
                                      std::size_t writeConcern)
-    -> std::shared_ptr<DelayedLogLeader> {
+    -> std::shared_ptr<LogLeader> {
   LogConfig config;
   config.writeConcern = writeConcern;
   config.waitForSync = false;
 
   return becomeLeader(config, id, term, follower);
-}
-
-DelayedLogLeader::DelayedLogLeader(std::shared_ptr<LogLeader>  leader)
-    : _leader(std::move(leader)) {}
-
-LogStatus DelayedLogLeader::getStatus() const {
-  return _leader->getStatus();
-}
-auto DelayedLogLeader::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
-  return std::move(*_leader).resign();
 }

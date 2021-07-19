@@ -75,7 +75,7 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
   constexpr static auto alternatinglyInsertAndRead = [](ThreadIdx const threadIdx,
                                                         ThreadCoordinationData& data) {
     using namespace std::chrono_literals;
-    auto log = std::dynamic_pointer_cast<DelayedLogLeader>(data.log);
+    auto log = std::dynamic_pointer_cast<LogLeader>(data.log);
     ASSERT_NE(log, nullptr);
     data.threadsReady.fetch_add(1);
     while (!data.go.load()) {
@@ -103,7 +103,7 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
   constexpr static auto insertManyThenRead = [](ThreadIdx const threadIdx,
                                                 ThreadCoordinationData& data) {
     using namespace std::chrono_literals;
-    auto log = std::dynamic_pointer_cast<DelayedLogLeader>(data.log);
+    auto log = std::dynamic_pointer_cast<LogLeader>(data.log);
     ASSERT_NE(log, nullptr);
     data.threadsReady.fetch_add(1);
     while (!data.go.load()) {
@@ -142,7 +142,7 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
   constexpr static auto runReplicationWithIntermittentPauses =
       [](ThreadCoordinationData& data) {
         using namespace std::chrono_literals;
-        auto log = std::dynamic_pointer_cast<DelayedLogLeader>(data.log);
+        auto log = std::dynamic_pointer_cast<LogLeader>(data.log);
         ASSERT_NE(log, nullptr);
         for (auto i = 0;; ++i) {
           log->runAsyncStep();

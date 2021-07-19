@@ -189,39 +189,16 @@ struct DelayedFollowerLog : AbstractFollower {
   std::shared_ptr<LogFollower> _follower;
 };
 
-struct DelayedLogLeader : LogParticipantI {
-  explicit DelayedLogLeader(std::shared_ptr<LogLeader> leader);
-  auto getStatus() const -> LogStatus override;
-  auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
-
-  auto insert(LogPayload payload) -> LogIndex {
-    return _leader->insert(std::move(payload));
-  }
-
-  auto waitFor(LogIndex idx) -> WaitForFuture override {
-    return _leader->waitFor(idx);
-  }
-
-  void runAsyncStep() {
-    return _leader->runAsyncStep();
-  }
-
-  auto getReplicatedLogSnapshot() {
-    return _leader->getReplicatedLogSnapshot();
-  }
- private:
-  std::shared_ptr<LogLeader> _leader;
-};
-
 struct TestReplicatedLog : ReplicatedLog {
   using ReplicatedLog::ReplicatedLog;
-  auto becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId) -> std::shared_ptr<DelayedFollowerLog>;
+  auto becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId)
+      -> std::shared_ptr<DelayedFollowerLog>;
   auto becomeLeader(ParticipantId const& id, LogTerm term,
                     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-                    std::size_t writeConcern) -> std::shared_ptr<DelayedLogLeader>;
+                    std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
   auto becomeLeader(LogConfig config, ParticipantId id, LogTerm term,
                     std::vector<std::shared_ptr<AbstractFollower>> const& follower)
-      -> std::shared_ptr<DelayedLogLeader>;
+      -> std::shared_ptr<LogLeader>;
 };
 
 struct ReplicatedLogTest : ::testing::Test {
