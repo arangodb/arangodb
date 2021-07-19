@@ -1796,7 +1796,10 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath, char const* instal
 
 static bool CopyFileContents(int srcFD, int dstFD, TRI_read_t fileSize, std::string& error) {
   bool rc = true;
-#if TRI_LINUX_SPLICE
+#ifdef __linux__
+  // Linux-specific file-copying code based on splice()
+  // The splice() system call first appeared in Linux 2.6.17; library support was added to glibc in version 2.5.
+  // libmusl also has bindings for it. so we simply assume it is there on Linux.
   int splicePipe[2];
   ssize_t pipeSize = 0;
   long chunkSendRemain = fileSize;
@@ -1806,25 +1809,30 @@ static bool CopyFileContents(int srcFD, int dstFD, TRI_read_t fileSize, std::str
     error = std::string("splice failed to create pipes: ") + strerror(errno);
     return false;
   }
-  while (chunkSendRemain > 0) {
-    if (pipeSize == 0) {
-      pipeSize = splice(srcFD, &totalSentAlready, splicePipe[1], nullptr,
-                        chunkSendRemain, SPLICE_F_MOVE);
-      if (pipeSize == -1) {
+  try {
+    while (chunkSendRemain > 0) {
+      if (pipeSize == 0) {
+        pipeSize = splice(srcFD, &totalSentAlready, splicePipe[1], nullptr,
+                          chunkSendRemain, SPLICE_F_MOVE);
+        if (pipeSize == -1) {
+          error = std::string("splice read failed: ") + strerror(errno);
+          rc = false;
+          break;
+        }
+      }
+      ssize_t sent = splice(splicePipe[0], nullptr, dstFD, nullptr, pipeSize,
+                            SPLICE_F_MORE | SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
+      if (sent == -1) {
         error = std::string("splice read failed: ") + strerror(errno);
         rc = false;
         break;
       }
+      pipeSize -= sent;
+      chunkSendRemain -= sent;
     }
-    ssize_t sent = splice(splicePipe[0], nullptr, dstFD, nullptr, pipeSize,
-                          SPLICE_F_MORE | SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
-    if (sent == -1) {
-      error = std::string("splice read failed: ") + strerror(errno);
-      rc = false;
-      break;
-    }
-    pipeSize -= sent;
-    chunkSendRemain -= sent;
+  } catch (...) {
+    // make sure we always close the pipes
+    rc = false;
   }
   close(splicePipe[0]);
   close(splicePipe[1]);
@@ -1838,42 +1846,47 @@ static bool CopyFileContents(int srcFD, int dstFD, TRI_read_t fileSize, std::str
     rc = false;
   }
 
-  TRI_read_t chunkRemain = fileSize;
-  while (rc && (chunkRemain > 0)) {
-    auto readChunk = static_cast<TRI_read_t>((std::min)(C128, static_cast<size_t>(chunkRemain)));
-    TRI_read_return_t nRead = TRI_READ(srcFD, buf, readChunk);
+  try {
+    TRI_read_t chunkRemain = fileSize;
+    while (rc && (chunkRemain > 0)) {
+      auto readChunk = static_cast<TRI_read_t>((std::min)(C128, static_cast<size_t>(chunkRemain)));
+      TRI_read_return_t nRead = TRI_READ(srcFD, buf, readChunk);
 
-    if (nRead < 0) {
-      error = std::string("failed to read a chunk: ") + strerror(errno);
-      rc = false;
-      break;
-    }
-
-    if (nRead == 0) {
-      // EOF. done
-      break;
-    }
-
-    size_t writeOffset = 0;
-    size_t writeRemaining = static_cast<size_t>(nRead);
-    while (writeRemaining > 0) {
-      // write can write less data than requested. so we must go on writing
-      // until we have written out all data
-      ssize_t nWritten = TRI_WRITE(dstFD, buf + writeOffset,
-                                   static_cast<TRI_write_t>(writeRemaining));
-
-      if (nWritten < 0) {
-        // error during write
+      if (nRead < 0) {
         error = std::string("failed to read a chunk: ") + strerror(errno);
         rc = false;
         break;
       }
 
-      writeOffset += static_cast<size_t>(nWritten);
-      writeRemaining -= static_cast<size_t>(nWritten);
-    }
+      if (nRead == 0) {
+        // EOF. done
+        break;
+      }
 
-    chunkRemain -= nRead;
+      size_t writeOffset = 0;
+      size_t writeRemaining = static_cast<size_t>(nRead);
+      while (writeRemaining > 0) {
+        // write can write less data than requested. so we must go on writing
+        // until we have written out all data
+        ssize_t nWritten = TRI_WRITE(dstFD, buf + writeOffset,
+                                     static_cast<TRI_write_t>(writeRemaining));
+
+        if (nWritten < 0) {
+          // error during write
+          error = std::string("failed to read a chunk: ") + strerror(errno);
+          rc = false;
+          break;
+        }
+
+        writeOffset += static_cast<size_t>(nWritten);
+        writeRemaining -= static_cast<size_t>(nWritten);
+      }
+
+      chunkRemain -= nRead;
+    }
+  } catch (...) {
+    // make sure we always close the buffer
+    rc = false;
   }
 
   TRI_Free(buf);
@@ -1885,8 +1898,8 @@ static bool CopyFileContents(int srcFD, int dstFD, TRI_read_t fileSize, std::str
 /// @brief copies the contents of a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& error) {
 #ifdef _WIN32
+bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& error) {
   TRI_ERRORBUF;
 
   bool rc = CopyFileW(toWString(src).data(), toWString(dst).data(), true) != 0;
@@ -1896,57 +1909,72 @@ bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& e
   }
 
   return rc;
+}
 #else
-  size_t dsize;
-  int srcFD, dstFD;
-  struct stat statbuf;
-
-  srcFD = open(src.c_str(), O_RDONLY);
+bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& error, struct stat* statbuf /*= nullptr*/) {
+  int srcFD = open(src.c_str(), O_RDONLY);
   if (srcFD < 0) {
     error = "failed to open source file " + src + ": " + strerror(errno);
     return false;
   }
-  dstFD = open(dst.c_str(), O_EXCL | O_CREAT | O_NONBLOCK | O_WRONLY, S_IRUSR | S_IWUSR);
+  int dstFD = open(dst.c_str(), O_EXCL | O_CREAT | O_NONBLOCK | O_WRONLY, S_IRUSR | S_IWUSR);
   if (dstFD < 0) {
     close(srcFD);
     error = "failed to open destination file " + dst + ": " + strerror(errno);
     return false;
   }
 
-  TRI_FSTAT(srcFD, &statbuf);
-  dsize = statbuf.st_size;
+  bool rc = true;
+  try {
+    struct stat localStat;
 
-  bool rc = CopyFileContents(srcFD, dstFD, dsize, error);
-  timeval times[2];
-  memset(times, 0, sizeof(times));
-  times[0].tv_sec = TRI_STAT_ATIME_SEC(statbuf);
-  times[1].tv_sec = TRI_STAT_MTIME_SEC(statbuf);
+    if (statbuf == nullptr) {
+      TRI_FSTAT(srcFD, &localStat);
+      statbuf = &localStat;
+    }
+    TRI_ASSERT(statbuf != nullptr);
 
-  if (fchown(dstFD, -1 /*statbuf.st_uid*/, statbuf.st_gid) != 0) {
-    error = std::string("failed to chown ") + dst + ": " + strerror(errno);
-    // rc = false;  no, this is not fatal...
-  }
-  if (fchmod(dstFD, statbuf.st_mode) != 0) {
-    error = std::string("failed to chmod ") + dst + ": " + strerror(errno);
-    rc = false;
-  }
+    size_t dsize = statbuf->st_size;
+
+    if (dsize > 0) {
+      // only copy non-empty files
+      rc = CopyFileContents(srcFD, dstFD, dsize, error);
+    }
+    timeval times[2];
+    memset(times, 0, sizeof(times));
+    times[0].tv_sec = TRI_STAT_ATIME_SEC(*statbuf);
+    times[1].tv_sec = TRI_STAT_MTIME_SEC(*statbuf);
+
+    if (fchown(dstFD, -1 /*statbuf.st_uid*/, statbuf->st_gid) != 0) {
+      error = std::string("failed to chown ") + dst + ": " + strerror(errno);
+      // rc = false;  no, this is not fatal...
+    }
+    if (fchmod(dstFD, statbuf->st_mode) != 0) {
+      error = std::string("failed to chmod ") + dst + ": " + strerror(errno);
+      rc = false;
+    }
 
 #ifdef HAVE_FUTIMES
-  if (futimes(dstFD, times) != 0) {
-    error = std::string("failed to adjust age: ") + dst + ": " + strerror(errno);
-    rc = false;
-  }
+    if (futimes(dstFD, times) != 0) {
+      error = std::string("failed to adjust age: ") + dst + ": " + strerror(errno);
+      rc = false;
+    }
 #else
-  if (utimes(dst.c_str(), times) != 0) {
-    error = std::string("failed to adjust age: ") + dst + ": " + strerror(errno);
+    if (utimes(dst.c_str(), times) != 0) {
+      error = std::string("failed to adjust age: ") + dst + ": " + strerror(errno);
+      rc = false;
+    }
+#endif
+  } catch (...) {
+    // make sure we always close file handles
     rc = false;
   }
-#endif
+
   close(srcFD);
   close(dstFD);
   return rc;
-#endif
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the filesystem attributes of a file
@@ -2004,7 +2032,6 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
 #endif
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a hard link; the link target is not altered.
