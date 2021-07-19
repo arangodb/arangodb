@@ -547,7 +547,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
               rc_bool = false;
             }
           } else {
-#ifndef _WIN32
+#ifdef _WIN32
             rc_bool = TRI_CopyFile(src, dst, error);
 #else
             // optimized version that reuses the already retrieved stat data
