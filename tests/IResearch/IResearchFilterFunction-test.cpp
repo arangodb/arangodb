@@ -6256,7 +6256,7 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
   assertFilterFail(
       vocbase(),
       "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 5, false) RETURN d");
-  assertFilterExecutionFail(
+  assertFilterFail(
       vocbase(),
       "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', -1, false) RETURN d",
       &ExpressionContextMock::EMPTY);
