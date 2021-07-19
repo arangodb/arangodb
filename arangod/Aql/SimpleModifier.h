@@ -25,6 +25,9 @@
 #define ARANGOD_AQL_SIMPLE_MODIFIER_H
 
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionState.h"
+#include "Aql/ExecutionEngine.h"
+
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
 
@@ -32,6 +35,7 @@
 #include "Aql/RemoveModifier.h"
 #include "Aql/UpdateReplaceModifier.h"
 
+#include <mutex>
 #include <type_traits>
 
 namespace arangodb {
@@ -72,7 +76,8 @@ struct is_modifier_completion_trait<UpdateReplaceModifierCompletion> : std::true
 };
 
 template <typename ModifierCompletion, typename Enable = typename std::enable_if_t<is_modifier_completion_trait<ModifierCompletion>::value>>
-class SimpleModifier {
+class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<ModifierCompletion, Enable>> {
+  /// @brief mutex that pr
   friend class InsertModifierCompletion;
   friend class RemoveModifierCompletion;
   friend class UpdateReplaceModifierCompletion;
@@ -106,13 +111,22 @@ class SimpleModifier {
         _completion(infos),
         _results(Result(), infos._options),
         _resultsIterator(VPackArrayIterator::Empty{}),
-        _batchSize(ExecutionBlock::DefaultBatchSize) {}
-  ~SimpleModifier() = default;
+        _batchSize(ExecutionBlock::DefaultBatchSize),
+        _resultState(ModificationExecutorResultState::NoResult) {
+    TRI_ASSERT(_infos.engine() != nullptr);
+  }
+
+  virtual ~SimpleModifier() = default;
 
   void reset();
 
-  Result accumulate(InputAqlItemRow& row);
-  void transact(transaction::Methods& trx);
+  void accumulate(InputAqlItemRow& row);
+  ExecutionState transact(transaction::Methods& trx);
+
+  ModificationExecutorResultState resultState() const noexcept;
+    
+  void checkException() const;
+  void resetResult() noexcept;
 
   // The two numbers below may not be the same: Operations
   // can skip or ignore documents.
@@ -148,6 +162,9 @@ class SimpleModifier {
   VPackArrayIterator _resultsIterator;
 
   size_t const _batchSize;
+
+  mutable std::mutex _resultStateMutex;
+  ModificationExecutorResultState _resultState;
 };
 
 using InsertModifier = SimpleModifier<InsertModifierCompletion>;

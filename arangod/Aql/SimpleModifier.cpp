@@ -25,12 +25,15 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ServerState.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
@@ -121,6 +124,23 @@ SimpleModifier<ModifierCompletion, Enable>::OutputIterator::end() const {
 }
 
 template <typename ModifierCompletion, typename Enable>
+ModificationExecutorResultState SimpleModifier<ModifierCompletion, Enable>::resultState() const noexcept {
+  std::lock_guard<std::mutex> guard(_resultStateMutex);
+  return _resultState; 
+}
+
+template <typename ModifierCompletion, typename Enable>
+void SimpleModifier<ModifierCompletion, Enable>::checkException() const {
+  throwOperationResultException(_infos, _results);
+}
+
+template <typename ModifierCompletion, typename Enable>
+void SimpleModifier<ModifierCompletion, Enable>::resetResult() noexcept {
+  std::lock_guard<std::mutex> guard(_resultStateMutex);
+  _resultState = ModificationExecutorResultState::NoResult;
+}
+
+template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::reset() {
   _accumulator.reset();
   _operations.clear();
@@ -128,17 +148,44 @@ void SimpleModifier<ModifierCompletion, Enable>::reset() {
 }
 
 template <typename ModifierCompletion, typename Enable>
-Result SimpleModifier<ModifierCompletion, Enable>::accumulate(InputAqlItemRow& row) {
+void SimpleModifier<ModifierCompletion, Enable>::accumulate(InputAqlItemRow& row) {
   auto result = _completion.accumulate(_accumulator, row);
   _operations.push_back({result, row});
-  return Result{};
 }
 
 template <typename ModifierCompletion, typename Enable>
-void SimpleModifier<ModifierCompletion, Enable>::transact(transaction::Methods& trx) {
-  _results = _completion.transact(trx, _accumulator.closeAndGetContents());
+ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction::Methods& trx) {
+  std::lock_guard<std::mutex> guard(_resultStateMutex);
+  TRI_ASSERT(_resultState == ModificationExecutorResultState::NoResult);
+  _resultState = ModificationExecutorResultState::NoResult;
 
-  throwOperationResultException(_infos, _results);
+  auto result = _completion.transact(trx, _accumulator.closeAndGetContents());
+
+  if (result.isReady()) {
+    _results = std::move(result.get());
+    _resultState = ModificationExecutorResultState::HaveResult;
+    return ExecutionState::DONE;
+  } 
+  
+  _resultState = ModificationExecutorResultState::WaitingForResult;
+
+  TRI_ASSERT(!ServerState::instance()->isSingleServer());
+  TRI_ASSERT(_infos.engine() != nullptr);
+  TRI_ASSERT(_infos.engine()->sharedState() != nullptr);
+
+  auto self = this->shared_from_this();
+  std::move(result).thenValue([self, sqs = _infos.engine()->sharedState()](OperationResult&& opRes) {
+    {
+      std::lock_guard<std::mutex> guard(self->_resultStateMutex);
+      self->_results = std::move(opRes);
+      self->_resultState = ModificationExecutorResultState::HaveResult;
+    }
+    // TODO: do we need a callback here?
+    sqs->executeAndWakeup([] {
+      return true;
+    });
+  });
+  return ExecutionState::WAITING;
 }
 
 template <typename ModifierCompletion, typename Enable>

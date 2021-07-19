@@ -31,6 +31,8 @@
 #include "Aql/InsertModifier.h"
 #include "Aql/UpdateReplaceModifier.h"
 
+#include <mutex>
+
 #include <velocypack/Builder.h>
 
 namespace arangodb {
@@ -82,14 +84,19 @@ class UpsertModifier {
         // writes.
         // This behaviour could be improved, if we can prove that an UPSERT
         // does not need to see its own writes
-        _batchSize(1) {}
+        _batchSize(1),
+        _resultState(ModificationExecutorResultState::NoResult) {}
 
   ~UpsertModifier() = default;
 
+  ModificationExecutorResultState resultState() const noexcept;
+
+  void checkException() const {}
+  void resetResult() noexcept;
   void reset();
 
-  Result accumulate(InputAqlItemRow& row);
-  Result transact(transaction::Methods& trx);
+  void accumulate(InputAqlItemRow& row);
+  ExecutionState transact(transaction::Methods& trx);
 
   size_t nrOfOperations() const;
   size_t nrOfDocuments() const;
@@ -120,6 +127,9 @@ class UpsertModifier {
   arangodb::velocypack::Builder _keyDocBuilder;
 
   size_t const _batchSize;
+  
+  mutable std::mutex _resultStateMutex;
+  ModificationExecutorResultState _resultState;
 };
 
 }  // namespace aql

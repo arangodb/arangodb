@@ -37,6 +37,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <memory>
 #include <optional>
 
 namespace arangodb {
@@ -156,6 +157,21 @@ class ModifierOutput {
   std::optional<AqlValueGuard> _newValueGuard;
 };
 
+enum class ModificationExecutorResultState {
+  // State that is used when the Executor's modifier has not been
+  // asked to produce a result.
+  // this is also the initial state.
+  NoResult,
+  // State that is used when the Executor's modifier has been asked
+  // to produce a result, but it returned a WAITING status, i.e. the
+  // result is not yet ready to consume. 
+  // This state cannot happen in single servers!
+  WaitingForResult,
+  // State that is used when the Executor's modifier has produced
+  // a result that is ready to consume.
+  HaveResult,
+};
+
 template <typename FetcherType, typename ModifierType>
 class ModificationExecutor {
  public:
@@ -172,14 +188,14 @@ class ModificationExecutor {
   ~ModificationExecutor() = default;
 
   [[nodiscard]] auto produceRows(typename FetcherType::DataRange& input, OutputAqlItemRow& output)
-      -> std::tuple<ExecutorState, Stats, AqlCall>;
+      -> std::tuple<ExecutionState, Stats, AqlCall>;
 
   [[nodiscard]] auto skipRowsRange(typename FetcherType::DataRange& inputRange, AqlCall& call)
-      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+      -> std::tuple<ExecutionState, Stats, size_t, AqlCall>;
 
  protected:
-  void doCollect(AqlItemBlockInputRange& input, size_t maxOutputs);
-  void doOutput(OutputAqlItemRow& output, Stats& stats);
+  size_t doCollect(AqlItemBlockInputRange& input, size_t maxOutputs);
+  void doOutput(OutputAqlItemRow& output);
   
   transaction::Methods _trx;
 
@@ -189,7 +205,8 @@ class ModificationExecutor {
   // WAITING
   ExecutionState _lastState;
   ModificationExecutorInfos& _infos;
-  ModifierType _modifier;
+  std::shared_ptr<ModifierType> _modifier;
+  size_t _processed;
 };
 
 }  // namespace aql

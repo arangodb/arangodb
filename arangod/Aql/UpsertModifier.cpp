@@ -130,6 +130,11 @@ typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::end() co
   return it;
 }
 
+ModificationExecutorResultState UpsertModifier::resultState() const noexcept {
+  std::lock_guard<std::mutex> guard(_resultStateMutex);
+  return _resultState; 
+}
+
 void UpsertModifier::reset() {
   _insertAccumulator.reset();
   _insertResults.reset();
@@ -137,6 +142,11 @@ void UpsertModifier::reset() {
   _updateResults.reset();
 
   _operations.clear();
+}
+
+void UpsertModifier::resetResult() noexcept {
+  std::lock_guard<std::mutex> guard(_resultStateMutex);
+  _resultState = ModificationExecutorResultState::NoResult;
 }
 
 UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
@@ -214,7 +224,7 @@ VPackArrayIterator UpsertModifier::getInsertResultsIterator() const {
   return VPackArrayIterator(VPackArrayIterator::Empty{});
 }
 
-Result UpsertModifier::accumulate(InputAqlItemRow& row) {
+void UpsertModifier::accumulate(InputAqlItemRow& row) {
   RegisterId const inDocReg = _infos._input1RegisterId;
   RegisterId const insertReg = _infos._input2RegisterId;
   RegisterId const updateReg = _infos._input3RegisterId;
@@ -234,10 +244,11 @@ Result UpsertModifier::accumulate(InputAqlItemRow& row) {
     result = insertCase(_insertAccumulator, insertDoc);
   }
   _operations.push_back({result, row});
-  return Result{};
 }
 
-Result UpsertModifier::transact(transaction::Methods& trx) {
+ExecutionState UpsertModifier::transact(transaction::Methods& trx) {
+  std::lock_guard<std::mutex> guard(_resultStateMutex);
+
   auto toInsert = _insertAccumulator.closeAndGetContents();
   if (toInsert.isArray() && toInsert.length() > 0) {
     _insertResults =
@@ -256,8 +267,10 @@ Result UpsertModifier::transact(transaction::Methods& trx) {
     }
     throwOperationResultException(_infos, _updateResults);
   }
+  
+  _resultState = ModificationExecutorResultState::HaveResult;
 
-  return Result{};
+  return ExecutionState::DONE;
 }
 
 size_t UpsertModifier::nrOfDocuments() const {

@@ -52,6 +52,13 @@ using namespace arangodb::basics;
 namespace arangodb {
 namespace aql {
 
+auto translateReturnType(ExecutorState state) noexcept -> ExecutionState {
+  if (state == ExecutorState::DONE) {
+    return ExecutionState::DONE;
+  }
+  return ExecutionState::HASMORE;
+}
+
 ModifierOutput::ModifierOutput(InputAqlItemRow const& inputRow, Type type)
     : _inputRow(std::move(inputRow)), _type(type), _oldValue(), _newValue() {}
 ModifierOutput::ModifierOutput(InputAqlItemRow&& inputRow, Type type)
@@ -90,33 +97,39 @@ AqlValue const& ModifierOutput::getNewValue() const {
 
 template <typename FetcherType, typename ModifierType>
 ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
-    : _trx(infos._query.newTrxContext()), _lastState(ExecutionState::HASMORE), _infos(infos), _modifier(infos) {}
+    : _trx(infos._query.newTrxContext()), 
+      _lastState(ExecutionState::HASMORE), 
+      _infos(infos), 
+      _modifier(std::make_shared<ModifierType>(infos)),
+      _processed(0) {}
 
 // Fetches as many rows as possible from upstream and accumulates results
 // through the modifier
 template <typename FetcherType, typename ModifierType>
 auto ModificationExecutor<FetcherType, ModifierType>::doCollect(AqlItemBlockInputRange& input,
-                                                                size_t maxOutputs)
-    -> void {
+                                                                size_t maxOutputs) -> size_t {
   ExecutionState state = ExecutionState::HASMORE;
+  // number of input rows processed
+  size_t processed = 0;
 
   // Maximum number of rows we can put into output
   // So we only ever produce this many here
-  while (_modifier.nrOfOperations() < maxOutputs && input.hasDataRow()) {
+  while (_modifier->nrOfOperations() < maxOutputs && input.hasDataRow()) {
+    ++processed;
     auto [state, row] = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
     // Make sure we have a valid row
     TRI_ASSERT(row.isInitialized());
-    _modifier.accumulate(row);
+    _modifier->accumulate(row);
   }
   TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
+  return processed;
 }
 
 // Outputs accumulated results, and counts the statistics
 template <typename FetcherType, typename ModifierType>
-void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output,
-                                                               Stats& stats) {
-  typename ModifierType::OutputIterator modifierOutputIterator(_modifier);
+void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output) {
+  typename ModifierType::OutputIterator modifierOutputIterator(*_modifier);
   // We only accumulated as many items as we can output, so this
   // should be correct
   for (auto const& modifierOutput : modifierOutputIterator) {
@@ -151,18 +164,45 @@ void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow&
 template <typename FetcherType, typename ModifierType>
 [[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceRows(
     typename FetcherType::DataRange& input, OutputAqlItemRow& output)
-    -> std::tuple<ExecutorState, ModificationStats, AqlCall> {
+    -> std::tuple<ExecutionState, ModificationStats, AqlCall> {
+
   AqlCall upstreamCall{};
   if constexpr (std::is_same_v<ModifierType, UpsertModifier> &&
                 !std::is_same_v<FetcherType, AllRowsFetcher>) {
-    upstreamCall.softLimit = _modifier.getBatchSize();
+    upstreamCall.softLimit = _modifier->getBatchSize();
   }
   auto stats = ModificationStats{};
 
-  _modifier.reset();
+  auto handleResult = [&]() {
+    _modifier->checkException();
+    if (_infos._doCount) {
+      stats.addWritesExecuted(_modifier->nrOfWritesExecuted());
+      stats.addWritesIgnored(_modifier->nrOfWritesIgnored());
+    }
+
+    doOutput(output);
+    _modifier->resetResult();
+  };
+ 
+  ModificationExecutorResultState resultState = _modifier->resultState();
+  if (resultState == ModificationExecutorResultState::WaitingForResult) {
+    // we are already waiting for the result. return WAITING again
+    TRI_ASSERT(!ServerState::instance()->isSingleServer());
+    return {ExecutionState::WAITING, stats, upstreamCall};
+  }
+
+  if (resultState == ModificationExecutorResultState::HaveResult) {
+    // a result is ready for us
+    TRI_ASSERT(!ServerState::instance()->isSingleServer());
+    handleResult();
+    return {translateReturnType(input.upstreamState()), stats, upstreamCall};
+  }
+    
+  _modifier->reset();
+
   if (!input.hasDataRow()) {
     // Input is empty
-    return {input.upstreamState(), stats, upstreamCall};
+    return {translateReturnType(input.upstreamState()), stats, upstreamCall};
   }
 
   TRI_IF_FAILURE("ModificationBlock::getSome") {
@@ -184,28 +224,28 @@ template <typename FetcherType, typename ModifierType>
     doCollect(input, output.numRowsLeft());
     upstreamState = input.upstreamState();
   }
-  if (_modifier.nrOfOperations() > 0) {
-    _modifier.transact(_trx);
+  if (_modifier->nrOfOperations() > 0) {
+    ExecutionState modifierState = _modifier->transact(_trx);
 
-    if (_infos._doCount) {
-      stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
-      stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
+    if (modifierState == ExecutionState::WAITING) {
+      TRI_ASSERT(!ServerState::instance()->isSingleServer());
+      return {ExecutionState::WAITING, stats, upstreamCall};
     }
 
-    doOutput(output, stats);
+    handleResult();
   }
 
-  return {upstreamState, stats, upstreamCall};
+  return {translateReturnType(upstreamState), stats, upstreamCall};
 }
 
 template <typename FetcherType, typename ModifierType>
 [[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::skipRowsRange(
     typename FetcherType::DataRange& input, AqlCall& call)
-    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+    -> std::tuple<ExecutionState, Stats, size_t, AqlCall> {
   AqlCall upstreamCall{};
   if constexpr (std::is_same_v<ModifierType, UpsertModifier> &&
                 !std::is_same_v<FetcherType, AllRowsFetcher>) {
-    upstreamCall.softLimit = _modifier.getBatchSize();
+    upstreamCall.softLimit = _modifier->getBatchSize();
   }
 
   auto stats = ModificationStats{};
@@ -214,10 +254,57 @@ template <typename FetcherType, typename ModifierType>
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+  auto handleResult = [&]() {
+    _modifier->checkException();
+
+    if (_infos._doCount) {
+      stats.addWritesExecuted(_modifier->nrOfWritesExecuted());
+      stats.addWritesIgnored(_modifier->nrOfWritesIgnored());
+    }
+
+    if (call.needsFullCount()) {
+      // If we need to do full count the nr of writes we did
+      // in this batch is always correct.
+      // If we are in offset phase and need to produce data
+      // after the toSkip is limited to offset().
+      // otherwise we need to report everything we write
+      call.didSkip(_modifier->nrOfWritesExecuted());
+    } else {
+      // If we do not need to report fullcount.
+      // we cannot report more than offset
+      // but also not more than the operations we
+      // have successfully executed
+      call.didSkip((std::min)(call.getOffset(), _modifier->nrOfWritesExecuted()));
+    }
+    _modifier->resetResult();
+  };
+  
+  ModificationExecutorResultState resultState = _modifier->resultState();
+  if (resultState == ModificationExecutorResultState::WaitingForResult) {
+    // we are already waiting for the result. return WAITING again
+    TRI_ASSERT(!ServerState::instance()->isSingleServer());
+    // TODO
+    //return {ExecutionState::WAITING, stats, 0, upstreamCall};
+    return {ExecutionState::WAITING, ModificationStats{}, 0, AqlCall{}};
+  }
+  
+  if (resultState == ModificationExecutorResultState::HaveResult) {
+    // TODO: check if we need this
+    call.didSkip(_processed);
+
+    TRI_ASSERT(!ServerState::instance()->isSingleServer());
+    size_t processed = _processed;
+    handleResult();
+    _processed = 0;
+    // TODO
+    return {translateReturnType(input.upstreamState()), stats, processed /*call.getSkipCount()*/, upstreamCall};
+  }
+
+  TRI_ASSERT(_processed == 0);
   // only produce at most output.numRowsLeft() many results
   ExecutorState upstreamState = input.upstreamState();
   while (input.hasDataRow() && call.needSkipMore()) {
-    _modifier.reset();
+    _modifier->reset();
     size_t toSkip = call.getOffset();
     if (call.getLimit() == 0 && call.hasHardLimit()) {
       // We need to produce all modification operations.
@@ -227,46 +314,35 @@ template <typename FetcherType, typename ModifierType>
     if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
       auto& range = input.getInputRange();
       if (range.hasDataRow()) {
-        doCollect(range, toSkip);
+        _processed += doCollect(range, toSkip);
       }
       upstreamState = range.upstreamState();
       if (upstreamState == ExecutorState::DONE) {
         // We are done with this input.
         // We need to forward it to the last ShadowRow.
-        input.skipAllRemainingDataRows();
+        _processed += input.skipAllRemainingDataRows();
         TRI_ASSERT(input.upstreamState() == ExecutorState::DONE);
       }
     } else {
-      doCollect(input, toSkip);
+      _processed += doCollect(input, toSkip);
       upstreamState = input.upstreamState();
     }
 
-    if (_modifier.nrOfOperations() > 0) {
-      _modifier.transact(_trx);
-
-      if (_infos._doCount) {
-        stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
-        stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
+    if (_modifier->nrOfOperations() > 0) {
+      ExecutionState modifierState = _modifier->transact(_trx);
+    
+      if (modifierState == ExecutionState::WAITING) {
+        TRI_ASSERT(!ServerState::instance()->isSingleServer());
+        // TODO
+        //return {ExecutionState::WAITING, stats, 0, upstreamCall};
+        return {ExecutionState::WAITING, ModificationStats{}, 0, AqlCall{}};
       }
 
-      if (call.needsFullCount()) {
-        // If we need to do full count the nr of writes we did
-        // in this batch is always correct.
-        // If we are in offset phase and need to produce data
-        // after the toSkip is limited to offset().
-        // otherwise we need to report everything we write
-        call.didSkip(_modifier.nrOfWritesExecuted());
-      } else {
-        // If we do not need to report fullcount.
-        // we cannot report more than offset
-        // but also not more than the operations we
-        // have successfully executed
-        call.didSkip((std::min)(call.getOffset(), _modifier.nrOfWritesExecuted()));
-      }
+      handleResult();
     }
   }
 
-  return {upstreamState, stats, call.getSkipCount(), upstreamCall};
+  return {translateReturnType(upstreamState), stats, call.getSkipCount(), upstreamCall};
 }
 
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;

@@ -165,6 +165,17 @@ constexpr bool executorHasSideEffects =
                 ModificationExecutor<AllRowsFetcher, UpsertModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, SubqueryExecutor<true>>;
 
+template <typename Executor>
+constexpr bool executorCanReturnWaiting =
+    is_one_of_v<Executor, ModificationExecutor<AllRowsFetcher, InsertModifier>,
+                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
+                ModificationExecutor<AllRowsFetcher, RemoveModifier>,
+                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
+                ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
+                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
+                ModificationExecutor<AllRowsFetcher, UpsertModifier>,
+                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
+
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
@@ -644,7 +655,7 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
   // TODO: We only need to do this if the executor is required to call.
   // e.g. Modifications and SubqueryStart will always need to be called. Limit only if it needs to report fullCount
   if constexpr (is_one_of_v<Executor, LimitExecutor, SubqueryStartExecutor, SubqueryExecutor<true>> ||
-                executorHasSideEffects<Executor>) {
+                executorHasSideEffects<Executor> || executorCanReturnWaiting<Executor>) {
     return FastForwardVariant::EXECUTOR;
   }
   return FastForwardVariant::FETCHER;
@@ -724,6 +735,9 @@ auto ExecutionBlockImpl<Executor>::executeProduceRows(typename Fetcher::DataRang
     // SO this code is in fact not reachable
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+  } else if constexpr (executorCanReturnWaiting<Executor>) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
   } else {
     auto [state, stats, call] = _executor.produceRows(input, output);
     return {state, stats, call};
@@ -748,6 +762,9 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
     } else if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
       // The SubqueryExecutor has it's own special handling outside.
       // SO this code is in fact not reachable
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+    } else if constexpr (executorCanReturnWaiting<Executor>) {
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     } else {
@@ -1201,6 +1218,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
                _execState == ExecState::UPSTREAM || _execState == ExecState::PRODUCE ||
                _execState == ExecState::SKIP || _execState == ExecState::FASTFORWARD);
+  } else if constexpr (executorCanReturnWaiting<Executor>) {
+    TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
+               _execState == ExecState::UPSTREAM || _execState == ExecState::PRODUCE ||
+               _execState == ExecState::SKIP || _execState == ExecState::FASTFORWARD);
   } else {
     // We can only have returned the following internal states
     TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
@@ -1354,6 +1375,20 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           } else {
             state = ExecutorState::HASMORE;
           }
+        } else if constexpr (executorCanReturnWaiting<Executor>) {
+          TRI_DEFER(clientCall.resetSkipCount());
+          ExecutionState executorState = ExecutionState::HASMORE;
+          std::tie(executorState, stats, skippedLocal, call) =
+              _executor.skipRowsRange(_lastRange, clientCall);
+
+          if (executorState == ExecutionState::WAITING) {
+            TRI_ASSERT(skippedLocal == 0);
+            return {executorState, SkipResult{}, nullptr};
+          } else if (executorState == ExecutionState::DONE) {
+            state = ExecutorState::DONE;
+          } else {
+            state = ExecutorState::HASMORE;
+          }
         } else {
           // Execute skipSome
           std::tie(state, stats, skippedLocal, call) =
@@ -1437,6 +1472,17 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           } else {
             state = ExecutorState::HASMORE;
           }
+        } else if constexpr (executorCanReturnWaiting<Executor>) {
+          ExecutionState executorState = ExecutionState::HASMORE;
+          std::tie(executorState, stats, call) =
+              _executor.produceRows(_lastRange, *_outputItemRow);
+          if (executorState == ExecutionState::WAITING) {
+            return {executorState, SkipResult{}, nullptr};
+          } else if (executorState == ExecutionState::DONE) {
+            state = ExecutorState::DONE;
+          } else {
+            state = ExecutorState::HASMORE;
+          }
         } else {
           // Execute getSome
           std::tie(state, stats, call) = executeProduceRows(_lastRange, *_outputItemRow);
@@ -1509,7 +1555,31 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           }
 
           // We forget that we skipped
-          skippedLocal = 0;
+          if (!callCopy.needsFullCount()) {
+            // We forget that we skipped
+            skippedLocal = 0;
+          }
+        } else if constexpr (executorCanReturnWaiting<Executor>) {
+          ExecutionState executorState = ExecutionState::HASMORE;
+
+          AqlCall dummy;
+          dummy.hardLimit = 0u;
+          dummy.fullCount = true;
+          std::tie(executorState, stats, skippedLocal, call) =
+              _executor.skipRowsRange(_lastRange, dummy);
+          if (executorState == ExecutionState::WAITING) {
+            TRI_ASSERT(skippedLocal == 0);
+            return {executorState, SkipResult{}, nullptr};
+          } else if (executorState == ExecutionState::DONE) {
+            state = ExecutorState::DONE;
+          } else {
+            state = ExecutorState::HASMORE;
+          }
+
+          if (!callCopy.needsFullCount()) {
+            // We forget that we skipped
+            skippedLocal = 0;
+          }
         } else {
           // Execute skipSome
           std::tie(state, stats, skippedLocal, call) =
@@ -1766,7 +1836,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   _skipped.reset();
   if (localExecutorState == ExecutorState::HASMORE || _lastRange.hasDataRow() ||
       _lastRange.hasShadowRow()) {
-    // We have skipped or/and return data, otherwise we cannot return HASMORE
+    // We have skipped or/and returned data, otherwise we cannot return HASMORE
     TRI_ASSERT(!skipped.nothingSkipped() ||
                (outputBlock != nullptr && outputBlock->numRows() > 0));
     return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
