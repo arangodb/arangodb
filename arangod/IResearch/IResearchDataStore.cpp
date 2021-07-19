@@ -1262,19 +1262,19 @@ Result IResearchDataStore::insert(
     } catch (basics::Exception const& e) {
       return {
           e.code(),
-          "caught exception while inserting document into arangosearch link '" +
+          "caught exception while inserting document into arangosearch index '" +
               std::to_string(id.id()) + "', revision '" +
               std::to_string(documentId.id()) + "': " + e.what()};
     } catch (std::exception const& e) {
       return {
           TRI_ERROR_INTERNAL,
-          "caught exception while inserting document into arangosearch link '" +
+          "caught exception while inserting document into arangosearch index '" +
               std::to_string(id.id()) + "', revision '" +
               std::to_string(documentId.id()) + "': " + e.what()};
     } catch (...) {
       return {
           TRI_ERROR_INTERNAL,
-          "caught exception while inserting document into arangosearch link '" +
+          "caught exception while inserting document into arangosearch index '" +
               std::to_string(id.id()) + "', revision '" +
               std::to_string(documentId.id()) + "'"};
     }

@@ -740,7 +740,6 @@ void InvertedIndexFieldIterator::next() {
       }
     }
     if (_arrayStack.empty()) {
-      TRI_ASSERT(_valueSlice.isNone());
       if (!_nameBuffer.empty()) {
         if (++_begin == _end) {
           TRI_ASSERT(!valid());
@@ -774,6 +773,10 @@ void InvertedIndexFieldIterator::next() {
           if (setValue(_valueSlice, _begin->second)){
             return;
           }
+          THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_NOT_IMPLEMENTED,
+            "Inverted index does not supports indexing objects and configured analyzer does "
+            " not accepts objects. Please use another analyzer to process an object or exclude field '%s'"
+            " from index definition", _nameBuffer.c_str());
           break;
         case VPackValueType::Array: {
           if (setValue(_valueSlice, _begin->second)){
