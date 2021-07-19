@@ -83,7 +83,7 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
 
     for (auto i = std::uint32_t{0}; i < maxIter && !data.stopClientThreads.load(); ++i) {
       auto const payload = LogPayload{genPayload(threadIdx, i)};
-      auto const idx = log->insert(payload);
+      auto const idx = log->insert(payload, false, LogLeader::doNotTriggerAsyncReplication);
       std::this_thread::sleep_for(1ns);
       auto fut = log->waitFor(idx);
       fut.get();
@@ -117,7 +117,7 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
          i < maxIter && !data.stopClientThreads.load(); i += batch) {
       for (auto k = 0; k < batch && i + k < maxIter; ++k) {
         auto const payload = LogPayload{genPayload(threadIdx, i + k)};
-        idxs[k] = log->insert(payload);
+        idxs[k] = log->insert(payload, false, LogLeader::doNotTriggerAsyncReplication);
       }
       std::this_thread::sleep_for(1ns);
       auto fut = log->waitFor(idxs.back());

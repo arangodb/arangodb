@@ -395,8 +395,14 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
   });
 }
 
-// NOLINTNEXTLINE(performance-unnecessary-value-param)
-auto replicated_log::LogLeader::insert(LogPayload payload) -> LogIndex {
+auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync) -> LogIndex {
+  auto index = insert(std::move(payload), waitForSync, doNotTriggerAsyncReplication);
+  triggerAsyncReplication();
+  return index;
+}
+
+auto replicated_log::LogLeader::insert(LogPayload payload, [[maybe_unused]] bool waitForSync, DoNotTriggerAsyncReplication) -> LogIndex {
+  // TODO Handle waitForSync!
   auto const insertTp = LogEntry::clock::now();
   // Currently we use a mutex. Is this the only valid semantic?
   return _guardedLeaderData.doUnderLock([&](GuardedLeaderData& leaderData) {

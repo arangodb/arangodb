@@ -92,8 +92,8 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries) {
   auto fut = leader->waitForIterator(LogIndex{4});
   ASSERT_FALSE(fut.isReady());
 
-  leader->insert(LogPayload{"fourth entry"});
-  leader->insert(LogPayload{"fifth entry"});
+  leader->insert(LogPayload{"fourth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+  leader->insert(LogPayload{"fifth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
   leader->triggerAsyncReplication();
 
   ASSERT_TRUE(fut.isReady());
@@ -144,8 +144,8 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
   auto fut = leader->waitForIterator(LogIndex{4});
   ASSERT_FALSE(fut.isReady());
 
-  leader->insert(LogPayload{"fourth entry"});
-  leader->insert(LogPayload{"fifth entry"});
+  leader->insert(LogPayload{"fourth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+  leader->insert(LogPayload{"fifth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
   leader->triggerAsyncReplication();
 
   ASSERT_FALSE(fut.isReady());
@@ -247,8 +247,8 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_follower) {
   auto fut = follower->waitForIterator(LogIndex{4});
   ASSERT_FALSE(fut.isReady());
 
-  leader->insert(LogPayload{"fourth entry"});
-  leader->insert(LogPayload{"fifth entry"});
+  leader->insert(LogPayload{"fourth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+  leader->insert(LogPayload{"fifth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
   leader->triggerAsyncReplication();
 
   // replicate entries, not commit index

@@ -80,7 +80,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
   {
     // Insert first entry on the follower, expect the spearhead to be one
-    auto idx = leader->insert(LogPayload{"first entry"});
+    auto idx = leader->insert(LogPayload{"first entry"}, false, LogLeader::doNotTriggerAsyncReplication);
     {
       auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
       EXPECT_EQ(status.local.commitIndex, LogIndex{0});
@@ -294,7 +294,7 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
       defaultLogger(), _logMetricsMock, leaderId, std::move(coreA), LogTerm{1},
       std::vector<std::shared_ptr<AbstractFollower>>{follower_1, follower_2}, 3);
 
-  auto index = leader->insert(LogPayload{"first entry"});
+  auto index = leader->insert(LogPayload{"first entry"}, false, LogLeader::doNotTriggerAsyncReplication);
   auto future = leader->waitFor(index);
   EXPECT_FALSE(future.isReady());
 

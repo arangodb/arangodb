@@ -68,7 +68,7 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     EXPECT_EQ(stats.spearHead.index, LogIndex{3});
   }
   {
-    auto idx = leader->insert(LogPayload{"new second entry"});
+    auto idx = leader->insert(LogPayload{"new second entry"}, false, LogLeader::doNotTriggerAsyncReplication);
     EXPECT_EQ(idx, LogIndex{2});
   }
 

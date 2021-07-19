@@ -39,7 +39,7 @@ TEST_F(ReplicatedLogTest, reclaim_leader_after_term_change) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
   auto leader = leaderLog->becomeLeader(LogConfig{2, false}, "leader", LogTerm{1}, {follower});
 
-  auto idx = leader->insert(LogPayload{"payload"});
+  auto idx = leader->insert(LogPayload{"payload"}, false, LogLeader::doNotTriggerAsyncReplication);
   auto f = leader->waitFor(idx).then([&](futures::Try<std::shared_ptr<QuorumData const>>&& quorum) {
     EXPECT_TRUE(quorum.hasException());
     try {
@@ -68,7 +68,7 @@ TEST_F(ReplicatedLogTest, reclaim_follower_after_term_change) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
   auto leader = leaderLog->becomeLeader(LogConfig{2, false}, "leader", LogTerm{1}, {follower});
 
-  auto idx = leader->insert(LogPayload{"payload"});
+  auto idx = leader->insert(LogPayload{"payload"}, false, LogLeader::doNotTriggerAsyncReplication);
   auto f = follower->waitFor(idx).then([&](futures::Try<std::shared_ptr<QuorumData const>>&& quorum) {
     EXPECT_TRUE(quorum.hasException());
     try {

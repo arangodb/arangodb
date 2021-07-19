@@ -35,7 +35,7 @@ TEST_F(MultiTermTest, add_follower_test) {
   auto leaderLog = makeReplicatedLog(LogId{1});
   {
     auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {}, 1);
-    auto idx = leader->insert(LogPayload{"first entry"});
+    auto idx = leader->insert(LogPayload{"first entry"}, false, LogLeader::doNotTriggerAsyncReplication);
     auto f = leader->waitFor(idx);
     ASSERT_EQ(idx, LogIndex{1});
     EXPECT_FALSE(f.isReady());
@@ -89,7 +89,7 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
         followerLog->becomeFollower("follower", LogTerm{1}, "leader");
     auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
 
-    auto idx = leader->insert(LogPayload{"first entry"});
+    auto idx = leader->insert(LogPayload{"first entry"}, false, LogLeader::doNotTriggerAsyncReplication);
     auto f = leader->waitFor(idx);
     EXPECT_FALSE(f.isReady());
     leader->triggerAsyncReplication();
@@ -98,7 +98,7 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
     EXPECT_ANY_THROW({ std::ignore = f.get(); });
     EXPECT_ANY_THROW({ std::ignore = leader->getStatus(); });
     EXPECT_ANY_THROW(
-        { std::ignore = leader->insert(LogPayload{"second entry"}); });
+        { std::ignore = leader->insert(LogPayload{"second entry"}, false, LogLeader::doNotTriggerAsyncReplication); });
   }
 }
 
@@ -110,7 +110,7 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
         followerLog->becomeFollower("follower", LogTerm{1}, "leader");
     auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
 
-    auto idx = leader->insert(LogPayload{"first entry"});
+    auto idx = leader->insert(LogPayload{"first entry"}, false, LogLeader::doNotTriggerAsyncReplication);
     auto f = leader->waitFor(idx);
     EXPECT_FALSE(f.isReady());
     leader->triggerAsyncReplication();
@@ -182,7 +182,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
 
     auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {followerProxy}, 2);
 
-    auto idx = leader->insert(LogPayload{"first entry"});
+    auto idx = leader->insert(LogPayload{"first entry"}, false, LogLeader::doNotTriggerAsyncReplication);
     auto f = leader->waitFor(idx);
     EXPECT_FALSE(f.isReady());
     leader->triggerAsyncReplication();
