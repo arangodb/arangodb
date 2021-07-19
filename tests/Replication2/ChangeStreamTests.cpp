@@ -48,7 +48,7 @@ TEST_F(ChangeStreamTests, ask_for_exisiting_entries) {
 
   auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {}, 1);
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
   {
     auto fut = leader->waitForIterator(LogIndex{2});
     ASSERT_TRUE(fut.isReady());
@@ -87,14 +87,14 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries) {
 
   auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {}, 1);
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
 
   auto fut = leader->waitForIterator(LogIndex{4});
   ASSERT_FALSE(fut.isReady());
 
   leader->insert(LogPayload{"fourth entry"});
   leader->insert(LogPayload{"fifth entry"});
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
 
   ASSERT_TRUE(fut.isReady());
   {
@@ -136,7 +136,7 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
   auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {follower}, 2);
 
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
   while (follower->hasPendingAppendEntries()) {
     follower->runAsyncAppendEntries();
   }
@@ -146,7 +146,7 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
 
   leader->insert(LogPayload{"fourth entry"});
   leader->insert(LogPayload{"fifth entry"});
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
 
   ASSERT_FALSE(fut.isReady());
   ASSERT_TRUE(follower->hasPendingAppendEntries());
@@ -191,7 +191,7 @@ TEST_F(ChangeStreamTests, ask_for_exisiting_entries_follower) {
 
   auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {follower}, 1);
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
 
   while (follower->hasPendingAppendEntries()) {
     follower->runAsyncAppendEntries();
@@ -238,7 +238,7 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_follower) {
 
   auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {follower}, 2);
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
 
   while (follower->hasPendingAppendEntries()) {
     follower->runAsyncAppendEntries();
@@ -249,7 +249,7 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_follower) {
 
   leader->insert(LogPayload{"fourth entry"});
   leader->insert(LogPayload{"fifth entry"});
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
 
   // replicate entries, not commit index
   ASSERT_TRUE(follower->hasPendingAppendEntries());

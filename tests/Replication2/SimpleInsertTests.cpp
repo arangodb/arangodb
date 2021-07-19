@@ -94,9 +94,9 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     auto f = leader->waitFor(idx);
     EXPECT_FALSE(f.isReady());
 
-    // Nothing sent to the follower yet, but only after runAsyncStep
+    // Nothing sent to the follower yet, but only after triggerAsyncReplication
     EXPECT_FALSE(follower->hasPendingAppendEntries());
-    leader->runAsyncStep();
+    leader->triggerAsyncReplication();
     EXPECT_TRUE(follower->hasPendingAppendEntries());
 
     {
@@ -236,7 +236,7 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
 
   // this should trigger a sendAppendEntries to all follower
   EXPECT_FALSE(follower->hasPendingAppendEntries());
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
   EXPECT_TRUE(follower->hasPendingAppendEntries());
   {
     std::size_t number_of_runs = 0;
@@ -318,7 +318,7 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   }
 
   // sendAppendEntries
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
   EXPECT_TRUE(follower_1->hasPendingAppendEntries());
   EXPECT_TRUE(follower_2->hasPendingAppendEntries());
 

@@ -97,7 +97,11 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   [[nodiscard]] auto readReplicatedEntryByIndex(LogIndex idx) const -> std::optional<LogEntry>;
 
-  auto runAsyncStep() -> void;
+  // Triggers sending of appendEntries requests to all followers. This continues
+  // until all participants are perfectly in sync, and will then stop.
+  // Is usually called automatically after an insert, but can be called manually
+  // from test code.
+  auto triggerAsyncReplication() -> void;
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
 

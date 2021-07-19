@@ -251,7 +251,7 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
 
       auto newLeader = log->becomeLeader(spec->currentTerm->config, serverId,
                                          spec->currentTerm->term, follower);
-      newLeader->runAsyncStep(); // TODO move this call into becomeLeader?
+      newLeader->triggerAsyncReplication(); // TODO move this call into becomeLeader?
     } else {
       auto leaderString = std::optional<ParticipantId>{};
       if (spec->currentTerm->leader) {

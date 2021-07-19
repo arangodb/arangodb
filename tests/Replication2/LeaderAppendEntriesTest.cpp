@@ -86,7 +86,7 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
     ASSERT_EQ(idx, LogIndex{1});
   }
 
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
   ASSERT_TRUE(follower->hasPendingRequests());
   {
     auto req = follower->currentRequest();
@@ -134,7 +134,7 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
     ASSERT_EQ(idx, LogIndex{1});
   }
 
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
   ASSERT_TRUE(follower->hasPendingRequests());
   {
     auto req = follower->currentRequest();
@@ -184,7 +184,7 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set) {
     ASSERT_EQ(idx, LogIndex{1});
   }
 
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
   ASSERT_TRUE(follower->hasPendingRequests());
   {
     auto req = follower->currentRequest();
@@ -209,7 +209,7 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
     ASSERT_EQ(idx, LogIndex{1});
   }
 
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
   ASSERT_TRUE(follower->hasPendingRequests());
   {
     auto req = follower->currentRequest();

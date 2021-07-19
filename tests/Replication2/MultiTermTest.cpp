@@ -39,7 +39,7 @@ TEST_F(MultiTermTest, add_follower_test) {
     auto f = leader->waitFor(idx);
     ASSERT_EQ(idx, LogIndex{1});
     EXPECT_FALSE(f.isReady());
-    leader->runAsyncStep();
+    leader->triggerAsyncReplication();
     {
       ASSERT_TRUE(f.isReady());
       auto const& quorum = f.get();
@@ -66,7 +66,7 @@ TEST_F(MultiTermTest, add_follower_test) {
 
     auto f = leader->waitFor(LogIndex{1});
     EXPECT_FALSE(f.isReady());
-    leader->runAsyncStep();
+    leader->triggerAsyncReplication();
     ASSERT_TRUE(follower->hasPendingAppendEntries());
     while (follower->hasPendingAppendEntries()) {
       follower->runAsyncAppendEntries();
@@ -92,7 +92,7 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
     auto idx = leader->insert(LogPayload{"first entry"});
     auto f = leader->waitFor(idx);
     EXPECT_FALSE(f.isReady());
-    leader->runAsyncStep();
+    leader->triggerAsyncReplication();
     auto newLeader = leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 2);
     ASSERT_TRUE(f.isReady());
     EXPECT_ANY_THROW({ std::ignore = f.get(); });
@@ -113,7 +113,7 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
     auto idx = leader->insert(LogPayload{"first entry"});
     auto f = leader->waitFor(idx);
     EXPECT_FALSE(f.isReady());
-    leader->runAsyncStep();
+    leader->triggerAsyncReplication();
 
     {
       auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
@@ -133,7 +133,7 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
 
     // now create a new leader
     auto newLeader = leaderLog->becomeLeader("leader", LogTerm{2}, {newFollower}, 2);
-    newLeader->runAsyncStep();
+    newLeader->triggerAsyncReplication();
     EXPECT_TRUE(newFollower->hasPendingAppendEntries());
 
     // run the old followers append entries
@@ -185,7 +185,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     auto idx = leader->insert(LogPayload{"first entry"});
     auto f = leader->waitFor(idx);
     EXPECT_FALSE(f.isReady());
-    leader->runAsyncStep();
+    leader->triggerAsyncReplication();
     EXPECT_FALSE(f.isReady());
 
     {
@@ -208,7 +208,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
 
     auto f2 = leader->waitFor(idx);
     EXPECT_FALSE(f2.isReady());
-    leader->runAsyncStep();
+    leader->triggerAsyncReplication();
 
     // run the old followers append entries
     follower->runAsyncAppendEntries();

@@ -84,7 +84,7 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   }
 
   // now run the leader
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
 
   // we expect the follower to rewrite its logs
   ASSERT_TRUE(follower->hasPendingAppendEntries());

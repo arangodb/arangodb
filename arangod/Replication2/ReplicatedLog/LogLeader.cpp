@@ -438,7 +438,7 @@ auto replicated_log::LogLeader::getParticipantId() const noexcept -> Participant
   return _id;
 }
 
-auto replicated_log::LogLeader::runAsyncStep() -> void {
+auto replicated_log::LogLeader::triggerAsyncReplication() -> void {
   auto preparedRequests = _guardedLeaderData.doUnderLock([](auto& leaderData) {
     if (leaderData._didResign) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);

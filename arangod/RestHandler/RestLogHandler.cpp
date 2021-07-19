@@ -284,7 +284,7 @@ struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
     auto log = vocbase.getReplicatedLogLeaderById(logId);
     auto idx = log->insert(std::move(payload));
     auto f = log->waitFor(idx);
-    log->runAsyncStep();  // TODO
+    log->triggerAsyncReplication();  // TODO
     return f;
   }
 

@@ -145,7 +145,7 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
         auto log = std::dynamic_pointer_cast<LogLeader>(data.log);
         ASSERT_NE(log, nullptr);
         for (auto i = 0;; ++i) {
-          log->runAsyncStep();
+          log->triggerAsyncReplication();
           if (i % 16) {
             std::this_thread::sleep_for(100ns);
             if (data.stopReplicationThreads.load()) {

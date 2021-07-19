@@ -58,7 +58,7 @@ TEST_F(AppendEntriesBatchTest, test_with_two_batches) {
     EXPECT_EQ(stats.local.commitIndex, LogIndex{0});
   }
 
-  leader->runAsyncStep();
+  leader->triggerAsyncReplication();
   ASSERT_TRUE(follower->hasPendingAppendEntries());
 
   {
