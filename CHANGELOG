@@ -1,6 +1,9 @@
 devel
 -----
 
+* Web UI: Fixes a logical error which occured after re-visiting the logs view
+  which lead to not displaying the logs view and its entries correctly.
+
 * Slightly increase internal AQL query and transaction timeout on DB servers 
   from 3 to 5 minutes.
   Previously, queries and transactions on DB servers could expire quicker,
