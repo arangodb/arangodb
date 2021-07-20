@@ -83,6 +83,12 @@ class RefactoredTraverserCache {
   void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn, velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Inserts only the edges _id value into the given builder.
+  //////////////////////////////////////////////////////////////////////////////
+  void insertEdgeIdIntoResult(graph::EdgeDocumentToken const& etkn,
+                              velocypack::Builder& builder);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document identified by the _id string
   //////////////////////////////////////////////////////////////////////////////
   void insertVertexIntoResult(aql::TraversalStats& stats,
@@ -109,10 +115,12 @@ class RefactoredTraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Lookup an edge document from the database.
   ///        if this returns false the result is unmodified
+  ///        if onlyId is set to true, the result will only contain the _Id
+  ///        value not the document itself.
   //////////////////////////////////////////////////////////////////////////////
 
   template <typename ResultType>
-  bool appendEdge(graph::EdgeDocumentToken const& etkn, ResultType& result);
+  bool appendEdge(graph::EdgeDocumentToken const& etkn, bool onlyId, ResultType& result);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Helper Method to extract collection Name from given VertexIdentifier

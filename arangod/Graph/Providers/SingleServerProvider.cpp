@@ -56,6 +56,20 @@ void SingleServerProvider<Step>::addEdgeToBuilder(typename Step::Edge const& edg
   if (edge.isValid()) {
     insertEdgeIntoResult(edge.getID(), builder);
   } else {
+    // We can never hand out invalid ids.
+    // For production just be sure to add something sensible.
+    builder.add(VPackSlice::nullSlice());
+  }
+};
+
+template <class Step>
+void SingleServerProvider<Step>::addEdgeIDToBuilder(typename Step::Edge const& edge,
+                                                    arangodb::velocypack::Builder& builder) {
+  if (edge.isValid()) {
+    insertEdgeIntoResult(edge.getID(), builder);
+  } else {
+    // We can never hand out invalid ids.
+    // For production just be sure to add something sensible.
     builder.add(VPackSlice::nullSlice());
   }
 };
@@ -163,6 +177,12 @@ template <class Step>
 void SingleServerProvider<Step>::insertEdgeIntoResult(EdgeDocumentToken edge,
                                                       arangodb::velocypack::Builder& builder) {
   _cache.insertEdgeIntoResult(edge, builder);
+}
+
+template <class Step>
+void SingleServerProvider<Step>::insertEdgeIdIntoResult(EdgeDocumentToken edge,
+                                                        arangodb::velocypack::Builder& builder) {
+  _cache.insertEdgeIdIntoResult(edge, builder);
 }
 
 template <class Step>

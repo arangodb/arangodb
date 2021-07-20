@@ -95,7 +95,7 @@ void RefactoredTraverserCache::clear() {
 
 template <typename ResultType>
 bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
-                                          ResultType& result) {
+                                          bool onlyId, ResultType& result) {
   auto col = _trx->vocbase().lookupCollection(idToken.cid());
 
   if (ADB_UNLIKELY(col == nullptr)) {
@@ -110,12 +110,22 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
       col->getPhysical()
           ->read(_trx, idToken.localDocumentId(),
                  [&](LocalDocumentId const&, VPackSlice edge) -> bool {
-                   // NOTE: Do not count this as Primary Index Scan, we counted
-                   // it in the edge Index before copying...
-                   if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
-                     result = aql::AqlValue(edge);
-                   } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
-                     result.add(edge);
+                   if (onlyId) {
+                     // NOTE: Do not count this as Primary Index Scan, we
+                     // counted it in the edge Index before copying...
+                     if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+                       result = aql::AqlValue(edge.get(StaticStrings::IdString).copyString());
+                     } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+                       result.add(edge.get(StaticStrings::IdString));
+                     }
+                   } else {
+                     // NOTE: Do not count this as Primary Index Scan, we
+                     // counted it in the edge Index before copying...
+                     if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+                       result = aql::AqlValue(edge);
+                     } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+                       result.add(edge);
+                     }
                    }
                    return true;
                  })
@@ -226,7 +236,14 @@ bool RefactoredTraverserCache::appendVertex(aql::TraversalStats& stats,
 
 void RefactoredTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
                                                     VPackBuilder& builder) {
-  if (!appendEdge(idToken, builder)) {
+  if (!appendEdge(idToken, false, builder)) {
+    builder.add(VPackSlice::nullSlice());
+  }
+}
+
+void RefactoredTraverserCache::insertEdgeIdIntoResult(EdgeDocumentToken const& idToken,
+                                                      VPackBuilder& builder) {
+  if (!appendEdge(idToken, true, builder)) {
     builder.add(VPackSlice::nullSlice());
   }
 }
