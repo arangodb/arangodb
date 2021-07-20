@@ -401,12 +401,19 @@ void V8DealerFeature::start() {
   
   // add all paths to allowlists
   V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
+  TRI_ASSERT(!_startupDirectory.empty());
   v8security.addToInternalAllowList(_startupDirectory, FSAccessType::READ);
-  v8security.addToInternalAllowList(_nodeModulesDirectory, FSAccessType::READ);
+
+  if (!_nodeModulesDirectory.empty()) {
+    v8security.addToInternalAllowList(_nodeModulesDirectory, FSAccessType::READ);
+  }
   for (auto const& it : _moduleDirectories) {
-    v8security.addToInternalAllowList(it, FSAccessType::READ);
+    if (!it.empty()) {
+      v8security.addToInternalAllowList(it, FSAccessType::READ);
+    }
   }
 
+  TRI_ASSERT(!_appPath.empty());
   v8security.addToInternalAllowList(_appPath, FSAccessType::READ);
   v8security.addToInternalAllowList(_appPath, FSAccessType::WRITE);
   v8security.dumpAccessLists();
