@@ -284,7 +284,7 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/LogicalView-test.cpp
   VocBase/VersionTest.cpp
   VPackDeserializer/BasicTests.cpp
-  ${ADDITIONAL_TEST_SOURCES} Replication2/PrevTermCommitTest.cpp)
+  ${ADDITIONAL_TEST_SOURCES})
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/AppendEntriesBatchTest.cpp
@@ -298,6 +298,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/LogReclaimTest.cpp
   Replication2/MaintenanceTests.cpp
   Replication2/MultiTermTest.cpp
+  Replication2/PrevTermCommitTest.cpp
   Replication2/ReplicatedLogMetricsMock.cpp
   Replication2/ReplicatedLogTest.cpp
   Replication2/RewriteLogTest.cpp
