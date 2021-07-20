@@ -50,12 +50,14 @@ function testSuite() {
       // fetch server-side database directory name
       let data = "return require('@arangodb').db._path();";
       let dbPath = arango.POST("/_admin/execute", data);
-      let jsPath = fs.join(dbPath, "js");
-      assertTrue(fs.exists(jsPath));
-      assertTrue(fs.exists(fs.join(jsPath, "node")));
-      assertTrue(fs.exists(fs.join(jsPath, "node", "node_modules")));
-      assertTrue(fs.exists(fs.join(jsPath, "node", "node_modules", "lodash")));
-      assertFalse(fs.exists(fs.join(jsPath, "node", "eslint")));
+      if (db._engine().name === 'rocksdb') {
+        let jsPath = fs.join(dbPath, "js");
+        assertTrue(fs.exists(jsPath));
+        assertTrue(fs.exists(fs.join(jsPath, "node")));
+        assertTrue(fs.exists(fs.join(jsPath, "node", "node_modules")));
+        assertTrue(fs.exists(fs.join(jsPath, "node", "node_modules", "lodash")));
+        assertFalse(fs.exists(fs.join(jsPath, "node", "eslint")));
+      }
     },
     
   };
