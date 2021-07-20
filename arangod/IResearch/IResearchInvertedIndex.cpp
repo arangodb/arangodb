@@ -381,7 +381,7 @@ bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
 
     auto in = name.stringRef();
     irs::string_ref analyzerName = analyzer.stringView();
-    TRI_ParseAttributeString(in, translate, false);
+    TRI_ParseAttributeString(in, translate, true);
     for (auto const& f : _meta._fields) {
       if (f.second._shortName == analyzerName) { // FIXME check case custom1 <> _system::custom1
         if (arangodb::basics::AttributeName::isIdentical(f.first, translate, false)) {
