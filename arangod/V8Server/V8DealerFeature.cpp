@@ -557,9 +557,9 @@ void V8DealerFeature::copyInstallationFiles() {
 
   _nodeModulesDirectory = _startupDirectory;
 
-  const std::string checksumFile =
+  std::string const checksumFile =
       FileUtils::buildFilename(_startupDirectory, StaticStrings::checksumFileJs);
-  const std::string copyChecksumFile =
+  std::string const copyChecksumFile =
       FileUtils::buildFilename(copyJSPath, StaticStrings::checksumFileJs);
 
   bool overwriteCopy = false;
@@ -569,7 +569,7 @@ void V8DealerFeature::copyInstallationFiles() {
   } else {
     try {
       overwriteCopy =
-          (FileUtils::slurp(copyChecksumFile) != FileUtils::slurp(checksumFile));
+          (StringUtils::trim(FileUtils::slurp(copyChecksumFile)) != StringUtils::trim(FileUtils::slurp(checksumFile)));
     } catch (basics::Exception const& e) {
       LOG_TOPIC("efa47", ERR, Logger::V8) << "Error reading '" << StaticStrings::checksumFileJs
                                  << "' from disk: " << e.what();
@@ -578,7 +578,7 @@ void V8DealerFeature::copyInstallationFiles() {
   }
 
   if (overwriteCopy) {
-    // basics security checks before removing an existing directory:
+    // basic security checks before removing an existing directory:
     // check if for some reason we will be trying to remove the entire database
     // directory...
     if (FileUtils::exists(FileUtils::buildFilename(copyJSPath, "ENGINE"))) {
@@ -587,7 +587,7 @@ void V8DealerFeature::copyInstallationFiles() {
       FATAL_ERROR_EXIT();
     }
 
-    LOG_TOPIC("dd1c0", DEBUG, Logger::V8)
+    LOG_TOPIC("dd1c0", INFO, Logger::V8)
         << "Copying JS installation files from '" << _startupDirectory
         << "' to '" << copyJSPath << "'";
     auto res = TRI_ERROR_NO_ERROR;
@@ -606,39 +606,45 @@ void V8DealerFeature::copyInstallationFiles() {
       FATAL_ERROR_EXIT();
     }
 
-    // intentionally do not copy js/node/node_modules...
+    // intentionally do not copy js/node/node_modules/estlint!
     // we avoid copying this directory because it contains 5000+ files at the
-    // moment, and copying them one by one is darn slow at least on Windows...
+    // moment, and copying them one by one is slow. In addition, eslint is not
+    // needed in release builds
     std::string const versionAppendix =
         std::regex_replace(rest::Version::getServerVersion(),
                            std::regex("-.*$"), "");
-    std::string const nodeModulesPath =
-        FileUtils::buildFilename("js", "node", "node_modules");
-    std::string const nodeModulesPathVersioned =
-        basics::FileUtils::buildFilename("js", versionAppendix, "node",
-                                         "node_modules");
+    std::string const eslintPath =
+        FileUtils::buildFilename("js", "node", "node_modules", "eslint");
 
-    std::regex const binRegex("[/\\\\]\\.bin[/\\\\]", std::regex::ECMAScript);
+    // .bin directories could be harmful, and .map files are large and unnecessary
+    std::string const binDirectory = std::string(TRI_DIR_SEPARATOR_STR) + ".bin" + TRI_DIR_SEPARATOR_STR;
 
-    auto filter = [&nodeModulesPath, &nodeModulesPathVersioned, &binRegex](std::string const& filename) -> bool {
-      if (std::regex_search(filename, binRegex)) {
+    size_t copied = 0;
+
+    auto filter = [&eslintPath, &binDirectory, &copied](std::string const& filename) -> bool {
+      if (filename.size() >= 4 && filename.compare(filename.size() - 4, 4, ".map") == 0) {
+        // filename ends with ".map". filter it out!
+        return true;
+      } 
+      if (filename.find(binDirectory) != std::string::npos) {
         // don't copy files in .bin
         return true;
       }
+
       std::string normalized = filename;
       FileUtils::normalizePath(normalized);
-      if ((!nodeModulesPath.empty() && 
-           normalized.size() >= nodeModulesPath.size() &&
-           normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath) ||
-          (!nodeModulesPathVersioned.empty() &&
-           normalized.size() >= nodeModulesPathVersioned.size() &&
-           normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned)) {
+      if ((normalized.size() >= eslintPath.size() &&
+           normalized.compare(normalized.size() - eslintPath.size(), eslintPath.size(), eslintPath) == 0)) {
         // filter it out!
         return true;
       }
+
       // let the file/directory pass through
+      ++copied;
       return false;
     };
+
+    double start = TRI_microtime();
 
     std::string error;
     if (!FileUtils::copyRecursive(_startupDirectory, copyJSPath, filter, error)) {
@@ -662,6 +668,9 @@ void V8DealerFeature::copyInstallationFiles() {
             << copyJSPath << "': " << error;
       }
     }
+
+    LOG_TOPIC("38e1e", INFO, Logger::V8) 
+      << "copying " << copied << " JS installation file(s) took " << Logger::FIXED(TRI_microtime() - start, 6) << "s";
   }
   _startupDirectory = copyJSPath;
 }

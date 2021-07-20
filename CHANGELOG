@@ -1,6 +1,21 @@
 devel
 -----
 
+* Make `--javascript.copy-installation` also copy the `node_modules` sub
+  directory. This is required so we have a full copy of the JavaScript
+  dependencies and not one that excludes some infrequently changed modules.
+  In addition, file copying now intentionally excludes .map files as they
+  are not needed. 
+
+* Fixed BTS-408: treat positive or negative signed numbers as constants 
+  immediately during AQL query parsing. 
+  Previously, a value of `-1` was parsed initially as `unary minus(value(1))`,
+  which was not treated in the same way as a constant value `value(-1)`. 
+  The value was later optimized to just `value(-1)`, but this only happened 
+  during constant-folding after parsing. Any operations that referred to 
+  the unfolded values during parsing thus did not treat such values as
+  constants. 
+
 * Slightly increase internal AQL query and transaction timeout on DB servers 
   from 3 to 5 minutes.
   Previously, queries and transactions on DB servers could expire quicker,
@@ -55,9 +70,8 @@ devel
   - js-yaml: 3.13.1 -> 3.14.1
   - lodash: 4.17.13 -> 4.17.21
   - marked: 0.6.2 -> removed
-  - media-typer: 0.3.0 -> removed
   - mime-types: 2.1.22 -> 2.1.31
-  - mocha: 6.1.3 -> removed
+  - mocha: 6.1.3 -> 6.2.3
   - netmask: 1.0.6 -> 2.0.2
   - qs: 6.7.0 -> 6.10.1
   - range-parser: 1.2.0 -> 1.2.1
