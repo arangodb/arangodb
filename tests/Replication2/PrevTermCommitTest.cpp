@@ -49,7 +49,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
       auto idx = Al->insert(LogPayload{"first entry"});
       auto f = Al->waitFor(idx);
       ASSERT_FALSE(f.isReady());
-      Al->runAsyncStep();
+      Al->triggerAsyncReplication();
       // let both servers commit the first entry
       while (Cf->hasPendingAppendEntries() || Bf->hasPendingAppendEntries()) {
         Cf->runAsyncAppendEntries();
@@ -62,7 +62,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
 
     {
       std::ignore = Al->insert(LogPayload{"second entry A"});
-      Al->runAsyncStep();
+      Al->triggerAsyncReplication();
       ASSERT_TRUE(Bf->hasPendingAppendEntries());
       ASSERT_TRUE(Cf->hasPendingAppendEntries());
     }
@@ -83,7 +83,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
     ASSERT_EQ(idx, LogIndex{2});
     auto f = Cl->waitFor(idx);
     ASSERT_FALSE(f.isReady());
-    Cl->runAsyncStep();
+    Cl->triggerAsyncReplication();
 
     ASSERT_TRUE(Bf->hasPendingAppendEntries());
     ASSERT_TRUE(Af->hasPendingAppendEntries());
@@ -125,7 +125,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
     auto Al = A->becomeLeader("A", LogTerm{5}, {Bf, Cf}, 2);
 
     auto f = Al->waitFor(LogIndex{1});
-    Al->runAsyncStep();
+    Al->triggerAsyncReplication();
 
     ASSERT_TRUE(Bf->hasPendingAppendEntries());
     ASSERT_TRUE(Cf->hasPendingAppendEntries());
@@ -207,7 +207,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
 
   auto f = Cl->waitFor(LogIndex{1});
   ASSERT_FALSE(f.isReady());
-  Cl->runAsyncStep();
+  Cl->triggerAsyncReplication();
 
   ASSERT_TRUE(Bf->hasPendingAppendEntries());
   ASSERT_TRUE(Af->hasPendingAppendEntries());

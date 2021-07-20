@@ -170,6 +170,57 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
   }
 }
 
+TEST_F(ChangeStreamTests, ask_for_non_replicated_entries_with_follower) {
+  auto const entries = {
+      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"second entry"}),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3}, LogPayload{"third entry"})};
+
+  auto coreA = std::unique_ptr<LogCore>(nullptr);
+  {
+    auto leaderLog = makePersistedLog(LogId{1});
+    for (auto const& entry : entries) {
+      leaderLog->setEntry(entry);
+    }
+    coreA = std::make_unique<LogCore>(leaderLog);
+  }
+
+  auto coreB = makeLogCore(LogId{2});
+  auto follower = std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock,
+                                                       "follower", std::move(coreB),
+                                                       LogTerm{3}, "leader");
+  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
+                                     std::move(coreA), LogTerm{3}, {follower}, 2);
+
+  leader->triggerAsyncReplication();
+  while (follower->hasPendingAppendEntries()) {
+    follower->runAsyncAppendEntries();
+  }
+
+  leader->insert(LogPayload{"fourth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+  leader->insert(LogPayload{"fifth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+  leader->triggerAsyncReplication();
+
+
+  auto fut = leader->waitForIterator(LogIndex{3});
+  ASSERT_TRUE(fut.isReady());
+
+
+  {
+    auto entry = std::optional<LogEntry>{};
+    auto iter = std::move(fut).get();
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    EXPECT_EQ(entry->logIndex(), LogIndex{3});
+
+    entry = iter->next();
+    EXPECT_FALSE(entry.has_value());
+  }
+
+  ASSERT_TRUE(follower->hasPendingAppendEntries());
+  follower->runAsyncAppendEntries();
+}
 
 TEST_F(ChangeStreamTests, ask_for_exisiting_entries_follower) {
   auto const entries = {
