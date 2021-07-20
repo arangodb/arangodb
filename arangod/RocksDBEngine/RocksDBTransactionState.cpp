@@ -36,6 +36,8 @@
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/MetricsFeature.h"
+#include "RocksDBEngine/Methods/RocksDBReadonlyMethods.h"
+#include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -164,7 +166,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       TRI_ASSERT(_readSnapshot != nullptr);
       _rocksReadOptions.snapshot = _readSnapshot;
     }
-    _rocksMethods = std::make_unique<RocksDBReadOnlyMethods>(this);
+    _rocksMethods = std::make_unique<RocksDBReadOnlyMethods>(this, db);
   } else {
     createTransaction();
     TRI_ASSERT(_rocksTransaction != nullptr);
@@ -177,7 +179,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       TRI_ASSERT(_readSnapshot != nullptr);
     }
 
-    _rocksMethods = std::make_unique<RocksDBTrxMethods>(this);
+    _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, db);
     if (hasHint(transaction::Hints::Hint::NO_INDEXING)) {
       // do not track our own writes... we can only use this in very
       // specific scenarios, i.e. when we are sure that we will have a

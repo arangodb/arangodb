@@ -43,6 +43,10 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/Listeners/RocksDBMetricsListener.cpp
   RocksDBEngine/Listeners/RocksDBShaCalculator.cpp
   RocksDBEngine/Listeners/RocksDBThrottle.cpp
+  RocksDBEngine/Methods/RocksDBBatchedMethods.cpp
+  RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.cpp
+  RocksDBEngine/Methods/RocksDBReadonlyMethods.cpp
+  RocksDBEngine/Methods/RocksDBTrxMethods.cpp
   RocksDBEngine/RocksDBBackgroundThread.cpp
   RocksDBEngine/RocksDBBuilderIndex.cpp
   RocksDBEngine/RocksDBCollection.cpp
