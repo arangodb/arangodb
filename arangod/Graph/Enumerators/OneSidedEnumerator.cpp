@@ -316,4 +316,21 @@ template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise
     SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, true>>;
 template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
     SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, true>>;
+
+// Weighted Search
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, false>>;
+
+// Weighted Tracing
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, true>>;
+#
 #endif
