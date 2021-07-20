@@ -21,14 +21,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBMethods.h"
+#include "RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 
 using namespace arangodb;
 
-// =================== RocksDBMethods ===================
-
-rocksdb::ReadOptions RocksDBMethods::iteratorReadOptions() {
+rocksdb::ReadOptions RocksDBTransactionMethods::iteratorReadOptions() {
   if (_state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
     rocksdb::ReadOptions ro = _state->_rocksReadOptions;
     TRI_ASSERT(_state->_readSnapshot);
@@ -39,7 +37,7 @@ rocksdb::ReadOptions RocksDBMethods::iteratorReadOptions() {
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-std::size_t RocksDBMethods::countInBounds(RocksDBKeyBounds const& bounds, bool isElementInRange) {
+std::size_t RocksDBTransactionMethods::countInBounds(RocksDBKeyBounds const& bounds, bool isElementInRange) {
   std::size_t count = 0;
 
   // iterator is from read only / trx / writebatch

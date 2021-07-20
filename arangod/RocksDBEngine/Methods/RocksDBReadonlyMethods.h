@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 
 namespace rocksdb {
 class TransactionDB;
@@ -36,7 +36,7 @@ class TransactionDB;
 namespace arangodb {
 
 // only implements GET and NewIterator
-class RocksDBReadOnlyMethods final : public RocksDBMethods {
+class RocksDBReadOnlyMethods final : public RocksDBTransactionMethods {
  public:
   explicit RocksDBReadOnlyMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db);
 

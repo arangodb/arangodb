@@ -27,7 +27,7 @@ using namespace arangodb;
 
 RocksDBBatchedWithIndexMethods::RocksDBBatchedWithIndexMethods(rocksdb::TransactionDB* db,
                                                                rocksdb::WriteBatchWithIndex* wb)
-    : RocksDBMethods(nullptr), _db(db), _wb(wb) {
+    : RocksDBMethods(), _db(db), _wb(wb) {
   TRI_ASSERT(_db != nullptr);
   TRI_ASSERT(_wb != nullptr);
 }
@@ -74,15 +74,4 @@ rocksdb::Status RocksDBBatchedWithIndexMethods::SingleDelete(rocksdb::ColumnFami
 
 void RocksDBBatchedWithIndexMethods::PutLogData(rocksdb::Slice const& blob) {
   _wb->PutLogData(blob);
-}
-
-std::unique_ptr<rocksdb::Iterator> RocksDBBatchedWithIndexMethods::NewIterator(
-    rocksdb::ReadOptions const& ro, rocksdb::ColumnFamilyHandle* cf) {
-  TRI_ASSERT(cf != nullptr);
-  std::unique_ptr<rocksdb::Iterator> iterator(_wb->NewIteratorWithBase(_db->NewIterator(ro, cf)));
-
-  if (iterator == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBBatchedWithIndexMethods");
-  }
-  return iterator;
 }

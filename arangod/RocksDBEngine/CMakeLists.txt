@@ -68,7 +68,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBLogValue.cpp
   RocksDBEngine/RocksDBMetaCollection.cpp
   RocksDBEngine/RocksDBMetadata.cpp
-  RocksDBEngine/RocksDBMethods.cpp
+  RocksDBEngine/RocksDBTransactionMethods.cpp
   RocksDBEngine/RocksDBOptimizerRules.cpp
   RocksDBEngine/RocksDBOptionFeature.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp

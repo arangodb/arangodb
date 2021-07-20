@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 
 namespace arangodb {
   
 /// transaction wrapper, uses the current rocksdb transaction
-class RocksDBTrxMethods : public RocksDBMethods {
+class RocksDBTrxMethods : public RocksDBTransactionMethods {
  public:
   explicit RocksDBTrxMethods(RocksDBTransactionState*, rocksdb::TransactionDB* db);
 

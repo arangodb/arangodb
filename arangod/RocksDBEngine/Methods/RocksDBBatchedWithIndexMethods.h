@@ -52,19 +52,6 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   void PutLogData(rocksdb::Slice const&) override;
 
-  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
-                                                 rocksdb::ColumnFamilyHandle*) override;
-
-  void SetSavePoint() override {}
-  rocksdb::Status RollbackToSavePoint() override {
-    return rocksdb::Status::OK();
-  }
-  rocksdb::Status RollbackToWriteBatchSavePoint() override {
-    // simply relay to the general method (which in this derived class does nothing)
-    return RollbackToSavePoint();
-  }
-  void PopSavePoint() override {}
-
  private:
   rocksdb::TransactionDB* _db;
   rocksdb::WriteBatchWithIndex* _wb;

@@ -32,7 +32,7 @@ using namespace arangodb;
 
 RocksDBReadOnlyMethods::RocksDBReadOnlyMethods(RocksDBTransactionState* state,
                                                rocksdb::TransactionDB* db)
-    : RocksDBMethods(state), _db(db) {
+    : RocksDBTransactionMethods(state), _db(db) {
   TRI_ASSERT(_db != nullptr);
 }
 

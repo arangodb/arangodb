@@ -30,7 +30,7 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -72,7 +72,7 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
       _readOptions(),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())) {
-  RocksDBMethods* methods = RocksDBTransactionState::toMethods(&trx);
+  RocksDBTransactionMethods* methods = RocksDBTransactionState::toMethods(&trx);
   _readOptions = methods->iteratorReadOptions();
 
   _readOptions.verify_checksums = false;

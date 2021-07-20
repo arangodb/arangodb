@@ -30,7 +30,7 @@
 using namespace arangodb;
 
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db)
-    : RocksDBMethods(state), _indexingDisabled(false), _db(db) {
+    : RocksDBTransactionMethods(state), _indexingDisabled(false), _db(db) {
 }
 
 bool RocksDBTrxMethods::DisableIndexing() {

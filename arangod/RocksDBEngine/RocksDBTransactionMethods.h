@@ -18,12 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBMethods.h"
 
 namespace rocksdb {
  class Slice;
@@ -31,19 +32,23 @@ namespace rocksdb {
 
 namespace arangodb {
 class RocksDBKey;
+class RocksDBTransactionState;
 
-class RocksDBMethods {
+class RocksDBTransactionMethods : public RocksDBMethods {
  public:
-  virtual ~RocksDBMethods() = default;
+  explicit RocksDBTransactionMethods(RocksDBTransactionState* state) : _state(state) {}
+  virtual ~RocksDBTransactionMethods() = default;
 
-  virtual bool isIndexingDisabled() const { return false; }
+  /// @brief read options for use with iterators
+  rocksdb::ReadOptions iteratorReadOptions();
 
-  /// @brief returns true if indexing was disabled by this call
-  /// the default implementation is to do nothing
-  virtual bool DisableIndexing() { return false; }
+  // virtual Result beginTransaction() = 0;
+  
+  // virtual Result commitTransaction() = 0;
 
-  // the default implementation is to do nothing
-  virtual bool EnableIndexing() { return false; }
+  // virtual Result abortTransaction() = 0;
+
+  //virtual rocksdb::SequenceNumber GetSequenceNumber() = 0;
 
   virtual rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
                               rocksdb::Slice const&, rocksdb::PinnableSlice*) = 0;
@@ -64,68 +69,22 @@ class RocksDBMethods {
   virtual rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) = 0;
   
   virtual void PutLogData(rocksdb::Slice const&) = 0;
-};
 
-// INDEXING MAY ONLY BE DISABLED IN TOPLEVEL AQL TRANSACTIONS
-// THIS IS BECAUSE THESE TRANSACTIONS WILL EITHER READ FROM
-// OR (XOR) WRITE TO A COLLECTION. IF THIS PRECONDITION IS
-// VIOLATED THE DISABLED INDEXING WILL BREAK GET OPERATIONS.
-struct IndexingDisabler {
-  // will only be active if condition is true
+  virtual std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
+                                                         rocksdb::ColumnFamilyHandle*) = 0;
 
-  IndexingDisabler() = delete;
-  IndexingDisabler(IndexingDisabler&&) = delete;
-  IndexingDisabler(IndexingDisabler const&) = delete;
-  IndexingDisabler& operator=(IndexingDisabler const&) = delete;
-  IndexingDisabler& operator=(IndexingDisabler&&) = delete;
+  virtual void SetSavePoint() = 0;
+  virtual rocksdb::Status RollbackToSavePoint() = 0;
+  virtual rocksdb::Status RollbackToWriteBatchSavePoint() = 0;
+  virtual void PopSavePoint() = 0;
 
-  IndexingDisabler(RocksDBMethods* meth, bool condition) : _meth(nullptr) {
-    if (condition) {
-      bool disabledHere = meth->DisableIndexing();
-      if (disabledHere) {
-        _meth = meth;
-      }
-    }
-  }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::size_t countInBounds(RocksDBKeyBounds const& bounds, bool isElementInRange = false);
+#endif
 
-  ~IndexingDisabler() {
-    if (_meth) {
-      _meth->EnableIndexing();
-    }
-  }
-
- private:
-  RocksDBMethods* _meth;
-};
-
-// if only single indices should be enabled during operations
-struct IndexingEnabler {
-  // will only be active if condition is true
-
-  IndexingEnabler() = delete;
-  IndexingEnabler(IndexingEnabler&&) = delete;
-  IndexingEnabler(IndexingEnabler const&) = delete;
-  IndexingEnabler& operator=(IndexingEnabler const&) = delete;
-  IndexingEnabler& operator=(IndexingEnabler&&) = delete;
-
-  IndexingEnabler(RocksDBMethods* meth, bool condition)
-      : _meth(nullptr) {
-    if (condition) {
-      bool enableHere = meth->EnableIndexing();
-      if (enableHere) {
-        _meth = meth;
-      }
-    }
-  }
-
-  ~IndexingEnabler() {
-    if (_meth) {
-      _meth->DisableIndexing();
-    }
-  }
-
- private:
-  RocksDBMethods* _meth;
+ protected:
+  RocksDBTransactionState* _state;
 };
 
 }  // namespace arangodb
+

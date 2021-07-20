@@ -59,11 +59,11 @@ struct Transaction;
 }
 
 class LogicalCollection;
-class RocksDBMethods;
+class RocksDBTransactionMethods;
 
 /// @brief transaction type
 class RocksDBTransactionState final : public TransactionState {
-  friend class RocksDBMethods;
+  friend class RocksDBTransactionMethods;
   friend class RocksDBReadOnlyMethods;
   friend class RocksDBTrxMethods;
   friend class RocksDBBatchedMethods;
@@ -119,7 +119,7 @@ class RocksDBTransactionState final : public TransactionState {
                       bool& hasPerformedIntermediateCommit);
 
   /// @brief return wrapper around rocksdb transaction
-  RocksDBMethods* rocksdbMethods() {
+  RocksDBTransactionMethods* rocksdbMethods() {
     TRI_ASSERT(_rocksMethods);
     return _rocksMethods.get();
   }
@@ -138,7 +138,7 @@ class RocksDBTransactionState final : public TransactionState {
     return static_cast<RocksDBTransactionState*>(state);
   }
 
-  static RocksDBMethods* toMethods(transaction::Methods* trx) {
+  static RocksDBTransactionMethods* toMethods(transaction::Methods* trx) {
     TRI_ASSERT(trx != nullptr);
     TransactionState* state = trx->state();
     TRI_ASSERT(state != nullptr);
@@ -216,7 +216,7 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief cache transaction to unblock banished keys
   cache::Transaction* _cacheTx;
   /// @brief wrapper to use outside this class to access rocksdb
-  std::unique_ptr<RocksDBMethods> _rocksMethods;
+  std::unique_ptr<RocksDBTransactionMethods> _rocksMethods;
 
   /// store the number of log entries in WAL
   uint64_t _numLogdata;

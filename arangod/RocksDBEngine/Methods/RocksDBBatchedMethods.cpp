@@ -26,7 +26,7 @@
 using namespace arangodb;
 
 RocksDBBatchedMethods::RocksDBBatchedMethods(rocksdb::WriteBatch* wb)
-    : RocksDBMethods(nullptr), _wb(wb) {}
+    : RocksDBMethods(), _wb(wb) {}
 
 rocksdb::Status RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
@@ -70,10 +70,4 @@ rocksdb::Status RocksDBBatchedMethods::SingleDelete(rocksdb::ColumnFamilyHandle*
 
 void RocksDBBatchedMethods::PutLogData(rocksdb::Slice const& blob) {
   _wb->PutLogData(blob);
-}
-
-std::unique_ptr<rocksdb::Iterator> RocksDBBatchedMethods::NewIterator(
-    rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "BatchedMethods does not provide NewIterator");
 }
