@@ -681,12 +681,33 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
   auto const quorum_size = _self._config.writeConcern;
 
   std::vector<std::pair<LogIndex, ParticipantId>> indexes;
-  std::transform(_follower.begin(), _follower.end(),
-                 std::back_inserter(indexes), [](FollowerInfo const& f) {
-                   return std::make_pair(f.lastAckedEntry.index,
-                                         f._impl->getParticipantId());
-                 });
-  TRI_ASSERT(indexes.size() == _follower.size());
+  indexes.reserve(_follower.size());
+  for (auto const& follower : _follower) {
+    // The lastAckedEntry is the last index/term pair that we sent that this
+    // follower acknowledged - means we sent it. And we must not have entries
+    // in our log with a term newer than currentTerm, which could have been
+    // sent to a follower.
+    auto const& lastAckedEntry = follower.lastAckedEntry;
+    TRI_ASSERT(lastAckedEntry.term <= this->_self._currentTerm);
+    // We must never commit log entries for older terms, as these could still be
+    // overwritten later if a leader takes over that holds an entry with the
+    // same index, but with a newer term than that entry has.
+    // For more details and an example see the Raft paper, specifically on
+    // page 9 both subsection "5.4.2 Committing entries from previous terms" and
+    // figure 8.
+    // We may only commit these if we've written an entry in our current term.
+    // This also includes log entries persisted on this server, i.e. our
+    // LocalFollower is no exception.
+    if (lastAckedEntry.term == this->_self._currentTerm) {
+      indexes.emplace_back(lastAckedEntry.index, follower._impl->getParticipantId());
+    } else {
+      LOG_CTX("54869", TRACE, _self._logContext)
+          << "Will ignore follower "
+          << follower._impl->getParticipantId() << " in the following commit index check, as its last log entry (index "
+          << lastAckedEntry.index << ") is of term " << lastAckedEntry.term
+          << ", but we're in term " << _self._currentTerm << ".";
+    }
+  }
 
   LOG_CTX("a2d04", TRACE, _self._logContext) << "checking commit index on set " << indexes;
 
