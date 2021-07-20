@@ -296,8 +296,6 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ProgramOptions::ProcessingResult const& result = options->processingResult();
 
-  V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
-
   // a bit of duck typing here to check if we are an agent.
   // the problem is that the server role may be still unclear in this early
   // phase, so we are also looking for startup options that identify an agent
@@ -340,12 +338,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
-  v8security.addToInternalAllowList(_startupDirectory, FSAccessType::READ);
-
   ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
-  for (auto& it : _moduleDirectories) {
-    v8security.addToInternalAllowList(it, FSAccessType::READ);
-  }
 
   // check whether app-path was specified
   if (_appPath.empty()) {
@@ -357,9 +350,6 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // Tests if this path is either a directory (ok) or does not exist (we create
   // it in ::start) If it is something else this will throw an error.
   ctx->normalizePath(_appPath, "javascript.app-path", false);
-  v8security.addToInternalAllowList(_appPath, FSAccessType::READ);
-  v8security.addToInternalAllowList(_appPath, FSAccessType::WRITE);
-  v8security.dumpAccessLists();
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
@@ -404,14 +394,22 @@ void V8DealerFeature::start() {
     }
   }
   
-  V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
-  v8security.addToInternalAllowList(_startupDirectory, FSAccessType::READ);
-  v8security.addToInternalAllowList(_nodeModulesDirectory, FSAccessType::READ);
-
   LOG_TOPIC("77c97", DEBUG, Logger::V8)
       << "effective startup-directory: " << _startupDirectory
       << ", effective module-directories: " << _moduleDirectories
       << ", node-modules-directory: " << _nodeModulesDirectory;
+  
+  // add all paths to allowlists
+  V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
+  v8security.addToInternalAllowList(_startupDirectory, FSAccessType::READ);
+  v8security.addToInternalAllowList(_nodeModulesDirectory, FSAccessType::READ);
+  for (auto const& it : _moduleDirectories) {
+    v8security.addToInternalAllowList(it, FSAccessType::READ);
+  }
+
+  v8security.addToInternalAllowList(_appPath, FSAccessType::READ);
+  v8security.addToInternalAllowList(_appPath, FSAccessType::WRITE);
+  v8security.dumpAccessLists();
   
   _startupLoader.setDirectory(_startupDirectory);
 
