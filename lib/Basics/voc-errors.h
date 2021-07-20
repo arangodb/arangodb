@@ -1005,6 +1005,17 @@ constexpr auto TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED                           
 /// beyond the allowed value.
 constexpr auto TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS                              = ErrorCode{1522};
 
+/// 1524: ERROR_QUERY_TOO_MUCH_NESTING
+/// "too much nesting or too many objects"
+/// Will be raised when a query contains expressions or other constructs with
+/// too many objects or that are too deeply nested.
+constexpr auto TRI_ERROR_QUERY_TOO_MUCH_NESTING                                  = ErrorCode{1524};
+
+/// 1539: ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE
+/// "unknown OPTIONS attribute used"
+/// Will be raised when an unknown attribute is used inside an OPTIONS clause.
+constexpr auto TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE                         = ErrorCode{1539};
+
 /// 1540: ERROR_QUERY_FUNCTION_NAME_UNKNOWN
 /// "usage of unknown function '%s()'"
 /// Will be raised when an undefined function is called.
@@ -1107,8 +1118,8 @@ constexpr auto TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION                     
 
 /// 1575: ERROR_QUERY_COMPILE_TIME_OPTIONS
 /// "query options must be readable at query compile time"
-/// Will be raised when an AQL data-modification query contains options that
-/// cannot be figured out at query compile time.
+/// Will be raised when an AQL query contains OPTIONS that cannot be figured
+/// out at query compile time.
 constexpr auto TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              = ErrorCode{1575};
 
 /// 1577: ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE

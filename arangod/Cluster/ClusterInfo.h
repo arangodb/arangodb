@@ -848,7 +848,7 @@ class ClusterInfo final {
   /// an error.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<std::vector<ServerID>> getResponsibleServer(ShardID const&);
+  std::shared_ptr<std::vector<ServerID> const> getResponsibleServer(ShardID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
@@ -894,18 +894,12 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Plan" structure
   //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<VPackBuilder> getPlan();
-  std::shared_ptr<VPackBuilder> getPlan(uint64_t& planIndex);
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
     getPlan(uint64_t& planIndex, std::unordered_set<std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Current" structure
   //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<VPackBuilder> getCurrent();
-  std::shared_ptr<VPackBuilder> getCurrent(uint64_t& currentIndex);
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
     getCurrent(uint64_t& currentIndex, std::unordered_set<std::string> const&);
 

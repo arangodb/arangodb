@@ -72,10 +72,6 @@ class SortNode : public ExecutionNode {
   /// @brief whether or not the sort is stable
   inline bool isStable() const { return _stable; }
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -127,6 +123,10 @@ class SortNode : public ExecutionNode {
   /// this node is left in plan only in sake of GatherNode 
   /// to properly handle merging.
   bool _reinsertInCluster;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
   /// @brief pairs, consisting of variable and sort direction
