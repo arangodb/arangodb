@@ -54,8 +54,8 @@ template<typename ScoreType, typename StatsType>
 struct aligned_scorer : public irs::sort {
   class prepared final : public irs::prepared_sort_basic<ScoreType, StatsType> {
    public:
-    explicit prepared(const irs::flags& features, bool empty_scorer) noexcept
-      : features_(features), empty_scorer_(empty_scorer) {
+    explicit prepared(irs::IndexFeatures index_features, bool empty_scorer) noexcept
+      : empty_scorer_(empty_scorer), index_features_(index_features) {
     }
 
     virtual field_collector::ptr prepare_field_collector() const override {
@@ -68,8 +68,7 @@ struct aligned_scorer : public irs::sort {
         irs::byte_type*,
         const irs::index_reader&,
         const field_collector*,
-        const term_collector*
-    ) const override {
+        const term_collector*) const override {
       // NOOP
     }
     virtual irs::score_function prepare_scorer(
@@ -98,33 +97,34 @@ struct aligned_scorer : public irs::sort {
         }
       };
     }
-    virtual const irs::flags& features() const override {
-      return features_;
+
+    virtual irs::IndexFeatures features() const override {
+      return index_features_;
     }
 
-    irs::flags features_;
+    irs::IndexFeatures index_features_;
     bool empty_scorer_;
   };
 
-  static ptr make(const irs::flags& features = irs::flags::empty_instance(),
+  static ptr make(irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
                   bool empty_scorer = true) {
-    return std::make_unique<aligned_scorer>(features, empty_scorer);
+    return std::make_unique<aligned_scorer>(index_features, empty_scorer);
   }
 
   explicit aligned_scorer(
-      const irs::flags& features = irs::flags::empty_instance(),
+      irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
       bool empty_scorer = true)
     : irs::sort(irs::type<aligned_scorer>::get()),
-      features_(features),
+      index_features_(index_features),
       empty_scorer_(empty_scorer) {
   }
 
   virtual irs::sort::prepared::ptr prepare() const override {
     return irs::memory::make_unique<aligned_scorer<ScoreType, StatsType>::prepared>(
-      features_, empty_scorer_);
+      index_features_, empty_scorer_);
   }
 
-  irs::flags features_;
+  irs::IndexFeatures index_features_;
   bool empty_scorer_;
 };
 
@@ -290,7 +290,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::flags::empty_instance(), prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(1, prepared.size());
     ASSERT_EQ(4, prepared.score_size());
@@ -337,7 +337,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::flags::empty_instance(), prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(3, prepared.size());
     ASSERT_EQ(8, prepared.score_size());
@@ -371,7 +371,7 @@ TEST(sort_tests, prepare_order) {
   {
     irs::order ord;
     ord.add<dummy_scorer0>(false);
-    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true, irs::flags::empty_instance(), false); // returns valid scorers
+    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true, irs::IndexFeatures::NONE, false); // returns valid scorers
     ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true);
     ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(true);
 
@@ -384,7 +384,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::flags::empty_instance(), prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(3, prepared.size());
     ASSERT_EQ(8, prepared.score_size());
@@ -423,7 +423,7 @@ TEST(sort_tests, prepare_order) {
     irs::order ord;
     ord.add<dummy_scorer0>(false);
     ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true);
-    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true, irs::flags::empty_instance(), false);  // returns valid scorer
+    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true, irs::IndexFeatures::FREQ, false);  // returns valid scorer
     ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(true);
 
     // first - score offset
@@ -435,7 +435,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::flags::empty_instance(), prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(3, prepared.size());
     ASSERT_EQ(8, prepared.score_size());
@@ -486,7 +486,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::flags::empty_instance(), prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(3, prepared.size());
     ASSERT_EQ(3, prepared.score_size());
@@ -519,8 +519,8 @@ TEST(sort_tests, prepare_order) {
 
   {
     irs::order ord;
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(true, irs::flags::empty_instance(), false);
-    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true, irs::flags::empty_instance(), false);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(true, irs::IndexFeatures::NONE, false);
+    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true, irs::IndexFeatures::NONE, false);
     ord.add<dummy_scorer0>(false);
 
     // first - score offset
@@ -532,7 +532,7 @@ TEST(sort_tests, prepare_order) {
 
     auto prepared = ord.prepare();
     ASSERT_FALSE(prepared.empty());
-    ASSERT_EQ(irs::flags::empty_instance(), prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_EQ(2, prepared.size());
     ASSERT_EQ(4, prepared.score_size());
     ASSERT_EQ(4, prepared.stats_size());
@@ -571,13 +571,13 @@ TEST(sort_tests, prepare_order) {
 
   {
     irs::order ord;
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(true, irs::flags::empty_instance(), false);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(true, irs::IndexFeatures::NONE, false);
     ord.add<dummy_scorer0>(false);
-    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true, irs::flags::empty_instance(), false);
-    ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(true, irs::flags::empty_instance(), false);
+    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(true, irs::IndexFeatures::NONE, false);
+    ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(true, irs::IndexFeatures::NONE, false);
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::flags::empty_instance(), prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(3, prepared.size());
     ASSERT_EQ(8, prepared.score_size());
@@ -634,10 +634,10 @@ TEST(sort_tests, prepare_order) {
 
   {
     irs::order ord;
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::flags{irs::type<irs::document>::get()}, false);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::NONE, false);
     ord.add<aligned_scorer<aligned_value<5, 4>, aligned_value<5, 4>>>(false);
     ord.add<dummy_scorer0>(false);
-    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::flags{irs::type<irs::frequency>::get()}, false);
+    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::IndexFeatures::FREQ, false);
 
     // first - score offset
     // second - stats offset
@@ -648,7 +648,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::flags({ irs::type<irs::document>::get(), irs::type<irs::frequency>::get() }), prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(3, prepared.size());
     ASSERT_EQ(16, prepared.score_size());
@@ -693,15 +693,15 @@ TEST(sort_tests, prepare_order) {
   {
     irs::order ord;
     ord.add<dummy_scorer0>(false);
-    ord.add<aligned_scorer<aligned_value<3, 1>, aligned_value<3, 1>>>(false, irs::flags{irs::type<irs::document>::get()});
+    ord.add<aligned_scorer<aligned_value<3, 1>, aligned_value<3, 1>>>(false, irs::IndexFeatures::NONE);
     ord.add<dummy_scorer0>(false);
     ord.add<aligned_scorer<aligned_value<27, 8>, aligned_value<27, 8>>>(false);
     ord.add<dummy_scorer0>(false);
-    ord.add<aligned_scorer<aligned_value<7, 4>, aligned_value<7, 4>>>(false, irs::flags{irs::type<irs::frequency>::get()});
+    ord.add<aligned_scorer<aligned_value<7, 4>, aligned_value<7, 4>>>(false, irs::IndexFeatures::FREQ);
     ord.add<dummy_scorer0>(false);
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::flags{irs::type<irs::frequency>::get()});
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
     ord.add<dummy_scorer0>(false);
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::flags{irs::type<irs::frequency>::get()});
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
     ord.add<dummy_scorer0>(false);
 
     // first - score offset
@@ -715,7 +715,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::flags({ irs::type<irs::document>::get(), irs::type<irs::frequency>::get() }), prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(5, prepared.size());
     ASSERT_EQ(56, prepared.score_size());
@@ -749,10 +749,10 @@ TEST(sort_tests, prepare_order) {
   {
     irs::order ord;
     ord.add<aligned_scorer<aligned_value<27, 8>, aligned_value<27, 8>>>(false);
-    ord.add<aligned_scorer<aligned_value<3, 1>, aligned_value<3, 1>>>(false, irs::flags{irs::type<irs::document>::get()});
-    ord.add<aligned_scorer<aligned_value<7, 4>, aligned_value<7, 4>>>(false, irs::flags{irs::type<irs::frequency>::get()});
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::flags{irs::type<irs::frequency>::get()});
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::flags{irs::type<irs::frequency>::get()});
+    ord.add<aligned_scorer<aligned_value<3, 1>, aligned_value<3, 1>>>(false, irs::IndexFeatures::NONE);
+    ord.add<aligned_scorer<aligned_value<7, 4>, aligned_value<7, 4>>>(false, irs::IndexFeatures::FREQ);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
 
     // first - score offset
     // second - stats offset
@@ -765,7 +765,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::flags({ irs::type<irs::document>::get(), irs::type<irs::frequency>::get() }), prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(5, prepared.size());
     ASSERT_EQ(48, prepared.score_size());
@@ -799,10 +799,10 @@ TEST(sort_tests, prepare_order) {
   {
     irs::order ord;
     ord.add<aligned_scorer<aligned_value<27, 8>, aligned_value<27, 8>>>(false);
-    ord.add<aligned_scorer<aligned_value<7, 4>, aligned_value<7, 4>>>(false, irs::flags{irs::type<irs::frequency>::get()});
-    ord.add<aligned_scorer<aligned_value<3, 1>, aligned_value<3, 1>>>(false, irs::flags{irs::type<irs::document>::get()});
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::flags{irs::type<irs::frequency>::get()});
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::flags{irs::type<irs::frequency>::get()});
+    ord.add<aligned_scorer<aligned_value<7, 4>, aligned_value<7, 4>>>(false, irs::IndexFeatures::FREQ);
+    ord.add<aligned_scorer<aligned_value<3, 1>, aligned_value<3, 1>>>(false, irs::IndexFeatures::POS);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
 
     // first - score offset
     // second - stats offset
@@ -815,7 +815,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::flags({ irs::type<irs::document>::get(), irs::type<irs::frequency>::get() }), prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(5, prepared.size());
     ASSERT_EQ(48, prepared.score_size());
@@ -849,10 +849,10 @@ TEST(sort_tests, prepare_order) {
   {
     irs::order ord;
     ord.add<aligned_scorer<aligned_value<27, 8>, aligned_value<27, 8>>>(false);
-    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::flags{irs::type<irs::document>::get()});
-    ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(false, irs::flags{irs::type<irs::frequency>::get()});
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::flags{irs::type<irs::frequency>::get()});
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::flags{irs::type<irs::frequency>::get()});
+    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::IndexFeatures::NONE);
+    ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(false, irs::IndexFeatures::FREQ);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
 
     // first - score offset
     // second - stats offset
@@ -865,7 +865,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::flags({ irs::type<irs::document>::get(), irs::type<irs::frequency>::get() }), prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(5, prepared.size());
     ASSERT_EQ(48, prepared.score_size());
@@ -899,10 +899,10 @@ TEST(sort_tests, prepare_order) {
   {
     irs::order ord;
     ord.add<aligned_scorer<aligned_value<27, 8>, aligned_value<27, 8>>>(false);
-    ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(false, irs::flags{irs::type<irs::frequency>::get()});
-    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::flags{irs::type<irs::document>::get()});
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::flags{irs::type<irs::frequency>::get()});
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::flags{irs::type<irs::frequency>::get()});
+    ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(false, irs::IndexFeatures::FREQ);
+    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::IndexFeatures::NONE);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
 
     // first - score offset
     // second - stats offset
@@ -915,7 +915,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::flags({ irs::type<irs::document>::get(), irs::type<irs::frequency>::get() }), prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(5, prepared.size());
     ASSERT_EQ(40, prepared.score_size());
@@ -949,10 +949,10 @@ TEST(sort_tests, prepare_order) {
   {
     irs::order ord;
     ord.add<aligned_scorer<aligned_value<27, 8>, aligned_value<27, 8>>>(false);
-    ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(false, irs::flags{irs::type<irs::frequency>::get()});
-    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::flags{irs::type<irs::document>::get()});
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::flags{irs::type<irs::frequency>::get()});
-    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::flags{irs::type<irs::frequency>::get()});
+    ord.add<aligned_scorer<aligned_value<4, 4>, aligned_value<4, 4>>>(false, irs::IndexFeatures::FREQ);
+    ord.add<aligned_scorer<aligned_value<2, 2>, aligned_value<2, 2>>>(false, irs::IndexFeatures::NONE);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
+    ord.add<aligned_scorer<aligned_value<1, 1>, aligned_value<1, 1>>>(false, irs::IndexFeatures::FREQ);
 
     // first - score offset
     // second - stats offset
@@ -965,7 +965,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = ord.prepare();
-    ASSERT_EQ(irs::flags({ irs::type<irs::document>::get(), irs::type<irs::frequency>::get() }), prepared.features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
     ASSERT_FALSE(prepared.empty());
     ASSERT_EQ(5, prepared.size());
     ASSERT_EQ(40, prepared.score_size());

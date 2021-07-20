@@ -1,0 +1,227 @@
+[/ Copyright (C) 2020 T. Zachary Laine
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+[section The Text Layer]
+
+The text layer of _Text_ consists mostly of four types: _t_, _tv_, _r_, and
+_rv_.  These are directly analogous to _s_, _sv_, _ur_, and _urv_,
+respectively.  In fact, each of the text layer types has a single data member
+_emdash_ an object of the corresponding unencoded type.
+
+Each of these four types is a typedef of a general-purpose template.  For
+instance, _t_ is a specialization of _bt_ that is normalized NFC, with a code
+unit type of `char`, and using _s_ as the underlying storage.
+
+The `basic_` templates are:
+
+* _bt_
+* _btv_
+* _br_
+* _brv_
+
+Each template can be configured: to maintain one of the five supported
+normalization forms; with a particular underlying code unit type; and, for
+those that have underlying storage (_bt_ and _br_), with the type of storage
+container to use.  The UTF format each template uses is deduced from the code
+point type.  For instance, `char` and `char8_t` imply UTF-8, whereas
+`uint16_t` and `char16_t` imply UTF-16.  These templates do not support
+UTF-32.
+
+For the rest of the documentation, we will focus on the four specializations
+of these templates that _Text_ provides: _t_, _tv_, _r_, and _rv_.
+
+Let's consider one of these specializations in particular, _t_.  Its
+underlying storage is a _s_, as mentioned before.  The `char`s in the _s_ are
+UTF-8 encoded.  The _cp_ view of those UTF-8 encoded `char`s is available by
+using _8_to_32_iter_.  Since _8_to_32_iter_ generates replacement characters
+when it encounters a broken encoding, no runtime checks ever need to be
+performed on the encoding of the `char`s in a _t_'s _s_ data member.
+
+All the text layer types are kept normalized at all times; the views may be
+initialized only from known-normalized types.  There is a runtime cost
+associated with normalizing text that is inserted into a text layer type.
+
+_t_ and _r_ are also kept in _str_safe_; _tv_ and _rv_ may be initialized only
+from known-stream-safe types.
+
+The text layer types are centered around _grs_ instead of `char`s.  Since
+_grs_ are variable-length, this means that all indexing is done using
+iterators instead of integral indices; there is no random access to the
+graphemes in the text layer types.
+
+[heading Graphemes]
+
+When you dereference an iterator that you get from one of the text layer
+types, you get a _gr_ref_.  This is a non-owning range of _cps_.
+
+[graphemes_grapheme_ref]
+
+If you want an owning set of _cps_, you can construct a _grapheme_ (either
+from a _gr_ref_, or by some other means).
+
+[graphemes_grapheme]
+
+[note _grapheme_ has a small-buffer optimization so that using it seldom
+involves allocations.  This also implies that an array of _graphemes_ is
+likely to be wasteful of storage.  If you want a bunch of _grs_, you should
+probably be using a _t_.]
+
+An individual _gr_, in the form of a _grapheme_ or _gr_ref_, can be inserted
+into a _t_ or _r_.
+
+[note The _gr_ is the unit of work within the text layer.  When using text
+layer types, you should always use the _GrRng_ overloads of the Unicode
+algorithms.]
+
+[heading Grapheme Iterators]
+
+Since the _gr_ is the unit of work within the text layer, it's natural that
+the text layer types return _gr_its_ from `begin()` and `end()`.  But what
+about the times when you actually want to deal with sequences of _cps_ or
+`char`s?  This comes up often when you need to use legacy interfaces.
+
+Fortunately, that's really easy.  _gr_it_ has a `base()` member that returns
+its underlying _cp_ iterator.  The _cp_ iterator used in the text layer types
+is always _8_to_32_iter_, which also has a `base()` member that returns /it's/
+underlying `char` iterator:
+
+[graphemes_iterator_bases]
+
+Since _t_'s iterators are all declared in terms of `char *` or `char const *`,
+you have convenient access to the underlying null-terminated sequence of
+characters:
+
+[graphemes_text_null_termination]
+
+[heading A Shortcoming]
+
+There is a problem with basing all your Unicode operations on _grs_.
+Graphemes do not always line up with the text segmentation algorithms.
+Specifically, lines are not guaranteed to end exactly on a _gr_ break (the
+other text breaking algorithms all happen to end on _gr_ breaks).
+
+There are two things to note here:
+
+# The cases where a line does not end on a _gr_ break are obscure corner cases
+  that do not often come up in practice.
+
+# Graphemes are context-sensitive.  In other words, if you break a line in the
+  middle of a _gr_ `G`, `G`'s _cps_ before the line break from their own _gr_,
+  and the rest of `G`'s _cps_ form another _gr_.  In other words, breaking
+  _grs_ is pretty benign; it's not like breaking encoding or normalization.
+
+[heading The Text Layer Types]
+
+As mentioned before, this layer has four types (_t_, _tv_, _r_, and _rv_) that
+are directly analogous to the four major unencoded types that they use for
+storage (_s_, _sv_, _ur_, and _urv_).  The high-level semantics of these
+underlying types is the same:
+
+* _s_ and _t_ are owning and contiguous.
+* _sv_ and _tv_ and non-owning and contiguous.
+* _ur_ and _r_ are owning and discontiguous.
+* _urv_ and _rv_ are non-owning and discontiguous.
+
+Many other high-level semantics apply as well, such as the size-type used for
+each.  How about the differences?
+
+* The text layer types are sequences of _grs_, not `char`s.
+
+* The text layer types are bidirectional ranges, not random-access ranges like
+  the unencoded types.
+
+* There are no relational operators (`<`, `<=`, `>`, and `>=`).  This is
+  because this would lead to implicit ordering based on the type's binary
+  representation, and not on some collation.  This is wrong in some _emdash_
+  but not all _emdash_ contexts, making it bad candidate for implicit
+  semantics.
+
+* There are still equality comparison operators though (`==` and `!=`),
+  because they are fundamental.
+
+* There are no comparisons of any kind between the text layer types and the
+  unencoded types.  This is because the former are all UTF-8 encoded and
+  normalized, and the latter are not.  Such comparisons across type should
+  require explicit indication of the desired semantics.
+
+* There are no `size()` members.  To implement this would be an `O(N)`
+  operation, and so `size()` would be a very misleading name for this.  There
+  is instead a `distance()` function that returns the number of _grs_ in
+  `O(N)` time.  There is an `O(1)` member `storage_code_points()` that returns
+  the size (in `char`s) of the underlying storage.
+
+* Since it would imply a maximum number of _grs_, there is no `max_size()`
+  either.  There is instead a `max_code_points()`.
+
+* _t_ has a `capacity_code_points()` instead of a `capacity()` member.
+
+* There are two members that allow you to steal and/or replace the underlying
+  storage of the owning text layer types (_t_ and _r_).  `extract()` moves the
+  underlying container out, and an overload of `replace()` moves it in.
+  `replace()` requires that the moved-in container is normalized and in
+  _str_safe_.
+
+
+[heading An Odd Thing About Erase/Insert/Replace]
+
+When you insert into a _t_ or _r_, you get back an view that points to the
+inserted text.  This is not what the standard C++ containers do.
+
+Image that `insert()` returned a single iterator, as the standard containers
+do.  So, I would get an iterator that points to the start of the insertion:
+
+    boost::text::rope r("e");
+    auto it = r.insert(r.end(), 'f');
+    assert(r.distance() == 2);           // We added a grapheme.
+    assert(it == std::next(r.begin()));  // This one, in fact.
+
+Not so fast.  If I insert a sequence starting with one or more combining
+_cps_, the beginning of the insertion might get combined with the preceding
+_cp_ (due to normalization) or _gr_ (because combining marks at the end of a
+grapheme are just part of that grapheme).  Just as importantly, the same thing
+can happen at the end of the insertion, too.
+
+For these reasons, _t_ returns a view that indicates the full extent of its
+graphemes that were changed by erase/insert/replace.
+
+    char const * combining_diaeresis = u8"\u0308";
+    text::text t("e");
+
+    auto v = t.insert(t.end(), combining_diaeresis);
+    assert(t.distance() == 1);    // No new grapheme!  We now have the single code point 'ë'.
+    assert(v.begin() == t.begin());
+
+    it = t.insert(t.end(), combining_diaeresis);
+    assert(t.distance() == 1);    // Still no new grapheme.  We now have a grapheme with the code points 'ë' and '¨'.
+    assert(v.begin() == t.begin());
+
+This behavior is correct, but a bit surprising when you first see it.
+
+Since you may want to use _t_ with some standard facilities that expect
+erase/insert/replace to return a single iterator, the view returned is
+implicitly convertible to a single iterator; the view's `begin()` is used for
+this.
+
+[heading Picking the Right String Type]
+
+[table Picking the Right Text Type
+    [[If I want ...] [... my text type is:]]
+
+    [[a reference to some text that will outlive the reference, without allocating] [_tv_]]
+
+    [[mutable text with efficient mutation at the end of the string] [_t_]]
+    [[mutable text with efficient mutation at any point in the string] [_r_]]
+    [[text with contiguous storage] [_tv_ or _t_]]
+    [[a null-terminated underlying string] [_t_]]
+    [[mutable text the size of a single pointer] [_r_]]
+    [[thread-safe text] [_r_]]
+    [[text with the small-object optimization] [_t_]]
+    [[text with copy-on-write semantics] [_r_]]
+
+    [[function parameters that may bind to _tvs_ or _ts_] [_tv_]]
+    [[function parameters that may bind to _tvs_, _ts_, _rs_, or _rvs_] [_rv_]]
+]
+
+[endsect]

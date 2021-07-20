@@ -3,7 +3,7 @@ if (NOT IResearch_version_major)
   set(IResearch_version_major "1") 
 endif()
 if (NOT IResearch_version_minor)
-  set(IResearch_version_minor "0")
+  set(IResearch_version_minor "1")
 endif()
 if (NOT IResearch_version_revision)
   set(IResearch_version_revision "0")
@@ -87,9 +87,12 @@ set(IResearch_core_sources
   ./analysis/token_attributes.cpp
   ./analysis/token_streams.cpp
   ./error/error.cpp
+  ./formats/columnstore.cpp
+  ./formats/columnstore2.cpp
   ./formats/formats.cpp
   ./formats/format_utils.cpp
   ./formats/skip_list.cpp
+  ./formats/sparse_bitmap.cpp
   ./index/directory_reader.cpp
   ./index/field_data.cpp
   ./index/field_meta.cpp
@@ -99,6 +102,7 @@ set(IResearch_core_sources
   ./index/index_reader.cpp
   ./index/iterators.cpp
   ./index/merge_writer.cpp
+  ./index/norm.cpp
   ./index/postings.cpp
   ./index/segment_reader.cpp
   ./index/segment_writer.cpp
@@ -140,7 +144,6 @@ set(IResearch_core_sources
   ./store/mmap_directory.cpp
   ./store/memory_directory.cpp
   ./store/store_utils.cpp
-  ./store/store_utils_simd.cpp
   ./utils/async_utils.cpp
   ./utils/thread_utils.cpp
   ./utils/attributes.cpp
@@ -279,15 +282,20 @@ include_directories(
   ${IResearch_INCLUDE_DIR}
 )
 
-include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
-  ${EXTERNAL_INCLUDE_DIRS}
-  $<TARGET_PROPERTY:${ABSL_LIBRARY_STATIC},INTERFACE_INCLUDE_DIRECTORIES>
-  ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
-  ${BFD_INCLUDE_DIR}
-  ${Lz4_INCLUDE_DIR}
-  ${Unwind_INCLUDE_DIR}
-  ${FROZEN_INCLUDE_DIR}
-)
+set(IRESEARCH_EXTERNAL_INCLUDES
+    ${EXTERNAL_INCLUDE_DIRS}
+    $<TARGET_PROPERTY:${ABSL_LIBRARY_STATIC},INTERFACE_INCLUDE_DIRECTORIES>
+    ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
+    ${BFD_INCLUDE_DIR}
+    ${Lz4_INCLUDE_DIR}
+    ${Unwind_INCLUDE_DIR}
+    ${FROZEN_INCLUDE_DIR})
+
+if (SUPPRESS_EXTERNAL_WARNINGS)
+  include_directories(SYSTEM  ${IRESEARCH_EXTERNAL_INCLUDES})
+else ()
+  include_directories(${IRESEARCH_EXTERNAL_INCLUDES})
+endif ()
 
 add_library(${IResearch_TARGET_NAME}-shared
   SHARED
@@ -382,6 +390,7 @@ add_dependencies(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
+  hwy
   velocypack
 )
 
@@ -389,16 +398,15 @@ target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
+  PUBLIC $<TARGET_PROPERTY:hwy,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-static
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
-)
-
-target_include_directories(${IResearch_TARGET_NAME}-static
   PUBLIC ${VPACK_INCLUDE_PATH}
+  PUBLIC $<TARGET_PROPERTY:hwy,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 # setup MSVC specific compiler flags
@@ -515,8 +523,8 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
   "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>"
-  "$<TARGET_FILE:${IResearch_TARGET_NAME}-unicorn>"
   "$<TARGET_FILE:velocypack>"
+  "$<TARGET_FILE:text>"
 )
 
 if (TARGET zlibstatic)
@@ -1018,7 +1026,9 @@ add_library(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
   ./analysis/segmentation_token_stream.hpp
 )
 
-target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-shared ${IResearch_TARGET_NAME}-unicorn)
+target_link_libraries(
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  text)
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-shared)
 
@@ -1026,7 +1036,9 @@ add_library(${IResearch_TARGET_NAME}-analyzer-segmentation-static
   STATIC
   ./analysis/segmentation_token_stream.cpp
 )
-target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static ${IResearch_TARGET_NAME}-unicorn)
+target_link_libraries(
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  text)
 
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-static)
@@ -1050,11 +1062,11 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-segmentation-static
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
-  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-unicorn,INTERFACE_INCLUDE_DIRECTORIES> 
+  PRIVATE $<TARGET_PROPERTY:text,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-segmentation-static
-  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-unicorn,INTERFACE_INCLUDE_DIRECTORIES> 
+  PRIVATE $<TARGET_PROPERTY:text,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 
@@ -1183,6 +1195,9 @@ target_link_libraries(${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_TARGET_NAME}-shared
 )
 
+target_link_libraries(${IResearch_TARGET_NAME}-scorer-tfidf-static
+  ${IResearch_TARGET_NAME}-static
+)
 ################################################################################
 ### scorer plugin : BM25
 ################################################################################
@@ -1228,6 +1243,9 @@ target_link_libraries(${IResearch_TARGET_NAME}-scorer-bm25-shared
   ${IResearch_TARGET_NAME}-shared
 )
 
+target_link_libraries(${IResearch_TARGET_NAME}-scorer-bm25-static
+  ${IResearch_TARGET_NAME}-static
+) 
 ################################################################################
 ### installation
 ################################################################################

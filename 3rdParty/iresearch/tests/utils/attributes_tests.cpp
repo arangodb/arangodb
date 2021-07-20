@@ -98,18 +98,15 @@ TEST(attributes_tests, store_ctor) {
   irs::attribute_store attrs;
 
   ASSERT_EQ(0, attrs.size());
-  ASSERT_EQ(flags{}, attrs.features());
 
   {
     attrs.emplace<tests::attribute>();
     irs::attribute_store attrs1( std::move(attrs));
     ASSERT_EQ(1, attrs1.size());
-    ASSERT_EQ(flags{irs::type<tests::attribute>::get()}, attrs1.features());
     ASSERT_TRUE(attrs1.contains<tests::attribute>());
   }
 
   ASSERT_EQ(0, attrs.size());
-  ASSERT_EQ(flags{}, attrs.features());
   ASSERT_FALSE(attrs.contains<tests::attribute>());
 }
 
@@ -136,7 +133,6 @@ TEST(attributes_tests, store_add_get_clear_state_clear) {
   ASSERT_FALSE(!added);
   ASSERT_EQ(1, attrs.size());
   ASSERT_TRUE(attrs.contains<tests::attribute>());
-  ASSERT_EQ(flags{irs::type<tests::attribute>::get()}, attrs.features());
 
   // add attribute
   {
@@ -144,7 +140,6 @@ TEST(attributes_tests, store_add_get_clear_state_clear) {
     ASSERT_EQ(&*added, &*added1);
     ASSERT_EQ(1, attrs.size());
     ASSERT_TRUE(attrs.contains<tests::attribute>());
-    ASSERT_EQ(flags{irs::type<tests::attribute>::get()}, attrs.features());
   }
 
   // get attribute
@@ -161,21 +156,16 @@ TEST(attributes_tests, store_add_get_clear_state_clear) {
   attrs.emplace<tests::invalid_attribute>();
   ASSERT_EQ(2, attrs.size());
   ASSERT_TRUE(attrs.contains<tests::invalid_attribute>());
-  ASSERT_EQ(
-    flags({irs::type<tests::attribute>::get(), irs::type<tests::invalid_attribute>::get()}),
-    attrs.features());
 
   /* remove attribute */
   attrs.remove<tests::invalid_attribute>();
   ASSERT_EQ(1, attrs.size());
   ASSERT_FALSE(attrs.contains<tests::invalid_attribute>());
-  ASSERT_EQ(flags{irs::type<tests::attribute>::get()}, attrs.features());
 
   /* clear */
   attrs.clear();
   ASSERT_EQ(0, attrs.size());
   ASSERT_FALSE(attrs.contains<tests::attribute>());
-  ASSERT_EQ(flags{}, attrs.features());
 }
 
 TEST(attributes_tests, store_visit) {
@@ -185,14 +175,11 @@ TEST(attributes_tests, store_visit) {
   ASSERT_FALSE(!attrs.emplace<tests::attribute>());
   ASSERT_EQ(1, attrs.size());
   ASSERT_TRUE(attrs.contains<tests::attribute>());
-  ASSERT_EQ(flags{irs::type<tests::attribute>::get()}, attrs.features());
 
   // add second attribute
   ASSERT_FALSE(!attrs.emplace<tests::invalid_attribute>());
   ASSERT_EQ(2, attrs.size());
   ASSERT_TRUE(attrs.contains<tests::invalid_attribute>());
-  ASSERT_EQ(flags({irs::type<tests::attribute>::get(), irs::type<tests::invalid_attribute>::get()}),
-            attrs.features());
 
   // visit 2 attributes
   {

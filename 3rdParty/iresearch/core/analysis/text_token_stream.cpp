@@ -23,18 +23,32 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "text_token_stream.hpp"
+
+#include <unicode/brkiter.h> // for icu::BreakIterator
+#include <absl/container/node_hash_map.h>
+#include <frozen/unordered_map.h>
+
 #include <cctype> // for std::isspace(...)
 #include <fstream>
 #include <mutex>
 
-#include <absl/container/node_hash_map.h>
-#include <frozen/unordered_map.h>
-
-#include <rapidjson/rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
-#include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
-#include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
-
-#include <unicode/brkiter.h> // for icu::BreakIterator
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
+#include "velocypack/vpack.h"
+#include "libstemmer.h"
+#include "utils/hash_utils.hpp"
+#include "utils/locale_utils.hpp"
+#include "utils/log.hpp"
+#include "utils/map_utils.hpp"
+#include "utils/misc.hpp"
+#include "utils/runtime_utils.hpp"
+#include "utils/thread_utils.hpp"
+#include "utils/utf8_path.hpp"
+#include "utils/utf8_utils.hpp"
+#include "utils/vpack_utils.hpp"
 
 #if defined(_MSC_VER)
   #pragma warning(disable: 4512)
@@ -57,21 +71,6 @@
 #if defined(_MSC_VER)
   #pragma warning(default: 4229)
 #endif
-
-#include "libstemmer.h"
-
-#include "utils/hash_utils.hpp"
-#include "utils/json_utils.hpp"
-#include "utils/locale_utils.hpp"
-#include "utils/log.hpp"
-#include "utils/map_utils.hpp"
-#include "utils/misc.hpp"
-#include "utils/runtime_utils.hpp"
-#include "utils/thread_utils.hpp"
-#include "utils/utf8_path.hpp"
-#include "utils/utf8_utils.hpp"
-
-#include "text_token_stream.hpp"
 
 namespace iresearch {
 namespace analysis {
@@ -118,7 +117,7 @@ struct text_token_stream::state_t {
     return 0 == ngram.length;
   }
 
-  void set_ngram_finished() {
+  void set_ngram_finished() noexcept {
     ngram.length = 0;
   }
 };
@@ -137,7 +136,7 @@ struct cached_options_t: public irs::analysis::text_token_stream::options_t {
   irs::analysis::text_token_stream::stopwords_t stopwords_;
 
   cached_options_t(
-      irs::analysis::text_token_stream::options_t &&options, 
+      irs::analysis::text_token_stream::options_t &&options,
       irs::analysis::text_token_stream::stopwords_t&& stopwords)
     : irs::analysis::text_token_stream::options_t(std::move(options)),
       stopwords_(std::move(stopwords)){
@@ -147,7 +146,7 @@ struct cached_options_t: public irs::analysis::text_token_stream::options_t {
 
 static absl::node_hash_map<irs::hashed_string_ref, cached_options_t> cached_state_by_key;
 static std::mutex mutex;
-static auto icu_cleanup = irs::make_finally([]()->void{
+static auto icu_cleanup = irs::make_finally([]()noexcept->void{
   // this call will release/free all memory used by ICU (for all users)
   // very dangerous to call if ICU is still in use by some other code
   //u_cleanup();
@@ -179,7 +178,7 @@ bool get_stopwords(
 
     if (!stopword_path.absolute(absolute)) {
       IR_FRMT_ERROR("Failed to determine absoluteness of path: %s",
-                    stopword_path.utf8().c_str());
+        stopword_path.utf8().c_str());
 
       return false;
     }
@@ -203,8 +202,8 @@ bool get_stopwords(
         return false;
       } else {
         IR_FRMT_TRACE("Failed to load stopwords from default path: %s. "
-                      "Analyzer will continue without stopwords",
-                      stopword_path.utf8().c_str());
+          "Analyzer will continue without stopwords",
+          stopword_path.utf8().c_str());
         return true;
       }
     }
@@ -276,13 +275,13 @@ bool build_stopwords(const irs::analysis::text_token_stream::options_t& options,
                      irs::analysis::text_token_stream::stopwords_t& buf) {
   if (!options.explicit_stopwords.empty()) {
     // explicit stopwords always go
-    buf.insert(options.explicit_stopwords.begin(), options.explicit_stopwords.end()); 
+    buf.insert(options.explicit_stopwords.begin(), options.explicit_stopwords.end());
   }
 
   if (options.stopwordsPath.empty() || options.stopwordsPath[0] != 0) {
     // we have a custom path. let`s try loading
     // if we have stopwordsPath - do not  try default location. Nothing to do there anymore
-    return get_stopwords(buf, options.locale, options.stopwordsPath); 
+    return get_stopwords(buf, options.locale, options.stopwordsPath);
   }
   else if (!options.explicit_stopwords_set && options.explicit_stopwords.empty()) {
     //  no stopwordsPath, explicit_stopwords empty and not marked as valid - load from defaults
@@ -357,19 +356,19 @@ irs::analysis::analyzer::ptr construct(
   try {
     irs::analysis::text_token_stream::options_t options;
     irs::analysis::text_token_stream::stopwords_t stopwords;
-    options.locale = locale; 
-    
+    options.locale = locale;
+
     if (!build_stopwords(options, stopwords)) {
-      IR_FRMT_WARN("Failed to retrieve 'stopwords' while constructing text_token_stream with cache key: %s", 
-                   cache_key.c_str());
+      IR_FRMT_WARN("Failed to retrieve 'stopwords' while constructing text_token_stream with cache key: %s",
+        cache_key.c_str());
 
       return nullptr;
     }
 
     return construct(cache_key, std::move(options), std::move(stopwords));
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while constructing text_token_stream cache key: %s", 
-                  cache_key.c_str());
+    IR_FRMT_ERROR("Caught error while constructing text_token_stream cache key: %s",
+      cache_key.c_str());
   }
 
   return nullptr;
@@ -466,23 +465,23 @@ bool make_locale_from_name(const irs::string_ref& name,
     return !icu_locale.isBogus();
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing locale from "
-        "name: %s",
-        name.c_str());
+      "Caught error while constructing locale from "
+      "name: %s",
+      name.c_str());
   }
   return false;
 }
 
-constexpr irs::string_ref LOCALE_PARAM_NAME            = "locale";
-constexpr irs::string_ref CASE_CONVERT_PARAM_NAME      = "case";
-constexpr irs::string_ref STOPWORDS_PARAM_NAME         = "stopwords";
-constexpr irs::string_ref STOPWORDS_PATH_PARAM_NAME    = "stopwordsPath";
-constexpr irs::string_ref ACCENT_PARAM_NAME            = "accent";
-constexpr irs::string_ref STEMMING_PARAM_NAME          = "stemming";
-constexpr irs::string_ref EDGE_NGRAM_PARAM_NAME        = "edgeNgram";
-constexpr irs::string_ref MIN_PARAM_NAME               = "min";
-constexpr irs::string_ref MAX_PARAM_NAME               = "max";
-constexpr irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
+constexpr VPackStringRef LOCALE_PARAM_NAME            {"locale"};
+constexpr VPackStringRef CASE_CONVERT_PARAM_NAME      {"case"};
+constexpr VPackStringRef STOPWORDS_PARAM_NAME         {"stopwords"};
+constexpr VPackStringRef STOPWORDS_PATH_PARAM_NAME    {"stopwordsPath"};
+constexpr VPackStringRef ACCENT_PARAM_NAME            {"accent"};
+constexpr VPackStringRef STEMMING_PARAM_NAME          {"stemming"};
+constexpr VPackStringRef EDGE_NGRAM_PARAM_NAME        {"edgeNgram"};
+constexpr VPackStringRef MIN_PARAM_NAME               {"min"};
+constexpr VPackStringRef MAX_PARAM_NAME               {"max"};
+constexpr VPackStringRef PRESERVE_ORIGINAL_PARAM_NAME {"preserveOriginal"};
 
 const frozen::unordered_map<
     irs::string_ref,
@@ -493,57 +492,46 @@ const frozen::unordered_map<
 };
 
 
-bool parse_json_options(const irs::string_ref& args,
+bool parse_vpack_options(const VPackSlice slice,
                         irs::analysis::text_token_stream::options_t& options) {
-  rapidjson::Document json;
-  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
-    IR_FRMT_ERROR(
-        "Invalid jSON arguments passed while constructing text_token_stream, "
-        "arguments: %s",
-        args.c_str());
 
-    return false;
+  if (slice.isString()) {
+    return make_locale_from_name(irs::get_string<irs::string_ref>(slice), options.locale);
   }
 
-  if (json.IsString()) {
-    return make_locale_from_name(args, options.locale);
-  }
-
-  if (!json.IsObject() || !json.HasMember(LOCALE_PARAM_NAME.c_str()) ||
-      !json[LOCALE_PARAM_NAME.c_str()].IsString()) {
+  if (!slice.isObject() || !slice.hasKey(LOCALE_PARAM_NAME) ||
+      !slice.get(LOCALE_PARAM_NAME).isString()) {
     IR_FRMT_WARN(
-        "Missing '%s' while constructing text_token_stream from jSON "
-        "arguments: %s",
-        LOCALE_PARAM_NAME.c_str(), args.c_str());
+      "Missing '%s' while constructing text_token_stream from VPack ",
+      LOCALE_PARAM_NAME.data());
 
     return false;
   }
 
   try {
-    if (!make_locale_from_name(json[LOCALE_PARAM_NAME.c_str()].GetString(),
+    if (!make_locale_from_name(irs::get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)),
                               options.locale)) {
       return false;
     }
-    if (json.HasMember(CASE_CONVERT_PARAM_NAME.c_str())) {
-      auto& case_convert =
-          json[CASE_CONVERT_PARAM_NAME.c_str()];  // optional string enum
+    if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
+      auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME);  // optional string enum
 
-      if (!case_convert.IsString()) {
+      if (!case_convert_slice.isString()) {
         IR_FRMT_WARN(
-            "Non-string value in '%s' while constructing text_token_stream "
-            "from jSON arguments: %s",
-            CASE_CONVERT_PARAM_NAME.c_str(), args.c_str());
+          "Non-string value in '%s' while constructing text_token_stream "
+          "from VPack arguments",
+          CASE_CONVERT_PARAM_NAME.data());
 
         return false;
       }
 
-      auto itr = CASE_CONVERT_MAP.find(case_convert.GetString());
+      auto itr = CASE_CONVERT_MAP.find(irs::get_string<irs::string_ref>(case_convert_slice));
 
       if (itr == CASE_CONVERT_MAP.end()) {
         IR_FRMT_WARN(
-            "Invalid value in '%s' while constructing text_token_stream from "
-            "jSON arguments: %s",
-            CASE_CONVERT_PARAM_NAME.c_str(), args.c_str());
+          "Invalid value in '%s' while constructing text_token_stream from "
+          "VPack arguments",
+          CASE_CONVERT_PARAM_NAME.data());
 
         return false;
       }
@@ -551,120 +539,106 @@ bool parse_json_options(const irs::string_ref& args,
       options.case_convert = itr->second;
     }
 
-    if (json.HasMember(STOPWORDS_PARAM_NAME.c_str())) {
-      auto& stop_words =
-          json[STOPWORDS_PARAM_NAME.c_str()];  // optional string array
-
-      if (!stop_words.IsArray()) {
+    if (slice.hasKey(STOPWORDS_PARAM_NAME)) {
+      auto stop_words_slice = slice.get(STOPWORDS_PARAM_NAME);  // optional string array
+      if (!stop_words_slice.isArray()) {
         IR_FRMT_WARN(
-            "Invalid value in '%s' while constructing text_token_stream from "
-            "jSON arguments: %s",
-            STOPWORDS_PARAM_NAME.c_str(), args.c_str());
+          "Invalid value in '%s' while constructing text_token_stream from "
+          "VPack arguments",
+          STOPWORDS_PARAM_NAME.data());
 
         return false;
       }
-      options.explicit_stopwords_set =
-          true;  // mark  - we have explicit list (even if it is empty)
-      for (auto itr = stop_words.Begin(), end = stop_words.End(); itr != end;
-           ++itr) {
-        if (!itr->IsString()) {
+      options.explicit_stopwords_set = true;  // mark  - we have explicit list (even if it is empty)
+      for (const auto& itr : VPackArrayIterator(stop_words_slice)) {
+        if (!itr.isString()) {
           IR_FRMT_WARN(
-              "Non-string value in '%s' while constructing text_token_stream "
-              "from jSON arguments: %s",
-              STOPWORDS_PARAM_NAME.c_str(), args.c_str());
-
-          return false;
-        }
-        options.explicit_stopwords.emplace(itr->GetString());
-      }
-      if (json.HasMember(STOPWORDS_PATH_PARAM_NAME.c_str())) {
-        auto& ignored_words_path =
-            json[STOPWORDS_PATH_PARAM_NAME.c_str()];  // optional string
-
-        if (!ignored_words_path.IsString()) {
-          IR_FRMT_WARN(
-              "Non-string value in '%s' while constructing text_token_stream "
-              "from jSON arguments: %s",
-              STOPWORDS_PATH_PARAM_NAME.c_str(), args.c_str());
-
-          return false;
-        }
-        options.stopwordsPath = ignored_words_path.GetString();
-      }
-    } else if (json.HasMember(STOPWORDS_PATH_PARAM_NAME.c_str())) {
-      auto& ignored_words_path =
-          json[STOPWORDS_PATH_PARAM_NAME.c_str()];  // optional string
-
-      if (!ignored_words_path.IsString()) {
-        IR_FRMT_WARN(
             "Non-string value in '%s' while constructing text_token_stream "
-            "from jSON arguments: %s",
-            STOPWORDS_PATH_PARAM_NAME.c_str(), args.c_str());
+            "from VPack arguments",
+            STOPWORDS_PARAM_NAME.data());
 
-        return false;
+          return false;
+        }
+        options.explicit_stopwords.emplace(irs::get_string<std::string>(itr));
       }
-      options.stopwordsPath = ignored_words_path.GetString();
     }
 
-    if (json.HasMember(ACCENT_PARAM_NAME.c_str())) {
-      auto& accent = json[ACCENT_PARAM_NAME.c_str()];  // optional bool
+    if (slice.hasKey(STOPWORDS_PATH_PARAM_NAME)) {
+        auto ignored_words_path_slice = slice.get(STOPWORDS_PATH_PARAM_NAME);  // optional string
 
-      if (!accent.IsBool()) {
-        IR_FRMT_WARN(
-            "Non-boolean value in '%s' while constructing text_token_stream "
-            "from jSON arguments: %s",
-            ACCENT_PARAM_NAME.c_str(), args.c_str());
+        if (!ignored_words_path_slice.isString()) {
+          IR_FRMT_WARN(
+            "Non-string value in '%s' while constructing text_token_stream "
+            "from VPack arguments",
+            STOPWORDS_PATH_PARAM_NAME.data());
 
-        return false;
-      }
-
-      options.accent = accent.GetBool();
+          return false;
+        }
+        options.stopwordsPath = irs::get_string<std::string>(ignored_words_path_slice);
     }
 
-    if (json.HasMember(STEMMING_PARAM_NAME.c_str())) {
-      auto& stemming = json[STEMMING_PARAM_NAME.c_str()];  // optional bool
+    if (slice.hasKey(ACCENT_PARAM_NAME)) {
+      auto accent_slice = slice.get(ACCENT_PARAM_NAME);  // optional bool
 
-      if (!stemming.IsBool()) {
+      if (!accent_slice.isBool()) {
         IR_FRMT_WARN(
-            "Non-boolean value in '%s' while constructing text_token_stream "
-            "from jSON arguments: %s",
-            STEMMING_PARAM_NAME.c_str(), args.c_str());
+          "Non-boolean value in '%s' while constructing text_token_stream "
+          "from VPack arguments",
+          ACCENT_PARAM_NAME.data());
 
         return false;
       }
-
-      options.stemming = stemming.GetBool();
+      options.accent = accent_slice.getBool();
     }
 
-    if (json.HasMember(EDGE_NGRAM_PARAM_NAME.c_str())) {
-      auto& ngram = json[EDGE_NGRAM_PARAM_NAME.c_str()];
+    if (slice.hasKey(STEMMING_PARAM_NAME)) {
+      auto stemming_slice = slice.get(STEMMING_PARAM_NAME);  // optional bool
 
-      if (!ngram.IsObject()) {
+      if (!stemming_slice.isBool()) {
         IR_FRMT_WARN(
-            "Non-object value in '%s' while constructing text_token_stream "
-            "from jSON arguments: %s",
-            EDGE_NGRAM_PARAM_NAME.c_str(), args.c_str());
+          "Non-boolean value in '%s' while constructing text_token_stream "
+          "from VPack arguments",
+          STEMMING_PARAM_NAME.data());
 
         return false;
       }
 
-      uint64_t min;
-      if (irs::get_uint64(ngram, MIN_PARAM_NAME, min)) {
-        options.min_gram = min;
+      options.stemming = stemming_slice.getBool();
+    }
+
+    if (slice.hasKey(EDGE_NGRAM_PARAM_NAME)) {
+      auto ngram_slice = slice.get(EDGE_NGRAM_PARAM_NAME);
+
+      if (!ngram_slice.isObject()) {
+        IR_FRMT_WARN(
+          "Non-object value in '%s' while constructing text_token_stream "
+          "from VPack arguments",
+          EDGE_NGRAM_PARAM_NAME.data());
+
+        return false;
+      }
+
+      if(ngram_slice.hasKey(MIN_PARAM_NAME) &&
+         ngram_slice.get(MIN_PARAM_NAME).isNumber<decltype (options.min_gram)>()) {
+
+        options.min_gram = ngram_slice.get(MIN_PARAM_NAME).getNumber<decltype (options.min_gram)>();
         options.min_gram_set = true;
       }
 
-      uint64_t max;
-      if (irs::get_uint64(ngram, MAX_PARAM_NAME, max)) {
-        options.max_gram = max;
+      if(ngram_slice.hasKey(MAX_PARAM_NAME) &&
+         ngram_slice.get(MAX_PARAM_NAME).isNumber<decltype (options.min_gram)>()) {
+
+        options.max_gram = ngram_slice.get(MAX_PARAM_NAME).getNumber<decltype (options.min_gram)>();
         options.max_gram_set = true;
       }
 
-      bool preserve_original;
-      if (irs::get_bool(ngram, PRESERVE_ORIGINAL_PARAM_NAME, preserve_original)) {
-        options.preserve_original = preserve_original;
+      if(ngram_slice.hasKey(PRESERVE_ORIGINAL_PARAM_NAME) &&
+         ngram_slice.get(PRESERVE_ORIGINAL_PARAM_NAME).isBool()) {
+
+        options.preserve_original = ngram_slice.get(PRESERVE_ORIGINAL_PARAM_NAME).getBool();
         options.preserve_original_set = true;
       }
+
 
       if (options.min_gram_set && options.max_gram_set) {
         return options.min_gram <= options.max_gram;
@@ -672,11 +646,13 @@ bool parse_json_options(const irs::string_ref& args,
     }
 
     return true;
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR(
+      "Caught error '%s' while constructing text_token_stream from VPack",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing text_token_stream from jSON "
-        "arguments: %s",
-        args.c_str());
+      "Caught error while constructing text_token_stream from VPack arguments");
   }
 
   return false;
@@ -685,136 +661,89 @@ bool parse_json_options(const irs::string_ref& args,
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
 /// @param options reference to analyzer options storage
-/// @param definition string for storing json document with config 
+/// @param definition string for storing json document with config
 ///////////////////////////////////////////////////////////////////////////////
-bool make_json_config(
+bool make_vpack_config(
     const irs::analysis::text_token_stream::options_t& options,
-    std::string& definition) {
+    VPackBuilder* builder) {
 
-  rapidjson::Document json;
-  json.SetObject();
-
-  rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
-
-  // locale
+  VPackObjectBuilder object(builder);
   {
+    // locale
     const auto& locale_name = irs::locale_utils::name(options.locale);
-    json.AddMember(
-        rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
-        rapidjson::Value(rapidjson::StringRef(locale_name.c_str(), 
-                                              locale_name.length())),
-        allocator);
-  }
-  // case convert
-  {
+    builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
+
+    // case convert
     auto case_value = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
       [&options](const decltype(CASE_CONVERT_MAP)::value_type& v) {
-        return v.second == options.case_convert; 
+        return v.second == options.case_convert;
       });
 
     if (case_value != CASE_CONVERT_MAP.end()) {
-      json.AddMember(
-        rapidjson::StringRef(CASE_CONVERT_PARAM_NAME.c_str(), CASE_CONVERT_PARAM_NAME.size()),
-        rapidjson::Value(case_value->first.c_str(),
-                         static_cast<rapidjson::SizeType>(case_value->first.size())),
-        allocator);
+      builder->add(CASE_CONVERT_PARAM_NAME, VPackValue(case_value->first));
     } else {
       IR_FRMT_ERROR(
         "Invalid case_convert value in text analyzer options: %d",
         static_cast<int>(options.case_convert));
       return false;
     }
-  }
- 
-  // stopwords
-  if(!options.explicit_stopwords.empty() || options.explicit_stopwords_set) { 
-    // explicit_stopwords_set  marks that even empty stopwords list is valid
-    rapidjson::Value stopwordsArray(rapidjson::kArrayType);
-    if (!options.explicit_stopwords.empty()) {
-      // for simplifying comparison between properties we need deterministic order of stopwords
+
+    // stopwords
+    if(!options.explicit_stopwords.empty() || options.explicit_stopwords_set) {
+      // explicit_stopwords_set  marks that even empty stopwords list is valid
       std::vector<irs::string_ref> sortedWords;
-      sortedWords.reserve(options.explicit_stopwords.size());
-      for (const auto& stopword : options.explicit_stopwords) {
-        sortedWords.emplace_back(stopword);
+      if (!options.explicit_stopwords.empty()) {
+        // for simplifying comparison between properties we need deterministic order of stopwords
+        sortedWords.reserve(options.explicit_stopwords.size());
+        for (const auto& stopword : options.explicit_stopwords) {
+          sortedWords.emplace_back(stopword);
+        }
+        std::sort(sortedWords.begin(), sortedWords.end());
       }
-      std::sort(sortedWords.begin(), sortedWords.end());
-      for (const auto& stopword : sortedWords) {
-        stopwordsArray.PushBack(
-          rapidjson::StringRef(stopword.c_str(), stopword.size()),
-          allocator);
+      {
+        VPackArrayBuilder array(builder, STOPWORDS_PARAM_NAME.data());
+
+        for (const auto& stopword : sortedWords) {
+            builder->add(VPackValue(stopword));
+        }
       }
     }
 
-    json.AddMember(
-      rapidjson::StringRef(STOPWORDS_PARAM_NAME.c_str(), STOPWORDS_PARAM_NAME.size()),
-      stopwordsArray.Move(),
-      allocator);
-  }
+    // Accent
+    builder->add(ACCENT_PARAM_NAME, VPackValue(options.accent));
 
-  // Accent
-  json.AddMember(
-    rapidjson::StringRef(ACCENT_PARAM_NAME.c_str(), ACCENT_PARAM_NAME.size()),
-    rapidjson::Value(options.accent),
-    allocator);
+    //Stem
+    builder->add(STEMMING_PARAM_NAME, VPackValue(options.stemming));
 
-  //Stem
-  json.AddMember(
-    rapidjson::StringRef(STEMMING_PARAM_NAME.c_str(), STEMMING_PARAM_NAME.size()),
-    rapidjson::Value(options.stemming),
-    allocator);
-  
-  //stopwords path
-  if (options.stopwordsPath.empty() || options.stopwordsPath[0] != 0 ) { 
-    // if stopwordsPath is set  - output it (empty string is also valid value =  use of CWD)
-    json.AddMember(
-      rapidjson::StringRef(STOPWORDS_PATH_PARAM_NAME.c_str(), STOPWORDS_PATH_PARAM_NAME.size()),
-      rapidjson::Value(options.stopwordsPath.c_str(),
-                       static_cast<rapidjson::SizeType>(options.stopwordsPath.length())),
-      allocator);
+    //stopwords path
+    if (options.stopwordsPath.empty() || options.stopwordsPath[0] != 0 ) {
+      // if stopwordsPath is set  - output it (empty string is also valid value =  use of CWD)
+      builder->add(STOPWORDS_PATH_PARAM_NAME, VPackValue(options.stopwordsPath));
+    }
   }
 
   // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
   static_assert(sizeof(uint64_t) >= sizeof(size_t), "sizeof(uint64_t) >= sizeof(size_t)");
 
   if (options.min_gram_set || options.max_gram_set || options.preserve_original_set) {
-    rapidjson::Document ngram(&allocator);
-    ngram.SetObject();
+
+    VPackObjectBuilder sub_object(builder, EDGE_NGRAM_PARAM_NAME.data());
 
     // min_gram
     if (options.min_gram_set) {
-      ngram.AddMember(
-        rapidjson::StringRef(MIN_PARAM_NAME.c_str(), MIN_PARAM_NAME.size()),
-        rapidjson::Value(static_cast<uint64_t>(options.min_gram)),
-        allocator);
+      builder->add(MIN_PARAM_NAME, VPackValue(static_cast<uint64_t>(options.min_gram)));
     }
 
     // max_gram
     if (options.max_gram_set) {
-      ngram.AddMember(
-        rapidjson::StringRef(MAX_PARAM_NAME.c_str(), MAX_PARAM_NAME.size()),
-        rapidjson::Value(static_cast<uint64_t>(options.max_gram)),
-        allocator);
+      builder->add(MAX_PARAM_NAME, VPackValue(static_cast<uint64_t>(options.max_gram)));
     }
 
     // preserve_original
     if (options.preserve_original_set) {
-      ngram.AddMember(
-        rapidjson::StringRef(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), PRESERVE_ORIGINAL_PARAM_NAME.size()),
-        rapidjson::Value(options.preserve_original),
-        allocator);
+      builder->add(PRESERVE_ORIGINAL_PARAM_NAME, VPackValue(options.preserve_original));
     }
-
-    json.AddMember(
-      rapidjson::StringRef(EDGE_NGRAM_PARAM_NAME.c_str(), EDGE_NGRAM_PARAM_NAME.size()),
-      ngram,
-      allocator);
   }
-
-  //output json to string
-  rapidjson::StringBuffer buffer;
-  rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
-  json.Accept(writer);
-  definition = buffer.GetString();
 
   return true;
 }
@@ -825,18 +754,19 @@ bool make_json_config(
 ///        "case"(string enum): modify token case using "locale"
 ///        "accent"(bool): leave accents
 ///        "stemming"(bool): use stemming
-///        "stopwords([string...]): set of words to ignore 
+///        "stopwords([string...]): set of words to ignore
 ///        "stopwordsPath"(string): custom path, where to load stopwords
 ///        "min" (number): minimum ngram size
 ///        "max" (number): maximum ngram size
 ///        "preserveOriginal" (boolean): preserve or not the original term
 ///  if none of stopwords and stopwordsPath specified, stopwords are loaded from default location
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   try {
+    const irs::string_ref slice_ref(slice.startAs<char>(), slice.byteSize());
     {
       auto lock = irs::make_lock_guard(mutex);
-      auto itr = cached_state_by_key.find(irs::make_hashed_ref(args));
+      auto itr = cached_state_by_key.find(irs::make_hashed_ref(slice_ref));
 
       if (itr != cached_state_by_key.end()) {
         return irs::memory::make_unique<irs::analysis::text_token_stream>(
@@ -845,35 +775,47 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     }
 
     irs::analysis::text_token_stream::options_t options;
-    if (parse_json_options(args, options)) {
+    if (parse_vpack_options(slice, options)) {
       irs::analysis::text_token_stream::stopwords_t stopwords;
       if (!build_stopwords(options, stopwords)) {
         IR_FRMT_WARN(
-            "Failed to retrieve 'stopwords' from path while constructing "
-            "text_token_stream from jSON arguments: %s",
-            args.c_str());
+          "Failed to retrieve 'stopwords' from path while constructing "
+          "text_token_stream from VPack arguments");
 
         return nullptr;
       }
-      return construct(args, std::move(options), std::move(stopwords));
+      return construct(slice_ref, std::move(options), std::move(stopwords));
     }
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while constructing text_token_stream from jSON arguments: %s", 
-                  args.c_str());
+    IR_FRMT_ERROR(
+      "Caught error while constructing text_token_stream from VPack arguments");
   }
   return nullptr;
 }
 
+irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  return make_vpack(slice);
+}
 
-bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* vpack_builder) {
   irs::analysis::text_token_stream::options_t options;
-  if (parse_json_options(args, options)) {
-    return make_json_config(options, definition);
+  if (parse_vpack_options(slice, options)) {
+    return make_vpack_config(options, vpack_builder);
   } else {
     return false;
   }
 }
 
+bool normalize_vpack_config(const irs::string_ref& args, std::string& definition) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackBuilder builder;
+  bool res = normalize_vpack_config(slice, &builder);
+  if (res) {
+    definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+  }
+  return res;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a locale name
@@ -893,15 +835,58 @@ bool normalize_text_config(const irs::string_ref& args,
   if (make_locale_from_name(args, locale)) {
     definition = irs::locale_utils::name(locale);
     return true;
-  } 
+  }
   return false;
 }
 
-REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, make_json, 
-                       normalize_json_config);
-REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, make_text, 
-                       normalize_text_config);
+irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+  try {
+    if (args.null()) {
+      IR_FRMT_ERROR("Null arguments while constructing text_token_normalizing_stream");
+      return nullptr;
+    }
+    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    return make_vpack(vpack->slice());
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR(
+      "Caught error '%s' while constructing text_token_normalizing_stream from JSON",
+      ex.what());
+  } catch (...) {
+    IR_FRMT_ERROR(
+      "Caught error while constructing text_token_normalizing_stream from JSON");
+  }
+  return nullptr;
+}
 
+bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+  try {
+    if (args.null()) {
+      IR_FRMT_ERROR("Null arguments while normalizing text_token_normalizing_stream");
+      return false;
+    }
+    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    VPackBuilder builder;
+    if (normalize_vpack_config(vpack->slice(), &builder)) {
+      definition = builder.toString();
+      return !definition.empty();
+    }
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR(
+      "Caught error '%s' while normalizing text_token_normalizing_stream from JSON",
+      ex.what());
+  } catch (...) {
+    IR_FRMT_ERROR(
+      "Caught error while normalizing text_token_normalizing_stream from JSON");
+  }
+  return false;
+}
+
+REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stream, make_vpack,
+                       normalize_vpack_config);
+REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, make_json,
+                       normalize_json_config);
+REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, make_text,
+                       normalize_text_config);
 }
 
 namespace iresearch {
@@ -929,6 +914,8 @@ text_token_stream::text_token_stream(
 // -----------------------------------------------------------------------------
 
 /*static*/ void text_token_stream::init() {
+  REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stream, make_vpack,
+                         normalize_vpack_config); // match registration above
   REGISTER_ANALYZER_JSON(text_token_stream, make_json,
                          normalize_json_config);  // match registration above
   REGISTER_ANALYZER_TEXT(text_token_stream, make_text,
@@ -1040,7 +1027,7 @@ bool text_token_stream::reset(const string_ref& data) {
     data_utf8_ref = data_utf8;
   }
 
-  if (data_utf8_ref.size() > std::numeric_limits<int32_t>::max()) {
+  if (data_utf8_ref.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
     return false; // ICU UnicodeString signatures can handle at most INT32_MAX
   }
 
@@ -1135,7 +1122,7 @@ bool text_token_stream::next_ngram() {
   }
 
   bool finished{};
-  auto set_ngram_finished = irs::make_finally([this, &finished]()->void {
+  auto set_ngram_finished = irs::make_finally([this, &finished]()noexcept->void {
     if (finished) {
       state_->set_ngram_finished();
     }

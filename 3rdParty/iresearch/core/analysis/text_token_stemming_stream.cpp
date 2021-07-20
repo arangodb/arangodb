@@ -21,14 +21,16 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "libstemmer.h"
-#include "rapidjson/rapidjson/document.h" // for rapidjson::Document
-#include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
-#include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
-#include "unicode/locid.h"
-#include "utils/locale_utils.hpp"
-
 #include "text_token_stemming_stream.hpp"
+
+#include "libstemmer.h"
+#include "unicode/locid.h"
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
+#include "utils/locale_utils.hpp"
+#include "utils/vpack_utils.hpp"
 
 namespace {
 
@@ -46,49 +48,50 @@ bool make_locale_from_name(const irs::string_ref& name,
     return !icu_locale.isBogus();
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing locale from "
-        "name: %s",
-        name.c_str());
+      "Caught error while constructing locale from "
+      "name: %s",
+      name.c_str());
   }
   return false;
 }
 
-const irs::string_ref LOCALE_PARAM_NAME = "locale";
+const VPackStringRef LOCALE_PARAM_NAME {"locale"};
 
-bool parse_json_config(const irs::string_ref& args, std::locale& locale) {
-  rapidjson::Document json;
+bool parse_vpack_options(const VPackSlice slice, std::locale& locale) {
 
-  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
-    IR_FRMT_ERROR(
-        "Invalid jSON arguments passed while constructing "
-        "text_token_stemming_stream, arguments: %s",
-        args.c_str());
-
+  if (!slice.isObject() && !slice.isString()) {
+    IR_FRMT_ERROR("Slice for delimited_token_stream is not an object or string");
     return false;
   }
 
   try {
-    switch (json.GetType()) {
-      case rapidjson::kStringType:
-        return make_locale_from_name(json.GetString(), locale);
-      case rapidjson::kObjectType:
-        if (json.HasMember(LOCALE_PARAM_NAME.c_str()) &&
-            json[LOCALE_PARAM_NAME.c_str()].IsString()) {
-          return make_locale_from_name(
-              json[LOCALE_PARAM_NAME.c_str()].GetString(), locale);
+    switch (slice.type()) {
+      case VPackValueType::String:
+        return make_locale_from_name(irs::get_string<irs::string_ref>(slice), locale);
+      case VPackValueType::Object:
+      {
+        auto param_name_slice = slice.get(LOCALE_PARAM_NAME);
+        if (!param_name_slice.isNone() &&
+            param_name_slice.isString()) {
+          irs::string_ref param_name = irs::get_string<irs::string_ref>(param_name_slice);
+          return make_locale_from_name(param_name, locale);
         }
+      }
+
       [[fallthrough]];
       default:
         IR_FRMT_ERROR(
-            "Missing '%s' while constructing text_token_stemming_stream from "
-            "jSON arguments: %s",
-            LOCALE_PARAM_NAME.c_str(), args.c_str());
+          "Missing '%s' while constructing text_token_stemming_stream from "
+          "VPack arguments",
+          LOCALE_PARAM_NAME.data());
     }
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR(
+      "Caught error '%s' while constructing text_token_stemming_stream from VPack",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing text_token_stemming_stream from jSON "
-        "arguments: %s",
-        args.c_str());
+      "Caught error while constructing text_token_stemming_stream from VPack arguments");
   }
 
   return false;
@@ -97,51 +100,95 @@ bool parse_json_config(const irs::string_ref& args, std::locale& locale) {
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): the locale to use for stemming <required>
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   std::locale locale;
-  if (parse_json_config(args, locale)) {
+  if (parse_vpack_options(slice, locale)) {
     return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(locale);
   } else {
     return nullptr;
   }
 }
 
+irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  return make_vpack(slice);
+}
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
 /// @param locale reference to analyzer`s locale
 /// @param definition string for storing json document with config 
 ///////////////////////////////////////////////////////////////////////////////
-bool make_json_config( const std::locale& locale,  std::string& definition) {
-  rapidjson::Document json;
-  json.SetObject();
+bool make_vpack_config(const std::locale& locale, VPackBuilder* builder) {
 
-  rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
-
-  // locale
+  VPackObjectBuilder object(builder);
   {
+     // locale
     const auto& locale_name = irs::locale_utils::name(locale);
-    json.AddMember(
-        rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
-        rapidjson::Value(rapidjson::StringRef(locale_name.c_str(), locale_name.length())),
-        allocator);
+    builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
   }
-  //output json to string
-  rapidjson::StringBuffer buffer;
-  rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
-  json.Accept(writer);
-  definition = buffer.GetString();
   return true;
 }
 
-bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   std::locale options;
-  if (parse_json_config(args, options)) {
-    return make_json_config(options, definition);
+  if (parse_vpack_options(slice, options)) {
+    return make_vpack_config(options, builder);
   } else {
     return false;
   }
 }
 
+bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackBuilder builder;
+  if (normalize_vpack_config(slice, &builder)) {
+    config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+    return true;
+  }
+  return false;
+}
+
+irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+  try {
+    if (args.null()) {
+      IR_FRMT_ERROR("Null arguments while constructing text_token_normalizing_stream");
+      return nullptr;
+    }
+    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    return make_vpack(vpack->slice());
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR(
+      "Caught error '%s' while constructing text_token_normalizing_stream from JSON",
+      ex.what());
+  } catch (...) {
+    IR_FRMT_ERROR(
+      "Caught error while constructing text_token_normalizing_stream from JSON");
+  }
+  return nullptr;
+}
+
+bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+  try {
+    if (args.null()) {
+      IR_FRMT_ERROR("Null arguments while normalizing text_token_normalizing_stream");
+      return false;
+    }
+    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    VPackBuilder builder;
+    if (normalize_vpack_config(vpack->slice(), &builder)) {
+      definition = builder.toString();
+      return !definition.empty();
+    }
+  } catch(const VPackException& ex) {
+    IR_FRMT_ERROR(
+      "Caught error '%s' while normalizing text_token_normalizing_stream from JSON",
+      ex.what());
+  } catch (...) {
+    IR_FRMT_ERROR(
+      "Caught error while normalizing text_token_normalizing_stream from JSON");
+  }
+  return false;
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a language to use for stemming
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,10 +199,10 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
       return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(locale);
     }
   } catch (...) {
+    std::string err_msg = static_cast<std::string>(args);
     IR_FRMT_ERROR(
       "Caught error while constructing text_token_stemming_stream TEXT arguments: %s",
-      args.c_str()
-    );
+      err_msg.c_str());
   }
 
   return nullptr;
@@ -174,6 +221,8 @@ REGISTER_ANALYZER_JSON(irs::analysis::text_token_stemming_stream, make_json,
                        normalize_json_config);
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stemming_stream, make_text, 
                        normalize_text_config);
+REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stemming_stream, make_vpack,
+                       normalize_vpack_config);
 
 }
 
@@ -191,6 +240,8 @@ text_token_stemming_stream::text_token_stemming_stream(const std::locale& locale
                          normalize_json_config); // match registration above
   REGISTER_ANALYZER_TEXT(text_token_stemming_stream, make_text,
                          normalize_text_config); // match registration above
+  REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stemming_stream, make_vpack,
+                         normalize_vpack_config); // match registration above
 }
 
 /*static*/ analyzer::ptr text_token_stemming_stream::make(const string_ref& locale) {
@@ -231,8 +282,7 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
     // valid conversion since 'locale_' was created with internal unicode encoding
     if (!irs::locale_utils::append_internal(term_buf_, data, locale_)) {
       IR_FRMT_ERROR(
-        "Failed to parse UTF8 value from token: %s",
-        data.c_str());
+        "Failed to parse UTF8 value from token");
 
       return false;
     }
@@ -251,7 +301,7 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
   // find the token stem
   // ...........................................................................
   if (stemmer_) {
-    if (term_buf_ref.size() > std::numeric_limits<int>::max()) {
+    if (term_buf_ref.size() > static_cast<uint32_t>(std::numeric_limits<int>::max())) {
       IR_FRMT_WARN(
         "Token size greater than the supported maximum size '%d', truncating token: %s",
         std::numeric_limits<int>::max(), data.c_str());
