@@ -28,6 +28,7 @@
 #include "Logger/LogMacros.h"
 
 #include <queue>
+#include <vector>
 
 namespace arangodb {
 namespace graph {
@@ -52,15 +53,18 @@ class WeightedQueue {
 
   void append(Step step) {
     arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
-    // if push_front() throws, no harm is done, and the memory usage increase
+    // if emplace() throws, no harm is done, and the memory usage increase
     // will be rolled back
-    _queue.push_front(std::move(step));
+    _queue.emplace_back(std::move(step));
     guard.steal();  // now we are responsible for tracking the memory
+    std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
   }
 
   bool hasProcessableElement() const {
     if (!isEmpty()) {
-      auto const& first = _queue.front();
+      std::pop_heap(_queue.begin(), _queue.end(), _cmpHeap);
+      auto const& first = _queue.back();
+      std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
       return first.isProcessable();
     }
 
@@ -86,17 +90,32 @@ class WeightedQueue {
 
   Step pop() {
     TRI_ASSERT(!isEmpty());
-    Step first = std::move(_queue.front());
+    std::pop_heap(_queue.begin(), _queue.end(), _cmpHeap);
+    Step first = std::move(_queue.back());
     LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS)
         << "<WeightedQueue> Pop: " << first.toString();
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
-    _queue.pop_front();
+    _queue.pop_back();
     return first;
   }
 
  private:
+  struct WeightedComparator {
+    bool operator()(Step const& a, Step const& b) {
+      if (a.getWeight() == b.getWeight()) {
+        // Only false if A is not processable but B is.
+        return !a.isProcessable() || b.isProcessable();
+      }
+      return a.getWeight() > b.getWeight();
+    }
+  };
+
+  WeightedComparator _cmpHeap{};
+
   /// @brief queue datastore
-  std::deque<Step> _queue;
+  /// Note: Mutable is a required for hasProcessableElement right now which is const. We can easily make it non const here.
+  mutable std::vector<Step> _queue;
+  // std::priority_queue<Step, std::vector<Step>, WeightedComparator> _queue;
 
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;
