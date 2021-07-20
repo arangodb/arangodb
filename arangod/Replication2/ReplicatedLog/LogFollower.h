@@ -61,7 +61,8 @@ class LogFollower : public LogParticipantI,
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   [[nodiscard]] auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
-  [[nodiscard]] auto getLogIterator(LogIndex fromIndex) const -> std::unique_ptr<LogIterator>;
+  [[nodiscard]] auto getLogIterator(LogIndex firstIndex) const -> std::unique_ptr<LogIterator>;
+  [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const -> std::unique_ptr<LogIterator>;
 
  private:
   struct GuardedFollowerData {

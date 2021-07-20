@@ -216,7 +216,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
                                                std::shared_ptr<QuorumData> const& quorum)
         -> ResolvedPromiseSet;
 
-    [[nodiscard]] auto getLogIterator(LogIndex fromIdx) const
+    [[nodiscard]] auto getLogIterator(LogIndex firstIdx) const
+        -> std::unique_ptr<LogIterator>;
+
+    [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
         -> std::unique_ptr<LogIterator>;
 
     [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;

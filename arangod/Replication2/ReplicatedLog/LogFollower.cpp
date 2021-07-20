@@ -334,17 +334,28 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid parameter; log index 0 is invalid");
   }
   return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) {
-    return getLogIterator(LogIndex{index.value - 1});
+    return getCommittedLogIterator(index);
   });
 }
 
-auto replicated_log::LogFollower::getLogIterator(LogIndex fromIdx) const
-    -> std::unique_ptr<LogIterator> {
+auto replicated_log::LogFollower::getLogIterator(LogIndex firstIndex) const
+-> std::unique_ptr<LogIterator> {
+  return _guardedFollowerData.doUnderLock(
+      [&](GuardedFollowerData const& data) -> std::unique_ptr<LogIterator> {
+        auto const endIdx = data._inMemoryLog.getLastTermIndexPair().index + 1;
+        TRI_ASSERT(firstIndex <= endIdx);
+        return data._inMemoryLog.getIteratorFrom(firstIndex);
+      });
+}
+
+auto replicated_log::LogFollower::getCommittedLogIterator(LogIndex firstIndex) const
+-> std::unique_ptr<LogIterator> {
   return _guardedFollowerData.doUnderLock(
       [&](GuardedFollowerData const& data) -> std::unique_ptr<LogIterator> {
         auto const endIdx = data._inMemoryLog.getNextIndex();
-        TRI_ASSERT(fromIdx < endIdx);
-        return data._inMemoryLog.getIteratorFrom(fromIdx);
+        TRI_ASSERT(firstIndex < endIdx);
+        // return an iterator for the range [firstIndex, _commitIndex + 1)
+        return data._inMemoryLog.getIteratorRange(firstIndex, data._commitIndex + 1);
       });
 }
 

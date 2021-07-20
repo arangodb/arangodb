@@ -552,7 +552,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   }
 
   {
-    auto it = getLogIterator(follower.lastAckedEntry.index);
+    auto it = getLogIterator(follower.lastAckedEntry.index + 1);
     auto transientEntries = decltype(req.entries)::transient_type{};
     while (auto entry = it->next()) {
       transientEntries.push_back(*std::move(entry));
@@ -662,11 +662,19 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
   return std::make_pair(prepareAppendEntries(), std::move(toBeResolved));
 }
 
-auto replicated_log::LogLeader::GuardedLeaderData::getLogIterator(LogIndex fromIdx) const
+auto replicated_log::LogLeader::GuardedLeaderData::getLogIterator(LogIndex firstIdx) const
     -> std::unique_ptr<LogIterator> {
+  auto const endIdx = _inMemoryLog.getLastTermIndexPair().index + 1;
+  TRI_ASSERT(firstIdx <= endIdx);
+  return _inMemoryLog.getIteratorFrom(firstIdx);
+}
+
+auto replicated_log::LogLeader::GuardedLeaderData::getCommittedLogIterator(LogIndex firstIndex) const
+-> std::unique_ptr<LogIterator> {
   auto const endIdx = _inMemoryLog.getNextIndex();
-  TRI_ASSERT(fromIdx < endIdx);
-  return _inMemoryLog.getIteratorFrom(fromIdx);
+  TRI_ASSERT(firstIndex < endIdx);
+  // return an iterator for the range [firstIndex, _commitIndex + 1)
+  return _inMemoryLog.getIteratorRange(firstIndex, _commitIndex + 1);
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> ResolvedPromiseSet {
@@ -745,7 +753,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
   }
   return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) {
     return _guardedLeaderData.doUnderLock([&](GuardedLeaderData& leaderData) {
-      return leaderData.getLogIterator(LogIndex{index.value - 1});
+      return leaderData.getCommittedLogIterator(index);
     });
   });
 }
