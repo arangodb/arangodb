@@ -774,15 +774,22 @@ void InvertedIndexFieldIterator::next() {
             return;
           }
           THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_NOT_IMPLEMENTED,
-            "Inverted index does not supports indexing objects and configured analyzer does "
-            " not accepts objects. Please use another analyzer to process an object or exclude field '%s'"
+            "Inverted index does not support indexing objects and configured analyzer does "
+            " not accept objects. Please use another analyzer to process an object or exclude field '%s'"
             " from index definition", _nameBuffer.c_str());
           break;
         case VPackValueType::Array: {
           if (setValue(_valueSlice, _begin->second)){
             return;
           } else {
-            _arrayStack.push_back(VPackArrayIterator(_valueSlice));
+            if (_begin->first.back().shouldExpand) {
+              _arrayStack.push_back(VPackArrayIterator(_valueSlice));
+            } else {
+              THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_NOT_IMPLEMENTED,
+                "Configured analyzer does not accept arrays and field has no expansion set. "
+                "Please use another analyzer to process an array or exclude field '%s'"
+                " from index definition or enable expansion", _nameBuffer.c_str());
+            }
           }
         } break;
         case VPackValueType::Double:
