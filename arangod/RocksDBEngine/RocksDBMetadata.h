@@ -187,10 +187,15 @@ class RocksDBBlockerGuard {
   RocksDBBlockerGuard(RocksDBBlockerGuard&&) noexcept;
   RocksDBBlockerGuard& operator=(RocksDBBlockerGuard&&) noexcept;
 
-  /// @brief can be called with or without a transaction id.
+  /// @brief place a blocker without prescribing a transaction id.
   /// it is not allowed to call placeBlocker() if a blocker is already
   /// acquired by the object.
-  rocksdb::SequenceNumber placeBlocker(TransactionId id = TransactionId::none());
+  rocksdb::SequenceNumber placeBlocker();
+
+  /// @brief place a blocker for a specific transaction id.
+  /// it is not allowed to call placeBlocker() if a blocker is already
+  /// acquired by the object.
+  rocksdb::SequenceNumber placeBlocker(TransactionId id);
 
   /// @brief releases an acquired blocker. will do nothing if no
   /// blocker is currently acquired by the object.

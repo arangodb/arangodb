@@ -778,16 +778,20 @@ RocksDBBlockerGuard& RocksDBBlockerGuard::operator=(RocksDBBlockerGuard&& other)
   return *this;
 }
 
+rocksdb::SequenceNumber RocksDBBlockerGuard::placeBlocker() {
+  TransactionId trxId = TransactionId(transaction::Context::makeTransactionId());
+  // generated trxId must be > 0
+  TRI_ASSERT(trxId.isSet());
+  return placeBlocker(trxId);
+}
+
 rocksdb::SequenceNumber RocksDBBlockerGuard::placeBlocker(TransactionId trxId) {
+  // note: input trxId can be 0 during unit tests, so we cannot assert trxId.isSet() here!
+  
   TRI_ASSERT(!_trxId.isSet());
 
   auto& engine = _collection->vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   rocksdb::SequenceNumber blockerSeq = engine.db()->GetLatestSequenceNumber();
-
-  if (!trxId.isSet()) {
-    trxId = TransactionId(transaction::Context::makeTransactionId());
-  }
-  TRI_ASSERT(trxId.isSet());
 
   auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
   // placeBlocker() may increase the blockerSeq
