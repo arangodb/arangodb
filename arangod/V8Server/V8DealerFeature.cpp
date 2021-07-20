@@ -301,8 +301,10 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
 
-  for (auto& it : _moduleDirectories) {
-    v8security.addToInternalWhitelist(it, FSAccessType::READ);
+  for (auto const& it : _moduleDirectories) {
+    if (!it.empty()) {
+      v8security.addToInternalWhitelist(it, FSAccessType::READ);
+    }
   }
 
   // check whether app-path was specified
@@ -361,7 +363,9 @@ void V8DealerFeature::start() {
   
   V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
   v8security.addToInternalWhitelist(_startupDirectory, FSAccessType::READ);
-  v8security.addToInternalWhitelist(_nodeModulesDirectory, FSAccessType::READ);
+  if (!_nodeModulesDirectory.empty()) {
+    v8security.addToInternalWhitelist(_nodeModulesDirectory, FSAccessType::READ);
+  }
 
   LOG_TOPIC("77c97", DEBUG, Logger::V8)
       << "effective startup-directory: " << _startupDirectory
