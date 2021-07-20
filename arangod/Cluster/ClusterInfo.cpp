@@ -277,7 +277,7 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
   _uniqid._nextUpperValue = 0ULL;
   _uniqid._backgroundJobIsRunning = false;
   // Actual loading into caches is postponed until necessary
-  
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   TRI_ASSERT(_syncerShutdownCode == TRI_ERROR_NO_ERROR || _syncerShutdownCode == TRI_ERROR_SHUTTING_DOWN);
 #else
@@ -2165,7 +2165,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
 
       break;
     }
-    
+
     if (res.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
       auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
       auto [acb, index] = agencyCache.read(
@@ -2196,7 +2196,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
     if (tries == 1) {
       events::CreateDatabase(database.getName(), res.errorCode());
     }
-    
+
     if (_server.isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
@@ -2204,7 +2204,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
     if (tries >= 5) {
       nextTimeout = 5.0;
     }
-      
+
     LOG_TOPIC("b47aa", WARN, arangodb::Logger::CLUSTER)
       << "failed to cancel creation of database " << database.getName() << " with error "
       << res.errorMessage() << ". Retrying.";
@@ -2392,6 +2392,23 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
   }
 
   return {};
+}
+
+Result ClusterInfo::incrementPlanVersion() {
+  auto trx = AgencyWriteTransaction{
+    std::vector<AgencyOperation>{IncreaseVersion()}, std::vector<AgencyPrecondition>{}};
+  AgencyComm ac(_server);
+  auto res = ac.sendTransactionWithFailover(trx);
+  
+  LOG_TOPIC("ccb89", DEBUG, Logger::CLUSTER) << "incrementing plan version";
+
+  if (res.successful()) {
+    if (res.slice().get("results").length() > 0) {
+      Result r = waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+      return r.fail() ? r : Result{};
+    }
+  }
+  return Result{TRI_ERROR_INTERNAL, "Failed to perform a simple plan version incrment."};
 }
 
 Result ClusterInfo::createCollectionsCoordinator(
@@ -4190,8 +4207,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop an index in coordinator.
 ////////////////////////////////////////////////////////////////////////////////
-Result ClusterInfo::dropIndexCoordinator( 
-    std::string const& databaseName,      
+Result ClusterInfo::dropIndexCoordinator(
+    std::string const& databaseName,
     std::string const& collectionID, IndexId iid,
     double timeout) {
   double const endTime = TRI_microtime() + getTimeout(timeout);
@@ -4211,7 +4228,7 @@ Result ClusterInfo::dropIndexCoordinator(
       // no, different error. report it!
       break;
     }
-      
+
     if (_server.isStopping()) {
       // do not audit-log the error
       return Result(TRI_ERROR_SHUTTING_DOWN);
@@ -4223,13 +4240,13 @@ Result ClusterInfo::dropIndexCoordinator(
     uint32_t wt = RandomGenerator::interval(static_cast<uint32_t>(1000));
     std::this_thread::sleep_for(std::chrono::steady_clock::duration(wt));
   } while (TRI_microtime() < endTime);
-      
+
   events::DropIndex(databaseName, collectionID, idString, res.errorNumber());
   return res;
 }
 
-Result ClusterInfo::dropIndexCoordinatorInner(  
-    std::string const& databaseName,   
+Result ClusterInfo::dropIndexCoordinatorInner(
+    std::string const& databaseName,
     std::string const& collectionID, IndexId iid,
     double endTime) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
@@ -5313,7 +5330,7 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
     transaction.operations.push_back(
       {"Sync/LatestID", AgencyValueOperationType::SET, latestIdSlice});
   }
-  
+
   AgencyCommResult r = _agency.sendTransactionWithFailover(transaction);
   if (!r.successful()) {
     return Result(TRI_ERROR_HOT_BACKUP_INTERNAL,
@@ -5723,7 +5740,7 @@ void ClusterInfo::waitForSyncersToStop() {
   drainSyncers();
 
   auto start = std::chrono::steady_clock::now();
-  while ((_planSyncer != nullptr && _planSyncer->isRunning()) || 
+  while ((_planSyncer != nullptr && _planSyncer->isRunning()) ||
          (_curSyncer != nullptr && _curSyncer->isRunning())) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if (std::chrono::steady_clock::now() - start > std::chrono::seconds(30)) {
