@@ -247,32 +247,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
 
-  // try to append the current version name to the startup directory,
-  // so instead of "/path/to/js" we will get "/path/to/js/3.4.0"
-  std::string const versionAppendix =
-      std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"),
-                         "");
-  std::string versionedPath =
-      basics::FileUtils::buildFilename(_startupDirectory, versionAppendix);
-
-  LOG_TOPIC("604da", DEBUG, Logger::V8)
-      << "checking for existence of version-specific startup-directory '"
-      << versionedPath << "'";
-  if (basics::FileUtils::isDirectory(versionedPath)) {
-    // version-specific js path exists!
-    _startupDirectory = versionedPath;
-  }
-
   for (auto& it : _moduleDirectories) {
-    versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
-
-    LOG_TOPIC("8e21a", DEBUG, Logger::V8)
-        << "checking for existence of version-specific module-directory '"
-        << versionedPath << "'";
-    if (basics::FileUtils::isDirectory(versionedPath)) {
-      // version-specific js path exists!
-      it = versionedPath;
-    }
     v8security.addToInternalWhitelist(it, FSAccessType::READ);
   }
 
@@ -309,26 +284,36 @@ void V8DealerFeature::start() {
     // now check if we have a js directory inside the database directory, and if
     // it looks good
     auto& dbPathFeature = server().getFeature<DatabasePathFeature>();
-    const std::string dbJSPath =
+    std::string const dbJSPath =
         FileUtils::buildFilename(dbPathFeature.directory(), "js");
-    const std::string checksumFile =
+    std::string const checksumFile =
         FileUtils::buildFilename(dbJSPath, StaticStrings::checksumFileJs);
-    const std::string serverPath = FileUtils::buildFilename(dbJSPath, "server");
-    const std::string commonPath = FileUtils::buildFilename(dbJSPath, "common");
+    std::string const serverPath = FileUtils::buildFilename(dbJSPath, "server");
+    std::string const commonPath = FileUtils::buildFilename(dbJSPath, "common");
+    std::string const nodeModulesPath = FileUtils::buildFilename(dbJSPath, "node", "node_modules");
     if (FileUtils::isDirectory(dbJSPath) && FileUtils::exists(checksumFile) &&
         FileUtils::isDirectory(serverPath) && FileUtils::isDirectory(commonPath)) {
-      // only load node modules from original startup path
-      _nodeModulesDirectory = _startupDirectory;
       // js directory inside database directory looks good. now use it!
       _startupDirectory = dbJSPath;
+      // older versions didn't copy node_modules. so check if it exists inside the
+      // database directory or not. 
+      if (FileUtils::isDirectory(nodeModulesPath)) {
+        _nodeModulesDirectory = nodeModulesPath;
+      } else {
+        _nodeModulesDirectory = _startupDirectory;
+      }
     }
   }
+  
+  V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
+  v8security.addToInternalWhitelist(_startupDirectory, FSAccessType::READ);
+  v8security.addToInternalWhitelist(_nodeModulesDirectory, FSAccessType::READ);
 
   LOG_TOPIC("77c97", DEBUG, Logger::V8)
       << "effective startup-directory: " << _startupDirectory
       << ", effective module-directories: " << _moduleDirectories
       << ", node-modules-directory: " << _nodeModulesDirectory;
-
+  
   _startupLoader.setDirectory(_startupDirectory);
   ServerState::instance()->setJavaScriptPath(_startupDirectory);
 
@@ -571,7 +556,10 @@ void V8DealerFeature::copyInstallationFiles() {
     LOG_TOPIC("38e1e", INFO, Logger::V8) 
       << "copying " << copied << " JS installation file(s) took " << Logger::FIXED(TRI_microtime() - start, 6) << "s";
   }
+
+  // finally switch over the paths
   _startupDirectory = copyJSPath;
+  _nodeModulesDirectory = basics::FileUtils::buildFilename(copyJSPath, "node", "node_modules");
 }
 
 V8Context* V8DealerFeature::addContext() {
