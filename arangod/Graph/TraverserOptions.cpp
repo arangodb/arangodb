@@ -884,7 +884,8 @@ auto TraverserOptions::estimateDepth() const noexcept -> uint64_t {
 
 void TraverserOptions::readProduceInfo(VPackSlice obj) {
   _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
-  _producePathsVertices = VPackHelper::getBooleanValue(obj, "producePathsVertices", true);
+  _producePathsVertices =
+      VPackHelper::getBooleanValue(obj, "producePathsVertices", true);
   _producePathsEdges = VPackHelper::getBooleanValue(obj, "producePathsEdges", true);
   _producePathsWeights = VPackHelper::getBooleanValue(obj, "producePathsWeights", true);
 }

@@ -604,7 +604,7 @@ auto QuerySnippet::prepareFirstBranch(
 
       // Check whether `servers` is the leader for any of the shards of the
       // prototype collection.
-      // We want to instantiate this snippet here exactly iff this is the case.
+      // We want to instantiate this snippet here exactly if this is the case.
       auto needInstanceHere = std::invoke([&]() {
         auto const* const protoCol =
             localGraphNode->isUsedAsSatellite()
@@ -631,7 +631,7 @@ auto QuerySnippet::prepareFirstBranch(
       }
 
       // This is either one shard or a single SatelliteGraph which is not used
-      // as SatelliteGraph or a Disjoint SmartGraph.
+      // as SatelliteGraph or a (Hybrid-)Disjoint SmartGraph.
       uint64_t numShards = 0;
       for (auto* aqlCollection : localGraphNode->collections()) {
         // It is of utmost importance that this is an ordered set of Shards.
@@ -683,13 +683,26 @@ auto QuerySnippet::prepareFirstBranch(
         }
       }
 
+      // TODO: We need to exclude DBServers which only do have Satellite collections only
+      // This server is not allowed to receive a setup call
+
+      // 1.) Satellites: 1x shard exists (681) -> not landing in myExpFinal
+       // => 2x shards vertex collections -> DB1 v: [s1, s2] , DB2 []
+      // 2.)
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // additional verification checks for Disjoint SmartGraphs
       if (localGraphNode->isDisjoint()) {
         if (!myExpFinal.empty()) {
           size_t numberOfShards = myExpFinal.begin()->second.size();
-          // We need one expansion for every collection in the Graph
-          TRI_ASSERT(myExpFinal.size() == localGraphNode->collections().size());
+          // We need one expansion for every collection in the Graph (-1 per satellite)
+          size_t amountOfNonSatellites = 0;
+          for (auto const& col : localGraphNode->collections()) {
+            if (!col->isSatellite()) {
+              amountOfNonSatellites++;
+            }
+          }
+          TRI_ASSERT(myExpFinal.size() == amountOfNonSatellites);
           for (auto const& expDefinition : myExpFinal) {
             TRI_ASSERT(expDefinition.second.size() == numberOfShards);
           }
