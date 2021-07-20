@@ -24,6 +24,8 @@
 
 #include "Replication2/ReplicatedLog/Algorithms.h"
 
+#include <Basics/ScopeGuard.h>
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -38,6 +40,13 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
   auto A = makeReplicatedLog(LogId{1});
   auto B = makeReplicatedLog(LogId{2});
   auto C = makeReplicatedLog(LogId{3});
+
+  TRI_DEFER({
+    // drop all logs
+    A->drop();
+    B->drop();
+    C->drop();
+  });
 
   {
     // First let A become the leader
@@ -125,6 +134,11 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
     auto Al = A->becomeLeader("A", LogTerm{5}, {Bf, Cf}, 2);
 
     auto f = Al->waitFor(LogIndex{1});
+
+    // The leader is freshly elected. It thus does not know about its followers'
+    // states, and therefore cannot calculate a commit index > 0.
+    ASSERT_FALSE(f.isReady());
+
     Al->triggerAsyncReplication();
 
     ASSERT_TRUE(Bf->hasPendingAppendEntries());
@@ -133,19 +147,22 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
       Bf->runAsyncAppendEntries();
     }
 
-    std::move(f).thenFinal([](auto&&) {});
+    // The leader should now have replicated its first empty log entry
+    ASSERT_TRUE(f.isReady());
   }
 
-  auto const firstCheckPoint = std::invoke([&] {
-    auto result = std::vector<LogEntry>();
+  auto firstCheckPoint = std::vector<LogEntry>();
+  {
     auto fut = A->getParticipant()->waitForIterator(LogIndex{1});
+    // The log index should have been committed before the checkpoint, so we
+    // may assume that the future is already resolved.
+    ASSERT_TRUE(fut.isReady());
     auto iter = std::move(fut).get();
     while (auto entry = iter->next()) {
-      result.push_back(std::move(*entry));
+      firstCheckPoint.push_back(std::move(*entry));
     }
-    return result;
-  });
-  EXPECT_EQ(firstCheckPoint.size(), 1);
+    EXPECT_EQ(firstCheckPoint.size(), 1);
+  }
 
   {
 
@@ -236,12 +253,5 @@ EXPECT_EQ(secondCheckPoint.size(), 2);
       std::mismatch(firstCheckPoint.begin(), firstCheckPoint.end(),
                     secondCheckPoint.begin(), secondCheckPoint.end());
   EXPECT_TRUE(first == firstCheckPoint.end());
-}
-
-{
-  // drop all logs
-  A->drop();
-  B->drop();
-  C->drop();
 }
 }
