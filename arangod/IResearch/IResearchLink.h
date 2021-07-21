@@ -422,7 +422,10 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   void scheduleConsolidation(std::chrono::milliseconds delay);
 
-  void getLinkLabels(std::string& view, std::string& col, std::string& shard);
+  void getLinkLabels(std::string& viewId,
+                     std::string& colId,
+                     std::string& shardName,
+                     std::string& dbName);
 
   StorageEngine* _engine;
   VPackComparer _comparer;
