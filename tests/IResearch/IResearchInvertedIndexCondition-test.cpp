@@ -542,3 +542,11 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_object_equal) {
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected, &ctx);
 }
+
+TEST_F(IResearchInvertedIndexConditionTest, test_with_array_comparison_righthand) {
+  ExpressionContextMock ctx;
+  std::string queryString = "FOR d IN test FILTER  d.a ANY IN [1,2,3] RETURN d ";
+  std::vector<std::string> fields = {"a"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  estimateFilterCondition(queryString, fields, expected, &ctx);
+}
