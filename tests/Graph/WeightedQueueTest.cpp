@@ -129,11 +129,6 @@ TEST_F(WeightedQueueTest, it_should_prioritize_processable_elements) {
   queue.append(Step{2, 2, true});
   queue.append(Step{3, 2, false});
   queue.append(Step{4, 6, false});
-  while (!queue.isEmpty()) {
-    auto s = queue.pop();
-    LOG_DEVEL << s.id() << " -> " << s.getWeight();
-  }
-  return;
   EXPECT_EQ(queue.size(), 4);
   EXPECT_TRUE(queue.hasProcessableElement());
   auto s = queue.pop();

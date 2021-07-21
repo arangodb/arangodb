@@ -62,9 +62,7 @@ class WeightedQueue {
 
   bool hasProcessableElement() const {
     if (!isEmpty()) {
-      std::pop_heap(_queue.begin(), _queue.end(), _cmpHeap);
-      auto const& first = _queue.back();
-      std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
+      auto const& first = _queue.front();
       return first.isProcessable();
     }
 
