@@ -26,6 +26,7 @@
 
 #include "VocBase/voc-types.h"
 
+#include "IResearchAnalyzerFeature.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchVPackTermAttribute.h"
 #include "VelocyPackHelper.h"
@@ -99,9 +100,14 @@ struct Field {
     return _name;
   }
 
-  irs::flags const& features() const {
+  const irs::features_t& features() const noexcept {
     TRI_ASSERT(_features);
-    return *_features;
+    return _features->field_features();
+  }
+
+  irs::IndexFeatures index_features() const noexcept {
+    TRI_ASSERT(_features);
+    return _features->index_features();
   }
 
   irs::token_stream& get_tokens() const {
@@ -117,7 +123,7 @@ struct Field {
     return true;
   }
 
-  irs::flags const* _features{&irs::flags::empty_instance()};
+  AnalyzerPool::AnalyzerFeatures const* _features{&AnalyzerPool::AnalyzerFeatures::empty_instance()};
   std::shared_ptr<irs::token_stream> _analyzer;
   irs::string_ref _name;
   irs::bytes_ref _value;

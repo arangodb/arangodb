@@ -701,7 +701,7 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
           }
         }
 
-        irs::flags features;
+        AnalyzerPool::AnalyzerFeatures features;
 
         {
           // optional string list
@@ -728,15 +728,11 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
               }
 
               const auto featureName = getStringRef(subValue);
-              const auto feature = irs::attributes::get(featureName);
-
-              if (!feature) {
+              if (!features.add(featureName)) {
                 errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName + "." + std::string(featureName);
 
                 return false;
               }
-
-              features.add(feature.id());
             }
           }
         }

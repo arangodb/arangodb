@@ -323,7 +323,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
   }
 
-  irs::flags features;
+  arangodb::iresearch::AnalyzerPool::AnalyzerFeatures features;
 
   if (args.Length() > 3) { // have features
     if (!args[3]->IsArray()) {
@@ -339,13 +339,9 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_V8_THROW_TYPE_ERROR("<feature> must be a string");
       }
 
-      const auto feature = irs::attributes::get(TRI_ObjectToString(isolate, subValue), false);
-
-      if (!feature) {
+      if (!features.add(TRI_ObjectToString(isolate, subValue))) {
         TRI_V8_THROW_TYPE_ERROR("<feature> not supported");
       }
-
-      features.add(feature.id());
     }
   }
 

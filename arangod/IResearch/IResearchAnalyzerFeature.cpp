@@ -41,6 +41,7 @@
 #include "analysis/pipeline_token_stream.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
+#include "index/norm.hpp"
 
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationServerHelper.h"
@@ -95,6 +96,7 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 namespace StringUtils = arangodb::basics::StringUtils;
 
+static const AnalyzerPool::AnalyzerFeatures EMPTY_FEATURES_INSTANCE;
 static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars)
 static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
@@ -719,7 +721,7 @@ bool equalAnalyzer(
     arangodb::iresearch::AnalyzerPool const& pool,
     irs::string_ref const& type,
     VPackSlice const properties,
-    irs::flags const& features) {
+    arangodb::iresearch::AnalyzerPool::AnalyzerFeatures const& features) {
   std::string normalizedProperties;
 
   if (!::normalize(normalizedProperties, type, properties)) {
@@ -969,7 +971,7 @@ arangodb::Result visitAnalyzers(
 ::arangodb::Result parseAnalyzerSlice(VPackSlice const& slice,
                           irs::string_ref& name,
                           irs::string_ref& type,
-                          irs::flags& features,
+                          AnalyzerPool::AnalyzerFeatures& features,
                           VPackSlice& properties) {
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey("name") // no such field (required)
@@ -1014,16 +1016,11 @@ arangodb::Result visitAnalyzers(
         return { TRI_ERROR_BAD_PARAMETER,
                  "failed to find a string value for an entry in analyzer 'features'" };
       }
-
       const auto featureName = ::arangodb::iresearch::getStringRef(subEntry);
-      const auto feature = irs::attributes::get(featureName);
-
-      if (!feature) {
+      if (!features.add(featureName)) {
         return { TRI_ERROR_BAD_PARAMETER,
                  "failed to find feature '"s.append(std::string(featureName)).append("'")};
       }
-
-      features.add(feature.id());
     }
   }
   return {};
@@ -1191,9 +1188,8 @@ void AnalyzerPool::toVelocyPack(
 
   // add features
   VPackArrayBuilder featuresScope(&builder, StaticStrings::AnalyzerFeaturesField);
-  for (auto& feature : features()) {
-    TRI_ASSERT(feature); // has to be non-nullptr
-    addStringRef(builder, feature().name());
+  for (auto& feature : features().getNames()) {
+    addStringRef(builder, feature);
   }
 }
 
@@ -1277,7 +1273,8 @@ bool AnalyzerPool::init(
     irs::string_ref const& type,
     VPackSlice const properties,
     AnalyzersRevision::Revision revision,
-    irs::flags const& features /*= irs::flags::empty_instance()*/) {
+    AnalyzerPool::AnalyzerFeatures const& features /*=
+                AnalyzerPool::AnalyzerFeatures::empty_instance()*/) {
   try {
     _cache.clear();  // reset for new type/properties
     _config.clear();
@@ -1508,7 +1505,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
     irs::string_ref const& type,
     VPackSlice const properties,
     arangodb::AnalyzersRevision::Revision revision,
-    irs::flags const& features) {
+    AnalyzerPool::AnalyzerFeatures const& features) {
   // check type available
   if (!irs::analysis::analyzers::exists(type, irs::type<irs::text_format::vpack>::get(), false)) {
     return {
@@ -1529,25 +1526,9 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
 
   // validate that features are supported by arangod an ensure that their
   // dependencies are met
-  for (auto& feature : features) {
-    if (irs::type<irs::frequency>::id() == feature) {
-      // no extra validation required
-    } else if (irs::type<irs::norm>::id() == feature) {
-      // no extra validation required
-    } else if (irs::type<irs::position>::id() == feature) {
-      if (!features.check(irs::type<irs::frequency>::id())) {
-        return {
-          TRI_ERROR_BAD_PARAMETER,
-          "missing feature '" + std::string(irs::type<irs::frequency>::name()) +
-          "' required when '" + std::string(feature().name()) + "' feature is specified"
-        };
-      }
-    } else if (feature) {
-      return {
-        TRI_ERROR_BAD_PARAMETER,
-        "unsupported analyzer feature '" + std::string(feature().name()) + "'"
-      };
-    }
+  auto validationRes = features.validate();
+  if (validationRes.fail()) {
+    return validationRes;
   }
 
   // limit the maximum size of analyzer properties
@@ -1587,7 +1568,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
     irs::string_ref const name,
     irs::string_ref const type,
     VPackSlice const properties,
-    irs::flags const& features,
+    AnalyzerPool::AnalyzerFeatures const& features,
     AnalyzersRevision::Revision revision) {
   // check type available
   if (!irs::analysis::analyzers::exists(type, irs::type<irs::text_format::vpack>::get(), false)) {
@@ -1607,23 +1588,9 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
 
   // validate that features are supported by arangod an ensure that their
   // dependencies are met
-  for (auto& feature : features) {
-    if (irs::type<irs::frequency>::id() == feature) {
-      // no extra validation required
-    } else if (irs::type<irs::norm>::id() == feature) {
-      // no extra validation required
-    } else if (irs::type<irs::position>::id() == feature) {
-      if (!features.check(irs::type<irs::frequency>::id())) {
-        return {
-          TRI_ERROR_BAD_PARAMETER,
-          "missing feature '" + std::string(irs::type<irs::frequency>::name()) +
-          "' required when '" + std::string(feature().name()) + "' feature is specified" };
-      }
-    } else if (feature) {
-      return {
-        TRI_ERROR_BAD_PARAMETER,
-        "unsupported analyzer feature '" + std::string(feature().name()) + "'" };
-    }
+  auto validationRes = features.validate();
+  if (validationRes.fail()) {
+    return validationRes;
   }
 
   // limit the maximum size of analyzer properties
@@ -1685,12 +1652,14 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
       errorText << "  properties:'" << properties.toString() << "'\n";
     }
     errorText  << "  features: [\n";
-    for (auto feature = std::begin(features); feature != std::end(features);) {
-      errorText << "    '" << (*feature)().name() << "'";
-      ++feature;
-      if (feature != std::end(features)) {
+    bool first{true};
+    for (auto const& feature : features.getNames()) {
+      if (!first) {
         errorText << ",";
+      } else {
+        first = false;
       }
+      errorText << "    '" << feature << "'";
       errorText << "\n";
     }
     VPackBuilder existingDefinition;
@@ -1710,7 +1679,7 @@ Result IResearchAnalyzerFeature::emplace(
     irs::string_ref const& name,
     irs::string_ref const& type,
     VPackSlice const properties,
-    irs::flags const& features /* = irs::flags::empty_instance() */) {
+    AnalyzerPool::AnalyzerFeatures const& features /* = AnalyzerPool::AnalyzerFeatures::empty_instance() */) {
   auto const split = splitAnalyzerName(name);
 
   auto transaction = createAnalyzerModificationTransaction(server(), split.first);
@@ -1952,7 +1921,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
       if (!slice.isObject()) {
         continue;
       }
-      irs::flags features;
+      AnalyzerPool::AnalyzerFeatures features;
       irs::string_ref name;
       irs::string_ref type;
       VPackSlice properties;
@@ -2162,7 +2131,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     Instance() {
       // register the identity analyzer
       {
-        irs::flags const extraFeatures = {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()};
+        AnalyzerPool::AnalyzerFeatures const extraFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ);
 
         auto pool = std::make_shared<AnalyzerPool>(IdentityAnalyzer::type_name());
 
@@ -2189,11 +2158,9 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       // register the text analyzers
       {
         // Note: ArangoDB strings coming from JavaScript user input are UTF-8 encoded
-        irs::flags const extraFeatures = {
-          irs::type<irs::frequency>::get(),
-          irs::type<irs::norm>::get(),
-          irs::type<irs::position>::get()
-        };  // add norms + frequency/position for by_phrase
+        // add norms + frequency/position for by_phrase
+        AnalyzerPool::AnalyzerFeatures const extraFeatures({irs::type<irs::norm>::get().id()},
+                                                           irs::IndexFeatures::FREQ | irs::IndexFeatures::POS);
 
         irs::string_ref const type("text");
 
@@ -2483,7 +2450,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         return {}; // skip analyzer
       }
 
-      irs::flags features;
+      AnalyzerPool::AnalyzerFeatures features;
       irs::string_ref key;
       irs::string_ref name;
       irs::string_ref type;
@@ -3229,6 +3196,70 @@ void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
     cleanupAnalyzers(database);
     _lastLoad.erase(itr);
   }
+}
+
+std::vector<std::string> AnalyzerPool::AnalyzerFeatures::getNames() const {
+  std::vector<std::string> res;
+  if (irs::IndexFeatures::FREQ == (_indexFeatures & irs::IndexFeatures::FREQ)) {
+    res.emplace_back("frequency");
+  }
+  if (irs::IndexFeatures::POS == (_indexFeatures & irs::IndexFeatures::POS)) {
+    res.emplace_back("position");
+  }
+
+  // add typed features
+  for (auto& feature : _fieldFeatures) {
+    TRI_ASSERT(feature); // has to be non-nullptr
+    res.emplace_back(feature().name());
+  }
+  return res;
+}
+
+bool AnalyzerPool::AnalyzerFeatures::add(std::string_view featureName) {
+  if (featureName == "position") {
+    _indexFeatures |= irs::IndexFeatures::POS;
+  } else if (featureName == "frequency") {
+    _indexFeatures |= irs::IndexFeatures::FREQ;
+  }
+  // forbid to directly set norm2! Only norm is documented
+  // and will be resolved depending on store version
+  if (featureName == "norm2") {
+    return false;
+  }
+  const auto feature = irs::attributes::get(featureName, false);
+  if (!feature) {
+    return false;
+  }
+  _fieldFeatures.insert(feature.id());
+  return true;
+}
+
+Result AnalyzerPool::AnalyzerFeatures::validate() const {
+    if (irs::IndexFeatures::POS == (_indexFeatures & irs::IndexFeatures::POS)) {
+      if (irs::IndexFeatures::FREQ != (_indexFeatures & irs::IndexFeatures::FREQ)) {
+        return {
+          TRI_ERROR_BAD_PARAMETER,
+          "missing feature 'frequency' required when 'position' feature is specified"};
+      }
+    }
+    if ( (irs::IndexFeatures::POS | irs::IndexFeatures::FREQ) != 
+         (_indexFeatures | irs::IndexFeatures::POS | irs::IndexFeatures::FREQ)) {
+      return {
+          TRI_ERROR_BAD_PARAMETER,
+          "Unsupported index features are specified: "s +
+          std::to_string(static_cast<std::underlying_type_t<irs::IndexFeatures>>(_indexFeatures))};
+    }
+    for (auto& feature : _fieldFeatures) {
+      if (feature().name() != "norm")
+        return {TRI_ERROR_BAD_PARAMETER,
+                "unsupported analyzer feature '" +
+                std::string(feature().name()) + "'"};
+    }
+    return {};
+}
+
+AnalyzerPool::AnalyzerFeatures const& AnalyzerPool::AnalyzerFeatures::empty_instance() {
+  return EMPTY_FEATURES_INSTANCE;
 }
 
 }  // namespace iresearch
