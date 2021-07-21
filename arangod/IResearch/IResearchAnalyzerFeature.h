@@ -42,6 +42,7 @@
 #include <utils/noncopyable.hpp>
 #include <utils/object_pool.hpp>
 #include <utils/string.hpp>
+#include <index/index_features.hpp>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -76,8 +77,59 @@ class AnalyzerPool : private irs::util::noncopyable {
     VPackSlice slice,
     VPackBuffer<uint8_t>& buf);
 
+  class AnalyzerFeatures {
+   public:
+
+    AnalyzerFeatures() = default;
+
+    AnalyzerFeatures(std::initializer_list<irs::type_info::type_id>&& ff, irs::IndexFeatures ii)
+      : _fieldFeatures(std::move(ff)), _indexFeatures(ii) {}
+    /// @brief build features names
+    /// @return vector of feature names (index and field combined)
+    std::vector<std::string> getNames() const;
+
+    /// @brief adds feature by name. Properly resolves field/index features
+    /// @param featureName feature name
+    /// @return true if feature found, false otherwise
+    bool add(std::string_view featureName);
+
+    /// @brief validate that features are supported by arangod an ensure that their
+    ///        dependencies are met
+    /// @return Result containing error description if any
+    Result validate() const;
+
+    /// @brief Set to default state with no features
+    void clear() noexcept {
+      _indexFeatures = irs::IndexFeatures::NONE;
+      _fieldFeatures.clear();
+    }
+
+    bool operator== (AnalyzerFeatures const& rhs) const noexcept {
+      return _indexFeatures == rhs._indexFeatures &&
+             _fieldFeatures == rhs._fieldFeatures;
+    }
+
+    bool operator!= (AnalyzerFeatures const& rhs) const noexcept {
+      return !(*this == rhs);
+    }
+
+    auto const& field_features() const noexcept {
+      return _fieldFeatures;
+    }
+
+    irs::IndexFeatures index_features() const noexcept {
+      return _indexFeatures;
+    }
+
+    static AnalyzerFeatures const& empty_instance();
+
+   private:
+    std::set<irs::type_info::type_id> _fieldFeatures;
+    irs::IndexFeatures _indexFeatures {irs::IndexFeatures::NONE};
+  };
+
   explicit AnalyzerPool(irs::string_ref const& name);
-  irs::flags const& features() const noexcept { return _features; }
+  AnalyzerFeatures const& features() const noexcept { return _features; }
   std::string const& name() const noexcept { return _name; }
   VPackSlice properties() const noexcept { return _properties; }
   irs::string_ref const& type() const noexcept { return _type; }
@@ -123,14 +175,15 @@ class AnalyzerPool : private irs::util::noncopyable {
   bool init(irs::string_ref const& type,
             VPackSlice const properties,
             AnalyzersRevision::Revision revision,
-            irs::flags const& features = irs::flags::empty_instance());
+            AnalyzerPool::AnalyzerFeatures const& features =
+                AnalyzerPool::AnalyzerFeatures::empty_instance());
   void setKey(irs::string_ref const& type);
 
   mutable irs::unbounded_object_pool<Builder> _cache;  // cache of irs::analysis::analyzer
                                                        // (constructed via AnalyzerBuilder::make(...))
 
   std::string _config;     // non-null type + non-null properties + key
-  irs::flags _features;    // cached analyzer features
+  AnalyzerFeatures _features;    // cached analyzer features
   irs::string_ref _key;    // the key of the persisted configuration for this pool,
                            // null == static analyzer
   std::string _name;       // ArangoDB alias for an IResearch analyzer configuration.
@@ -201,7 +254,7 @@ class IResearchAnalyzerFeature final
                                    irs::string_ref const& type,
                                    VPackSlice const properties,
                                    arangodb::AnalyzersRevision::Revision revision,
-                                   irs::flags const& features);
+                                   AnalyzerPool::AnalyzerFeatures const& features);
 
   static AnalyzerPool::ptr identity() noexcept;  // the identity analyzer
   static std::string const& name() noexcept;
@@ -278,7 +331,7 @@ class IResearchAnalyzerFeature final
                  irs::string_ref const& name,
                  irs::string_ref const& type,
                  VPackSlice const properties,
-                 irs::flags const& features = irs::flags::empty_instance());
+                 AnalyzerPool::AnalyzerFeatures const& features = AnalyzerPool::AnalyzerFeatures::empty_instance());
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Emplaces batch of analyzers within single analyzers revision. Intended for use
@@ -399,7 +452,7 @@ class IResearchAnalyzerFeature final
     irs::string_ref const name, // analyzer name
     irs::string_ref const type, // analyzer type
     VPackSlice const properties, // analyzer properties
-    irs::flags const& features, // analyzer features
+    AnalyzerPool::AnalyzerFeatures const& features, // analyzer features
     AnalyzersRevision::Revision revision); // analyzer revision
 
   AnalyzerPool::ptr get(irs::string_ref const& normalizedName,
