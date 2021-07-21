@@ -57,11 +57,18 @@ class WeightedQueue {
     // will be rolled back
     _queue.emplace_back(std::move(step));
     guard.steal();  // now we are responsible for tracking the memory
+    // std::push_heap takes the last element in the queue, assumes that all
+    // other elements are in heap structure, and moves the last element into
+    // the correct position in the heap (incl. rebalancing of other elements)
+    // The heap structure guarantees that the first element in the queue
+    // is the "largest" element (in our case it is the smallest, as we inverted the comperator)
     std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
   }
 
   bool hasProcessableElement() const {
     if (!isEmpty()) {
+      // The heap structure guarantees that the first element in the queue
+      // is the "largest" element (in our case it is the smallest, as we inverted the comperator)
       auto const& first = _queue.front();
       return first.isProcessable();
     }
@@ -88,6 +95,9 @@ class WeightedQueue {
 
   Step pop() {
     TRI_ASSERT(!isEmpty());
+    // std::pop_heap will move the front element (the one we would like to steal)
+    // to the back of the vector, keeping the tree intact otherwise.
+    // Now we steal the last element.
     std::pop_heap(_queue.begin(), _queue.end(), _cmpHeap);
     Step first = std::move(_queue.back());
     LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS)
