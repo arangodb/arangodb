@@ -31,6 +31,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include <analysis/analyzer.hpp>
 #include <analysis/analyzers.hpp>
@@ -79,7 +80,6 @@ class AnalyzerPool : private irs::util::noncopyable {
 
   class AnalyzerFeatures {
    public:
-
     AnalyzerFeatures() = default;
 
     AnalyzerFeatures(std::initializer_list<irs::type_info::type_id>&& ff, irs::IndexFeatures ii)
@@ -124,7 +124,8 @@ class AnalyzerPool : private irs::util::noncopyable {
     static AnalyzerFeatures const& empty_instance();
 
    private:
-    std::set<irs::type_info::type_id> _fieldFeatures;
+    // Forced to use vector here as iresearch field will require continiuos memory block of features
+    std::vector<irs::type_info::type_id> _fieldFeatures;
     irs::IndexFeatures _indexFeatures {irs::IndexFeatures::NONE};
   };
 

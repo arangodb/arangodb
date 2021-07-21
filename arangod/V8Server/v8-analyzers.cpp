@@ -107,14 +107,14 @@ void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto i = 0;
     auto result = v8::Array::New(isolate);
 
-    for (auto& feature: analyzer->features()) {
-      if (feature) { // valid
-        if (feature().name().null()) {
-          result->Set(context, i++, v8::Null(isolate)).FromMaybe(false);
-        } else {
-          result->Set(context,  // set value
-                      i++, TRI_V8_STD_STRING(isolate, std::string(feature().name()))).FromMaybe(false); // args
-        }
+    for (auto const& feature: analyzer->features().getNames()) {
+      if (feature.empty()) {
+        result->Set(context, i++, v8::Null(isolate)).FromMaybe(false);
+      } else {
+        result
+            ->Set(context,  // set value
+                  i++, TRI_V8_STD_STRING(isolate, feature))
+            .FromMaybe(false);  // args
       }
     }
 

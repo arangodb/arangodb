@@ -1273,8 +1273,7 @@ bool AnalyzerPool::init(
     irs::string_ref const& type,
     VPackSlice const properties,
     AnalyzersRevision::Revision revision,
-    AnalyzerPool::AnalyzerFeatures const& features /*=
-                AnalyzerPool::AnalyzerFeatures::empty_instance()*/) {
+    AnalyzerPool::AnalyzerFeatures const& features /*= AnalyzerPool::AnalyzerFeatures::empty_instance()*/) {
   try {
     _cache.clear();  // reset for new type/properties
     _config.clear();
@@ -3230,7 +3229,9 @@ bool AnalyzerPool::AnalyzerFeatures::add(std::string_view featureName) {
   if (!feature) {
     return false;
   }
-  _fieldFeatures.insert(feature.id());
+  if (std::find(_fieldFeatures.begin(), _fieldFeatures.end(), feature.id()) == _fieldFeatures.end()) {
+    _fieldFeatures.push_back(feature.id());
+  }
   return true;
 }
 
@@ -3242,8 +3243,8 @@ Result AnalyzerPool::AnalyzerFeatures::validate() const {
           "missing feature 'frequency' required when 'position' feature is specified"};
       }
     }
-    if ( (irs::IndexFeatures::POS | irs::IndexFeatures::FREQ) != 
-         (_indexFeatures | irs::IndexFeatures::POS | irs::IndexFeatures::FREQ)) {
+    if ((irs::IndexFeatures::POS | irs::IndexFeatures::FREQ) !=
+        (_indexFeatures | irs::IndexFeatures::POS | irs::IndexFeatures::FREQ)) {
       return {
           TRI_ERROR_BAD_PARAMETER,
           "Unsupported index features are specified: "s +
