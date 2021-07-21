@@ -614,9 +614,8 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid),
       _lastCommittedTick(0),
-      _createdInRecovery(false) {
-
-  _linkStats = &_dummyStats;
+      _createdInRecovery(false),
+      _linkStats(&_dummyStats) {
 
   auto* key = this;
 
@@ -871,6 +870,7 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
     TRI_ASSERT(_dataStore._reader != reader);
     _dataStore._reader = reader;
 
+    // update stats of the link
     _linkStats->store(stats());
 
     // update last committed tick
