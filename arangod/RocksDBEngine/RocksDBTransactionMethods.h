@@ -39,16 +39,19 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   explicit RocksDBTransactionMethods(RocksDBTransactionState* state) : _state(state) {}
   virtual ~RocksDBTransactionMethods() = default;
 
-  /// @brief read options for use with iterators
-  rocksdb::ReadOptions iteratorReadOptions();
-
-  // virtual Result beginTransaction() = 0;
+  virtual Result beginTransaction() = 0;
   
-  // virtual Result commitTransaction() = 0;
+  virtual Result commitTransaction() = 0;
 
-  // virtual Result abortTransaction() = 0;
+  virtual Result abortTransaction() = 0;
+  
+  virtual rocksdb::ReadOptions iteratorReadOptions() const = 0; // TODO - remove later
+  
+  /// @brief acquire a database snapshot if we do not yet have one.
+  /// Returns true if a snapshot was acquire
+  virtual bool ensureSnapshot() = 0;
 
-  //virtual rocksdb::SequenceNumber GetSequenceNumber() = 0;
+  virtual rocksdb::SequenceNumber GetSequenceNumber() const = 0;
 
   virtual rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
                               rocksdb::Slice const&, rocksdb::PinnableSlice*) = 0;

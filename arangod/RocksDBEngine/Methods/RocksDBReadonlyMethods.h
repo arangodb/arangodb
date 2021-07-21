@@ -40,6 +40,20 @@ class RocksDBReadOnlyMethods final : public RocksDBTransactionMethods {
  public:
   explicit RocksDBReadOnlyMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db);
 
+  ~RocksDBReadOnlyMethods();
+
+  Result beginTransaction() override;
+  
+  Result commitTransaction() override;
+
+  Result abortTransaction() override;
+
+  rocksdb::ReadOptions iteratorReadOptions() const override;
+  
+  bool ensureSnapshot() override;
+
+  rocksdb::SequenceNumber GetSequenceNumber() const override;
+  
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                       rocksdb::PinnableSlice* val) override;
   rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
@@ -67,7 +81,11 @@ class RocksDBReadOnlyMethods final : public RocksDBTransactionMethods {
   void PopSavePoint() override {}
 
  private:
+  void releaseSnapshot();
+  
   rocksdb::TransactionDB* _db;
+
+  rocksdb::ReadOptions _readOptions;
 };
 
 }  // namespace arangodb

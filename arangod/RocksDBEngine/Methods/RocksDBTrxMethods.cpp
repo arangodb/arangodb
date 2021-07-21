@@ -33,6 +33,10 @@ RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state, rocksdb::Tr
     : RocksDBTransactionMethods(state), _indexingDisabled(false), _db(db) {
 }
 
+RocksDBTrxMethods::~RocksDBTrxMethods() {
+  releaseSnapshot();
+}
+
 bool RocksDBTrxMethods::DisableIndexing() {
   if (!_indexingDisabled) {
     TRI_ASSERT(_state != nullptr);
@@ -52,6 +56,51 @@ bool RocksDBTrxMethods::EnableIndexing() {
     return true;
   }
   return false;
+}
+
+Result RocksDBTrxMethods::beginTransaction() {
+ TRI_ASSERT(_readSnapshot == nullptr);
+ if (_state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
+   TRI_ASSERT(_state->options().intermediateCommitCount != UINT64_MAX ||
+              _state->options().intermediateCommitSize != UINT64_MAX);
+   _readSnapshot = _db->GetSnapshot();  // must call ReleaseSnapshot later
+   TRI_ASSERT(_readSnapshot != nullptr);
+ }
+ return {};
+}
+
+Result RocksDBTrxMethods::commitTransaction() {
+  releaseSnapshot();
+  return {};
+}
+
+Result RocksDBTrxMethods::abortTransaction() {
+  releaseSnapshot();
+  return {};
+}
+
+rocksdb::ReadOptions RocksDBTrxMethods::iteratorReadOptions() const {
+  if (_state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
+    rocksdb::ReadOptions ro = _state->_rocksReadOptions;
+    TRI_ASSERT(_readSnapshot);
+    ro.snapshot = _readSnapshot;
+    return ro;
+  }
+  return _state->_rocksReadOptions;
+}
+
+/// @brief acquire a database snapshot if we do not yet have one.
+/// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
+bool RocksDBTrxMethods::ensureSnapshot() {
+  TRI_ASSERT(_readSnapshot != nullptr);
+  return false;
+}
+
+rocksdb::SequenceNumber RocksDBTrxMethods::GetSequenceNumber() const {
+  if (_readOptions.snapshot) {
+    return _readOptions.snapshot->GetSequenceNumber();
+  }
+  return _db->GetLatestSequenceNumber();
 }
 
 rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -179,4 +228,13 @@ void RocksDBTrxMethods::PopSavePoint() {
 #else
   _state->_rocksTransaction->PopSavePoint();
 #endif
+}
+
+void RocksDBTrxMethods::releaseSnapshot() {
+  if (_readSnapshot != nullptr) {
+    TRI_ASSERT(_state->isReadOnlyTransaction() ||
+               _state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
+    _db->ReleaseSnapshot(_readSnapshot); 
+    _readSnapshot = nullptr;
+  }
 }

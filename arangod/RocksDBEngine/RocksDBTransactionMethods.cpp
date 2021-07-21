@@ -26,16 +26,6 @@
 
 using namespace arangodb;
 
-rocksdb::ReadOptions RocksDBTransactionMethods::iteratorReadOptions() {
-  if (_state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
-    rocksdb::ReadOptions ro = _state->_rocksReadOptions;
-    TRI_ASSERT(_state->_readSnapshot);
-    ro.snapshot = _state->_readSnapshot;
-    return ro;
-  }
-  return _state->_rocksReadOptions;
-}
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 std::size_t RocksDBTransactionMethods::countInBounds(RocksDBKeyBounds const& bounds, bool isElementInRange) {
   std::size_t count = 0;

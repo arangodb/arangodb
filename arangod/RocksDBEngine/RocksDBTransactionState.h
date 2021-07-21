@@ -63,7 +63,6 @@ class RocksDBTransactionMethods;
 
 /// @brief transaction type
 class RocksDBTransactionState final : public TransactionState {
-  friend class RocksDBTransactionMethods;
   friend class RocksDBReadOnlyMethods;
   friend class RocksDBTrxMethods;
   friend class RocksDBBatchedMethods;
@@ -124,13 +123,10 @@ class RocksDBTransactionState final : public TransactionState {
     return _rocksMethods.get();
   }
   
-  /// @brief Rocksdb sequence number of snapshot. Works while trx
-  ///        has either a snapshot or a transaction
-  rocksdb::SequenceNumber sequenceNumber() const;
+  /// @brief acquire a database snapshot if we do not yet have one.
+  /// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
+  bool ensureSnapshot();
   
-  /// @brief acquire a database snapshot
-  bool setSnapshotOnReadOnly();
-
   static RocksDBTransactionState* toState(transaction::Methods* trx) {
     TRI_ASSERT(trx != nullptr);
     TransactionState* state = trx->state();
@@ -208,7 +204,7 @@ class RocksDBTransactionState final : public TransactionState {
   rocksdb::Transaction* _rocksTransaction;
   /// @brief used for read-only trx and intermediate commits
   /// For intermediate commits this MUST ONLY be used for iteratos
-  rocksdb::Snapshot const* _readSnapshot;
+  //rocksdb::Snapshot const* _readSnapshot;
   /// @brief shared read options which can be used by operations
   /// For intermediate commits iterators MUST use the _readSnapshot
   rocksdb::ReadOptions _rocksReadOptions;

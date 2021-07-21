@@ -942,7 +942,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
       cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
-           RocksDBTransactionState::toState(trx)->setSnapshotOnReadOnly());
+           RocksDBTransactionState::toState(trx)->ensureSnapshot());
   return res;
 }
 
@@ -1681,11 +1681,6 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   // we have successfully removed a value from the WBWI. after this, we 
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
-
-  /*LOG_TOPIC("17502", ERR, Logger::ENGINES)
-      << "Delete rev: " << revisionId << " trx: " << trx->state()->id()
-      << " seq: " << mthds->sequenceNumber()
-      << " objectID " << objectId() << " name: " << _logicalCollection.name();*/
 
   {
     bool needReversal = false;

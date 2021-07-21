@@ -31,6 +31,8 @@ namespace arangodb {
 class RocksDBTrxMethods : public RocksDBTransactionMethods {
  public:
   explicit RocksDBTrxMethods(RocksDBTransactionState*, rocksdb::TransactionDB* db);
+  
+  ~RocksDBTrxMethods();
 
   virtual bool isIndexingDisabled() const override{ return _indexingDisabled; }
 
@@ -38,6 +40,18 @@ class RocksDBTrxMethods : public RocksDBTransactionMethods {
   bool DisableIndexing() override;
 
   bool EnableIndexing() override;
+
+  Result beginTransaction() override;
+  
+  Result commitTransaction() override;
+
+  Result abortTransaction() override;
+
+  rocksdb::ReadOptions iteratorReadOptions() const override;
+  
+  bool ensureSnapshot() override;
+
+  rocksdb::SequenceNumber GetSequenceNumber() const override;
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                       rocksdb::PinnableSlice* val) override;
@@ -61,7 +75,15 @@ class RocksDBTrxMethods : public RocksDBTransactionMethods {
   void PopSavePoint() override;
 
  private:
+  void releaseSnapshot();
+  
   rocksdb::TransactionDB* _db;
+
+  /// @brief used for read-only trx and intermediate commits
+  /// For intermediate commits this MUST ONLY be used for iterators
+  rocksdb::Snapshot const* _readSnapshot{nullptr};
+
+  rocksdb::ReadOptions _readOptions;
 
   bool _indexingDisabled;
 };

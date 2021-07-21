@@ -71,7 +71,6 @@ RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, Transac
                                                  transaction::Options const& options)
     : TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
-      _readSnapshot(nullptr),
       _rocksReadOptions(),
       _cacheTx(nullptr),
       _numLogdata(0),
@@ -158,28 +157,17 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
   _rocksReadOptions.fill_cache = options().fillBlockCache; 
 
-  TRI_ASSERT(_readSnapshot == nullptr);
   if (isReadOnlyTransaction()) {
-    // no need to acquire a snapshot for a single op
-    if (!isSingleOperation()) {
-      _readSnapshot = db->GetSnapshot();  // must call ReleaseSnapshot later
-      TRI_ASSERT(_readSnapshot != nullptr);
-      _rocksReadOptions.snapshot = _readSnapshot;
-    }
     _rocksMethods = std::make_unique<RocksDBReadOnlyMethods>(this, db);
+    _rocksMethods->beginTransaction();
   } else {
     createTransaction();
     TRI_ASSERT(_rocksTransaction != nullptr);
 
     _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
-    if (hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
-      TRI_ASSERT(_options.intermediateCommitCount != UINT64_MAX ||
-                 _options.intermediateCommitSize != UINT64_MAX);
-      _readSnapshot = db->GetSnapshot();  // must call ReleaseSnapshot later
-      TRI_ASSERT(_readSnapshot != nullptr);
-    }
-
     _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, db);
+    _rocksMethods->beginTransaction();
+
     if (hasHint(transaction::Hints::Hint::NO_INDEXING)) {
       // do not track our own writes... we can only use this in very
       // specific scenarios, i.e. when we are sure that we will have a
@@ -300,15 +288,6 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
     TRI_ASSERT(manager != nullptr);
     manager->endTransaction(_cacheTx);
     _cacheTx = nullptr;
-  }
-  if (_readSnapshot != nullptr) {
-    TRI_ASSERT(isReadOnlyTransaction() ||
-               hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
-    auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
-    auto& engine = selector.engine<RocksDBEngine>();
-    rocksdb::TransactionDB* db = engine.db();
-    db->ReleaseSnapshot(_readSnapshot);  // calls delete
-    _readSnapshot = nullptr;
   }
 }
 
@@ -460,15 +439,20 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
     return Result(TRI_ERROR_DEBUG);
   }
 
+
   arangodb::Result res = internalCommit();
   if (res.ok()) {
     updateStatus(transaction::Status::COMMITTED);
+
+    // TODO - this releases the snapshot
+    _rocksMethods->commitTransaction();
+
     cleanupTransaction();  // deletes trx
     ++statistics()._transactionsCommitted;
   } else {
     abortTransaction(activeTrx);  // deletes trx
   }
-  TRI_ASSERT(!_rocksTransaction && !_cacheTx && !_readSnapshot);
+  // TODO - TRI_ASSERT(!_rocksTransaction && !_cacheTx && !_readSnapshot);
 
   return res;
 }
@@ -485,6 +469,9 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
     rocksdb::Status status = _rocksTransaction->Rollback();
     result = rocksutils::convertStatus(status);
   }
+  // TODO
+  _rocksMethods->abortTransaction();
+
   cleanupTransaction();  // deletes trx
 
   updateStatus(transaction::Status::ABORTED);
@@ -493,7 +480,7 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
     // may have queried something via AQL that is now rolled back
     clearQueryCache();
   }
-  TRI_ASSERT(!_rocksTransaction && !_cacheTx && !_readSnapshot);
+  // TODO - TRI_ASSERT(!_rocksTransaction && !_cacheTx && !_readSnapshot);
   ++statistics()._transactionsAborted;
 
   return result;
@@ -621,33 +608,8 @@ Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisi
   return checkIntermediateCommit(currentSize, hasPerformedIntermediateCommit);
 }
 
-uint64_t RocksDBTransactionState::sequenceNumber() const {
-  if (_rocksTransaction) {
-    return static_cast<uint64_t>(_rocksTransaction->GetSnapshot()->GetSequenceNumber());
-  } 
-  if (_readSnapshot != nullptr) {
-    return static_cast<uint64_t>(_readSnapshot->GetSequenceNumber());
-  } 
-  if (isReadOnlyTransaction() && isSingleOperation()) {
-    RocksDBEngine& engine =
-        vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-    return engine.db()->GetLatestSequenceNumber();
-  }
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "No snapshot set");
-}
-
-/// @brief acquire a database snapshot
-bool RocksDBTransactionState::setSnapshotOnReadOnly() {
-  if (_readSnapshot == nullptr && isReadOnlyTransaction()) {
-    TRI_ASSERT(_rocksTransaction == nullptr);
-    TRI_ASSERT(isSingleOperation());
-    auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
-    auto& engine = selector.engine<RocksDBEngine>();
-    _readSnapshot = engine.db()->GetSnapshot();
-    return true;
-  }
-  return false;
+bool RocksDBTransactionState::ensureSnapshot() {
+  return _rocksMethods->ensureSnapshot();
 }
 
 Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedIntermediateCommit) {
@@ -690,7 +652,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
 
   createTransaction();
   _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
-  TRI_ASSERT(_readSnapshot != nullptr);  // snapshots for iterators
+  // TODO - TRI_ASSERT(_readSnapshot != nullptr);  // snapshots for iterators
   TRI_ASSERT(_rocksReadOptions.snapshot != nullptr);
   return TRI_ERROR_NO_ERROR;
 }
@@ -772,13 +734,8 @@ bool RocksDBTransactionState::isOnlyExclusiveTransaction() const {
 rocksdb::SequenceNumber RocksDBTransactionState::beginSeq() const {
   if (_rocksTransaction) {
     return _rocksTransaction->GetSnapshot()->GetSequenceNumber();
-  } else if (_readSnapshot) {
-    return _readSnapshot->GetSequenceNumber();
   }
-  auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
-  return db->GetLatestSequenceNumber();
+  return _rocksMethods->GetSequenceNumber();
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
