@@ -103,7 +103,6 @@ class AnalyzerPool : private irs::util::noncopyable {
     void clear() noexcept {
       _indexFeatures = irs::IndexFeatures::NONE;
       _fieldFeatures.clear();
-      _fieldFeaturesRange = irs::features_t(nullptr, 0);
     }
 
     bool operator== (AnalyzerFeatures const& rhs) const noexcept {
@@ -116,7 +115,7 @@ class AnalyzerPool : private irs::util::noncopyable {
     }
 
     auto const& field_features() const noexcept {
-      return _fieldFeaturesRange;
+      return _fieldFeatures;
     }
 
     irs::IndexFeatures index_features() const noexcept {
@@ -126,9 +125,7 @@ class AnalyzerPool : private irs::util::noncopyable {
     static AnalyzerFeatures const& empty_instance();
 
    private:
-    // Forced to use vector here as iresearch field will require continiuos memory block of features
-    irs::features_t _fieldFeaturesRange{nullptr, 0}; // FIXME: remove Kludge!
-    std::vector<irs::type_info::type_id> _fieldFeatures;
+    std::set<irs::type_info::type_id> _fieldFeatures;
     irs::IndexFeatures _indexFeatures {irs::IndexFeatures::NONE};
   };
 

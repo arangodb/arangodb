@@ -3229,11 +3229,7 @@ bool AnalyzerPool::AnalyzerFeatures::add(std::string_view featureName) {
   if (!feature) {
     return false;
   }
-  if (std::find(_fieldFeatures.begin(), _fieldFeatures.end(), feature.id()) == _fieldFeatures.end()) {
-    _fieldFeatures.push_back(feature.id());
-    // FIXME: remove kludge
-    _fieldFeaturesRange = {_fieldFeatures.data(), _fieldFeatures.size()};
-  }
+  _fieldFeatures.insert(feature.id());
   return true;
 }
 

@@ -36,6 +36,7 @@
 #include "analysis/token_attributes.hpp"
 #include "search/filter.hpp"
 #include "store/data_output.hpp"
+#include "index/norm.hpp"
 
 
 namespace iresearch {
@@ -102,7 +103,7 @@ struct Field {
 
   const irs::features_t& features() const noexcept {
     TRI_ASSERT(_features);
-    return _features->field_features();
+    return _featuresRange;
   }
 
   irs::IndexFeatures index_features() const noexcept {
@@ -123,11 +124,27 @@ struct Field {
     return true;
   }
 
-  AnalyzerPool::AnalyzerFeatures const* _features{&AnalyzerPool::AnalyzerFeatures::empty_instance()};
+  void setFeatures(AnalyzerPool::AnalyzerFeatures const& poolFeatures) {
+    _features = &poolFeatures;
+    //FIXME: check here datastore version and translate accordingly
+    for (auto const& feature : _features->field_features()) {
+      if (feature == irs::type<irs::norm>::get().id()) {
+        _translatedFieldFeatures.push_back(irs::type<irs::norm2>::get().id());
+      } else {
+        _translatedFieldFeatures.push_back(feature);
+      }
+    }
+    _featuresRange = {_translatedFieldFeatures.data(), _translatedFieldFeatures.size()};
+  }
+
   std::shared_ptr<irs::token_stream> _analyzer;
   irs::string_ref _name;
   irs::bytes_ref _value;
   ValueStorage _storeValues;
+ private:
+  AnalyzerPool::AnalyzerFeatures const* _features{&AnalyzerPool::AnalyzerFeatures::empty_instance()};
+  irs::features_t _featuresRange{nullptr, 0};
+  std::vector<irs::type_info::type_id> _translatedFieldFeatures;
 };  // Field
 
 ////////////////////////////////////////////////////////////////////////////////
