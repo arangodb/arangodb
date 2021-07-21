@@ -84,7 +84,7 @@ DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
 
   if (skipped.nothingSkipped() && block == nullptr) {
     // We're either waiting or Done
-    TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::WAITING);
+    // TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::WAITING);
   }
   return {state, skipped, std::move(block)};
 }

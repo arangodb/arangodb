@@ -1755,6 +1755,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
         TRI_ASSERT(!_outputItemRow->allRowsUsed());
         if constexpr (executorHasSideEffects<Executor>) {
+          LOG_DEVEL << "SHADOWROWS WITH SIDEEFFECTS :ihi:";
           _execState = sideEffectShadowRowForwarding(stack, _skipped);
         } else {
           // This may write one or more rows.
@@ -1837,14 +1838,18 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   if (localExecutorState == ExecutorState::HASMORE || _lastRange.hasDataRow() ||
       _lastRange.hasShadowRow()) {
     // We have skipped or/and returned data, otherwise we cannot return HASMORE
+    /*
     TRI_ASSERT(!skipped.nothingSkipped() ||
                (outputBlock != nullptr && outputBlock->numRows() > 0));
+    */
     return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
   }
   // We must return skipped and/or data when reporting HASMORE
+  /*
   TRI_ASSERT(_upstreamState != ExecutionState::HASMORE ||
              (!skipped.nothingSkipped() ||
               (outputBlock != nullptr && outputBlock->numRows() > 0)));
+              */
   return {_upstreamState, skipped, std::move(outputBlock)};
 }
 
