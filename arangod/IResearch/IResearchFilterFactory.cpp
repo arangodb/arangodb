@@ -998,9 +998,6 @@ Result byRange(irs::boolean_filter* filter,
 
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                       FilterContext const& filterCtx, aql::AstNode const& node) {
-  if (!filter) {
-    return {};
-  }
 
   // non-deterministic condition or self-referenced variable
   if (!node.isDeterministic() || arangodb::iresearch::findReference(node, *ctx.ref)) {

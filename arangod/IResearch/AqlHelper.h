@@ -540,6 +540,7 @@ bool visitAllAttributeAccess(aql::AstNode const* node,
   switch (node->type) {
     case aql::NODE_TYPE_ATTRIBUTE_ACCESS:
     case aql::NODE_TYPE_INDEXED_ACCESS:
+    case aql::NODE_TYPE_EXPANSION:
       if (checkAttributeAccess(node, ref) && nameFromAttributeAccess(name, *node, ctx)) {
         if (!visitor(name)) {
           return false;
