@@ -48,12 +48,26 @@ class RocksDBReadOnlyMethods final : public RocksDBTransactionMethods {
 
   Result abortTransaction() override;
 
+  uint64_t numCommits() const override { return 0; }
+
   rocksdb::ReadOptions iteratorReadOptions() const override;
   
   bool ensureSnapshot() override;
 
   rocksdb::SequenceNumber GetSequenceNumber() const override;
   
+  bool hasOperations() const noexcept override { return false; }
+  
+  uint64_t numOperations() const noexcept override { return 0; }
+  
+  void prepareOperation(DataSourceId cid, RevisionId rid, TRI_voc_document_operation_e operationType) override;
+
+  void rollbackOperation(TRI_voc_document_operation_e operationType) override;
+
+  Result addOperation(DataSourceId collectionId, RevisionId revisionId,
+                      TRI_voc_document_operation_e opType,
+                      bool& hasPerformedIntermediateCommit) override;
+
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                       rocksdb::PinnableSlice* val) override;
   rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,

@@ -45,6 +45,8 @@ class RocksDBTransactionMethods : public RocksDBMethods {
 
   virtual Result abortTransaction() = 0;
   
+  virtual uint64_t numCommits() const = 0;
+  
   virtual rocksdb::ReadOptions iteratorReadOptions() const = 0; // TODO - remove later
   
   /// @brief acquire a database snapshot if we do not yet have one.
@@ -52,7 +54,23 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual bool ensureSnapshot() = 0;
 
   virtual rocksdb::SequenceNumber GetSequenceNumber() const = 0;
+  
+  virtual bool hasOperations() const noexcept = 0;
 
+  virtual uint64_t numOperations() const noexcept = 0;
+  
+  virtual void prepareOperation(DataSourceId cid, RevisionId rid, TRI_voc_document_operation_e operationType) = 0;
+
+  /// @brief undo the effects of the previous prepareOperation call
+  virtual void rollbackOperation(TRI_voc_document_operation_e operationType) = 0;
+
+  /// @brief add an operation for a transaction collection
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
+  /// performed
+  virtual Result addOperation(DataSourceId collectionId, RevisionId revisionId,
+                              TRI_voc_document_operation_e opType,
+                              bool& hasPerformedIntermediateCommit) = 0;
+                      
   virtual rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
                               rocksdb::Slice const&, rocksdb::PinnableSlice*) = 0;
   virtual rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,

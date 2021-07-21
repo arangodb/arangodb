@@ -82,6 +82,21 @@ rocksdb::SequenceNumber RocksDBReadOnlyMethods::GetSequenceNumber() const {
   return _db->GetLatestSequenceNumber();
 }
   
+void RocksDBReadOnlyMethods::prepareOperation(DataSourceId cid, RevisionId rid,
+                                              TRI_voc_document_operation_e operationType) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);                                          
+}
+
+void RocksDBReadOnlyMethods::rollbackOperation(TRI_voc_document_operation_e operationType) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);                                          
+}
+
+Result RocksDBReadOnlyMethods::addOperation(DataSourceId collectionId, RevisionId revisionId,
+                                            TRI_voc_document_operation_e opType,
+                                            bool& hasPerformedIntermediateCommit) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);                                          
+}
+                      
 rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::Slice const& key,
                                             rocksdb::PinnableSlice* val) {
