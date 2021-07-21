@@ -173,8 +173,8 @@ void RocksDBTransactionCollection::prepareTransaction(TransactionId trxId, uint6
       std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
     }
 
-    auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
     TRI_ASSERT(beginSeq > 0);
+    auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
     coll->meta().placeBlocker(trxId, beginSeq);
   }
 }
