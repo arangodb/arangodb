@@ -31,11 +31,13 @@ using namespace arangodb::replication2::replicated_log;
 
 struct ChangeStreamTests : ReplicatedLogTest {};
 
-TEST_F(ChangeStreamTests, ask_for_exisiting_entries) {
+TEST_F(ChangeStreamTests, ask_for_existing_entries) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"second entry"}),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3}, LogPayload{"third entry"})};
+      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+                             LogPayload::createFromString("second entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+                             LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
   {
@@ -70,11 +72,13 @@ TEST_F(ChangeStreamTests, ask_for_exisiting_entries) {
   }
 }
 
-TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries) {
+TEST_F(ChangeStreamTests, ask_for_non_existing_entries) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"second entry"}),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3}, LogPayload{"third entry"})};
+      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+                             LogPayload::createFromString("second entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+                             LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
   {
@@ -92,8 +96,10 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries) {
   auto fut = leader->waitForIterator(LogIndex{4});
   ASSERT_FALSE(fut.isReady());
 
-  leader->insert(LogPayload{"fourth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
-  leader->insert(LogPayload{"fifth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+  leader->insert(LogPayload::createFromString("fourth entry"), false,
+                 LogLeader::doNotTriggerAsyncReplication);
+  leader->insert(LogPayload::createFromString("fifth entry"), false,
+                 LogLeader::doNotTriggerAsyncReplication);
   leader->triggerAsyncReplication();
 
   ASSERT_TRUE(fut.isReady());
@@ -114,11 +120,13 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries) {
   }
 }
 
-TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
+TEST_F(ChangeStreamTests, ask_for_non_existing_entries_with_follower) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"second entry"}),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3}, LogPayload{"third entry"})};
+      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+                             LogPayload::createFromString("second entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+                             LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
   {
@@ -144,8 +152,10 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
   auto fut = leader->waitForIterator(LogIndex{4});
   ASSERT_FALSE(fut.isReady());
 
-  leader->insert(LogPayload{"fourth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
-  leader->insert(LogPayload{"fifth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+  leader->insert(LogPayload::createFromString("fourth entry"), false,
+                 LogLeader::doNotTriggerAsyncReplication);
+  leader->insert(LogPayload::createFromString("fifth entry"), false,
+                 LogLeader::doNotTriggerAsyncReplication);
   leader->triggerAsyncReplication();
 
   ASSERT_FALSE(fut.isReady());
@@ -172,9 +182,11 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_with_follower) {
 
 TEST_F(ChangeStreamTests, ask_for_non_replicated_entries_with_follower) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"second entry"}),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3}, LogPayload{"third entry"})};
+      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+                             LogPayload::createFromString("second entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+                             LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
   {
@@ -197,14 +209,14 @@ TEST_F(ChangeStreamTests, ask_for_non_replicated_entries_with_follower) {
     follower->runAsyncAppendEntries();
   }
 
-  leader->insert(LogPayload{"fourth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
-  leader->insert(LogPayload{"fifth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+  leader->insert(LogPayload::createFromString("fourth entry"), false,
+                 LogLeader::doNotTriggerAsyncReplication);
+  leader->insert(LogPayload::createFromString("fifth entry"), false,
+                 LogLeader::doNotTriggerAsyncReplication);
   leader->triggerAsyncReplication();
-
 
   auto fut = leader->waitForIterator(LogIndex{3});
   ASSERT_TRUE(fut.isReady());
-
 
   {
     auto entry = std::optional<LogEntry>{};
@@ -222,11 +234,13 @@ TEST_F(ChangeStreamTests, ask_for_non_replicated_entries_with_follower) {
   follower->runAsyncAppendEntries();
 }
 
-TEST_F(ChangeStreamTests, ask_for_exisiting_entries_follower) {
+TEST_F(ChangeStreamTests, ask_for_existing_entries_follower) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"second entry"}),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3}, LogPayload{"third entry"})};
+      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+                             LogPayload::createFromString("second entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+                             LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
   {
@@ -269,11 +283,13 @@ TEST_F(ChangeStreamTests, ask_for_exisiting_entries_follower) {
   }
 }
 
-TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_follower) {
+TEST_F(ChangeStreamTests, ask_for_non_existing_entries_follower) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"second entry"}),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3}, LogPayload{"third entry"})};
+      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+                             LogPayload::createFromString("second entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+                             LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
   {
@@ -288,7 +304,7 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_follower) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
 
   auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
-      std::move(coreA), LogTerm{3}, {follower}, 2);
+                                     std::move(coreA), LogTerm{3}, {follower}, 2);
   leader->triggerAsyncReplication();
 
   while (follower->hasPendingAppendEntries()) {
@@ -298,8 +314,10 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_follower) {
   auto fut = follower->waitForIterator(LogIndex{4});
   ASSERT_FALSE(fut.isReady());
 
-  leader->insert(LogPayload{"fourth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
-  leader->insert(LogPayload{"fifth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+  leader->insert(LogPayload::createFromString("fourth entry"), false,
+                 LogLeader::doNotTriggerAsyncReplication);
+  leader->insert(LogPayload::createFromString("fifth entry"), false,
+                 LogLeader::doNotTriggerAsyncReplication);
   leader->triggerAsyncReplication();
 
   // replicate entries, not commit index
@@ -330,9 +348,11 @@ TEST_F(ChangeStreamTests, ask_for_non_exisiting_entries_follower) {
 
 TEST_F(ChangeStreamTests, ask_for_non_committed_entries_follower) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"second entry"}),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3}, LogPayload{"third entry"})};
+      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+                             LogPayload::createFromString("second entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+                             LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
   {
@@ -347,15 +367,17 @@ TEST_F(ChangeStreamTests, ask_for_non_committed_entries_follower) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
 
   auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
-      std::move(coreA), LogTerm{3}, {follower}, 2);
+                                     std::move(coreA), LogTerm{3}, {follower}, 2);
   leader->triggerAsyncReplication();
 
   while (follower->hasPendingAppendEntries()) {
     follower->runAsyncAppendEntries();
   }
 
-  leader->insert(LogPayload{"fourth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
-  leader->insert(LogPayload{"fifth entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+  leader->insert(LogPayload::createFromString("fourth entry"), false,
+                 LogLeader::doNotTriggerAsyncReplication);
+  leader->insert(LogPayload::createFromString("fifth entry"), false,
+                 LogLeader::doNotTriggerAsyncReplication);
   leader->triggerAsyncReplication();
 
   // replicate entries, not commit index

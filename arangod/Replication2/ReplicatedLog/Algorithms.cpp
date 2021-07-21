@@ -193,10 +193,10 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
   auto entry = log.getEntryByIndex(prevLog.index);
   if (entry.has_value()) {
     // check if the term matches
-    if (entry->logTerm() != prevLog.term) {
+    if (entry->entry().logTerm() != prevLog.term) {
       auto conflict = std::invoke([&] {
-        if (auto idx = log.getFirstIndexOfTerm(entry->logTerm()); idx.has_value()) {
-          return TermIndexPair{entry->logTerm(), *idx};
+        if (auto idx = log.getFirstIndexOfTerm(entry->entry().logTerm()); idx.has_value()) {
+          return TermIndexPair{entry->entry().logTerm(), *idx};
         }
         return TermIndexPair{};
       });
@@ -211,15 +211,16 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
     if (!lastEntry.has_value()) {
       // The log is empty, reset to (0, 0)
       return std::make_pair(ConflictReason::LOG_EMPTY, TermIndexPair{});
-    } else if (prevLog.index > lastEntry->logIndex()) {
+    } else if (prevLog.index > lastEntry->entry().logIndex()) {
       // the given entry is too far ahead
       return std::make_pair(ConflictReason::LOG_ENTRY_AFTER_END,
-                            TermIndexPair{lastEntry->logTerm(), lastEntry->logIndex() + 1});
+                            TermIndexPair{lastEntry->entry().logTerm(),
+                                          lastEntry->entry().logIndex() + 1});
     } else {
       // this can only happen if we drop log entries, check the code below before removing the assert
       TRI_ASSERT(false);
-      TRI_ASSERT(prevLog.index < lastEntry->logIndex());
-      TRI_ASSERT(prevLog.index < log.getFirstEntry()->logIndex());
+      TRI_ASSERT(prevLog.index < lastEntry->entry().logIndex());
+      TRI_ASSERT(prevLog.index < log.getFirstEntry()->entry().logIndex());
       // the given index too old, reset to (0, 0)
       return std::make_pair(ConflictReason::LOG_ENTRY_BEFORE_BEGIN, TermIndexPair{});
     }

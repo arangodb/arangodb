@@ -54,7 +54,8 @@ TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
     request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
-    request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
+    request.entries = {InMemoryLogEntry(
+        LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());
@@ -96,7 +97,8 @@ TEST_F(FollowerAppendEntriesTest, wrong_term) {
     request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
-    request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
+    request.entries = {InMemoryLogEntry(
+        LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());
@@ -119,7 +121,8 @@ TEST_F(FollowerAppendEntriesTest, missing_prev_log_index) {
     request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{1}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
-    request.entries = {LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"some payload"})};
+    request.entries = {InMemoryLogEntry(
+        LogEntry(LogTerm{1}, LogIndex{2}, LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());
@@ -143,7 +146,8 @@ TEST_F(FollowerAppendEntriesTest, missmatch_prev_log_term) {
     request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
-    request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
+    request.entries = {InMemoryLogEntry(
+        LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());
@@ -161,7 +165,8 @@ TEST_F(FollowerAppendEntriesTest, missmatch_prev_log_term) {
     request.prevLogEntry = TermIndexPair{LogTerm{3}, LogIndex{1}};
     request.leaderCommit = LogIndex{1};
     request.messageId = ++nextMessageId;
-    request.entries = {LogEntry(LogTerm{5}, LogIndex{2}, LogPayload{"some payload"})};
+    request.entries = {InMemoryLogEntry(
+        LogEntry(LogTerm{5}, LogIndex{2}, LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());
@@ -184,7 +189,8 @@ TEST_F(FollowerAppendEntriesTest, wrong_leader_name) {
     request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
-    request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
+    request.entries = {InMemoryLogEntry(
+        LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());
@@ -209,7 +215,8 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
     request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
-    request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
+    request.entries = {InMemoryLogEntry(
+        LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());
@@ -227,7 +234,8 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
     request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{1}};
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
-    request.entries = {LogEntry(LogTerm{5}, LogIndex{2}, LogPayload{"some payload"})};
+    request.entries = {InMemoryLogEntry(
+        LogEntry(LogTerm{5}, LogIndex{2}, LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());
@@ -251,7 +259,8 @@ TEST_F(FollowerAppendEntriesTest, outdated_message_id) {
     request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.leaderCommit = LogIndex{0};
     request.messageId = MessageId{5};
-    request.entries = {LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"some payload"})};
+    request.entries = {InMemoryLogEntry(
+        LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());
@@ -268,7 +277,8 @@ TEST_F(FollowerAppendEntriesTest, outdated_message_id) {
     request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{1}};
     request.leaderCommit = LogIndex{0};
     request.messageId = MessageId{4};
-    request.entries = {LogEntry(LogTerm{5}, LogIndex{2}, LogPayload{"some payload"})};
+    request.entries = {InMemoryLogEntry(
+        LogEntry(LogTerm{5}, LogIndex{2}, LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());

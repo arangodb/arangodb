@@ -96,7 +96,11 @@ auto replicated_log::LogLeader::tryHardToClearQueue() noexcept -> void {
       // The queue cannot be empty: resign() clears it while under the mutex,
       // and waitFor also holds the mutex, but refuses to add entries after
       // the leader resigned.
+      // This means it should never happen in production code. But this
+      // assertion is really annoying in the tests.
+#ifndef ARANGODB_USE_GOOGLE_TESTS
       TRI_ASSERT(queue.empty());
+#endif
       if (!queue.empty()) {
         LOG_CTX("8b8a2", ERR, _logContext)
             << "Leader destroyed, but queue isn't empty!";
@@ -238,7 +242,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                     });
 
                 auto const commitTp =
-                    LogEntry::clock::now();
+                    InMemoryLogEntry::clock::now();
                 for (auto const& it : resolvedPromises._commitedLogEntries) {
                   using namespace std::chrono_literals;
                   auto const entryDuration = commitTp - it.insertTp();
@@ -368,8 +372,8 @@ auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
     if (auto entry = leaderData._inMemoryLog.getEntryByIndex(idx);
-        entry.has_value() && entry->logIndex() <= leaderData._commitIndex) {
-      return entry;
+        entry.has_value() && entry->entry().logIndex() <= leaderData._commitIndex) {
+      return entry->entry();
     } else {
       return std::nullopt;
     }
@@ -403,7 +407,7 @@ auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync) -> 
 
 auto replicated_log::LogLeader::insert(LogPayload payload, [[maybe_unused]] bool waitForSync, DoNotTriggerAsyncReplication) -> LogIndex {
   // TODO Handle waitForSync!
-  auto const insertTp = LogEntry::clock::now();
+  auto const insertTp = InMemoryLogEntry::clock::now();
   // Currently we use a mutex. Is this the only valid semantic?
   return _guardedLeaderData.doUnderLock([&](GuardedLeaderData& leaderData) {
     if (leaderData._didResign) {
@@ -411,7 +415,7 @@ auto replicated_log::LogLeader::insert(LogPayload payload, [[maybe_unused]] bool
     }
     auto const index = leaderData._inMemoryLog.getNextIndex();
     auto const payloadSize = payload.byteSize();
-    auto logEntry = LogEntry{_currentTerm, index, std::move(payload)};
+    auto logEntry = InMemoryLogEntry(LogEntry(_currentTerm, index, std::move(payload)));
     logEntry.setInsertTp(insertTp);
     leaderData._inMemoryLog.appendInPlace(_logContext, std::move(logEntry));
     _logMetrics->replicatedLogInsertsBytes->count(payloadSize);
@@ -544,8 +548,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   req.messageId = ++follower.lastSentMessageId;
 
   if (lastAcked) {
-    req.prevLogEntry.index = lastAcked->logIndex();
-    req.prevLogEntry.term = lastAcked->logTerm();
+    req.prevLogEntry.index = lastAcked->entry().logIndex();
+    req.prevLogEntry.term = lastAcked->entry().logTerm();
   } else {
     req.prevLogEntry.index = LogIndex{0};
     req.prevLogEntry.term = LogTerm{0};
@@ -555,7 +559,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
     auto it = getLogIterator(follower.lastAckedEntry.index + 1);
     auto transientEntries = decltype(req.entries)::transient_type{};
     while (auto entry = it->next()) {
-      transientEntries.push_back(*std::move(entry));
+      transientEntries.push_back(InMemoryLogEntry(*std::move(entry)));
       if (transientEntries.size() >= 1000) {
         break;
       }
@@ -564,8 +568,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   }
 
   auto isEmptyAppendEntries = req.entries.empty();
-  auto lastIndex = isEmptyAppendEntries ? lastAvailableIndex
-                                        : req.entries.back().logTermIndexPair();
+  auto lastIndex = isEmptyAppendEntries
+                       ? lastAvailableIndex
+                       : req.entries.back().entry().logTermIndexPair();
 
   LOG_CTX("af3c6", TRACE, follower.logContext)
       << "creating append entries request with " << req.entries.size()

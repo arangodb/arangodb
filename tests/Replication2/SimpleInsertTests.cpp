@@ -80,7 +80,8 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
   {
     // Insert first entry on the follower, expect the spearhead to be one
-    auto idx = leader->insert(LogPayload{"first entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+    auto idx = leader->insert(LogPayload::createFromString("first entry"),
+                              false, LogLeader::doNotTriggerAsyncReplication);
     {
       auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
       EXPECT_EQ(status.local.commitIndex, LogIndex{0});
@@ -111,7 +112,8 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
       if (entry.has_value()) {
         EXPECT_EQ(entry->logIndex(), LogIndex{1});
         EXPECT_EQ(entry->logTerm(), LogTerm{1});
-        EXPECT_EQ(entry->logPayload(), LogPayload{"first entry"});
+        EXPECT_EQ(entry->logPayload(),
+                  LogPayload::createFromString("first entry"));
       }
 
       entry = iter->next();
@@ -147,7 +149,8 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
           << "expect one entry in follower log, found nothing";
       EXPECT_EQ(entry->logIndex(), LogIndex{1});
       EXPECT_EQ(entry->logTerm(), LogTerm{1});
-      EXPECT_EQ(entry->logPayload(), LogPayload{"first entry"});
+      EXPECT_EQ(entry->logPayload(),
+                LogPayload::createFromString("first entry"));
 
       entry = iter->next();
       EXPECT_FALSE(entry.has_value());
@@ -192,9 +195,11 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
 TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2}, LogPayload{"second entry"}),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3}, LogPayload{"third entry"})};
+      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+                             LogPayload::createFromString("second entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+                             LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
   {
@@ -294,7 +299,8 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
       defaultLogger(), _logMetricsMock, leaderId, std::move(coreA), LogTerm{1},
       std::vector<std::shared_ptr<AbstractFollower>>{follower_1, follower_2}, 3);
 
-  auto index = leader->insert(LogPayload{"first entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+  auto index = leader->insert(LogPayload::createFromString("first entry"),
+                              false, LogLeader::doNotTriggerAsyncReplication);
   auto future = leader->waitFor(index);
   EXPECT_FALSE(future.isReady());
 

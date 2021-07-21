@@ -28,10 +28,25 @@
 #include <string>
 #include <string_view>
 
+#if (_MSC_VER >= 1)
+// suppress warnings:
+#pragma warning(push)
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
+#pragma warning(disable : 4267)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+#pragma warning(disable : 4334)
+#endif
+#include <immer/box.hpp>
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
+
 #include <velocypack/Buffer.h>
+#include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 
 #include <Basics/Identifier.h>
+#include <Containers/ImmerMemoryPolicy.h>
 
 namespace arangodb::velocypack {
 class Builder;
@@ -113,9 +128,12 @@ auto operator<=(TermIndexPair const& left, TermIndexPair const& right) noexcept 
 auto operator<<(std::ostream& os, TermIndexPair const& pair) -> std::ostream&;
 
 struct LogPayload {
-  explicit LogPayload(velocypack::UInt8Buffer dummy) : dummy(std::move(dummy)) {}
-  explicit LogPayload(velocypack::Slice slice);
-  explicit LogPayload(std::string_view dummy);
+  LogPayload() = delete;
+  explicit LogPayload(velocypack::UInt8Buffer dummy);
+
+  // Named constructors, have to make copies.
+  static auto createFromSlice(velocypack::Slice slice) -> LogPayload;
+  static auto createFromString(std::string_view string) -> LogPayload;
 
   friend auto operator==(LogPayload const&, LogPayload const&) -> bool;
   friend auto operator!=(LogPayload const&, LogPayload const&) -> bool;
@@ -134,7 +152,6 @@ using ParticipantId = std::string;
 
 class LogEntry {
  public:
-  using clock = std::chrono::steady_clock;
 
   LogEntry(LogTerm, LogIndex, LogPayload);
 
@@ -142,8 +159,6 @@ class LogEntry {
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto logPayload() const noexcept -> LogPayload const&;
   [[nodiscard]] auto logTermIndexPair() const noexcept -> TermIndexPair;
-  [[nodiscard]] auto insertTp() const noexcept -> clock::time_point;
-  void setInsertTp(clock::time_point) noexcept;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LogEntry;
@@ -154,6 +169,23 @@ class LogEntry {
   LogTerm _logTerm{};
   LogIndex _logIndex{};
   LogPayload _payload;
+};
+
+// A log entry, enriched with non-persisted metadata, to be stored in an
+// InMemoryLog.
+class InMemoryLogEntry {
+ public:
+  using clock = std::chrono::steady_clock;
+
+  explicit InMemoryLogEntry(LogEntry entry);
+
+  [[nodiscard]] auto insertTp() const noexcept -> clock::time_point;
+  void setInsertTp(clock::time_point) noexcept;
+  auto entry() const noexcept -> LogEntry const&;
+
+ private:
+  // Immutable box that allows sharing, i.e. cheap copying.
+  ::immer::box<LogEntry, ::arangodb::immer::arango_memory_policy> _logEntry;
   // Timepoint at which the insert was started (not the point in time where it
   // was committed)
   clock::time_point _insertTp{};

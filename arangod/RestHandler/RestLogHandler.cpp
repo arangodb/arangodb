@@ -369,7 +369,7 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
 
   if (auto& verb = suffixes[1]; verb == "insert") {
     return waitForFuture(
-        methods.insert(logId, LogPayload{body}).thenValue([this](auto&& quorum) {
+        methods.insert(logId, LogPayload::createFromSlice(body)).thenValue([this](auto&& quorum) {
           VPackBuilder response;
           quorum->toVelocyPack(response);
           generateOk(rest::ResponseCode::ACCEPTED, response.slice());

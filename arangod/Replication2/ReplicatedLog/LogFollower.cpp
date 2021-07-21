@@ -205,7 +205,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     auto action = std::invoke([&]() noexcept -> DeferredAction {
       if (self->_commitIndex < req.leaderCommit && !self->_inMemoryLog.empty()) {
         self->_commitIndex =
-            std::min(req.leaderCommit, self->_inMemoryLog.back().logIndex());
+            std::min(req.leaderCommit, self->_inMemoryLog.back().entry().logIndex());
         LOG_CTX("1641d", TRACE, self->_follower._loggerContext)
             << "increment commit index: " << self->_commitIndex;
 

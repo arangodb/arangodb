@@ -43,7 +43,7 @@ namespace arangodb::replication2::replicated_log {
 
 class ReplicatedLogIterator : public LogIterator {
  public:
-  using log_type = ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy>;
+  using log_type = ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy>;
 
   explicit ReplicatedLogIterator(log_type container)
       : _container(std::move(container)),
@@ -54,7 +54,7 @@ class ReplicatedLogIterator : public LogIterator {
     if (_begin != _end) {
       auto const& res = *_begin;
       ++_begin;
-      return res;
+      return res.entry();
     }
     return std::nullopt;
   }

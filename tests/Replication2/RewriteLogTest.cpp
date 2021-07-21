@@ -32,9 +32,11 @@ struct RewriteLogTest : ReplicatedLogTest {};
 
 TEST_F(RewriteLogTest, rewrite_old_leader) {
   auto const entries = std::vector{
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload{"first entry"}),
-      replication2::LogEntry(LogTerm{2}, LogIndex{2}, LogPayload{"second entry"}),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3}, LogPayload{"third entry"})};
+      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{2},
+                             LogPayload::createFromString("second entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+                             LogPayload::createFromString("third entry"))};
 
   // create one log that has three entries
   auto followerLog = std::invoke([&] {
@@ -68,7 +70,8 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     EXPECT_EQ(stats.spearHead.index, LogIndex{3});
   }
   {
-    auto idx = leader->insert(LogPayload{"new second entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+    auto idx = leader->insert(LogPayload::createFromString("new second entry"),
+                              false, LogLeader::doNotTriggerAsyncReplication);
     EXPECT_EQ(idx, LogIndex{2});
   }
 
@@ -119,12 +122,13 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     ASSERT_TRUE(entry.has_value());
     EXPECT_EQ(entry->logIndex(), LogIndex{1});
     EXPECT_EQ(entry->logTerm(), LogTerm{1});
-    EXPECT_EQ(entry->logPayload(), LogPayload{"first entry"});
+    EXPECT_EQ(entry->logPayload(), LogPayload::createFromString("first entry"));
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     EXPECT_EQ(entry->logIndex(), LogIndex{2});
     EXPECT_EQ(entry->logTerm(), LogTerm{3});
-    EXPECT_EQ(entry->logPayload(), LogPayload{"new second entry"});
+    EXPECT_EQ(entry->logPayload(),
+              LogPayload::createFromString("new second entry"));
     entry = iter->next();
     EXPECT_FALSE(entry.has_value());
   }

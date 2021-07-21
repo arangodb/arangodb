@@ -55,7 +55,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
     auto Al = A->becomeLeader("A", LogTerm{1}, {Bf, Cf}, 2);
 
     {
-      auto idx = Al->insert(LogPayload{"first entry"});
+      auto idx = Al->insert(LogPayload::createFromString("first entry"));
       auto f = Al->waitFor(idx);
       ASSERT_FALSE(f.isReady());
       Al->triggerAsyncReplication();
@@ -70,7 +70,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
     }
 
     {
-      std::ignore = Al->insert(LogPayload{"second entry A"});
+      std::ignore = Al->insert(LogPayload::createFromString("second entry A"));
       Al->triggerAsyncReplication();
       ASSERT_TRUE(Bf->hasPendingAppendEntries());
       ASSERT_TRUE(Cf->hasPendingAppendEntries());
@@ -88,7 +88,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
     auto Bf = B->becomeFollower("B", LogTerm{3}, "C");
     auto Cl = C->becomeLeader("C", LogTerm{3}, {Af, Bf}, 2);
 
-    auto idx = Cl->insert(LogPayload{"first entry C"});
+    auto idx = Cl->insert(LogPayload::createFromString("first entry C"));
     ASSERT_EQ(idx, LogIndex{2});
     auto f = Cl->waitFor(idx);
     ASSERT_FALSE(f.isReady());

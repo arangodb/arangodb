@@ -159,7 +159,7 @@ replication2::LogPayload RocksDBValue::logPayload(const rocksdb::Slice& slice) {
   TRI_ASSERT(slice.size() >= 8);
   auto data = slice.ToStringView();
   data.remove_prefix(8);
-  return replication2::LogPayload(
+  return replication2::LogPayload::createFromSlice(
       VPackSlice(reinterpret_cast<uint8_t const*>(data.data())));
 }
 

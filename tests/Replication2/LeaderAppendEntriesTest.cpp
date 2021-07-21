@@ -82,7 +82,8 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
   auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
 
   {
-    auto idx = leader->insert(LogPayload{"first entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+    auto idx = leader->insert(LogPayload::createFromString("first entry"),
+                              false, LogLeader::doNotTriggerAsyncReplication);
     ASSERT_EQ(idx, LogIndex{1});
   }
 
@@ -130,7 +131,8 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
   auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
 
   {
-    auto idx = leader->insert(LogPayload{"first entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+    auto idx = leader->insert(LogPayload::createFromString("first entry"),
+                              false, LogLeader::doNotTriggerAsyncReplication);
     ASSERT_EQ(idx, LogIndex{1});
   }
 
@@ -180,7 +182,8 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set) {
   auto leader = leaderLog->becomeLeader(config, "leader", LogTerm{4}, {follower});
 
   {
-    auto idx = leader->insert(LogPayload{"first entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+    auto idx = leader->insert(LogPayload::createFromString("first entry"),
+                              false, LogLeader::doNotTriggerAsyncReplication);
     ASSERT_EQ(idx, LogIndex{1});
   }
 
@@ -205,7 +208,8 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
   auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
 
   {
-    auto idx = leader->insert(LogPayload{"first entry"}, false, LogLeader::doNotTriggerAsyncReplication);
+    auto idx = leader->insert(LogPayload::createFromString("first entry"),
+                              false, LogLeader::doNotTriggerAsyncReplication);
     ASSERT_EQ(idx, LogIndex{1});
   }
 

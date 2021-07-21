@@ -79,7 +79,7 @@ void LogEntry::toVelocyPack(velocypack::Builder& builder) const {
 auto LogEntry::fromVelocyPack(velocypack::Slice slice) -> LogEntry {
   auto const logTerm = LogTerm{slice.get("logTerm").getNumericValue<std::size_t>()};
   auto const logIndex = LogIndex{slice.get("logIndex").getNumericValue<std::size_t>()};
-  auto payload = LogPayload{slice.get("payload")};
+  auto payload = LogPayload::createFromSlice(slice.get("payload"));
   return LogEntry{logTerm, logIndex, std::move(payload)};
 }
 
@@ -88,11 +88,20 @@ auto LogEntry::operator==(LogEntry const& other) const noexcept -> bool {
          other._payload == _payload;
 }
 
-void LogEntry::setInsertTp(clock::time_point tp) noexcept {
+InMemoryLogEntry::InMemoryLogEntry(LogEntry entry)
+    : _logEntry(std::move(entry)) {}
+
+void InMemoryLogEntry::setInsertTp(clock::time_point tp) noexcept {
   _insertTp = tp;
 }
-auto LogEntry::insertTp() const noexcept -> clock::time_point {
+
+auto InMemoryLogEntry::insertTp() const noexcept -> clock::time_point {
   return _insertTp;
+}
+
+auto InMemoryLogEntry::entry() const noexcept -> LogEntry const& {
+  // Note that while get() isn't marked as noexcept, it actually is.
+  return _logEntry.get();
 }
 
 auto LogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
@@ -121,18 +130,25 @@ auto replication2::operator!=(LogPayload const& left, LogPayload const& right) -
   return !(left == right);
 }
 
-LogPayload::LogPayload(VPackSlice slice) {
-  VPackBuilder builder(dummy);
+LogPayload::LogPayload(velocypack::UInt8Buffer dummy)
+    : dummy(std::move(dummy)) {}
+
+auto LogPayload::createFromSlice(velocypack::Slice slice) -> LogPayload {
+  VPackBufferUInt8 buffer;
+  VPackBuilder builder(buffer);
   builder.add(slice);
+  return LogPayload(std::move(buffer));
+}
+
+auto LogPayload::createFromString(std::string_view string) -> LogPayload {
+  VPackBufferUInt8 buffer;
+  VPackBuilder builder(buffer);
+  builder.add(VPackValue(string));
+  return LogPayload(std::move(buffer));
 }
 
 auto LogPayload::byteSize() const noexcept -> std::size_t {
-  return dummy.size();
-}
-
-LogPayload::LogPayload(std::string_view dummy) {
-  VPackBuilder builder(this->dummy);
-  builder.add(VPackValue(dummy));
+  return dummy.byteSize();
 }
 
 auto LogId::fromString(std::string_view name) noexcept -> std::optional<LogId> {

@@ -57,14 +57,14 @@ auto replicated_log::InMemoryLog::getLastTermIndexPair() const noexcept -> TermI
   if (_log.empty()) {
     return {};
   }
-  return _log.back().logTermIndexPair();
+  return _log.back().entry().logTermIndexPair();
 }
 
 auto replicated_log::InMemoryLog::getLastTerm() const noexcept -> LogTerm {
   if (_log.empty()) {
     return LogTerm{0};
   }
-  return _log.back().logTerm();
+  return _log.back().entry().logTerm();
 }
 
 auto replicated_log::InMemoryLog::getNextIndex() const noexcept -> LogIndex {
@@ -72,13 +72,13 @@ auto replicated_log::InMemoryLog::getNextIndex() const noexcept -> LogIndex {
 }
 
 auto replicated_log::InMemoryLog::getEntryByIndex(LogIndex const idx) const noexcept
-    -> std::optional<LogEntry> {
+    -> std::optional<InMemoryLogEntry> {
   if (_log.size() < idx.value || idx.value == 0) {
     return std::nullopt;
   }
 
   auto const& e = _log.at(idx.value - 1);
-  TRI_ASSERT(e.logIndex() == idx);
+  TRI_ASSERT(e.entry().logIndex() == idx);
   return e;
 }
 
@@ -92,11 +92,11 @@ auto replicated_log::InMemoryLog::splice(LogIndex from, LogIndex to) const -> lo
 auto replicated_log::InMemoryLog::getFirstIndexOfTerm(LogTerm term) const noexcept -> std::optional<LogIndex> {
   auto it = std::lower_bound(_log.begin(), _log.end(), term,
                              [](auto const& entry, auto const& term) {
-                               return term > entry.logTerm();
+                               return term > entry.entry().logTerm();
                              });
 
-  if (it != _log.end() && it->logTerm() == term) {
-    return it->logIndex();
+  if (it != _log.end() && it->entry().logTerm() == term) {
+    return it->entry().logIndex();
   } else {
     return std::nullopt;
   }
@@ -108,11 +108,11 @@ auto replicated_log::InMemoryLog::getLastIndexOfTerm(LogTerm term) const noexcep
   auto it = std::lower_bound(_log.rbegin(), _log.rend(), term,
                              [](auto const& entry, auto const& term) {
                                // Note that this is flipped
-                               return entry.logTerm() > term;
+                               return entry.entry().logTerm() > term;
                              });
 
-  if (it != _log.rend() && it->logTerm() == term) {
-    return it->logIndex();
+  if (it != _log.rend() && it->entry().logTerm() == term) {
+    return it->entry().logIndex();
   } else {
     return std::nullopt;
   }
@@ -123,7 +123,7 @@ replicated_log::InMemoryLog::InMemoryLog(LoggerContext const& logContext,
   auto iter = logCore.read(LogIndex{0});
   auto log = _log.transient();
   while (auto entry = iter->next()) {
-    log.push_back(std::move(entry).value());
+    log.push_back(InMemoryLogEntry(std::move(entry).value()));
   }
   _log = std::move(log).persistent();
 }
@@ -210,29 +210,36 @@ auto replicated_log::InMemoryLog::getIteratorRange(LogIndex fromIdx, LogIndex to
   return std::make_unique<ReplicatedLogIterator>(std::move(log));
 }
 
-auto replicated_log::InMemoryLog::appendInPlace(LoggerContext const& logContext,
-                                                LogEntry&& entry) -> void {
-  if (!_log.empty() && _log.back().logIndex() + 1 != entry.logIndex()) {
+void replicated_log::InMemoryLog::appendInPlace(LoggerContext const& logContext,
+                                                InMemoryLogEntry entry) {
+  if (!_log.empty() && _log.back().entry().logIndex() + 1 != entry.entry().logIndex()) {
     using namespace basics::StringUtils;
     auto message = concatT(
         "Trying to append a log entry with "
         "mismatching log index. Last log index is ",
-        _log.back().logIndex(), ", but the new entry has ", entry.logIndex());
+        _log.back().entry().logIndex(), ", but the new entry has ",
+        entry.entry().logIndex());
     LOG_CTX("e2775", ERR, logContext) << message;
     ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
   }
   _log = _log.push_back(std::move(entry));
 }
 
-auto replicated_log::InMemoryLog::appendInPlace(LoggerContext const& logContext,
-                                                LogEntry const& entry) -> void {
-  return appendInPlace(logContext, LogEntry{entry});
-}
-
 auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
                                          log_type entries) const -> InMemoryLog {
   auto transient = _log.transient();
   transient.append(std::move(entries).transient());
+  return InMemoryLog{std::move(transient).persistent()};
+}
+
+auto replicated_log::InMemoryLog::append(
+    LoggerContext const& logContext,
+    ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy> const& entries) const
+    -> InMemoryLog {
+  auto transient = _log.transient();
+  for (auto const& entry : entries) {
+    transient.push_back(InMemoryLogEntry(entry));
+  }
   return InMemoryLog{std::move(transient).persistent()};
 }
 
@@ -253,14 +260,16 @@ auto replicated_log::InMemoryLog::empty() const noexcept -> bool {
   return _log.empty();
 }
 
-auto replicated_log::InMemoryLog::getLastEntry() const noexcept -> std::optional<LogEntry> {
+auto replicated_log::InMemoryLog::getLastEntry() const noexcept
+    -> std::optional<InMemoryLogEntry> {
   if (_log.empty()) {
     return std::nullopt;
   }
   return _log.back();
 }
 
-auto replicated_log::InMemoryLog::getFirstEntry() const noexcept -> std::optional<LogEntry> {
+auto replicated_log::InMemoryLog::getFirstEntry() const noexcept
+    -> std::optional<InMemoryLogEntry> {
   if (_log.empty()) {
     return std::nullopt;
   }

@@ -92,7 +92,8 @@ struct AppendEntriesResult {
 };
 
 struct AppendEntriesRequest {
-  using EntryContainer = ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy>;
+  using EntryContainer =
+      ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy>;
 
   LogTerm leaderTerm;
   ParticipantId leaderId;

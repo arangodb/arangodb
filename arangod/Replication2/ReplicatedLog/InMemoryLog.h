@@ -54,7 +54,8 @@ class ReplicatedLogIterator;
  */
 struct InMemoryLog {
  public:
-  using log_type = ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy>;
+  using log_type =
+      ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy>;
 
  private:
   log_type _log{};
@@ -74,11 +75,11 @@ struct InMemoryLog {
   [[nodiscard]] auto getLastTermIndexPair() const noexcept -> TermIndexPair;
   [[nodiscard]] auto getLastIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getLastTerm() const noexcept -> LogTerm;
-  [[nodiscard]] auto getLastEntry() const noexcept -> std::optional<LogEntry>;
-  [[nodiscard]] auto getFirstEntry() const noexcept -> std::optional<LogEntry>;
+  [[nodiscard]] auto getLastEntry() const noexcept -> std::optional<InMemoryLogEntry>;
+  [[nodiscard]] auto getFirstEntry() const noexcept -> std::optional<InMemoryLogEntry>;
   [[nodiscard]] auto getNextIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getEntryByIndex(LogIndex idx) const noexcept
-      -> std::optional<LogEntry>;
+      -> std::optional<InMemoryLogEntry>;
   [[nodiscard]] auto splice(LogIndex from, LogIndex to) const -> log_type;
 
   [[nodiscard]] auto getFirstIndexOfTerm(LogTerm term) const noexcept
@@ -90,15 +91,18 @@ struct InMemoryLog {
   [[nodiscard]] auto back() const noexcept -> decltype(_log)::const_reference;
   [[nodiscard]] auto empty() const noexcept -> bool;
 
-  auto appendInPlace(LoggerContext const& logContext, LogEntry&& entry) -> void;
-  auto appendInPlace(LoggerContext const& logContext, LogEntry const& entry) -> void;
+  void appendInPlace(LoggerContext const& logContext, InMemoryLogEntry entry);
 
   [[nodiscard]] auto append(LoggerContext const& logContext, log_type entries) const
+      -> InMemoryLog;
+  [[nodiscard]] auto append(LoggerContext const& logContext,
+                            ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy> const& entries) const
       -> InMemoryLog;
 
   [[nodiscard]] auto getIteratorFrom(LogIndex fromIdx) const -> std::unique_ptr<LogIterator>;
   // get an iterator for range [from, to).
-  [[nodiscard]] auto getIteratorRange(LogIndex fromIdx, LogIndex toIdx) const -> std::unique_ptr<LogIterator>;
+  [[nodiscard]] auto getIteratorRange(LogIndex fromIdx, LogIndex toIdx) const
+      -> std::unique_ptr<LogIterator>;
 
   [[nodiscard]] auto takeSnapshotUpToAndIncluding(LogIndex until) const -> InMemoryLog;
 

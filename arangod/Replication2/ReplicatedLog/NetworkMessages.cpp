@@ -242,7 +242,7 @@ void replicated_log::AppendEntriesRequest::toVelocyPack(velocypack::Builder& bui
     builder.add("waitForSync", VPackValue(waitForSync));
     builder.add("entries", VPackValue(VPackValueType::Array));
     for (auto const& it : entries) {
-      it.toVelocyPack(builder);
+      it.entry().toVelocyPack(builder);
     }
     builder.close();  // close entries
   }
@@ -259,8 +259,10 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slic
   auto entries = std::invoke([&] {
     auto entriesVp = velocypack::ArrayIterator(slice.get("entries"));
     auto transientEntries = EntryContainer::transient_type{};
-    std::transform(entriesVp.begin(), entriesVp.end(), std::back_inserter(transientEntries),
-                   [](auto const& it) { return LogEntry::fromVelocyPack(it); });
+    std::transform(entriesVp.begin(), entriesVp.end(),
+                   std::back_inserter(transientEntries), [](auto const& it) {
+                     return InMemoryLogEntry(LogEntry::fromVelocyPack(it));
+                   });
     return std::move(transientEntries).persistent();
   });
 
