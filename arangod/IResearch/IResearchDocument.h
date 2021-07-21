@@ -102,7 +102,7 @@ struct Field {
 
   const irs::features_t& features() const noexcept {
     TRI_ASSERT(_features);
-    return {_features->field_features().data(), _features->field_features().size()};
+    return _features->field_features();
   }
 
   irs::IndexFeatures index_features() const noexcept {

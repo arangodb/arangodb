@@ -35,6 +35,8 @@
 
 #include <analysis/analyzer.hpp>
 #include <analysis/analyzers.hpp>
+#include <index/index_features.hpp>
+#include <index/field_meta.hpp>
 #include <utils/async_utils.hpp>
 #include <utils/attributes.hpp>
 #include <utils/bit_utils.hpp>
@@ -43,7 +45,6 @@
 #include <utils/noncopyable.hpp>
 #include <utils/object_pool.hpp>
 #include <utils/string.hpp>
-#include <index/index_features.hpp>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -102,6 +103,7 @@ class AnalyzerPool : private irs::util::noncopyable {
     void clear() noexcept {
       _indexFeatures = irs::IndexFeatures::NONE;
       _fieldFeatures.clear();
+      _fieldFeaturesRange = irs::features_t(nullptr, 0);
     }
 
     bool operator== (AnalyzerFeatures const& rhs) const noexcept {
@@ -114,7 +116,7 @@ class AnalyzerPool : private irs::util::noncopyable {
     }
 
     auto const& field_features() const noexcept {
-      return _fieldFeatures;
+      return _fieldFeaturesRange;
     }
 
     irs::IndexFeatures index_features() const noexcept {
@@ -125,6 +127,7 @@ class AnalyzerPool : private irs::util::noncopyable {
 
    private:
     // Forced to use vector here as iresearch field will require continiuos memory block of features
+    irs::features_t _fieldFeaturesRange{nullptr, 0}; // FIXME: remove Kludge!
     std::vector<irs::type_info::type_id> _fieldFeatures;
     irs::IndexFeatures _indexFeatures {irs::IndexFeatures::NONE};
   };
