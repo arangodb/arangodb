@@ -25,66 +25,57 @@
 
 #include "Benchmark.h"
 #include "helpers.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct DocumentCreationTest : public Benchmark<DocumentCreationTest> {
-  static std::string name() { return "document"; }
-
-  DocumentCreationTest(BenchFeature& arangobench)
+  struct DocumentCreationTest : public Benchmark<DocumentCreationTest> {
+    static std::string name() { return "document"; }
+    DocumentCreationTest(BenchFeature& arangobench)
       : Benchmark<DocumentCreationTest>(arangobench),
-        _url("/_api/document?collection=" + _arangobench.collection()),
-        _buffer(nullptr) {
-    uint64_t const n = _arangobench.complexity();
-
-    _buffer = TRI_CreateSizedStringBuffer(4096);
-    TRI_AppendCharStringBuffer(_buffer, '{');
-
-    for (uint64_t i = 1; i <= n; ++i) {
-      TRI_AppendStringStringBuffer(_buffer, "\"test");
-      TRI_AppendUInt64StringBuffer(_buffer, i);
-      TRI_AppendStringStringBuffer(_buffer, "\":\"some test value\"");
-      if (i != n) {
-        TRI_AppendCharStringBuffer(_buffer, ',');
+      _url("/_api/document?collection=" + _arangobench.collection()) {
+        uint64_t const n = _arangobench.complexity();
+        using namespace arangodb::velocypack;
+        Builder b;
+        b.openObject();
+        std::string tempName;
+        for (uint64_t i = 1; i <= n; ++i) {
+          tempName = "test" + std::to_string(i);
+          b.add(tempName, Value("some test value"));
+        }
+        b.close();
+        _buffer = b.toJson();
       }
+
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      return DeleteCollection(client, _arangobench.collection()) &&
+        CreateCollection(client, _arangobench.collection(), 2, _arangobench);
     }
 
-    TRI_AppendCharStringBuffer(_buffer, '}');
+    void tearDown() override {}
 
-    _length = TRI_LengthStringBuffer(_buffer);
-  }
+    std::string url(int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter) override {
+      return _url;
+    }
 
-  ~DocumentCreationTest() { TRI_FreeStringBuffer(_buffer); }
+    rest::RequestType type(int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter) override {
+      return rest::RequestType::POST;
+    }
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return DeleteCollection(client, _arangobench.collection()) &&
-           CreateCollection(client, _arangobench.collection(), 2, _arangobench);
-  }
+    char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter, bool* mustFree) override {
+      *mustFree = false;
+      *length = _buffer.size();
+      return _buffer.data();
+    }
 
-  void tearDown() override {}
-
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return _url;
-  }
-
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
-  }
-
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    *mustFree = false;
-    *length = _length;
-    return (char const*)_buffer->_buffer;
-  }
-
-  std::string _url;
-
-  TRI_string_buffer_t* _buffer;
-
-  size_t _length;
-};
+    private:
+    std::string _url;
+    std::string _buffer;
+  };
 
 }  // namespace arangodb::arangobench
