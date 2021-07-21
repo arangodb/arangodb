@@ -96,10 +96,11 @@ AqlValue const& ModifierOutput::getNewValue() const {
 }
 
 template <typename FetcherType, typename ModifierType>
-ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
-    : _trx(infos._query.newTrxContext()), 
-      _lastState(ExecutionState::HASMORE), 
-      _infos(infos), 
+ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher,
+                                                                      Infos& infos)
+    : _trx(infos._query.newTrxContext()),
+      _lastState(ExecutionState::HASMORE),
+      _infos(infos),
       _modifier(std::make_shared<ModifierType>(infos)),
       _processed(0) {}
 
@@ -107,7 +108,8 @@ ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& f
 // through the modifier
 template <typename FetcherType, typename ModifierType>
 auto ModificationExecutor<FetcherType, ModifierType>::doCollect(AqlItemBlockInputRange& input,
-                                                                size_t maxOutputs) -> size_t {
+                                                                size_t maxOutputs)
+    -> size_t {
   ExecutionState state = ExecutionState::HASMORE;
   // number of input rows processed
   size_t processed = 0;
@@ -165,7 +167,6 @@ template <typename FetcherType, typename ModifierType>
 [[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceRows(
     typename FetcherType::DataRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutionState, ModificationStats, AqlCall> {
-
   AqlCall upstreamCall{};
   if constexpr (std::is_same_v<ModifierType, UpsertModifier> &&
                 !std::is_same_v<FetcherType, AllRowsFetcher>) {
@@ -183,7 +184,7 @@ template <typename FetcherType, typename ModifierType>
     doOutput(output);
     _modifier->resetResult();
   };
- 
+
   ModificationExecutorResultState resultState = _modifier->resultState();
   if (resultState == ModificationExecutorResultState::WaitingForResult) {
     // we are already waiting for the result. return WAITING again
@@ -197,7 +198,7 @@ template <typename FetcherType, typename ModifierType>
     handleResult();
     return {translateReturnType(input.upstreamState()), stats, upstreamCall};
   }
-    
+
   _modifier->reset();
 
   if (!input.hasDataRow()) {
@@ -279,22 +280,17 @@ template <typename FetcherType, typename ModifierType>
     _modifier->resetResult();
     // TODO
   };
-  
-  LOG_DEVEL << "SKIPROWSRANGE: INPUT: " << input.countDataRows() << ", HASDATA: " << input.hasDataRow() << ", HASSHADOW: " << input.hasShadowRow();
 
-  
   ModificationExecutorResultState resultState = _modifier->resultState();
   if (resultState == ModificationExecutorResultState::WaitingForResult) {
-  LOG_DEVEL << "SKIPROWSRANGE: WE ARE WAITING. RETURNING WAITING!";
     // we are already waiting for the result. return WAITING again
     TRI_ASSERT(!ServerState::instance()->isSingleServer());
     // TODO
-    //return {ExecutionState::WAITING, stats, 0, upstreamCall};
+    // return {ExecutionState::WAITING, stats, 0, upstreamCall};
     return {ExecutionState::WAITING, ModificationStats{}, 0, AqlCall{}};
   }
-  
+
   if (resultState == ModificationExecutorResultState::HaveResult) {
-  LOG_DEVEL << "SKIPROWSRANGE: WE HAVE A RESULT. RETURNING " << translateReturnType(input.upstreamState());
     // TODO: check if we need this
     call.didSkip(_processed);
 
@@ -303,11 +299,9 @@ template <typename FetcherType, typename ModifierType>
     handleResult();
     _processed = 0;
     // TODO
-    LOG_DEVEL << "PETER: " << processed;
-    return {translateReturnType(input.upstreamState()), stats, processed /*call.getSkipCount()*/, upstreamCall};
+    return {translateReturnType(input.upstreamState()), stats,
+            processed /*call.getSkipCount()*/, upstreamCall};
   }
-  
-  LOG_DEVEL << "SKIPROWSRANGE: WE NEED TO WORK!";
 
   TRI_ASSERT(_processed == 0);
   // only produce at most output.numRowsLeft() many results
@@ -320,7 +314,6 @@ template <typename FetcherType, typename ModifierType>
       // If we are bound by limits or not!
       toSkip = ExecutionBlock::SkipAllSize();
     }
-    LOG_DEVEL << "SKIPROWSRANGE: WE HAVE BEEN ASKED TO SKIP: " << toSkip << " ROWS";
     if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
       auto& range = input.getInputRange();
       if (range.hasDataRow()) {
@@ -330,9 +323,9 @@ template <typename FetcherType, typename ModifierType>
       if (upstreamState == ExecutorState::DONE) {
         // We are done with this input.
         // We need to forward it to the last ShadowRow.
-         LOG_DEVEL << "SKIPPING ALL REMAINING ROWS";
         size_t processed = input.skipAllRemainingDataRows();
-         LOG_DEVEL << "SKIPPING ALL REMAINING ROWS: HAVE SKIPPED: " << processed;
+        // We cannot discard any rows here, they need to be processed.
+        TRI_ASSERT(processed == 0);
         _processed += processed;
         TRI_ASSERT(input.upstreamState() == ExecutorState::DONE);
       }
@@ -343,12 +336,29 @@ template <typename FetcherType, typename ModifierType>
 
     if (_modifier->nrOfOperations() > 0) {
       ExecutionState modifierState = _modifier->transact(_trx);
-    
+
       if (modifierState == ExecutionState::WAITING) {
+        // Do forward matrix input to flag everything as consumed.
+        if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
+          auto& range = input.getInputRange();
+          if (range.hasDataRow()) {
+            _processed += doCollect(range, toSkip);
+          }
+          upstreamState = range.upstreamState();
+          if (upstreamState == ExecutorState::DONE) {
+            // We are done with this input.
+            // We need to forward it to the last ShadowRow.
+            size_t processed = input.skipAllRemainingDataRows();
+            // We cannot discard any rows here, they need to be processed.
+            TRI_ASSERT(processed == 0);
+            _processed += processed;
+            TRI_ASSERT(input.upstreamState() == ExecutorState::DONE);
+          }
+        }
+
         TRI_ASSERT(!ServerState::instance()->isSingleServer());
         // TODO
-        //return {ExecutionState::WAITING, stats, 0, upstreamCall};
-        LOG_DEVEL << "SKIPROWSRANGE: WE HAVE WORKED BUT ARE NOW WAITING. RETURNING WAITING!";
+        // return {ExecutionState::WAITING, stats, 0, upstreamCall};
         return {ExecutionState::WAITING, ModificationStats{}, 0, AqlCall{}};
       }
 
@@ -356,7 +366,6 @@ template <typename FetcherType, typename ModifierType>
     }
   }
 
-  LOG_DEVEL << "SKIPROWSRANGE AT THE END: " << translateReturnType(upstreamState);
   return {translateReturnType(upstreamState), stats, call.getSkipCount(), upstreamCall};
 }
 

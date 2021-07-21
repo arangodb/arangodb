@@ -571,9 +571,9 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       useExecutor ==
           (is_one_of_v<
               Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
-              KShortestPathsExecutor<graph::KShortestPathsFinder>,
-              KShortestPathsExecutor<KPathRefactored>, KShortestPathsExecutor<KPathRefactoredTracer>,
-              KShortestPathsExecutor<KPathRefactoredCluster>, KShortestPathsExecutor<KPathRefactoredClusterTracer>, ParallelUnsortedGatherExecutor,
+              KShortestPathsExecutor<graph::KShortestPathsFinder>, KShortestPathsExecutor<KPathRefactored>,
+              KShortestPathsExecutor<KPathRefactoredTracer>, KShortestPathsExecutor<KPathRefactoredCluster>,
+              KShortestPathsExecutor<KPathRefactoredClusterTracer>, ParallelUnsortedGatherExecutor,
               IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>, HashedCollectExecutor,
               AccuWindowExecutor, WindowExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
               ConstrainedSortExecutor, CountCollectExecutor, SubqueryExecutor<true>,
@@ -1755,7 +1755,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
         TRI_ASSERT(!_outputItemRow->allRowsUsed());
         if constexpr (executorHasSideEffects<Executor>) {
-          LOG_DEVEL << "SHADOWROWS WITH SIDEEFFECTS :ihi:";
           _execState = sideEffectShadowRowForwarding(stack, _skipped);
         } else {
           // This may write one or more rows.
