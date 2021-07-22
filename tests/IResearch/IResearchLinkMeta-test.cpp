@@ -728,7 +728,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   analyzers.emplace(emplaceResult,
                     arangodb::StaticStrings::SystemDatabase + "::empty", "empty",
                     VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
-                    {irs::type<irs::frequency>::get()});
+                    {{}, irs::IndexFeatures::FREQ});
 
   meta._includeAllFields = true;
   meta._trackListPositions = true;
@@ -2459,14 +2459,14 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     // we need custom analyzer in _SYSTEM database and other will be in testVocbase with same name (it is ok to add both!).
     analyzers.emplace(emplaceResult, analyzerCustomInSystem, "identity",
                       VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
-                      {irs::type<irs::frequency>::get()});
+                      {{}, irs::IndexFeatures::FREQ});
   }
 
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
     analyzers.emplace(emplaceResult, analyzerCustomInTestVocbase, "identity",
                       VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
-                      {irs::type<irs::frequency>::get()});
+                      {{}, irs::IndexFeatures::FREQ});
   }
 
   {

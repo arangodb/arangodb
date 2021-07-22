@@ -362,11 +362,12 @@ REGISTER_ANALYZER_VPACK(TestTokensTypedAnalyzer, TestTokensTypedAnalyzer::make,
 struct Analyzer {
   irs::string_ref type;
   VPackSlice properties;
-  irs::flags features;
+  arangodb::iresearch::AnalyzerPool::AnalyzerFeatures features;
 
   Analyzer() = default;
   Analyzer(irs::string_ref const t, irs::string_ref const p,
-           irs::flags const& f = irs::flags::empty_instance())
+           arangodb::iresearch::AnalyzerPool::AnalyzerFeatures const& f =
+             arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance())
       : type(t), features(f) {
     if (p.null()) {
       properties = VPackSlice::nullSlice();
@@ -384,67 +385,67 @@ struct Analyzer {
 std::map<irs::string_ref, Analyzer> const& staticAnalyzers() {
   static const std::map<irs::string_ref, Analyzer> analyzers = {
       {"identity",
-       {"identity", irs::string_ref::NIL, {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()}}},
+       {"identity", irs::string_ref::NIL, {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ}}},
       {"text_de",
        {"text",
         "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_en",
        {"text",
         "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_es",
        {"text",
         "{ \"locale\": \"es.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_fi",
        {"text",
         "{ \"locale\": \"fi.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_fr",
        {"text",
         "{ \"locale\": \"fr.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_it",
        {"text",
         "{ \"locale\": \"it.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_nl",
        {"text",
         "{ \"locale\": \"nl.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_no",
        {"text",
         "{ \"locale\": \"no.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_pt",
        {"text",
         "{ \"locale\": \"pt.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_ru",
        {"text",
         "{ \"locale\": \"ru.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_sv",
        {"text",
         "{ \"locale\": \"sv.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_zh",
        {"text",
         "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
   };
 
   return analyzers;
@@ -958,9 +959,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_valid) {
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd2",
       arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     ASSERT_NE(pool, nullptr);
-    EXPECT_EQ(irs::flags({irs::type<irs::norm>::get(),
-                          irs::type<irs::frequency>::get(),
-                          irs::type<irs::position>::get()}), pool->features());
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+                  {irs::type<irs::norm>::get().id()},
+                   irs::IndexFeatures::FREQ | irs::IndexFeatures::POS),
+              pool->features());
     EXPECT_EQ("TestAnalyzer", pool->type());
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(), pool->properties());
   }
@@ -2085,7 +2087,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_emplace_on_single_server) 
     EXPECT_TRUE(feature
                     .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzerA",
                              "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice(),
-                             {irs::type<irs::frequency>::get()})
+                             {{}, irs::IndexFeatures::FREQ})
                     .ok());
     EXPECT_TRUE(result.first);
     EXPECT_TRUE(feature.get(arangodb::StaticStrings::SystemDatabase +
@@ -2125,7 +2127,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
   arangodb::iresearch::AnalyzerPool::ptr lhs;
   ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                   lhs, "db::test", "TestAnalyzer",
-                  VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN, irs::flags())
+                  VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN,
+                  arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance())
                   .ok());
   ASSERT_NE(nullptr, lhs);
   ASSERT_EQ(*lhs, *lhs);
@@ -2135,7 +2138,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
     arangodb::iresearch::AnalyzerPool::ptr rhs;
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                     rhs, "db::test1", "TestAnalyzer",
-                    VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN, irs::flags())
+                    VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance())
                     .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
@@ -2146,7 +2150,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
     arangodb::iresearch::AnalyzerPool::ptr rhs;
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                     rhs, "db::test", "ReNormalizingAnalyzer",
-                    VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN, irs::flags())
+                    VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance())
                     .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
@@ -2157,7 +2162,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
     arangodb::iresearch::AnalyzerPool::ptr rhs;
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                     rhs, "db::test", "TestAnalyzer",
-                    VPackParser::fromJson("\"abcd\"")->slice(), arangodb::AnalyzersRevision::MIN, irs::flags())
+                    VPackParser::fromJson("\"abcd\"")->slice(), arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance())
                     .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
@@ -2509,8 +2515,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
 
     EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
                         analyzer->properties());
-    EXPECT_TRUE(
-        (itr->second.features.is_subset_of(feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features())));
+    EXPECT_EQ(itr->second.features,
+              feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features());
     expected.erase(itr);
     return true;
   });
@@ -2561,8 +2567,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
                           analyzer->properties());
-      EXPECT_TRUE((itr->second.features.is_subset_of(
-          feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features())));
+      EXPECT_EQ(itr->second.features, feature.get(analyzer->name(),
+                arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features());
       expected.erase(itr);
       return true;
     });
@@ -2623,8 +2629,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
                           analyzer->properties());
-      EXPECT_TRUE((itr->second.features.is_subset_of(
-          feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features())));
+      EXPECT_EQ(itr->second.features,
+              feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features());
       expected.erase(itr);
       return true;
     });
@@ -2665,8 +2671,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
                           analyzer->properties());
-      EXPECT_TRUE((itr->second.features.is_subset_of(
-          feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features())));
+      EXPECT_EQ(itr->second.features,
+              feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features());
       expected.erase(itr);
       return true;
     });
@@ -2723,8 +2729,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedproperties),
                           analyzer->properties());
-      EXPECT_TRUE((itr->second.features.is_subset_of(
-          feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features())));
+      EXPECT_EQ(itr->second.features,
+              feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features());
       expected.erase(itr);
       return true;
     });
@@ -3652,12 +3658,12 @@ std::set<typename Container::value_type> makeVPackPropExpectedSet(const Containe
 
 TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   struct ExpectedType {
-    irs::flags _features;
+    arangodb::iresearch::AnalyzerPool::AnalyzerFeatures _features;
     std::string _name;
     std::string _properties;
     std::string _type;
     ExpectedType(irs::string_ref const& name, irs::string_ref const& properties,
-                 irs::flags const& features, irs::string_ref const& type)
+                 arangodb::iresearch::AnalyzerPool::AnalyzerFeatures const& features, irs::string_ref const& type)
         : _features(features), _name(name), _properties(properties), _type(type) {}
 
     bool operator<(ExpectedType const& other) const {
@@ -3677,11 +3683,19 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
         return false;
       }
 
-      if (_features.size() < other._features.size()) {
+      if (_features.index_features() < other._features.index_features()) {
         return true;
       }
 
-      if (_features.size() > other._features.size()) {
+      if (_features.index_features() < other._features.index_features()) {
+        return false;
+      }
+
+      if (_features.field_features().size() < other._features.field_features().size()) {
+        return true;
+      }
+
+      if (_features.field_features().size()  < other._features.field_features().size()) {
         return false;
       }
 
@@ -3902,67 +3916,67 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     std::vector<ExpectedType> expected = {
         {"identity",
          "{}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()},
+         {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ},
          "identity"},
         {"text_de",
          "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_en",
          "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_es",
          "{ \"locale\": \"es.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_fi",
          "{ \"locale\": \"fi.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_fr",
          "{ \"locale\": \"fr.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_it",
          "{ \"locale\": \"it.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_nl",
          "{ \"locale\": \"nl.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_no",
          "{ \"locale\": \"no.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_pt",
          "{ \"locale\": \"pt.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_ru",
          "{ \"locale\": \"ru.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_sv",
          "{ \"locale\": \"sv.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_zh",
          "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {{irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
     };
 
