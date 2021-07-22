@@ -85,64 +85,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
   struct ThreadInfo {
     PQueue _pq;
-    // arangodb::Mutex _mutex;
   };
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a Dijkstra searcher for the multi-threaded search
-  //////////////////////////////////////////////////////////////////////////////
-
-  /*
-  class SearcherTwoThreads {
-    AttributeWeightShortestPathFinder* _pathFinder;
-    ThreadInfo& _myInfo;
-    ThreadInfo& _peerInfo;
-    arangodb::velocypack::Slice _start;
-    ExpanderFunction _expander;
-    std::string _id;
-
-   public:
-    SearcherTwoThreads(AttributeWeightShortestPathFinder* pathFinder,
-                       ThreadInfo& myInfo, ThreadInfo& peerInfo,
-                       arangodb::velocypack::Slice const& start,
-                       ExpanderFunction expander, std::string const& id);
-
-   private:
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief Insert a neighbor to the todo list.
-    ////////////////////////////////////////////////////////////////////////////////
-    void insertNeighbor(Step* step, double newWeight);
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief Lookup our current vertex in the data of our peer.
-    ////////////////////////////////////////////////////////////////////////////////
-
-    void lookupPeer(arangodb::velocypack::Slice& vertex, double weight);
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief Search graph starting at Start following edges of the given
-    /// direction only
-    ////////////////////////////////////////////////////////////////////////////////
-
-    void run();
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief start and join functions
-    ////////////////////////////////////////////////////////////////////////////////
-
-   public:
-    void start();
-
-    void join();
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief The thread object.
-    ////////////////////////////////////////////////////////////////////////////////
-
-   private:
-    std::thread _thread;
-  };
-  */
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a Dijkstra searcher for the single-threaded search
@@ -214,21 +157,6 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
                     arangodb::velocypack::Slice const& target,
                     arangodb::graph::ShortestPathResult& result) override;
   
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the shortest path between the start and target vertex,
-  /// multi-threaded version using SearcherTwoThreads.
-  //////////////////////////////////////////////////////////////////////////////
-
-  // Caller has to free the result
-  // If this returns true there is a path, if this returns false there is no
-  // path
-
-  /* Unused for now maybe reactived
-  bool shortestPathTwoThreads(arangodb::velocypack::Slice& start,
-                              arangodb::velocypack::Slice& target,
-                              arangodb::graph::ShortestPathResult& result);
-  */
-    
  private:
 
   void inserter(std::vector<std::unique_ptr<Step>>& result,
@@ -261,12 +189,6 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   //////////////////////////////////////////////////////////////////////////////
 
   std::atomic<bool> _bingo;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _resultMutex, this is used to protect access to the result data
-  //////////////////////////////////////////////////////////////////////////////
-
-  // arangodb::Mutex _resultMutex;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _intermediate, one vertex on the shortest path found, flag
