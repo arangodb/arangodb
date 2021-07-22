@@ -654,20 +654,11 @@ auto QuerySnippet::prepareFirstBranch(
           // to be used in toVelocyPack methods of classes derived
           // from GraphNode
           if (localGraphNode->isDisjoint()) {
-            if (found->second == server) {
+            if (aqlCollection->isSatellite()) {
               myExp.emplace(shard);
-            } else if (aqlCollection->isSatellite()) {
+              TRI_ASSERT(shards.size() == 1);
+            } else if (found->second == server) {
               myExp.emplace(shard);
-            } else {
-              // the target server does not have anything to do with the particular
-              // collection (e.g. because the collection's shards are all on other
-              // servers), but it may be asked for this collection, because vertex
-              // collections are registered _globally_ with the TraversalNode and
-              // not on a per-target server basis.
-              // so in order to serve later lookups for this collection, we insert
-              // an empty string into the collection->shard map.
-              // on lookup, we will react to this.
-              localGraphNode->addCollectionToShard(aqlCollection->name(), "");
             }
           } else {
             localGraphNode->addCollectionToShard(aqlCollection->name(), shard);
@@ -680,14 +671,26 @@ auto QuerySnippet::prepareFirstBranch(
           if (myExp.size() > 1) {
             myExpFinal.insert({aqlCollection->name(), std::move(myExp)});
           }
+        } else {
+          if (localGraphNode->isDisjoint()) {
+            // the target server does not have anything to do with the particular
+            // collection (e.g. because the collection's shards are all on other
+            // servers), but it may be asked for this collection, because vertex
+            // collections are registered _globally_ with the TraversalNode and
+            // not on a per-target server basis.
+            // so in order to serve later lookups for this collection, we insert
+            // an empty string into the collection->shard map.
+            // on lookup, we will react to this.
+            localGraphNode->addCollectionToShard(aqlCollection->name(), "");
+          }
         }
       }
 
-      // TODO: We need to exclude DBServers which only do have Satellite collections only
-      // This server is not allowed to receive a setup call
+      // TODO: We need to exclude DBServers which only do have Satellite
+      // collections only This server is not allowed to receive a setup call
 
       // 1.) Satellites: 1x shard exists (681) -> not landing in myExpFinal
-       // => 2x shards vertex collections -> DB1 v: [s1, s2] , DB2 []
+      // => 2x shards vertex collections -> DB1 v: [s1, s2] , DB2 []
       // 2.)
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
