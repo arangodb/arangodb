@@ -38,7 +38,8 @@ TEST_F(MultiTermTest, add_follower_test) {
     auto idx = leader->insert(LogPayload::createFromString("first entry"),
                               false, LogLeader::doNotTriggerAsyncReplication);
     auto f = leader->waitFor(idx);
-    ASSERT_EQ(idx, LogIndex{1});
+    // Note that the leader inserts an empty log entry in becomeLeader
+    ASSERT_EQ(idx, LogIndex{2});
     EXPECT_FALSE(f.isReady());
     leader->triggerAsyncReplication();
     {
@@ -48,8 +49,8 @@ TEST_F(MultiTermTest, add_follower_test) {
     }
     {
       auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
-      EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{1}));
-      EXPECT_EQ(stats.commitIndex, LogIndex{1});
+      EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{2}));
+      EXPECT_EQ(stats.commitIndex, LogIndex{2});
     }
   }
 
@@ -61,7 +62,9 @@ TEST_F(MultiTermTest, add_follower_test) {
 
     {
       auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
-      EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{1}));
+      // Note that the leader inserts an empty log entry in becomeLeader, which
+      // happened twice already.
+      EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));
       EXPECT_EQ(stats.commitIndex, LogIndex{0});
     }
 
@@ -76,8 +79,8 @@ TEST_F(MultiTermTest, add_follower_test) {
     EXPECT_TRUE(f.isReady());
     {
       auto stats = std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
-      EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{1}));
-      EXPECT_EQ(stats.commitIndex, LogIndex{1});
+      EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));
+      EXPECT_EQ(stats.commitIndex, LogIndex{3});
     }
   }
 }
@@ -122,7 +125,8 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
 
     {
       auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
-      EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{1}));
+      // Note that the leader inserts an empty log entry in becomeLeader
+      EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{2}));
       EXPECT_EQ(stats.commitIndex, LogIndex{0});
     }
 
@@ -152,8 +156,10 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
 
     {
       auto stats = std::get<FollowerStatus>(newFollower->getStatus().getVariant()).local;
-      EXPECT_EQ(stats.spearHead,  TermIndexPair(LogTerm{1}, LogIndex{1}));
-      EXPECT_EQ(stats.commitIndex, LogIndex{1});
+      // Note that the leader inserts an empty log entry in becomeLeader, which
+      // happened twice already.
+      EXPECT_EQ(stats.spearHead,  TermIndexPair(LogTerm{2}, LogIndex{3}));
+      EXPECT_EQ(stats.commitIndex, LogIndex{3});
     }
   }
 }
@@ -196,7 +202,8 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
 
     {
       auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
-      EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{1}));
+      // Note that the leader inserts an empty log entry in becomeLeader
+      EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{2}));
       EXPECT_EQ(stats.commitIndex, LogIndex{0});
     }
 
@@ -235,14 +242,16 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
 
     {
       auto stats = std::get<FollowerStatus>(newFollower->getStatus().getVariant()).local;
-      EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{1}));
-      EXPECT_EQ(stats.commitIndex, LogIndex{1});
+      // Note that the leader inserts an empty log entry in becomeLeader, which
+      // happened twice already.
+      EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));
+      EXPECT_EQ(stats.commitIndex, LogIndex{3});
     }
 
     ASSERT_TRUE(f2.isReady());
     {
       auto quorum = f2.get();
-      EXPECT_EQ(quorum->index, LogIndex{1});
+      EXPECT_EQ(quorum->index, LogIndex{3});
       EXPECT_EQ(quorum->term, LogTerm{2});
       EXPECT_EQ(quorum->quorum,
                 (std::vector<ParticipantId>{"newLeader", "newFollower"}));

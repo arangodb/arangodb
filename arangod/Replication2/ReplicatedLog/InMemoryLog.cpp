@@ -50,7 +50,12 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 auto replicated_log::InMemoryLog::getLastIndex() const noexcept -> LogIndex {
-  return LogIndex{_log.size()};
+  auto const result = LogIndex{_log.size()};
+  // log empty => result == 0
+  TRI_ASSERT(!_log.empty() || result == LogIndex(0));
+  // !log empty => result index == last entry
+  TRI_ASSERT(_log.empty() || result == _log.back().entry().logIndex());
+  return result;
 }
 
 auto replicated_log::InMemoryLog::getLastTermIndexPair() const noexcept -> TermIndexPair{
@@ -68,7 +73,7 @@ auto replicated_log::InMemoryLog::getLastTerm() const noexcept -> LogTerm {
 }
 
 auto replicated_log::InMemoryLog::getNextIndex() const noexcept -> LogIndex {
-  return LogIndex{_log.size() + 1};
+  return getLastIndex() + 1;
 }
 
 auto replicated_log::InMemoryLog::getEntryByIndex(LogIndex const idx) const noexcept
@@ -212,13 +217,12 @@ auto replicated_log::InMemoryLog::getIteratorRange(LogIndex fromIdx, LogIndex to
 
 void replicated_log::InMemoryLog::appendInPlace(LoggerContext const& logContext,
                                                 InMemoryLogEntry entry) {
-  if (!_log.empty() && _log.back().entry().logIndex() + 1 != entry.entry().logIndex()) {
+  if (getNextIndex() != entry.entry().logIndex()) {
     using namespace basics::StringUtils;
     auto message = concatT(
         "Trying to append a log entry with "
         "mismatching log index. Last log index is ",
-        _log.back().entry().logIndex(), ", but the new entry has ",
-        entry.entry().logIndex());
+        getLastIndex(), ", but the new entry has ", entry.entry().logIndex());
     LOG_CTX("e2775", ERR, logContext) << message;
     ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
   }

@@ -22,6 +22,7 @@
 
 #include "LogLeader.h"
 
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
@@ -140,9 +141,8 @@ auto replicated_log::LogLeader::instantiateFollowers(
     LoggerContext logContext, std::vector<std::shared_ptr<AbstractFollower>> const& follower,
     std::shared_ptr<LocalFollower> const& localFollower, TermIndexPair lastEntry)
     -> std::vector<FollowerInfo> {
-  auto initLastIndex = lastEntry.index == LogIndex{0}
-                           ? LogIndex{0}
-                           : LogIndex{lastEntry.index.value - 1};
+  auto initLastIndex = lastEntry.index.saturatedDecrement();
+
   std::vector<FollowerInfo> follower_vec;
   follower_vec.reserve(follower.size() + 1);
   follower_vec.emplace_back(localFollower, lastEntry, logContext);
@@ -265,11 +265,10 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 }
 
 auto replicated_log::LogLeader::construct(
-    LogConfig config, std::unique_ptr<LogCore> logCore,
+    LogConfig const config, std::unique_ptr<LogCore> logCore,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-    ParticipantId id, LogTerm term, LoggerContext const& logContext,
-    std::shared_ptr<ReplicatedLogMetrics> logMetrics)
-    -> std::shared_ptr<LogLeader> {
+    ParticipantId id, LogTerm const term, LoggerContext const& logContext,
+    std::shared_ptr<ReplicatedLogMetrics> logMetrics) -> std::shared_ptr<LogLeader> {
   if (ADB_UNLIKELY(logCore == nullptr)) {
     auto followerIds = std::vector<std::string>{};
     std::transform(followers.begin(), followers.end(), std::back_inserter(followerIds),
@@ -287,24 +286,37 @@ auto replicated_log::LogLeader::construct(
   // is actually protected.
   struct MakeSharedLogLeader : LogLeader {
    public:
-    MakeSharedLogLeader(LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-                        LogConfig config, ParticipantId id, LogTerm term, InMemoryLog inMemoryLog)
-        : LogLeader(std::move(logContext), std::move(logMetrics),
-                    config, std::move(id), term, std::move(inMemoryLog)) {}
+    MakeSharedLogLeader(LoggerContext logContext,
+                        std::shared_ptr<ReplicatedLogMetrics> logMetrics, LogConfig config,
+                        ParticipantId id, LogTerm term, InMemoryLog inMemoryLog)
+        : LogLeader(std::move(logContext), std::move(logMetrics), config,
+                    std::move(id), term, std::move(inMemoryLog)) {}
   };
 
   auto log = InMemoryLog{logContext, *logCore};
   auto const lastIndex = log.getLastTermIndexPair();
+  if (lastIndex.term != term) {
+    // Immediately append an empty log entry in the new term. This is necessary
+    // because we must not commit entries of older terms, but do not want to
+    // wait with committing until the next insert.
+    log.appendInPlace(logContext, InMemoryLogEntry(LogEntry(term, lastIndex.index + 1,
+                                                            LogEntry::empty)));
+    // Note that we do still want to use the unchanged lastIndex to initialize
+    // our followers with, as none of them can possibly have this entry.
+    // This is particularly important for the LocalFollower, which blindly
+    // accepts appendEntriesRequests, and we would thus forget persisting this
+    // entry on the leader!
+  }
 
-  auto commonLogContext = logContext.with<logContextKeyTerm>(term)
-                              .with<logContextKeyLeaderId>(id);
+  auto commonLogContext =
+      logContext.with<logContextKeyTerm>(term).with<logContextKeyLeaderId>(id);
 
   auto leader = std::make_shared<MakeSharedLogLeader>(
       commonLogContext.with<logContextKeyLogComponent>("leader"),
       std::move(logMetrics), config, std::move(id), term, log);
   auto localFollower = std::make_shared<LocalFollower>(
       *leader, commonLogContext.with<logContextKeyLogComponent>("local-follower"),
-      std::move(logCore));
+      std::move(logCore), lastIndex);
 
   auto leaderDataGuard = leader->acquireMutex();
 
@@ -798,10 +810,18 @@ auto replicated_log::LogLeader::construct(
 
 replicated_log::LogLeader::LocalFollower::LocalFollower(replicated_log::LogLeader& self,
                                                         LoggerContext logContext,
-                                                        std::unique_ptr<LogCore> logCore)
+                                                        std::unique_ptr<LogCore> logCore,
+                                                        [[maybe_unused]] TermIndexPair lastIndex)
     : _leader(self),
       _logContext(std::move(logContext)),
-      _guardedLogCore(std::move(logCore)) {}
+      _guardedLogCore(std::move(logCore)) {
+  // TODO save lastIndex. note that it must be protected under the same mutex as
+  //      insertions in the persisted log in logCore.
+  // TODO use lastIndex in appendEntries to assert that the request matches the
+  //      existing log.
+  // TODO in maintainer mode only, read here the last entry from logCore, and
+  //      assert that lastIndex matches that entry.
+}
 
 auto replicated_log::LogLeader::LocalFollower::getParticipantId() const noexcept
     -> ParticipantId const& {

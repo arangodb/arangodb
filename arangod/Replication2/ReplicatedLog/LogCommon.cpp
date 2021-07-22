@@ -108,6 +108,16 @@ auto LogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
   return TermIndexPair{_logTerm, _logIndex};
 }
 
+LogEntry::LogEntry(TermIndexPair termIndexPair, LogPayload payload)
+    : _logTerm(termIndexPair.term),
+      _logIndex(termIndexPair.index),
+      _payload(std::move(payload)) {}
+
+LogEntry::LogEntry(LogTerm term, LogIndex index, LogEntry::Empty)
+    : LogEntry(term, index, LogPayload(VPackBufferUInt8())) {
+  // TODO make the payload optional
+}
+
 auto LogTerm::operator<=(LogTerm other) const -> bool {
   return value <= other.value;
 }

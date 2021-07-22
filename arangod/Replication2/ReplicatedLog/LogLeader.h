@@ -148,7 +148,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   };
 
   struct LocalFollower final : AbstractFollower {
-    LocalFollower(LogLeader& self, LoggerContext logContext, std::unique_ptr<LogCore> logCore);
+    // The LocalFollower assumes that the last entry of log core matches
+    // lastIndex.
+    LocalFollower(LogLeader& self, LoggerContext logContext,
+                  std::unique_ptr<LogCore> logCore, TermIndexPair lastIndex);
     ~LocalFollower() override = default;
 
     LocalFollower(LocalFollower const&) = delete;
@@ -165,6 +168,11 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
    private:
     LogLeader& _leader;
     LoggerContext const _logContext;
+    // struct GuardedLocalFollowerData {
+    //   std::unique_ptr<LogCore> _logCore;
+    //   TermIndexPair _lastLogIndex;
+    // };
+    // Guarded<GuardedLocalFollowerData> _guardedLocalFollowerData;
     Guarded<std::unique_ptr<LogCore>> _guardedLogCore;
   };
 

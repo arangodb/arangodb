@@ -152,8 +152,12 @@ using ParticipantId = std::string;
 
 class LogEntry {
  public:
+  struct Empty{};
+  static constexpr auto empty = Empty();
 
   LogEntry(LogTerm, LogIndex, LogPayload);
+  LogEntry(LogTerm, LogIndex, Empty);
+  LogEntry(TermIndexPair, LogPayload);
 
   [[nodiscard]] auto logTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
@@ -166,8 +170,10 @@ class LogEntry {
   auto operator==(LogEntry const&) const noexcept -> bool;
 
  private:
+  // TODO replace this with a TermIndexPair
   LogTerm _logTerm{};
   LogIndex _logIndex{};
+  // TODO make the payload optional
   LogPayload _payload;
 };
 

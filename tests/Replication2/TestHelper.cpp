@@ -69,19 +69,16 @@ struct MockLogContainerIterator : LogIterator {
   I _end;
 };
 
-auto MockLog::read(replication2::LogIndex start)
--> std::unique_ptr<LogIterator> {
+auto MockLog::read(replication2::LogIndex start) -> std::unique_ptr<LogIterator> {
   return std::make_unique<MockLogContainerIterator<iteratorType>>(_storage, start);
 }
 
-auto MockLog::removeFront(replication2::LogIndex stop)
--> Result {
+auto MockLog::removeFront(replication2::LogIndex stop) -> Result {
   _storage.erase(_storage.begin(), _storage.lower_bound(stop));
   return {};
 }
 
-auto MockLog::removeBack(replication2::LogIndex start)
--> Result {
+auto MockLog::removeBack(replication2::LogIndex start) -> Result {
   _storage.erase(_storage.lower_bound(start), _storage.end());
   return {};
 }
@@ -111,12 +108,13 @@ void MockLog::setEntry(replication2::LogEntry entry) {
   _storage.emplace(entry.logIndex(), std::move(entry));
 }
 
-auto MockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter, WriteOptions const& opts) -> futures::Future<Result> {
+auto MockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter,
+                          WriteOptions const& opts) -> futures::Future<Result> {
   return insert(*iter, opts);
 }
 
-auto AsyncMockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter, WriteOptions const& opts)
-    -> futures::Future<Result> {
+auto AsyncMockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter,
+                               WriteOptions const& opts) -> futures::Future<Result> {
   auto entry = std::make_shared<QueueEntry>();
   entry->opts = opts;
   entry->iter = std::move(iter);

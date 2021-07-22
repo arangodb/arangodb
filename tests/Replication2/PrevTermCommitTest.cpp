@@ -41,13 +41,6 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
   auto B = makeReplicatedLog(LogId{2});
   auto C = makeReplicatedLog(LogId{3});
 
-  TRI_DEFER({
-    // drop all logs
-    A->drop();
-    B->drop();
-    C->drop();
-  });
-
   {
     // First let A become the leader
     auto Bf = B->becomeFollower("B", LogTerm{1}, "A");
@@ -55,7 +48,8 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
     auto Al = A->becomeLeader("A", LogTerm{1}, {Bf, Cf}, 2);
 
     {
-      auto idx = Al->insert(LogPayload::createFromString("first entry"));
+      auto const idx = Al->insert(LogPayload::createFromString("first entry"),
+                                  false, LogLeader::doNotTriggerAsyncReplication);
       auto f = Al->waitFor(idx);
       ASSERT_FALSE(f.isReady());
       Al->triggerAsyncReplication();
@@ -70,7 +64,8 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
     }
 
     {
-      std::ignore = Al->insert(LogPayload::createFromString("second entry A"));
+      std::ignore = Al->insert(LogPayload::createFromString("second entry A"),
+                               false, LogLeader::doNotTriggerAsyncReplication);
       Al->triggerAsyncReplication();
       ASSERT_TRUE(Bf->hasPendingAppendEntries());
       ASSERT_TRUE(Cf->hasPendingAppendEntries());
@@ -88,8 +83,11 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
     auto Bf = B->becomeFollower("B", LogTerm{3}, "C");
     auto Cl = C->becomeLeader("C", LogTerm{3}, {Af, Bf}, 2);
 
-    auto idx = Cl->insert(LogPayload::createFromString("first entry C"));
-    ASSERT_EQ(idx, LogIndex{2});
+    auto const idx = Cl->insert(LogPayload::createFromString("first entry C"),
+                                false, LogLeader::doNotTriggerAsyncReplication);
+    // Note that the leader inserts an empty log entry in becomeLeader, which
+    // happened twice already.
+    ASSERT_EQ(idx, LogIndex{4});
     auto f = Cl->waitFor(idx);
     ASSERT_FALSE(f.isReady());
     Cl->triggerAsyncReplication();
@@ -102,7 +100,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
 
   {
     // Check that the algorithm would either pick A as new leader.
-    auto spec = agency::LogPlanSpecification{
+    auto const spec = agency::LogPlanSpecification{
         LogId{5},
         agency::LogPlanTermSpecification{LogTerm{3},
                                          LogConfig(2, false),
@@ -113,7 +111,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
     current.localState["A"] = buildLogLocalState(A);
     current.localState["B"] = buildLogLocalState(B);
     current.localState["C"] = buildLogLocalState(C);
-    auto result = algorithms::checkReplicatedLog(
+    auto const result = algorithms::checkReplicatedLog(
         "<test db>", spec, current,
         {
             {"A", algorithms::ParticipantRecord{RebootId{1}, true}},
@@ -121,7 +119,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
             {"C", algorithms::ParticipantRecord{RebootId{1}, false}},
         });
     ASSERT_TRUE(std::holds_alternative<agency::LogPlanTermSpecification>(result));
-    auto new_spec = std::get<agency::LogPlanTermSpecification>(result);
+    auto const new_spec = std::get<agency::LogPlanTermSpecification>(result);
     ASSERT_TRUE(new_spec.leader.has_value());
     EXPECT_EQ(new_spec.leader->serverId, ParticipantId{"A"});
   }
@@ -149,6 +147,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
 
     // The leader should now have replicated its first empty log entry
     ASSERT_TRUE(f.isReady());
+    std::move(f).thenFinal([](auto&&) {});
   }
 
   auto firstCheckPoint = std::vector<LogEntry>();
@@ -171,23 +170,25 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
       {auto status = A->getParticipant()->getStatus();
   auto local = status.getLocalStatistics();
   ASSERT_TRUE(local.has_value());
-  EXPECT_EQ(local->spearHead.index, LogIndex{2});
-  EXPECT_EQ(local->spearHead.term, LogTerm{1});
+  // Note that the leader inserts an empty log entry in becomeLeader, which
+  // happened twice already.
+  EXPECT_EQ(local->spearHead.index, LogIndex{4});
+  EXPECT_EQ(local->spearHead.term, LogTerm{5});
   EXPECT_EQ(local->commitIndex, LogIndex{1});
 }
 {
   auto status = B->getParticipant()->getStatus();
   auto local = status.getLocalStatistics();
   ASSERT_TRUE(local.has_value());
-  EXPECT_EQ(local->spearHead.index, LogIndex{2});
-  EXPECT_EQ(local->spearHead.term, LogTerm{1});
+  EXPECT_EQ(local->spearHead.index, LogIndex{4});
+  EXPECT_EQ(local->spearHead.term, LogTerm{5});
 }
 {
   auto status = C->getParticipant()->getStatus();
   auto local = status.getLocalStatistics();
   ASSERT_TRUE(local.has_value());
-  EXPECT_EQ(local->spearHead.index, LogIndex{2});
-  EXPECT_EQ(local->spearHead.term, LogTerm{3});
+  EXPECT_EQ(local->spearHead.index, LogIndex{4});
+  EXPECT_EQ(local->spearHead.term, LogTerm{5});
 }
 }
 

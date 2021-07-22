@@ -62,28 +62,30 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{0});
-    EXPECT_EQ(stats.spearHead.index, LogIndex{1});
+    // Note that the leader inserts an empty log entry in becomeLeader
+    EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm(3), LogIndex(2)));
   }
   {
     auto stats = std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{0});
-    EXPECT_EQ(stats.spearHead.index, LogIndex{3});
+    EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm(2), LogIndex(3)));
   }
   {
     auto idx = leader->insert(LogPayload::createFromString("new second entry"),
                               false, LogLeader::doNotTriggerAsyncReplication);
-    EXPECT_EQ(idx, LogIndex{2});
+    // Note that the leader inserts an empty log entry in becomeLeader
+    EXPECT_EQ(idx, LogIndex{3});
   }
 
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{0});
-    EXPECT_EQ(stats.spearHead.index, LogIndex{2});
+    EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm(3), LogIndex(3)));
   }
   {
     auto stats = std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{0});
-    EXPECT_EQ(stats.spearHead.index, LogIndex{3});
+    EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm(2), LogIndex(3)));
   }
 
   // now run the leader
@@ -104,13 +106,13 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
 
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
-    EXPECT_EQ(stats.commitIndex, LogIndex{2});
-    EXPECT_EQ(stats.spearHead.index, LogIndex{2});
+    EXPECT_EQ(stats.commitIndex, LogIndex{3});
+    EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm(3), LogIndex(3)));
   }
   {
     auto stats = std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
-    EXPECT_EQ(stats.commitIndex, LogIndex{2});
-    EXPECT_EQ(stats.spearHead.index, LogIndex{2});
+    EXPECT_EQ(stats.commitIndex, LogIndex{3});
+    EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm(3), LogIndex(3)));
   }
 
   {
@@ -123,9 +125,11 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     EXPECT_EQ(entry->logIndex(), LogIndex{1});
     EXPECT_EQ(entry->logTerm(), LogTerm{1});
     EXPECT_EQ(entry->logPayload(), LogPayload::createFromString("first entry"));
+    // note that there's an empty entry here, inserted by becomeLeader(), which
+    // is skipped by the iterator as it's not a user-inserted entry.
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    EXPECT_EQ(entry->logIndex(), LogIndex{2});
+    EXPECT_EQ(entry->logIndex(), LogIndex{3});
     EXPECT_EQ(entry->logTerm(), LogTerm{3});
     EXPECT_EQ(entry->logPayload(),
               LogPayload::createFromString("new second entry"));
