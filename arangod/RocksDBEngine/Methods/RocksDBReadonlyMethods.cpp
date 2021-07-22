@@ -21,18 +21,17 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBReadonlyMethods.h"
+#include "RocksDBReadOnlyMethods.h"
 
 #include "RocksDBEngine/RocksDBTransactionState.h"
 
 #include <rocksdb/db.h>
-#include <rocksdb/status.h>
 
 using namespace arangodb;
 
 RocksDBReadOnlyMethods::RocksDBReadOnlyMethods(RocksDBTransactionState* state,
                                                rocksdb::TransactionDB* db)
-    : RocksDBTransactionMethods(state), _db(db) {
+    : RocksDBReadOnlyBaseMethods(state), _db(db) {
   TRI_ASSERT(_db != nullptr);
   _readOptions.prefix_same_as_start = true;  // should always be true
   _readOptions.fill_cache = _state->options().fillBlockCache;
@@ -44,9 +43,7 @@ RocksDBReadOnlyMethods::~RocksDBReadOnlyMethods() {
 
 Result RocksDBReadOnlyMethods::beginTransaction() {
   TRI_ASSERT(_readOptions.snapshot == nullptr);
-  if (!_state->isSingleOperation()) {
-    _readOptions.snapshot = _db->GetSnapshot();  // must call ReleaseSnapshot later
-  }
+  _readOptions.snapshot = _db->GetSnapshot();  // must call ReleaseSnapshot later
   return {};
 }
 
@@ -68,7 +65,6 @@ rocksdb::ReadOptions RocksDBReadOnlyMethods::iteratorReadOptions() const {
 /// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
 bool RocksDBReadOnlyMethods::ensureSnapshot() {
   if (_readOptions.snapshot == nullptr) {
-    TRI_ASSERT(_state->isSingleOperation());
     _readOptions.snapshot = _db->GetSnapshot();
     return true;
   }
@@ -81,62 +77,14 @@ rocksdb::SequenceNumber RocksDBReadOnlyMethods::GetSequenceNumber() const {
   }
   return _db->GetLatestSequenceNumber();
 }
-  
-void RocksDBReadOnlyMethods::prepareOperation(DataSourceId cid, RevisionId rid,
-                                              TRI_voc_document_operation_e operationType) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);                                          
-}
-
-void RocksDBReadOnlyMethods::rollbackOperation(TRI_voc_document_operation_e operationType) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);                                          
-}
-
-Result RocksDBReadOnlyMethods::addOperation(DataSourceId collectionId, RevisionId revisionId,
-                                            TRI_voc_document_operation_e opType,
-                                            bool& hasPerformedIntermediateCommit) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);                                          
-}
-                      
+                 
 rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::Slice const& key,
                                             rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _readOptions;
-  TRI_ASSERT(ro.snapshot != nullptr ||
-             (_state->isReadOnlyTransaction() && _state->isSingleOperation()));
+  TRI_ASSERT(ro.snapshot != nullptr);
   return _db->Get(ro, cf, key, val);
-}
-
-rocksdb::Status RocksDBReadOnlyMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
-                                                     rocksdb::Slice const& key,
-                                                     rocksdb::PinnableSlice* val) {
-  return this->Get(cf, key, val);
-}
-
-rocksdb::Status RocksDBReadOnlyMethods::Put(rocksdb::ColumnFamilyHandle* cf,
-                                            RocksDBKey const&,
-                                            rocksdb::Slice const&, bool) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
-}
-
-rocksdb::Status RocksDBReadOnlyMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
-                                                     RocksDBKey const&,
-                                                     rocksdb::Slice const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
-}
-
-rocksdb::Status RocksDBReadOnlyMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
-                                               RocksDBKey const& key) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
-}
-
-rocksdb::Status RocksDBReadOnlyMethods::SingleDelete(rocksdb::ColumnFamilyHandle*,
-                                                     RocksDBKey const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
-}
-
-void RocksDBReadOnlyMethods::PutLogData(rocksdb::Slice const& blob) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
 std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
@@ -153,8 +101,6 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
 
 void RocksDBReadOnlyMethods::releaseSnapshot() {
   if (_readOptions.snapshot != nullptr) {
-    TRI_ASSERT(_state->isReadOnlyTransaction() ||
-               _state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
     _db->ReleaseSnapshot(_readOptions.snapshot); 
     _readOptions.snapshot = nullptr;
   }

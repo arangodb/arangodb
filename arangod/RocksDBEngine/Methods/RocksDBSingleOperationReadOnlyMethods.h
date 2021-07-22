@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,12 +31,10 @@ class TransactionDB;
 
 namespace arangodb {
 
-// only implements GET and NewIterator
-class RocksDBReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
+// only implements GET
+class RocksDBSingleOperationReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
  public:
-  explicit RocksDBReadOnlyMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db);
-
-  ~RocksDBReadOnlyMethods();
+  explicit RocksDBSingleOperationReadOnlyMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db);
 
   Result beginTransaction() override;
   
@@ -56,11 +54,7 @@ class RocksDBReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
                                                 rocksdb::ColumnFamilyHandle*) override;
  private:
-  void releaseSnapshot();
-  
   rocksdb::TransactionDB* _db;
-
-  rocksdb::ReadOptions _readOptions;
 };
 
 }  // namespace arangodb

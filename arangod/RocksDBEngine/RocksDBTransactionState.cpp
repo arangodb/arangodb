@@ -36,8 +36,9 @@
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/MetricsFeature.h"
-#include "RocksDBEngine/Methods/RocksDBReadonlyMethods.h"
+#include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
+#include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -145,50 +146,54 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   rocksdb::TransactionDB* db = engine.db();
 
   if (isReadOnlyTransaction()) {
-    _rocksMethods = std::make_unique<RocksDBReadOnlyMethods>(this, db);
-    _rocksMethods->beginTransaction();
+    if (isSingleOperation()) {
+     _rocksMethods = std::make_unique<RocksDBSingleOperationReadOnlyMethods>(this, db);
+    } else {
+      _rocksMethods = std::make_unique<RocksDBReadOnlyMethods>(this, db);
+    }
   } else {
     _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, db);
-    _rocksMethods->beginTransaction();
-    
-    if (hasHint(transaction::Hints::Hint::NO_INDEXING)) {
-      // do not track our own writes... we can only use this in very
-      // specific scenarios, i.e. when we are sure that we will have a
-      // single operation transaction or we are sure we are writing
-      // unique keys
+  }
+  _rocksMethods->beginTransaction();
 
-      // we must check if there is a unique secondary index for any of the
-      // collections we write into in case it is, we must disable NO_INDEXING
-      // here, as it wouldn't be safe
-      bool disableIndexing = true;
+  if (hasHint(transaction::Hints::Hint::NO_INDEXING)) {
+    TRI_ASSERT(!isReadOnlyTransaction());
+    // do not track our own writes... we can only use this in very
+    // specific scenarios, i.e. when we are sure that we will have a
+    // single operation transaction or we are sure we are writing
+    // unique keys
 
-      for (auto& trxCollection : _collections) {
-        if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
+    // we must check if there is a unique secondary index for any of the
+    // collections we write into in case it is, we must disable NO_INDEXING
+    // here, as it wouldn't be safe
+    bool disableIndexing = true;
+
+    for (auto& trxCollection : _collections) {
+      if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
+        continue;
+      }
+      auto indexes = trxCollection->collection()->getIndexes();
+      for (auto const& idx : indexes) {
+        if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+          // primary index is unique, but we can ignore it here.
+          // we are only looking for secondary indexes
           continue;
         }
-        auto indexes = trxCollection->collection()->getIndexes();
-        for (auto const& idx : indexes) {
-          if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-            // primary index is unique, but we can ignore it here.
-            // we are only looking for secondary indexes
-            continue;
-          }
-          if (idx->unique()) {
-            // found secondary unique index. we need to turn off the
-            // NO_INDEXING optimization now
-            disableIndexing = false;
-            break;
-          }
+        if (idx->unique()) {
+          // found secondary unique index. we need to turn off the
+          // NO_INDEXING optimization now
+          disableIndexing = false;
+          break;
         }
       }
+    }
 
-      if (disableIndexing) {
-        // only turn it on when safe...
-        _rocksMethods->DisableIndexing();
-      }
+    if (disableIndexing) {
+      // only turn it on when safe...
+      _rocksMethods->DisableIndexing();
     }
   }
-
+  
   return res;
 }
 

@@ -45,7 +45,9 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/Listeners/RocksDBThrottle.cpp
   RocksDBEngine/Methods/RocksDBBatchedMethods.cpp
   RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.cpp
-  RocksDBEngine/Methods/RocksDBReadonlyMethods.cpp
+  RocksDBEngine/Methods/RocksDBReadOnlyBaseMethods.cpp
+  RocksDBEngine/Methods/RocksDBReadOnlyMethods.cpp
+  RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.cpp
   RocksDBEngine/Methods/RocksDBTrxMethods.cpp
   RocksDBEngine/RocksDBBackgroundThread.cpp
   RocksDBEngine/RocksDBBuilderIndex.cpp
