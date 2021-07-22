@@ -206,7 +206,6 @@ class ModificationExecutor {
   ExecutionState _lastState;
   ModificationExecutorInfos& _infos;
   std::shared_ptr<ModifierType> _modifier;
-  size_t _processed;
 };
 
 }  // namespace aql

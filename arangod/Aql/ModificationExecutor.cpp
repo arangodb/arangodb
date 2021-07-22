@@ -101,23 +101,18 @@ ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& f
     : _trx(infos._query.newTrxContext()),
       _lastState(ExecutionState::HASMORE),
       _infos(infos),
-      _modifier(std::make_shared<ModifierType>(infos)),
-      _processed(0) {}
+      _modifier(std::make_shared<ModifierType>(infos)) {}
 
 // Fetches as many rows as possible from upstream and accumulates results
 // through the modifier
 template <typename FetcherType, typename ModifierType>
-auto ModificationExecutor<FetcherType, ModifierType>::doCollect(AqlItemBlockInputRange& input,
-                                                                size_t maxOutputs)
-    -> size_t {
+void ModificationExecutor<FetcherType, ModifierType>::doCollect(AqlItemBlockInputRange& input,
+                                                                size_t maxOutputs) {
   ExecutionState state = ExecutionState::HASMORE;
-  // number of input rows processed
-  size_t processed = 0;
 
   // Maximum number of rows we can put into output
   // So we only ever produce this many here
   while (_modifier->nrOfOperations() < maxOutputs && input.hasDataRow()) {
-    ++processed;
     auto [state, row] = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
     // Make sure we have a valid row
@@ -125,7 +120,6 @@ auto ModificationExecutor<FetcherType, ModifierType>::doCollect(AqlItemBlockInpu
     _modifier->accumulate(row);
   }
   TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
-  return processed;
 }
 
 // Outputs accumulated results, and counts the statistics
@@ -311,20 +305,19 @@ template <typename FetcherType, typename ModifierType>
     if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
       auto& range = input.getInputRange();
       if (range.hasDataRow()) {
-        _processed += doCollect(range, toSkip);
+        doCollect(range, toSkip);
       }
       upstreamState = range.upstreamState();
       if (upstreamState == ExecutorState::DONE) {
         // We are done with this input.
         // We need to forward it to the last ShadowRow.
-        size_t processed = input.skipAllRemainingDataRows();
+        auto processed = input.skipAllRemainingDataRows();
         // We cannot discard any rows here, they need to be processed.
         TRI_ASSERT(processed == 0);
-        _processed += processed;
         TRI_ASSERT(input.upstreamState() == ExecutorState::DONE);
       }
     } else {
-      _processed += doCollect(input, toSkip);
+      doCollect(input, toSkip);
       upstreamState = input.upstreamState();
     }
 
@@ -336,16 +329,15 @@ template <typename FetcherType, typename ModifierType>
         if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
           auto& range = input.getInputRange();
           if (range.hasDataRow()) {
-            _processed += doCollect(range, toSkip);
+            doCollect(range, toSkip);
           }
           upstreamState = range.upstreamState();
           if (upstreamState == ExecutorState::DONE) {
             // We are done with this input.
             // We need to forward it to the last ShadowRow.
-            size_t processed = input.skipAllRemainingDataRows();
+            auto processed = input.skipAllRemainingDataRows();
             // We cannot discard any rows here, they need to be processed.
             TRI_ASSERT(processed == 0);
-            _processed += processed;
             TRI_ASSERT(input.upstreamState() == ExecutorState::DONE);
           }
         }
