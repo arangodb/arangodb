@@ -1,6 +1,17 @@
 devel
 -----
 
+* Remove collection statuses "new born", "loading", "unloading" and "unloaded".
+  These statuses were last relevant with the MMFiles storage engine, when it
+  was important to differentiate which collections are present in main memory
+  memory and which aren't. With the RocksDB storage engine, all that was 
+  automatically handled anyway, and the statuses were not important anymore.
+  
+  This change also obsoletes the `load()` and `unload()` calls for collections
+  as well as their HTTP API equivalents. The APIs will remain in place for now
+  but are changed to no-ops. They will removed eventually in a future version
+  of ArangoDB. This will be announced separately.
+
 * Make `--javascript.copy-installation` also copy the `node_modules` sub
   directory. This is required so we have a full copy of the JavaScript
   dependencies and not one that excludes some infrequently changed modules.
