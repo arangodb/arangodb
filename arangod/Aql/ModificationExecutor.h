@@ -194,7 +194,7 @@ class ModificationExecutor {
       -> std::tuple<ExecutionState, Stats, size_t, AqlCall>;
 
  protected:
-  size_t doCollect(AqlItemBlockInputRange& input, size_t maxOutputs);
+  void doCollect(AqlItemBlockInputRange& input, size_t maxOutputs);
   void doOutput(OutputAqlItemRow& output);
   
   transaction::Methods _trx;
