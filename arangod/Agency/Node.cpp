@@ -1157,10 +1157,12 @@ std::pair<bool, bool> Node::hasAsBool(std::string const& url) const {
 
   // retrieve node, throws if does not exist
   try {
-    Node const& target(operator()(url));
-    if (target.isBool()) {
-      ret_pair.first = target.getBool();
-      ret_pair.second = true;
+    if (has(url)) {
+      Node const& target(operator()(url));
+      if (target.isBool()) {
+        ret_pair.first = target.getBool();
+        ret_pair.second = true;
+      }
     }
   } catch (...) {
     // do nothing, ret_pair second already false
@@ -1176,10 +1178,12 @@ std::pair<std::string, bool> Node::hasAsString(std::string const& url) const {
 
   // retrieve node, throws if does not exist
   try {
-    Node const& target(operator()(url));
-    if (target.isString()) {
-      ret_pair.first = target.getString();
-      ret_pair.second = true;
+    if (has(url)) {
+      Node const& target(operator()(url));
+      if (target.isString()) {
+        ret_pair.first = target.getString();
+        ret_pair.second = true;
+      }
     }
   } catch (...) {
     // do nothing, ret_pair second already false
@@ -1192,8 +1196,10 @@ std::pair<Node::Children const&, bool> Node::hasAsChildren(std::string const& ur
 
   // retrieve node, throws if does not exist
   try {
-    Node const& target(operator()(url));
-    return std::pair<Children const&, bool> {target.children(), true};
+    if (has(url)) {
+      Node const& target(operator()(url));
+      return std::pair<Children const&, bool> {target.children(), true};
+    }
   } catch (...) {
   }  // catch
 
@@ -1207,9 +1213,11 @@ std::pair<void*, bool> Node::hasAsBuilder(std::string const& url, Builder& build
 
   // retrieve node, throws if does not exist
   try {
-    Node const& target(operator()(url));
-    target.toBuilder(builder, showHidden);
-    ret_pair.second = true;
+    if (has(url)) {
+      Node const& target(operator()(url));
+      target.toBuilder(builder, showHidden);
+      ret_pair.second = true;
+    }
   } catch (...) {
     // do nothing, ret_pair second already false
   }  // catch
@@ -1223,10 +1231,12 @@ std::pair<Builder, bool> Node::hasAsBuilder(std::string const& url) const {
 
   // retrieve node, throws if does not exist
   try {
-    Node const& target(operator()(url));
-    target.toBuilder(builder);
-    ret_pair.first = builder;  // update
-    ret_pair.second = true;
+    if (has(url)) {
+      Node const& target(operator()(url));
+      target.toBuilder(builder);
+      ret_pair.first = builder;  // update
+      ret_pair.second = true;
+    }
   } catch (...) {
     // do nothing, ret_pair second already false
   }  // catch
@@ -1240,9 +1250,11 @@ std::pair<Slice, bool> Node::hasAsArray(std::string const& url) const {
 
   // retrieve node, throws if does not exist
   try {
-    Node const& target(operator()(url));
-    ret_pair.first = target.getArray();
-    ret_pair.second = true;
+    if (has(url)) {
+      Node const& target(operator()(url));
+      ret_pair.first = target.getArray();
+      ret_pair.second = true;
+    }
   } catch (...) {
     // do nothing, ret_pair second already false
   }  // catch

@@ -15,7 +15,7 @@ struct elsa<ErrorCode> {
 #include <frozen/unordered_map.h>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 344> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 350> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -704,5 +704,17 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 344> ErrorMessage
       "analyzers in plan could not be modified"},
     {TRI_ERROR_AIR_EXECUTION_ERROR,  // 8001
       "error during AIR execution"},
+    {TRI_ERROR_LICENSE_EXPIRED_OR_INVALID,  // 9001
+      "license has expired or is invalid"},
+    {TRI_ERROR_LICENSE_SIGNATURE_VERIFICATION,  // 9002
+      "license verification failed"},
+    {TRI_ERROR_LICENSE_NON_MATHICHING_ID,  // 9003
+      "non matching license id"},
+    {TRI_ERROR_LICENSE_FEATURE_NOT_ENABLED,  // 9004
+      "feature is not enabled by the license"},
+    {TRI_ERROR_LICENSE_RESOURCE_EXHAUSTED,  // 9005
+      "the resource is exhausted"},
+    {TRI_ERROR_LICENSE_INVALID,  // 9006
+      "invalid license"},
 };
 }
