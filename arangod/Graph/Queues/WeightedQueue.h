@@ -36,6 +36,7 @@ namespace graph {
 template <class StepType>
 class WeightedQueue {
  public:
+  static constexpr bool RequiresWeight = true;
   using Step = StepType;
   // TODO: Add Sorting (Performance - will be implemented in the future - cluster relevant)
   // -> loose ends to the end

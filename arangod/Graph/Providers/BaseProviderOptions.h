@@ -62,6 +62,9 @@ struct IndexAccessor {
 };
 
 struct BaseProviderOptions {
+  using WeightCallback =
+      std::function<double(double originalWeight, arangodb::velocypack::Slice edge)>;
+
  public:
   BaseProviderOptions(
       aql::Variable const* tmpVar,
@@ -76,6 +79,12 @@ struct BaseProviderOptions {
 
   aql::FixedVarExpressionContext& expressionContext() const;
 
+  bool hasWeightMethod() const;
+
+  double weightEdge(double prefixWeight, arangodb::velocypack::Slice edge) const;
+
+  void setWeightEdgeCallback(WeightCallback callback);
+
  private:
   // The temporary Variable used in the Indexes
   aql::Variable const* _temporaryVariable;
@@ -89,6 +98,12 @@ struct BaseProviderOptions {
 
   // CollectionName to ShardMap, used if the Traversal is pushed down to DBServer
   std::unordered_map<std::string, std::vector<std::string>> const& _collectionToShardMap;
+
+  // Flag if we have a callback below. We cannot wrap a function into
+  // std::optional bool _hasWeightCallback;
+
+  // Optional callback to compute the weight of an edge.
+  std::optional<WeightCallback> _weightCallback;
 };
 
 struct ClusterBaseProviderOptions {

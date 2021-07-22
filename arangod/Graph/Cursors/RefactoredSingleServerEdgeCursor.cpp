@@ -153,8 +153,11 @@ RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
     transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
     std::vector<IndexAccessor> const& globalIndexConditions,
     std::unordered_map<uint64_t, std::vector<IndexAccessor>> const& depthBasedIndexConditions,
-    arangodb::aql::FixedVarExpressionContext& expressionContext)
-    : _tmpVar(tmpVar), _trx(trx), _expressionCtx(expressionContext) {
+    arangodb::aql::FixedVarExpressionContext& expressionContext, bool requiresFullDocument)
+    : _tmpVar(tmpVar),
+      _trx(trx),
+      _expressionCtx(expressionContext),
+      _requiresFullDocument(requiresFullDocument) {
   // We need at least one indexCondition, otherwise nothing to serve
   TRI_ASSERT(!globalIndexConditions.empty());
   _lookupInfo.reserve(globalIndexConditions.size());
@@ -216,7 +219,7 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(SingleServerProvider<Step>&
     auto& cursor = lookupInfo.cursor();
     LogicalCollection* collection = cursor.collection();
     auto cid = collection->id();
-    bool hasExtra = cursor.hasExtra();
+    bool hasExtra = !_requiresFullDocument && cursor.hasExtra();
     auto* expression = lookupInfo.getExpression();
 
     if (hasExtra) {

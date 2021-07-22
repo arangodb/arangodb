@@ -155,15 +155,12 @@ auto SingleServerProvider<Step>::expand(Step const& step, size_t previous,
     // TODO: Adjust log output
     LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
         << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> " << id;
-#ifdef USE_ENTERPRISE
-    if constexpr (std::is_same_v<arangodb::graph::enterprise::SmartGraphStep, Step>) {
-      callback(Step{id, std::move(eid), previous, step.getDepth() + 1, cursorID});
+    if (_opts.hasWeightMethod()) {
+      callback(Step{id, std::move(eid), previous, step.getDepth() + 1,
+                    _opts.weightEdge(step.getWeight(), edge), cursorID});
     } else {
-      callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
+      callback(Step{id, std::move(eid), previous, step.getDepth() + 1, 1.0, cursorID});
     }
-#else
-    callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
-#endif
   });
 }
 
@@ -190,7 +187,7 @@ std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> SingleServerProvider<Ste
     arangodb::aql::FixedVarExpressionContext& expressionContext) {
   return std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
       trx(), _opts.tmpVar(), _opts.indexInformations().first,
-      _opts.indexInformations().second, expressionContext);
+      _opts.indexInformations().second, expressionContext, _opts.hasWeightMethod());
 }
 
 template <class Step>
