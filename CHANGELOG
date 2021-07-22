@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed a bug, where Coordinators handled plan changes for databases
+  in heartbeat thread in wrong order. Databases could be listed, but
+  not used.
+
 * Make `--javascript.copy-installation` also copy the `node_modules` sub
   directory. This is required so we have a full copy of the JavaScript
   dependencies and not one that excludes some infrequently changed modules.

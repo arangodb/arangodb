@@ -1224,9 +1224,26 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       return false;
     }
 
+    // get the list of databases that we know about locally
+    std::vector<TRI_voc_tick_t> localIds = databaseFeature.getDatabaseIds(false);
+    for (auto id : localIds) {
+      auto r = std::find(ids.begin(), ids.end(), id);
+
+      if (r == ids.end()) {
+        // local database not found in the plan...
+        TRI_vocbase_t* db = databaseFeature.useDatabase(id);
+        TRI_ASSERT(db);
+        std::string dbName = db ? db->name() : "n/a";
+        if (db) {
+          db->release();
+        }
+        Result res = databaseFeature.dropDatabase(id, true);
+        events::DropDatabase(dbName, res, ExecContext::current());
+      }
+    }
+
     // loop over all database names we got and create a local database
     // instance if not yet present:
-
     for (VPackObjectIterator::ObjectPair options : VPackObjectIterator(databases)) {
       if (!options.value.isObject()) {
         continue;
@@ -1272,24 +1289,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       }
     }
 
-    // get the list of databases that we know about locally
-    std::vector<TRI_voc_tick_t> localIds = databaseFeature.getDatabaseIds(false);
-
-    for (auto id : localIds) {
-      auto r = std::find(ids.begin(), ids.end(), id);
-
-      if (r == ids.end()) {
-        // local database not found in the plan...
-        TRI_vocbase_t* db = databaseFeature.useDatabase(id);
-        TRI_ASSERT(db);
-        std::string dbName = db ? db->name() : "n/a";
-        if (db) {
-          db->release();
-        }
-        Result res = databaseFeature.dropDatabase(id, true);
-        events::DropDatabase(dbName, res, ExecContext::current());
-      }
-    }
 
   } else {
     return false;
