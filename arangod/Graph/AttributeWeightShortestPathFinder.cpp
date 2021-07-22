@@ -24,6 +24,7 @@
 #include "AttributeWeightShortestPathFinder.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -125,7 +126,7 @@ bool AttributeWeightShortestPathFinder::Searcher::oneStep() {
   bool b = _myInfo._pq.popMinimal(v, s);
 
   if (_pathFinder->_bingo || !b) {
-    // We can leave this functino only under 2 conditions:
+    // We can leave this function only under 2 conditions:
     // 1) already bingo==true => bingo = true no effect
     // 2) This queue is empty => if there would be a
     //    path we would have found it here
@@ -136,12 +137,15 @@ bool AttributeWeightShortestPathFinder::Searcher::oneStep() {
 
   TRI_ASSERT(s != nullptr);
 
-  std::vector<std::unique_ptr<Step>> neighbors;
-  _pathFinder->expandVertex(_backward, v, neighbors);
-  for (std::unique_ptr<Step>& neighbor : neighbors) {
+  _neighbors.clear();
+  // populates _neighbors
+  _pathFinder->expandVertex(_backward, v, _neighbors);
+
+  for (auto& neighbor : _neighbors) {
     insertNeighbor(std::move(neighbor), s->weight() + neighbor->weight());
   }
-  // All neighbours are moved out.
+  _neighbors.clear();
+  // All neighbors are moved out.
   lookupPeer(v, s->weight());
 
   Step* s2 = _myInfo._pq.find(v);
@@ -154,6 +158,7 @@ bool AttributeWeightShortestPathFinder::Searcher::oneStep() {
 
 AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPathOptions& options)
     : ShortestPathFinder(options),
+      _resourceMonitor(options.resourceMonitor()),
       _highscoreSet(false),
       _highscore(0),
       _bingo(false),
@@ -165,7 +170,15 @@ AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPat
   _backwardCursor = _options.buildCursor(true);
 }
 
-AttributeWeightShortestPathFinder::~AttributeWeightShortestPathFinder() = default;
+AttributeWeightShortestPathFinder::~AttributeWeightShortestPathFinder() {
+  // required for memory usage tracking
+  clearCandidates();
+}
+
+void AttributeWeightShortestPathFinder::clearCandidates() noexcept {
+  _resourceMonitor.decreaseMemoryUsage(_candidates.size() * candidateMemoryUsage());
+  _candidates.clear();
+}
 
 void AttributeWeightShortestPathFinder::clear() {
   options().cache()->clear();
@@ -174,6 +187,7 @@ void AttributeWeightShortestPathFinder::clear() {
   _bingo = false;
   _intermediateSet = false;
   _intermediate = arangodb::velocypack::StringRef{};
+  clearCandidates();
 }
 
 bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice const& st,
@@ -206,7 +220,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
   Searcher forwardSearcher(this, forward, backward, start, false);
   std::unique_ptr<Searcher> backwardSearcher;
   if (_options.bidirectional) {
-    backwardSearcher.reset(new Searcher(this, backward, forward, target, true));
+    backwardSearcher = std::make_unique<Searcher>(this, backward, forward, target, true);
   }
 
   TRI_IF_FAILURE("TraversalOOMInitialize") {
@@ -235,6 +249,9 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
   }
 
   Step* s = forward._pq.find(_intermediate);
+  
+  // track memory usage for result buildup.
+  ResourceUsageScope guard(_resourceMonitor);
 
   result._vertices.emplace_back(_intermediate);
 
@@ -250,6 +267,8 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
     if (s->_predecessor.empty()) {
       break;
     }
+
+    guard.increase(arangodb::graph::ShortestPathResult::resultItemMemoryUsage());
 
     result._edges.push_front(std::move(s->_edge));
     result._vertices.push_front(arangodb::velocypack::StringRef(s->_predecessor));
@@ -270,6 +289,8 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
     if (s->_predecessor.empty()) {
       break;
     }
+    
+    guard.increase(arangodb::graph::ShortestPathResult::resultItemMemoryUsage());
 
     result._edges.emplace_back(std::move(s->_edge));
     result._vertices.emplace_back(arangodb::velocypack::StringRef(s->_predecessor));
@@ -281,23 +302,28 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
   }
 
   _options.fetchVerticesCoordinator(result._vertices);
+  // we intentionally don't commit the memory usage to the _resourceMonitor here.
   return true;
 }
 
 void AttributeWeightShortestPathFinder::inserter(
-    std::unordered_map<arangodb::velocypack::StringRef, size_t>& candidates,
     std::vector<std::unique_ptr<Step>>& result,
     arangodb::velocypack::StringRef const& s, arangodb::velocypack::StringRef const& t,
     double currentWeight, EdgeDocumentToken&& edge) {
-  auto [cand, emplaced] =
-      candidates.try_emplace(t, arangodb::lazyConstruct([&] {
-                               result.emplace_back(
-                                   std::make_unique<Step>(t, s, currentWeight,
-                                                          std::move(edge)));
-                               return result.size() - 1;
-                             }));
+  
+  ResourceUsageScope guard(_resourceMonitor, candidateMemoryUsage());
 
-  if (!emplaced) {
+  auto [cand, emplaced] =
+      _candidates.try_emplace(t, arangodb::lazyConstruct([&] {
+                                   result.emplace_back(
+                                     std::make_unique<Step>(t, s, currentWeight,
+                                                            std::move(edge)));
+                                   return result.size() - 1;
+                              }));
+  if (emplaced) {
+    // new candidate created. now candiates are responsible for memory usage tracking
+    guard.steal();
+  } else {
     // Compare weight
     auto& old = result[cand->second];
     auto oldWeight = old->weight();
@@ -312,10 +338,12 @@ void AttributeWeightShortestPathFinder::inserter(
 void AttributeWeightShortestPathFinder::expandVertex(
     bool backward, arangodb::velocypack::StringRef const& vertex,
     std::vector<std::unique_ptr<Step>>& result) {
+  TRI_ASSERT(result.empty());
+
   EdgeCursor* cursor = backward ? _backwardCursor.get() : _forwardCursor.get();
   cursor->rearm(vertex, 0);
 
-  std::unordered_map<arangodb::velocypack::StringRef, size_t> candidates;
+  clearCandidates();
   cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
     if (edge.isString()) {
       VPackSlice doc = _options.cache()->lookupToken(eid);
@@ -323,9 +351,9 @@ void AttributeWeightShortestPathFinder::expandVertex(
       arangodb::velocypack::StringRef other =
           _options.cache()->persistString(arangodb::velocypack::StringRef(edge));
       if (other.compare(vertex) != 0) {
-        inserter(candidates, result, vertex, other, currentWeight, std::move(eid));
+        inserter(result, vertex, other, currentWeight, std::move(eid));
       } else {
-        inserter(candidates, result, other, vertex, currentWeight, std::move(eid));
+        inserter(result, other, vertex, currentWeight, std::move(eid));
       }
     } else {
       arangodb::velocypack::StringRef fromTmp(
@@ -335,12 +363,20 @@ void AttributeWeightShortestPathFinder::expandVertex(
       arangodb::velocypack::StringRef to = _options.cache()->persistString(toTmp);
       double currentWeight = _options.weightEdge(edge);
       if (from == vertex) {
-        inserter(candidates, result, from, to, currentWeight, std::move(eid));
+        inserter(result, from, to, currentWeight, std::move(eid));
       } else {
-        inserter(candidates, result, to, from, currentWeight, std::move(eid));
+        inserter(result, to, from, currentWeight, std::move(eid));
       }
     }
   });
+  
+  clearCandidates();
+}
+
+size_t AttributeWeightShortestPathFinder::candidateMemoryUsage() const noexcept {
+  return 16 /*arbitrary overhead*/ + 
+         sizeof(decltype(_candidates)::key_type) +
+         sizeof(decltype(_candidates)::value_type);
 }
 
 /*

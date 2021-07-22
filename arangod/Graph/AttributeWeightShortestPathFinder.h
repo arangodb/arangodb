@@ -23,9 +23,6 @@
 
 #pragma once
 
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
-
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathPriorityQueue.h"
@@ -33,9 +30,9 @@
 #include <velocypack/StringRef.h>
 
 #include <memory>
-#include <thread>
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace graph {
 class EdgeCursor;
@@ -87,7 +84,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
   struct ThreadInfo {
     PQueue _pq;
-    arangodb::Mutex _mutex;
+    // arangodb::Mutex _mutex;
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -182,6 +179,8 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     ThreadInfo& _peerInfo;
     arangodb::velocypack::StringRef _start;
     bool _backward;
+    /// @brief temp value, which is used only in Searcher::oneStep() and recycled.
+    std::vector<std::unique_ptr<Step>> _neighbors;
   };
 
   // -----------------------------------------------------------------------------
@@ -213,16 +212,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   bool shortestPath(arangodb::velocypack::Slice const& start,
                     arangodb::velocypack::Slice const& target,
                     arangodb::graph::ShortestPathResult& result) override;
-
-  void inserter(std::unordered_map<arangodb::velocypack::StringRef, size_t>& candidates,
-                std::vector<std::unique_ptr<Step>>& result,
-                arangodb::velocypack::StringRef const& s,
-                arangodb::velocypack::StringRef const& t, double currentWeight,
-                graph::EdgeDocumentToken&& edge);
-
-  void expandVertex(bool backward, arangodb::velocypack::StringRef const& source,
-                    std::vector<std::unique_ptr<Step>>& result);
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the shortest path between the start and target vertex,
   /// multi-threaded version using SearcherTwoThreads.
@@ -237,6 +227,21 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
                               arangodb::velocypack::Slice& target,
                               arangodb::graph::ShortestPathResult& result);
   */
+    
+ private:
+
+  void inserter(std::vector<std::unique_ptr<Step>>& result,
+                arangodb::velocypack::StringRef const& s,
+                arangodb::velocypack::StringRef const& t, double currentWeight,
+                graph::EdgeDocumentToken&& edge);
+
+  void expandVertex(bool backward, arangodb::velocypack::StringRef const& source,
+                    std::vector<std::unique_ptr<Step>>& result);
+
+  void clearCandidates() noexcept;
+  size_t candidateMemoryUsage() const noexcept;
+
+  arangodb::ResourceMonitor& _resourceMonitor;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lowest total weight for a complete path found
@@ -260,7 +265,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   /// @brief _resultMutex, this is used to protect access to the result data
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::Mutex _resultMutex;
+  // arangodb::Mutex _resultMutex;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _intermediate, one vertex on the shortest path found, flag
@@ -270,7 +275,11 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
   bool _intermediateSet;
   arangodb::velocypack::StringRef _intermediate;
-
+  
+  /// @brief temporary value, which is going to be populate in  inserter,
+  /// and recycled between calls
+  std::unordered_map<arangodb::velocypack::StringRef, size_t> _candidates;
+  
   std::unique_ptr<EdgeCursor> _forwardCursor;
   std::unique_ptr<EdgeCursor> _backwardCursor;
 };
