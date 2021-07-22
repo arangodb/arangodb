@@ -876,15 +876,23 @@ void getStatsFromFolder(std::string_view path,
 
   const std::regex regex("^_\\d+$");
   std::smatch match;
+  iresearch::utf8_path utf8_path(path);
 
-  for (auto& p: fs::directory_iterator(path)) {
-    std::string name = p.path().stem().string();
-    std::string ext = p.path().extension().string();
+  auto visitor = [&indexSize, &numFiles, &match, &regex, &path](
+      const irs::utf8_path::native_char_t* filename)->bool {
+
+    std::string name = fs::path(filename).stem().string();
 
     if (std::regex_match(name, match, regex)) {
+      indexSize += fs::file_size(fs::path(path) / filename);
       ++numFiles;
-      indexSize += fs::file_size(p);
     }
+
+    return true;
+  };
+
+  if (!utf8_path.visit_directory(visitor, false)) {
+    return;
   }
 
   return;
@@ -1193,6 +1201,94 @@ TEST_F(IResearchLinkTest, test_write_and_metrics2) {
   }
 
   logicalCollection->dropIndex(link->id());
+}
+
+void getPrometheusStr(std::string& result,
+                      const arangodb::iresearch::IResearchLink* l,
+                      const TRI_vocbase_t& vocbase) {
+  std::string label;
+  label += "viewId=\"" + l->getViewId() + "\",";
+  label += "collId=\"" + l->getDbName() + "\",";
+  label += "shardName=\"" + l->getShardName() + "\",";
+  label += "dbName=\"" + l->getCollectionName() + "\"";
+
+  arangodb::metrics_key key("arangodb_arangosearch_link_stats", label);
+
+  vocbase.server().getFeature<arangodb::MetricsFeature>().metricToPrometheus(key, result);
+}
+
+TEST_F(IResearchLinkTest, test_link_and_metics) {
+  static std::vector<std::string> const EMPTY;
+  auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\" }");
+  auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"ghia\": \"jkla\" }");
+  auto doc2 = arangodb::velocypack::Parser::fromJson("{ \"1234\": \"56789\" }");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+
+  auto linkJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
+      "\"includeAllFields\": true }");
+  auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testCollection\" }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson(
+      "{ \
+    \"id\": 42, \
+    \"name\": \"testView\", \
+    \"cleanupIntervalStep\": 0, \
+    \"commitIntervalMsec\": 0, \
+    \"consolidationIntervalMsec\": 0, \
+    \"type\": \"arangosearch\" \
+  }");
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  ASSERT_TRUE((nullptr != logicalCollection));
+  auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+      vocbase.createView(viewJson->slice()));
+  ASSERT_TRUE((false == !view));
+  view->open();
+  ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
+
+  std::string dataPath =
+      ((((irs::utf8_path() /= testFilesystemPath) /=
+         std::string("databases")) /=
+        (std::string("database-") + std::to_string(vocbase.id()))) /=
+       (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
+          .utf8();
+  irs::fs_directory directory(dataPath);
+  bool created;
+  auto link = logicalCollection->createIndex(linkJson->slice(), created);
+
+  {
+    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                       EMPTY, EMPTY, EMPTY,
+                                       arangodb::transaction::Options());
+    EXPECT_TRUE((trx.begin().ok()));
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+
+    ASSERT_TRUE(l != nullptr);
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice())
+                     .ok()));
+
+    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE((l->commit().ok()));
+
+    std::string expected;
+    expected += R"(arangodb_arangosearch_docs_count{ viewId="h3039/42",collId="2",shardName="",dbName="1", viewId="h3039/42",collId="2",shardName="",dbName="1"} 1)";
+    expected += "\n";
+    expected += R"(arangodb_arangosearch_live_docs_count{ viewId="h3039/42",collId="2",shardName="",dbName="1", viewId="h3039/42",collId="2",shardName="",dbName="1"} 1)";
+    expected += "\n";
+    expected += R"(arangodb_arangosearch_index_size{ viewId="h3039/42",collId="2",shardName="",dbName="1", viewId="h3039/42",collId="2",shardName="",dbName="1"} 646)";
+    expected += "\n";
+    expected += R"(arangodb_arangosearch_segments_count{ viewId="h3039/42",collId="2",shardName="",dbName="1", viewId="h3039/42",collId="2",shardName="",dbName="1"} 1)";
+    expected += "\n";
+    expected += R"(arangodb_arangosearch_files_count{ viewId="h3039/42",collId="2",shardName="",dbName="1", viewId="h3039/42",collId="2",shardName="",dbName="1"} 6)";
+    expected += "\n";
+
+    std::string actual;
+    getPrometheusStr(actual, l, vocbase);
+
+    EXPECT_EQ(actual, expected);
+
+    l->unload();
+  }
 }
 
 TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {

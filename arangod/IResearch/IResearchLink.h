@@ -315,6 +315,14 @@ class IResearchLink {
       const std::string& globalLabels) const;
   };
 
+  std::string getViewId() const;
+
+  std::string getDbName() const;
+
+  std::string getShardName() const;
+
+  std::string getCollectionName() const;
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get index stats for current snapshot
   ////////////////////////////////////////////////////////////////////////////////
@@ -421,11 +429,6 @@ class IResearchLink {
   /// @brief schedule a consolidation job
   //////////////////////////////////////////////////////////////////////////////
   void scheduleConsolidation(std::chrono::milliseconds delay);
-
-  void getLinkLabels(std::string& viewId,
-                     std::string& colId,
-                     std::string& shardName,
-                     std::string& dbName);
 
   StorageEngine* _engine;
   VPackComparer _comparer;

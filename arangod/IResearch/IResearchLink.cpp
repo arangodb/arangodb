@@ -614,9 +614,9 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid),
       _lastCommittedTick(0),
-      _createdInRecovery(false),
-      _linkStats(&_dummyStats) {
+      _createdInRecovery(false) {
 
+  _linkStats = &_dummyStats;
   auto* key = this;
 
   // initialize transaction callback
@@ -947,6 +947,18 @@ Result IResearchLink::consolidateUnsafe(
   return {};
 }
 
+arangodb_arangosearch_link_stats getLinkStatMetric(
+  const IResearchLink& link) {
+
+  arangodb_arangosearch_link_stats tmpStats;
+  tmpStats.addLabel("viewId", std::move(link.getViewId()));
+  tmpStats.addLabel("collId", std::move(link.getDbName()));
+  tmpStats.addLabel("shardName", std::move(link.getShardName()));
+  tmpStats.addLabel("dbName", std::move(link.getCollectionName()));
+
+  return tmpStats;
+}
+
 Result IResearchLink::drop() {
   // the lookup and unlink is valid for single-server only (that is the only scenario where links are persisted)
   // on coordinator and db-server the IResearchView is immutable and lives in ClusterInfo
@@ -978,19 +990,12 @@ Result IResearchLink::drop() {
   std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
-  std::string viewId, colId, shardName, dbName;
-
-  getLinkLabels(viewId, colId, shardName, dbName);
-
-  auto tmpStats = arangodb_arangosearch_link_stats{};
-  tmpStats.addLabel("viewId", viewId);
-  tmpStats.addLabel("collId", colId);
-  tmpStats.addLabel("shardName", shardName);
-  tmpStats.addLabel("dbName", dbName);
-
-  // remove statistic from MetricsFeature
-  _collection.vocbase().server()
-    .getFeature<arangodb::MetricsFeature>().remove(std::move(tmpStats));
+  // is stats initialized?
+  if (_linkStats != &_dummyStats) {
+    // remove statistic from MetricsFeature
+    _collection.vocbase().server()
+      .getFeature<arangodb::MetricsFeature>().remove(getLinkStatMetric(*this));
+  }
 
   _linkStats = &_dummyStats;
 
@@ -1259,19 +1264,9 @@ Result IResearchLink::init(
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
   _comparer.reset(_meta._sort);
 
-  std::string viewID, colId, shard, dbName;
-
-  getLinkLabels(viewID, colId, shard, dbName);
-
-  auto tmpStats = arangodb_arangosearch_link_stats{};
-  tmpStats.addLabel("viewId", viewId);
-  tmpStats.addLabel("collId", colId);
-  tmpStats.addLabel("shardName", shard);
-  tmpStats.addLabel("dbName", dbName);
-
   // init _linkStats with AtomicMetric
   _linkStats = &_collection.vocbase().server()
-            .getFeature<arangodb::MetricsFeature>().add(std::move(tmpStats));
+            .getFeature<arangodb::MetricsFeature>().add(getLinkStatMetric(*this));
 
   return {};
 }
@@ -1561,19 +1556,25 @@ void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
   task.schedule(delay);
 }
 
-void IResearchLink::getLinkLabels(std::string& viewId,
-                                  std::string& colId,
-                                  std::string& shardName,
-                                  std::string& dbName) {
-  viewId = _viewGuid;
-  dbName = _collection.vocbase().id();
+std::string IResearchLink::getViewId() const { return _viewGuid; }
 
+std::string IResearchLink::getDbName() const {
+  return std::to_string(_collection.vocbase().id());
+}
+
+std::string IResearchLink::getShardName() const {
   if (ServerState::instance()->isDBServer()) {
-    shardName = _collection.name();
-    colId = _meta._collectionName;
+    return _collection.name();
+  } else {
+    return "";
+  }
+}
+
+std::string IResearchLink::getCollectionName() const {
+  if (ServerState::instance()->isDBServer()) {
+    return _meta._collectionName;
   } else if (ServerState::instance()->isSingleServer()) {
-    colId = std::to_string(_collection.id().id());
-    shardName = "";
+    return std::to_string(_collection.id().id());
   }
 }
 
@@ -1927,19 +1928,12 @@ Result IResearchLink::unload() {
   std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
-  std::string viewId, colId, shardName, dbName;
-
-  getLinkLabels(viewId, colId, shardName, dbName);
-
-  auto tmpStats = arangodb_arangosearch_link_stats{};
-  tmpStats.addLabel("viewId", viewId);
-  tmpStats.addLabel("collId", colId);
-  tmpStats.addLabel("shardName", shardName);
-  tmpStats.addLabel("dbName", dbName);
-
-  // remove statistic from MetricsFeature
-  _collection.vocbase().server()
-    .getFeature<arangodb::MetricsFeature>().remove(std::move(tmpStats));
+  // is stats initialized?
+  if (_linkStats != &_dummyStats) {
+    // remove statistic from MetricsFeature
+    _collection.vocbase().server()
+      .getFeature<arangodb::MetricsFeature>().remove(getLinkStatMetric(*this));
+  }
 
   _linkStats = &_dummyStats;
 

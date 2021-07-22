@@ -203,6 +203,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   ServerStatistics& serverStatistics();
 
+  bool metricToPrometheus(const metrics_key& key, std::string& res);
+
  private:
   auto doAdd(metrics::Builder& builder) -> std::shared_ptr<::Metric>;
   bool doRemove(const metrics::Builder& builder);

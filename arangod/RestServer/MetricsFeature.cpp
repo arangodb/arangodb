@@ -566,6 +566,17 @@ ServerStatistics& MetricsFeature::serverStatistics() {
   return *_serverStatistics;
 }
 
+bool MetricsFeature::metricToPrometheus(const metrics_key& key, std::string& str) {
+
+  auto res = _registry.find(key);
+  if (res == _registry.end()) {
+    return false;
+  }
+
+  res->second->toPrometheus(str, res->first.labels);
+  return true;
+}
+
 metrics_key::metrics_key(std::string const& name, std::initializer_list<std::string> const& il) : name(name) {
   TRI_ASSERT(il.size() < 2);
   if (il.size() == 1) {
