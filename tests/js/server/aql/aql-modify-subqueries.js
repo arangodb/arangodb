@@ -1748,8 +1748,7 @@ function ahuacatlModifySkipSuite () {
 
     testSubqueryFullCount : function () {
       const query = "LET sub = NOOPT(FOR doc IN " + cn + " REMOVE doc IN " + cn + " RETURN OLD) COLLECT WITH COUNT INTO l RETURN l"; 
-      db._explain(query, null, { optimizer: { rules: ["-all"] } });
-      let result = AQL_EXECUTE(query, null, { profile: 3, optimizer: { rules: ["-all"] } });
+      let result = AQL_EXECUTE(query, null, { optimizer: { rules: ["-all"] } });
       assertEqual(1, result.json.length);
       assertEqual(1, result.json[0]);
     },

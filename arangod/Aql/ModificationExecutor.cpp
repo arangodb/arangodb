@@ -303,7 +303,7 @@ template <typename FetcherType, typename ModifierType>
             processed /*call.getSkipCount()*/, upstreamCall};
   }
 
-  TRI_ASSERT(_processed == 0);
+  //TRI_ASSERT(ServerState::instance()->isSingleServer() || _processed == 0);
   // only produce at most output.numRowsLeft() many results
   ExecutorState upstreamState = input.upstreamState();
   while (input.hasDataRow() && call.needSkipMore()) {
