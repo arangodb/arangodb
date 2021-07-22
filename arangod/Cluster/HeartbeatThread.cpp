@@ -1231,10 +1231,16 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
       if (r == ids.end()) {
         // local database not found in the plan...
+        std::string dbName = "n/a";
         TRI_vocbase_t* db = databaseFeature.useDatabase(id);
         TRI_ASSERT(db);
-        std::string dbName = db ? db->name() : "n/a";
         if (db) {
+          try {
+            dbName = db->name();
+          } catch (...) {
+            db->release();
+            throw;
+          }
           db->release();
         }
         Result res = databaseFeature.dropDatabase(id, true);
