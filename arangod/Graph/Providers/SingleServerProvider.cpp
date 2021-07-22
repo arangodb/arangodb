@@ -161,7 +161,7 @@ auto SingleServerProvider::expand(Step const& step, size_t previous,
 void SingleServerProvider::addVertexToBuilder(Step::Vertex const& vertex,
                                               arangodb::velocypack::Builder& builder) {
   _cache.insertVertexIntoResult(_stats, vertex.getID(), builder);
-};
+}
 
 void SingleServerProvider::insertEdgeIntoResult(EdgeDocumentToken edge,
                                                 arangodb::velocypack::Builder& builder) {

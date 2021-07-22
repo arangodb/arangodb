@@ -81,10 +81,17 @@ bool ConstantWeightShortestPathFinder::shortestPath(
   }
   
   clearVisited();
+  _leftFound.try_emplace(start, PathSnippet());
+  try {
+    _rightFound.try_emplace(end, PathSnippet());
+  } catch (...) {
+    // leave it in clean state
+    _leftFound.erase(start);
+    throw;
+  }
+  
   // memory usage for the initial start vertices
   _resourceMonitor.increaseMemoryUsage(2 * pathSnippetMemoryUsage());
-  _leftFound.try_emplace(start, PathSnippet());
-  _rightFound.try_emplace(end, PathSnippet());
 
   _leftClosure.clear();
   _rightClosure.clear();
@@ -241,5 +248,7 @@ void ConstantWeightShortestPathFinder::clearVisited() {
 }
 
 size_t ConstantWeightShortestPathFinder::pathSnippetMemoryUsage() const noexcept {
-  return 16 /*arbitrary overhead*/ + sizeof(PathSnippet);
+  return 16 /*arbitrary overhead*/ + 
+         sizeof(arangodb::velocypack::StringRef) + 
+         sizeof(PathSnippet);
 }
