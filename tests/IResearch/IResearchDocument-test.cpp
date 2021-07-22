@@ -882,7 +882,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
                                       arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-    EXPECT_EQ(irs::flags({irs::type<irs::frequency>::get()}), field.features());
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ), field.features());
   }
 
   ++it;

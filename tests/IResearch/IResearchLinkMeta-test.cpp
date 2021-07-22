@@ -171,7 +171,7 @@ TEST_F(IResearchLinkMetaTest, test_defaults) {
   {
     ASSERT_EQ(1, meta._analyzerDefinitions.size());
     EXPECT_TRUE("identity" == (*meta._analyzerDefinitions.begin())->name());
-    EXPECT_TRUE(irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+    EXPECT_TRUE(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ) ==
                  (*meta._analyzerDefinitions.begin())->features());
     EXPECT_NE(nullptr, meta._analyzerDefinitions.begin()->get());
   }
@@ -185,7 +185,7 @@ TEST_F(IResearchLinkMetaTest, test_defaults) {
   EXPECT_TRUE(*(meta._analyzers.begin()));
   EXPECT_TRUE("identity" == meta._analyzers.begin()->_pool->name());
   EXPECT_TRUE("identity" == meta._analyzers.begin()->_shortName);
-  EXPECT_TRUE(irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+  EXPECT_TRUE(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ) ==
                meta._analyzers.begin()->_pool->features());
   EXPECT_FALSE(!meta._analyzers.begin()->_pool->get());
 }
@@ -231,7 +231,7 @@ TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
         EXPECT_TRUE(*(actual._analyzers.begin()));
         EXPECT_EQ("identity", actual._analyzers.begin()->_pool->name());
         EXPECT_EQ("identity", actual._analyzers.begin()->_shortName);
-        EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+        EXPECT_TRUE((arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ) ==
                      actual._analyzers.begin()->_pool->features()));
         EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
       }
@@ -248,7 +248,7 @@ TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
   EXPECT_TRUE(*(meta._analyzers.begin()));
   EXPECT_EQ("testVocbase::empty", meta._analyzers.begin()->_pool->name());
   EXPECT_EQ("empty", meta._analyzers.begin()->_shortName);
-  EXPECT_TRUE((irs::flags({irs::type<irs::frequency>::get()}) ==
+  EXPECT_TRUE((arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ) ==
                meta._analyzers.begin()->_pool->features()));
   EXPECT_FALSE(!meta._analyzers.begin()->_pool->get());
 
@@ -271,7 +271,7 @@ TEST_F(IResearchLinkMetaTest, test_readDefaults) {
     EXPECT_TRUE(*(meta._analyzers.begin()));
     EXPECT_EQ("identity", meta._analyzers.begin()->_pool->name());
     EXPECT_EQ("identity", meta._analyzers.begin()->_shortName);
-    EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+    EXPECT_TRUE((arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ) ==
                  meta._analyzers.begin()->_pool->features()));
     EXPECT_FALSE(!meta._analyzers.begin()->_pool->get());
   }
@@ -290,7 +290,7 @@ TEST_F(IResearchLinkMetaTest, test_readDefaults) {
     EXPECT_TRUE(*(meta._analyzers.begin()));
     EXPECT_EQ("identity", meta._analyzers.begin()->_pool->name());
     EXPECT_EQ("identity", meta._analyzers.begin()->_shortName);
-    EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+    EXPECT_TRUE((arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ) ==
                  meta._analyzers.begin()->_pool->features()));
     EXPECT_FALSE(!meta._analyzers.begin()->_pool->get());
   }
@@ -353,7 +353,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
           EXPECT_TRUE(*(actual._analyzers.begin()));
           EXPECT_EQ("identity", actual._analyzers.begin()->_pool->name());
           EXPECT_EQ("identity", actual._analyzers.begin()->_shortName);
-          EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+          EXPECT_TRUE((arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ) ==
                        actual._analyzers.begin()->_pool->features()));
           EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
         } else if ("all" == fieldOverride.key()) {
@@ -367,7 +367,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
           EXPECT_TRUE(*(actual._analyzers.begin()));
           EXPECT_EQ("testVocbase::empty", actual._analyzers.begin()->_pool->name());
           EXPECT_EQ("empty", actual._analyzers.begin()->_shortName);
-          EXPECT_TRUE((irs::flags({irs::type<irs::frequency>::get()}) ==
+          EXPECT_TRUE((arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ) ==
                        actual._analyzers.begin()->_pool->features()));
           EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
         } else if ("some" == fieldOverride.key()) {
@@ -380,13 +380,13 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
           EXPECT_TRUE(*itr);
           EXPECT_EQ("testVocbase::empty", itr->_pool->name());
           EXPECT_EQ("empty", itr->_shortName);
-          EXPECT_EQ(irs::flags({irs::type<irs::frequency>::get()}), itr->_pool->features());
+          EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ), itr->_pool->features());
           EXPECT_FALSE(!itr->_pool->get());
           ++itr;
           EXPECT_TRUE(*itr);
           EXPECT_EQ("identity", itr->_pool->name());
           EXPECT_EQ("identity", itr->_shortName);
-          EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+          EXPECT_TRUE((arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ) ==
                        itr->_pool->features()));
           EXPECT_FALSE(!itr->_pool->get());
         } else if ("none" == fieldOverride.key()) {
@@ -398,13 +398,13 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
           EXPECT_TRUE(*itr);
           EXPECT_EQ("testVocbase::empty", itr->_pool->name());
           EXPECT_EQ("empty", itr->_shortName);
-          EXPECT_EQ(irs::flags({irs::type<irs::frequency>::get()}), itr->_pool->features());
+          EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ), itr->_pool->features());
           EXPECT_FALSE(!itr->_pool->get());
           ++itr;
           EXPECT_TRUE(*itr);
           EXPECT_EQ("identity", itr->_pool->name());
           EXPECT_EQ("identity", itr->_shortName);
-          EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+          EXPECT_TRUE((arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ) ==
                        itr->_pool->features()));
           EXPECT_FALSE(!itr->_pool->get());
         }
@@ -420,13 +420,13 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
     EXPECT_TRUE(*itr);
     EXPECT_EQ("testVocbase::empty", itr->_pool->name());
     EXPECT_EQ("empty", itr->_shortName);
-    EXPECT_EQ(irs::flags({irs::type<irs::frequency>::get()}), itr->_pool->features());
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ), itr->_pool->features());
     EXPECT_FALSE(!itr->_pool->get());
     ++itr;
     EXPECT_TRUE(*itr);
     EXPECT_EQ("identity", itr->_pool->name());
     EXPECT_EQ("identity", itr->_shortName);
-    EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+    EXPECT_TRUE((arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ) ==
                  itr->_pool->features()));
     EXPECT_FALSE(!itr->_pool->get());
   }
@@ -495,7 +495,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
           EXPECT_TRUE(*(actual._analyzers.begin()));
           EXPECT_EQ("identity", actual._analyzers.begin()->_pool->name());
           EXPECT_EQ("identity", actual._analyzers.begin()->_shortName);
-          EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+          EXPECT_TRUE((arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ) ==
                        actual._analyzers.begin()->_pool->features()));
           EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
         } else if ("all" == fieldOverride.key()) {
@@ -509,7 +509,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
           EXPECT_TRUE(*(actual._analyzers.begin()));
           EXPECT_EQ("testVocbase::empty", actual._analyzers.begin()->_pool->name());
           EXPECT_EQ("empty", actual._analyzers.begin()->_shortName);
-          EXPECT_TRUE((irs::flags({irs::type<irs::frequency>::get()}) ==
+          EXPECT_TRUE((arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ) ==
                        actual._analyzers.begin()->_pool->features()));
           EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
         } else if ("some" == fieldOverride.key()) {
@@ -522,13 +522,13 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
           EXPECT_TRUE(*itr);
           EXPECT_EQ("testVocbase::empty", itr->_pool->name());
           EXPECT_EQ("empty", itr->_shortName);
-          EXPECT_EQ(irs::flags({irs::type<irs::frequency>::get()}), itr->_pool->features());
+          EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ), itr->_pool->features());
           EXPECT_FALSE(!itr->_pool->get());
           ++itr;
           EXPECT_TRUE(*itr);
           EXPECT_EQ("identity", itr->_pool->name());
           EXPECT_EQ("identity", itr->_shortName);
-          EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+          EXPECT_TRUE((arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ) ==
                        itr->_pool->features()));
           EXPECT_FALSE(!itr->_pool->get());
         } else if ("none" == fieldOverride.key()) {
@@ -540,13 +540,13 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
           EXPECT_TRUE(*itr);
           EXPECT_EQ("testVocbase::empty", itr->_pool->name());
           EXPECT_EQ("empty", itr->_shortName);
-          EXPECT_EQ(irs::flags({irs::type<irs::frequency>::get()}), itr->_pool->features());
+          EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ), itr->_pool->features());
           EXPECT_FALSE(!itr->_pool->get());
           ++itr;
           EXPECT_TRUE(*itr);
           EXPECT_EQ("identity", itr->_pool->name());
           EXPECT_EQ("identity", itr->_shortName);
-          EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+          EXPECT_TRUE((arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ) ==
                        itr->_pool->features()));
           EXPECT_FALSE(!itr->_pool->get());
         }
@@ -563,13 +563,13 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
     EXPECT_TRUE(*itr);
     EXPECT_EQ("testVocbase::empty", itr->_pool->name());
     EXPECT_EQ("empty", itr->_shortName);
-    EXPECT_EQ(irs::flags({irs::type<irs::frequency>::get()}), itr->_pool->features());
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ), itr->_pool->features());
     EXPECT_FALSE(!itr->_pool->get());
     ++itr;
     EXPECT_TRUE(*itr);
     EXPECT_EQ("identity", itr->_pool->name());
     EXPECT_EQ("identity", itr->_shortName);
-    EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+    EXPECT_TRUE((arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ) ==
                  itr->_pool->features()));
     EXPECT_FALSE(!itr->_pool->get());
   }
@@ -1590,8 +1590,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                                       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ), meta._analyzers[0]._pool->features());
     EXPECT_EQ("missing0", meta._analyzers[0]._shortName);
   }
 
@@ -1622,8 +1621,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ), analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1633,8 +1631,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ), analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1667,8 +1664,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       // definition from cache since it's not presented "analyzerDefinitions"
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1678,8 +1675,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1742,8 +1739,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                                       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("missing1", meta._analyzers[0]._shortName);
   }
 
@@ -1800,8 +1797,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1811,8 +1808,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1852,8 +1849,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       // definition from cache since it's not presented "analyzerDefinitions"
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1863,8 +1860,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1892,8 +1889,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                                       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("missing2", meta._analyzers[0]._shortName);
   }
 
@@ -1968,8 +1965,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1979,8 +1976,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2020,8 +2017,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       // definition from cache since it's not presented "analyzerDefinitions"
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2031,8 +2028,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2057,8 +2054,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                                       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("missing3", meta._analyzers[0]._shortName);
   }
 
@@ -2110,8 +2107,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
@@ -2134,8 +2131,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
@@ -2172,8 +2169,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2183,8 +2180,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2223,8 +2220,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       // definition from cache since it's not presented "analyzerDefinitions"
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2234,8 +2231,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2257,8 +2254,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
@@ -2291,8 +2288,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
@@ -2316,8 +2313,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
@@ -2337,8 +2334,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
@@ -2359,8 +2356,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
@@ -2385,8 +2382,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
@@ -2411,8 +2408,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
         VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
@@ -2606,8 +2603,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("missing0", meta._analyzers[0]._shortName);
   }
 
@@ -2638,8 +2635,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2649,8 +2646,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2683,8 +2680,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       // definition from cache since it's not presented "analyzerDefinitions"
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2694,8 +2691,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2758,8 +2755,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("missing1", meta._analyzers[0]._shortName);
   }
 
@@ -2816,8 +2813,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2827,8 +2824,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2868,8 +2865,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       // definition from cache since it's not presented "analyzerDefinitions"
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2879,8 +2876,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2908,8 +2905,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("missing2", meta._analyzers[0]._shortName);
   }
 
@@ -2984,8 +2981,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2995,8 +2992,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -3036,8 +3033,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       // definition from cache since it's not presented "analyzerDefinitions"
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -3047,8 +3044,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -3073,8 +3070,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("missing3", meta._analyzers[0]._shortName);
   }
 
@@ -3126,8 +3123,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
       VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
@@ -3150,8 +3147,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
       VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
@@ -3188,8 +3185,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -3199,8 +3196,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -3239,8 +3236,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       // definition from cache since it's not presented "analyzerDefinitions"
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -3250,8 +3247,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         analyzer._pool->properties());
-      EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+                analyzer._pool->features());
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -3273,8 +3270,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
       VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
@@ -3307,8 +3304,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
       VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
@@ -3332,8 +3329,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
       VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
@@ -3353,8 +3350,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
       VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
@@ -3375,8 +3372,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
       VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
@@ -3401,8 +3398,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
       VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
@@ -3427,8 +3424,8 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(
       VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
       meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ),
+              meta._analyzers[0]._pool->features());
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 }

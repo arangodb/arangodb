@@ -696,7 +696,8 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
-    ASSERT_TRUE(v8AnalyzerWeak->features().empty());
+    ASSERT_EQ(v8AnalyzerWeak->features(),
+              arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
@@ -762,7 +763,8 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
-    ASSERT_TRUE(v8AnalyzerWeak->features().empty());
+    ASSERT_EQ(v8AnalyzerWeak->features(),
+              arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
@@ -796,7 +798,8 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
-    ASSERT_TRUE(v8AnalyzerWeak->features().empty());
+    ASSERT_EQ(v8AnalyzerWeak->features(),
+              arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance());
     auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
@@ -829,7 +832,8 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
-    ASSERT_TRUE(v8AnalyzerWeak->features().empty());
+    ASSERT_EQ(v8AnalyzerWeak->features(),
+              arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance());
     auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer4", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_NE(nullptr, analyzer);
   }
@@ -1009,7 +1013,8 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
-    EXPECT_TRUE(v8AnalyzerWeak->features().empty());
+    ASSERT_EQ(v8AnalyzerWeak->features(),
+              arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance());
   }
 
   // get custom (known analyzer) authorized but wrong current db
@@ -1072,7 +1077,8 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
-    EXPECT_TRUE(v8AnalyzerWeak->features().empty());
+    ASSERT_EQ(v8AnalyzerWeak->features(),
+              arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance());
   }
 
   // get custom (known analyzer) not authorized
