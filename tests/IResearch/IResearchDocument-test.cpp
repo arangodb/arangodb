@@ -364,7 +364,7 @@ class IResearchDocumentTest
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-empty",
         "iresearch-document-empty",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
-        irs::flags{irs::type<irs::frequency>::get()});
+        arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::frequency>::get().id()}, irs::IndexFeatures::NONE));
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
@@ -373,7 +373,7 @@ class IResearchDocumentTest
             "::iresearch-document-invalid",
         "iresearch-document-invalid",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
-        irs::flags{irs::type<irs::frequency>::get()});
+        arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::frequency>::get().id()}, irs::IndexFeatures::NONE));
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
@@ -381,7 +381,7 @@ class IResearchDocumentTest
         arangodb::StaticStrings::SystemDatabase + "::iresearch-vpack-analyzer",
         "iresearch-vpack-analyzer",
         VPackSlice::emptyObjectSlice(),
-        irs::flags{});
+        arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance());
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
@@ -389,21 +389,21 @@ class IResearchDocumentTest
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-number",
         "iresearch-document-typed",
         arangodb::velocypack::Parser::fromJson("{ \"type\": \"number\" }")->slice(),
-        irs::flags{});
+        arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance());
     EXPECT_TRUE(res.ok());
     res = analyzers.emplace(
         result,
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-bool",
         "iresearch-document-typed",
         arangodb::velocypack::Parser::fromJson("{ \"type\": \"bool\" }")->slice(),
-        irs::flags{});
+        arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance());
     EXPECT_TRUE(res.ok());
     res = analyzers.emplace(
         result,
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-string",
         "iresearch-document-typed",
         arangodb::velocypack::Parser::fromJson("{ \"type\": \"string\" }")->slice(),
-        irs::flags{});
+        arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance());
     EXPECT_TRUE(res.ok());
   }
 };
@@ -1655,7 +1655,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 result, arangodb::StaticStrings::SystemDatabase + "::empty",
                   "iresearch-document-empty",
                   arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
-                irs::flags{irs::type<irs::frequency>::get()})
+                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::frequency>::get().id()}, irs::IndexFeatures::NONE))
             .ok());
 
     // valid duplicate (same properties)
@@ -1665,7 +1665,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 result, arangodb::StaticStrings::SystemDatabase + "::empty",
                   "iresearch-document-empty",
                   arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
-                irs::flags{irs::type<irs::frequency>::get()})
+                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::frequency>::get().id()}, irs::IndexFeatures::NONE))
             .ok());
 
     // ensure there will be no exception on 'emplace'
@@ -1676,7 +1676,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 result, arangodb::StaticStrings::SystemDatabase + "::invalid",
                  "iresearch-document-invalid",
                  arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
-                irs::flags{irs::type<irs::frequency>::get()})
+                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::frequency>::get().id()}, irs::IndexFeatures::NONE))
             .ok());
     InvalidAnalyzer::returnFalseFromToString = false;
 
@@ -1688,7 +1688,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 result, arangodb::StaticStrings::SystemDatabase + "::invalid",
                  "iresearch-document-invalid",
                  arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
-                irs::flags{irs::type<irs::frequency>::get()})
+                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::frequency>::get().id()}, irs::IndexFeatures::NONE))
             .ok());
     InvalidAnalyzer::returnNullFromMake = false;
 
@@ -1698,7 +1698,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 result, arangodb::StaticStrings::SystemDatabase + "::invalid",
                  "iresearch-document-invalid",
                  arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
-                irs::flags{irs::type<irs::frequency>::get()})
+                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::frequency>::get().id()}, irs::IndexFeatures::NONE))
             .ok());
   }
 

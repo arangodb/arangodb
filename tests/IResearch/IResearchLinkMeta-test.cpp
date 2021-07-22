@@ -26,6 +26,7 @@
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "index/norm.hpp"
 #include "utils/locale_utils.hpp"
 
 #include "IResearch/common.h"
@@ -157,7 +158,7 @@ class IResearchLinkMetaTest
 
     analyzers.emplace(result, "testVocbase::empty", "empty",
                       VPackParser::fromJson("{ \"args\": \"de\" }")->slice(),
-                      irs::flags{irs::type<irs::frequency>::get()});  // cache the 'empty' analyzer for 'testVocbase'
+                      arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ));  // cache the 'empty' analyzer for 'testVocbase'
   }
 };
 
@@ -2546,7 +2547,7 @@ protected:
 
     analyzers.emplace(result, "testVocbase::empty", "empty",
       VPackParser::fromJson("{ \"args\": \"de\" }")->slice(),
-      irs::flags{irs::type<irs::frequency>::get()});  // cache the 'empty' analyzer for 'testVocbase'
+      arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ));  // cache the 'empty' analyzer for 'testVocbase'
 
     // intentionally unprepare database feature to simulate server loading case where
     // DatabaseFeature is starting and loading Links but SystemDatabaseFeature cannot provide system database

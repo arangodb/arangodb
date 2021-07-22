@@ -164,8 +164,8 @@ struct custom_sort : public irs::sort {
       }
     }
 
-    virtual const iresearch::flags& features() const override {
-      return iresearch::flags::empty_instance();
+    virtual const arangodb::iresearch::AnalyzerPool::AnalyzerFeatures& features() const override {
+      return arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance();
     }
 
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
