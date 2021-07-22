@@ -1,3 +1,11 @@
+v3.8.1 (XXXX-XX-XX)
+-------------------
+
+* Fixed a bug, where Coordinators handled plan changes for databases
+  in heartbeat thread in wrong order. Databases could be listed, but
+  not used.
+
+
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
