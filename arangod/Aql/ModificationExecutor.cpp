@@ -291,16 +291,10 @@ template <typename FetcherType, typename ModifierType>
   }
 
   if (resultState == ModificationExecutorResultState::HaveResult) {
-    // TODO: check if we need this
-    call.didSkip(_processed);
-
     TRI_ASSERT(!ServerState::instance()->isSingleServer());
-    size_t processed = _processed;
     handleResult();
-    _processed = 0;
-    // TODO
     return {translateReturnType(input.upstreamState()), stats,
-            processed /*call.getSkipCount()*/, upstreamCall};
+            call.getSkipCount(), upstreamCall};
   }
 
   //TRI_ASSERT(ServerState::instance()->isSingleServer() || _processed == 0);
