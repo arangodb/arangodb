@@ -25,6 +25,9 @@
 
 #include "Benchmark.h"
 #include "helpers.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
@@ -34,23 +37,20 @@ struct DocumentImportTest : public Benchmark<DocumentImportTest> {
   DocumentImportTest(BenchFeature& arangobench)
       : Benchmark<DocumentImportTest>(arangobench),
         _url("/_api/import?collection=" + _arangobench.collection() +
-             "&type=documents"),
-        _buffer(nullptr) {
+             "&type=documents") {
     uint64_t const n = _arangobench.complexity();
-
-    _buffer = TRI_CreateSizedStringBuffer(16384);
+    using namespace arangodb::velocypack;
+    Builder b;
     for (uint64_t i = 0; i < n; ++i) {
-      TRI_AppendStringStringBuffer(_buffer, "{\"key1\":\"");
-      TRI_AppendUInt64StringBuffer(_buffer, i);
-      TRI_AppendStringStringBuffer(_buffer, "\",\"key2\":");
-      TRI_AppendUInt64StringBuffer(_buffer, i);
-      TRI_AppendStringStringBuffer(_buffer, "}\n");
+      b.clear();
+      b.openObject();
+      b.add("key1", Value(i));
+      b.add("key2", Value(i));
+      b.close();
+      _buffer += b.toJson();
+      _buffer.push_back('\n');
     }
-
-    _length = TRI_LengthStringBuffer(_buffer);
   }
-
-  ~DocumentImportTest() { TRI_FreeStringBuffer(_buffer); }
 
   bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
     return DeleteCollection(client, _arangobench.collection()) &&
@@ -72,15 +72,15 @@ struct DocumentImportTest : public Benchmark<DocumentImportTest> {
   char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
                       size_t const globalCounter, bool* mustFree) override {
     *mustFree = false;
-    *length = _length;
-    return (char const*)_buffer->_buffer;
+    *length = _buffer.size();
+    return _buffer.data();
   }
 
+private: 
   std::string _url;
 
-  TRI_string_buffer_t* _buffer;
+  std::string _buffer;
 
-  size_t _length;
 };
 
 }  // namespace arangodb::arangobench

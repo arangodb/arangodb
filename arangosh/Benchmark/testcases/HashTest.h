@@ -26,8 +26,6 @@
 #include "Benchmark.h"
 #include "helpers.h"
 
-//JULIA
-
 namespace arangodb::arangobench {
 
 struct HashTest : public Benchmark<HashTest> {

@@ -306,7 +306,6 @@ class BenchmarkThread : public arangodb::Thread {
       bool mustFree = false;
       char const* payload = _operation->payload(&payloadLength, _threadNumber,
                                                 threadCounter, globalCounter, &mustFree);
-    //  LOG_DEVEL << "Execute batch request " << globalCounter; 
       const rest::RequestType type =
           _operation->type(_threadNumber, threadCounter, globalCounter);
       if (url.empty()) {
@@ -423,7 +422,6 @@ class BenchmarkThread : public arangodb::Thread {
     char const* payload = _operation->payload(&payloadLength, _threadNumber,
                                               threadCounter, globalCounter, &mustFree);
 
-  //  LOG_DEVEL << "Execute single request " << globalCounter; 
     double start = TRI_microtime();
     httpclient::SimpleHttpResult* result =
         _httpClient->request(type, url, payload, payloadLength, _headers);
