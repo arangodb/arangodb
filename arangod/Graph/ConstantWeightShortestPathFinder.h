@@ -47,8 +47,6 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
   struct PathSnippet {
     PathSnippet() noexcept;
     PathSnippet(arangodb::velocypack::StringRef pred, graph::EdgeDocumentToken&& path) noexcept;
-    //PathSnippet(PathSnippet const& other) noexcept = delete;
-    //PathSnippet& operator=(PathSnippet const& other) noexcept = delete;
     PathSnippet(PathSnippet&& other) noexcept = default;
     PathSnippet& operator=(PathSnippet&& other) noexcept = default;
     

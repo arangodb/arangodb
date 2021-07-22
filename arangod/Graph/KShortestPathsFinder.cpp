@@ -353,10 +353,10 @@ bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
     // the "real" result is only calculated at the very end of this method
     result.clear();
 
-    // computeShortestPath will internally track memory usage for  result,
+    // computeShortestPath will internally track memory usage for result,
     // however it won't commit the memory usage, because result is only
     // temporary. if we use the result for something else later, we will store
-    // it in  candidate  and track its memory usage there
+    // it in _candidatePaths and track its memory usage there
     if (computeShortestPath(spur, _end, forbiddenVertices, forbiddenEdges, result)) {
       _candidate.clear();
       _candidate.append(lastShortestPath, 0, i);
