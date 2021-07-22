@@ -182,7 +182,7 @@ function ahuacatlMemoryLimitReadOnlyQueriesTestSuite () {
       let actual = AQL_EXECUTE(query, null, { memoryLimit: 1000 * 1000 }).json;
       assertEqual(10, actual.length);
       
-      actual = AQL_EXECUTE(query, null, { memoryLimit: 100 * 1000 }).json;
+      actual = AQL_EXECUTE(query, null, { memoryLimit: 500 * 1000 }).json;
       assertEqual(10, actual.length);
         
       try {
