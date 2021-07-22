@@ -272,12 +272,11 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
     testShortestPathDefaultWeight : function () {
       const query = "WITH " + vn + " FOR p IN ANY SHORTEST_PATH '" + vn + "/test0' TO '" + vn + "/test310' " + en + " RETURN p";
       
-      let actual = AQL_EXECUTE(query, null, { memoryLimit: 1000 * 1000 }).json;
-      // no shortest path available
+      let actual = AQL_EXECUTE(query, null, { memoryLimit: 500 * 1000 }).json;
       assertEqual(2, actual.length);
       
       try {
-        AQL_EXECUTE(query, null, { memoryLimit: 40 * 1000 });
+        AQL_EXECUTE(query, null, { memoryLimit: 30 * 1000 });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
@@ -288,11 +287,10 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
       const query = "WITH " + vn + " FOR p IN ANY SHORTEST_PATH '" + vn + "/test0' TO '" + vn + "/test310' " + en + " RETURN p";
       
       let actual = AQL_EXECUTE(query, null, { memoryLimit: 1000 * 1000, weightAttribute: "weight" }).json;
-      // no shortest path available
       assertEqual(2, actual.length);
       
       try {
-        AQL_EXECUTE(query, null, { memoryLimit: 40 * 1000, weightAttribute: "weight" });
+        AQL_EXECUTE(query, null, { memoryLimit: 30 * 1000, weightAttribute: "weight" });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
