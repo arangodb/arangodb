@@ -211,12 +211,12 @@ bool make_vpack_config(
     }
 
     // start_marker
-    if (!options.start_marker.empty()) {
+    {
       builder->add(START_MARKER_PARAM_NAME, VPackValue(irs::ref_cast<char>(options.start_marker)));
     }
 
     // end_marker
-    if (!options.end_marker.empty()) {
+    {
       builder->add(END_MARKER_PARAM_NAME, VPackValue(irs::ref_cast<char>(options.end_marker)));
     }
   }

@@ -2872,8 +2872,10 @@ std::vector<std::string> AnalyzerPool::AnalyzerFeatures::getNames() const {
 bool AnalyzerPool::AnalyzerFeatures::add(std::string_view featureName) {
   if (featureName == "position") {
     _indexFeatures |= irs::IndexFeatures::POS;
+    return true;
   } else if (featureName == "frequency") {
     _indexFeatures |= irs::IndexFeatures::FREQ;
+    return true;
   }
   // forbid to directly set norm2! Only norm is documented
   // and will be resolved depending on store version

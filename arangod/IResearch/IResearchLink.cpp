@@ -1343,6 +1343,9 @@ Result IResearchLink::initDataStore(
   irs::index_writer::init_options options;
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
+  options.features[irs::type<irs::granularity_prefix>::id()] = nullptr;
+  options.features[irs::type<irs::norm>::id()] = &irs::norm::compute; // FIXME: check datastore version and leave only one norm/norm2
+  options.features[irs::type<irs::norm2>::id()] = &irs::norm2::compute;
   // initialize commit callback
   options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
     _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t(tick)); // update last tick

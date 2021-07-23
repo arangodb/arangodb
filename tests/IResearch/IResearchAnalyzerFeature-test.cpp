@@ -858,8 +858,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_properties_too_large)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   std::string properties(1024 * 1024 + 1, 'x');  // +1 char longer then limit
+  VPackBuilder prop;
+  prop.openObject();
+  prop.add("value", VPackValue(properties));
+  prop.close();
   auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
-                             VPackParser::fromJson("\"abc\"")->slice(),
+                             prop.slice(),
                              arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
                                {}, irs::IndexFeatures::FREQ));
   EXPECT_FALSE(res.ok());

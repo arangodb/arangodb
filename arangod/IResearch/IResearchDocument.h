@@ -125,16 +125,19 @@ struct Field {
   }
 
   void setFeatures(AnalyzerPool::AnalyzerFeatures const& poolFeatures) {
-    _features = &poolFeatures;
-    //FIXME: check here datastore version and translate accordingly
-    for (auto const& feature : _features->field_features()) {
-      if (feature == irs::type<irs::norm>::get().id()) {
-        _translatedFieldFeatures.push_back(irs::type<irs::norm2>::get().id());
-      } else {
-        _translatedFieldFeatures.push_back(feature);
+    if (_features != &poolFeatures) {
+      _features = &poolFeatures;
+      //FIXME: check here datastore version and translate accordingly
+      _translatedFieldFeatures.clear();
+      for (auto const& feature : _features->field_features()) {
+        if (feature == irs::type<irs::norm>::get().id()) {
+          _translatedFieldFeatures.push_back(irs::type<irs::norm2>::id());
+        } else {
+          _translatedFieldFeatures.push_back(feature);
+        }
       }
+      _featuresRange = {_translatedFieldFeatures.data(), _translatedFieldFeatures.size()};
     }
-    _featuresRange = {_translatedFieldFeatures.data(), _translatedFieldFeatures.size()};
   }
 
   std::shared_ptr<irs::token_stream> _analyzer;

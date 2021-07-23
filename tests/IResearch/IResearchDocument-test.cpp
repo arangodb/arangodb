@@ -337,8 +337,16 @@ bool operator==(std::set<irs::type_info::type_id> const& analyzer, irs::features
     return false;
   }
   for (auto t : field) {
-    if (analyzer.find(t) == analyzer.end()) {
-      return false;
+    // Field should never have norm here! Only norm2! 
+    EXPECT_NE(t().id(), irs::type<irs::norm>::id());
+    if (t().id() == irs::type<irs::norm2>::id()) {
+      if (analyzer.find(irs::type<irs::norm>::id()) == analyzer.end()) {
+        return false;
+      }
+    } else {
+      if (analyzer.find(t) == analyzer.end()) {
+        return false;
+      }
     }
   }
   return true;
@@ -379,7 +387,7 @@ class IResearchDocumentTest
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-empty",
         "iresearch-document-empty",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
-        arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::frequency>::get().id()}, irs::IndexFeatures::NONE));
+        arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ));
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
@@ -388,7 +396,7 @@ class IResearchDocumentTest
             "::iresearch-document-invalid",
         "iresearch-document-invalid",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
-        arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::frequency>::get().id()}, irs::IndexFeatures::NONE));
+        arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ));
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
@@ -526,6 +534,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_neste
     }
 
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
+    SCOPED_TRACE(field._name);
     EXPECT_EQ(expected_features.field_features(), field.features());
     EXPECT_EQ(expected_features.index_features(), field.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -915,6 +924,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& field = *it;
     EXPECT_EQ(mangleNull("nullValue"), field.name());
     auto& analyzer = dynamic_cast<irs::null_token_stream&>(field.get_tokens());
+    auto expectedFeatures = arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+      {}, irs::IndexFeatures::NONE);
+    EXPECT_EQ(expectedFeatures.field_features(), field.features());
+    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -926,6 +939,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& field = *it;
     EXPECT_EQ(mangleBool("trueValue"), field.name());
     auto& analyzer = dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
+    auto expectedFeatures = arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+      {}, irs::IndexFeatures::NONE);
+    EXPECT_EQ(expectedFeatures.field_features(), field.features());
+    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -937,6 +954,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& field = *it;
     EXPECT_EQ(mangleBool("falseValue"), field.name());
     auto& analyzer = dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
+    auto expectedFeatures = arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+      {}, irs::IndexFeatures::NONE);
+    EXPECT_EQ(expectedFeatures.field_features(), field.features());
+    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -948,6 +969,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& field = *it;
     EXPECT_EQ(mangleNumeric("smallIntValue"), field.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
+    auto expectedFeatures = arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+      {irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
+    EXPECT_EQ(expectedFeatures.field_features(), field.features());
+    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -959,6 +984,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& field = *it;
     EXPECT_EQ(mangleNumeric("smallNegativeIntValue"), field.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
+    auto expectedFeatures = arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+      {irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
+    EXPECT_EQ(expectedFeatures.field_features(), field.features());
+    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -970,6 +999,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& field = *it;
     EXPECT_EQ(mangleNumeric("bigIntValue"), field.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
+    auto expectedFeatures = arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+      {irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
+    EXPECT_EQ(expectedFeatures.field_features(), field.features());
+    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -981,6 +1014,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& field = *it;
     EXPECT_EQ(mangleNumeric("bigNegativeIntValue"), field.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
+    auto expectedFeatures = arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+      {irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
+    EXPECT_EQ(expectedFeatures.field_features(), field.features());
+    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -992,6 +1029,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& field = *it;
     EXPECT_EQ(mangleNumeric("smallDoubleValue"), field.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
+    auto expectedFeatures = arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+      {irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
+    EXPECT_EQ(expectedFeatures.field_features(), field.features());
+    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -1003,6 +1044,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& field = *it;
     EXPECT_EQ(mangleNumeric("bigDoubleValue"), field.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
+    auto expectedFeatures = arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+      {irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
+    EXPECT_EQ(expectedFeatures.field_features(), field.features());
+    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -1014,6 +1059,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& field = *it;
     EXPECT_EQ(mangleNumeric("bigNegativeDoubleValue"), field.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
+    auto expectedFeatures = arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+      {irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
+    EXPECT_EQ(expectedFeatures.field_features(), field.features());
+    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -1690,7 +1739,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 result, arangodb::StaticStrings::SystemDatabase + "::empty",
                   "iresearch-document-empty",
                   arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
-                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::frequency>::get().id()}, irs::IndexFeatures::NONE))
+                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ))
             .ok());
 
     // valid duplicate (same properties)
@@ -1700,7 +1749,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 result, arangodb::StaticStrings::SystemDatabase + "::empty",
                   "iresearch-document-empty",
                   arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
-                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::frequency>::get().id()}, irs::IndexFeatures::NONE))
+                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ))
             .ok());
 
     // ensure there will be no exception on 'emplace'
@@ -1711,7 +1760,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 result, arangodb::StaticStrings::SystemDatabase + "::invalid",
                  "iresearch-document-invalid",
                  arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
-                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::frequency>::get().id()}, irs::IndexFeatures::NONE))
+                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ))
             .ok());
     InvalidAnalyzer::returnFalseFromToString = false;
 
@@ -1723,7 +1772,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 result, arangodb::StaticStrings::SystemDatabase + "::invalid",
                  "iresearch-document-invalid",
                  arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
-                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::frequency>::get().id()}, irs::IndexFeatures::NONE))
+                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ))
             .ok());
     InvalidAnalyzer::returnNullFromMake = false;
 
@@ -1733,7 +1782,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 result, arangodb::StaticStrings::SystemDatabase + "::invalid",
                  "iresearch-document-invalid",
                  arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
-                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({irs::type<irs::frequency>::get().id()}, irs::IndexFeatures::NONE))
+                arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ))
             .ok());
   }
 
