@@ -170,6 +170,8 @@ class RocksDBTransactionState final : public TransactionState {
   void prepareCollections();
   void commitCollections(rocksdb::SequenceNumber lastWritten);
   void cleanupCollections();
+  
+  void maybeDisableIndexing();
 
   /// @brief delete transaction, snapshot and cache trx
   void cleanupTransaction() noexcept;

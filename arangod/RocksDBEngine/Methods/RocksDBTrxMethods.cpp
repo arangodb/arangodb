@@ -50,7 +50,7 @@ Result RocksDBTrxMethods::beginTransaction() {
   Result result = RocksDBTrxBaseMethods::beginTransaction();
   
   TRI_ASSERT(_iteratorReadSnapshot == nullptr);
-  if (hasIntermediateCommitsEnabled()) {
+  if (result.ok() && hasIntermediateCommitsEnabled()) {
     TRI_ASSERT(_state->options().intermediateCommitCount != UINT64_MAX ||
                _state->options().intermediateCommitSize != UINT64_MAX);
     _iteratorReadSnapshot = _db->GetSnapshot();  // must call ReleaseSnapshot later

@@ -90,6 +90,7 @@ Result RocksDBTrxBaseMethods::abortTransaction() {
     rocksdb::Status status = _rocksTransaction->Rollback();
     result = rocksutils::convertStatus(status);
   }
+  cleanupTransaction();
   return result;
 }
 

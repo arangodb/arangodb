@@ -48,7 +48,8 @@ Result RocksDBSingleOperationReadOnlyMethods::abortTransaction() {
 }
 
 rocksdb::ReadOptions RocksDBSingleOperationReadOnlyMethods::iteratorReadOptions() const {
-  return {};
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "should not call iteratorReadOptions for single operation methods");
 }
 
 rocksdb::SequenceNumber RocksDBSingleOperationReadOnlyMethods::GetSequenceNumber() const noexcept {
@@ -56,8 +57,8 @@ rocksdb::SequenceNumber RocksDBSingleOperationReadOnlyMethods::GetSequenceNumber
 }
                 
 rocksdb::Status RocksDBSingleOperationReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
-                                            rocksdb::Slice const& key,
-                                            rocksdb::PinnableSlice* val) {
+                                                           rocksdb::Slice const& key,
+                                                           rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
   ro.prefix_same_as_start = true;  // should always be true
@@ -69,5 +70,5 @@ std::unique_ptr<rocksdb::Iterator> RocksDBSingleOperationReadOnlyMethods::NewIte
     rocksdb::ColumnFamilyHandle*, ReadOptionsCallback) {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "should not call NewIterator for single operation methods");
 }

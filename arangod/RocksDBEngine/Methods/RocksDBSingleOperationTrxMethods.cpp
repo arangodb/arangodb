@@ -43,7 +43,7 @@ RocksDBSingleOperationTrxMethods::RocksDBSingleOperationTrxMethods(RocksDBTransa
 rocksdb::ReadOptions RocksDBSingleOperationTrxMethods::iteratorReadOptions() const {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "should not call iteratorReadOptions for single operation methods");
 }
 
 void RocksDBSingleOperationTrxMethods::prepareOperation(DataSourceId cid, RevisionId rid,
@@ -102,5 +102,5 @@ std::unique_ptr<rocksdb::Iterator> RocksDBSingleOperationTrxMethods::NewIterator
     rocksdb::ColumnFamilyHandle*, ReadOptionsCallback) {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "should not call NewIterator for single operation methods");
 }

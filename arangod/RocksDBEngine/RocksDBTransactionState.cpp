@@ -158,47 +158,54 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, db);
     }
   }
-  _rocksMethods->beginTransaction();
-
-  if (hasHint(transaction::Hints::Hint::NO_INDEXING)) {
-    TRI_ASSERT(!isReadOnlyTransaction());
-    // do not track our own writes... we can only use this in very
-    // specific scenarios, i.e. when we are sure that we will have a
-    // single operation transaction or we are sure we are writing
-    // unique keys
-
-    // we must check if there is a unique secondary index for any of the
-    // collections we write into in case it is, we must disable NO_INDEXING
-    // here, as it wouldn't be safe
-    bool disableIndexing = true;
-
-    for (auto& trxCollection : _collections) {
-      if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
-        continue;
-      }
-      auto indexes = trxCollection->collection()->getIndexes();
-      for (auto const& idx : indexes) {
-        if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-          // primary index is unique, but we can ignore it here.
-          // we are only looking for secondary indexes
-          continue;
-        }
-        if (idx->unique()) {
-          // found secondary unique index. we need to turn off the
-          // NO_INDEXING optimization now
-          disableIndexing = false;
-          break;
-        }
-      }
-    }
-
-    if (disableIndexing) {
-      // only turn it on when safe...
-      _rocksMethods->DisableIndexing();
-    }
+  res = _rocksMethods->beginTransaction();
+  if (res.ok()) {
+    maybeDisableIndexing();
   }
   
   return res;
+}
+
+void RocksDBTransactionState::maybeDisableIndexing() {
+  if (!hasHint(transaction::Hints::Hint::NO_INDEXING)) {
+    return;
+  }
+  
+  TRI_ASSERT(!isReadOnlyTransaction());
+  // do not track our own writes... we can only use this in very
+  // specific scenarios, i.e. when we are sure that we will have a
+  // single operation transaction or we are sure we are writing
+  // unique keys
+
+  // we must check if there is a unique secondary index for any of the
+  // collections we write into in case it is, we must disable NO_INDEXING
+  // here, as it wouldn't be safe
+  bool disableIndexing = true;
+
+  for (auto& trxCollection : _collections) {
+    if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
+      continue;
+    }
+    auto indexes = trxCollection->collection()->getIndexes();
+    for (auto const& idx : indexes) {
+      if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        // primary index is unique, but we can ignore it here.
+        // we are only looking for secondary indexes
+        continue;
+      }
+      if (idx->unique()) {
+        // found secondary unique index. we need to turn off the
+        // NO_INDEXING optimization now
+        disableIndexing = false;
+        break;
+      }
+    }
+  }
+
+  if (disableIndexing) {
+    // only turn it on when safe...
+    _rocksMethods->DisableIndexing();
+  }
 }
 
 void RocksDBTransactionState::prepareCollections() {
@@ -338,7 +345,7 @@ Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisi
       queryCache->invalidate(&_vocbase, tcoll->collection()->guid());
     }
   }
-  return {};
+  return result;
 }
 
 bool RocksDBTransactionState::ensureSnapshot() {
