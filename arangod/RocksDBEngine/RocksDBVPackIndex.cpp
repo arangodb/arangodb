@@ -184,8 +184,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
         _bounds(std::move(bounds)),
-        _mustSeek(true),
-        _rangeBound(reverse ? _bounds.start() : _bounds.end()) {
+        _rangeBound(reverse ? _bounds.start() : _bounds.end()),
+        _mustSeek(true) {
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex));
 

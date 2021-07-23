@@ -191,7 +191,6 @@ static arangodb::Result fillIndex(rocksdb::DB* rootDB, RocksDBIndex& ridx, Rocks
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
 
   uint64_t numDocsWritten = 0;
-  auto state = RocksDBTransactionState::toState(&trx);
   RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
   
   auto commitLambda = [&] {
@@ -454,7 +453,6 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
     return res;
   }
 
-  auto state = RocksDBTransactionState::toState(&trx);
   RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
   RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
 

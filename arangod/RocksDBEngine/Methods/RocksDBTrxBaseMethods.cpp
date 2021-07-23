@@ -26,6 +26,7 @@
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Statistics/ServerStatistics.h"
 
@@ -388,7 +389,9 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
 
 #ifndef _WIN32
   // wait for sync if required, for all other platforms but Windows
-  if (waitForSync()) {
+  if (_state->waitForSync()) {
+    auto& selector = _state->vocbase().server().getFeature<EngineSelectorFeature>();
+    auto& engine = selector.engine<RocksDBEngine>();
     if (engine.syncThread()) {
       // we do have a sync thread
       return engine.syncThread()->syncWal();
