@@ -1,6 +1,9 @@
 devel
 -----
 
+* Reduce default value for max-nodes-per-callstack to 200 for OSX, because on
+  OSX worker threads have a stack size of only 512kb.
+
 * Make `--javascript.copy-installation` also copy the `node_modules` sub
   directory. This is required so we have a full copy of the JavaScript
   dependencies and not one that excludes some infrequently changed modules.
