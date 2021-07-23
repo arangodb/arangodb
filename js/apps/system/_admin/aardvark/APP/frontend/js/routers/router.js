@@ -1,5 +1,6 @@
 /* jshint unused: false */
-/* global window, $, Backbone, document, d3, ReactDOM */
+// eslint-disable-next-line no-unused-vars
+/* global window, $, Backbone, document, d3, ReactDOM, React */
 /* global arangoHelper, btoa, atob, _, frontendConfig */
 
 (function () {
@@ -89,7 +90,8 @@
           }
         }
 
-        if (this.lastRoute.substr(0, 11) === '#collection' && this.lastRoute.split('/').length === 3) {
+        if (this.lastRoute.substr(0, 11) === '#collection' && this.lastRoute.split(
+          '/').length === 3) {
           this.documentView.cleanupEditor();
         }
 
@@ -108,7 +110,7 @@
         }
 
         // react unmounting
-        ReactDOM.unmountComponentAtNode(document.getElementById("content"));
+        ReactDOM.unmountComponentAtNode(document.getElementById('content'));
       }
 
       this.lastRoute = window.location.hash;
@@ -169,7 +171,7 @@
           self.currentUser = user;
           if (error || user === null) {
             if (window.location.hash !== '#login') {
-              this.navigate('login', {trigger: true});
+              this.navigate('login', { trigger: true });
             }
           } else {
             startInit();
@@ -223,10 +225,10 @@
       if (frontendConfig.isCluster === true) {
         this.isCluster = true;
       }
-      if (typeof frontendConfig.foxxApiEnabled === "boolean") {
+      if (typeof frontendConfig.foxxApiEnabled === 'boolean') {
         this.foxxApiEnabled = frontendConfig.foxxApiEnabled;
       }
-      if (typeof frontendConfig.statisticsInAllDatabases === "boolean") {
+      if (typeof frontendConfig.statisticsInAllDatabases === 'boolean') {
         this.statisticsInAllDatabases = frontendConfig.statisticsInAllDatabases;
       }
 
@@ -350,15 +352,17 @@
     },
 
     handleScroll: function () {
+      const secondaryNavbar = $('.navbar > .secondary');
+
       if ($(window).scrollTop() > 50) {
-        $('.navbar > .secondary').css('top', $(window).scrollTop());
-        $('.navbar > .secondary').css('position', 'absolute');
-        $('.navbar > .secondary').css('z-index', '10');
-        $('.navbar > .secondary').css('width', $(window).width());
+        secondaryNavbar.css('top', $(window).scrollTop());
+        secondaryNavbar.css('position', 'absolute');
+        secondaryNavbar.css('z-index', '10');
+        secondaryNavbar.css('width', $(window).width());
       } else {
-        $('.navbar > .secondary').css('top', '0');
-        $('.navbar > .secondary').css('position', 'relative');
-        $('.navbar > .secondary').css('width', '');
+        secondaryNavbar.css('top', '0');
+        secondaryNavbar.css('position', 'relative');
+        secondaryNavbar.css('width', '');
       }
     },
 
@@ -371,23 +375,23 @@
       if (this.isCluster && frontendConfig.clusterApiJwtPolicy === 'jwt-all') {
         // no privileges to use cluster/nodes from the web UI
         this.routes[''] = 'collections';
-        this.navigate('#collections', {trigger: true});
+        this.navigate('#collections', { trigger: true });
         return;
       }
 
       if (!this.isCluster) {
         if (this.currentDB.get('name') === '_system') {
           this.routes[''] = 'dashboard';
-          this.navigate('#dashboard', {trigger: true});
+          this.navigate('#dashboard', { trigger: true });
         } else {
           this.routes[''] = 'collections';
-          this.navigate('#collections', {trigger: true});
+          this.navigate('#collections', { trigger: true });
         }
         return;
       }
       if (this.currentDB.get('name') !== '_system' &&
-          !this.statisticsInAllDatabases) {
-        this.navigate('#nodes', {trigger: true});
+        !this.statisticsInAllDatabases) {
+        this.navigate('#nodes', { trigger: true });
         return;
       }
 
@@ -409,13 +413,13 @@
       if (this.isCluster && frontendConfig.clusterApiJwtPolicy === 'jwt-all') {
         // no privileges to use cluster/nodes from the web UI
         this.routes[''] = 'collections';
-        this.navigate('#collections', {trigger: true});
+        this.navigate('#collections', { trigger: true });
         return;
       }
 
       if (this.isCluster === false) {
         this.routes[''] = 'dashboard';
-        this.navigate('#dashboard', {trigger: true});
+        this.navigate('#dashboard', { trigger: true });
         return;
       }
 
@@ -438,11 +442,12 @@
       }
       if (this.isCluster === false) {
         this.routes[''] = 'dashboard';
-        this.navigate('#dashboard', {trigger: true});
+        this.navigate('#dashboard', { trigger: true });
         return;
       }
       // TODO re-enable React View, for now use old view:
-      // window.ShardsReactView.render();
+      // ReactDOM.render(React.createElement(window.ShardsReactView),
+      //   document.getElementById('content'));
       // Below code needs to be removed then again.
       if (this.shardsView) {
         this.shardsView.remove();
@@ -463,10 +468,10 @@
       if (this.currentDB.get('name') !== '_system') {
         if (!this.isCluster) {
           this.routes[''] = 'dashboard';
-          this.navigate('#dashboard', {trigger: true});
+          this.navigate('#dashboard', { trigger: true });
         } else {
           this.routes[''] = 'cluster';
-          this.navigate('#cluster', {trigger: true});
+          this.navigate('#cluster', { trigger: true });
         }
         return;
       }
@@ -484,13 +489,14 @@
         this.waitForInit(this.maintenance.bind(this));
         return;
       }
-      if (frontendConfig.showMaintenanceStatus === false || this.currentDB.get('name') !== '_system') {
+      if (frontendConfig.showMaintenanceStatus === false || this.currentDB.get(
+        'name') !== '_system') {
         if (!this.isCluster) {
           this.routes[''] = 'dashboard';
-          this.navigate('#dashboard', {trigger: true});
+          this.navigate('#dashboard', { trigger: true });
         } else {
           this.routes[''] = 'cluster';
-          this.navigate('#cluster', {trigger: true});
+          this.navigate('#cluster', { trigger: true });
         }
 
         return;
@@ -510,14 +516,13 @@
       }
       if (this.isCluster === false) {
         this.routes[''] = 'dashboard';
-        this.navigate('#dashboard', {trigger: true});
+        this.navigate('#dashboard', { trigger: true });
         return;
       }
       if (this.nodesView) {
         this.nodesView.remove();
       }
-      this.nodesView = new window.NodesView({
-      });
+      this.nodesView = new window.NodesView({});
       this.nodesView.render();
     },
 
@@ -529,7 +534,7 @@
       }
       if (this.isCluster === false) {
         this.routes[''] = 'dashboard';
-        this.navigate('#dashboard', {trigger: true});
+        this.navigate('#dashboard', { trigger: true });
         return;
       }
       this.nodesView = new window.NodesView({
@@ -548,11 +553,11 @@
       }
       if (this.isCluster === false) {
         this.routes[''] = 'dashboard';
-        this.navigate('#dashboard', {trigger: true});
+        this.navigate('#dashboard', { trigger: true });
         return;
       }
       if (this.dbServers.length === 0) {
-        this.navigate('#cNodes', {trigger: true});
+        this.navigate('#cNodes', { trigger: true });
         return;
       }
 
@@ -572,7 +577,7 @@
       }
       if (this.isCluster === false) {
         this.routes[''] = 'dashboard';
-        this.navigate('#dashboard', {trigger: true});
+        this.navigate('#dashboard', { trigger: true });
         return;
       }
 
@@ -626,7 +631,7 @@
         return;
       }
       if (!this.foxxApiEnabled) {
-        this.navigate('#dashboard', {trigger: true});
+        this.navigate('#dashboard', { trigger: true });
         return;
       }
       var callback = function () {
@@ -660,7 +665,7 @@
         return;
       }
       if (!this.foxxApiEnabled) {
-        this.navigate('#dashboard', {trigger: true});
+        this.navigate('#dashboard', { trigger: true });
         return;
       }
       var callback = function () {
@@ -942,8 +947,7 @@
         return;
       }
       if (!this.testView) {
-        this.helpUsView = new window.HelpUsView({
-        });
+        this.helpUsView = new window.HelpUsView({});
       }
       this.helpUsView.render();
     },
@@ -955,8 +959,7 @@
         return;
       }
       if (!this.testView) {
-        this.supportView = new window.SupportView({
-        });
+        this.supportView = new window.SupportView({});
       }
       this.supportView.render();
     },
@@ -986,7 +989,7 @@
       var callback = function (error) {
         if (error) {
           arangoHelper.arangoError('DB', 'Could not get list of allowed databases');
-          this.navigate('#', {trigger: true});
+          this.navigate('#', { trigger: true });
           $('#databaseNavi').css('display', 'none');
           $('#databaseNaviSelect').css('display', 'none');
         } else {
@@ -1043,8 +1046,7 @@
       }
 
       if (this.applierView === undefined) {
-        this.applierView = new window.ApplierView({
-        });
+        this.applierView = new window.ApplierView({});
       }
       this.applierView.endpoint = atob(endpoint);
       this.applierView.database = atob(database);
@@ -1097,7 +1099,7 @@
         return;
       }
       if (!this.foxxApiEnabled) {
-        this.navigate('#dashboard', {trigger: true});
+        this.navigate('#dashboard', { trigger: true });
         return;
       }
       if (this.applicationsView === undefined) {
@@ -1115,11 +1117,11 @@
         return;
       }
       if (!this.foxxApiEnabled) {
-        this.navigate('#dashboard', {trigger: true});
+        this.navigate('#dashboard', { trigger: true });
         return;
       }
       if (!frontendConfig.foxxStoreEnabled) {
-        this.navigate('#services/install/upload', {trigger: true});
+        this.navigate('#services/install/upload', { trigger: true });
         return;
       }
       window.modalView.clearValidators();
@@ -1140,7 +1142,7 @@
         return;
       }
       if (!this.foxxApiEnabled) {
-        this.navigate('#dashboard', {trigger: true});
+        this.navigate('#dashboard', { trigger: true });
         return;
       }
       window.modalView.clearValidators();
@@ -1160,7 +1162,7 @@
         return;
       }
       if (!this.foxxApiEnabled) {
-        this.navigate('#dashboard', {trigger: true});
+        this.navigate('#dashboard', { trigger: true });
         return;
       }
       window.modalView.clearValidators();
@@ -1180,7 +1182,7 @@
         return;
       }
       if (!this.foxxApiEnabled) {
-        this.navigate('#dashboard', {trigger: true});
+        this.navigate('#dashboard', { trigger: true });
         return;
       }
       window.modalView.clearValidators();
@@ -1200,7 +1202,7 @@
         return;
       }
       if (!this.foxxApiEnabled) {
-        this.navigate('#dashboard', {trigger: true});
+        this.navigate('#dashboard', { trigger: true });
         return;
       }
       window.modalView.clearValidators();
