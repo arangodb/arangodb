@@ -1240,7 +1240,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
           << "Failed to allocate memory to enumerate planned databases from agency";
         FATAL_ERROR_EXIT();
       } catch (std::exception const& e) {
-        LOG_TOPIC("a9234", FATAL, Logger::CLUSTER)
+        LOG_TOPIC("a9235", FATAL, Logger::CLUSTER)
           << "Failed to read planned databases " << options.key.stringView() << " from agency";
       }
     }
