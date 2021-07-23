@@ -550,6 +550,7 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
 
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
+      return _data == cc->_data;
   }
   return false;
 }
