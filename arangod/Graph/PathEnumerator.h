@@ -187,7 +187,7 @@ class DepthFirstEnumerator final : public PathEnumerator {
 
  private:
   bool shouldPrune();
-  bool validDisjointPath();
+  bool validDisjointPath() const;
 
   velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result, bool fromPrune);
 };

@@ -391,12 +391,6 @@ arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(VPackBuilder& resul
   return arangodb::aql::AqlValue(pathToSlice(result, false));
 }
 
-#ifndef USE_ENTERPRISE
-bool DepthFirstEnumerator::validDisjointPath() {
-  return true;
-}
-#endif
-
 bool DepthFirstEnumerator::shouldPrune() {
   // We need to call prune here
   if (!_opts->usesPrune()) {
@@ -426,3 +420,9 @@ bool DepthFirstEnumerator::shouldPrune() {
   }
   return evaluator->evaluate();
 }
+
+#ifndef USE_ENTERPRISE
+bool DepthFirstEnumerator::validDisjointPath() {
+  return true;
+}
+#endif
