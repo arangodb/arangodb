@@ -199,13 +199,11 @@ class ModificationExecutor {
   
   transaction::Methods _trx;
 
-  // The state that was returned on the last call to produceRows. For us
-  // this is relevant because we might have collected some documents in the
-  // modifier's accumulator, but not written them yet, because we ran into
-  // WAITING
-  ExecutionState _lastState;
   ModificationExecutorInfos& _infos;
   std::shared_ptr<ModifierType> _modifier;
+
+  bool _mustSkip;
+  size_t _toSkip;
 };
 
 }  // namespace aql
