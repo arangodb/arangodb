@@ -45,7 +45,12 @@ class RocksDBTransactionMethods : public RocksDBMethods {
 
   virtual Result abortTransaction() = 0;
   
-  virtual uint64_t numCommits() const = 0;
+  /// @returns tick of last operation in a transaction
+  /// @note the value is guaranteed to be valid only after
+  ///       transaction is committed
+  virtual TRI_voc_tick_t lastOperationTick() const noexcept = 0;
+  
+  virtual uint64_t numCommits() const noexcept = 0;
   
   virtual rocksdb::ReadOptions iteratorReadOptions() const = 0; // TODO - remove later
   
@@ -53,7 +58,7 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   /// Returns true if a snapshot was acquire
   virtual bool ensureSnapshot() = 0;
 
-  virtual rocksdb::SequenceNumber GetSequenceNumber() const = 0;
+  virtual rocksdb::SequenceNumber GetSequenceNumber() const noexcept = 0;
   
   virtual bool hasOperations() const noexcept = 0;
 

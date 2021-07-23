@@ -39,6 +39,7 @@
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
+#include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -147,12 +148,16 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
   if (isReadOnlyTransaction()) {
     if (isSingleOperation()) {
-     _rocksMethods = std::make_unique<RocksDBSingleOperationReadOnlyMethods>(this, db);
+      _rocksMethods = std::make_unique<RocksDBSingleOperationReadOnlyMethods>(this, db);
     } else {
       _rocksMethods = std::make_unique<RocksDBReadOnlyMethods>(this, db);
     }
   } else {
-    _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, db);
+    if (isSingleOperation()) {
+      _rocksMethods = std::make_unique<RocksDBSingleOperationTrxMethods>(this, db);
+    } else {
+      _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, db);
+    }
   }
   _rocksMethods->beginTransaction();
 
@@ -284,6 +289,10 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
   return result;
 }
 
+TRI_voc_tick_t RocksDBTransactionState::lastOperationTick() const noexcept {
+  return _rocksMethods->lastOperationTick();
+}
+  
 uint64_t RocksDBTransactionState::numCommits() const {
   return _rocksMethods->numCommits();
 }
@@ -310,7 +319,27 @@ void RocksDBTransactionState::rollbackOperation(TRI_voc_document_operation_e ope
 Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisionId,
                                              TRI_voc_document_operation_e operationType,
                                              bool& hasPerformedIntermediateCommit) {
-  return _rocksMethods->addOperation(cid, revisionId, operationType, hasPerformedIntermediateCommit);
+  Result result = _rocksMethods->addOperation(cid, revisionId, operationType, hasPerformedIntermediateCommit);
+
+  if (result.ok()) {
+    auto tcoll = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
+    if (tcoll == nullptr) {
+      std::string message = "collection '" + std::to_string(cid.id()) +
+                            "' not found in transaction state";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+    }
+
+    // should not fail or fail with exception
+    tcoll->addOperation(operationType, revisionId);
+
+    // clear the query cache for this collection
+    auto queryCache = arangodb::aql::QueryCache::instance();
+
+    if (queryCache->mayBeActive() && tcoll->collection()) {
+      queryCache->invalidate(&_vocbase, tcoll->collection()->guid());
+    }
+  }
+  return {};
 }
 
 bool RocksDBTransactionState::ensureSnapshot() {

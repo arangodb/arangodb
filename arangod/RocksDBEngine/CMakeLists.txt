@@ -48,6 +48,8 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/Methods/RocksDBReadOnlyBaseMethods.cpp
   RocksDBEngine/Methods/RocksDBReadOnlyMethods.cpp
   RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.cpp
+  RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.cpp
+  RocksDBEngine/Methods/RocksDBTrxBaseMethods.cpp
   RocksDBEngine/Methods/RocksDBTrxMethods.cpp
   RocksDBEngine/RocksDBBackgroundThread.cpp
   RocksDBEngine/RocksDBBuilderIndex.cpp

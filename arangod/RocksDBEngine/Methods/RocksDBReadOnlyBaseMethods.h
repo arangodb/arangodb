@@ -35,7 +35,9 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
  public:
   explicit RocksDBReadOnlyBaseMethods(RocksDBTransactionState* state);
 
-  uint64_t numCommits() const override { return 0; }
+  TRI_voc_tick_t lastOperationTick() const noexcept override { return 0; }
+  
+  uint64_t numCommits() const noexcept override { return 0; }
   
   bool hasOperations() const noexcept override { return false; }
   

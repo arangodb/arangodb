@@ -48,7 +48,7 @@ class RocksDBReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
   
   bool ensureSnapshot() override;
 
-  rocksdb::SequenceNumber GetSequenceNumber() const override;
+  rocksdb::SequenceNumber GetSequenceNumber() const noexcept override;
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                       rocksdb::PinnableSlice* val) override;

@@ -23,38 +23,24 @@
 
 #pragma once
 
-#include "RocksDBEngine/Methods/RocksDBReadOnlyBaseMethods.h"
-
-namespace rocksdb {
-class TransactionDB;
-}  // namespace rocksdb
+#include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
 
 namespace arangodb {
-
-// only implements GET
-class RocksDBSingleOperationReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
- public:
-  explicit RocksDBSingleOperationReadOnlyMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db);
-
-  Result beginTransaction() override;
   
-  Result commitTransaction() override;
-
-  Result abortTransaction() override;
+/// transaction wrapper, uses the current rocksdb transaction
+class RocksDBSingleOperationTrxMethods : public RocksDBTrxBaseMethods {
+ public:
+  explicit RocksDBSingleOperationTrxMethods(RocksDBTransactionState*, rocksdb::TransactionDB* db);
 
   rocksdb::ReadOptions iteratorReadOptions() const override;
   
-  bool ensureSnapshot() override { return false; }
+  void prepareOperation(DataSourceId cid, RevisionId rid, TRI_voc_document_operation_e operationType) override;
 
-  rocksdb::SequenceNumber GetSequenceNumber() const noexcept override;
-
-  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
-                      rocksdb::PinnableSlice* val) override;
+  /// @brief undo the effects of the previous prepareOperation call
+  void rollbackOperation(TRI_voc_document_operation_e operationType) override;
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
-                                                rocksdb::ColumnFamilyHandle*) override;
- private:
-  rocksdb::TransactionDB* _db;
+                                                 rocksdb::ColumnFamilyHandle*) override;
 };
 
 }  // namespace arangodb

@@ -71,7 +71,7 @@ bool RocksDBReadOnlyMethods::ensureSnapshot() {
   return false;
 }
 
-rocksdb::SequenceNumber RocksDBReadOnlyMethods::GetSequenceNumber() const {
+rocksdb::SequenceNumber RocksDBReadOnlyMethods::GetSequenceNumber() const noexcept {
   if (_readOptions.snapshot) {
     return _readOptions.snapshot->GetSequenceNumber();
   }

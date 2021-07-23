@@ -51,13 +51,7 @@ rocksdb::ReadOptions RocksDBSingleOperationReadOnlyMethods::iteratorReadOptions(
   return {};
 }
 
-/// @brief acquire a database snapshot if we do not yet have one.
-/// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
-bool RocksDBSingleOperationReadOnlyMethods::ensureSnapshot() {
-  return false;
-}
-
-rocksdb::SequenceNumber RocksDBSingleOperationReadOnlyMethods::GetSequenceNumber() const {
+rocksdb::SequenceNumber RocksDBSingleOperationReadOnlyMethods::GetSequenceNumber() const noexcept {
   return _db->GetLatestSequenceNumber();
 }
                 
