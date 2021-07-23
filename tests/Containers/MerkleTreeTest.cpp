@@ -33,6 +33,8 @@
 #include "Containers/MerkleTree.h"
 #include "Logger/LogMacros.h"
 
+#include <velocypack/Builder.h>
+
 namespace {
 std::vector<std::uint64_t> permutation(std::uint64_t n) {
   std::vector<std::uint64_t> v;
