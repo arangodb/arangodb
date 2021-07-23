@@ -1,7 +1,8 @@
 devel
 -----
 
-* Remove collection statuses "new born", "loading", "unloading" and "unloaded".
+* APM-132: Clean up collection statuses
+  Removes collection statuses "new born", "loading", "unloading" and "unloaded".
   These statuses were last relevant with the MMFiles storage engine, when it
   was important to differentiate which collections are present in main memory
   memory and which aren't. With the RocksDB storage engine, all that was 
