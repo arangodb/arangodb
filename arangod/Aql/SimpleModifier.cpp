@@ -142,6 +142,7 @@ void SimpleModifier<ModifierCompletion, Enable>::resetResult() noexcept {
 
 template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::reset() {
+  LOG_DEVEL << "RESET";
   _accumulator.reset();
   _operations.clear();
   _results.reset();
@@ -159,13 +160,17 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction:
   TRI_ASSERT(_resultState == ModificationExecutorResultState::NoResult);
   _resultState = ModificationExecutorResultState::NoResult;
 
+  LOG_DEVEL << "TRANSACT";
   auto result = _completion.transact(trx, _accumulator.closeAndGetContents());
 
   if (result.isReady()) {
+    LOG_DEVEL << "IS READY";
     _results = std::move(result.get());
     _resultState = ModificationExecutorResultState::HaveResult;
     return ExecutionState::DONE;
   } 
+    
+  LOG_DEVEL << "NOT READY";
   
   _resultState = ModificationExecutorResultState::WaitingForResult;
 

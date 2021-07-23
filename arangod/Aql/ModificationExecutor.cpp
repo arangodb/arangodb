@@ -208,6 +208,7 @@ template <typename FetcherType, typename ModifierType>
   ExecutorState upstreamState = ExecutorState::HASMORE;
   if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
     auto& range = input.getInputRange();
+    LOG_DEVEL << "CALLING ACCUMULATE FROM PRODUCE1";
     doCollect(range, output.numRowsLeft());
     upstreamState = range.upstreamState();
     if (upstreamState == ExecutorState::DONE) {
@@ -216,6 +217,7 @@ template <typename FetcherType, typename ModifierType>
       input.skipAllRemainingDataRows();
     }
   } else {
+    LOG_DEVEL << "CALLING ACCUMULATE FROM PRODUCE2";
     doCollect(input, output.numRowsLeft());
     upstreamState = input.upstreamState();
   }
@@ -250,6 +252,7 @@ template <typename FetcherType, typename ModifierType>
   }
 
   auto handleResult = [&]() {
+    LOG_DEVEL << "HANDLERESULT";
     _modifier->checkException();
 
     if (_infos._doCount) {
@@ -271,8 +274,8 @@ template <typename FetcherType, typename ModifierType>
       // have successfully executed
       call.didSkip((std::min)(call.getOffset(), _modifier->nrOfWritesExecuted()));
     }
+    LOG_DEVEL << "RESETTING STATUS";
     _modifier->resetResult();
-    // TODO
   };
 
   ModificationExecutorResultState resultState = _modifier->resultState();
@@ -285,11 +288,14 @@ template <typename FetcherType, typename ModifierType>
   }
 
   if (resultState == ModificationExecutorResultState::HaveResult) {
+    LOG_DEVEL << "ENTERING AND WE HAVE A RESULT";
     TRI_ASSERT(!ServerState::instance()->isSingleServer());
     handleResult();
     return {translateReturnType(input.upstreamState()), stats,
             call.getSkipCount(), upstreamCall};
   }
+    
+  LOG_DEVEL << "ENTERING MODIFIER";
 
   //TRI_ASSERT(ServerState::instance()->isSingleServer() || _processed == 0);
   // only produce at most output.numRowsLeft() many results
@@ -322,9 +328,11 @@ template <typename FetcherType, typename ModifierType>
     }
 
     if (_modifier->nrOfOperations() > 0) {
+      LOG_DEVEL << "CALLING TRANSACT!";
       ExecutionState modifierState = _modifier->transact(_trx);
 
       if (modifierState == ExecutionState::WAITING) {
+        LOG_DEVEL << "TRANSACT RETURNED WAITING";
         // Do forward matrix input to flag everything as consumed.
         if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
           auto& range = input.getInputRange();

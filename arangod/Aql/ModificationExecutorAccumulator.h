@@ -26,8 +26,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 
-#include <velocypack/Collection.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -45,16 +46,20 @@ class ModificationExecutorAccumulator {
   ModificationExecutorAccumulator() { reset(); }
 
   VPackSlice closeAndGetContents() {
+    LOG_DEVEL << "CLOSE AND GET";
     _accumulator.close();
+    TRI_ASSERT(!_accumulator.isOpenArray());
     return _accumulator.slice();
   }
 
   void add(VPackSlice const& doc) {
+    LOG_DEVEL << "ADD";
     TRI_ASSERT(_accumulator.isOpenArray());
     _accumulator.add(doc);
   }
 
   void reset() {
+    LOG_DEVEL << "RESET";
     _accumulator.clear();
     _accumulator.openArray();
   }
