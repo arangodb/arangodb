@@ -145,7 +145,6 @@ bool BreadthFirstEnumerator::next() {
       }
 
 #ifdef USE_ENTEPRISE
-      bool test = validDisjointPath();
       if (!validDisjointPath()) {
         return;
       }
