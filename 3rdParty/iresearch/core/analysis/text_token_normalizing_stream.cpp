@@ -39,7 +39,7 @@
   #pragma warning(disable: 4512)
 #endif
 
-  #include <unicode/normalizer2.h> // for icu::Normalizer2
+#include <unicode/normalizer2.h> // for icu::Normalizer2
 
 #if defined(_MSC_VER)
   #pragma warning(default: 4512)
@@ -51,7 +51,7 @@
   #pragma warning(disable: 4229)
 #endif
 
-  #include <unicode/uclean.h> // for u_cleanup
+#include <unicode/uclean.h> // for u_cleanup
 
 #if defined(_MSC_VER)
   #pragma warning(default: 4229)
@@ -84,43 +84,24 @@ struct text_token_normalizing_stream::state_t {
 
 namespace {
 
+using namespace irs;
 
-bool make_locale_from_name(const irs::string_ref& name,
-                         std::locale& locale) {
-  try {
-    locale = irs::locale_utils::locale(
-        name, irs::string_ref::NIL,
-        true);  // true == convert to unicode, required for ICU and Snowball
-                // check if ICU supports locale
-    auto icu_locale =
-        icu::Locale(std::string(irs::locale_utils::language(locale)).c_str(),
-                    std::string(irs::locale_utils::country(locale)).c_str());
-    return !icu_locale.isBogus();
-  } catch (...) {
-    IR_FRMT_ERROR(
-      "Caught error while constructing locale from "
-      "name: %s",
-      name.c_str());
-  }
-  return false;
-}
-
-constexpr VPackStringRef LOCALE_PARAM_NAME       {"locale"};
-constexpr VPackStringRef CASE_CONVERT_PARAM_NAME {"case"};
-constexpr VPackStringRef ACCENT_PARAM_NAME       {"accent"};
+constexpr VPackStringRef LOCALE_PARAM_NAME      {"locale"};
+constexpr VPackStringRef CASE_CONVERT_PARAM_NAME{"case"};
+constexpr VPackStringRef ACCENT_PARAM_NAME      {"accent"};
 
 constexpr frozen::unordered_map<
-    irs::string_ref,
-    irs::analysis::text_token_normalizing_stream::options_t::case_convert_t, 3> CASE_CONVERT_MAP = {
-  { "lower", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::LOWER },
-  { "none", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::NONE },
-  { "upper", irs::analysis::text_token_normalizing_stream::options_t::case_convert_t::UPPER },
+    string_ref,
+    analysis::text_token_normalizing_stream::options_t::case_convert_t, 3> CASE_CONVERT_MAP = {
+  { "lower", analysis::text_token_normalizing_stream::options_t::case_convert_t::LOWER },
+  { "none", analysis::text_token_normalizing_stream::options_t::case_convert_t::NONE },
+  { "upper", analysis::text_token_normalizing_stream::options_t::case_convert_t::UPPER },
 };
 
 
 bool parse_vpack_options(
     const VPackSlice slice,
-    irs::analysis::text_token_normalizing_stream::options_t& options) {
+    analysis::text_token_normalizing_stream::options_t& options) {
 
   if (!slice.isObject() && !slice.isString()) {
     IR_FRMT_ERROR(
@@ -131,12 +112,12 @@ bool parse_vpack_options(
   try {
     switch (slice.type()) {
       case VPackValueType::String:
-        return make_locale_from_name(irs::get_string<irs::string_ref>(slice), options.locale);  // required
+        return locale_utils::icu_locale(get_string<string_ref>(slice), options.locale);  // required
       case VPackValueType::Object:
       {
         auto param_name_slice = slice.get(LOCALE_PARAM_NAME);
         if (!param_name_slice.isNone() && param_name_slice.isString()) {
-          if (!make_locale_from_name(irs::get_string<irs::string_ref>(param_name_slice), options.locale)) {
+          if (!locale_utils::icu_locale(get_string<string_ref>(param_name_slice), options.locale)) {
             return false;
           }
           if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
@@ -151,7 +132,7 @@ bool parse_vpack_options(
               return false;
             }
 
-            auto itr = CASE_CONVERT_MAP.find(irs::get_string<irs::string_ref>(case_convert_slice));
+            auto itr = CASE_CONVERT_MAP.find(get_string<string_ref>(case_convert_slice));
 
             if (itr == CASE_CONVERT_MAP.end()) {
               IR_FRMT_WARN(
@@ -207,17 +188,17 @@ bool parse_vpack_options(
 ///        "case"(string enum): modify token case using "locale"
 ///        "accent"(bool): leave accents
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
-  irs::analysis::text_token_normalizing_stream::options_t options;
+analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
+  analysis::text_token_normalizing_stream::options_t options;
   if (parse_vpack_options(slice, options)) {
-    return irs::memory::make_shared<
-        irs::analysis::text_token_normalizing_stream>(std::move(options));
+    return memory::make_shared<
+        analysis::text_token_normalizing_stream>(std::move(options));
   } else {
     return nullptr;
   }
 }
 
-irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+analysis::analyzer::ptr make_vpack(const string_ref& args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   return make_vpack(slice);
 }
@@ -227,13 +208,13 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
 /// @param definition string for storing json document with config
 ///////////////////////////////////////////////////////////////////////////////
 bool make_vpack_config(
-    const irs::analysis::text_token_normalizing_stream::options_t& options,
+    const analysis::text_token_normalizing_stream::options_t& options,
     VPackBuilder* builder) {
 
   VPackObjectBuilder object(builder);
   {
     // locale
-    const auto& locale_name = irs::locale_utils::name(options.locale);
+    const auto& locale_name = locale_utils::name(options.locale);
     builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
 
     // case convert
@@ -259,7 +240,7 @@ bool make_vpack_config(
 }
 
 bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
-  irs::analysis::text_token_normalizing_stream::options_t options;
+  analysis::text_token_normalizing_stream::options_t options;
   if (parse_vpack_options(slice, options)) {
     return make_vpack_config(options, builder);
   } else {
@@ -267,7 +248,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   }
 }
 
-bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
+bool normalize_vpack_config(const string_ref& args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -280,12 +261,12 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a language to use for normalizing
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
+analysis::analyzer::ptr make_text(const string_ref& args) {
   try {
-    irs::analysis::text_token_normalizing_stream::options_t options;
+    analysis::text_token_normalizing_stream::options_t options;
 
-    if (make_locale_from_name(args, options.locale)) {// interpret 'args' as a locale name
-      return irs::memory::make_shared<irs::analysis::text_token_normalizing_stream>(
+    if (locale_utils::icu_locale(args, options.locale)) {// interpret 'args' as a locale name
+      return memory::make_shared<analysis::text_token_normalizing_stream>(
           std::move(options) );
     }
   } catch (...) {
@@ -298,17 +279,17 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
   return nullptr;
 }
 
-bool normalize_text_config(const irs::string_ref& args,
+bool normalize_text_config(const string_ref& args,
                            std::string& definition) {
   std::locale locale;
-  if (make_locale_from_name(args, locale)){
-    definition = irs::locale_utils::name(locale);
+  if (locale_utils::icu_locale(args, locale)){
+    definition = locale_utils::name(locale);
     return true;
   }
   return false;
 }
 
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+analysis::analyzer::ptr make_json(const string_ref& args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while constructing text_token_normalizing_stream");
@@ -327,7 +308,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   return nullptr;
 }
 
-bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_json_config(const string_ref& args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing text_token_normalizing_stream");
@@ -350,11 +331,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
   return false;
 }
 
-REGISTER_ANALYZER_JSON(irs::analysis::text_token_normalizing_stream, make_json,
+REGISTER_ANALYZER_JSON(analysis::text_token_normalizing_stream, make_json,
                        normalize_json_config);
-REGISTER_ANALYZER_TEXT(irs::analysis::text_token_normalizing_stream, make_text,
+REGISTER_ANALYZER_TEXT(analysis::text_token_normalizing_stream, make_text,
                        normalize_text_config);
-REGISTER_ANALYZER_VPACK(irs::analysis::text_token_normalizing_stream, make_vpack,
+REGISTER_ANALYZER_VPACK(analysis::text_token_normalizing_stream, make_vpack,
                        normalize_vpack_config);
 
 }
@@ -374,7 +355,7 @@ text_token_normalizing_stream::text_token_normalizing_stream(
                          normalize_json_config); // match registration above
   REGISTER_ANALYZER_TEXT(text_token_normalizing_stream, make_text,
                          normalize_text_config); // match registration above
-  REGISTER_ANALYZER_VPACK(irs::analysis::text_token_normalizing_stream, make_vpack,
+  REGISTER_ANALYZER_VPACK(analysis::text_token_normalizing_stream, make_vpack,
                          normalize_vpack_config); // match registration above
 }
 
@@ -393,11 +374,11 @@ bool text_token_normalizing_stream::next() {
   return true;
 }
 
-bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
+bool text_token_normalizing_stream::reset(const string_ref& data) {
   if (state_->icu_locale.isBogus()) {
     state_->icu_locale = icu::Locale(
-      std::string(irs::locale_utils::language(state_->options.locale)).c_str(),
-      std::string(irs::locale_utils::country(state_->options.locale)).c_str()
+      std::string(locale_utils::language(state_->options.locale)).c_str(),
+      std::string(locale_utils::country(state_->options.locale)).c_str()
     );
 
     if (state_->icu_locale.isBogus()) {
@@ -441,12 +422,12 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
   // convert encoding to UTF8 for use with ICU
   // ...........................................................................
   std::string data_utf8;
-  irs::string_ref data_utf8_ref;
-  if (irs::locale_utils::is_utf8(state_->options.locale)) {
+  string_ref data_utf8_ref;
+  if (locale_utils::is_utf8(state_->options.locale)) {
     data_utf8_ref = data;
   } else {
     // valid conversion since 'locale_' was created with internal unicode encoding
-    if (!irs::locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
+    if (!locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
       return false; // UTF8 conversion failure
     }
     data_utf8_ref = data_utf8;
@@ -497,8 +478,8 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
   // ...........................................................................
   // use the normalized value
   // ...........................................................................
-  static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
-  std::get<term_attribute>(attrs_).value = irs::ref_cast<irs::byte_type>(state_->term_buf);
+  static_assert(sizeof(byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
+  std::get<term_attribute>(attrs_).value = irs::ref_cast<byte_type>(state_->term_buf);
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = static_cast<uint32_t>(data.size());

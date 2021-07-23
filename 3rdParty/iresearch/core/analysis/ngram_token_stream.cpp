@@ -29,6 +29,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
+
 #include "utils/hash_utils.hpp"
 #include "utils/vpack_utils.hpp"
 #include "utils/utf8_utils.hpp"
@@ -211,14 +212,9 @@ bool make_vpack_config(
     }
 
     // start_marker
-    {
-      builder->add(START_MARKER_PARAM_NAME, VPackValue(irs::ref_cast<char>(options.start_marker)));
-    }
-
+    builder->add(START_MARKER_PARAM_NAME, VPackValue(irs::ref_cast<char>(options.start_marker)));
     // end_marker
-    {
-      builder->add(END_MARKER_PARAM_NAME, VPackValue(irs::ref_cast<char>(options.end_marker)));
-    }
+    builder->add(END_MARKER_PARAM_NAME, VPackValue(irs::ref_cast<char>(options.end_marker)));
   }
 
   return true;

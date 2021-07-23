@@ -1174,7 +1174,8 @@ TEST(ngram_token_stream_test, test_make_config_json) {
     std::string config = "{\"min\":1,\"max\":5,\"preserveOriginal\":false,\"invalid_parameter\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ(VPackParser::fromJson("{\"min\":1,\"max\":5,\"preserveOriginal\":false,\"streamType\":\"binary\"}")->toString(), actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"min\":1,\"max\":5,\"preserveOriginal\":false,"
+                                    "\"streamType\":\"binary\",\"startMarker\":\"\",\"endMarker\":\"\"}")->toString(), actual);
   }
 
   //with changed values
@@ -1190,14 +1191,16 @@ TEST(ngram_token_stream_test, test_make_config_json) {
     std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"startMarker\":\"$123\"}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ(VPackParser::fromJson("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\",\"startMarker\":\"$123\"}")->toString(), actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\","
+                                    "\"startMarker\":\"$123\", \"endMarker\":\"\"}")->toString(), actual);
   }
   //with only end marker
   {
     std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"endMarker\":\"#456\"}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ(VPackParser::fromJson("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\",\"endMarker\":\"#456\"}")->toString(), actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\","
+                                    "\"startMarker\":\"\", \"endMarker\":\"#456\"}")->toString(), actual);
   }
 
   // test vpack
@@ -1209,7 +1212,8 @@ TEST(ngram_token_stream_test, test_make_config_json) {
     std::string out_str;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "ngram", irs::type<irs::text_format::vpack>::get(), in_str));
     VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
-    ASSERT_EQ(VPackParser::fromJson("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\",\"endMarker\":\"#456\"}")->toString(), out_slice.toString());
+    ASSERT_EQ(VPackParser::fromJson("{\"min\":11,\"max\":22,\"preserveOriginal\":true,\"streamType\":\"binary\","
+                                     "\"startMarker\":\"\", \"endMarker\":\"#456\"}")->toString(), out_slice.toString());
   }
 }
 

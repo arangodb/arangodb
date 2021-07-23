@@ -78,12 +78,17 @@ const std::string DIR_TYPE = "dir-type";
 const std::string FORMAT = "format";
 const std::string ANALYZER_TYPE = "analyzer-type";
 const std::string ANALYZER_OPTIONS = "analyzer-options";
+const std::string SEGMENT_MEM_MAX = "segment-memory-max";
+const std::string CONSOLIDATION_INTERVAL = "consolidation-interval";
 
 const std::string DEFAULT_ANALYZER_TYPE = "segmentation";
 const std::string DEFAULT_ANALYZER_OPTIONS = R"({})";
 
+constexpr size_t DEFAULT_SEGMENT_MEM_MAX = 1 << 28; // 256M
+constexpr size_t DEFAULT_CONSOLIDATION_INTERVAL_MSEC = 500;
+
 constexpr irs::IndexFeatures TEXT_INDEX_FEATURES =
-  irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS;
+  irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
 
 
 // legacy formats supportd only variable length norms, i.e. "norm" feature
@@ -341,7 +346,9 @@ int put(
     size_t indexer_threads,
     size_t consolidation_threads,
     size_t commit_interval_ms,
+    size_t consolidation_interval_ms,
     size_t batch_size,
+    size_t segment_mem_max,
     bool consolidate_all) {
   auto dir = create_directory(dir_type, path);
 
@@ -390,7 +397,7 @@ int put(
   opts.features[irs::type<irs::granularity_prefix>::id()] = nullptr;
   opts.features[irs::type<irs::norm>::id()] = &irs::norm::compute;
   opts.segment_pool_size = indexer_threads;
-  opts.segment_memory_max = UINT64_C(1) << 27; // 128M
+  opts.segment_memory_max = segment_mem_max;
   opts.feature_column_info = [](irs::type_info::type_id) {
     return irs::column_info{ irs::type<irs::compression::none>::get(), {}, false };
   };
@@ -408,10 +415,12 @@ int put(
             << THR << "=" << indexer_threads << '\n'
             << CONS_THR << "=" << consolidation_threads << '\n'
             << CPR << "=" << commit_interval_ms << '\n'
+            << CONSOLIDATION_INTERVAL << "=" << consolidation_interval_ms << '\n'
             << BATCH_SIZE << "=" << batch_size << '\n'
             << CONSOLIDATE_ALL << "=" << consolidate_all << '\n'
             << ANALYZER_TYPE << "=" << analyzer_type << '\n'
-            << ANALYZER_OPTIONS << "=" << analyzer_options << '\n';
+            << ANALYZER_OPTIONS << "=" << analyzer_options << '\n'
+            << SEGMENT_MEM_MAX << "=" << segment_mem_max << '\n';
 
   struct {
     std::condition_variable cond_;
@@ -503,12 +512,12 @@ int put(
   auto policy = irs::index_utils::consolidation_policy(consolidation_options);
 
   for (size_t i = consolidation_threads; i; --i) {
-    thread_pool.run([&dir, &policy, &batch_provider, &consolidation_mutex, &consolidation_cv, &writer]()->void {
+    thread_pool.run([&dir, &policy, &batch_provider, &consolidation_mutex, &consolidation_cv, consolidation_interval_ms, &writer]()->void {
       while (!batch_provider.done_.load()) {
         {
           auto lock = irs::make_unique_lock(consolidation_mutex);
           if (std::cv_status::timeout ==
-              consolidation_cv.wait_for(lock, std::chrono::seconds(5))) {
+              consolidation_cv.wait_for(lock, std::chrono::milliseconds(consolidation_interval_ms))) {
             continue;
           }
         }
@@ -607,7 +616,12 @@ int put(const cmdline::parser& args) {
   const auto analyzer_options = args.exist(ANALYZER_TYPE)
     ? args.get<std::string>(ANALYZER_OPTIONS)
     : DEFAULT_ANALYZER_OPTIONS;
-
+  const auto segment_mem_max = args.exist(SEGMENT_MEM_MAX)
+    ? args.get<size_t>(SEGMENT_MEM_MAX)
+    : DEFAULT_SEGMENT_MEM_MAX;
+  const auto consolidation_internval_ms = args.exist(CONSOLIDATION_INTERVAL)
+    ? args.get<size_t>(CONSOLIDATION_INTERVAL)
+    : DEFAULT_CONSOLIDATION_INTERVAL_MSEC;
 
   std::fstream fin;
   std::istream* in;
@@ -626,7 +640,8 @@ int put(const cmdline::parser& args) {
 
   return put(path, dir_type, format, analyzer_type, analyzer_options,
              *in, lines_max, indexer_threads, consolidation_threads,
-             commit_interval_ms, batch_size, consolidate);
+             commit_interval_ms, consolidation_internval_ms,
+             batch_size, segment_mem_max, consolidate);
 }
 
 int put(int argc, char* argv[]) {
@@ -643,8 +658,10 @@ int put(int argc, char* argv[]) {
   cmdput.add(THR, 0, "Number of insert threads", false, size_t(0));
   cmdput.add(CONS_THR, 0, "Number of consolidation threads", false, size_t(0));
   cmdput.add(CPR, 0, "Commit period in lines", false, size_t(0));
+  cmdput.add(CONSOLIDATION_INTERVAL, 0, "Consolidation interval (msec)", false, DEFAULT_CONSOLIDATION_INTERVAL_MSEC);
   cmdput.add(ANALYZER_TYPE, 0, "Text analyzer type", false, DEFAULT_ANALYZER_TYPE);
   cmdput.add(ANALYZER_OPTIONS, 0, "Text analyzer options", false, DEFAULT_ANALYZER_OPTIONS);
+  cmdput.add(SEGMENT_MEM_MAX, 0, "Max size of per-segment in-memory buffer", false, DEFAULT_SEGMENT_MEM_MAX);
 
   cmdput.parse(argc, argv);
 

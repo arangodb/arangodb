@@ -451,27 +451,6 @@ bool process_term(
   return true;
 }
 
-bool make_locale_from_name(const irs::string_ref& name,
-                          std::locale& locale) {
-  try {
-    locale = irs::locale_utils::locale(
-        name, irs::string_ref::NIL,
-        true);  // true == convert to unicode, required for ICU and Snowball
-    // check if ICU supports locale
-    auto icu_locale = icu::Locale(
-      std::string(irs::locale_utils::language(locale)).c_str(),
-      std::string(irs::locale_utils::country(locale)).c_str()
-    );
-    return !icu_locale.isBogus();
-  } catch (...) {
-    IR_FRMT_ERROR(
-      "Caught error while constructing locale from "
-      "name: %s",
-      name.c_str());
-  }
-  return false;
-}
-
 constexpr VPackStringRef LOCALE_PARAM_NAME            {"locale"};
 constexpr VPackStringRef CASE_CONVERT_PARAM_NAME      {"case"};
 constexpr VPackStringRef STOPWORDS_PARAM_NAME         {"stopwords"};
@@ -496,7 +475,7 @@ bool parse_vpack_options(const VPackSlice slice,
                         irs::analysis::text_token_stream::options_t& options) {
 
   if (slice.isString()) {
-    return make_locale_from_name(irs::get_string<irs::string_ref>(slice), options.locale);
+    return locale_utils::icu_locale(irs::get_string<irs::string_ref>(slice), options.locale);
   }
 
   if (!slice.isObject() || !slice.hasKey(LOCALE_PARAM_NAME) ||
@@ -509,7 +488,7 @@ bool parse_vpack_options(const VPackSlice slice,
   }
 
   try {
-    if (!make_locale_from_name(irs::get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)),
+    if (!locale_utils::icu_locale(irs::get_string<irs::string_ref>(slice.get(LOCALE_PARAM_NAME)),
                               options.locale)) {
       return false;
     }
@@ -822,7 +801,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
   std::locale locale;
-  if (make_locale_from_name(args, locale)) {
+  if (locale_utils::icu_locale(args, locale)) {
     return construct(locale);
   } else {
     return nullptr;
@@ -832,7 +811,7 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
 bool normalize_text_config(const irs::string_ref& args,
                            std::string& definition) {
   std::locale locale;
-  if (make_locale_from_name(args, locale)) {
+  if (locale_utils::icu_locale(args, locale)) {
     definition = irs::locale_utils::name(locale);
     return true;
   }

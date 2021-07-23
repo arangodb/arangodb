@@ -619,7 +619,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
   } else {
     // we don't support encryption and custom
     // compression for 'FORMAT_MIN' version
-    compression = type<compression::lz4>::get();
+    compression = irs::type<compression::lz4>::get();
     cipher = nullptr;
   }
 
@@ -2456,7 +2456,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     } else {
       // we don't support encryption and custom
       // compression for 'FORMAT_MIN' version
-      decomp = compression::get_decompressor(type<compression::lz4>::get());
+      decomp = compression::get_decompressor(irs::type<compression::lz4>::get());
       assert(decomp);
     }
 

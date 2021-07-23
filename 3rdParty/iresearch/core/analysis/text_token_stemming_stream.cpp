@@ -34,26 +34,7 @@
 
 namespace {
 
-
-bool make_locale_from_name(const irs::string_ref& name,
-                          std::locale& locale) {
-  try {
-    locale = irs::locale_utils::locale(
-        name, irs::string_ref::NIL,
-        true);  // true == convert to unicode, required for ICU and Snowball
-    // check if ICU supports locale
-    auto icu_locale =
-        icu::Locale(std::string(irs::locale_utils::language(locale)).c_str(),
-                    std::string(irs::locale_utils::country(locale)).c_str());
-    return !icu_locale.isBogus();
-  } catch (...) {
-    IR_FRMT_ERROR(
-      "Caught error while constructing locale from "
-      "name: %s",
-      name.c_str());
-  }
-  return false;
-}
+using namespace irs;
 
 const VPackStringRef LOCALE_PARAM_NAME {"locale"};
 
@@ -67,14 +48,14 @@ bool parse_vpack_options(const VPackSlice slice, std::locale& locale) {
   try {
     switch (slice.type()) {
       case VPackValueType::String:
-        return make_locale_from_name(irs::get_string<irs::string_ref>(slice), locale);
+        return locale_utils::icu_locale(get_string<string_ref>(slice), locale);
       case VPackValueType::Object:
       {
         auto param_name_slice = slice.get(LOCALE_PARAM_NAME);
         if (!param_name_slice.isNone() &&
             param_name_slice.isString()) {
-          irs::string_ref param_name = irs::get_string<irs::string_ref>(param_name_slice);
-          return make_locale_from_name(param_name, locale);
+          string_ref param_name = get_string<string_ref>(param_name_slice);
+          return locale_utils::icu_locale(param_name, locale);
         }
       }
 
@@ -100,16 +81,16 @@ bool parse_vpack_options(const VPackSlice slice, std::locale& locale) {
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): the locale to use for stemming <required>
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
+analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   std::locale locale;
   if (parse_vpack_options(slice, locale)) {
-    return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(locale);
+    return memory::make_shared<analysis::text_token_stemming_stream>(locale);
   } else {
     return nullptr;
   }
 }
 
-irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+analysis::analyzer::ptr make_vpack(const string_ref& args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   return make_vpack(slice);
 }
@@ -123,7 +104,7 @@ bool make_vpack_config(const std::locale& locale, VPackBuilder* builder) {
   VPackObjectBuilder object(builder);
   {
      // locale
-    const auto& locale_name = irs::locale_utils::name(locale);
+    const auto& locale_name = locale_utils::name(locale);
     builder->add(LOCALE_PARAM_NAME, VPackValue(locale_name));
   }
   return true;
@@ -138,7 +119,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   }
 }
 
-bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
+bool normalize_vpack_config(const string_ref& args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -148,7 +129,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
   return false;
 }
 
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+analysis::analyzer::ptr make_json(const string_ref& args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while constructing text_token_normalizing_stream");
@@ -167,7 +148,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   return nullptr;
 }
 
-bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_json_config(const string_ref& args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing text_token_normalizing_stream");
@@ -192,11 +173,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a language to use for stemming
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
+analysis::analyzer::ptr make_text(const string_ref& args) {
   try {
     std::locale locale;
-    if (make_locale_from_name(args, locale)) {
-      return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(locale);
+    if (locale_utils::icu_locale(args, locale)) {
+      return memory::make_shared<analysis::text_token_stemming_stream>(locale);
     }
   } catch (...) {
     std::string err_msg = static_cast<std::string>(args);
@@ -208,20 +189,20 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
   return nullptr;
 }
 
-bool normalize_text_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_text_config(const string_ref& args, std::string& definition) {
   std::locale locale;
-  if (make_locale_from_name(args, locale)) {
-    definition = irs::locale_utils::name(locale);
+  if (locale_utils::icu_locale(args, locale)) {
+    definition = locale_utils::name(locale);
     return true;
   }
   return false;
 }
 
-REGISTER_ANALYZER_JSON(irs::analysis::text_token_stemming_stream, make_json, 
+REGISTER_ANALYZER_JSON(analysis::text_token_stemming_stream, make_json,
                        normalize_json_config);
-REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stemming_stream, make_text, 
+REGISTER_ANALYZER_TEXT(analysis::text_token_stemming_stream, make_text,
                        normalize_text_config);
-REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stemming_stream, make_vpack,
+REGISTER_ANALYZER_VPACK(analysis::text_token_stemming_stream, make_vpack,
                        normalize_vpack_config);
 
 }
@@ -240,7 +221,7 @@ text_token_stemming_stream::text_token_stemming_stream(const std::locale& locale
                          normalize_json_config); // match registration above
   REGISTER_ANALYZER_TEXT(text_token_stemming_stream, make_text,
                          normalize_text_config); // match registration above
-  REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stemming_stream, make_vpack,
+  REGISTER_ANALYZER_VPACK(analysis::text_token_stemming_stream, make_vpack,
                          normalize_vpack_config); // match registration above
 }
 
@@ -258,11 +239,11 @@ bool text_token_stemming_stream::next() {
   return true;
 }
 
-bool text_token_stemming_stream::reset(const irs::string_ref& data) {
+bool text_token_stemming_stream::reset(const string_ref& data) {
   if (!stemmer_) {
     stemmer_.reset(
       sb_stemmer_new(
-        std::string(irs::locale_utils::language(locale_)).c_str(), nullptr // defaults to utf-8
+        std::string(locale_utils::language(locale_)).c_str(), nullptr // defaults to utf-8
       ),
       [](sb_stemmer* ptr)->void{ sb_stemmer_delete(ptr); }
     );
@@ -270,17 +251,17 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
 
   auto& term = std::get<term_attribute>(attrs_);
 
-  term.value = irs::bytes_ref::NIL; // reset
+  term.value = bytes_ref::NIL; // reset
   term_buf_.clear();
   term_eof_ = true;
 
   // convert to UTF8 for use with 'stemmer_'
-  irs::string_ref term_buf_ref;
-  if (irs::locale_utils::is_utf8(locale_)) {
+  string_ref term_buf_ref;
+  if (locale_utils::is_utf8(locale_)) {
     term_buf_ref = data;
   } else {
     // valid conversion since 'locale_' was created with internal unicode encoding
-    if (!irs::locale_utils::append_internal(term_buf_, data, locale_)) {
+    if (!locale_utils::append_internal(term_buf_, data, locale_)) {
       IR_FRMT_ERROR(
         "Failed to parse UTF8 value from token");
 
@@ -314,8 +295,8 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
     value = sb_stemmer_stem(stemmer_.get(), value, static_cast<int>(term_buf_ref.size()));
 
     if (value) {
-      static_assert(sizeof(irs::byte_type) == sizeof(sb_symbol), "sizeof(irs::byte_type) != sizeof(sb_symbol)");
-      term.value = irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(value),
+      static_assert(sizeof(byte_type) == sizeof(sb_symbol), "sizeof(irs::byte_type) != sizeof(sb_symbol)");
+      term.value = bytes_ref(reinterpret_cast<const byte_type*>(value),
                                    sb_stemmer_length(stemmer_.get()));
 
       return true;
@@ -325,8 +306,8 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
   // ...........................................................................
   // use the value of the unstemmed token
   // ...........................................................................
-  static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
-  term.value = irs::ref_cast<irs::byte_type>(term_buf_);
+  static_assert(sizeof(byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
+  term.value = ref_cast<byte_type>(term_buf_);
 
   return true;
 }

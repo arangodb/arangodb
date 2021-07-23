@@ -1,4 +1,37 @@
-v1.0 (2021-03-30)
+master
+-------------------------
+
+* Add new analyzer `collation` capable of producing tokens honoring language
+  specific sorting.
+
+* Add new feature `iresearch::norm2` representing fixed length norm value.
+
+* Split field features into built-in set of index features and pluggable field features.
+
+* Add ability to specify target prefix for `by_edit_distance` query.
+
+* Fix possible crash in `disjunction` inside `visit` of the already exhausted iterator.
+
+* Fix block boundaries evaluation in `block_iterator` for `memory_directory` and `fs_directory`.
+
+* Reduce number of heap allocations in `numeric_token_stream`.
+
+* Replace RapidJSON with Velocypack for analyzers and scorers serialization and deserialization
+
+* Add new `1_4` segment format utilizing new columnstore implementation.
+
+* Add new columnstore implementation based on sparse bitset format.
+
+* Add random access functionality to `data_input` for both regular reads and
+  direct buffer access.
+
+* Add `sparse_bitset_writer`/`sparse_bitset_iterator`, a fast and efficient on-disk
+  format for storing sparse bit sets.
+
+* Add a set of SIMD-based utils for encoding.
+
+
+v1.0 (2021-06-14)
 -------------------------
 
 Initial release of IResearch library
