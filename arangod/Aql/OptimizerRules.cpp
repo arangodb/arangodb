@@ -5953,6 +5953,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     modified |= optimizeTraversalPathVariable(outVariable, traversal, pruneVars);
 
     // check if we can make use of the optimized neighbors enumerator
+    // TODO: Disable useNeighbors optimization in case we have a Disjoin (Hybrid) Smart Graph
     if (!ServerState::instance()->isCoordinator()) {
       if (traversal->vertexOutVariable() != nullptr && traversal->edgeOutVariable() == nullptr &&
           traversal->pathOutVariable() == nullptr && options->isUseBreadthFirst() &&
