@@ -1219,9 +1219,27 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     std::vector<TRI_voc_tick_t> ids;
     velocypack::Slice databases = result[0].get(std::vector<std::string>(
         {AgencyCommHelper::path(), "Plan", "Databases"}));
-
     if (!databases.isObject()) {
       return false;
+    }
+
+    for (VPackObjectIterator::ObjectPair options : VPackObjectIterator(databases)) {
+      try {
+        ids.push_back(std::stoul(options.value.get("id").copyString()));
+      } catch (std::invalid_argument& e) {
+        LOG_TOPIC("a9233", ERR, Logger::CLUSTER)
+          << "Number conversion for planned database id for " << options.key.stringView() << " failed.";
+      } catch (std::out_of_range const& e) {
+        LOG_TOPIC("a9243", ERR, Logger::CLUSTER)
+          << "Number conversion for planned database id for " << options.key.stringView() << " failed.";
+      } catch (std::bad_alloc const& e) {
+        LOG_TOPIC("a9234", FATAL, Logger::CLUSTER)
+          << "Failed to allocate memory to enumerate planned databases from agency";
+        FATAL_ERROR_EXIT();
+      } catch (std::exception const& e) {
+        LOG_TOPIC("a9234", FATAL, Logger::CLUSTER)
+          << "Failed to read planned databases " << options.key.stringView() << " from agency";
+      }
     }
 
     // get the list of databases that we know about locally
@@ -1264,9 +1282,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
             << "In agency database plan" << infoResult.errorMessage();
         TRI_ASSERT(false);
       }
-
-      // known plan IDs
-      ids.push_back(info.getId());
 
       auto dbName = info.getName();
       TRI_vocbase_t* vocbase = databaseFeature.useDatabase(dbName);
