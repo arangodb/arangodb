@@ -255,6 +255,13 @@ bool DepthFirstEnumerator::next() {
         return;
       }
 
+#ifdef USE_ENTEPRISE
+      bool test = validDisjointPath();
+      if (!validDisjointPath()) {
+        return;
+      }
+#endif
+
       if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
         if (ServerState::instance()->isCoordinator()) {
           for (auto const& it : _enumeratedPath.edges()) {
@@ -383,6 +390,12 @@ VPackSlice DepthFirstEnumerator::pathToSlice(VPackBuilder& result, bool fromPrun
 arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(VPackBuilder& result) {
   return arangodb::aql::AqlValue(pathToSlice(result, false));
 }
+
+#ifndef USE_ENTERPRISE
+bool DepthFirstEnumerator::validDisjointPath() {
+  return true;
+}
+#endif
 
 bool DepthFirstEnumerator::shouldPrune() {
   // We need to call prune here

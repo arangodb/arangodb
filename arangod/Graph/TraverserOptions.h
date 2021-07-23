@@ -107,6 +107,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   std::vector<std::string> edgeCollections;
 
+  bool _isDisjoint = false;
+
   explicit TraverserOptions(arangodb::aql::QueryContext& query);
 
   TraverserOptions(arangodb::aql::QueryContext& query, arangodb::velocypack::Slice definition);
@@ -213,6 +215,9 @@ struct TraverserOptions : public graph::BaseOptions {
   }
 
   auto explicitDepthLookupAt() const -> std::unordered_set<std::size_t>;
+
+  auto setDisjoint() -> void;
+  auto isDisjoint() const -> bool;
 
  private:
   void readProduceInfo(VPackSlice obj);

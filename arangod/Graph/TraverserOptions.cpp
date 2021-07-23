@@ -749,6 +749,16 @@ auto TraverserOptions::explicitDepthLookupAt() const -> std::unordered_set<std::
   return result;
 }
 
+#ifndef USE_ENTERPRISE
+auto TraverserOptions::setDisjoint() -> void {
+  return;
+}
+
+auto TraverserOptions::isDisjoint() const -> bool {
+  return false;
+}
+#endif
+
 bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vertex,
                                                 uint64_t depth) {
   arangodb::aql::Expression* expression = nullptr;
