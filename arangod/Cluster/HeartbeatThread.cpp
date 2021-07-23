@@ -1228,17 +1228,17 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         ids.push_back(std::stoul(options.value.get("id").copyString()));
       } catch (std::invalid_argument& e) {
         LOG_TOPIC("a9233", ERR, Logger::CLUSTER)
-          << "Number conversion for planned database id for " << options.key.stringView() << " failed.";
+          << "Number conversion for planned database id for " << options.key.stringView() << " failed: " << e.what();
       } catch (std::out_of_range const& e) {
         LOG_TOPIC("a9243", ERR, Logger::CLUSTER)
-          << "Number conversion for planned database id for " << options.key.stringView() << " failed.";
-      } catch (std::bad_alloc const& e) {
+          << "Number conversion for planned database id for " << options.key.stringView() << " failed: " << e.what();
+      } catch (std::bad_alloc const&) {
         LOG_TOPIC("a9234", FATAL, Logger::CLUSTER)
           << "Failed to allocate memory to enumerate planned databases from agency";
         FATAL_ERROR_EXIT();
       } catch (std::exception const& e) {
         LOG_TOPIC("a9235", FATAL, Logger::CLUSTER)
-          << "Failed to read planned databases " << options.key.stringView() << " from agency";
+          << "Failed to read planned databases " << options.key.stringView() << " from agency: " << e.what();
       }
     }
 
