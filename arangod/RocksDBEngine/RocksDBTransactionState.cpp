@@ -261,7 +261,7 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
   } else {
     abortTransaction(activeTrx);  // deletes trx
   }
-  // TODO - TRI_ASSERT(!_rocksTransaction && !_cacheTx && !_readSnapshot);
+  TRI_ASSERT(!_cacheTx);
 
   return res;
   
@@ -283,7 +283,7 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
     // may have queried something via AQL that is now rolled back
     clearQueryCache();
   }
-  // TODO - TRI_ASSERT(!_rocksTransaction && !_cacheTx && !_readSnapshot);
+  TRI_ASSERT(!_cacheTx);
   ++statistics()._transactionsAborted;
 
   return result;

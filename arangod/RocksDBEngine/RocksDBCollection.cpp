@@ -807,14 +807,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   rocksdb::Comparator const* cmp =
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
           ->GetComparator();
-  // intentionally copy the read options so we can modify them
-  rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
   rocksdb::Slice const end = documentBounds.end();
-  ro.iterate_upper_bound = &end;
-  // we are going to blow away all data anyway. no need to blow up the cache
-  ro.fill_cache = false;
-
-  TRI_ASSERT(ro.snapshot);
 
   // avoid OOM error for truncate by committing earlier
   uint64_t const prvICC = state->options().intermediateCommitCount;
@@ -823,7 +816,12 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   uint64_t found = 0;
 
   VPackBuilder docBuffer;
-  auto iter = mthds->NewIterator(ro, documentBounds.columnFamily());
+  auto iter = mthds->NewIterator(documentBounds.columnFamily(), [&](rocksdb::ReadOptions& ro) {
+    ro.iterate_upper_bound = &end;
+    // we are going to blow away all data anyway. no need to blow up the cache
+    ro.fill_cache = false;
+    TRI_ASSERT(ro.snapshot);
+  });
   for (iter->Seek(documentBounds.start());
        iter->Valid() && cmp->Compare(iter->key(), end) < 0;
        iter->Next()) {

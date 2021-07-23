@@ -96,8 +96,10 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   
   virtual void PutLogData(rocksdb::Slice const&) = 0;
 
-  virtual std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
-                                                         rocksdb::ColumnFamilyHandle*) = 0;
+  using ReadOptionsCallback = std::function<void(rocksdb::ReadOptions&)>;
+  
+  virtual std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
+                                                         ReadOptionsCallback) = 0;
 
   virtual void SetSavePoint() = 0;
   virtual rocksdb::Status RollbackToSavePoint() = 0;

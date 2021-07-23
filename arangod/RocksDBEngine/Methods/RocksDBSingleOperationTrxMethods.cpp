@@ -99,7 +99,7 @@ void RocksDBSingleOperationTrxMethods::rollbackOperation(TRI_voc_document_operat
 }
 
 std::unique_ptr<rocksdb::Iterator> RocksDBSingleOperationTrxMethods::NewIterator(
-    rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
+    rocksdb::ColumnFamilyHandle*, ReadOptionsCallback) {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);

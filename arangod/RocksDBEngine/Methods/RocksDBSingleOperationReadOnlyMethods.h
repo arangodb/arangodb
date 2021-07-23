@@ -51,8 +51,8 @@ class RocksDBSingleOperationReadOnlyMethods final : public RocksDBReadOnlyBaseMe
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                       rocksdb::PinnableSlice* val) override;
 
-  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
-                                                rocksdb::ColumnFamilyHandle*) override;
+  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
+                                                 ReadOptionsCallback) override;
  private:
   rocksdb::TransactionDB* _db;
 };

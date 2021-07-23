@@ -50,8 +50,8 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
                       TRI_voc_document_operation_e opType,
                       bool& hasPerformedIntermediateCommit) override;
 
-  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
-                                                 rocksdb::ColumnFamilyHandle*) override;
+  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
+                                                 ReadOptionsCallback) override;
  private:
   bool hasIntermediateCommitsEnabled() const noexcept;
   

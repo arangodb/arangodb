@@ -102,10 +102,19 @@ Result RocksDBTrxMethods::addOperation(DataSourceId cid, RevisionId revisionId,
 }
 
 std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
-    rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
+    rocksdb::ColumnFamilyHandle* cf, ReadOptionsCallback readOptionsCallback) {
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
-
+  
+  rocksdb::ReadOptions opts = _readOptions;
+  if (hasIntermediateCommitsEnabled()) {
+    TRI_ASSERT(_iteratorReadSnapshot);
+    opts.snapshot = _iteratorReadSnapshot;
+  }
+  if (readOptionsCallback) {
+    readOptionsCallback(opts);
+  }
+  
   std::unique_ptr<rocksdb::Iterator> iterator(_rocksTransaction->GetIterator(opts, cf));
   if (iterator == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -174,8 +183,8 @@ Result RocksDBTrxMethods::triggerIntermediateCommit(bool& hasPerformedIntermedia
 
   createTransaction();
   _readOptions.snapshot = _rocksTransaction->GetSnapshot();
-  // TODO - TRI_ASSERT(_readSnapshot != nullptr);  // snapshots for iterators
-  //        TRI_ASSERT(_rocksReadOptions.snapshot != nullptr);
+  TRI_ASSERT(_iteratorReadSnapshot != nullptr);
+  TRI_ASSERT(_readOptions.snapshot != nullptr);
   return TRI_ERROR_NO_ERROR;
 }
 

@@ -88,9 +88,14 @@ rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
 }
 
 std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
-    rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
+    rocksdb::ColumnFamilyHandle* cf, ReadOptionsCallback readOptionsCallback) {
   TRI_ASSERT(cf != nullptr);
 
+  rocksdb::ReadOptions opts = _readOptions;
+  if (readOptionsCallback) {
+    readOptionsCallback(opts);
+  }
+  
   std::unique_ptr<rocksdb::Iterator> iterator(_db->NewIterator(opts, cf));
   if (iterator == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

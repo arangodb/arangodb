@@ -63,9 +63,7 @@ class RocksDBTransactionMethods;
 
 /// @brief transaction type
 class RocksDBTransactionState final : public TransactionState {
-  friend class RocksDBReadOnlyBaseMethods;
   friend class RocksDBTrxBaseMethods;
-  friend class RocksDBTrxMethods;
 
  public:
   RocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,

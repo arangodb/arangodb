@@ -66,7 +66,7 @@ rocksdb::Status RocksDBSingleOperationReadOnlyMethods::Get(rocksdb::ColumnFamily
 }
 
 std::unique_ptr<rocksdb::Iterator> RocksDBSingleOperationReadOnlyMethods::NewIterator(
-    rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
+    rocksdb::ColumnFamilyHandle*, ReadOptionsCallback) {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
