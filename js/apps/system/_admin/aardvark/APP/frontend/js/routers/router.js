@@ -320,9 +320,6 @@
         self.handleResize();
       });
 
-      $(window).on('scroll', function () {
-        // self.handleScroll()
-      });
     },
 
     handleScroll: function () {
