@@ -103,6 +103,8 @@ class LogicalCollection : public LogicalDataSource {
     LogicalSmartEdge = 1,
     LocalSmartEdge = 2,
     RemoteSmartEdge = 4,
+    SmartToSatEdge = 8,
+    SatToSmartEdge = 16,
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -357,6 +359,10 @@ class LogicalCollection : public LogicalDataSource {
   bool isRemoteSmartEdgeCollection() const noexcept;
 
   bool isSmartEdgeCollection() const noexcept;
+
+  bool isSatToSmartEdgeCollection() const noexcept;
+
+  bool isSmartToSatEdgeCollection() const noexcept;
 
  protected:
   void addInternalValidator(std::unique_ptr<arangodb::ValidatorBase>);

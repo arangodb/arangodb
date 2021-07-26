@@ -1275,6 +1275,14 @@ bool LogicalCollection::isSmartEdgeCollection() const noexcept {
   return (_internalValidatorTypes & InternalValidatorType::LogicalSmartEdge) != 0;
 }
 
+bool LogicalCollection::isSatToSmartEdgeCollection() const noexcept {
+  return (_internalValidatorTypes & InternalValidatorType::SatToSmartEdge) != 0;
+}
+
+bool LogicalCollection::isSmartToSatEdgeCollection() const noexcept {
+  return (_internalValidatorTypes & InternalValidatorType::SmartToSatEdge) != 0;
+}
+
 #ifndef USE_ENTERPRISE
 void LogicalCollection::decorateWithInternalEEValidators() {
   // Only available in Enterprise Mode
