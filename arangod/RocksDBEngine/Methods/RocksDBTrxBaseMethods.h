@@ -67,8 +67,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
   /// performed
   Result addOperation(DataSourceId collectionId, RevisionId revisionId,
-                      TRI_voc_document_operation_e opType,
-                      bool& hasPerformedIntermediateCommit) override;
+                      TRI_voc_document_operation_e opType) override;
                                            
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                       rocksdb::PinnableSlice* val) final override;

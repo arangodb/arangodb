@@ -48,8 +48,7 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
   void rollbackOperation(TRI_voc_document_operation_e operationType) override;
 
   Result addOperation(DataSourceId collectionId, RevisionId revisionId,
-                      TRI_voc_document_operation_e opType,
-                      bool& hasPerformedIntermediateCommit) override;
+                      TRI_voc_document_operation_e opType) override;
 
   rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
                                rocksdb::Slice const&,

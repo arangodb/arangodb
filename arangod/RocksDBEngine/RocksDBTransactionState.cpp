@@ -325,7 +325,7 @@ void RocksDBTransactionState::rollbackOperation(TRI_voc_document_operation_e ope
 Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisionId,
                                              TRI_voc_document_operation_e operationType,
                                              bool& hasPerformedIntermediateCommit) {
-  Result result = _rocksMethods->addOperation(cid, revisionId, operationType, hasPerformedIntermediateCommit);
+  Result result = _rocksMethods->addOperation(cid, revisionId, operationType);
 
   if (result.ok()) {
     auto tcoll = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
@@ -344,6 +344,8 @@ Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisi
     if (queryCache->mayBeActive() && tcoll->collection()) {
       queryCache->invalidate(&_vocbase, tcoll->collection()->guid());
     }
+    
+    result = _rocksMethods->checkIntermediateCommit(hasPerformedIntermediateCommit);
   }
   return result;
 }

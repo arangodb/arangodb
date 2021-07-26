@@ -113,8 +113,7 @@ rocksdb::SequenceNumber RocksDBTrxBaseMethods::GetSequenceNumber() const noexcep
 
 /// @brief add an operation for a transaction collection
 Result RocksDBTrxBaseMethods::addOperation(DataSourceId cid, RevisionId revisionId,
-                                       TRI_voc_document_operation_e operationType,
-                                       bool& hasPerformedIntermediateCommit) {
+                                           TRI_voc_document_operation_e operationType) {
   TRI_IF_FAILURE("addOperationSizeError") {
     return Result(TRI_ERROR_RESOURCE_LIMIT);
   }

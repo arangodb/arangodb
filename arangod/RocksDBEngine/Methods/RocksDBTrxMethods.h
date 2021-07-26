@@ -43,12 +43,10 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// @brief undo the effects of the previous prepareOperation call
   void rollbackOperation(TRI_voc_document_operation_e operationType) override;
 
-  /// @brief add an operation for a transaction collection
+  /// @brief performs an intermediate commit if necessary
   /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
   /// performed
-  Result addOperation(DataSourceId collectionId, RevisionId revisionId,
-                      TRI_voc_document_operation_e opType,
-                      bool& hasPerformedIntermediateCommit) override;
+  Result checkIntermediateCommit(bool& hasPerformedIntermediateCommit) override;
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
                                                  ReadOptionsCallback) override;

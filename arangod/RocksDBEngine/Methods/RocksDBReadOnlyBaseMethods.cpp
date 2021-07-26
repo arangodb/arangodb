@@ -43,8 +43,7 @@ void RocksDBReadOnlyBaseMethods::rollbackOperation(TRI_voc_document_operation_e 
 }
 
 Result RocksDBReadOnlyBaseMethods::addOperation(DataSourceId collectionId, RevisionId revisionId,
-                                            TRI_voc_document_operation_e opType,
-                                            bool& hasPerformedIntermediateCommit) {
+                                            TRI_voc_document_operation_e opType) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);                                          
 }
 

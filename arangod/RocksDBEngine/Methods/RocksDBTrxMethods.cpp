@@ -88,17 +88,10 @@ void RocksDBTrxMethods::rollbackOperation(TRI_voc_document_operation_e operation
   }
 }
 
-/// @brief add an operation for a transaction collection
-Result RocksDBTrxMethods::addOperation(DataSourceId cid, RevisionId revisionId,
-                                       TRI_voc_document_operation_e operationType,
-                                       bool& hasPerformedIntermediateCommit) { 
-  Result result = RocksDBTrxBaseMethods::addOperation(cid, revisionId, operationType, hasPerformedIntermediateCommit);
-  if (result.ok()) {
-    // perform an intermediate commit if necessary
-    size_t currentSize = _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
-    result = checkIntermediateCommit(currentSize, hasPerformedIntermediateCommit); 
-  }
-  return result;
+Result RocksDBTrxMethods::checkIntermediateCommit(bool& hasPerformedIntermediateCommit) {
+  // perform an intermediate commit if necessary
+  size_t currentSize = _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
+  return checkIntermediateCommit(currentSize, hasPerformedIntermediateCommit); 
 }
 
 std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(

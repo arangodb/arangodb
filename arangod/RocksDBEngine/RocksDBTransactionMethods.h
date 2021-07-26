@@ -45,6 +45,9 @@ class RocksDBTransactionMethods : public RocksDBMethods {
 
   virtual Result abortTransaction() = 0;
   
+  // Only relevant for RocksDBTrxMethods
+  virtual Result checkIntermediateCommit(bool& hasPerformedIntermediateCommit) { return {}; }
+  
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
   ///       transaction is committed
@@ -73,8 +76,7 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
   /// performed
   virtual Result addOperation(DataSourceId collectionId, RevisionId revisionId,
-                              TRI_voc_document_operation_e opType,
-                              bool& hasPerformedIntermediateCommit) = 0;
+                              TRI_voc_document_operation_e opType) = 0;
 
   using ReadOptionsCallback = std::function<void(rocksdb::ReadOptions&)>;
   
