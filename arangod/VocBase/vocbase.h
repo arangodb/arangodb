@@ -55,8 +55,6 @@ namespace aql {
 class QueryList;
 }
 namespace replication2 {
-struct LogManager;
-struct PersistedLog;
 class LogId;
 struct LogIndex;
 struct LogTerm;
@@ -65,10 +63,11 @@ namespace replicated_log {
 class LogLeader;
 class LogFollower;
 struct LogParticipantI;
-struct ReplicatedLog;
 struct LogStatus;
-}
-}
+struct PersistedLog;
+struct ReplicatedLog;
+}  // namespace replicated_log
+}  // namespace replication2
 namespace velocypack {
 class Builder;
 class Slice;
@@ -418,7 +417,7 @@ struct TRI_vocbase_t {
   bool unregisterView(arangodb::LogicalView const& view);
 
   /// @brief adds a new replicated log with given log id
-  void registerReplicatedLog(arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::PersistedLog>);
+  void registerReplicatedLog(arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>);
 
   /// @brief removes the replicated log with the given id
   void unregisterReplicatedLog(arangodb::replication2::LogId);

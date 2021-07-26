@@ -68,7 +68,7 @@ struct arangodb::ReplicatedLogMethods {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  virtual auto getLogEntryByIndex(LogId, LogIndex) const -> futures::Future<std::optional<LogEntry>> {
+  virtual auto getLogEntryByIndex(LogId, LogIndex) const -> futures::Future<std::optional<PersistingLogEntry>> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -133,7 +133,7 @@ auto sendLogStatusRequest(network::ConnectionPool *pool, std::string const& serv
 
 auto sendReadEntryRequest(network::ConnectionPool *pool, std::string const& server, std::string const& database,
                        LogId id, LogIndex index)
--> futures::Future<std::optional<LogEntry>> {
+-> futures::Future<std::optional<PersistingLogEntry>> {
 
   auto path = basics::StringUtils::joinT("/", "_api/log", id, "readEntry", index.value);
 
@@ -144,8 +144,9 @@ auto sendReadEntryRequest(network::ConnectionPool *pool, std::string const& serv
         if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
           THROW_ARANGO_EXCEPTION(resp.combinedResult());
         }
-        auto entry = LogEntry::fromVelocyPack(resp.slice().get("result"));
-        return std::optional<LogEntry>(std::move(entry));
+        auto entry =
+            PersistingLogEntry::fromVelocyPack(resp.slice().get("result"));
+        return std::optional<PersistingLogEntry>(std::move(entry));
       });
 }
 
@@ -169,9 +170,12 @@ auto sendTailRequest(network::ConnectionPool* pool, std::string const& server,
                 iter(VPackSlice(buffer->data()).get("result")),
                 end(iter.end()) {}
 
-          auto next() -> std::optional<LogEntry> override {
-            if (iter != end) {
-              return LogEntry::fromVelocyPack(*iter++);
+          auto next() -> std::optional<LogEntryView> override {
+            while (iter != end) {
+              auto logEntry = PersistingLogEntry::fromVelocyPack(*iter++);
+              if (logEntry.logPayload()) {
+                return LogEntryView(logEntry.logIndex(), *logEntry.logPayload());
+              }
             }
             return std::nullopt;
           }
@@ -206,7 +210,7 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
   }
 
   auto getLogEntryByIndex(LogId id, LogIndex index) const
-      -> futures::Future<std::optional<LogEntry>> override {
+      -> futures::Future<std::optional<PersistingLogEntry>> override {
     auto pool = server.getFeature<NetworkFeature>().pool();
     return sendReadEntryRequest(pool, getLogLeader(id), vocbase.name(), id, index);
   }
@@ -266,7 +270,7 @@ struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
     return vocbase.getReplicatedLogById(id)->getParticipant()->getStatus();
   }
 
-  auto getLogEntryByIndex(LogId id, LogIndex idx) const -> futures::Future<std::optional<LogEntry>> override {
+  auto getLogEntryByIndex(LogId id, LogIndex idx) const -> futures::Future<std::optional<PersistingLogEntry>> override {
     return vocbase.getReplicatedLogLeaderById(id)->readReplicatedEntryByIndex(idx);
   }
 
@@ -544,7 +548,7 @@ RestStatus RestLogHandler::handleGetReadEntry(const ReplicatedLogMethods& method
   LogIndex logIdx{basics::StringUtils::uint64(suffixes[2])};
 
   return waitForFuture(
-      methods.getLogEntryByIndex(logId, logIdx).thenValue([this](std::optional<LogEntry>&& entry) {
+      methods.getLogEntryByIndex(logId, logIdx).thenValue([this](std::optional<PersistingLogEntry>&& entry) {
         if (entry) {
           VPackBuilder result;
           entry->toVelocyPack(result);

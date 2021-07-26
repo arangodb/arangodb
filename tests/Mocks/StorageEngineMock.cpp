@@ -1733,13 +1733,13 @@ arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForColle
 
 auto StorageEngineMock::createReplicatedLog(TRI_vocbase_t& vocbase,
                                             arangodb::replication2::LogId id)
-    -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::PersistedLog>> {
+    -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 auto StorageEngineMock::dropReplicatedLog(TRI_vocbase_t& vocbase,
-                                          std::shared_ptr<arangodb::replication2::PersistedLog> const& ptr)
+                                          std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const& ptr)
     -> arangodb::Result {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

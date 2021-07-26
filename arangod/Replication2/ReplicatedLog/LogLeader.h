@@ -108,7 +108,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
 
   [[nodiscard]] auto getReplicatedLogSnapshot() const -> InMemoryLog::log_type;
 
-  [[nodiscard]] auto readReplicatedEntryByIndex(LogIndex idx) const -> std::optional<LogEntry>;
+  [[nodiscard]] auto readReplicatedEntryByIndex(LogIndex idx) const -> std::optional<PersistingLogEntry>;
 
   // Triggers sending of appendEntries requests to all followers. This continues
   // until all participants are perfectly in sync, and will then stop.
@@ -224,8 +224,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
                                                std::shared_ptr<QuorumData> const& quorum)
         -> ResolvedPromiseSet;
 
-    [[nodiscard]] auto getLogIterator(LogIndex firstIdx) const
-        -> std::unique_ptr<LogIterator>;
+    [[nodiscard]] auto getInternalLogIterator(LogIndex firstIdx) const
+        -> std::unique_ptr<PersistedLogIterator>;
 
     [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
         -> std::unique_ptr<LogIterator>;

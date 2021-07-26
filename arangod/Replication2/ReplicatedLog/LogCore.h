@@ -31,11 +31,9 @@
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
-namespace arangodb::replication2 {
-struct PersistedLog;
-}
-
 namespace arangodb::replication2::replicated_log {
+struct PersistedLog;
+struct PersistedLogIterator;
 
 /**
  * @brief The persistent core of a replicated log. There must only ever by one
@@ -58,9 +56,9 @@ struct alignas(64) LogCore {
   auto operator=(LogCore const&) -> LogCore& = delete;
   auto operator=(LogCore&&) -> LogCore& = delete;
 
-  auto insertAsync(std::unique_ptr<LogIterator> iter, bool waitForSync) -> futures::Future<Result>;
-  auto insert(LogIterator& iter, bool waitForSync) -> Result;
-  [[nodiscard]] auto read(LogIndex first) const -> std::unique_ptr<LogIterator>;
+  auto insertAsync(std::unique_ptr<PersistedLogIterator> iter, bool waitForSync) -> futures::Future<Result>;
+  auto insert(PersistedLogIterator& iter, bool waitForSync) -> Result;
+  [[nodiscard]] auto read(LogIndex first) const -> std::unique_ptr<PersistedLogIterator>;
   auto removeBack(LogIndex first) -> Result;
 
   auto releasePersistedLog() && -> std::shared_ptr<PersistedLog>;

@@ -81,8 +81,9 @@ RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
   return RocksDBValue(type);
 }
 
-RocksDBValue RocksDBValue::LogEntry(replication2::LogTerm term, replication2::LogPayload payload) {
-  return RocksDBValue(RocksDBEntryType::LogEntry, term, payload);
+
+RocksDBValue RocksDBValue::LogEntry(replication2::PersistingLogEntry const& entry) {
+  return RocksDBValue(RocksDBEntryType::LogEntry, entry);
 }
 
 LocalDocumentId RocksDBValue::documentId(RocksDBValue const& value) {
@@ -224,13 +225,12 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, arangodb::velocypack::StringRe
   }
 }
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, replication2::LogTerm term,
-                           replication2::LogPayload payload) {
+RocksDBValue::RocksDBValue(RocksDBEntryType type, replication2::PersistingLogEntry const& entry) {
   TRI_ASSERT(type == RocksDBEntryType::LogEntry);
-  _buffer.reserve(sizeof(uint64_t) + payload.dummy.byteSize());
-  uint64ToPersistent(_buffer, term.value);
-  _buffer.append(reinterpret_cast<const char*>(payload.dummy.data()),
-                 payload.dummy.byteSize());
+  VPackBuilder builder;
+  entry.toVelocyPack(builder, replication2::PersistingLogEntry::omitLogIndex);
+  _buffer.reserve(builder.size());
+  _buffer.append(reinterpret_cast<const char*>(builder.data()), builder.size());
 }
 
 RocksDBValue::RocksDBValue(S2Point const& p)

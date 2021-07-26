@@ -33,10 +33,10 @@ struct ChangeStreamTests : ReplicatedLogTest {};
 
 TEST_F(ChangeStreamTests, ask_for_existing_entries) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{2},
                              LogPayload::createFromString("second entry")),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+      replication2::PersistingLogEntry(LogTerm{2}, LogIndex{3},
                              LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
@@ -55,7 +55,7 @@ TEST_F(ChangeStreamTests, ask_for_existing_entries) {
     auto fut = leader->waitForIterator(LogIndex{2});
     ASSERT_TRUE(fut.isReady());
     {
-      auto entry = std::optional<LogEntry>{};
+      auto entry = std::optional<LogEntryView>{};
       auto iter = std::move(fut).get();
 
       entry = iter->next();
@@ -74,10 +74,10 @@ TEST_F(ChangeStreamTests, ask_for_existing_entries) {
 
 TEST_F(ChangeStreamTests, ask_for_non_existing_entries) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{2},
                              LogPayload::createFromString("second entry")),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+      replication2::PersistingLogEntry(LogTerm{2}, LogIndex{3},
                              LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
@@ -91,29 +91,42 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries) {
 
   auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {}, 1);
-  leader->triggerAsyncReplication();
-
+  // Note that the leader inserts an empty log entry in LogLeader::construct
   auto fut = leader->waitForIterator(LogIndex{4});
+
   ASSERT_FALSE(fut.isReady());
 
-  leader->insert(LogPayload::createFromString("fourth entry"), false,
+  leader->triggerAsyncReplication();
+
+  ASSERT_TRUE(fut.isReady());
+  std::move(fut).then([](auto&&){});
+
+  fut = leader->waitForIterator(LogIndex{5});
+
+  ASSERT_FALSE(fut.isReady());
+
+  auto const idx4 = leader->insert(LogPayload::createFromString("fourth entry"), false,
                  LogLeader::doNotTriggerAsyncReplication);
-  leader->insert(LogPayload::createFromString("fifth entry"), false,
+  // Note that the leader inserts an empty log entry in LogLeader::construct
+  EXPECT_EQ(idx4, LogIndex{5});
+  auto const idx5 = leader->insert(LogPayload::createFromString("fifth entry"), false,
                  LogLeader::doNotTriggerAsyncReplication);
+  // Note that the leader inserts an empty log entry in LogLeader::construct
+  EXPECT_EQ(idx5, LogIndex{6});
   leader->triggerAsyncReplication();
 
   ASSERT_TRUE(fut.isReady());
   {
-    auto entry = std::optional<LogEntry>{};
+    auto entry = std::optional<LogEntryView>{};
     auto iter = std::move(fut).get();
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    EXPECT_EQ(entry->logIndex(), LogIndex{4});
+    EXPECT_EQ(entry->logIndex(), idx4);
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    EXPECT_EQ(entry->logIndex(), LogIndex{5});
+    EXPECT_EQ(entry->logIndex(), idx5);
 
     entry = iter->next();
     ASSERT_FALSE(entry.has_value());
@@ -122,10 +135,10 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries) {
 
 TEST_F(ChangeStreamTests, ask_for_non_existing_entries_with_follower) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{2},
                              LogPayload::createFromString("second entry")),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+      replication2::PersistingLogEntry(LogTerm{2}, LogIndex{3},
                              LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
@@ -164,7 +177,7 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_with_follower) {
   ASSERT_TRUE(fut.isReady());
 
   {
-    auto entry = std::optional<LogEntry>{};
+    auto entry = std::optional<LogEntryView>{};
     auto iter = std::move(fut).get();
 
     entry = iter->next();
@@ -182,10 +195,10 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_with_follower) {
 
 TEST_F(ChangeStreamTests, ask_for_non_replicated_entries_with_follower) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{2},
                              LogPayload::createFromString("second entry")),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+      replication2::PersistingLogEntry(LogTerm{2}, LogIndex{3},
                              LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
@@ -219,7 +232,7 @@ TEST_F(ChangeStreamTests, ask_for_non_replicated_entries_with_follower) {
   ASSERT_TRUE(fut.isReady());
 
   {
-    auto entry = std::optional<LogEntry>{};
+    auto entry = std::optional<LogEntryView>{};
     auto iter = std::move(fut).get();
 
     entry = iter->next();
@@ -236,10 +249,10 @@ TEST_F(ChangeStreamTests, ask_for_non_replicated_entries_with_follower) {
 
 TEST_F(ChangeStreamTests, ask_for_existing_entries_follower) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{2},
                              LogPayload::createFromString("second entry")),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+      replication2::PersistingLogEntry(LogTerm{2}, LogIndex{3},
                              LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
@@ -266,7 +279,7 @@ TEST_F(ChangeStreamTests, ask_for_existing_entries_follower) {
     auto fut = follower->waitForIterator(LogIndex{2});
     ASSERT_TRUE(fut.isReady());
     {
-      auto entry = std::optional<LogEntry>{};
+      auto entry = std::optional<LogEntryView>{};
       auto iter = std::move(fut).get();
 
       entry = iter->next();
@@ -285,10 +298,10 @@ TEST_F(ChangeStreamTests, ask_for_existing_entries_follower) {
 
 TEST_F(ChangeStreamTests, ask_for_non_existing_entries_follower) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{2},
                              LogPayload::createFromString("second entry")),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+      replication2::PersistingLogEntry(LogTerm{2}, LogIndex{3},
                              LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
@@ -330,7 +343,7 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_follower) {
   follower->runAsyncAppendEntries();
   ASSERT_TRUE(fut.isReady());
   {
-    auto entry = std::optional<LogEntry>{};
+    auto entry = std::optional<LogEntryView>{};
     auto iter = std::move(fut).get();
 
     entry = iter->next();
@@ -348,10 +361,10 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_follower) {
 
 TEST_F(ChangeStreamTests, ask_for_non_committed_entries_follower) {
   auto const entries = {
-      replication2::LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
-      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{2},
                              LogPayload::createFromString("second entry")),
-      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+      replication2::PersistingLogEntry(LogTerm{2}, LogIndex{3},
                              LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
@@ -388,7 +401,7 @@ TEST_F(ChangeStreamTests, ask_for_non_committed_entries_follower) {
   ASSERT_TRUE(fut.isReady());
 
   {
-    auto entry = std::optional<LogEntry>{};
+    auto entry = std::optional<LogEntryView>{};
     auto iter = std::move(fut).get();
 
     entry = iter->next();

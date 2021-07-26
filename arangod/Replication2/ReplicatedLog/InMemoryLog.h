@@ -37,6 +37,7 @@
 // result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
 #pragma warning(disable : 4334)
 #endif
+#include <velocypack/Builder.h>
 #include <immer/flex_vector.hpp>
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
@@ -45,6 +46,7 @@
 namespace arangodb::replication2::replicated_log {
 struct LogCore;
 class ReplicatedLogIterator;
+struct PersistedLogIterator;
 
 /**
  * @brief The ephemeral part of the replicated log held in memory. Can hold more
@@ -96,10 +98,11 @@ struct InMemoryLog {
   [[nodiscard]] auto append(LoggerContext const& logContext, log_type entries) const
       -> InMemoryLog;
   [[nodiscard]] auto append(LoggerContext const& logContext,
-                            ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy> const& entries) const
+                            ::immer::flex_vector<PersistingLogEntry, arangodb::immer::arango_memory_policy> const& entries) const
       -> InMemoryLog;
 
   [[nodiscard]] auto getIteratorFrom(LogIndex fromIdx) const -> std::unique_ptr<LogIterator>;
+  [[nodiscard]] auto getInternalIteratorFrom(LogIndex fromIdx) const -> std::unique_ptr<PersistedLogIterator>;
   // get an iterator for range [from, to).
   [[nodiscard]] auto getIteratorRange(LogIndex fromIdx, LogIndex toIdx) const
       -> std::unique_ptr<LogIterator>;
@@ -107,6 +110,10 @@ struct InMemoryLog {
   [[nodiscard]] auto takeSnapshotUpToAndIncluding(LogIndex until) const -> InMemoryLog;
 
   [[nodiscard]] auto copyFlexVector() const -> log_type;
+
+  // helpful for debugging
+  [[nodiscard]] static auto dump(log_type log) -> std::string;
+  [[nodiscard]] auto dump() -> std::string;
 
  protected:
   explicit InMemoryLog(log_type log);

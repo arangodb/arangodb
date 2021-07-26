@@ -83,7 +83,7 @@ struct LogIndex : implement_compare<LogIndex> {
 
   [[nodiscard]] auto operator<=(LogIndex) const -> bool;
 
-  auto operator+(std::uint64_t delta) const -> LogIndex;
+  [[nodiscard]] auto operator+(std::uint64_t delta) const -> LogIndex;
 
   friend auto operator<<(std::ostream& os, LogIndex const& idx) -> std::ostream&;
 
@@ -105,8 +105,8 @@ struct LogTerm : implement_compare<LogTerm> {
 
 auto operator<<(std::ostream& os, LogTerm const& term) -> std::ostream&;
 
-auto to_string(LogTerm term) -> std::string;
-auto to_string(LogIndex index) -> std::string;
+[[nodiscard]] auto to_string(LogTerm term) -> std::string;
+[[nodiscard]] auto to_string(LogIndex index) -> std::string;
 
 struct TermIndexPair : implement_compare<TermIndexPair> {
   LogTerm term{};
@@ -119,12 +119,12 @@ struct TermIndexPair : implement_compare<TermIndexPair> {
   TermIndexPair() = default;
 
   void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice) -> TermIndexPair;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> TermIndexPair;
 
   friend auto operator<<(std::ostream& os, TermIndexPair const& pair) -> std::ostream&;
 };
 
-auto operator<=(TermIndexPair const& left, TermIndexPair const& right) noexcept -> bool;
+[[nodiscard]] auto operator<=(TermIndexPair const& left, TermIndexPair const& right) noexcept -> bool;
 auto operator<<(std::ostream& os, TermIndexPair const& pair) -> std::ostream&;
 
 struct LogPayload {
@@ -132,8 +132,8 @@ struct LogPayload {
   explicit LogPayload(velocypack::UInt8Buffer dummy);
 
   // Named constructors, have to make copies.
-  static auto createFromSlice(velocypack::Slice slice) -> LogPayload;
-  static auto createFromString(std::string_view string) -> LogPayload;
+  [[nodiscard]] static auto createFromSlice(velocypack::Slice slice) -> LogPayload;
+  [[nodiscard]] static auto createFromString(std::string_view string) -> LogPayload;
 
   friend auto operator==(LogPayload const&, LogPayload const&) -> bool;
   friend auto operator!=(LogPayload const&, LogPayload const&) -> bool;
@@ -144,37 +144,38 @@ struct LogPayload {
   velocypack::UInt8Buffer dummy;
 };
 
-auto operator==(LogPayload const&, LogPayload const&) -> bool;
-auto operator!=(LogPayload const&, LogPayload const&) -> bool;
+[[nodiscard]] auto operator==(LogPayload const&, LogPayload const&) -> bool;
+[[nodiscard]] auto operator!=(LogPayload const&, LogPayload const&) -> bool;
 
 // just a placeholder for now, must have a hash<>
 using ParticipantId = std::string;
 
-class LogEntry {
+class PersistingLogEntry {
  public:
-  struct Empty{};
-  static constexpr auto empty = Empty();
-
-  LogEntry(LogTerm, LogIndex, LogPayload);
-  LogEntry(LogTerm, LogIndex, Empty);
-  LogEntry(TermIndexPair, LogPayload);
+  PersistingLogEntry(LogTerm, LogIndex, std::optional<LogPayload>);
+  PersistingLogEntry(TermIndexPair, std::optional<LogPayload>);
 
   [[nodiscard]] auto logTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
-  [[nodiscard]] auto logPayload() const noexcept -> LogPayload const&;
+  [[nodiscard]] auto logPayload() const noexcept -> std::optional<LogPayload> const&;
   [[nodiscard]] auto logTermIndexPair() const noexcept -> TermIndexPair;
 
+  class OmitLogIndex {};
+  constexpr static auto omitLogIndex = OmitLogIndex();
   void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> LogEntry;
+  void toVelocyPack(velocypack::Builder& builder, OmitLogIndex) const;
+  static auto fromVelocyPack(velocypack::Slice slice) -> PersistingLogEntry;
 
-  auto operator==(LogEntry const&) const noexcept -> bool;
+  [[nodiscard]] auto operator==(PersistingLogEntry const&) const noexcept -> bool;
 
  private:
-  // TODO replace this with a TermIndexPair
+  void entriesWithoutIndexToVelocyPack(velocypack::Builder& builder) const;
+
   LogTerm _logTerm{};
   LogIndex _logIndex{};
-  // TODO make the payload optional
-  LogPayload _payload;
+  // TODO It seems impractical to not copy persisting log entries, so we should
+  //      probably make this a shared_ptr (or immer::box).
+  std::optional<LogPayload> _payload;
 };
 
 // A log entry, enriched with non-persisted metadata, to be stored in an
@@ -183,18 +184,40 @@ class InMemoryLogEntry {
  public:
   using clock = std::chrono::steady_clock;
 
-  explicit InMemoryLogEntry(LogEntry entry);
+  explicit InMemoryLogEntry(PersistingLogEntry entry);
 
   [[nodiscard]] auto insertTp() const noexcept -> clock::time_point;
   void setInsertTp(clock::time_point) noexcept;
-  auto entry() const noexcept -> LogEntry const&;
+  [[nodiscard]] auto entry() const noexcept -> PersistingLogEntry const&;
 
  private:
   // Immutable box that allows sharing, i.e. cheap copying.
-  ::immer::box<LogEntry, ::arangodb::immer::arango_memory_policy> _logEntry;
+  ::immer::box<PersistingLogEntry, ::arangodb::immer::arango_memory_policy> _logEntry;
   // Timepoint at which the insert was started (not the point in time where it
   // was committed)
   clock::time_point _insertTp{};
+};
+
+// A log entry as visible to the user of a replicated log.
+// Does thus always contain a payload: only internal log entries are without
+// payload, which aren't visible to the user. User-defined log entries always
+// contain a payload.
+// The term is not of interest, and therefore not part of this struct.
+// Note that when these entries are visible, they are already committed.
+// It does not own the payload, so make sure it is still valid when using it.
+class LogEntryView {
+ public:
+  LogEntryView() = delete;
+  LogEntryView(LogIndex index, LogPayload const& payload) noexcept;
+
+  [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
+  [[nodiscard]] auto logPayload() const noexcept -> LogPayload const&;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+
+ private:
+  LogIndex _index;
+  LogPayload const* _payload;
 };
 
 class LogId : public arangodb::basics::Identifier {
@@ -210,7 +233,9 @@ auto to_string(LogId logId) -> std::string;
 
 struct LogIterator {
   virtual ~LogIterator() = default;
-  virtual auto next() -> std::optional<LogEntry> = 0;
+  // The returned view is guaranteed to stay valid until a successive next()
+  // call (only).
+  virtual auto next() -> std::optional<LogEntryView> = 0;
 };
 
 struct LogConfig {
@@ -226,28 +251,28 @@ struct LogConfig {
   friend auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 };
 
-auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
-auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
+[[nodiscard]] auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
+[[nodiscard]] auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
 
 }  // namespace arangodb::replication2
 
 template <>
 struct std::hash<arangodb::replication2::LogIndex> {
-  auto operator()(arangodb::replication2::LogIndex const& v) const noexcept -> std::size_t {
+  [[nodiscard]] auto operator()(arangodb::replication2::LogIndex const& v) const noexcept -> std::size_t {
     return std::hash<uint64_t>{}(v.value);
   }
 };
 
 template <>
 struct std::hash<arangodb::replication2::LogTerm> {
-  auto operator()(arangodb::replication2::LogTerm const& v) const noexcept -> std::size_t {
+  [[nodiscard]] auto operator()(arangodb::replication2::LogTerm const& v) const noexcept -> std::size_t {
     return std::hash<uint64_t>{}(v.value);
   }
 };
 
 template <>
 struct std::hash<arangodb::replication2::LogId> {
-  auto operator()(arangodb::replication2::LogId const& v) const noexcept -> std::size_t {
+  [[nodiscard]] auto operator()(arangodb::replication2::LogId const& v) const noexcept -> std::size_t {
     return std::hash<arangodb::basics::Identifier>{}(v);
   }
 };

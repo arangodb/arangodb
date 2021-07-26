@@ -19,10 +19,12 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #include <Basics/Exceptions.h>
 #include <Basics/RocksDBUtils.h>
 #include <Basics/ScopeGuard.h>
 #include <Basics/debugging.h>
+#include <Replication2/ReplicatedLog/PersistedLog.h>
 
 #include "RocksDBKey.h"
 #include "RocksDBPersistedLog.h"
@@ -30,12 +32,13 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::replicated_log;
 
 RocksDBPersistedLog::RocksDBPersistedLog(replication2::LogId id, uint64_t objectId,
                                          std::shared_ptr<RocksDBLogPersistor> persistor)
     : PersistedLog(id), _objectId(objectId), _persistor(std::move(persistor)) {}
 
-auto RocksDBPersistedLog::insert(LogIterator& iter, WriteOptions const& options) -> Result {
+auto RocksDBPersistedLog::insert(PersistedLogIterator& iter, WriteOptions const& options) -> Result {
   rocksdb::WriteBatch wb;
   auto res = prepareWriteBatch(iter, wb);
   if (!res.ok()) {
@@ -57,7 +60,7 @@ auto RocksDBPersistedLog::insert(LogIterator& iter, WriteOptions const& options)
   return {};
 }
 
-struct RocksDBLogIterator : replication2::LogIterator {
+struct RocksDBLogIterator : PersistedLogIterator {
   ~RocksDBLogIterator() override = default;
 
   RocksDBLogIterator(RocksDBPersistedLog* log, rocksdb::DB* db,
@@ -73,7 +76,7 @@ struct RocksDBLogIterator : replication2::LogIterator {
     _iter->Seek(first.string());
   }
 
-  auto next() -> std::optional<LogEntry> override {
+  auto next() -> std::optional<PersistingLogEntry> override {
     if (!_first) {
       _iter->Next();
     }
@@ -89,9 +92,10 @@ struct RocksDBLogIterator : replication2::LogIterator {
       return std::nullopt;
     }
 
-    return std::optional<LogEntry>{std::in_place, RocksDBValue::logTerm(_iter->value()),
-                                   RocksDBKey::logIndex(_iter->key()),
-                                   RocksDBValue::logPayload(_iter->value())};
+    return std::optional<PersistingLogEntry>{std::in_place,
+                                            RocksDBValue::logTerm(_iter->value()),
+                                            RocksDBKey::logIndex(_iter->key()),
+                                            RocksDBValue::logPayload(_iter->value())};
   }
 
   RocksDBKeyBounds const _bounds;
@@ -100,7 +104,7 @@ struct RocksDBLogIterator : replication2::LogIterator {
   bool _first = true;
 };
 
-auto RocksDBPersistedLog::read(LogIndex start) -> std::unique_ptr<LogIterator> {
+auto RocksDBPersistedLog::read(LogIndex start) -> std::unique_ptr<PersistedLogIterator> {
   return std::make_unique<RocksDBLogIterator>(this, _persistor->_db, _persistor->_cf, start);
 }
 
@@ -129,12 +133,12 @@ auto RocksDBPersistedLog::removeBack(replication2::LogIndex start) -> Result {
   return rocksutils::convertStatus(s);
 }
 
-auto RocksDBPersistedLog::prepareWriteBatch(replication2::LogIterator& iter,
+auto RocksDBPersistedLog::prepareWriteBatch(PersistedLogIterator& iter,
                                             rocksdb::WriteBatch& wb) -> Result {
   while (auto entry = iter.next()) {
     auto key = RocksDBKey{};
     key.constructLogEntry(_objectId, entry->logIndex());
-    auto value = RocksDBValue::LogEntry(entry->logTerm(), entry->logPayload());
+    auto value = RocksDBValue::LogEntry(*entry);
     auto s = wb.Put(_persistor->_cf, key.string(), value.string());
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
@@ -144,7 +148,7 @@ auto RocksDBPersistedLog::prepareWriteBatch(replication2::LogIterator& iter,
   return Result();
 }
 
-auto RocksDBPersistedLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter,
+auto RocksDBPersistedLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
                                       WriteOptions const& opts) -> futures::Future<Result> {
   RocksDBLogPersistor::WriteOptions wo;
   wo.waitForSync = opts.waitForSync;
@@ -184,7 +188,7 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         // For simplicity, a single LogIterator of a specific PersistRequest
         // (i.e. *nextReqToWrite->iter) is always written as a whole in a write batch.
         // This is not strictly necessary for correctness, as long as an error
-        // is reported when any LogEntry is not written. Because then, the
+        // is reported when any PersistingLogEntry is not written. Because then, the
         // write will be retried, and it does not hurt that the persisted log
         // already has some entries that are not yet confirmed (which may be
         // overwritten later). This could still be improved upon a little by
@@ -236,8 +240,8 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
   }
 }
 
-auto RocksDBLogPersistor::persist(std::shared_ptr<arangodb::replication2::PersistedLog> log,
-                                  std::unique_ptr<arangodb::replication2::LogIterator> iter,
+auto RocksDBLogPersistor::persist(std::shared_ptr<PersistedLog> log,
+                                  std::unique_ptr<PersistedLogIterator> iter,
                                   WriteOptions const& options) -> futures::Future<Result> {
   auto p = futures::Promise<Result>{};
   auto f = p.getFuture();

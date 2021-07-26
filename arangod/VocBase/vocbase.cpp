@@ -2041,7 +2041,7 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
 }
 
 void TRI_vocbase_t::registerReplicatedLog(arangodb::replication2::LogId logId,
-                                          std::shared_ptr<arangodb::replication2::PersistedLog> persistedLog) {
+                                          std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> persistedLog) {
   std::unique_lock guard(_logManager->_mutex);
   auto core = std::make_unique<arangodb::replication2::replicated_log::LogCore>(
       std::move(persistedLog));

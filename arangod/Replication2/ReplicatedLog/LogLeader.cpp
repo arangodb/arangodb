@@ -299,8 +299,9 @@ auto replicated_log::LogLeader::construct(
     // Immediately append an empty log entry in the new term. This is necessary
     // because we must not commit entries of older terms, but do not want to
     // wait with committing until the next insert.
-    log.appendInPlace(logContext, InMemoryLogEntry(LogEntry(term, lastIndex.index + 1,
-                                                            LogEntry::empty)));
+    log.appendInPlace(logContext,
+                      InMemoryLogEntry(PersistingLogEntry(term, lastIndex.index + 1,
+                                                         std::nullopt)));
     // Note that we do still want to use the unchanged lastIndex to initialize
     // our followers with, as none of them can possibly have this entry.
     // This is particularly important for the LocalFollower, which blindly
@@ -323,10 +324,6 @@ auto replicated_log::LogLeader::construct(
   leaderDataGuard->_follower =
       instantiateFollowers(commonLogContext, followers, localFollower, lastIndex);
   leader->_localFollower = std::move(localFollower);
-
-  if (leaderDataGuard->_follower.size() == 1) {
-    leaderDataGuard->_commitIndex = leaderDataGuard->_inMemoryLog.getLastIndex();
-  }
 
   TRI_ASSERT(leaderDataGuard->_follower.size() >= config.writeConcern);
 
@@ -378,8 +375,8 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<std::unique_ptr<LogCor
 }
 
 auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
-    -> std::optional<LogEntry> {
-  return _guardedLeaderData.doUnderLock([&idx](auto& leaderData) -> std::optional<LogEntry> {
+    -> std::optional<PersistingLogEntry> {
+  return _guardedLeaderData.doUnderLock([&idx](auto& leaderData) -> std::optional<PersistingLogEntry> {
     if (leaderData._didResign) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
@@ -427,7 +424,7 @@ auto replicated_log::LogLeader::insert(LogPayload payload, [[maybe_unused]] bool
     }
     auto const index = leaderData._inMemoryLog.getNextIndex();
     auto const payloadSize = payload.byteSize();
-    auto logEntry = InMemoryLogEntry(LogEntry(_currentTerm, index, std::move(payload)));
+    auto logEntry = InMemoryLogEntry(PersistingLogEntry(_currentTerm, index, std::move(payload)));
     logEntry.setInsertTp(insertTp);
     leaderData._inMemoryLog.appendInPlace(_logContext, std::move(logEntry));
     _logMetrics->replicatedLogInsertsBytes->count(payloadSize);
@@ -568,7 +565,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   }
 
   {
-    auto it = getLogIterator(follower.lastAckedEntry.index + 1);
+    auto it = getInternalLogIterator(follower.lastAckedEntry.index + 1);
     auto transientEntries = decltype(req.entries)::transient_type{};
     while (auto entry = it->next()) {
       transientEntries.push_back(InMemoryLogEntry(*std::move(entry)));
@@ -679,11 +676,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
   return std::make_pair(prepareAppendEntries(), std::move(toBeResolved));
 }
 
-auto replicated_log::LogLeader::GuardedLeaderData::getLogIterator(LogIndex firstIdx) const
-    -> std::unique_ptr<LogIterator> {
+auto replicated_log::LogLeader::GuardedLeaderData::getInternalLogIterator(LogIndex firstIdx) const
+    -> std::unique_ptr<PersistedLogIterator> {
   auto const endIdx = _inMemoryLog.getLastTermIndexPair().index + 1;
   TRI_ASSERT(firstIdx <= endIdx);
-  return _inMemoryLog.getIteratorFrom(firstIdx);
+  return _inMemoryLog.getInternalIteratorFrom(firstIdx);
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::getCommittedLogIterator(LogIndex firstIndex) const
@@ -861,7 +858,7 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
     return returnAppendEntriesResult(Result(TRI_ERROR_NO_ERROR));
   }
 
-  auto iter = std::make_unique<ReplicatedLogIterator>(request.entries);
+  auto iter = std::make_unique<InMemoryPersistedLogIterator>(request.entries);
   return _guardedLogCore.doUnderLock([&](auto& logCore) -> futures::Future<AppendEntriesResult> {
     if (logCore == nullptr) {
       LOG_CTX("e9b70", DEBUG, messageLogContext)

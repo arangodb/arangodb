@@ -2979,7 +2979,7 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
 }
 
 auto RocksDBEngine::dropReplicatedLog(TRI_vocbase_t& vocbase,
-                                      std::shared_ptr<arangodb::replication2::PersistedLog> const& log)
+                                      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const& log)
     -> Result {
   auto key = RocksDBKey{};
   key.constructReplicatedLog(vocbase.id(), log->id());
@@ -2990,7 +2990,7 @@ auto RocksDBEngine::dropReplicatedLog(TRI_vocbase_t& vocbase,
 }
 
 auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase, arangodb::replication2::LogId logId)
-    -> ResultT<std::shared_ptr<arangodb::replication2::PersistedLog>> {
+    -> ResultT<std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> {
 
   auto key = RocksDBKey{};
   key.constructReplicatedLog(vocbase.id(), logId);

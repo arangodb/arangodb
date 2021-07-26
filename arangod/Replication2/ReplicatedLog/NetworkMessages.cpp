@@ -261,7 +261,7 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slic
     auto transientEntries = EntryContainer::transient_type{};
     std::transform(entriesVp.begin(), entriesVp.end(),
                    std::back_inserter(transientEntries), [](auto const& it) {
-                     return InMemoryLogEntry(LogEntry::fromVelocyPack(it));
+                     return InMemoryLogEntry(PersistingLogEntry::fromVelocyPack(it));
                    });
     return std::move(transientEntries).persistent();
   });

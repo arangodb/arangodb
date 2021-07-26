@@ -150,7 +150,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
     std::move(f).thenFinal([](auto&&) {});
   }
 
-  auto firstCheckPoint = std::vector<LogEntry>();
+  auto firstCheckPoint = std::vector<std::pair<LogIndex, LogPayload>>();
   {
     auto fut = A->getParticipant()->waitForIterator(LogIndex{1});
     // The log index should have been committed before the checkpoint, so we
@@ -158,7 +158,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
     ASSERT_TRUE(fut.isReady());
     auto iter = std::move(fut).get();
     while (auto entry = iter->next()) {
-      firstCheckPoint.push_back(std::move(*entry));
+      firstCheckPoint.emplace_back(entry->logIndex(), entry->logPayload());
     }
     EXPECT_EQ(firstCheckPoint.size(), 1);
   }
@@ -236,13 +236,12 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
   ASSERT_TRUE(f.isReady());
   std::move(f).thenFinal([](auto&&) {});
 }
-
 auto const secondCheckPoint = std::invoke([&] {
-  auto result = std::vector<LogEntry>();
+  auto result = std::vector<std::pair<LogIndex, LogPayload>>();
   auto fut = C->getParticipant()->waitForIterator(LogIndex{1});
   auto iter = std::move(fut).get();
   while (auto entry = iter->next()) {
-    result.push_back(std::move(*entry));
+    result.emplace_back(entry->logIndex(), entry->logPayload());
   }
   return result;
 });

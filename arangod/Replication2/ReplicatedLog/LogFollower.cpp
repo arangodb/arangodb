@@ -162,7 +162,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
 
   // Allocations
   auto newInMemoryLog = self->_inMemoryLog.append(_loggerContext, req.entries);
-  auto iter = std::make_unique<ReplicatedLogIterator>(req.entries);
+  auto iter = std::make_unique<InMemoryPersistedLogIterator>(req.entries);
   auto toBeResolved = std::make_unique<std::optional<WaitForQueueResolve>>();
 
   auto* core = self->_logCore.get();

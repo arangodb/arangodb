@@ -59,36 +59,64 @@ auto LogIndex::saturatedDecrement() const noexcept -> LogIndex {
   return LogIndex{0};
 }
 
-LogEntry::LogEntry(LogTerm logTerm, LogIndex logIndex, LogPayload payload)
+PersistingLogEntry::PersistingLogEntry(LogTerm logTerm, LogIndex logIndex, std::optional<LogPayload> payload)
     : _logTerm{logTerm}, _logIndex{logIndex}, _payload{std::move(payload)} {}
 
-auto LogEntry::logTerm() const noexcept -> LogTerm { return _logTerm; }
+PersistingLogEntry::PersistingLogEntry(TermIndexPair termIndexPair, std::optional<LogPayload> payload)
+    : _logTerm(termIndexPair.term),
+      _logIndex(termIndexPair.index),
+      _payload(std::move(payload)) {}
 
-auto LogEntry::logIndex() const noexcept -> LogIndex { return _logIndex; }
+auto PersistingLogEntry::logTerm() const noexcept -> LogTerm { return _logTerm; }
 
-auto LogEntry::logPayload() const noexcept -> LogPayload const& { return _payload; }
+auto PersistingLogEntry::logIndex() const noexcept -> LogIndex { return _logIndex; }
 
-void LogEntry::toVelocyPack(velocypack::Builder& builder) const {
+auto PersistingLogEntry::logPayload() const noexcept -> std::optional<LogPayload> const& { return _payload; }
+
+void PersistingLogEntry::toVelocyPack(velocypack::Builder& builder) const {
   builder.openObject();
-  builder.add("logTerm", velocypack::Value(_logTerm.value));
   builder.add("logIndex", velocypack::Value(_logIndex.value));
-  builder.add("payload", velocypack::Slice(_payload.dummy.data()));
+  entriesWithoutIndexToVelocyPack(builder);
   builder.close();
 }
 
-auto LogEntry::fromVelocyPack(velocypack::Slice slice) -> LogEntry {
-  auto const logTerm = LogTerm{slice.get("logTerm").getNumericValue<std::size_t>()};
-  auto const logIndex = LogIndex{slice.get("logIndex").getNumericValue<std::size_t>()};
-  auto payload = LogPayload::createFromSlice(slice.get("payload"));
-  return LogEntry{logTerm, logIndex, std::move(payload)};
+void PersistingLogEntry::toVelocyPack(velocypack::Builder& builder,
+                                      PersistingLogEntry::OmitLogIndex) const {
+  builder.openObject();
+  entriesWithoutIndexToVelocyPack(builder);
+  builder.close();
 }
 
-auto LogEntry::operator==(LogEntry const& other) const noexcept -> bool {
+void PersistingLogEntry::entriesWithoutIndexToVelocyPack(velocypack::Builder& builder) const {
+  builder.add("logTerm", velocypack::Value(_logTerm.value));
+  if (_payload) {
+    builder.add("payload", velocypack::Slice(_payload->dummy.data()));
+  }
+}
+
+auto PersistingLogEntry::fromVelocyPack(velocypack::Slice slice) -> PersistingLogEntry {
+  auto const logTerm = LogTerm{slice.get("logTerm").getNumericValue<std::size_t>()};
+  auto const logIndex = LogIndex{slice.get("logIndex").getNumericValue<std::size_t>()};
+  auto payload = std::invoke([&]() -> std::optional<LogPayload> {
+    if (auto payloadSlice = slice.get("payload"); !payloadSlice.isNone()) {
+      return LogPayload::createFromSlice(payloadSlice);
+    } else {
+      return std::nullopt;
+    }
+  });
+  return PersistingLogEntry(logTerm, logIndex, std::move(payload));
+}
+
+auto PersistingLogEntry::operator==(PersistingLogEntry const& other) const noexcept -> bool {
   return other._logIndex == _logIndex && other._logTerm == _logTerm &&
          other._payload == _payload;
 }
 
-InMemoryLogEntry::InMemoryLogEntry(LogEntry entry)
+auto PersistingLogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
+  return TermIndexPair{_logTerm, _logIndex};
+}
+
+InMemoryLogEntry::InMemoryLogEntry(PersistingLogEntry entry)
     : _logEntry(std::move(entry)) {}
 
 void InMemoryLogEntry::setInsertTp(clock::time_point tp) noexcept {
@@ -99,23 +127,22 @@ auto InMemoryLogEntry::insertTp() const noexcept -> clock::time_point {
   return _insertTp;
 }
 
-auto InMemoryLogEntry::entry() const noexcept -> LogEntry const& {
+auto InMemoryLogEntry::entry() const noexcept -> PersistingLogEntry const& {
   // Note that while get() isn't marked as noexcept, it actually is.
   return _logEntry.get();
 }
 
-auto LogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
-  return TermIndexPair{_logTerm, _logIndex};
-}
+LogEntryView::LogEntryView(LogIndex index, LogPayload const& payload) noexcept
+    : _index(index), _payload(&payload) {}
 
-LogEntry::LogEntry(TermIndexPair termIndexPair, LogPayload payload)
-    : _logTerm(termIndexPair.term),
-      _logIndex(termIndexPair.index),
-      _payload(std::move(payload)) {}
+auto LogEntryView::logIndex() const noexcept -> LogIndex { return _index; }
 
-LogEntry::LogEntry(LogTerm term, LogIndex index, LogEntry::Empty)
-    : LogEntry(term, index, LogPayload(VPackBufferUInt8())) {
-  // TODO make the payload optional
+auto LogEntryView::logPayload() const noexcept -> LogPayload const& { return *_payload; }
+
+void LogEntryView::toVelocyPack(velocypack::Builder& builder) const {
+  auto og = velocypack::ObjectBuilder(&builder);
+  builder.add("logIndex", velocypack::Value(_index));
+  builder.add("payload", velocypack::Slice(_payload->dummy.data()));
 }
 
 auto LogTerm::operator<=(LogTerm other) const -> bool {

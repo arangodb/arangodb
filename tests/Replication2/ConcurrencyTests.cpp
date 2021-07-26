@@ -124,15 +124,18 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
       fut.get();
       auto snapshot = log->getReplicatedLogSnapshot();
       for (auto k = 0; k < batch && i + k < maxIter; ++k) {
-        auto const payload = LogPayload::createFromString(genPayload(threadIdx, i + k));
+        using namespace std::string_literals;
+        auto const payload = std::optional(LogPayload::createFromString(genPayload(threadIdx, i + k)));
         auto const idx = idxs[k];
         ASSERT_LT(0, idx.value);
         ASSERT_LE(idx.value, snapshot.size());
         auto const& entry = snapshot[idx.value - 1];
         EXPECT_EQ(idx, entry.entry().logIndex());
         EXPECT_EQ(payload, entry.entry().logPayload())
-            << VPackSlice(payload.dummy.data()).toJson() << " "
-            << VPackSlice(entry.entry().logPayload().dummy.data()).toJson();
+            << VPackSlice(payload->dummy.data()).toJson() << " "
+            << (entry.entry().logPayload()
+                    ? VPackSlice(entry.entry().logPayload()->dummy.data()).toJson()
+                    : "std::nullopt"s);
       }
       if (i == 10 * batch) {
         // we should have done at least a few iterations before finishing

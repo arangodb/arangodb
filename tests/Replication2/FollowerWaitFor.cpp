@@ -54,7 +54,7 @@ TEST_F(FollowerWaitForTest, update_send_append_entries){
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
     request.entries = {InMemoryLogEntry(
-        LogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("some payload")))};
+        PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("some payload")))};
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());
     {

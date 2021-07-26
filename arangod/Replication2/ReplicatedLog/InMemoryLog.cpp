@@ -24,6 +24,7 @@
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 
 #include <Basics/Exceptions.h>
@@ -208,6 +209,13 @@ auto replicated_log::InMemoryLog::getIteratorFrom(LogIndex fromIdx) const
   return std::make_unique<ReplicatedLogIterator>(std::move(log));
 }
 
+auto replicated_log::InMemoryLog::getInternalIteratorFrom(LogIndex fromIdx) const -> std::unique_ptr<PersistedLogIterator> {
+  // if we want to have read from log entry 1 onwards, we have to drop
+  // no entries, because log entry 0 does not exist.
+  auto log = _log.drop(fromIdx.saturatedDecrement().value);
+  return std::make_unique<InMemoryPersistedLogIterator>(std::move(log));
+}
+
 auto replicated_log::InMemoryLog::getIteratorRange(LogIndex fromIdx, LogIndex toIdx) const
     -> std::unique_ptr<LogIterator> {
   auto log = _log.take(toIdx.saturatedDecrement().value)
@@ -238,7 +246,7 @@ auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
 
 auto replicated_log::InMemoryLog::append(
     LoggerContext const& logContext,
-    ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy> const& entries) const
+    ::immer::flex_vector<PersistingLogEntry, arangodb::immer::arango_memory_policy> const& entries) const
     -> InMemoryLog {
   auto transient = _log.transient();
   for (auto const& entry : entries) {
@@ -279,3 +287,26 @@ auto replicated_log::InMemoryLog::getFirstEntry() const noexcept
   }
   return _log.front();
 }
+
+auto replicated_log::InMemoryLog::dump(replicated_log::InMemoryLog::log_type log)
+    -> std::string {
+  auto builder = velocypack::Builder();
+  auto stream = std::stringstream();
+  stream << "[";
+  bool first = true;
+  for (auto const& it : log) {
+    if (first) {
+      first = false;
+    } else {
+      stream << ", ";
+    }
+    it.entry().toVelocyPack(builder);
+    stream << builder.toJson();
+    builder.clear();
+  }
+  stream << "]";
+
+  return stream.str();
+}
+
+auto replicated_log::InMemoryLog::dump() -> std::string { return dump(_log); }
