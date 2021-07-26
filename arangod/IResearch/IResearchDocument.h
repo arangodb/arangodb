@@ -101,9 +101,11 @@ struct Field {
     return _name;
   }
 
-  const irs::features_t& features() const noexcept {
+  const irs::features_t features() const noexcept {
     TRI_ASSERT(_features);
-    return _featuresRange;
+    auto const& field_features = _features->field_features();
+    return {field_features.data(),
+            field_features.size()};
   }
 
   irs::IndexFeatures index_features() const noexcept {
@@ -124,30 +126,11 @@ struct Field {
     return true;
   }
 
-  void setFeatures(AnalyzerPool::AnalyzerFeatures const& poolFeatures) {
-    if (_features != &poolFeatures) {
-      _features = &poolFeatures;
-      //FIXME: check here datastore version and translate accordingly
-      _translatedFieldFeatures.clear();
-      for (auto const& feature : _features->field_features()) {
-        if (feature == irs::type<irs::norm>::get().id()) {
-          _translatedFieldFeatures.push_back(irs::type<irs::norm2>::id());
-        } else {
-          _translatedFieldFeatures.push_back(feature);
-        }
-      }
-      _featuresRange = {_translatedFieldFeatures.data(), _translatedFieldFeatures.size()};
-    }
-  }
-
   std::shared_ptr<irs::token_stream> _analyzer;
   irs::string_ref _name;
   irs::bytes_ref _value;
   ValueStorage _storeValues;
- private:
   AnalyzerPool::AnalyzerFeatures const* _features{&AnalyzerPool::AnalyzerFeatures::empty_instance()};
-  irs::features_t _featuresRange{nullptr, 0};
-  std::vector<irs::type_info::type_id> _translatedFieldFeatures;
 };  // Field
 
 ////////////////////////////////////////////////////////////////////////////////

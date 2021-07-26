@@ -332,21 +332,13 @@ REGISTER_ANALYZER_VPACK(TypedAnalyzer, TypedAnalyzer::make, TypedAnalyzer::norma
 
 namespace std {
 // helper for checking features transfer from analyzer to the field
-bool operator==(std::set<irs::type_info::type_id> const& analyzer, irs::features_t const& field) {
+bool operator==(std::vector<irs::type_info::type_id> const& analyzer, irs::features_t const& field) {
   if (field.size() != analyzer.size()) {
     return false;
   }
   for (auto t : field) {
-    // Field should never have norm here! Only norm2! 
-    EXPECT_NE(t().id(), irs::type<irs::norm>::id());
-    if (t().id() == irs::type<irs::norm2>::id()) {
-      if (analyzer.find(irs::type<irs::norm>::id()) == analyzer.end()) {
+    if (find(analyzer.begin(), analyzer.end(), t().id()) == analyzer.end()) {
         return false;
-      }
-    } else {
-      if (analyzer.find(t) == analyzer.end()) {
-        return false;
-      }
     }
   }
   return true;

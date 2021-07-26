@@ -356,7 +356,7 @@ void FieldIterator::setBoolValue(VPackSlice const value) {
   // set field properties
   _value._name = _nameBuffer;
   _value._analyzer = stream.release();  // FIXME don't use shared_ptr
-  _value.setFeatures(AnalyzerPool::AnalyzerFeatures::empty_instance());
+  _value._features = &AnalyzerPool::AnalyzerFeatures::empty_instance();
 }
 
 void FieldIterator::setNumericValue(VPackSlice const value) {
@@ -371,7 +371,7 @@ void FieldIterator::setNumericValue(VPackSlice const value) {
   // set field properties
   _value._name = _nameBuffer;
   _value._analyzer = stream.release();  // FIXME don't use shared_ptr
-  _value.setFeatures(NumericStreamFeatures);
+  _value._features = &NumericStreamFeatures;
 }
 
 void FieldIterator::setNullValue(VPackSlice const value) {
@@ -386,7 +386,7 @@ void FieldIterator::setNullValue(VPackSlice const value) {
   // set field properties
   _value._name = _nameBuffer;
   _value._analyzer = stream.release();  // FIXME don't use shared_ptr
-  _value.setFeatures(AnalyzerPool::AnalyzerFeatures::empty_instance());
+  _value._features = &AnalyzerPool::AnalyzerFeatures::empty_instance();
 }
 
 bool FieldIterator::setValue(VPackSlice const value,
@@ -508,7 +508,7 @@ bool FieldIterator::setValue(VPackSlice const value,
     default:
       iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
       _value._analyzer = analyzer;
-      _value.setFeatures(pool->features());
+      _value._features = &pool->features();
       _value._name = _nameBuffer;
       break;
   }

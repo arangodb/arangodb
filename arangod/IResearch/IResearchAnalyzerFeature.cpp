@@ -2864,12 +2864,16 @@ std::vector<std::string> AnalyzerPool::AnalyzerFeatures::getNames() const {
   // add typed features
   for (auto& feature : _fieldFeatures) {
     TRI_ASSERT(feature); // has to be non-nullptr
-    res.emplace_back(feature().name());
+    // never show norm2 for the user - it is internal impl details
+    auto name = feature().id() == irs::type<irs::norm2>::id()?
+                                    irs::type<irs::norm>::name():
+                                    feature().name();
+    res.emplace_back(name);
   }
   return res;
 }
 
-bool AnalyzerPool::AnalyzerFeatures::add(std::string_view featureName) {
+bool AnalyzerPool::AnalyzerFeatures::add(irs::string_ref featureName) {
   if (featureName == "position") {
     _indexFeatures |= irs::IndexFeatures::POS;
     return true;
@@ -2879,14 +2883,24 @@ bool AnalyzerPool::AnalyzerFeatures::add(std::string_view featureName) {
   }
   // forbid to directly set norm2! Only norm is documented
   // and will be resolved depending on store version
-  if (featureName == "norm2") {
+  if (irs::type<irs::norm2>::name() == featureName) {
     return false;
   }
+
+  if (irs::type<irs::norm>::name() == featureName && _storeVersion > 0) {// FIXME: add proper constants to the LinkMeta
+    featureName = irs::type<irs::norm2>::name();
+  }
+
   const auto feature = irs::attributes::get(featureName, false);
   if (!feature) {
     return false;
   }
-  _fieldFeatures.insert(feature.id());
+  auto existingFeature  = std::find(_fieldFeatures.begin(),
+                                    _fieldFeatures.end(),
+                                    feature.id());
+  if (existingFeature == _fieldFeatures.end()) {
+    _fieldFeatures.push_back(feature.id());
+  }
   return true;
 }
 
@@ -2906,7 +2920,8 @@ Result AnalyzerPool::AnalyzerFeatures::validate() const {
           std::to_string(static_cast<std::underlying_type_t<irs::IndexFeatures>>(_indexFeatures))};
     }
     for (auto& feature : _fieldFeatures) {
-      if (feature().name() != "norm")
+      if (feature().id() != irs::type<irs::norm>::id() &&
+          feature().id() != irs::type<irs::norm2>::id())
         return {TRI_ERROR_BAD_PARAMETER,
                 "unsupported analyzer feature '" +
                 std::string(feature().name()) + "'"};

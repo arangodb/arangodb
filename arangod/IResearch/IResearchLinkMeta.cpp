@@ -701,7 +701,7 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
           }
         }
 
-        AnalyzerPool::AnalyzerFeatures features;
+        AnalyzerPool::AnalyzerFeatures features(1); // FIXME use version value from link meta
 
         {
           // optional string list

@@ -81,10 +81,10 @@ class AnalyzerPool : private irs::util::noncopyable {
 
   class AnalyzerFeatures {
    public:
-    AnalyzerFeatures() = default;
+    AnalyzerFeatures(uint32_t storeVersion = 0): _storeVersion(storeVersion) {}
 
-    AnalyzerFeatures(std::initializer_list<irs::type_info::type_id>&& ff, irs::IndexFeatures ii)
-      : _fieldFeatures(std::move(ff)), _indexFeatures(ii) {}
+    AnalyzerFeatures(std::initializer_list<irs::type_info::type_id>&& ff, irs::IndexFeatures ii, uint32_t storeVersion = 0)
+      : _fieldFeatures(std::move(ff)), _indexFeatures(ii), _storeVersion(storeVersion) {}
     /// @brief build features names
     /// @return vector of feature names (index and field combined)
     std::vector<std::string> getNames() const;
@@ -92,7 +92,7 @@ class AnalyzerPool : private irs::util::noncopyable {
     /// @brief adds feature by name. Properly resolves field/index features
     /// @param featureName feature name
     /// @return true if feature found, false otherwise
-    bool add(std::string_view featureName);
+    bool add(irs::string_ref featureName);
 
     /// @brief validate that features are supported by arangod an ensure that their
     ///        dependencies are met
@@ -125,8 +125,10 @@ class AnalyzerPool : private irs::util::noncopyable {
     static AnalyzerFeatures const& empty_instance();
 
    private:
-    std::set<irs::type_info::type_id> _fieldFeatures;
+    // we need plain layout to meet iresearch library expectations
+    std::vector<irs::type_info::type_id> _fieldFeatures;
     irs::IndexFeatures _indexFeatures {irs::IndexFeatures::NONE};
+    uint32_t _storeVersion{0}; // the version of the iresearch datastore if pool is created for the datastore
   };
 
   explicit AnalyzerPool(irs::string_ref const& name);
