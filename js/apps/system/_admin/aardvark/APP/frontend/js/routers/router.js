@@ -315,26 +315,10 @@
         arangoHelper.initSigma();
       }).bind(this);
 
-      // TODO: Should a UI function be part of the router?
       $(window).on('resize', function () {
         self.handleResize();
       });
 
-    },
-
-    handleScroll: function () {
-      const secondaryNavbar = $('.navbar > .secondary');
-
-      if ($(window).scrollTop() > 50) {
-        secondaryNavbar.css('top', $(window).scrollTop());
-        secondaryNavbar.css('position', 'absolute');
-        secondaryNavbar.css('z-index', '10');
-        secondaryNavbar.css('width', $(window).width());
-      } else {
-        secondaryNavbar.css('top', '0');
-        secondaryNavbar.css('position', 'relative');
-        secondaryNavbar.css('width', '');
-      }
     },
 
     cluster: function () {
