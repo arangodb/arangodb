@@ -206,8 +206,9 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
     return limit == 0;
   }
 
-  // FIXME: track if the filter condition is volatile!
+  // FIXME: track if the filter condition is volatile! 
   // FIXME: support sorting!
+  // FIXME: consider rearm implementation!
   void resetFilter()  {
     if (!_trx->state()) {
       LOG_TOPIC("a9ccd", WARN, arangodb::iresearch::TOPIC)
