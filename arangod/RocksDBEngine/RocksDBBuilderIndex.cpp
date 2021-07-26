@@ -434,7 +434,6 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::SequenceNumber _startSequence;
   rocksdb::SequenceNumber _currentSequence;
-  rocksdb::SequenceNumber _lastWrittenSequence;
   bool _startOfBatch = false;
   uint64_t _lastObjectID = 0;
 };
