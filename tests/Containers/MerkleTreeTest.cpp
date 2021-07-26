@@ -367,6 +367,60 @@ TEST_F(InternalMerkleTreeTest, test_partition) {
   ASSERT_TRUE(::partitionAsExpected(*this, 4, {{0, 63}}));
 }
 
+TEST(MerkleTreeTest, test_allocation_size) {
+  {
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t(2, 0, 64);
+    ASSERT_EQ(t.allocationSize(2), t.MetaSize + 64 * t.NodeSize);
+  }
+  
+  {
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t(3, 0, 512);
+    ASSERT_EQ(t.allocationSize(3), t.MetaSize + 512 * t.NodeSize);
+  }
+  
+  {
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t(4, 0, 4096);
+    ASSERT_EQ(t.allocationSize(4), t.MetaSize + 4096 * t.NodeSize);
+  }
+  
+  {
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t(5, 0, 32768);
+    ASSERT_EQ(t.allocationSize(5), t.MetaSize + 32768 * t.NodeSize);
+  }
+ 
+  {
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t(6, 0, 1ULL << 18);
+    ASSERT_EQ(t.allocationSize(6), t.MetaSize + 262144 * t.NodeSize);
+  }
+}
+
+TEST(MerkleTreeTest, test_number_of_shards) {
+  {
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 64);
+    ASSERT_EQ(1, t1.numberOfShards());
+  }
+ 
+  {
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(3, 0, 512);
+    ASSERT_EQ(1, t1.numberOfShards());
+  }
+  
+  {
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(4, 0, 4096);
+    ASSERT_EQ(1, t1.numberOfShards());
+  }
+  
+  {
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(5, 0, 32768);
+    ASSERT_EQ(8, t1.numberOfShards());
+  }
+ 
+  {
+    ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t2(6, 0, 1ULL << 18);
+    ASSERT_EQ(64, t2.numberOfShards());
+  }
+}
+
 TEST(MerkleTreeTest, test_diff_equal) {
   ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 64);
   ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t2(2, 0, 64);
@@ -504,6 +558,62 @@ TEST(MerkleTreeTest, test_serializeBinarySnappyLarge) {
   std::string t1s;
   t1.serializeBinary(t1s, true);
   ASSERT_EQ(2143871, t1s.size());
+
+  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
+      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
+  ASSERT_NE(t2, nullptr);
+  ASSERT_TRUE(t1.diff(*t2).empty());
+  ASSERT_TRUE(t2->diff(t1).empty());
+}
+#endif
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST(MerkleTreeTest, test_serializeBinarySnappyLazySmall) {
+  TRI_AddFailurePointDebugging("MerkleTree::serializeSnappyLazy");
+  auto guard = arangodb::scopeGuard([]() {
+    TRI_RemoveFailurePointDebugging("MerkleTree::serializeSnappyLazy");
+  });
+  
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(2, 0, 64);
+
+  for (std::uint64_t i = 0; i < 32; ++i) {
+    t1.insert(2 * i);
+  }
+
+  std::string t1s;
+  t1.serializeBinary(t1s, true);
+  ASSERT_EQ(548, t1s.size());
+
+  std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
+      ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);
+  ASSERT_NE(t2, nullptr);
+  ASSERT_TRUE(t1.diff(*t2).empty());
+  ASSERT_TRUE(t2->diff(t1).empty());
+}
+#endif
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST(MerkleTreeTest, test_serializeBinarySnappyLazyLarge) {
+  TRI_AddFailurePointDebugging("MerkleTree::serializeSnappyLazy");
+  auto guard = arangodb::scopeGuard([]() {
+    TRI_RemoveFailurePointDebugging("MerkleTree::serializeSnappyLazy");
+  });
+  
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3> t1(6, 0, 1ULL << 18);
+
+  std::vector<std::uint64_t> keys;
+  for (std::uint64_t i = 10'000'000; i < 60'000'000; i += 5) {
+    keys.emplace_back(i);
+    if (keys.size() == 5000) {
+      t1.insert(keys);
+      keys.clear();
+    }
+  }
+  ASSERT_EQ(10'000'000, t1.count());
+
+  std::string t1s;
+  t1.serializeBinary(t1s, true);
+  ASSERT_EQ(2116630, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>> t2 =
       ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>::fromBuffer(t1s);

@@ -70,23 +70,25 @@ class MerkleTreeBase {
   // an empty dummy node with count=0, hash=0, shared and read-only
   static Node const emptyNode;
   
-  struct Meta {
+  struct alignas(64) Meta {
     std::uint64_t rangeMin;
     std::uint64_t rangeMax;
     std::uint64_t depth;
     std::uint64_t initialRangeMin;
     Node summary;
+      
+    // used for older versions. unfortunately needed
+    struct Padding {
+      std::uint64_t p0 = 0;
+      std::uint64_t p1 = 0;
+
+      constexpr Padding() noexcept : p0(0), p1(0) {}
+      constexpr Padding(std::uint64_t p0, std::uint64_t p1) noexcept : p0(0), p1(0) {}
+    } padding = { 0, 0 };
   };
   
-  static_assert(sizeof(Meta) == 48, "Meta size assumptions invalid.");
+  static_assert(sizeof(Meta) == 64, "Meta size assumptions invalid.");
   static constexpr std::uint64_t MetaSize = sizeof(Meta);
-  
-  static constexpr std::uint64_t CacheLineSize = 64;
-  static_assert(MetaSize < CacheLineSize, "Meta size assumptions invalid.");
-  
-  // used for older versions. unfortunately needed
-  static constexpr std::uint64_t PaddingLength = CacheLineSize - MetaSize;
-  static constexpr std::uint64_t MetaSizePadded = MetaSize + PaddingLength;
   
   // size of each shard, in bytes
   static constexpr std::uint64_t ShardSize = (1 << 16);
@@ -426,7 +428,7 @@ class MerkleTree : public MerkleTreeBase {
   bool equalAtIndex(MerkleTree<Hasher, BranchingBits> const& other,
                     std::uint64_t index) const noexcept;
   std::pair<std::uint64_t, std::uint64_t> chunkRange(std::uint64_t chunk, std::uint64_t depth) const;
-  void serializeMeta(std::string& output) const;
+  void serializeMeta(std::string& output, bool addPadding) const;
   void serializeNodes(std::string& output, bool all) const;
 
  private:
