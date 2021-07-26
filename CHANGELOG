@@ -1,6 +1,16 @@
 devel
 -----
 
+* Reduce memory usage for in-memory revision trees. Previously, a revision
+  tree instance for a non-empty collection/shard was using 4 MB of memory
+  when uncompressed. Trees that were unused for a while were compressed on
+  the fly to use less memory, and later uncompressed again when needed.
+  Now the uncompressed in-memory version of the revision tree will 
+  dynamically allocate memory as needed. This allows the initial version
+  of the trees to get away with just 64 KB of memory. Memory usage will
+  grow lazily when more parts of the trees get populated. The compression
+  of unused in-memory tree data is still in place.
+
 * Include K_SHORTEST_PATHS and SHORTEST_PATH execution nodes in AQL query 
   memory usage accounting. The memory used by these execution node types was
   previously not tracked against the configured query memory limit.
