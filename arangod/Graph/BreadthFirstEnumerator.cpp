@@ -144,8 +144,8 @@ bool BreadthFirstEnumerator::next() {
         return;
       }
 
-#ifdef USE_ENTEPRISE
-      if (!validDisjointPath()) {
+#ifdef USE_ENTERPRISE
+      if (!validDisjointPath(nextIdx, eid)) {
         return;
       }
 #endif

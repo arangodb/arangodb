@@ -255,12 +255,6 @@ bool DepthFirstEnumerator::next() {
         return;
       }
 
-#ifdef USE_ENTEPRISE
-      if (!validDisjointPath()) {
-        return;
-      }
-#endif
-
       if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
         if (ServerState::instance()->isCoordinator()) {
           for (auto const& it : _enumeratedPath.edges()) {
@@ -301,6 +295,12 @@ bool DepthFirstEnumerator::next() {
             return;
           }
         }
+
+#ifdef USE_ENTERPRISE
+        if (!validDisjointPath()) {
+          return;
+        }
+#endif
 
         _enumeratedPath.pushEdge(eid);
         foundPath = true;

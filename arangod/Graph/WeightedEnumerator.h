@@ -158,4 +158,3 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
 };
 }  // namespace graph
 }  // namespace arangodb
-
