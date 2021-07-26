@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import styled from 'styled-components';
-import { Grid, Cell } from "styled-css-grid";
+import { Cell, Grid } from "styled-css-grid";
 import { connect } from "react-redux";
 import { ApplicationState } from '../../store';
 
@@ -37,13 +37,14 @@ interface IForwardedProps {
 interface IOwnProps extends IForwardedProps {
   leader: string,
   followers: string[]
-};
+}
 
 interface IStateProps extends IForwardedProps {
   candidates: string[],
-};
+}
 
-interface IDispatchProps { };
+interface IDispatchProps {
+}
 
 type Props = IStateProps & IDispatchProps;
 
@@ -55,11 +56,17 @@ const mapStateToProps = (state : ApplicationState, own : IOwnProps) : IStateProp
   const { shortToServer } = state.cluster;
   const { leader, followers, name, source, doMove, doCancel } = own;
   const candidates = Array.from(shortToServer.keys())
-    .filter((n : string ) : boolean => n.startsWith('DB'))
-    .filter((n : string ) : boolean => n !== leader)
-    .filter((n : string) : boolean => -1 === followers.indexOf(n))
+    .filter((n: string): boolean => n.startsWith('DB'))
+    .filter((n: string): boolean => n !== leader)
+    .filter((n: string): boolean => followers.indexOf(n) === -1)
     .sort();
-  return { candidates, name, source ,doMove, doCancel};
+  return {
+    candidates,
+    name,
+    source,
+    doMove,
+    doCancel
+  };
 };
 
 class MoveShard extends Component<Props, IState> {
@@ -67,29 +74,32 @@ class MoveShard extends Component<Props, IState> {
     selected: ""
   }
 
-  selectTarget(evt : React.ChangeEvent<HTMLSelectElement>) {
+  selectTarget (evt: React.ChangeEvent<HTMLSelectElement>) {
     evt.preventDefault();
-    this.setState({selected: evt.target.value});
+    this.setState({ selected: evt.target.value });
   }
 
-  componentDidMount() {
+  componentDidMount () {
     const { candidates } = this.props;
     if (!this.state.selected) {
-      this.setState({selected: candidates[0]});
+      this.setState({ selected: candidates[0] });
     }
   }
-  
-  render() {
+
+  render () {
     const { candidates, name, source, doMove, doCancel } = this.props;
     if (candidates.length === 0) {
       return (
         <Row key={name} columns={2}>
           <LeftAlign>Shard cannot be moved, it is on all servers</LeftAlign>
           <RightAlign>
-            <Button onClick={e => {e.preventDefault(); doCancel()}}>Cancel</Button>
+            <Button onClick={e => {
+              e.preventDefault();
+              doCancel();
+            }}>Cancel</Button>
           </RightAlign>
         </Row>
-      )
+      );
     }
     return (
       <Row key={name} columns={4}>
@@ -97,12 +107,18 @@ class MoveShard extends Component<Props, IState> {
         <LeftAlign>From: {source}</LeftAlign>
         <LeftAlign>To:
           <select onChange={e => this.selectTarget(e)}>
-            { candidates.map(c => (<option key={c} value={c}>{c}</option>)) }
+            {candidates.map(c => (<option key={c} value={c}>{c}</option>))}
           </select>
         </LeftAlign>
         <RightAlign>
-          <Button onClick={e => {e.preventDefault(); doCancel()}}>Cancel</Button>
-          <Button onClick={e => {e.preventDefault(); doMove(this.state.selected)}}>Save</Button>
+          <Button onClick={e => {
+            e.preventDefault();
+            doCancel();
+          }}>Cancel</Button>
+          <Button onClick={e => {
+            e.preventDefault();
+            doMove(this.state.selected);
+          }}>Save</Button>
         </RightAlign>
       </Row>
     );

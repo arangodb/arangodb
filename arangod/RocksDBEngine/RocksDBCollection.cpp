@@ -733,17 +733,14 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     }
 
     // pre commit sequence needed to place a blocker
-    rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
-    auto guard = scopeGuard([&] {  // remove blocker afterwards
-      _meta.removeBlocker(state->id());
-    });
-    _meta.placeBlocker(state->id(), seq);
+    RocksDBBlockerGuard blocker(&_logicalCollection);
+    blocker.placeBlocker(state->id());
 
     rocksdb::WriteBatch batch;
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
     rocksdb::Status s =
-    batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+      batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
@@ -779,7 +776,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
       return rocksutils::convertStatus(s);
     }
 
-    seq = db->GetLatestSequenceNumber() - 1;  // post commit sequence
+    rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber() - 1;  // post commit sequence
 
     uint64_t numDocs = _meta.numberDocuments();
     _meta.adjustNumberDocuments(seq, /*revision*/ newRevisionId(),
@@ -793,14 +790,12 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     }
     bufferTruncate(seq);
 
-    guard.fire();  // remove blocker
-
     TRI_ASSERT(!state->hasOperations());  // not allowed
-    return Result{};
+    return {};
   }
 
   TRI_IF_FAILURE("RocksDBRemoveLargeRangeOff") {
-    return Result(TRI_ERROR_DEBUG);
+    return {TRI_ERROR_DEBUG};
   }
 
   // normal transactional truncate
