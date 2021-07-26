@@ -85,17 +85,18 @@ class MerkleTreeBase {
       constexpr Padding() noexcept : p0(0), p1(0) {}
       constexpr Padding(std::uint64_t p0, std::uint64_t p1) noexcept : p0(0), p1(0) {}
     } padding = { 0, 0 };
+
+    void serialize(std::string& output, bool addPadding) const;
   };
   
   static_assert(sizeof(Meta) == 64, "Meta size assumptions invalid.");
+  static_assert(sizeof(Meta::Padding) == 16, "Meta padding size assumptions invalid.");
   static constexpr std::uint64_t MetaSize = sizeof(Meta);
   
-  // size of each shard, in bytes
+  // size of each shard, in bytes. 
+  // note: trees with a small depth may only have a single shard which is smaller than this value
   static constexpr std::uint64_t ShardSize = (1 << 16);
 
-  // number of nodes per shard
-  static constexpr std::uint64_t NodesPerShard = ShardSize / NodeSize;
-  
   using ShardsType = std::vector<std::unique_ptr<uint8_t[]>>;
   
   struct Data {
@@ -160,7 +161,15 @@ class MerkleTree : public MerkleTreeBase {
   // See methods growLeft and growRight for an explanation how we keep
   // these invariants in place on growth.
  public:
-  static constexpr std::uint64_t allocationSize(std::uint64_t depth) noexcept;
+  static constexpr std::uint64_t allocationSize(std::uint64_t depth) noexcept {
+    // summary node is included in MetaSize
+    return MetaSize + (NodeSize * nodeCountAtDepth(depth));
+  }
+  
+  static constexpr std::uint64_t shardSize(std::uint64_t depth) noexcept {
+    std::uint64_t shardSize = allocationSize(depth) - MetaSize;
+    return std::min(shardSize, ShardSize);
+  }
 
   /**
    * @brief Calculates the number of nodes at the given depth

@@ -62,7 +62,7 @@
 #endif
 
 // can turn this on for more aggressive and expensive consistency checks
-#define PARANOID_TREE_CHECKS
+// #define PARANOID_TREE_CHECKS
 
 namespace {
 static constexpr std::uint8_t CurrentVersion = 0x01;
@@ -173,12 +173,6 @@ bool MerkleTreeBase::Node::operator==(Node const& other) const noexcept{
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>
-constexpr std::uint64_t MerkleTree<Hasher, BranchingBits>::allocationSize(std::uint64_t depth) noexcept {
-  // summary node is included in MetaSize
-  return MetaSize + (NodeSize * nodeCountAtDepth(depth));
-}
-
-template <typename Hasher, std::uint64_t const BranchingBits>
 std::uint64_t MerkleTree<Hasher, BranchingBits>::defaultRange(std::uint64_t depth) {
   // start with 64 revisions per leaf; this is arbitrary, but the key is we want
   // to start with a relatively fine-grained tree so we can differentiate well,
@@ -196,7 +190,7 @@ std::uint64_t MerkleTree<Hasher, BranchingBits>::numberOfShards() const noexcept
 template <typename Hasher, std::uint64_t const BranchingBits>
 std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
 MerkleTree<Hasher, BranchingBits>::fromBuffer(std::string_view buffer) {
-  if (buffer.size() < MetaSize + 2 /*for versioning*/ - 16 /*padding*/) {
+  if (buffer.size() < MetaSize - sizeof(Meta::Padding) + 2 /*for versioning*/) {
     throw std::invalid_argument(
         "Input buffer is too small");
   }
@@ -271,9 +265,7 @@ MerkleTree<Hasher, BranchingBits>::fromSnappyLazyCompressed(std::string_view buf
   char const* p = buffer.data();
   char const* e = p + buffer.size();
 
-  constexpr size_t padding = 16;
-
-  if (p + MetaSize - padding + sizeof(uint32_t) >= e) {
+  if (p + MetaSize - sizeof(Meta::Padding) + sizeof(uint32_t) >= e) {
     throw std::invalid_argument("invalid compressed tree data in buffer (lazy compression)");
   }
   
@@ -288,7 +280,7 @@ MerkleTree<Hasher, BranchingBits>::fromSnappyLazyCompressed(std::string_view buf
   std::uint64_t summaryHash = readUInt<uint64_t>(p);
   data.meta.summary = { summaryCount, summaryHash };
 
-  TRI_ASSERT(p - buffer.data() == MetaSize - padding);
+  TRI_ASSERT(p - buffer.data() == MetaSize - sizeof(Meta::Padding));
  
   std::uint32_t numberOfShards = readUInt<uint32_t>(p);
   if (numberOfShards >= 1024) {
@@ -300,11 +292,7 @@ MerkleTree<Hasher, BranchingBits>::fromSnappyLazyCompressed(std::string_view buf
   for (std::uint64_t i = 0; i < numberOfShards; ++i) {
     std::uint32_t compressedLength = readUInt<uint32_t>(p);
     if (compressedLength != 0) {
-      size_t shardLength = ShardSize;
-      if (numberOfShards == 1) {
-        // we may have only a partially filled shard
-        shardLength = allocationSize(data.meta.depth) - MetaSize;
-      }
+      size_t shardLength = shardSize(data.meta.depth);
       TRI_ASSERT(shardLength % NodeSize == 0);
       std::uint64_t nodesPerShard = shardLength / NodeSize;
       // ShardSize may be more than we actually need (if we only have a single
@@ -342,8 +330,8 @@ std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
 MerkleTree<Hasher, BranchingBits>::fromBottomMostCompressed(std::string_view buffer) {
   char const* p = buffer.data();
   char const* e = p + buffer.size();
-
-  if (p + MetaSize > e) {
+  
+  if (p + MetaSize - sizeof(Meta::Padding) > e) {
     throw std::invalid_argument("invalid compressed tree data in bottommost buffer");
   }
 
@@ -951,25 +939,20 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
       output.append(reinterpret_cast<const char*>(&value), sizeof(uint32_t));
       
       size_t const tableBase = output.size();
-      TRI_ASSERT(tableBase == MetaSize - /*padding*/ 16 + sizeof(uint32_t));
+      TRI_ASSERT(tableBase == MetaSize - sizeof(Meta::Padding) + sizeof(uint32_t));
 
       for (std::uint64_t i = 0; i < numberOfShards(); ++i) {
         uint32_t value = basics::hostToLittle(static_cast<uint32_t>(0));
         output.append(reinterpret_cast<const char*>(&value), sizeof(uint32_t));
       }
 
-      TRI_ASSERT(output.size() == MetaSize - /*padding*/ 16 + sizeof(uint32_t) + numberOfShards() * sizeof(uint32_t));
+      TRI_ASSERT(output.size() == MetaSize - sizeof(Meta::Padding) + sizeof(uint32_t) + numberOfShards() * sizeof(uint32_t));
       ::SnappyStringAppendSink sink(output);
       for (std::uint64_t i = 0; i < numberOfShards(); ++i) {
         size_t compressedLength = 0;
         bool shardSet = (_data.shards.size() > i && _data.shards[i] != nullptr);
         if (shardSet) {
-          size_t shardLength = ShardSize;
-          if (numberOfShards() == 1) {
-            // we may have only a partially filled shard
-            shardLength = allocationSize(meta().depth) - MetaSize;
-          }
-          snappy::ByteArraySource source(reinterpret_cast<char*>(_data.shards[i].get()), shardLength);
+          snappy::ByteArraySource source(reinterpret_cast<char*>(_data.shards[i].get()), shardSize(meta().depth));
           size_t previousLength = output.size();
           snappy::Compress(&source, &sink);
           compressedLength = output.size() - previousLength;
@@ -1075,6 +1058,11 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::string_view buffer) {
     p += NodeSize;
     ++i;
   }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef PARANOID_TREE_CHECKS
+  checkInternalConsistency();
+#endif
+#endif
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>
@@ -1090,13 +1078,7 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(MerkleTree<Hasher, BranchingBits> 
   // no lock necessary here for ourselves, as no other thread can see us yet
   _data.meta = Meta{other.meta().rangeMin, other.meta().rangeMax, other.meta().depth, other.meta().initialRangeMin, other.meta().summary};
 
-  size_t shardLength = ShardSize;
-  if (other.numberOfShards() == 1) {
-    // we may have only a partially filled shard
-    shardLength = allocationSize(_data.meta.depth) - MetaSize;
-  }
-  TRI_ASSERT(shardLength % NodeSize == 0);
-  std::uint64_t nodesPerShard = shardLength / NodeSize;
+  std::uint64_t nodesPerShard = shardSize(_data.meta.depth) / NodeSize;
 
   _data.shards.reserve(other._data.shards.size());
   std::uint64_t offset = 0;
@@ -1157,7 +1139,9 @@ MerkleTreeBase::Node& MerkleTree<Hasher, BranchingBits>::node(std::uint64_t inde
   if (_data.shards[shard] == nullptr) {
     _data.shards[shard] = std::make_unique<uint8_t[]>(ShardSize);
     Node* p = reinterpret_cast<Node*>(_data.shards[shard].get());
-    for (std::uint64_t i = 0; i < NodesPerShard; ++i) {
+    
+    std::uint64_t nodesPerShard = shardSize(meta().depth) / NodeSize;
+    for (std::uint64_t i = 0; i < nodesPerShard; ++i) {
       new (p) Node{0, 0};
       ++p;
     }
@@ -1182,6 +1166,35 @@ MerkleTreeBase::Node const& MerkleTree<Hasher, BranchingBits>::node(std::uint64_
   }
   uint8_t* ptr = _data.shards[shard].get() + NodeSize * (index - shardBaseIndex(shard));
   return *reinterpret_cast<Node const*>(ptr);
+}
+
+void MerkleTreeBase::Meta::serialize(std::string& output, bool addPadding) const {
+  // rangeMin / rangeMax / depth / initialRangeMin
+  uint64_t value = basics::hostToLittle(rangeMin);
+  output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
+  
+  value = basics::hostToLittle(rangeMax);
+  output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
+  
+  value = basics::hostToLittle(depth);
+  output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
+
+  value = basics::hostToLittle(initialRangeMin);
+  output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
+  
+  // summary node count
+  value = basics::hostToLittle(summary.count);
+  output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
+  
+  // summary node hash
+  value = basics::hostToLittle(summary.hash);
+  output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
+
+  if (addPadding) {
+    value = 0;
+    output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
+    output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
+  }
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>
@@ -1580,36 +1593,8 @@ void MerkleTree<Hasher, BranchingBits>::checkInternalConsistency() const {
 template <typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::serializeMeta(std::string& output, bool addPadding) const {
   TRI_ASSERT(output.empty());
-  
-  // rangeMin / rangeMax / depth / initialRangeMin
-  uint64_t value = basics::hostToLittle(meta().rangeMin);
-  output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
-  
-  value = basics::hostToLittle(meta().rangeMax);
-  output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
-  
-  value = basics::hostToLittle(meta().depth);
-  output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
-
-  value = basics::hostToLittle(meta().initialRangeMin);
-  output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
-  
-  // summary node count
-  value = basics::hostToLittle(meta().summary.count);
-  output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
-  
-  // summary node hash
-  value = basics::hostToLittle(meta().summary.hash);
-  output.append(reinterpret_cast<const char*>(&value), sizeof(uint64_t));
-
-  if (addPadding) {
-    constexpr size_t paddingLength = 16;
-    char padding[paddingLength];
-    memset(&padding[0], 0, paddingLength);
-    output.append(&padding[0], paddingLength);
-
-    TRI_ASSERT(output.size() == MetaSize);
-  }
+  meta().serialize(output, addPadding);
+  TRI_ASSERT(output.size() == MetaSize - (addPadding ? 0 : sizeof(Meta::Padding)));
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>
