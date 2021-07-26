@@ -504,9 +504,7 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
 Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
   // Validation Phase collect a list of collections to create
   std::unordered_set<std::string> documentCollectionsToCreate{};
-  std::unordered_set<std::string> satelliteDocumentCollectionsToCreate{};
   std::unordered_set<std::string> edgeCollectionsToCreate{};
-  std::unordered_set<std::string> satelliteEdgeCollectionsToCreate{};
   std::unordered_set<std::shared_ptr<LogicalCollection>> existentDocumentCollections{};
   std::unordered_set<std::shared_ptr<LogicalCollection>> existentEdgeCollections{};
 
