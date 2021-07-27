@@ -92,8 +92,8 @@ class DummyMetric : public AtomicMetric<T> {
   DummyMetric() : AtomicMetric<T>(T(), "", "", "") {}
 
   void toPrometheus(std::string& result,
-                    std::string const& globalLabels,
-                    std::string const& alternativeName) const override {}
+                    std::string const& labels,
+                    std::string const& globals) const override {}
 
   virtual void store(T&& newStats) override{}
 
@@ -312,7 +312,7 @@ class IResearchLink {
     void toPrometheus (
       std::string& result,
       const std::string& labels,
-      const std::string& globalLabels) const;
+      const std::string& alternativeNames) const;
   };
 
   std::string getViewId() const;

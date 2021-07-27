@@ -111,9 +111,9 @@ class AtomicMetric : public Metric {
   std::string type() const override { return "atomic_metric"; }
 
   void toPrometheus(std::string& result,
-                    std::string const& globalLabels,
-                    std::string const& alternativeName) const override {
-    load().toPrometheus(result, labels(), globalLabels);
+                    std::string const& globals,
+                    std::string const& alternativeName = std::string()) const override {
+    load().toPrometheus(result, labels(), globals);
   }
 
  private:

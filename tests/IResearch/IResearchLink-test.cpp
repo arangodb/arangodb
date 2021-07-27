@@ -30,6 +30,7 @@
 #include "store/fs_directory.hpp"
 #include "utils/log.hpp"
 #include "utils/utf8_path.hpp"
+#include "utils/file_utils.hpp"
 
 #include <velocypack/Parser.h>
 
@@ -876,15 +877,21 @@ void getStatsFromFolder(std::string_view path,
 
   const std::regex regex("^_\\d+$");
   std::smatch match;
-  iresearch::utf8_path utf8_path(path);
+  irs::utf8_path utf8_path(path);
 
-  auto visitor = [&indexSize, &numFiles, &match, &regex, &path](
+  auto visitor = [&indexSize, &numFiles, &match, &regex, &utf8_path](
       const irs::utf8_path::native_char_t* filename)->bool {
 
-    std::string name = fs::path(filename).stem().string();
+    auto pathParts = irs::file_utils::path_parts(filename);
+    std::string name(pathParts.stem.c_str(), pathParts.stem.size());
 
     if (std::regex_match(name, match, regex)) {
-      indexSize += fs::file_size(fs::path(path) / filename);
+      irs::utf8_path absPath = utf8_path;
+      absPath /= pathParts.basename; // creating abs path to current file
+
+      uint64_t currSize = 0;
+      irs::file_utils::byte_size(currSize, absPath.c_str());
+      indexSize += currSize;
       ++numFiles;
     }
 
@@ -1208,9 +1215,9 @@ void getPrometheusStr(std::string& result,
                       const TRI_vocbase_t& vocbase) {
   std::string label;
   label += "viewId=\"" + l->getViewId() + "\",";
-  label += "collId=\"" + l->getDbName() + "\",";
+  label += "collId=\"" + l->getCollectionName() + "\",";
   label += "shardName=\"" + l->getShardName() + "\",";
-  label += "dbName=\"" + l->getCollectionName() + "\"";
+  label += "dbName=\"" + l->getDbName() + "\"";
 
   arangodb::metrics_key key("arangodb_arangosearch_link_stats", label);
 
@@ -1271,15 +1278,45 @@ TEST_F(IResearchLinkTest, test_link_and_metics) {
     EXPECT_TRUE((l->commit().ok()));
 
     std::string expected;
-    expected += R"(arangodb_arangosearch_docs_count{ viewId="h3039/42",collId="2",shardName="",dbName="1", viewId="h3039/42",collId="2",shardName="",dbName="1"} 1)";
+    expected += R"(arangodb_arangosearch_docs_count{ viewId="h3039/42",collId="132",shardName="",dbName="2"} 1)";
     expected += "\n";
-    expected += R"(arangodb_arangosearch_live_docs_count{ viewId="h3039/42",collId="2",shardName="",dbName="1", viewId="h3039/42",collId="2",shardName="",dbName="1"} 1)";
+    expected += R"(arangodb_arangosearch_live_docs_count{ viewId="h3039/42",collId="132",shardName="",dbName="2"} 1)";
     expected += "\n";
-    expected += R"(arangodb_arangosearch_index_size{ viewId="h3039/42",collId="2",shardName="",dbName="1", viewId="h3039/42",collId="2",shardName="",dbName="1"} 646)";
+    expected += R"(arangodb_arangosearch_index_size{ viewId="h3039/42",collId="132",shardName="",dbName="2"} 646)";
     expected += "\n";
-    expected += R"(arangodb_arangosearch_segments_count{ viewId="h3039/42",collId="2",shardName="",dbName="1", viewId="h3039/42",collId="2",shardName="",dbName="1"} 1)";
+    expected += R"(arangodb_arangosearch_segments_count{ viewId="h3039/42",collId="132",shardName="",dbName="2"} 1)";
     expected += "\n";
-    expected += R"(arangodb_arangosearch_files_count{ viewId="h3039/42",collId="2",shardName="",dbName="1", viewId="h3039/42",collId="2",shardName="",dbName="1"} 6)";
+    expected += R"(arangodb_arangosearch_files_count{ viewId="h3039/42",collId="132",shardName="",dbName="2"} 6)";
+    expected += "\n";
+
+  }
+
+  {
+    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                       EMPTY, EMPTY, EMPTY,
+                                       arangodb::transaction::Options());
+    EXPECT_TRUE((trx.begin().ok()));
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+
+    ASSERT_TRUE(l != nullptr);
+
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice())
+                     .ok()));
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(3), doc2->slice())
+                     .ok()));
+    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE((l->commit().ok()));
+
+    std::string expected;
+    expected += R"(arangodb_arangosearch_docs_count{ viewId="h3039/42",collId="132",shardName="",dbName="2"} 3)";
+    expected += "\n";
+    expected += R"(arangodb_arangosearch_live_docs_count{ viewId="h3039/42",collId="132",shardName="",dbName="2"} 3)";
+    expected += "\n";
+    expected += R"(arangodb_arangosearch_index_size{ viewId="h3039/42",collId="132",shardName="",dbName="2"} 1443)";
+    expected += "\n";
+    expected += R"(arangodb_arangosearch_segments_count{ viewId="h3039/42",collId="132",shardName="",dbName="2"} 2)";
+    expected += "\n";
+    expected += R"(arangodb_arangosearch_files_count{ viewId="h3039/42",collId="132",shardName="",dbName="2"} 11)";
     expected += "\n";
 
     std::string actual;

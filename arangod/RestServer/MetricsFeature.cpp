@@ -573,7 +573,7 @@ bool MetricsFeature::metricToPrometheus(const metrics_key& key, std::string& str
     return false;
   }
 
-  res->second->toPrometheus(str, res->first.labels);
+  res->second->toPrometheus(str, "");
   return true;
 }
 

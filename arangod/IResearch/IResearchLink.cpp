@@ -952,9 +952,9 @@ arangodb_arangosearch_link_stats getLinkStatMetric(
 
   arangodb_arangosearch_link_stats tmpStats;
   tmpStats.addLabel("viewId", std::move(link.getViewId()));
-  tmpStats.addLabel("collId", std::move(link.getDbName()));
+  tmpStats.addLabel("collId", std::move(link.getCollectionName()));
   tmpStats.addLabel("shardName", std::move(link.getShardName()));
-  tmpStats.addLabel("dbName", std::move(link.getCollectionName()));
+  tmpStats.addLabel("dbName", std::move(link.getDbName()));
 
   return tmpStats;
 }
@@ -1978,11 +1978,11 @@ AnalyzerPool::ptr IResearchLink::findAnalyzer(AnalyzerPool const& analyzer) cons
 
 void IResearchLink::LinkStats::toPrometheus(std::string &result,
                                         const std::string &labels,
-                                        const std::string &globalLabels) const {
+                                        const std::string &globals) const {
 
-  std::string annotation = "{ " + globalLabels;
+  std::string annotation = "{ " + globals;
   if (!labels.empty()) {
-    if (!globalLabels.empty()) {
+    if (!globals.empty()) {
       annotation += ", ";
     }
     annotation += labels;
