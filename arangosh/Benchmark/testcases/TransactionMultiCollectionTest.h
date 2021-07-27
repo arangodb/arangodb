@@ -51,17 +51,17 @@ namespace arangodb::arangobench {
     void tearDown() override {}
 
     std::string url(int const threadNumber, size_t const threadCounter,
-        size_t const globalCounter) override {
+                    size_t const globalCounter) override {
       return std::string("/_api/transaction");
     }
 
     rest::RequestType type(int const threadNumber, size_t const threadCounter,
-        size_t const globalCounter) override {
+                           size_t const globalCounter) override {
       return rest::RequestType::POST;
     }
 
     void payload(int threadNumber, size_t threadCounter,
-        size_t globalCounter, std::string& buffer) const override {
+                 size_t globalCounter, std::string& buffer) const override {
       using namespace arangodb::velocypack;
       Builder b;
       b(Value(ValueType::Object));

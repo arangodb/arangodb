@@ -79,7 +79,9 @@ namespace arangodb::arangobench {
         values = "FOR doc IN " + _arangobench.collection() 
           += std::string(" RETURN doc");
         b.add("query", Value(values));
-        b.add("options", Value("{\"stream\": true}"));
+        b.add("options", Value(ValueType::Object));
+        b.add("stream", Value(true));
+        b.close();
       }
       b.close();
       buffer = b.toJson();

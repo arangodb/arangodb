@@ -31,54 +31,54 @@
 
 namespace arangodb::arangobench {
 
-struct DocumentImportTest : public Benchmark<DocumentImportTest> {
-  static std::string name() { return "import-document"; }
+  struct DocumentImportTest : public Benchmark<DocumentImportTest> {
+    static std::string name() { return "import-document"; }
 
-  DocumentImportTest(BenchFeature& arangobench)
+    DocumentImportTest(BenchFeature& arangobench)
       : Benchmark<DocumentImportTest>(arangobench),
-        _url("/_api/import?collection=" + _arangobench.collection() +
-             "&type=documents") {
-    uint64_t const n = _arangobench.complexity();
-    using namespace arangodb::velocypack;
-    Builder b;
-    for (uint64_t i = 0; i < n; ++i) {
-      b.clear();
-      b.openObject();
-      b.add("key1", Value(i));
-      b.add("key2", Value(i));
-      b.close();
-      _buffer += b.toJson();
-      _buffer.push_back('\n');
+      _url("/_api/import?collection=" + _arangobench.collection() +
+          "&type=documents") {
+        uint64_t const n = _arangobench.complexity();
+        using namespace arangodb::velocypack;
+        Builder b;
+        for (uint64_t i = 0; i < n; ++i) {
+          b.clear();
+          b.openObject();
+          b.add("key1", Value(i));
+          b.add("key2", Value(i));
+          b.close();
+          _buffer += b.toJson();
+          _buffer.push_back('\n');
+        }
+      }
+
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      return DeleteCollection(client, _arangobench.collection()) &&
+        CreateCollection(client, _arangobench.collection(), 2, _arangobench);
     }
-  }
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return DeleteCollection(client, _arangobench.collection()) &&
-           CreateCollection(client, _arangobench.collection(), 2, _arangobench);
-  }
+    void tearDown() override {}
 
-  void tearDown() override {}
+    std::string url(int const threadNumber, size_t const threadCounter,
+                    size_t const globalCounter) override {
+      return _url;
+    }
 
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return _url;
-  }
+    rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                           size_t const globalCounter) override {
+      return rest::RequestType::POST;
+    }
 
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
-  }
+    void payload(int threadNumber, size_t threadCounter,
+                 size_t globalCounter, std::string& buffer) const override {
+      buffer = _buffer;
+    }
 
-  void payload(int threadNumber, size_t threadCounter,
-               size_t globalCounter, std::string& buffer) override {
-    buffer = _buffer;
-  }
+    private: 
+    std::string _url;
 
-private: 
-  std::string _url;
+    std::string _buffer;
 
-  std::string _buffer;
-
-};
+  };
 
 }  // namespace arangodb::arangobench

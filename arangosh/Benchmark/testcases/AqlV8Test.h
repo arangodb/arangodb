@@ -44,17 +44,17 @@ namespace arangodb::arangobench {
     void tearDown() override {}
 
     std::string url(int const threadNumber, size_t const threadCounter,
-        size_t const globalCounter) override {
+                    size_t const globalCounter) override {
       return std::string("/_api/cursor");
     }
 
     rest::RequestType type(int const threadNumber, size_t const threadCounter,
-        size_t const globalCounter) override {
+                           size_t const globalCounter) override {
       return rest::RequestType::POST;
     }
 
     void payload(int threadNumber, size_t threadCounter, 
-        size_t globalCounter, std::string& buffer) const override {
+                 size_t globalCounter, std::string& buffer) const override {
       using namespace arangodb::velocypack;
       uint64_t const n = _arangobench.complexity();
       std::string values = "INSERT {\"_key\": \"test" + std::to_string(static_cast<int64_t>(globalCounter)) + "\"";
@@ -70,6 +70,6 @@ namespace arangodb::arangobench {
       buffer = b.toJson();
     }
 
-      };
+  };
 
 }  // namespace arangodb::arangobench

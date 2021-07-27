@@ -406,8 +406,6 @@ namespace arangodb {
           rest::RequestType const type =
             _operation->type(_threadNumber, threadCounter, globalCounter);
           std::string const url = _operation->url(_threadNumber, threadCounter, globalCounter);
-          size_t payloadLength = 0;
-          bool mustFree = false;
 
           // std::cout << "thread number #" << _threadNumber << ", threadCounter " <<
           // threadCounter << ", globalCounter " << globalCounter << "\n";

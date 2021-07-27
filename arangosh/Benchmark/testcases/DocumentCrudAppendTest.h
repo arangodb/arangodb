@@ -44,7 +44,7 @@ namespace arangodb::arangobench {
     void tearDown() override {}
 
     std::string url(int const threadNumber, size_t const threadCounter,
-        size_t const globalCounter) override {
+                    size_t const globalCounter) override {
       size_t const mod = globalCounter % 4;
 
       if (mod == 0) {
@@ -58,7 +58,7 @@ namespace arangodb::arangobench {
     }
 
     rest::RequestType type(int const threadNumber, size_t const threadCounter,
-        size_t const globalCounter) override {
+                           size_t const globalCounter) override {
       size_t const mod = globalCounter % 4;
 
       if (mod == 0) {
@@ -76,7 +76,7 @@ namespace arangodb::arangobench {
     }
 
     void payload(int threadNumber, size_t threadCounter,
-        size_t globalCounter, std::string& buffer) override {
+                 size_t globalCounter, std::string& buffer) const override {
       size_t const mod = globalCounter % 4;
       if (mod == 0 || mod == 2) {
         uint64_t const n = _arangobench.complexity();

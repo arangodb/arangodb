@@ -32,59 +32,59 @@
 
 namespace arangodb::arangobench {
 
-struct CustomQueryTest : public Benchmark<CustomQueryTest> {
-  static std::string name() { return "custom-query"; }
+  struct CustomQueryTest : public Benchmark<CustomQueryTest> {
+    static std::string name() { return "custom-query"; }
 
-  CustomQueryTest(BenchFeature& arangobench)
+    CustomQueryTest(BenchFeature& arangobench)
       : Benchmark<CustomQueryTest>(arangobench) {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    _query = _arangobench.customQuery();
-    if (_query.empty()) {
-      auto file = _arangobench.customQueryFile();
-      size_t length;
-      auto* p = TRI_SlurpFile(file.c_str(), &length);
-      if (p != nullptr) {
-        auto guard = scopeGuard([&p]() { TRI_Free(p); });
-        _query = std::string(p, length);
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      _query = _arangobench.customQuery();
+      if (_query.empty()) {
+        auto file = _arangobench.customQueryFile();
+        size_t length;
+        auto* p = TRI_SlurpFile(file.c_str(), &length);
+        if (p != nullptr) {
+          auto guard = scopeGuard([&p]() { TRI_Free(p); });
+          _query = std::string(p, length);
+        }
       }
-    }
 
-    if (_query.empty()) {
-      LOG_TOPIC("79cce", FATAL, arangodb::Logger::FIXME)
+      if (_query.empty()) {
+        LOG_TOPIC("79cce", FATAL, arangodb::Logger::FIXME)
           << "custom benchmark requires --custom-query or --custom-query-file to "
-             "be specified";
-      return false;
+          "be specified";
+        return false;
+      }
+
+      basics::StringBuffer buff;
+      buff.appendText("{\"query\":");
+      buff.appendJsonEncoded(_query.c_str(), _query.size());
+      buff.appendChar('}');
+      _query = buff.toString();
+
+      return true;
     }
-    
-    basics::StringBuffer buff;
-    buff.appendText("{\"query\":");
-    buff.appendJsonEncoded(_query.c_str(), _query.size());
-    buff.appendChar('}');
-    _query = buff.toString();
-    
-    return true;
-  }
 
-  void tearDown() override {}
+    void tearDown() override {}
 
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return std::string("/_api/cursor");
-  }
+    std::string url(int const threadNumber, size_t const threadCounter,
+                    size_t const globalCounter) override {
+      return std::string("/_api/cursor");
+    }
 
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
-  }
+    rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                           size_t const globalCounter) override {
+      return rest::RequestType::POST;
+    }
 
-  void payload(int threadNumber, size_t threadCounter,
-               size_t globalCounter, std::string& buffer) override {
-    buffer = _query;
-  }
+    void payload(int threadNumber, size_t threadCounter,
+                 size_t globalCounter, std::string& buffer) const override {
+      buffer = _query;
+    }
 
- private:
-  std::string _query;
-};
+    private:
+    std::string _query;
+  };
 
 }  // namespace arangodb::arangobench

@@ -57,7 +57,7 @@ namespace arangodb::arangobench {
     }
 
     rest::RequestType type(int const threadNumber, size_t const threadCounter,
-        size_t const globalCounter) override {
+                           size_t const globalCounter) override {
       size_t const mod = globalCounter % 2;
 
       if (mod == 0) {
@@ -67,7 +67,7 @@ namespace arangodb::arangobench {
     }
 
     void payload(int threadNumber, size_t threadCounter,
-        size_t globalCounter, std::string& buffer) override {
+                 size_t globalCounter, std::string& buffer) const override {
       size_t const mod = globalCounter % 2;
       if (mod == 0) {
         uint64_t const n = _arangobench.complexity();
@@ -76,7 +76,6 @@ namespace arangodb::arangobench {
         b.openObject();
         size_t keyId = (size_t)(globalCounter / 2);
         b.add("_key", Value(std::string("testKey") + std::to_string(keyId)));
-
         for (uint64_t i = 1; i <= n; ++i) {
           uint64_t mod = _arangobench.operations() / 10;
           if (mod < 100) {

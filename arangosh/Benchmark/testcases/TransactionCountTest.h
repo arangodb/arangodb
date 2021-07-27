@@ -44,17 +44,17 @@ namespace arangodb::arangobench {
     void tearDown() override {}
 
     std::string url(int const threadNumber, size_t const threadCounter,
-        size_t const globalCounter) override {
+                    size_t const globalCounter) override {
       return std::string("/_api/transaction");
     }
 
     rest::RequestType type(int const threadNumber, size_t const threadCounter,
-        size_t const globalCounter) override {
+                           size_t const globalCounter) override {
       return rest::RequestType::POST;
     }
 
     void payload(int threadNumber, size_t threadCounter, 
-        size_t globalCounter, std::string& buffer) override {
+                 size_t globalCounter, std::string& buffer) const override {
       using namespace arangodb::velocypack;
       Builder b;
       b(Value(ValueType::Object));
@@ -64,7 +64,6 @@ namespace arangodb::arangobench {
       b.add("action", Value(std::string("function () { var c = require(\"internal\").db[\"") + _arangobench.collection() + std::string("\"]; var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw \"error, counters deviate!\"; } c.save({ }); } }")));   
       b.close();
       buffer = b.toJson();
-      LOG_DEVEL << "buffer is receiving " << buffer;
     }
 
   };

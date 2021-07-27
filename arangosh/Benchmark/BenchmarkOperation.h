@@ -79,8 +79,7 @@ namespace arangodb {
       /// @brief return the payload (body) of the HTTP request to execute
       //////////////////////////////////////////////////////////////////////////////
 
-      virtual void payload(int threadNumber, size_t threadCounter,
-          size_t globalCounter, std::string& buffer) const;
+      virtual void payload(int, size_t, size_t, std::string&) const = 0;
 
       using BenchmarkFactory = std::function<std::unique_ptr<BenchmarkOperation>(BenchFeature&)>;
 
