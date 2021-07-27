@@ -77,7 +77,7 @@ struct arangodb::ReplicatedLogMethods {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  virtual auto tailEntries(LogId, LogIndex) const
+  virtual auto tailEntries(LogId, LogIndex, std::size_t limit) const
   -> futures::Future<std::unique_ptr<LogIterator>> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -151,13 +151,14 @@ auto sendReadEntryRequest(network::ConnectionPool *pool, std::string const& serv
 }
 
 auto sendTailRequest(network::ConnectionPool* pool, std::string const& server,
-                     std::string const& database, LogId id, LogIndex first)
-    -> futures::Future<std::unique_ptr<LogIterator>> {
+                     std::string const& database, LogId id, LogIndex first,
+                     std::size_t limit) -> futures::Future<std::unique_ptr<LogIterator>> {
   auto path = basics::StringUtils::joinT("/", "_api/log", id, "tail");
 
   network::RequestOptions opts;
   opts.database = database;
   opts.parameters["first"] = to_string(first);
+  opts.parameters["limit"] = std::to_string(limit);
   return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Get, path, {}, opts)
       .thenValue([](network::Response&& resp) -> std::unique_ptr<LogIterator> {
         if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
@@ -172,10 +173,7 @@ auto sendTailRequest(network::ConnectionPool* pool, std::string const& server,
 
           auto next() -> std::optional<LogEntryView> override {
             while (iter != end) {
-              auto logEntry = PersistingLogEntry::fromVelocyPack(*iter++);
-              if (logEntry.logPayload()) {
-                return LogEntryView(logEntry.logIndex(), *logEntry.logPayload());
-              }
+              return LogEntryView::fromVelocyPack(*iter++);
             }
             return std::nullopt;
           }
@@ -186,7 +184,7 @@ auto sendTailRequest(network::ConnectionPool* pool, std::string const& server,
           VPackArrayIterator end;
         };
 
-        return std::make_unique<VPackLogIterator>(resp.response().copyPayload());
+        return std::make_unique<VPackLogIterator>(resp.response().stealPayload());
       });
 }
 }
@@ -220,10 +218,10 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
     return sendLogStatusRequest(pool, getLogLeader(id), vocbase.name(), id);
   }
 
-  auto tailEntries(LogId id, LogIndex first) const
+  auto tailEntries(LogId id, LogIndex first, std::size_t limit) const
       -> futures::Future<std::unique_ptr<LogIterator>> override {
     auto pool = server.getFeature<NetworkFeature>().pool();
-    return sendTailRequest(pool, getLogLeader(id), vocbase.name(), id, first);
+    return sendTailRequest(pool, getLogLeader(id), vocbase.name(), id, first, limit);
   }
 
   auto createReplicatedLog(replication2::agency::LogPlanSpecification const& spec) const
@@ -274,8 +272,27 @@ struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
     return vocbase.getReplicatedLogLeaderById(id)->readReplicatedEntryByIndex(idx);
   }
 
-  auto tailEntries(LogId id, LogIndex idx) const -> futures::Future<std::unique_ptr<LogIterator>> override {
-    return vocbase.getReplicatedLogLeaderById(id)->waitForIterator(idx);
+  auto tailEntries(LogId id, LogIndex idx, std::size_t limit) const -> futures::Future<std::unique_ptr<LogIterator>> override {
+    struct LimitingIterator : LogIterator {
+      LimitingIterator(size_t limit, std::unique_ptr<LogIterator> source)
+          : _limit(limit), _source(std::move(source)) {}
+      auto next() -> std::optional<LogEntryView> override {
+        if (_limit == 0) {
+          return std::nullopt;
+        }
+
+        _limit -= 1;
+        return _source->next();
+      }
+
+      std::size_t _limit;
+      std::unique_ptr<LogIterator> _source;
+    };
+
+    return vocbase.getReplicatedLogLeaderById(id)->waitForIterator(idx).thenValue(
+        [limit](std::unique_ptr<LogIterator> iter) -> std::unique_ptr<LogIterator> {
+          return std::make_unique<LimitingIterator>(limit, std::move(iter));
+        });
   }
 
   auto appendEntries(LogId id, replicated_log::AppendEntriesRequest const& req) const
@@ -522,7 +539,9 @@ RestStatus RestLogHandler::handleGetTail(const ReplicatedLogMethods& methods,
     return RestStatus::DONE;
   }
   LogIndex logIdx{basics::StringUtils::uint64(_request->value("first"))};
-  auto fut = methods.tailEntries(logId, logIdx).thenValue([&](std::unique_ptr<LogIterator> iter) {
+  std::size_t limit{basics::StringUtils::uint64(_request->value("limit"))};
+
+  auto fut = methods.tailEntries(logId, logIdx, limit).thenValue([&](std::unique_ptr<LogIterator> iter) {
     VPackBuilder builder;
     {
       VPackArrayBuilder ab(&builder);

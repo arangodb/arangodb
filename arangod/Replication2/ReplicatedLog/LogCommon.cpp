@@ -26,8 +26,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
-#include <Basics/StringUtils.h>
 #include <Basics/StaticStrings.h>
+#include <Basics/StringUtils.h>
 
 #include <Basics/VelocyPackHelper.h>
 #include <chrono>
@@ -59,19 +59,27 @@ auto LogIndex::saturatedDecrement() const noexcept -> LogIndex {
   return LogIndex{0};
 }
 
-PersistingLogEntry::PersistingLogEntry(LogTerm logTerm, LogIndex logIndex, std::optional<LogPayload> payload)
+PersistingLogEntry::PersistingLogEntry(LogTerm logTerm, LogIndex logIndex,
+                                       std::optional<LogPayload> payload)
     : _logTerm{logTerm}, _logIndex{logIndex}, _payload{std::move(payload)} {}
 
-PersistingLogEntry::PersistingLogEntry(TermIndexPair termIndexPair, std::optional<LogPayload> payload)
+PersistingLogEntry::PersistingLogEntry(TermIndexPair termIndexPair,
+                                       std::optional<LogPayload> payload)
     : _logTerm(termIndexPair.term),
       _logIndex(termIndexPair.index),
       _payload(std::move(payload)) {}
 
-auto PersistingLogEntry::logTerm() const noexcept -> LogTerm { return _logTerm; }
+auto PersistingLogEntry::logTerm() const noexcept -> LogTerm {
+  return _logTerm;
+}
 
-auto PersistingLogEntry::logIndex() const noexcept -> LogIndex { return _logIndex; }
+auto PersistingLogEntry::logIndex() const noexcept -> LogIndex {
+  return _logIndex;
+}
 
-auto PersistingLogEntry::logPayload() const noexcept -> std::optional<LogPayload> const& { return _payload; }
+auto PersistingLogEntry::logPayload() const noexcept -> std::optional<LogPayload> const& {
+  return _payload;
+}
 
 void PersistingLogEntry::toVelocyPack(velocypack::Builder& builder) const {
   builder.openObject();
@@ -141,16 +149,26 @@ auto InMemoryLogEntry::entry() const noexcept -> PersistingLogEntry const& {
 }
 
 LogEntryView::LogEntryView(LogIndex index, LogPayload const& payload) noexcept
-    : _index(index), _payload(&payload) {}
+    : _index(index), _payload(payload.slice()) {}
+
+LogEntryView::LogEntryView(LogIndex index, velocypack::Slice payload) noexcept
+    : _index(index), _payload(payload) {}
 
 auto LogEntryView::logIndex() const noexcept -> LogIndex { return _index; }
 
-auto LogEntryView::logPayload() const noexcept -> LogPayload const& { return *_payload; }
+auto LogEntryView::logPayload() const noexcept -> velocypack::Slice {
+  return _payload;
+}
 
 void LogEntryView::toVelocyPack(velocypack::Builder& builder) const {
   auto og = velocypack::ObjectBuilder(&builder);
   builder.add("logIndex", velocypack::Value(_index));
-  builder.add("payload", velocypack::Slice(_payload->dummy.data()));
+  builder.add("payload", _payload);
+}
+
+auto LogEntryView::fromVelocyPack(velocypack::Slice slice) -> LogEntryView {
+  return LogEntryView(LogIndex{slice.get("logIndex").getNumericValue<std::size_t>()},
+                      slice.get("payload"));
 }
 
 auto LogTerm::operator<=(LogTerm other) const -> bool {
@@ -162,7 +180,7 @@ LogTerm::operator velocypack::Value() const noexcept {
 }
 
 auto replication2::operator<<(std::ostream& os, const LogTerm& term) -> std::ostream& {
-    return os << term.value;
+  return os << term.value;
 }
 
 auto replication2::operator==(LogPayload const& left, LogPayload const& right) -> bool {
@@ -194,6 +212,10 @@ auto LogPayload::createFromString(std::string_view string) -> LogPayload {
 
 auto LogPayload::byteSize() const noexcept -> std::size_t {
   return dummy.byteSize();
+}
+
+auto LogPayload::slice() const noexcept -> velocypack::Slice {
+  return VPackSlice(dummy.data());
 }
 
 auto LogId::fromString(std::string_view name) noexcept -> std::optional<LogId> {
@@ -252,7 +274,7 @@ replication2::TermIndexPair::TermIndexPair(LogTerm term, LogIndex index) noexcep
 }
 
 auto replication2::operator<<(std::ostream& os, const TermIndexPair& pair) -> std::ostream& {
-    return os << '(' << pair.term << ':' << pair.index << ')';
+  return os << '(' << pair.term << ':' << pair.index << ')';
 }
 
 LogConfig::LogConfig(VPackSlice slice) {
@@ -274,7 +296,6 @@ auto replication2::operator==(LogConfig const& left, LogConfig const& right) noe
   return left.waitForSync == right.waitForSync && left.writeConcern == right.writeConcern;
 }
 
-auto replication2::operator!=(const LogConfig& left, const LogConfig& right) noexcept
--> bool {
+auto replication2::operator!=(const LogConfig& left, const LogConfig& right) noexcept -> bool {
   return !(left == right);
 }

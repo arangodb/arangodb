@@ -139,6 +139,7 @@ struct LogPayload {
   friend auto operator!=(LogPayload const&, LogPayload const&) -> bool;
 
   [[nodiscard]] auto byteSize() const noexcept -> std::size_t;
+  [[nodiscard]] auto slice() const noexcept -> velocypack::Slice;
 
   // just a placeholder for now
   velocypack::UInt8Buffer dummy;
@@ -211,15 +212,17 @@ class LogEntryView {
  public:
   LogEntryView() = delete;
   LogEntryView(LogIndex index, LogPayload const& payload) noexcept;
+  LogEntryView(LogIndex index, velocypack::Slice payload) noexcept;
 
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
-  [[nodiscard]] auto logPayload() const noexcept -> LogPayload const&;
+  [[nodiscard]] auto logPayload() const noexcept -> velocypack::Slice;
 
   void toVelocyPack(velocypack::Builder& builder) const;
+  static auto fromVelocyPack(velocypack::Slice slice) -> LogEntryView;
 
  private:
   LogIndex _index;
-  LogPayload const* _payload;
+  velocypack::Slice _payload;
 };
 
 class LogId : public arangodb::basics::Identifier {
