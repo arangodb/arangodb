@@ -63,7 +63,6 @@
 #include <vector>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/threads.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogTimeFormat.h"
@@ -313,12 +312,10 @@ class Logger {
  public:
   static void initialize(application_features::ApplicationServer&, bool);
   static void shutdown();
-  static void shutdownLogThread();
+  static void shutdownLogThread() noexcept;
   static void flush() noexcept;
 
  private:
-  static Mutex _initializeMutex;
-
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;
   static std::atomic<LogLevel> _level;
@@ -331,7 +328,6 @@ class Logger {
   static bool _showThreadIdentifier;
   static bool _showThreadName;
   static bool _showRole;
-  static bool _threaded;
   static bool _useColor;
   static bool _useEscaped;
   static bool _keepLogRotate;
@@ -343,6 +339,10 @@ class Logger {
   static std::string _outputPrefix;
   static std::string _hostname;
 
-  static std::unique_ptr<LogThread> _loggingThread;
+  // logger thread. only populated when threaded logging is selected.
+  // the pointer must only be used with atomic accessors.
+  // TODO: access this shared_ptr via std::atomic_load may not be
+  // lock-free, so we should try to improve on it!
+  static std::shared_ptr<LogThread> _loggingThread;
 };
 }  // namespace arangodb
