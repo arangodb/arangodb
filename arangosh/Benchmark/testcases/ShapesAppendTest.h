@@ -75,7 +75,7 @@ namespace arangodb::arangobench {
         Builder b;
         b.openObject();
         size_t keyId = (size_t)(globalCounter / 2);
-        b.add("_key", Value(std::string("testKey") + std::to_string(keyId)));
+        b.add("_key", Value(std::string("testkey") + std::to_string(keyId)));
         for (uint64_t i = 1; i <= n; ++i) {
           uint64_t mod = _arangobench.operations() / 10;
           if (mod < 100) {

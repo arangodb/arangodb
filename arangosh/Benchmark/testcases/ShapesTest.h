@@ -79,11 +79,12 @@ namespace arangodb::arangobench {
         size_t keyId = static_cast<size_t>(globalCounter / 3);
         Builder b;
         b.openObject();
-        b.add("_key", Value(std::string("testKey") + std::to_string(keyId)));
+        b.add("_key", Value(std::string("testkey") + std::to_string(keyId)));
         for(uint64_t i = 1; i <= n; ++i) {
           uint64_t mod = _arangobench.operations() / 10;
-          if (mod < 100) 
+          if (mod < 100) { 
             mod = 100;
+          }
           b.add(std::string("value") + std::to_string(static_cast<uint64_t>((globalCounter + i) % mod)),  Value("some bogus string value to fill up the datafile..."));
         }
         b.close();
