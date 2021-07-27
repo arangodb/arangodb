@@ -202,9 +202,6 @@ class ModificationExecutor {
 
   ModificationExecutorInfos& _infos;
   std::shared_ptr<ModifierType> _modifier;
-
-  bool _mustSkip{};
-  size_t _toSkip{};
 };
 
 }  // namespace aql
