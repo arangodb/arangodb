@@ -25,22 +25,22 @@
 
 namespace arangodb::arangobench {
 
-  std::map<std::string, BenchmarkOperation::BenchmarkFactory>& BenchmarkOperation::allBenchmarks() {
-    // this is a static inline variable to avoid issues with initialization order.
-    static std::map<std::string, BenchmarkFactory> benchmarks;
-    return benchmarks;
-  }
+std::map<std::string, BenchmarkOperation::BenchmarkFactory>& BenchmarkOperation::allBenchmarks() {
+  // this is a static inline variable to avoid issues with initialization order.
+  static std::map<std::string, BenchmarkFactory> benchmarks;
+  return benchmarks;
+}
 
-  std::unique_ptr<BenchmarkOperation> BenchmarkOperation::createBenchmark(std::string const& name, BenchFeature& arangobench) {
-    auto it = allBenchmarks().find(name);
-    if (it != allBenchmarks().end()) {
-      return it->second.operator()(arangobench);
-    }
-    return nullptr;
+std::unique_ptr<BenchmarkOperation> BenchmarkOperation::createBenchmark(std::string const& name, BenchFeature& arangobench) {
+  auto it = allBenchmarks().find(name);
+  if (it != allBenchmarks().end()) {
+    return it->second.operator()(arangobench);
   }
+  return nullptr;
+}
 
-  void BenchmarkOperation::registerBenchmark(std::string name, BenchmarkFactory factory) {
-    allBenchmarks().emplace(std::move(name), std::move(factory));
-  }
+void BenchmarkOperation::registerBenchmark(std::string name, BenchmarkFactory factory) {
+  allBenchmarks().emplace(std::move(name), std::move(factory));
+}
 
 }  // namespace arangodb::arangobench
