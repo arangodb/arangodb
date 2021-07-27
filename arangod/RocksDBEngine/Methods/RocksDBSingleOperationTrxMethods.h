@@ -18,41 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_REPLICATION_ITERATOR_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_REPLICATION_ITERATOR_H 1
+#pragma once
 
-#include <rocksdb/iterator.h>
-#include <rocksdb/options.h>
-#include <rocksdb/snapshot.h>
-
-#include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "StorageEngine/ReplicationIterator.h"
+#include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
 
 namespace arangodb {
-class LogicalCollection;
-
-class RocksDBRevisionReplicationIterator : public RevisionReplicationIterator {
+  
+/// transaction wrapper, uses the current rocksdb transaction
+class RocksDBSingleOperationTrxMethods : public RocksDBTrxBaseMethods {
  public:
-  RocksDBRevisionReplicationIterator(LogicalCollection&, rocksdb::Snapshot const*);
-  RocksDBRevisionReplicationIterator(LogicalCollection&, transaction::Methods&);
+  explicit RocksDBSingleOperationTrxMethods(RocksDBTransactionState*, rocksdb::TransactionDB* db);
 
-  virtual bool hasMore() const override;
-  virtual void reset() override;
+  rocksdb::ReadOptions iteratorReadOptions() const override;
+  
+  void prepareOperation(DataSourceId cid, RevisionId rid, TRI_voc_document_operation_e operationType) override;
 
-  virtual RevisionId revision() const override;
-  virtual VPackSlice document() const override;
+  /// @brief undo the effects of the previous prepareOperation call
+  void rollbackOperation(TRI_voc_document_operation_e operationType) override;
 
-  virtual void next() override;
-  virtual void seek(RevisionId) override;
-
- private:
-  std::unique_ptr<rocksdb::Iterator> _iter;
-  RocksDBKeyBounds _bounds;
-  rocksdb::Comparator const* _cmp;
+  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
+                                                 ReadOptionsCallback readOptionsCallback) override;
 };
 
 }  // namespace arangodb
-#endif
+
