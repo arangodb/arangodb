@@ -96,23 +96,25 @@ auto RefactoredClusterTraverserCache::persistString(arangodb::velocypack::Hashed
     return *it;
   }
   auto res = _stringHeap.registerString(idString);
-  {
-    ResourceUsageScope guard(_resourceMonitor, ::costPerPersistedString);
+  ResourceUsageScope guard(_resourceMonitor, ::costPerPersistedString);
    
-    _persistedStrings.emplace(res);
+  _persistedStrings.emplace(res);
     
-    // now make the TraverserCache responsible for memory tracking
-    guard.steal();
-  }
+  // now make the TraverserCache responsible for memory tracking
+  guard.steal();
   return res;
 }
 
 auto RefactoredClusterTraverserCache::persistEdgeData(velocypack::Slice edgeSlice)
     -> std::pair<velocypack::Slice, bool> {
   arangodb::velocypack::HashedStringRef edgeIdRef(edgeSlice.get(StaticStrings::IdString));
+  
+  ResourceUsageScope guard(_resourceMonitor, ::costPerVertexOrEdgeStringRefSlice);
+
   auto const [it, inserted] = _edgeData.try_emplace(edgeIdRef, edgeSlice);
   if (inserted) {
-    _resourceMonitor.increaseMemoryUsage(costPerVertexOrEdgeStringRefSlice);
+    // now make the TraverserCache responsible for memory tracking
+    guard.steal();
   }
   return std::make_pair(it->second, inserted);
 }
