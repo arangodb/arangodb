@@ -121,6 +121,25 @@ void ModificationExecutor<FetcherType, ModifierType>::doCollect(AqlItemBlockInpu
   TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
 }
 
+template <typename FetcherType, typename ModifierType>
+auto ModificationExecutor<FetcherType, ModifierType>::doCollectRange(
+    typename FetcherType::DataRange& input, size_t maxOutputs) -> ExecutorState {
+  if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
+    auto& range = input.getInputRange();
+    doCollect(range, maxOutputs);
+    auto upstreamState = range.upstreamState();
+    if (upstreamState == ExecutorState::DONE) {
+      // We are done with this input.
+      // We need to forward it to the last ShadowRow.
+      input.skipAllRemainingDataRows();
+    }
+    return upstreamState;
+  } else {
+    doCollect(input, maxOutputs);
+    return input.upstreamState();
+  }
+}
+
 // Outputs accumulated results, and counts the statistics
 template <typename FetcherType, typename ModifierType>
 void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output) {
@@ -206,20 +225,7 @@ template <typename FetcherType, typename ModifierType>
   }
 
   // only produce at most output.numRowsLeft() many results
-  ExecutorState upstreamState = ExecutorState::HASMORE;
-  if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
-    auto& range = input.getInputRange();
-    doCollect(range, output.numRowsLeft());
-    upstreamState = range.upstreamState();
-    if (upstreamState == ExecutorState::DONE) {
-      // We are done with this input.
-      // We need to forward it to the last ShadowRow.
-      input.skipAllRemainingDataRows();
-    }
-  } else {
-    doCollect(input, output.numRowsLeft());
-    upstreamState = input.upstreamState();
-  }
+  ExecutorState upstreamState = doCollectRange(input, output.numRowsLeft());
   if (_modifier->nrOfOperations() > 0) {
     ExecutionState modifierState = _modifier->transact(_trx);
 
@@ -250,10 +256,21 @@ template <typename FetcherType, typename ModifierType>
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+  ExecutorState upstreamState = input.upstreamState();
+
   auto handleResult = [&]() {
     TRI_ASSERT(_modifier->resultState() == ModificationExecutorResultState::HaveResult);
 
     _modifier->checkException();
+
+    if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
+      upstreamState = input.getInputRange().upstreamState();
+      if (upstreamState == ExecutorState::DONE) {
+        // We are done with this input.
+        // We need to forward it to the last ShadowRow.
+        input.skipAllRemainingDataRows();
+      }
+    }
 
     if (_infos._doCount) {
       stats.addWritesExecuted(_modifier->nrOfWritesExecuted());
@@ -297,25 +314,9 @@ template <typename FetcherType, typename ModifierType>
 
   auto skipIfRequired = [&]() {
     if (_mustSkip) {
-      // Do forward matrix input to flag everything as consumed.
-      if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
-        auto toSkip = _toSkip;
-        if (input.hasValidRow()) {
-          auto& range = input.getInputRange();
-          if (range.hasDataRow()) {
-            doCollect(range, toSkip);
-          }
-          auto upstreamState = range.upstreamState();
-          if (upstreamState == ExecutorState::DONE) {
-            // We are done with this input.
-            // We need to forward it to the last ShadowRow.
-            auto processed = input.skipAllRemainingDataRows();
-            // We cannot discard any rows here, they need to be processed.
-            TRI_ASSERT(processed == 0);
-            TRI_ASSERT(input.upstreamState() == ExecutorState::DONE);
-          }
-        }
-      }
+      std::ignore = doCollectRange(input, _toSkip);
+      call.didSkip(_toSkip);
+
       _mustSkip = false;
       _toSkip = 0;
     }
@@ -323,7 +324,6 @@ template <typename FetcherType, typename ModifierType>
 
   //TRI_ASSERT(ServerState::instance()->isSingleServer() || _processed == 0);
   // only produce at most output.numRowsLeft() many results
-  ExecutorState upstreamState = input.upstreamState();
   while (input.hasDataRow() && call.needSkipMore()) {
     _modifier->reset();
 
@@ -335,24 +335,7 @@ template <typename FetcherType, typename ModifierType>
       // If we are bound by limits or not!
       toSkip = ExecutionBlock::SkipAllSize();
     }
-    if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
-      auto& range = input.getInputRange();
-      if (range.hasDataRow()) {
-        doCollect(range, toSkip);
-      }
-      upstreamState = range.upstreamState();
-      if (upstreamState == ExecutorState::DONE) {
-        // We are done with this input.
-        // We need to forward it to the last ShadowRow.
-        auto processed = input.skipAllRemainingDataRows();
-        // We cannot discard any rows here, they need to be processed.
-        TRI_ASSERT(processed == 0);
-        TRI_ASSERT(input.upstreamState() == ExecutorState::DONE);
-      }
-    } else {
-      doCollect(input, toSkip);
-      upstreamState = input.upstreamState();
-    }
+    upstreamState = doCollectRange(input, toSkip);
 
     if (_modifier->nrOfOperations() > 0) {
       ExecutionState modifierState = _modifier->transact(_trx);
@@ -387,7 +370,7 @@ template <typename FetcherType, typename ModifierType>
       handleResult();
     }
   }
-    
+
   skipIfRequired();
 
   return {translateReturnType(upstreamState), stats, call.getSkipCount(), upstreamCall};

@@ -195,6 +195,7 @@ class ModificationExecutor {
 
  protected:
   void doCollect(AqlItemBlockInputRange& input, size_t maxOutputs);
+  auto doCollectRange(typename FetcherType::DataRange& input, size_t maxOutputs) -> ExecutorState;
   void doOutput(OutputAqlItemRow& output);
   
   transaction::Methods _trx;
@@ -202,8 +203,8 @@ class ModificationExecutor {
   ModificationExecutorInfos& _infos;
   std::shared_ptr<ModifierType> _modifier;
 
-  bool _mustSkip;
-  size_t _toSkip;
+  bool _mustSkip{};
+  size_t _toSkip{};
 };
 
 }  // namespace aql
