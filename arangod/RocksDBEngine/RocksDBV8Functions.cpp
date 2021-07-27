@@ -234,11 +234,6 @@ static void JS_CollectionRevisionTreeVerification(v8::FunctionCallbackInfo<v8::V
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
   
-  bool onlyPopulated = false;
-  if (args.Length() > 0) {
-    onlyPopulated = TRI_ObjectToBoolean(isolate, args[0]);
-  }
-
   std::unique_ptr<containers::RevisionTree> storedTree;
   std::unique_ptr<containers::RevisionTree> computedTree;
 
@@ -272,13 +267,13 @@ static void JS_CollectionRevisionTreeVerification(v8::FunctionCallbackInfo<v8::V
     VPackObjectBuilder guard(&builder);
     if (storedTree != nullptr) {
       builder.add(VPackValue("stored"));
-      storedTree->serialize(builder, onlyPopulated);
+      storedTree->serialize(builder, /*onlyPopulated*/ false);
     } else {
       builder.add("stored", VPackValue(false));
     }
     if (computedTree != nullptr) {
       builder.add(VPackValue("computed"));
-      computedTree->serialize(builder, onlyPopulated);
+      computedTree->serialize(builder, /*onlyPopulated*/ false);
     } else {
       builder.add("computed", VPackValue(false));
     }
