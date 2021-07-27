@@ -144,12 +144,6 @@ bool BreadthFirstEnumerator::next() {
         return;
       }
 
-#ifdef USE_ENTERPRISE
-      if (!validDisjointPath(nextIdx, eid)) {
-        return;
-      }
-#endif
-
       if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
         if (pathContainsEdge(nextIdx, eid)) {
           // This edge is on the path.
@@ -166,6 +160,12 @@ bool BreadthFirstEnumerator::next() {
             return;
           }
         }
+
+#ifdef USE_ENTERPRISE
+        if (!validDisjointPath(nextIdx, vId)) {
+          return;
+        }
+#endif
 
         growStorage();
         TRI_ASSERT(_schreier.capacity() > _schreier.size());

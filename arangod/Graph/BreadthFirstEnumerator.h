@@ -161,7 +161,8 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
 
   constexpr size_t pathStepSize() const noexcept;
 
-  bool validDisjointPath(size_t index, graph::EdgeDocumentToken const& edge) const;
+  bool validDisjointPath(size_t nextVertexIndex,
+                         arangodb::velocypack::StringRef const& vertex) const;
 };
 }  // namespace graph
 }  // namespace arangodb
