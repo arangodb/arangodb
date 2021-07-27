@@ -315,8 +315,8 @@ RestStatus RestLogHandler::execute() {
     case ServerState::ROLE_UNDEFINED:
     case ServerState::ROLE_AGENT:
     default:
-      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "api only on coordinators or dbservers");
+      generateError(ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+                    "api only on available coordinators or dbservers");
       return RestStatus::DONE;
   }
 }
@@ -459,7 +459,7 @@ RestStatus RestLogHandler::handleGetRequest(ReplicatedLogMethods const& methods)
     return handleGetReadEntry(methods, logId);
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                  "expecting one of the resources 'dump', 'readEntry'");
+                  "expecting one of the resources 'tail', 'readEntry'");
   }
   return RestStatus::DONE;
 }
@@ -489,7 +489,7 @@ RestLogHandler::RestLogHandler(application_features::ApplicationServer& server,
     : RestVocbaseBaseHandler(server, req, resp) {}
 RestLogHandler::~RestLogHandler() = default;
 
-RestStatus RestLogHandler::handleGet(const ReplicatedLogMethods& methods) {
+RestStatus RestLogHandler::handleGet(ReplicatedLogMethods const& methods) {
   return waitForFuture(methods.getReplicatedLogs().thenValue([this](auto&& logs) {
     VPackBuilder builder;
     {

@@ -2243,7 +2243,7 @@ void Supervision::checkReplicatedLogs() {
     return LogCurrent(from_velocypack, builder.slice());
   };
 
-  // check is Plan has replicated logs
+  // check if Plan has replicated logs
   auto const& [node, exists] = snapshot().hasAsNode(planRepLogPrefix);
   if (!exists) {
     return;

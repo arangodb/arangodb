@@ -2373,7 +2373,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     TRI_ASSERT(slice.isArray());
 
     for (VPackSlice it : VPackArrayIterator(slice)) {
-      // we found a view that is still active
+      // we found a log that is still active
       TRI_ASSERT(!it.get("id").isNone());
 
       auto logId = arangodb::replication2::LogId{
@@ -3011,8 +3011,7 @@ auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase, arangodb::replic
                             RocksDBColumnFamilyManager::Family::Definitions),
                         key.string(), value.string());
   if (s.ok()) {
-    auto log = std::make_shared<RocksDBPersistedLog>(logId, objectId, _logPersistor);
-    return {log};
+    return { std::make_shared<RocksDBPersistedLog>(logId, objectId, _logPersistor) };
   }
 
   return rocksutils::convertStatus(s);

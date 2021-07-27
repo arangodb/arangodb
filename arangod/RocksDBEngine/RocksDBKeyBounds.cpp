@@ -154,7 +154,7 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t objectId,
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::LogRange(uint64_t objectId) {
-  return RocksDBKeyBounds(RocksDBKeyBounds(RocksDBEntryType::LogEntry, objectId));
+  return RocksDBKeyBounds(RocksDBEntryType::LogEntry, objectId);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(uint64_t indexId,
