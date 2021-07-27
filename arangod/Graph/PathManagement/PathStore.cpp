@@ -71,9 +71,11 @@ size_t PathStore<Step>::append(Step step) {
       << "<PathStore> Adding step: " << step.toString();
 
   auto idx = _schreier.size();
-  _resourceMonitor.increaseMemoryUsage(sizeof(Step));
+
+  ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
   _schreier.emplace_back(std::move(step));
 
+  guard.steal();
   return idx;
 }
 
