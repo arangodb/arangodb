@@ -135,9 +135,8 @@ function recoverySuite () {
         // yes, the compression is that bad!
         // how good/bad the compression is depends a bit on luck, as the _rev
         // values in the tree are dynamic and also the tree's rangeMax.
-        print(summary.byteSize);
         assertTrue(summary.byteSize > 3000, summary);
-        assertTrue(summary.byteSize < 1000000, summary);
+        assertTrue(summary.byteSize < 10000, summary);
       });
     },
 

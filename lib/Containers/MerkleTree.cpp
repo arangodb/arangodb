@@ -66,10 +66,6 @@
 
 namespace {
 static constexpr std::uint8_t CurrentVersion = 0x01;
-static constexpr char CompressedSnappyCurrent = '1';
-static constexpr char UncompressedCurrent = '2';
-static constexpr char CompressedBottomMostCurrent = '3';
-static constexpr char CompressedSnappyLazyCurrent = '4';
 
 template<typename T> T readUInt(char const*& p) noexcept {
   T value;
@@ -167,6 +163,12 @@ std::uint64_t FnvHashProvider::hash(std::uint64_t input) const {
 }
   
 /*static*/ MerkleTreeBase::Node const MerkleTreeBase::emptyNode{ 0, 0 };
+    
+void MerkleTreeBase::Node::toVelocyPack(arangodb::velocypack::Builder& output) const {
+  velocypack::ObjectBuilder nodeGuard(&output);
+  output.add(StaticStrings::RevisionTreeCount, velocypack::Value(count));
+  output.add(StaticStrings::RevisionTreeHash, velocypack::Value(hash)); 
+}
 
 bool MerkleTreeBase::Node::operator==(Node const& other) const noexcept{
   return (this->count == other.count) && (this->hash == other.hash);
@@ -202,18 +204,20 @@ MerkleTree<Hasher, BranchingBits>::fromBuffer(std::string_view buffer) {
     throw std::invalid_argument(
         "Buffer does not contain a properly versioned tree");
   }
+
+  BinaryFormat format = static_cast<BinaryFormat>(buffer[buffer.size() - 2]);
   
-  if (buffer[buffer.size() - 2] == ::CompressedBottomMostCurrent) {
-    // bottom-most level compressed data
-    return fromBottomMostCompressed(std::string_view(buffer.data(), buffer.size() - 2));
-  } else if (buffer[buffer.size() - 2] == ::CompressedSnappyCurrent) {
-    // Snappy-compressed data
+  if (format == BinaryFormat::OnlyPopulated) {
+    // Only populated buckets
+    return fromOnlyPopulated(std::string_view(buffer.data(), buffer.size() - 2));
+  } else if (format == BinaryFormat::CompressedSnappyFull) {
+    // Snappy-compressed data (full 4MB)
     return fromSnappyCompressed(std::string_view(buffer.data(), buffer.size() - 2));
-  } else if (buffer[buffer.size() - 2] == ::UncompressedCurrent) {
+  } else if (format == BinaryFormat::Uncompressed) {
     // uncompressed data
     return fromUncompressed(std::string_view(buffer.data(), buffer.size() - 2));
-  } else if (buffer[buffer.size() - 2] == ::CompressedSnappyLazyCurrent) {
-    // Snappy-compressed data
+  } else if (format == BinaryFormat::CompressedSnappyLazy) {
+    // Snappy-compressed data (only populated shards)
     return fromSnappyLazyCompressed(std::string_view(buffer.data(), buffer.size() - 2));
   } 
   
@@ -248,6 +252,10 @@ MerkleTree<Hasher, BranchingBits>::fromSnappyCompressed(std::string_view buffer)
         "Cannot determine size of Snappy-compressed data.");
   }
   
+  // create a buffer large enough to hold the entire uncompressed data.
+  // note that this will allocate around 4 MB at once, so it is not very efficient.
+  // the Snappy lazy format should be used instead, because it will only use as
+  // much memory as is required.
   auto uncompressed = std::make_unique<uint8_t[]>(length);
 
   if (!snappy::RawUncompress(buffer.data(), buffer.size(), reinterpret_cast<char*>(uncompressed.get()))) {
@@ -286,10 +294,12 @@ MerkleTree<Hasher, BranchingBits>::fromSnappyLazyCompressed(std::string_view buf
   if (numberOfShards >= 1024) {
     throw std::invalid_argument("invalid compressed shard count in tree data");
   }
+  // initialize all shards to nullptrs
   data.shards.resize(numberOfShards);
 
   char const* compressedData = p + numberOfShards * sizeof(uint32_t);
   for (std::uint64_t i = 0; i < numberOfShards; ++i) {
+    TRI_ASSERT(p < e);
     std::uint32_t compressedLength = readUInt<uint32_t>(p);
     if (compressedLength != 0) {
       size_t shardLength = shardSize(data.meta.depth);
@@ -327,7 +337,7 @@ MerkleTree<Hasher, BranchingBits>::fromSnappyLazyCompressed(std::string_view buf
 
 template <typename Hasher, std::uint64_t const BranchingBits>
 std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
-MerkleTree<Hasher, BranchingBits>::fromBottomMostCompressed(std::string_view buffer) {
+MerkleTree<Hasher, BranchingBits>::fromOnlyPopulated(std::string_view buffer) {
   char const* p = buffer.data();
   char const* e = p + buffer.size();
   
@@ -449,22 +459,27 @@ MerkleTree<Hasher, BranchingBits>::deserialize(velocypack::Slice slice) {
   std::uint64_t totalHash = 0;
   std::uint64_t index = 0;
   for (velocypack::Slice nodeSlice : velocypack::ArrayIterator(nodes)) {
-    read = nodeSlice.get(StaticStrings::RevisionTreeCount);
-    if (!read.isNumber()) {
-      return nullptr;
-    }
-    std::uint64_t count = read.getNumber<std::uint64_t>();
+    TRI_ASSERT(nodeSlice.isObject());
 
-    read = nodeSlice.get(StaticStrings::RevisionTreeHash);
-    if (!read.isNumber()) {
-      return nullptr;
-    }
-    std::uint64_t hash = read.getNumber<std::uint64_t>();
-    if (count != 0 || hash != 0) {
-      tree->node(index) = { count, hash };
+    arangodb::velocypack::Slice countSlice = nodeSlice.get(StaticStrings::RevisionTreeCount);
+    arangodb::velocypack::Slice hashSlice = nodeSlice.get(StaticStrings::RevisionTreeHash);
 
-      totalCount += count;
-      totalHash ^= hash;
+    // skip any nodes for which there is neither a count nor a hash value
+    // present. such nodes will be returned by versions which support the
+    // "onlyPopulated" URL parameter for improved efficiency.
+    if (!countSlice.isNone() || !hashSlice.isNone()) {
+      // if any attribute is present, both need to be numeric!
+      if (!countSlice.isNumber() || !hashSlice.isNumber()) {
+        return nullptr;
+      }
+      std::uint64_t count = countSlice.getNumber<std::uint64_t>();
+      std::uint64_t hash = hashSlice.getNumber<std::uint64_t>();
+      if (count != 0 || hash != 0) {
+        tree->node(index) = { count, hash };
+
+        totalCount += count;
+        totalHash ^= hash;
+      }
     }
 
     ++index;
@@ -853,11 +868,14 @@ std::string MerkleTree<Hasher, BranchingBits>::toString(bool full) const {
 
 template <typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::serialize(velocypack::Builder& output,
-                                                  std::uint64_t depth) const {
+                                                  bool onlyPopulated) const {
+  // only a minimum allocation here. we may need a lot more
+  output.reserve(onlyPopulated ? 1024 : 256 * 1024);
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];
+
   std::shared_lock<std::shared_mutex> guard(_dataLock);
 
-  char ridBuffer[arangodb::basics::maxUInt64StringSize];
-  depth = std::min(depth, meta().depth);
+  std::uint64_t depth = meta().depth;
 
   velocypack::ObjectBuilder topLevelGuard(&output);
   output.add(StaticStrings::RevisionTreeVersion, velocypack::Value(::CurrentVersion));
@@ -875,63 +893,69 @@ void MerkleTree<Hasher, BranchingBits>::serialize(velocypack::Builder& output,
   
   std::uint64_t last = nodeCountAtDepth(depth);
   for (std::uint64_t index = 0; index < last; ++index) {
-    velocypack::ObjectBuilder nodeGuard(&output);
-    Node const& node = this->node(index);
-    output.add(StaticStrings::RevisionTreeCount, velocypack::Value(node.count));
-    output.add(StaticStrings::RevisionTreeHash, velocypack::Value(node.hash)); 
+    Node const& src = this->node(index);
+    if (onlyPopulated && src.empty()) {
+      // return an empty object. this is still worse than returning nothing at all,
+      // but otherwise we would need to return the index number of each populaed node,
+      // which is likely more data
+      output.openObject();
+      output.close();
+    } else {
+      src.toVelocyPack(output);
+    }
   }
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
-                                                        bool compress) const {
-  std::shared_lock<std::shared_mutex> guard(_dataLock);
-
+                                                        BinaryFormat format) const {
   TRI_ASSERT(output.empty());
 
-  char format = ::UncompressedCurrent;
-  if (compress) {
+  std::shared_lock<std::shared_mutex> guard(_dataLock);
+
+  if (format == BinaryFormat::Optimal) {
     // 15'000 is an arbitrary cutoff value for when to move from
     // bottom-most level compression to full tree compression with Snappy
     if (meta().summary.count <= 15'000) {
-      format = ::CompressedBottomMostCurrent;
+      format = BinaryFormat::OnlyPopulated;
     } else {
-      format = ::CompressedSnappyLazyCurrent;
+      format = BinaryFormat::CompressedSnappyLazy;
     }
   }
 
+  // the following format modifiers are only used for testing via JavaScript
   TRI_IF_FAILURE("MerkleTree::serializeUncompressed") {
-    format = ::UncompressedCurrent;
+    format = BinaryFormat::Uncompressed;
   }
-  TRI_IF_FAILURE("MerkleTree::serializeBottomMost") {
-    format = ::CompressedBottomMostCurrent;
+  TRI_IF_FAILURE("MerkleTree::serializeOnlyPopulated") {
+    format = BinaryFormat::OnlyPopulated;
   }
   TRI_IF_FAILURE("MerkleTree::serializeSnappy") {
-    format = ::CompressedSnappyCurrent;
+    format = BinaryFormat::CompressedSnappyFull;
   }
   TRI_IF_FAILURE("MerkleTree::serializeSnappyLazy") {
-    format = ::CompressedSnappyLazyCurrent;
+    format = BinaryFormat::CompressedSnappyLazy;
   }
+
+  TRI_ASSERT(format != BinaryFormat::Optimal);
    
   switch (format) {
-    case ::CompressedBottomMostCurrent: {
+    case BinaryFormat::OnlyPopulated: {
       // make a minimum allocation that will be enough for the meta data and a 
       // few notes. if we need more space, the string can grow as needed
       output.reserve(64);
       serializeMeta(output, /*usePadding*/ false);
       serializeNodes(output, /*all*/ false);
-      output.push_back(::CompressedBottomMostCurrent);
       break;
     }
-    case ::CompressedSnappyCurrent: {
+    case BinaryFormat::CompressedSnappyFull: {
       output.reserve(16384);
       ::MerkleTreeSnappySource source(numberOfShards(), allocationSize(meta().depth), _data);
       ::SnappyStringAppendSink sink(output);
       snappy::Compress(&source, &sink);
-      output.push_back(::CompressedSnappyCurrent);
       break;
     }
-    case ::CompressedSnappyLazyCurrent: {
+    case BinaryFormat::CompressedSnappyLazy: {
       output.reserve(4096);
       serializeMeta(output, /*usePadding*/ false);
       // number of shards
@@ -965,18 +989,22 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
           output[tableBase + i * sizeof(uint32_t) + j] = p[j];
         }
       }
-      output.push_back(::CompressedSnappyLazyCurrent);
       break;
     }
-    case ::UncompressedCurrent: {
+    case BinaryFormat::Uncompressed: {
       output.reserve(allocationSize(meta().depth) + 1);
       serializeMeta(output, /*usePadding*/ true);
       serializeNodes(output, /*all*/ true);
-      output.push_back(::UncompressedCurrent);
       break;
+    }
+    default: {
+      TRI_ASSERT(false);
+      throw std::invalid_argument("Invalid binary format");
     }
   }
 
+  // append format and version
+  output.push_back(static_cast<char>(format));
   output.push_back(static_cast<char>(::CurrentVersion));
 }
 

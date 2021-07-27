@@ -54,9 +54,26 @@ class FnvHashProvider : public HashProvider {
 
 class MerkleTreeBase {
  public:
+  enum class BinaryFormat : char { 
+   // Snappy-compressed full data (all buckets, even if empty)
+   CompressedSnappyFull = '1',
+   // Uncompressed data (all buckets, only use for testing!)
+   Uncompressed = '2',
+   // Only contains non-empty buckets (efficient for sparse trees)
+   OnlyPopulated = '3',
+   // Snappy-compressed data of populated buckets
+   CompressedSnappyLazy = '4',
+   
+   // placeholder for optimal format, will determine the "best"
+   // format automatically, based on heuristics
+   Optimal = 'z',
+  };
+
   struct Node {
     std::uint64_t count;
     std::uint64_t hash;
+
+    void toVelocyPack(arangodb::velocypack::Builder& output) const;
 
     bool empty() const noexcept {
       return count == 0 && hash == 0;
@@ -226,12 +243,12 @@ class MerkleTree : public MerkleTreeBase {
   static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromSnappyLazyCompressed(std::string_view buffer);
   
   /**
-   * @brief Construct a tree from a buffer containing a bottom-most level compressed tree
+   * @brief Construct a tree from a buffer containing only the populated buckets
    *
-   * @param buffer      A buffer containing a bottom-most level compressed tree
+   * @param buffer      A buffer containing a series of populated buckets
    * @return A newly allocated tree constructed from the input
    */
-  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromBottomMostCompressed(std::string_view buffer);
+  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromOnlyPopulated(std::string_view buffer);
 
   /**
    * @brief Construct a tree from a portable serialized tree
@@ -374,10 +391,9 @@ class MerkleTree : public MerkleTreeBase {
    * @brief Serialize the tree for transport or storage in portable format
    *
    * @param output    VPackBuilder for output
-   * @param depth     Maximum depth to serialize
+   * @param onlyPopulated  Only return populated buckets
    */
-  void serialize(velocypack::Builder& output,
-                 std::uint64_t depth = std::numeric_limits<std::uint64_t>::max()) const;
+  void serialize(velocypack::Builder& output, bool onlyPopulated) const;
 
   /**
    * @brief Provides a partition of the keyspace
@@ -393,11 +409,8 @@ class MerkleTree : public MerkleTreeBase {
   
   /**
    * @brief Serialize the tree for transport or storage in binary format
-   *
-   * @param output    String for output
-   * @param compress  Whether or not to compress the output
    */
-  void serializeBinary(std::string& output, bool compress) const;
+  void serializeBinary(std::string& output, BinaryFormat format) const;
 
   /**
    * @brief Checks the consistency of the tree

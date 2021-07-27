@@ -37,7 +37,7 @@ const colName4 = 'UnitTestsRecovery4';
 
 function runSetup () {
   'use strict';
-  internal.debugSetFailAt("MerkleTree::serializeBottomMost");
+  internal.debugSetFailAt("MerkleTree::serializeOnlyPopulated");
   internal.debugSetFailAt("applyUpdates::forceHibernation2");
 
   let c = db._create(colName1);
@@ -112,7 +112,7 @@ function recoverySuite () {
     },
 
     testRevisionTreeCompression: function() {
-      internal.debugSetFailAt("MerkleTree::serializeBottomMost");
+      internal.debugSetFailAt("MerkleTree::serializeOnlyPopulated");
 
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
