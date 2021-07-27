@@ -25,90 +25,72 @@
 
 #include "Benchmark.h"
 #include "helpers.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct ShapesTest : public Benchmark<ShapesTest> {
-  static std::string name() { return "shapes"; }
+  struct ShapesTest : public Benchmark<ShapesTest> {
+    static std::string name() { return "shapes"; }
 
-  ShapesTest(BenchFeature& arangobench) : Benchmark<ShapesTest>(arangobench) {}
+    ShapesTest(BenchFeature& arangobench) : Benchmark<ShapesTest>(arangobench) {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return DeleteCollection(client, _arangobench.collection()) &&
-           CreateCollection(client, _arangobench.collection(), 2, _arangobench);
-  }
-
-  void tearDown() override {}
-
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    size_t const mod = globalCounter % 3;
-
-    if (mod == 0) {
-      return std::string("/_api/document?collection=" + _arangobench.collection());
-    } else {
-      size_t keyId = (size_t)(globalCounter / 3);
-      std::string const key = "testkey" + StringUtils::itoa(keyId);
-
-      return std::string("/_api/document/" + _arangobench.collection() + "/" + key);
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      return DeleteCollection(client, _arangobench.collection()) &&
+        CreateCollection(client, _arangobench.collection(), 2, _arangobench);
     }
-  }
 
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    size_t const mod = globalCounter % 3;
+    void tearDown() override {}
 
-    if (mod == 0) {
-      return rest::RequestType::POST;
-    } else if (mod == 1) {
-      return rest::RequestType::GET;
-    } else {
-      return rest::RequestType::DELETE_REQ;
-    }
-  }
+    std::string url(int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter) override {
+      size_t const mod = globalCounter % 3;
 
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    size_t const mod = globalCounter % 3;
+      if (mod == 0) {
+        return std::string("/_api/document?collection=" + _arangobench.collection());
+      } else {
+        size_t keyId = (size_t)(globalCounter / 3);
+        std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-    if (mod == 0) {
-      uint64_t const n = _arangobench.complexity();
-      TRI_string_buffer_t* buffer;
-
-      buffer = TRI_CreateSizedStringBuffer(256);
-      TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
-
-      size_t keyId = (size_t)(globalCounter / 3);
-      std::string const key = "testkey" + StringUtils::itoa(keyId);
-      TRI_AppendString2StringBuffer(buffer, key.c_str(), key.size());
-      TRI_AppendStringStringBuffer(buffer, "\"");
-
-      for (uint64_t i = 1; i <= n; ++i) {
-        uint64_t mod = _arangobench.operations() / 10;
-        if (mod < 100) {
-          mod = 100;
-        }
-        TRI_AppendStringStringBuffer(buffer, ",\"value");
-        TRI_AppendUInt64StringBuffer(buffer, (uint64_t)((globalCounter + i) % mod));
-        TRI_AppendStringStringBuffer(
-            buffer,
-            "\":\"some bogus string value to fill up the datafile...\"");
+        return std::string("/_api/document/" + _arangobench.collection() + "/" + key);
       }
-
-      TRI_AppendStringStringBuffer(buffer, "}");
-
-      *length = TRI_LengthStringBuffer(buffer);
-      *mustFree = true;
-      char* ptr = TRI_StealStringBuffer(buffer);
-      TRI_FreeStringBuffer(buffer);
-
-      return (char const*)ptr;
-    } else {
-      *length = 0;
-      *mustFree = false;
-      return (char const*)nullptr;
     }
-  }
-};
+
+    rest::RequestType type(int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter) override {
+      size_t const mod = globalCounter % 3;
+
+      if (mod == 0) {
+        return rest::RequestType::POST;
+      } else if (mod == 1) {
+        return rest::RequestType::GET;
+      } else {
+        return rest::RequestType::DELETE_REQ;
+      }
+    }
+
+    void payload(int threadNumber, size_t threadCounter, 
+        size_t globalCounter, std::string& buffer) override {
+      size_t mod = globalCounter % 3;
+      if(mod == 0) {
+        using namespace arangodb::velocypack;
+        uint64_t n = _arangobench.complexity();
+        size_t keyId = static_cast<size_t>(globalCounter / 3);
+        Builder b;
+        b.openObject();
+        b.add("_key", Value(std::string("testKey") + std::to_string(keyId)));
+        for(uint64_t i = 1; i <= n; ++i) {
+          uint64_t mod = _arangobench.operations() / 10;
+          if (mod < 100) 
+            mod = 100;
+          b.add(std::string("value") + std::to_string(static_cast<uint64_t>((globalCounter + i) % mod)),  Value("some bogus string value to fill up the datafile..."));
+        }
+        b.close();
+        buffer = b.toJson();
+      }
+    }
+
+  };
 
 }  // namespace arangodb::arangobench

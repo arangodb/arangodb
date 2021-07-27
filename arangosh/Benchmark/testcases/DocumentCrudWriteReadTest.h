@@ -24,82 +24,64 @@
 #pragma once
 
 #include "Benchmark.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct DocumentCrudWriteReadTest : public Benchmark<DocumentCrudWriteReadTest> {
-  static std::string name() { return "crud-write-read"; }
+  struct DocumentCrudWriteReadTest : public Benchmark<DocumentCrudWriteReadTest> {
+    static std::string name() { return "crud-write-read"; }
 
-  DocumentCrudWriteReadTest(BenchFeature& arangobench) : Benchmark<DocumentCrudWriteReadTest>(arangobench) {}
+    DocumentCrudWriteReadTest(BenchFeature& arangobench) : Benchmark<DocumentCrudWriteReadTest>(arangobench) {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return DeleteCollection(client, _arangobench.collection()) &&
-           CreateCollection(client, _arangobench.collection(), 2, _arangobench);
-  }
-
-  void tearDown() override {}
-
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    size_t const mod = globalCounter % 2;
-
-    if (mod == 0) {
-      return std::string("/_api/document?collection=" + _arangobench.collection());
-    } else {
-      size_t keyId = (size_t)(globalCounter / 2);
-      std::string const key = "testkey" + StringUtils::itoa(keyId);
-
-      return std::string("/_api/document/" + _arangobench.collection() + "/" + key);
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      return DeleteCollection(client, _arangobench.collection()) &&
+        CreateCollection(client, _arangobench.collection(), 2, _arangobench);
     }
-  }
 
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    size_t const mod = globalCounter % 2;
+    void tearDown() override {}
 
-    if (mod == 0) {
-      return rest::RequestType::POST;
-    } else {
-      return rest::RequestType::GET;
-    }
-  }
-
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    size_t const mod = globalCounter % 2;
-
-    if (mod == 0) {
-      uint64_t const n = _arangobench.complexity();
-      TRI_string_buffer_t* buffer;
-
-      buffer = TRI_CreateSizedStringBuffer(256);
-      TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
-
-      size_t keyId = (size_t)(globalCounter / 2);
-      std::string const key = "testkey" + StringUtils::itoa(keyId);
-      TRI_AppendStringStringBuffer(buffer, key.c_str());
-      TRI_AppendStringStringBuffer(buffer, "\"");
-
-      for (uint64_t i = 1; i <= n; ++i) {
-        TRI_AppendStringStringBuffer(buffer, ",\"value");
-        TRI_AppendUInt64StringBuffer(buffer, i);
-        TRI_AppendStringStringBuffer(buffer, "\":true");
+    std::string url(int const threadNumber, size_t const threadCounter,
+                    size_t const globalCounter) override {
+      size_t const mod = globalCounter % 2;
+      if (mod == 0) {
+        return std::string("/_api/document?collection=" + _arangobench.collection());
+      } else {
+        size_t keyId = (size_t)(globalCounter / 2);
+        std::string const key = "testkey" + StringUtils::itoa(keyId);
+        return std::string("/_api/document/" + _arangobench.collection() + "/" + key);
       }
-
-      TRI_AppendCharStringBuffer(buffer, '}');
-
-      *length = TRI_LengthStringBuffer(buffer);
-      *mustFree = true;
-      char* ptr = TRI_StealStringBuffer(buffer);
-      TRI_FreeStringBuffer(buffer);
-
-      return (char const*)ptr;
-    } else {
-      *length = 0;
-      *mustFree = false;
-      return (char const*)nullptr;
     }
-  }
-};
+
+    rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                           size_t const globalCounter) override {
+      size_t const mod = globalCounter % 2;
+      if (mod == 0) {
+        return rest::RequestType::POST;
+      } else {
+        return rest::RequestType::GET;
+      }
+    }
+
+    void payload(int threadNumber, size_t threadCounter,
+                 size_t globalCounter, std::string& buffer) const override {
+      size_t mod = globalCounter % 2;
+      if (mod == 0) {
+        uint64_t n = _arangobench.complexity();
+        size_t keyId = static_cast<size_t>(globalCounter / 2);
+        using namespace arangodb::velocypack;
+        Builder b;
+        b.openObject();
+        b.add("_key", Value(std::string("testkey") + std::to_string(keyId)));
+        for (uint64_t i = 1; i <= n; ++i) {
+          b.add(std::string("value") + std::to_string(i), Value(true));
+        }
+        b.close();
+        buffer = b.toJson();
+      }
+    }
+
+  };
 
 }  // namespace arangodb::arangobench

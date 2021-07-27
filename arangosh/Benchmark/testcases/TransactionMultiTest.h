@@ -25,91 +25,70 @@
 
 #include "Benchmark.h"
 #include "helpers.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/ValueType.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct TransactionMultiTest : public Benchmark<TransactionMultiTest> {
-  static std::string name() { return "multitrx"; }
+  struct TransactionMultiTest : public Benchmark<TransactionMultiTest> {
+    static std::string name() { return "multitrx"; }
 
-  TransactionMultiTest(BenchFeature& arangobench) : Benchmark<TransactionMultiTest>(arangobench) {}
+    TransactionMultiTest(BenchFeature& arangobench) : Benchmark<TransactionMultiTest>(arangobench) {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    _c1 = std::string(_arangobench.collection() + "1");
-    _c2 = std::string(_arangobench.collection() + "2");
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      _c1 = std::string(_arangobench.collection() + "1");
+      _c2 = std::string(_arangobench.collection() + "2");
 
-    return DeleteCollection(client, _c1) &&
-           DeleteCollection(client, _c2) &&
-           CreateCollection(client, _c1, 2, _arangobench) &&
-           CreateCollection(client, _c2, 2, _arangobench) &&
-           CreateDocument(client, _c2, "{ \"_key\": \"sum\", \"count\": 0 }");
-  }
-
-  void tearDown() override {}
-
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return std::string("/_api/transaction");
-  }
-
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
-  }
-
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    size_t const mod = globalCounter % 2;
-    TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(256);
-
-    TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { ");
-
-    if (mod == 0) {
-      TRI_AppendStringStringBuffer(buffer, "\"exclusive\": [ \"");
-    } else {
-      TRI_AppendStringStringBuffer(buffer, "\"read\": [ \"");
+      return DeleteCollection(client, _c1) &&
+        DeleteCollection(client, _c2) &&
+        CreateCollection(client, _c1, 2, _arangobench) &&
+        CreateCollection(client, _c2, 2, _arangobench) &&
+        CreateDocument(client, _c2, "{ \"_key\": \"sum\", \"count\": 0 }");
     }
 
-    TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\", \"");
-    TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-    TRI_AppendStringStringBuffer(buffer,
-                                 "\" ] }, \"action\": \"function () { ");
-    TRI_AppendStringStringBuffer(buffer,
-                                 "var c1 = require(\\\"internal\\\").db[\\\"");
-    TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-    TRI_AppendStringStringBuffer(
-        buffer, "\\\"]; var c2 = require(\\\"internal\\\").db[\\\"");
-    TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\\\"]; ");
+    void tearDown() override {}
 
-    if (mod == 0) {
-      TRI_AppendStringStringBuffer(buffer,
-                                   "var n = Math.floor(Math.random() * 25) + "
-                                   "1; c1.save({ count: n }); var d = "
-                                   "c2.document(\\\"sum\\\"); c2.update(d, { "
-                                   "count: d.count + n });");
-    } else {
-      TRI_AppendStringStringBuffer(
-          buffer,
-          "var r1 = 0; c1.toArray().forEach(function "
-          "(d) { r1 += d.count }); var r2 = "
-          "c2.document(\\\"sum\\\").count; if (r1 !== "
-          "r2) { throw \\\"error, counters deviate!\\\"; }");
+    std::string url(int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter) override {
+      return std::string("/_api/transaction");
     }
 
-    TRI_AppendStringStringBuffer(buffer, " }\" }");
+    rest::RequestType type(int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter) override {
+      return rest::RequestType::POST;
+    }
 
-    *length = TRI_LengthStringBuffer(buffer);
-    *mustFree = true;
-    char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(buffer);
+    void payload(int threadNumber, size_t threadCounter, 
+        size_t globalCounter, std::string& buffer) const override {
+      size_t mod = globalCounter % 2;
+      using namespace arangodb::velocypack;
+      Builder b;
+      b(Value(ValueType::Object));
+      b.add("collections", Value(ValueType::Object));
+      if (mod == 0) {
+        b.add("exclusive", Value(ValueType::Array));
+      } else {
+        b.add("read", Value(ValueType::Array));
+      }
+      b.add(Value(_c1));
+      b.add(Value(_c2));
+      b.close();
+      b.close();
+      std::string actionValue = std::string("function () { var c1 = require(\"internal\").db[\"") + _c1 + std::string("\"]; var c2 = require(\"internal\").db[\"") + _c2 + std::string("\"];"); 
+      if (mod == 0) {
+        actionValue += std::string("var n = Math.floor(Math.random() * 25) + 1; c1.save({count : n}); var d = c2.document(\"sum\"); c2.update(d, { count: d.count + n }); }");
+      } else {
+        actionValue += std::string("var r1 = 0; c1.toArray().forEach(function (d) { r1 += d.count }); var r2 = c2.document(\"sum\").count; if (r1 !== r2) { throw \"error, counters deviate!\"; } }");
+      }
+      b.add("action", Value(actionValue));
+      b.close();
+      buffer = b.toJson();
+    }
 
-    return (char const*)ptr;
-  }
-
-  std::string _c1;
-  std::string _c2;
-};
+    std::string _c1;
+    std::string _c2;
+  };
 
 }  // namespace arangodb::arangobench

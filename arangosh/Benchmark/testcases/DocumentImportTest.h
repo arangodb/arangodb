@@ -69,11 +69,9 @@ struct DocumentImportTest : public Benchmark<DocumentImportTest> {
     return rest::RequestType::POST;
   }
 
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    *mustFree = false;
-    *length = _buffer.size();
-    return _buffer.data();
+  void payload(int threadNumber, size_t threadCounter,
+               size_t globalCounter, std::string& buffer) override {
+    buffer = _buffer;
   }
 
 private: 

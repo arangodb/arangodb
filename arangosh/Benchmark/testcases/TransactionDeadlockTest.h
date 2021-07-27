@@ -25,75 +25,67 @@
 
 #include "Benchmark.h"
 #include "helpers.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/ValueType.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct TransactionDeadlockTest : public Benchmark<TransactionDeadlockTest> {
-  static std::string name() { return "deadlocktrx"; }
+  struct TransactionDeadlockTest : public Benchmark<TransactionDeadlockTest> {
+    static std::string name() { return "deadlocktrx"; }
 
-  TransactionDeadlockTest(BenchFeature& arangobench) : Benchmark<TransactionDeadlockTest>(arangobench) {}
+    TransactionDeadlockTest(BenchFeature& arangobench) : Benchmark<TransactionDeadlockTest>(arangobench) {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    _c1 = std::string(_arangobench.collection() + "1");
-    _c2 = std::string(_arangobench.collection() + "2");
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      _c1 = std::string(_arangobench.collection() + "1");
+      _c2 = std::string(_arangobench.collection() + "2");
 
-    return DeleteCollection(client, _c1) &&
-           DeleteCollection(client, _c2) &&
-           CreateCollection(client, _c1, 2, _arangobench) &&
-           CreateCollection(client, _c2, 2, _arangobench) &&
-           CreateDocument(client, _c2, "{ \"_key\": \"sum\", \"count\": 0 }");
-  }
-
-  void tearDown() override {}
-
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return std::string("/_api/transaction");
-  }
-
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
-  }
-
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    size_t const mod = globalCounter % 2;
-    TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(256);
-
-    TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { ");
-    TRI_AppendStringStringBuffer(buffer, "\"write\": [ \"");
-
-    if (mod == 0) {
-      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-    } else {
-      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
+      return DeleteCollection(client, _c1) &&
+        DeleteCollection(client, _c2) &&
+        CreateCollection(client, _c1, 2, _arangobench) &&
+        CreateCollection(client, _c2, 2, _arangobench) &&
+        CreateDocument(client, _c2, "{ \"_key\": \"sum\", \"count\": 0 }");
     }
 
-    TRI_AppendStringStringBuffer(buffer,
-                                 "\" ] }, \"action\": \"function () { ");
-    TRI_AppendStringStringBuffer(buffer,
-                                 "var c = require(\\\"internal\\\").db[\\\"");
-    if (mod == 0) {
-      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-    } else {
-      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
+    void tearDown() override {}
+
+    std::string url(int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter) override {
+      return std::string("/_api/transaction");
     }
-    TRI_AppendStringStringBuffer(buffer, "\\\"]; c.any();");
 
-    TRI_AppendStringStringBuffer(buffer, " }\" }");
+    rest::RequestType type(int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter) override {
+      return rest::RequestType::POST;
+    }
 
-    *length = TRI_LengthStringBuffer(buffer);
-    *mustFree = true;
-    char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(buffer);
+    void payload(int threadNumber, size_t threadCounter,
+        size_t globalCounter, std::string& buffer) override {
+      size_t mod = globalCounter % 2;
+      using namespace arangodb::velocypack;
+      Builder b;
+      b(Value(ValueType::Object));
+      b.add("collections", Value(ValueType::Object));
+      b.add("write", Value(ValueType::Array));
+      std::string actionValue = std::string("function () { var c = require(\"internal\").db[\"");
+      if(mod == 0) {
+        b.add(Value(_c1));
+        actionValue += _c2;
+      } else {
+        b.add(Value(_c2));
+        actionValue += _c1;
+      }
+      b.close();
+      b.close();
+      actionValue += std::string("\"]; c.any(); }");
+      b.add("action", Value(actionValue));
+      b.close();
+      buffer = b.toJson();
+    }
 
-    return (char const*)ptr;
-  }
-
-  std::string _c1;
-  std::string _c2;
-};
+    std::string _c1;
+    std::string _c2;
+  };
 
 }  // namespace arangodb::arangobench

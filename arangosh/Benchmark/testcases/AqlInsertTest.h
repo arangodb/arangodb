@@ -25,59 +25,54 @@
 
 #include "Benchmark.h"
 #include "helpers.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct AqlInsertTest : public Benchmark<AqlInsertTest> {
-  static std::string name() { return "aqlinsert"; }
+  struct AqlInsertTest : public Benchmark<AqlInsertTest> {
+    static std::string name() { return "aqlinsert"; }
 
-  AqlInsertTest(BenchFeature& arangobench) : Benchmark<AqlInsertTest>(arangobench) {}
+    AqlInsertTest(BenchFeature& arangobench) : Benchmark<AqlInsertTest>(arangobench) {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return DeleteCollection(client, _arangobench.collection()) &&
-           CreateCollection(client, _arangobench.collection(), 2, _arangobench);
-  }
-
-  void tearDown() override {}
-
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return std::string("/_api/cursor");
-  }
-
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
-  }
-
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(256);
-
-    TRI_AppendStringStringBuffer(buffer,
-                                 "{\"query\":\"INSERT { _key: \\\"test");
-    TRI_AppendInt64StringBuffer(buffer, (int64_t)globalCounter);
-    TRI_AppendStringStringBuffer(buffer, "\\\"");
-
-    uint64_t const n = _arangobench.complexity();
-    for (uint64_t i = 1; i <= n; ++i) {
-      TRI_AppendStringStringBuffer(buffer, ",\\\"value");
-      TRI_AppendUInt64StringBuffer(buffer, i);
-      TRI_AppendStringStringBuffer(buffer, "\\\":true");
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      return DeleteCollection(client, _arangobench.collection()) &&
+        CreateCollection(client, _arangobench.collection(), 2, _arangobench);
     }
 
-    TRI_AppendStringStringBuffer(buffer, " } INTO ");
-    TRI_AppendStringStringBuffer(buffer, _arangobench.collection().c_str());
-    TRI_AppendStringStringBuffer(buffer, "\"}");
+    void tearDown() override {}
 
-    *length = TRI_LengthStringBuffer(buffer);
-    *mustFree = true;
-    char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(buffer);
+    std::string url(int const threadNumber, size_t const threadCounter,
+                    size_t const globalCounter) override {
+      return std::string("/_api/cursor");
+    }
 
-    return (char const*)ptr;
-  }
-};
+    rest::RequestType type(int const threadNumber, size_t const threadCounter,
+                           size_t const globalCounter) override {
+      return rest::RequestType::POST;
+    }
+
+    void payload(int threadNumber, size_t threadCounter, 
+                 size_t globalCounter, std::string& buffer) const override {
+      using namespace arangodb::velocypack;
+      Builder b;
+      b.openObject();
+      b.add("query", Value(std::string("INSERT @data INTO " + _arangobench.collection())));
+      b.add(Value("bindVars"));
+      b.openObject();
+      b.add(Value("data"));
+      b.openObject();
+      b.add("_key", Value(std::string("test") + std::to_string((int64_t)globalCounter)));
+      uint64_t const n = _arangobench.complexity();
+      for (uint64_t i = 1; i <= n; ++i) {
+        b.add(std::string("value") + std::to_string(i), Value(true));
+      }
+      b.close();
+      b.close();
+      b.close();
+      buffer = b.toJson();
+    }
+  };
 
 }  // namespace arangodb::arangobench

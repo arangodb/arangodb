@@ -24,60 +24,49 @@
 #pragma once
 
 #include "Benchmark.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct CollectionCreationTest : public Benchmark<CollectionCreationTest> {
-  static std::string name() { return "collection"; }
+  struct CollectionCreationTest : public Benchmark<CollectionCreationTest> {
+    static std::string name() { return "collection"; }
 
-  CollectionCreationTest(BenchFeature& arangobench)
+    CollectionCreationTest(BenchFeature& arangobench)
       : Benchmark<CollectionCreationTest>(arangobench), _url("/_api/collection") {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return true;
-  }
-
-  void tearDown() override {}
-
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return _url;
-  }
-
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
-  }
-
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    TRI_string_buffer_t* buffer;
-    char* data;
-
-    buffer = TRI_CreateSizedStringBuffer(64);
-    if (buffer == nullptr) {
-      return nullptr;
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      return true;
     }
-    TRI_AppendStringStringBuffer(buffer, "{\"name\":\"");
-    TRI_AppendStringStringBuffer(buffer, _arangobench.collection().c_str());
-    TRI_AppendUInt64StringBuffer(buffer, ++_counter);
-    TRI_AppendStringStringBuffer(buffer, "\"}");
 
-    *length = TRI_LengthStringBuffer(buffer);
+    void tearDown() override {}
 
-    // this will free the string buffer frame, but not the string
-    data = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(buffer);
+    std::string url(int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter) override {
+      return _url;
+    }
 
-    *mustFree = true;
-    return (char const*)data;
-  }
+    rest::RequestType type(int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter) override {
+      return rest::RequestType::POST;
+    }
 
-  static std::atomic<uint64_t> _counter;
+    void payload(int threadNumber, size_t threadCounter, 
+        size_t globalCounter, std::string& buffer) const override {
+      using namespace arangodb::velocypack;
+      Builder b;
+      b.openObject();
+      b.add("name", Value(_arangobench.collection() + std::to_string(++_counter)));
+      b.close();
+      buffer = b.toJson();
+    }
 
-  std::string _url;
-};
+    static std::atomic<uint64_t> _counter;
 
-std::atomic<uint64_t> CollectionCreationTest::_counter(0);
+    std::string _url;
+  };
+
+  std::atomic<uint64_t> CollectionCreationTest::_counter(0);
 
 }  // namespace arangodb::arangobench

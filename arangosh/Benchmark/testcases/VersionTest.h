@@ -24,40 +24,40 @@
 #pragma once
 
 #include "Benchmark.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/ValueType.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct VersionTest : public Benchmark<VersionTest> {
-  static std::string name() { return "version"; }
+  struct VersionTest : public Benchmark<VersionTest> {
+    static std::string name() { return "version"; }
 
-  VersionTest(BenchFeature& arangobench) : Benchmark<VersionTest>(arangobench), _url("/_api/version") {}
+    VersionTest(BenchFeature& arangobench) : Benchmark<VersionTest>(arangobench), _url("/_api/version") {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return true;
-  }
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      return true;
+    }
 
-  void tearDown() override {}
+    void tearDown() override {}
 
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return _url;
-  }
+    std::string url(int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter) override {
+      return _url;
+    }
 
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::GET;
-  }
+    rest::RequestType type(int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter) override {
+      return rest::RequestType::GET;
+    }
 
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    static char const* payload = "";
+    void payload(int threadNumber, size_t threadCounter, 
+        size_t globalCounter, std::string& buffer) const override {
+      buffer = "";
+    }
 
-    *mustFree = false;
-    *length = 0;
-    return payload;
-  }
-
-  std::string _url;
-};
+    std::string _url;
+  };
 
 }  // namespace arangodb::arangobench

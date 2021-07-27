@@ -25,84 +25,68 @@
 
 #include "Benchmark.h"
 #include "helpers.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/ValueType.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct TransactionMultiCollectionTest : public Benchmark<TransactionMultiCollectionTest> {
-  static std::string name() { return "multi-collection"; }
+  struct TransactionMultiCollectionTest : public Benchmark<TransactionMultiCollectionTest> {
+    static std::string name() { return "multi-collection"; }
 
-  TransactionMultiCollectionTest(BenchFeature& arangobench)
+    TransactionMultiCollectionTest(BenchFeature& arangobench)
       : Benchmark<TransactionMultiCollectionTest>(arangobench) {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    _c1 = std::string(_arangobench.collection() + "1");
-    _c2 = std::string(_arangobench.collection() + "2");
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      _c1 = std::string(_arangobench.collection() + "1");
+      _c2 = std::string(_arangobench.collection() + "2");
 
-    return DeleteCollection(client, _c1) &&
-           DeleteCollection(client, _c2) &&
-           CreateCollection(client, _c1, 2, _arangobench) &&
-           CreateCollection(client, _c2, 2, _arangobench);
-  }
-
-  void tearDown() override {}
-
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return std::string("/_api/transaction");
-  }
-
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
-  }
-
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(256);
-
-    TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { ");
-
-    TRI_AppendStringStringBuffer(buffer, "\"write\": [ \"");
-    TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\", \"");
-    TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-    TRI_AppendStringStringBuffer(buffer,
-                                 "\" ] }, \"action\": \"function () { ");
-
-    TRI_AppendStringStringBuffer(buffer,
-                                 "var c1 = require(\\\"internal\\\").db[\\\"");
-    TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-    TRI_AppendStringStringBuffer(
-        buffer, "\\\"]; var c2 = require(\\\"internal\\\").db[\\\"");
-    TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\\\"]; ");
-
-    TRI_AppendStringStringBuffer(buffer, "var doc = {");
-    uint64_t const n = _arangobench.complexity();
-    for (uint64_t i = 0; i < n; ++i) {
-      if (i > 0) {
-        TRI_AppendStringStringBuffer(buffer, ", ");
-      }
-      TRI_AppendStringStringBuffer(buffer, "value");
-      TRI_AppendUInt64StringBuffer(buffer, i);
-      TRI_AppendStringStringBuffer(buffer, ": ");
-      TRI_AppendUInt64StringBuffer(buffer, i);
+      return DeleteCollection(client, _c1) &&
+        DeleteCollection(client, _c2) &&
+        CreateCollection(client, _c1, 2, _arangobench) &&
+        CreateCollection(client, _c2, 2, _arangobench);
     }
-    TRI_AppendStringStringBuffer(buffer, " }; ");
 
-    TRI_AppendStringStringBuffer(buffer, "c1.save(doc); c2.save(doc); }\" }");
+    void tearDown() override {}
 
-    *length = TRI_LengthStringBuffer(buffer);
-    *mustFree = true;
-    char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(buffer);
+    std::string url(int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter) override {
+      return std::string("/_api/transaction");
+    }
 
-    return (char const*)ptr;
-  }
+    rest::RequestType type(int const threadNumber, size_t const threadCounter,
+        size_t const globalCounter) override {
+      return rest::RequestType::POST;
+    }
 
-  std::string _c1;
-  std::string _c2;
-};
+    void payload(int threadNumber, size_t threadCounter,
+        size_t globalCounter, std::string& buffer) const override {
+      using namespace arangodb::velocypack;
+      Builder b;
+      b(Value(ValueType::Object));
+      b.add("collections", Value(ValueType::Object));
+      b.add("write", Value(ValueType::Array));
+      b.add(Value(_c1));
+      b.add(Value(_c2));
+      b.close();
+      b.close();
+      std::string actionValue = std::string("function () { var c1 = require(\"internal\").db[\"") + _c1 + std::string("\"]; var c2 = require(\"internal\").db[\"") + _c2 + std::string("\"]; var doc = {");
+      uint64_t const n = _arangobench.complexity();
+      for (uint64_t i = 0; i < n; ++i) {
+        if (i > 0) {
+          actionValue += ", ";
+        }
+        actionValue += std::string("value") + std::to_string(i) + ": " + std::to_string(i);
+      }
+      actionValue += " }; c1.save(doc); c2.save(doc); }";
+      b.add("action", Value(actionValue));
+      b.close();
+      buffer = b.toJson();
+    }
+
+    std::string _c1;
+    std::string _c2;
+  };
 
 }  // namespace arangodb::arangobench

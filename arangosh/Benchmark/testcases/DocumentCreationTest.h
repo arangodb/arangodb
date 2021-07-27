@@ -40,10 +40,8 @@ namespace arangodb::arangobench {
         using namespace arangodb::velocypack;
         Builder b;
         b.openObject();
-        std::string tempName;
         for (uint64_t i = 1; i <= n; ++i) {
-          tempName = "test" + std::to_string(i);
-          b.add(tempName, Value("some test value"));
+          b.add(std::string("test") + std::to_string(i), Value("some test value"));
         }
         b.close();
         _buffer = b.toJson();
@@ -66,11 +64,9 @@ namespace arangodb::arangobench {
       return rest::RequestType::POST;
     }
 
-    char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-        size_t const globalCounter, bool* mustFree) override {
-      *mustFree = false;
-      *length = _buffer.size();
-      return _buffer.data();
+    void payload(int threadNumber, size_t threadCounter, 
+        size_t globalCounter, std::string& buffer) const override {
+      buffer = _buffer;
     }
 
     private:

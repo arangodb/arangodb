@@ -24,6 +24,9 @@
 #pragma once
 
 #include "Benchmark.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
@@ -57,64 +60,34 @@ struct TransactionAqlTest : public Benchmark<TransactionAqlTest> {
     return rest::RequestType::POST;
   }
 
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    size_t const mod = globalCounter % 8;
-    TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(256);
-
+  void payload(int threadNumber, size_t threadCounter, 
+               size_t globalCounter, std::string& buffer) const override {
+    size_t mod = globalCounter % 8;
+    std::string values;
     if (mod == 0) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c IN ");
-      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+      values = "FOR c IN " + _c1; 
     } else if (mod == 1) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c IN ");
-      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+      values = "FOR c IN " + _c2;
     } else if (mod == 2) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c IN ");
-      TRI_AppendStringStringBuffer(buffer, _c3.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
-    } else if (mod == 3) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c1 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-      TRI_AppendStringStringBuffer(buffer, " FOR c2 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+      values = "FOR c IN " + _c3;
+    } else if (mod ==3) { 
+      values = "FOR c1 IN " + _c1 + " FOR c2 IN " + _c2;
     } else if (mod == 4) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c2 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-      TRI_AppendStringStringBuffer(buffer, " FOR c1 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+      values = "FOR c2 IN " + _c2 + " FOR c1 IN " + _c1;
     } else if (mod == 5) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c3 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c3.c_str());
-      TRI_AppendStringStringBuffer(buffer, " FOR c1 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+      values = "FOR c3 IN " + _c3 + " FOR c1 IN " + _c1;
     } else if (mod == 6) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c2 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-      TRI_AppendStringStringBuffer(buffer, " FOR c3 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c3.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+      values = "FOR c2 IN " + _c2 + " FOR c3 IN " + _c3;
     } else if (mod == 7) {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c1 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-      TRI_AppendStringStringBuffer(buffer, " FOR c2 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-      TRI_AppendStringStringBuffer(buffer, " FOR c3 IN ");
-      TRI_AppendStringStringBuffer(buffer, _c3.c_str());
-      TRI_AppendStringStringBuffer(buffer, " RETURN 1\"}");
+      values = "FOR c1 IN " + _c1 + " FOR c2 IN " + _c2 + " FOR c3 IN " + _c3;
     }
-
-    *length = TRI_LengthStringBuffer(buffer);
-    *mustFree = true;
-    char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(buffer);
-
-    return (char const*)ptr;
+    values += " RETURN 1";
+    using namespace arangodb::velocypack;
+    Builder b;
+    b.openObject();
+    b.add("query", Value(values));
+    b.close();
+    buffer = b.toJson();
   }
 
   std::string _c1;

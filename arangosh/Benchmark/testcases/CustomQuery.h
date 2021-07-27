@@ -28,6 +28,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/files.h"
 #include "Basics/StringBuffer.h"
+#include <string>
 
 namespace arangodb::arangobench {
 
@@ -77,11 +78,9 @@ struct CustomQueryTest : public Benchmark<CustomQueryTest> {
     return rest::RequestType::POST;
   }
 
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    *mustFree = false;
-    *length = _query.size();
-    return _query.c_str();
+  void payload(int threadNumber, size_t threadCounter,
+               size_t globalCounter, std::string& buffer) override {
+    buffer = _query;
   }
 
  private:
