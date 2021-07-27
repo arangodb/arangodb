@@ -69,12 +69,6 @@ v3.8.0 (2021-07-14)
 * Added more context to "dropping follower" messages, so it is easier to analyze
   what exactly went wrong.
 
-* Fixed invalid shard synchronization for documents not added via INSERT with
-  `overwriteMode` set to `ignore`. In this case, if a document with the given key
-  already exists, it is not changed on the leader (i.e. no write happens on the
-  leader). However, a write was replicated to the follower, which was wrong.
-  This write is now suppressed, which can only make such insert operations faster.
-
 * Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
   iterator.
 
