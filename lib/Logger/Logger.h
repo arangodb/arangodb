@@ -312,7 +312,6 @@ class Logger {
  public:
   static void initialize(application_features::ApplicationServer&, bool);
   static void shutdown();
-  static void shutdownLogThread() noexcept;
   static void flush() noexcept;
 
  private:
@@ -339,10 +338,19 @@ class Logger {
   static std::string _outputPrefix;
   static std::string _hostname;
 
+  struct ThreadRef {
+    ThreadRef();
+    ~ThreadRef();
+    LogThread* operator->() const noexcept { return _thread; }
+    operator bool() const noexcept { return _thread != nullptr; }
+   private:
+    LogThread* _thread;
+  };
+  
   // logger thread. only populated when threaded logging is selected.
-  // the pointer must only be used with atomic accessors.
-  // TODO: access this shared_ptr via std::atomic_load may not be
-  // lock-free, so we should try to improve on it!
-  static std::shared_ptr<LogThread> _loggingThread;
+  // the pointer must only be used with atomic accessors after the ref counter
+  // has been increased. Best to usethe ThreadRef class for this!
+  static std::atomic<std::size_t> _loggingThreadRefs;
+  static std::atomic<LogThread*> _loggingThread;
 };
 }  // namespace arangodb

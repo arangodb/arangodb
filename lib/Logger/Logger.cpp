@@ -130,8 +130,18 @@ TRI_pid_t Logger::_cachedPid(0);
 std::string Logger::_outputPrefix;
 std::string Logger::_hostname;
 
-std::shared_ptr<LogThread> Logger::_loggingThread(nullptr);
+std::atomic<std::size_t> Logger::_loggingThreadRefs(0);
+std::atomic<LogThread*> Logger::_loggingThread(nullptr);
 
+Logger::ThreadRef::ThreadRef() {
+  Logger::_loggingThreadRefs.fetch_add(1, std::memory_order_relaxed);
+  _thread = Logger::_loggingThread.load(std::memory_order_acquire);
+}
+
+Logger::ThreadRef::~ThreadRef() {
+  Logger::_loggingThreadRefs.fetch_sub(1, std::memory_order_relaxed);
+}
+  
 LogGroup& Logger::defaultLogGroup() { return ::defaultLogGroupInstance; }
 
 LogLevel Logger::logLevel() { return _level.load(std::memory_order_relaxed); }
@@ -679,9 +689,9 @@ void Logger::append(LogGroup& group,
     bool handled = false;
     if (!forceDirect) {
       // check if we have a logging thread
-      auto loggingThread = std::atomic_load_explicit(&_loggingThread, std::memory_order_relaxed);
+      ThreadRef loggingThread;
 
-      if (loggingThread != nullptr) {
+      if (loggingThread) {
         handled = loggingThread->log(group, msg);
       }
     }
@@ -711,14 +721,14 @@ void Logger::initialize(application_features::ApplicationServer& server, bool th
 
   // logging is now active
   if (threaded) {
-    auto loggingThread = std::make_shared<LogThread>(server, ::LogThreadName);
+    auto loggingThread = new LogThread(server, ::LogThreadName);
     if (!loggingThread->start()) {
       LOG_TOPIC("28bd9", FATAL, arangodb::Logger::FIXME)
           << "could not start logging thread";
       FATAL_ERROR_EXIT();
     }
   
-    std::atomic_store_explicit(&_loggingThread, loggingThread, std::memory_order_release);
+    _loggingThread.store(loggingThread, std::memory_order_release);
   }
 }
 
@@ -733,14 +743,17 @@ void Logger::shutdown() {
   }
   // logging is now inactive
 
-  auto loggingThread = std::atomic_load_explicit(&_loggingThread, std::memory_order_relaxed);
-  
   // reset the instance variable in Logger, so that others won't see it anymore
-  std::atomic_store_explicit(&_loggingThread, std::shared_ptr<LogThread>(), std::memory_order_release);
-
+  auto loggingThread = _loggingThread.exchange(nullptr, std::memory_order_relaxed);
+  
   // logging is now inactive (this will terminate the logging thread)
   // join with the logging thread
   if (loggingThread != nullptr) {
+    // wait until all threads have dropped their reference to the logging thread
+    while (_loggingThreadRefs.load(std::memory_order_relaxed)) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    
     char const* currentThreadName = Thread::currentThreadName();
     if (currentThreadName != nullptr && ::LogThreadName == currentThreadName) {
       // oops, the LogThread itself crashed...
@@ -768,10 +781,6 @@ void Logger::shutdown() {
   _cachedPid = 0;
 }
 
-void Logger::shutdownLogThread() noexcept {
-  std::atomic_store_explicit(&_loggingThread, std::shared_ptr<LogThread>(), std::memory_order_release);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to flush the logging
 ////////////////////////////////////////////////////////////////////////////////
@@ -782,8 +791,8 @@ void Logger::flush() noexcept {
     return;
   }
   
-  auto loggingThread = std::atomic_load_explicit(&_loggingThread, std::memory_order_relaxed);
-  if (loggingThread != nullptr) {
+  ThreadRef loggingThread;
+  if (loggingThread) {
     loggingThread->flush();
   }
 }
