@@ -116,6 +116,14 @@ auto PersistingLogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
   return TermIndexPair{_logTerm, _logIndex};
 }
 
+PersistingLogEntry::PersistingLogEntry(LogIndex index, velocypack::Slice persisted) {
+  _logIndex = index;
+  _logTerm = LogTerm{persisted.get("logTerm").getNumericValue<std::size_t>()};
+  if (auto payload = persisted.get("payload"); !payload.isNone()) {
+    _payload = LogPayload::createFromSlice(payload);
+  }
+}
+
 InMemoryLogEntry::InMemoryLogEntry(PersistingLogEntry entry)
     : _logEntry(std::move(entry)) {}
 

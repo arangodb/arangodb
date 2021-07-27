@@ -154,6 +154,8 @@ class PersistingLogEntry {
  public:
   PersistingLogEntry(LogTerm, LogIndex, std::optional<LogPayload>);
   PersistingLogEntry(TermIndexPair, std::optional<LogPayload>);
+  PersistingLogEntry(LogIndex, velocypack::Slice persisted);
+
 
   [[nodiscard]] auto logTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;

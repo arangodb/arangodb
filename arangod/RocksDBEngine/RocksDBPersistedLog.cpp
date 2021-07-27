@@ -93,9 +93,8 @@ struct RocksDBLogIterator : PersistedLogIterator {
     }
 
     return std::optional<PersistingLogEntry>{std::in_place,
-                                            RocksDBValue::logTerm(_iter->value()),
-                                            RocksDBKey::logIndex(_iter->key()),
-                                            RocksDBValue::logPayload(_iter->value())};
+                                             RocksDBKey::logIndex(_iter->key()),
+                                             RocksDBValue::data(_iter->value())};
   }
 
   RocksDBKeyBounds const _bounds;
