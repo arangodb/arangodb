@@ -965,6 +965,10 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
       size_t const tableBase = output.size();
       TRI_ASSERT(tableBase == MetaSize - sizeof(Meta::Padding) + sizeof(uint32_t));
 
+      // for each shard, write a placeholder for the compressed length.
+      // the placeholders are initially filled with 0 bytes lengths for each shards.
+      // these values will be overridden later for the shards that actually contain
+      // data. for fully empty shards, the 0 values will remain in place.
       for (std::uint64_t i = 0; i < numberOfShards(); ++i) {
         uint32_t value = basics::hostToLittle(static_cast<uint32_t>(0));
         output.append(reinterpret_cast<const char*>(&value), sizeof(uint32_t));
