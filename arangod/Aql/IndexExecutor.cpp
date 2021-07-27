@@ -186,7 +186,7 @@ IndexExecutorInfos::IndexExecutorInfos(
     Expression* filter, arangodb::aql::Projections projections,
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
-    bool hasV8Expression, bool count, AstNode const* condition,
+    bool hasV8Expression, bool count, AstNode const* condition, bool oneIndexCondition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
     IndexIteratorOptions options, IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
     IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
@@ -208,7 +208,7 @@ IndexExecutorInfos::IndexExecutorInfos(
       _hasMultipleExpansions(false),
       _produceResult(produceResult),
       _hasV8Expression(hasV8Expression),
-      _count(count) {
+      _count(count), _oneIndexCondition(oneIndexCondition) {
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
     for (size_t i = 0; i < _condition->numMembers(); ++i) {
@@ -654,9 +654,14 @@ bool IndexExecutor::advanceCursor() {
           _infos.isAscending() ? _currentIndex : numTotal - _currentIndex - 1;
       AstNode const* conditionNode = nullptr;
       if (_infos.getCondition() != nullptr) {
-        TRI_ASSERT(_infos.getIndexes().size() == _infos.getCondition()->numMembers());
-        TRI_ASSERT(_infos.getCondition()->numMembers() > infoIndex);
-        conditionNode = _infos.getCondition()->getMember(infoIndex);
+        if (_infos.isOneIndexCondition()) {
+          TRI_ASSERT(numTotal == 1);
+          conditionNode =  _infos.getCondition();
+        } else {
+          TRI_ASSERT(_infos.getIndexes().size() == _infos.getCondition()->numMembers());
+          TRI_ASSERT(_infos.getCondition()->numMembers() > infoIndex);
+          conditionNode = _infos.getCondition()->getMember(infoIndex);
+        }
       }
       _cursors.emplace_back(_trx, _infos, conditionNode, _infos.getIndexes()[infoIndex],
                             _documentProducingFunctionContext, needsUniquenessCheck());

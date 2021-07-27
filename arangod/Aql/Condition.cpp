@@ -569,7 +569,6 @@ std::unique_ptr<Condition> Condition::fromVPack(ExecutionPlan* plan, arangodb::v
 
   condition->_isNormalized = true;
   condition->_isSorted = false;
-
   return condition;
 }
 
@@ -612,7 +611,7 @@ void Condition::andCombine(AstNode const* node) {
 /// filtering(first) and sorting(second)
 std::pair<bool, bool> Condition::findIndexes(EnumerateCollectionNode const* node,
                                              std::vector<transaction::Methods::IndexHandle>& usedIndexes,
-                                             SortCondition const* sortCondition) {
+                                             SortCondition const* sortCondition, bool& isAllCoveredByIndex) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
   aql::Collection const& coll = *node->collection();
@@ -644,7 +643,8 @@ std::pair<bool, bool> Condition::findIndexes(EnumerateCollectionNode const* node
   return arangodb::aql::utils::getBestIndexHandlesForFilterCondition(coll, _ast, _root,
                                                                      reference, sortCondition,
                                                                      itemsInIndex, node->hint(),
-                                                                     usedIndexes, _isSorted);
+                                                                     usedIndexes, _isSorted,
+                                                                      isAllCoveredByIndex);
 }
 
 /// @brief get the attributes for a sub-condition that are const

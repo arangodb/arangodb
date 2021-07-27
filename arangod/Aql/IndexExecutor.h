@@ -66,7 +66,7 @@ class IndexExecutorInfos {
                      std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
                      std::vector<Variable const*>&& expInVars,
                      std::vector<RegisterId>&& expInRegs, bool hasV8Expression,
-                     bool count, AstNode const* condition,
+                     bool count, AstNode const* condition, bool oneIndexCondition,
                      std::vector<transaction::Methods::IndexHandle> indexes,
                      Ast* ast, IndexIteratorOptions options,
                      IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
@@ -117,6 +117,10 @@ class IndexExecutorInfos {
     return _outNonMaterializedIndRegs;
   }
 
+  bool isOneIndexCondition() const noexcept {
+    return _oneIndexCondition;
+  }
+
  private:
   /// @brief _indexes holds all Indexes used in this block
   std::vector<transaction::Methods::IndexHandle> _indexes;
@@ -164,6 +168,8 @@ class IndexExecutorInfos {
   bool _hasV8Expression;
 
   bool _count;
+
+  bool _oneIndexCondition;
 };
 
 /**

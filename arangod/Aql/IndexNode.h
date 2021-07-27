@@ -66,6 +66,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   IndexNode(ExecutionPlan* plan, ExecutionNodeId id, aql::Collection const* collection,
             Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
+            bool allCoveredByOneIndex,
             std::unique_ptr<Condition> condition, IndexIteratorOptions const&);
 
   IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
@@ -173,6 +174,9 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
   /// @brief output variables to non-materialized document index references
   IndexValuesVars _outNonMaterializedIndVars;
+
+  /// @brief We have single index and this index covered whole condition
+  bool _allCoveredByOneIndex;
 };
 
 }  // namespace aql

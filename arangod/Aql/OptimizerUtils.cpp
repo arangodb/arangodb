@@ -522,7 +522,8 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     aql::Collection const& coll, arangodb::aql::Ast* ast,
     arangodb::aql::AstNode* root, arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
-    aql::IndexHint const& hint, std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted) {
+    aql::IndexHint const& hint, std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted,
+    bool& isAllCoveredByIndex) {
   // We can only start after DNF transformation
   TRI_ASSERT(root->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR);
   auto indexes = coll.indexes();
@@ -536,22 +537,25 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
 
   TRI_ASSERT(usedIndexes.empty());
 
-  // we might have a search index - it could cover all condition at once.
+  // we might have an inverted index - it could cover whole condition at once.
   // Give it a try
-  // FIXME: honor the index hint!
   for (auto& index : indexes) {
-    if (index.get()->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+    if (index.get()->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
+        (!hint.isForced() || (hint.type() == IndexHint::Simple && // apply this index only if the hint approves
+                              std::find(hint.hint().begin(), hint.hint().end(),
+                                        index->name()) != hint.hint().end()))) {
       auto costs = index.get()->supportsFilterCondition(indexes, root, reference, itemsInCollection);
       if (costs.supportsCondition) {
         // we need to find 'root' in 'ast' and replace it with specialized version
         // but for now we know that index will not alter the node, so just an assert
         TRI_ASSERT(root == index.get()->specializeCondition(root, reference));
         usedIndexes.emplace_back(index);
+        isAllCoveredByIndex = true;
         return std::make_pair(true, false);
       }
     }
   }
-
+  isAllCoveredByIndex = false;
   size_t const n = root->numMembers();
   for (size_t i = 0; i < n; ++i) {
     // BTS-398: if there are multiple OR-ed conditions, fail only for forced index

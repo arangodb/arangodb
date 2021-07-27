@@ -56,6 +56,7 @@ using namespace arangodb::aql;
 IndexNode::IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
                      Collection const* collection, Variable const* outVariable,
                      std::vector<transaction::Methods::IndexHandle> const& indexes,
+                     bool allCoveredByOneIndex,
                      std::unique_ptr<Condition> condition, IndexIteratorOptions const& opts)
     : ExecutionNode(plan, id),
       DocumentProducingNode(outVariable),
@@ -64,7 +65,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
       _condition(std::move(condition)),
       _needsGatherNodeSort(false),
       _options(opts),
-      _outNonMaterializedDocId(nullptr) {
+      _outNonMaterializedDocId(nullptr),
+      _allCoveredByOneIndex(allCoveredByOneIndex) {
   TRI_ASSERT(_condition != nullptr);
   
   _projections.determineIndexSupport(this->collection()->id(), _indexes);
@@ -122,6 +124,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   }
 
   _condition = Condition::fromVPack(plan, condition);
+  _allCoveredByOneIndex =
+    basics::VelocyPackHelper::getBooleanValue(base, "allCoveredByOneIndex", false);
 
   TRI_ASSERT(_condition != nullptr);
 
@@ -206,6 +210,7 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   }
   builder.add(VPackValue("condition"));
   _condition->toVelocyPack(builder, flags);
+  builder.add("allCoveredByOneIndex", VPackValue(_allCoveredByOneIndex));
   // IndexIteratorOptions
   builder.add("sorted", VPackValue(_options.sorted));
   builder.add("ascending", VPackValue(_options.ascending));
@@ -455,6 +460,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                          this->projections(),
                          std::move(nonConstExpressions), std::move(inVars),
                          std::move(inRegs), hasV8Expression, doCount(), _condition->root(),
+                         _allCoveredByOneIndex,
                          this->getIndexes(), _plan->getAst(), this->options(),
                          _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
 
@@ -486,7 +492,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   }
 
   auto c =
-      std::make_unique<IndexNode>(plan, _id, collection(), outVariable, _indexes,
+      std::make_unique<IndexNode>(plan, _id, collection(), outVariable, _indexes, _allCoveredByOneIndex,
                                   std::unique_ptr<Condition>(_condition->clone()), _options);
 
   c->_projections = _projections;

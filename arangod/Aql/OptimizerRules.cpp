@@ -3013,7 +3013,9 @@ struct SortToIndexNode final
         auto newNode =
             std::make_unique<IndexNode>(_plan, _plan->nextId(),
                                         enumerateCollectionNode->collection(), outVariable,
-                                        usedIndexes, std::move(condition), opts);
+                                        usedIndexes,
+                                        false, // FIXME: check actal value once inverted index will handle sorts
+                                        std::move(condition), opts);
 
         auto n = newNode.release();
         enumerateCollectionNode->CollectionAccessingNode::cloneInto(*n);
@@ -6906,6 +6908,7 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   auto inode = new IndexNode(plan, plan->nextId(), info.collection, info.collectionNodeOutVar,
                              std::vector<transaction::Methods::IndexHandle>{
                                  transaction::Methods::IndexHandle{info.index}},
+                             false, // here we are not using inverted index so for sure no "whole" coverage
                              std::move(condition), opts);
   plan->registerNode(inode);
   plan->replaceNode(info.collectionNodeToReplace, inode);
