@@ -1565,12 +1565,14 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
           LOG_CTX("11dbd", TRACE, logContext)
               << "checking replicated log " << id << " local term = "
-              << (localTerm ? to_string(localTerm.value()) : "n/a") << " current "
+              << (localTerm ? to_string(*localTerm) : "n/a") << " current "
               << (!termInCurrent.isNone() ? termInCurrent.toJson() : "n/a");
 
+          auto localStats = status.getLocalStatistics();
+          TRI_ASSERT(localStats.has_value()); // if status has a term, then it has statistics
           replication2::agency::LogCurrentLocalState localState;
           localState.term = localTerm.value();
-          localState.spearhead = status.getLocalStatistics().value().spearHead;
+          localState.spearhead = localStats->spearHead;
 
           using namespace cluster::paths;
           auto reportPath =

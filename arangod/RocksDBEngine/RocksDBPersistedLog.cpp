@@ -135,8 +135,8 @@ auto RocksDBPersistedLog::removeBack(replication2::LogIndex start) -> Result {
 
 auto RocksDBPersistedLog::prepareWriteBatch(PersistedLogIterator& iter,
                                             rocksdb::WriteBatch& wb) -> Result {
+  auto key = RocksDBKey{};
   while (auto entry = iter.next()) {
-    auto key = RocksDBKey{};
     key.constructLogEntry(_objectId, entry->logIndex());
     auto value = RocksDBValue::LogEntry(*entry);
     auto s = wb.Put(_persistor->_cf, key.string(), value.string());

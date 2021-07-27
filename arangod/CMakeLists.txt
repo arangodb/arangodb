@@ -488,7 +488,8 @@ set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
   StorageEngine/PhysicalCollection.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
-        StorageEngine/StorageEngine.cpp)
+  StorageEngine/StorageEngine.cpp
+)
 
 set(LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES
   StorageEngine/ReplicationIterator.cpp

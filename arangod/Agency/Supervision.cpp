@@ -2232,13 +2232,11 @@ void Supervision::checkReplicatedLogs() {
   using namespace replication2::agency;
 
   auto const readPlanSpecification = [](Node const& node) -> LogPlanSpecification {
-    // TODO hack
     auto builder = node.toBuilder();
     return LogPlanSpecification{from_velocypack, builder.slice()};
   };
 
   auto const readLogCurrent = [](Node const& node) -> LogCurrent {
-    // TODO fix this hack
     auto builder = node.toBuilder();
     return LogCurrent(from_velocypack, builder.slice());
   };
@@ -2303,8 +2301,7 @@ void Supervision::checkReplicatedLogs() {
   if (builder->slice().length() > 0) {
     write_ret_t res = _agent->write(builder);
     if (!res.successful()) {
-      // TODO should we ignore if writing this fails?
-      LOG_TOPIC("12d36", DEBUG, Logger::SUPERVISION)
+      LOG_TOPIC("12d36", WARN, Logger::SUPERVISION)
       << "failed to update term in agency. Will retry. " << builder->toJson();
     }
   }
