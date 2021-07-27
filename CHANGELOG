@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.1-preview-4.
+
 * APM-132: Clean up collection statuses
   Removes collection statuses "new born", "loading", "unloading" and "unloaded".
   These statuses were last relevant with the MMFiles storage engine, when it
