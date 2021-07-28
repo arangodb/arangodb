@@ -1,6 +1,13 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Web UI: Fixes a logical error which occured after re-visiting the logs view
+  which lead to not displaying the logs view and its entries correctly
+  (BTS-507).
+
+* Raised the versions of the node modules `node-sass` and `sass-loader` to be
+  able to build the Web UI with Node v16+.
+
 * Fixed BTS-408: treat positive or negative signed numbers as constants
   immediately during AQL query parsing.
   Previously, a value of `-1` was parsed initially as `unary minus(value(1))`,
@@ -166,13 +173,6 @@ v3.8.1 (XXXX-XX-XX)
 
 v3.8.0 (2021-07-14)
 -------------------
-
-* Web UI: Fixes a logical error which occured after re-visiting the logs view
-  which lead to not displaying the logs view and its entries correctly
-  (BTS-507).
-
-* Raised the versions of the node modules `node-sass` and `sass-loader` to be
-  able to build the Web UI with Node v16+.
 
 * Always remove blocker object for revision trees in case of replication
   failures.
