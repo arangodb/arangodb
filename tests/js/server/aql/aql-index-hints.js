@@ -28,14 +28,10 @@
 /// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var db = internal.db;
-var jsunity = require("jsunity");
-var errors = internal.errors;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const internal = require("internal");
+const db = internal.db;
+const jsunity = require("jsunity");
+const errors = internal.errors;
 
 function ahuacatlSkiplistOverlappingTestSuite () {
   const getIndexNames = function (query) {
@@ -88,6 +84,61 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes.length, 1);
       assertEqual(usedIndexes[0].length, 1);
       assertEqual(usedIndexes[0][0], defaultEqualityIndex);
+    },
+    
+    testPrimary : function () {
+      [ 
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc._key == 'test' RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc._key == 'test' RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc._key == 'test' && doc.testi == 99 RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc._key == 'test' && doc.testi == 99 RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc.testi == 99 && doc._key == 'test' RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.testi == 99 && doc._key == 'test' RETURN doc`,
+      ].forEach((query) => {
+        const usedIndexes = getIndexNames(query);
+        assertEqual(usedIndexes.length, 1, query);
+        assertEqual(usedIndexes[0].length, 1, query);
+        assertEqual(usedIndexes[0][0], 'primary', query);
+      });
+    },
+    
+    testMultipleOrConditionsPrimary : function () {
+      [ 
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc._key == 'test' || doc.a == 'testi' RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc._key == 'test' || doc.a == 'testi' RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc.a == 'testi' || doc._key == 'test' RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.a == 'testi' || doc._key == 'test' RETURN doc`,
+      ].forEach((query) => {
+        const usedIndexes = getIndexNames(query);
+        assertEqual(usedIndexes.length, 1, query);
+        assertEqual(usedIndexes[0].length, 2, query);
+        assertEqual(["hash_a", "primary"], usedIndexes[0].sort(), query);
+      });
+    },
+    
+    testMultipleOrConditionsOther : function () {
+      [ 
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc.a == 'test' || doc.b == 'testi' RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.a == 'test' || doc.b == 'testi' RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc.b == 'testi' || doc.a == 'test' RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.b == 'testi' || doc.a == 'test' RETURN doc`,
+      ].forEach((query) => {
+        const usedIndexes = getIndexNames(query);
+        assertEqual(usedIndexes.length, 1, query);
+        assertEqual(usedIndexes[0].length, 2, query);
+        assertEqual(["hash_a", "hash_b_a"], usedIndexes[0].sort(), query);
+      });
+    },
+    
+    testMultipleOrConditionsSomeOfThemOnNonIndexedAttributes : function () {
+      [
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc._key == 'test' || doc.testi == 99 RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.testi == 99 || doc._key == 'test' RETURN doc`,
+      ].forEach((query) => {
+        // no indexes used here
+        const usedIndexes = getIndexNames(query);
+        assertEqual(usedIndexes.length, 0, query);
+      });
     },
 
     testFilterDefaultHint : function () {
@@ -372,10 +423,6 @@ function ahuacatlSkiplistOverlappingTestSuite () {
 
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlSkiplistOverlappingTestSuite);
 
