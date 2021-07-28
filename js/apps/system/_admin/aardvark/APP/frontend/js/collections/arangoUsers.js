@@ -169,7 +169,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       return;
     }
 
-    var url = 'whoAmI?_=' + encodeURIComponent(Date.now());
+    var url = 'whoAmI?_=' + Date.now();
     if (frontendConfig.react) {
       url = arangoHelper.databaseUrl('/_admin/aardvark/' + url);
     }
