@@ -113,6 +113,11 @@ struct SCCValue {
   uint64_t color;
 };
 
+struct WCCValue {
+  uint64_t component;
+  std::unordered_set<PregelID> inboundNeighbors;
+};
+
 template <typename T>
 struct SenderMessage {
   SenderMessage() = default;
