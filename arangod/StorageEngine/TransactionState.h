@@ -274,6 +274,11 @@ class TransactionState {
   Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
                                    AccessMode::Type);
 
+  /// @brief helper function for addCollection
+  Result addCollectionInternal(DataSourceId cid, std::string const& cname,
+                               AccessMode::Type accessType, bool lockUsage);
+  
+
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
 
