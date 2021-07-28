@@ -333,8 +333,42 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
   if (index == LogIndex{0}) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid parameter; log index 0 is invalid");
   }
-  return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) {
-    return getCommittedLogIterator(index);
+  return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) -> WaitForIteratorFuture {
+    auto [actualIndex, iter] = _guardedFollowerData.doUnderLock(
+        [&](GuardedFollowerData& followerData) -> std::pair<LogIndex, std::unique_ptr<LogIterator>> {
+          TRI_ASSERT(index <= followerData._commitIndex);
+
+          /*
+           * This code here ensures that if only private log entries are present
+           * we do not reply with an empty iterator but instead wait for the next
+           * entry containing payload.
+           */
+
+          auto actualIndex = index;
+          while (actualIndex <= followerData._commitIndex) {
+            auto memtry = followerData._inMemoryLog.getEntryByIndex(actualIndex);
+            if (!memtry.has_value()) {
+              break;
+            }
+            if (memtry->entry().logPayload().has_value()) {
+              break;
+            }
+            actualIndex = actualIndex + 1;
+          }
+
+          if (actualIndex > followerData._commitIndex) {
+            return std::make_pair(actualIndex, nullptr);
+          }
+
+          return std::make_pair(actualIndex, followerData.getCommittedLogIterator(actualIndex));
+        });
+
+    // call here, otherwise we deadlock with waitFor
+    if (iter == nullptr) {
+      return waitForIterator(actualIndex);
+    }
+
+    return std::move(iter);
   });
 }
 
@@ -352,11 +386,16 @@ auto replicated_log::LogFollower::getCommittedLogIterator(LogIndex firstIndex) c
 -> std::unique_ptr<LogIterator> {
   return _guardedFollowerData.doUnderLock(
       [&](GuardedFollowerData const& data) -> std::unique_ptr<LogIterator> {
-        auto const endIdx = data._inMemoryLog.getNextIndex();
-        TRI_ASSERT(firstIndex < endIdx);
-        // return an iterator for the range [firstIndex, _commitIndex + 1)
-        return data._inMemoryLog.getIteratorRange(firstIndex, data._commitIndex + 1);
+        return data.getCommittedLogIterator(firstIndex);
       });
+}
+
+auto replicated_log::LogFollower::GuardedFollowerData::getCommittedLogIterator(LogIndex firstIndex) const
+-> std::unique_ptr<LogIterator> {
+  auto const endIdx = _inMemoryLog.getNextIndex();
+  TRI_ASSERT(firstIndex < endIdx);
+  // return an iterator for the range [firstIndex, _commitIndex + 1)
+  return _inMemoryLog.getIteratorRange(firstIndex, _commitIndex + 1);
 }
 
 replicated_log::LogFollower::~LogFollower() {

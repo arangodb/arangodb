@@ -167,6 +167,22 @@ auto delayedFuture(std::chrono::steady_clock::duration duration)
 }
 }  // namespace
 
+void replicated_log::LogLeader::handleResolvedPromiseSet(
+    ResolvedPromiseSet resolvedPromises,
+    std::shared_ptr<ReplicatedLogMetrics> const& logMetrics) {
+  auto const commitTp = InMemoryLogEntry::clock::now();
+  for (auto const& it : resolvedPromises._commitedLogEntries) {
+    using namespace std::chrono_literals;
+    auto const entryDuration = commitTp - it.insertTp();
+    logMetrics->replicatedLogInsertsRtt->count(entryDuration / 1us);
+  }
+
+  for (auto& promise : resolvedPromises._set) {
+    TRI_ASSERT(promise.second.valid());
+    promise.second.setValue(resolvedPromises._quorum);
+  }
+}
+
 void replicated_log::LogLeader::executeAppendEntriesRequests(
     std::vector<std::optional<PreparedAppendEntryRequest>> requests,
     std::shared_ptr<ReplicatedLogMetrics> const& logMetrics) {
@@ -244,17 +260,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                       return {};
                     });
 
-                auto const commitTp = InMemoryLogEntry::clock::now();
-                for (auto const& it : resolvedPromises._commitedLogEntries) {
-                  using namespace std::chrono_literals;
-                  auto const entryDuration = commitTp - it.insertTp();
-                  logMetrics->replicatedLogInsertsRtt->count(entryDuration / 1us);
-                }
-
-                for (auto& promise : resolvedPromises._set) {
-                  TRI_ASSERT(promise.second.valid());
-                  promise.second.setValue(resolvedPromises._quorum);
-                }
+                handleResolvedPromiseSet(std::move(resolvedPromises), logMetrics);
                 executeAppendEntriesRequests(std::move(preparedRequests), logMetrics);
               } else {
                 LOG_TOPIC("de300", DEBUG, Logger::REPLICATION2)

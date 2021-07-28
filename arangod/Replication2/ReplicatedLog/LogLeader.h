@@ -267,6 +267,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogPart
   static void executeAppendEntriesRequests(
       std::vector<std::optional<PreparedAppendEntryRequest>> requests,
       std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
+  static void handleResolvedPromiseSet(ResolvedPromiseSet set,
+      std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
 
   auto tryHardToClearQueue() noexcept -> void;
 };

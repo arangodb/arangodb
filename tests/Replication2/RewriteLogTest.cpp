@@ -118,15 +118,20 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   {
     auto entry = std::optional<PersistingLogEntry>();
     auto log = getPersistedLogById(LogId{1});
-    auto iter = log->read(LogIndex{1});
+    auto iter = log->read(LogIndex{1}); // The mock log returns all entries
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     EXPECT_EQ(entry->logIndex(), LogIndex{1});
     EXPECT_EQ(entry->logTerm(), LogTerm{1});
     EXPECT_EQ(entry->logPayload(), LogPayload::createFromString("first entry"));
-    // note that there's an empty entry here, inserted by becomeLeader(), which
-    // is skipped by the iterator as it's not a user-inserted entry.
+    // This is the leader entry inserted in becomeLeader
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    EXPECT_EQ(entry->logIndex(), LogIndex{2});
+    EXPECT_EQ(entry->logTerm(), LogTerm{3});
+    EXPECT_EQ(entry->logPayload(), std::nullopt) << entry->logPayload().value().slice().toJson();
+
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     EXPECT_EQ(entry->logIndex(), LogIndex{3});

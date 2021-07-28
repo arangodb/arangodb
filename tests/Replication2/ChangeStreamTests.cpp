@@ -92,7 +92,7 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries) {
   auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
                                      std::move(coreA), LogTerm{3}, {}, 1);
   // Note that the leader inserts an empty log entry in LogLeader::construct
-  auto fut = leader->waitForIterator(LogIndex{4});
+  auto fut = leader->waitForIterator(LogIndex{3});
 
   ASSERT_FALSE(fut.isReady());
 
@@ -123,6 +123,57 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries) {
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     EXPECT_EQ(entry->logIndex(), idx4);
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    EXPECT_EQ(entry->logIndex(), idx5);
+
+    entry = iter->next();
+    ASSERT_FALSE(entry.has_value());
+  }
+}
+
+TEST_F(ChangeStreamTests, ask_for_internal_entries_should_block_until_the_next_user_entry) {
+  auto const entries = {
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{2},
+          LogPayload::createFromString("second entry")),
+      replication2::PersistingLogEntry(LogTerm{2}, LogIndex{3},
+          LogPayload::createFromString("third entry"))};
+
+  auto coreA = std::unique_ptr<LogCore>(nullptr);
+  {
+    auto leaderLog = makePersistedLog(LogId{1});
+    for (auto const& entry : entries) {
+      leaderLog->setEntry(entry);
+    }
+    coreA = std::make_unique<LogCore>(leaderLog);
+  }
+
+  auto leader = LogLeader::construct(defaultLogger(), _logMetricsMock, "leader",
+      std::move(coreA), LogTerm{3}, {}, 1);
+  // The forth entry is inserted in LogLeader::construct - wait for it
+  auto fut = leader->waitForIterator(LogIndex{4});
+
+  ASSERT_FALSE(fut.isReady());
+
+  leader->triggerAsyncReplication();
+
+  // because index 4 is internal, the future is still not ready
+  ASSERT_FALSE(fut.isReady());
+
+  // Now insert another entry
+  auto const idx5 = leader->insert(LogPayload::createFromString("fourth entry"), false,
+      LogLeader::doNotTriggerAsyncReplication);
+  leader->triggerAsyncReplication();
+  EXPECT_EQ(idx5, LogIndex{5});
+
+  // Now the future is ready
+  ASSERT_TRUE(fut.isReady());
+  {
+    // We shall only see index 5
+    auto entry = std::optional<LogEntryView>{};
+    auto iter = std::move(fut).get();
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
@@ -182,11 +233,11 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_with_follower) {
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    EXPECT_EQ(entry->logIndex(), LogIndex{4});
+    EXPECT_EQ(entry->logIndex(), LogIndex{5});
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    EXPECT_EQ(entry->logIndex(), LogIndex{5});
+    EXPECT_EQ(entry->logIndex(), LogIndex{6});
 
     entry = iter->next();
     ASSERT_FALSE(entry.has_value());
@@ -348,11 +399,11 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_follower) {
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    EXPECT_EQ(entry->logIndex(), LogIndex{4});
+    EXPECT_EQ(entry->logIndex(), LogIndex{5});
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    EXPECT_EQ(entry->logIndex(), LogIndex{5});
+    EXPECT_EQ(entry->logIndex(), LogIndex{6});
 
     entry = iter->next();
     ASSERT_FALSE(entry.has_value());
