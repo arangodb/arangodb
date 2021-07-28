@@ -1,6 +1,14 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Fix serialization of query shutdown error code when sending it to DB servers.
+  The error code is numeric, but it was sent to the `/_api/aql/finish` API as a
+  string. This led to the DB servers always assuming the default error code
+  TRI_ERROR_INTERAL (error code 4). This was not a problem for normal query
+  operations, but it could have led to warnings being logged stating "please
+  contact ArangoDB support". Now the actual error code is using during query
+  shutdown.
+
 * Fix display of running and slow queries in web UI when there are multiple
   coordinators. Previously, the display order of queries was undefined, which
   could lead to queries from one coordinator being display on top once and then
