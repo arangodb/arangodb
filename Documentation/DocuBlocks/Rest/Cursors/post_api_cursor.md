@@ -62,6 +62,15 @@ and thus make queries run longer. Note that the *fullCount* attribute may only
 be present in the result if the query has a top-level LIMIT clause and the LIMIT
 clause is actually used in the query.
 
+@RESTSTRUCT{fillBlockCache,post_api_cursor_opts,boolean,optional,}
+if set to *true* or not specified, this will make the query store the data it 
+reads via the RocksDB storage engine in the RocksDB block cache. This is usually 
+the desired behavior. The option can be set to *false* for queries that are
+known to either read a lot of data which would thrash the block cache, or for queries
+that read data which are known to be outside of the hot set. By setting the option
+to *false*, data read by the query will not make it into the RocksDB block cache if
+not already in there, thus leaving more room for the actual hot set.
+
 @RESTSTRUCT{maxPlans,post_api_cursor_opts,integer,optional,int64}
 Limits the maximum number of plans that are created by the AQL query optimizer.
 
