@@ -78,7 +78,6 @@
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
 #include "RestHandler/RestMetricsHandler.h"
-#include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
@@ -365,13 +364,6 @@ void GeneralServerFeature::defineHandlers() {
 #ifdef USE_ENTERPRISE
   HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
 #endif
-
-  // ...........................................................................
-  // /_msg
-  // ...........................................................................
-
-  _handlerFactory->addPrefixHandler("/_msg/please-upgrade",
-                                    RestHandlerCreator<RestPleaseUpgradeHandler>::createNoData);
 
   // ...........................................................................
   // /_api

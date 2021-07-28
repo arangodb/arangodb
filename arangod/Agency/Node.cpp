@@ -341,14 +341,14 @@ Node const& Node::operator()(std::vector<std::string> const& pv) const {
   for (std::string const& key : pv) {
 
     if (current->_children == nullptr) {
-      throw StoreException(std::string("Node ") + uri() + "/" + key + " not found!");
+      throw StoreException(std::string("Node ") + current->uri() + "/" + key + " not found!");
     }
 
     auto const& children = *current->_children;
     auto const  child = children.find(key);
 
     if (child == children.end() || child->second->lifetimeExpired()) {
-      throw StoreException(std::string("Node ") + uri() + "/" + key + " not found!");
+      throw StoreException(std::string("Node ") + current->uri() + "/" + key + " not found!");
     }  else {
       current = child->second.get();
     }

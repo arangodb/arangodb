@@ -51,12 +51,12 @@
 #include "RocksDBEngine/RocksDBIterators.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
-#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBReplicationIterator.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSavePoint.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -68,7 +68,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/KeyGenerator.h"
@@ -283,34 +282,6 @@ ErrorCode RocksDBCollection::close() {
     it->unload();
   }
   return TRI_ERROR_NO_ERROR;
-}
-
-void RocksDBCollection::load() {
-  if (_cacheEnabled) {
-    createCache();
-    if (_cache) {
-      uint64_t numDocs = _meta.numberDocuments();
-      if (numDocs > 0) {
-        _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
-      }
-    }
-  }
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto it : _indexes) {
-    it->load();
-  }
-}
-
-void RocksDBCollection::unload() {
-  WRITE_LOCKER(guard, _exclusiveLock);
-  if (useCache()) {
-    destroyCache();
-    TRI_ASSERT(_cache.get() == nullptr);
-  }
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto it : _indexes) {
-    it->unload();
-  }
 }
 
 /// return bounds for all documents
@@ -708,7 +679,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
   TRI_ASSERT(objectId() != 0);
   auto state = RocksDBTransactionState::toState(&trx);
-  RocksDBMethods* mthds = state->rocksdbMethods();
+  RocksDBTransactionMethods* mthds = state->rocksdbMethods();
 
   if (state->isOnlyExclusiveTransaction() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
@@ -733,17 +704,14 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     }
 
     // pre commit sequence needed to place a blocker
-    rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
-    auto guard = scopeGuard([&] {  // remove blocker afterwards
-      _meta.removeBlocker(state->id());
-    });
-    _meta.placeBlocker(state->id(), seq);
+    RocksDBBlockerGuard blocker(&_logicalCollection);
+    blocker.placeBlocker(state->id());
 
     rocksdb::WriteBatch batch;
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
     rocksdb::Status s =
-    batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+      batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
@@ -779,7 +747,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
       return rocksutils::convertStatus(s);
     }
 
-    seq = db->GetLatestSequenceNumber() - 1;  // post commit sequence
+    rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber() - 1;  // post commit sequence
 
     uint64_t numDocs = _meta.numberDocuments();
     _meta.adjustNumberDocuments(seq, /*revision*/ newRevisionId(),
@@ -793,14 +761,12 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     }
     bufferTruncate(seq);
 
-    guard.fire();  // remove blocker
-
     TRI_ASSERT(!state->hasOperations());  // not allowed
-    return Result{};
+    return {};
   }
 
   TRI_IF_FAILURE("RocksDBRemoveLargeRangeOff") {
-    return Result(TRI_ERROR_DEBUG);
+    return {TRI_ERROR_DEBUG};
   }
 
   // normal transactional truncate
@@ -808,14 +774,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   rocksdb::Comparator const* cmp =
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
           ->GetComparator();
-  // intentionally copy the read options so we can modify them
-  rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
   rocksdb::Slice const end = documentBounds.end();
-  ro.iterate_upper_bound = &end;
-  // we are going to blow away all data anyway. no need to blow up the cache
-  ro.fill_cache = false;
-
-  TRI_ASSERT(ro.snapshot);
 
   // avoid OOM error for truncate by committing earlier
   uint64_t const prvICC = state->options().intermediateCommitCount;
@@ -824,7 +783,12 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   uint64_t found = 0;
 
   VPackBuilder docBuffer;
-  auto iter = mthds->NewIterator(ro, documentBounds.columnFamily());
+  auto iter = mthds->NewIterator(documentBounds.columnFamily(), [&](rocksdb::ReadOptions& ro) {
+    ro.iterate_upper_bound = &end;
+    // we are going to blow away all data anyway. no need to blow up the cache
+    ro.fill_cache = false;
+    TRI_ASSERT(ro.snapshot);
+  });
   for (iter->Seek(documentBounds.start());
        iter->Valid() && cmp->Compare(iter->key(), end) < 0;
        iter->Next()) {
@@ -943,7 +907,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
       cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
-           RocksDBTransactionState::toState(trx)->setSnapshotOnReadOnly());
+           RocksDBTransactionState::toState(trx)->ensureSnapshot());
   return res;
 }
 
@@ -987,6 +951,8 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
                                  OperationOptions& options) {
+  RocksDBTransactionStateGuard transactionStateGuard(RocksDBTransactionState::toState(trx));
+
   TRI_ASSERT(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction());
 
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_insert_sec, _statistics, options);
@@ -1053,6 +1019,8 @@ Result RocksDBCollection::update(transaction::Methods* trx,
                                  velocypack::Slice newSlice,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                                  ManagedDocumentResult& previousMdr) {
+  RocksDBTransactionStateGuard transactionStateGuard(RocksDBTransactionState::toState(trx));
+
   TRI_ASSERT(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction());
 
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_update_sec, _statistics, options);
@@ -1164,6 +1132,8 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   velocypack::Slice newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
+  RocksDBTransactionStateGuard transactionStateGuard(RocksDBTransactionState::toState(trx));
+
   TRI_ASSERT(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction());
 
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_sec, _statistics, options);
@@ -1274,6 +1244,8 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
+  RocksDBTransactionStateGuard transactionStateGuard(RocksDBTransactionState::toState(&trx));
+
   TRI_ASSERT(!RocksDBTransactionState::toState(&trx)->isReadOnlyTransaction());
   
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_sec, _statistics, options);
@@ -1674,11 +1646,6 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   // we have successfully removed a value from the WBWI. after this, we 
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
-
-  /*LOG_TOPIC("17502", ERR, Logger::ENGINES)
-      << "Delete rev: " << revisionId << " trx: " << trx->state()->id()
-      << " seq: " << mthds->sequenceNumber()
-      << " objectID " << objectId() << " name: " << _logicalCollection.name();*/
 
   {
     bool needReversal = false;

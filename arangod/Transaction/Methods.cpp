@@ -749,6 +749,7 @@ TRI_col_type_e transaction::Methods::getCollectionType(std::string const& collec
 ///        Does not care for revision handling!
 Result transaction::Methods::documentFastPath(std::string const& collectionName,
                                               VPackSlice value,
+                                              OperationOptions const& options,
                                               VPackBuilder& result) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   if (!value.isObject() && !value.isString()) {
@@ -757,7 +758,6 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   }
 
   if (_state->isCoordinator()) {
-    OperationOptions options;
     OperationResult opRes = documentCoordinator(collectionName, value, options).get();
     if (!opRes.fail()) {
       result.add(opRes.slice());
@@ -857,7 +857,7 @@ Future<OperationResult> transaction::Methods::documentAsync(std::string const& c
 /// @brief read one or multiple documents in a collection, coordinator
 #ifndef USE_ENTERPRISE
 Future<OperationResult> transaction::Methods::documentCoordinator(
-    std::string const& collectionName, VPackSlice value, OperationOptions& options) {
+    std::string const& collectionName, VPackSlice value, OperationOptions const& options) {
   if (!value.isArray()) {
     arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
     if (key.empty()) {
@@ -877,7 +877,7 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
 /// @brief read one or multiple documents in a collection, local
 Future<OperationResult> transaction::Methods::documentLocal(std::string const& collectionName,
                                                             VPackSlice value,
-                                                            OperationOptions& options) {
+                                                            OperationOptions const& options) {
   DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
 
@@ -1257,7 +1257,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     // Now replicate the good operations on all followers:
     return replicateOperations(collection.get(), followers, options, value,
                                TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs,
-                               excludePositions)
+                               excludePositions,
+                               *collection->followers())
     .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) mutable {
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
@@ -1530,7 +1531,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
     // Now replicate the good operations on all followers:
     return replicateOperations(collection.get(), followers, options, newValue,
-                               operation, resDocs, {})
+                               operation, resDocs, {}, *collection->followers())
     .thenValue([options, errs = std::move(errorCounter), resDocs](Result&& res) mutable {
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
@@ -1745,7 +1746,8 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
     // Now replicate the good operations on all followers:
     return replicateOperations(collection.get(), followers, options, value,
-                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs, {})
+                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs,
+                               {}, *collection->followers())
     .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) mutable {
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
@@ -1927,10 +1929,15 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       network::RequestOptions reqOpts;
       reqOpts.database = vocbase().name();
       reqOpts.timeout = network::Timeout(600);
-      reqOpts.param(StaticStrings::IsSynchronousReplicationString, ServerState::instance()->getId());
       reqOpts.param(StaticStrings::Compact, (options.truncateCompact ? "true" : "false"));
 
       for (auto const& f : *followers) {
+        reqOpts.param(StaticStrings::IsSynchronousReplicationString,
+            ServerState::instance()->getId() + "_" +
+            basics::StringUtils::itoa(
+              collection->followers()->getFollowingTermId(f)));
+        // reqOpts is copied deep in sendRequestRetry, so we are OK to
+        // change it in the loop!
         network::Headers headers;
         ClusterTrxMethods::addTransactionHeader(*this, f, headers);
         auto future = network::sendRequestRetry(pool, "server:" + f, fuerte::RestVerb::Put,
@@ -2355,7 +2362,8 @@ Future<Result> Methods::replicateOperations(
     OperationOptions const& options, VPackSlice const value,
     TRI_voc_document_operation_e const operation,
     std::shared_ptr<VPackBuffer<uint8_t>> const& ops,
-    std::unordered_set<size_t> const& excludePositions) {
+    std::unordered_set<size_t> const& excludePositions,
+    FollowerInfo& followerInfo) {
   TRI_ASSERT(followerList != nullptr);
 
   if (followerList->empty()) {
@@ -2367,8 +2375,6 @@ Future<Result> Methods::replicateOperations(
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
-  reqOpts.param(StaticStrings::IsSynchronousReplicationString, ServerState::instance()->getId());
-
   std::string url = "/_api/document/";
   url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));
   if (operation != TRI_VOC_DOCUMENT_OPERATION_INSERT && !value.isArray()) {
@@ -2491,6 +2497,12 @@ Future<Result> Methods::replicateOperations(
 
   auto* pool = vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& f : *followerList) {
+    reqOpts.param(StaticStrings::IsSynchronousReplicationString,
+        ServerState::instance()->getId() + "_" +
+        basics::StringUtils::itoa(
+          collection->followers()->getFollowingTermId(f)));
+    // reqOpts is copied deep in sendRequestRetry, so we are OK to
+    // change it in the loop!
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(*this, f, headers);
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + f, requestType,

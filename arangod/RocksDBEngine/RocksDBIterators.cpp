@@ -28,7 +28,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -51,15 +51,13 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
       _mustSeek(true) {
   // acquire rocksdb transaction
   auto* mthds = RocksDBTransactionState::toMethods(trx);
-
-  rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
-  TRI_ASSERT(ro.snapshot != nullptr);
-  TRI_ASSERT(ro.prefix_same_as_start);
-  ro.verify_checksums = false;  // TODO evaluate
-  ro.iterate_upper_bound = &_upperBound;
-  // options.readahead_size = 4 * 1024 * 1024;
-
-  _iterator = mthds->NewIterator(ro, _bounds.columnFamily());
+  _iterator = mthds->NewIterator(_bounds.columnFamily(), [&](rocksdb::ReadOptions& ro) {
+    TRI_ASSERT(ro.snapshot != nullptr);
+    TRI_ASSERT(ro.prefix_same_as_start);
+    ro.verify_checksums = false;  // TODO evaluate
+    ro.iterate_upper_bound = &_upperBound;
+    // options.readahead_size = 4 * 1024 * 1024;
+  });
   TRI_ASSERT(_iterator != nullptr);
   if (_iterator == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBAllIndexIterator");
@@ -181,12 +179,12 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
       _total(0),
       _returned(0) {
   auto* mthds = RocksDBTransactionState::toMethods(trx);
-  auto options = mthds->iteratorReadOptions();
-  TRI_ASSERT(options.snapshot != nullptr);
-  TRI_ASSERT(options.prefix_same_as_start);
-  options.fill_cache = AnyIteratorFillBlockCache;
-  options.verify_checksums = false;  // TODO evaluate
-  _iterator = mthds->NewIterator(options, _bounds.columnFamily());
+  _iterator = mthds->NewIterator(_bounds.columnFamily(), [](rocksdb::ReadOptions& options) {
+    TRI_ASSERT(options.snapshot != nullptr);
+    TRI_ASSERT(options.prefix_same_as_start);
+    options.fill_cache = AnyIteratorFillBlockCache;
+    options.verify_checksums = false;  // TODO evaluate
+  });
   TRI_ASSERT(_iterator != nullptr);
   if (_iterator == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBAnyIndexIterator");

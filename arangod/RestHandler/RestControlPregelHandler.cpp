@@ -188,6 +188,17 @@ void RestControlPregelHandler::startExecution() {
 
 void RestControlPregelHandler::getExecutionStatus() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+
+  if (suffixes.empty()) {
+    bool const allDatabases = _request->parsedValue("all", false);
+    bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+
+    VPackBuilder builder;
+    _pregel.toVelocyPack(_vocbase, builder, allDatabases, fanout);
+    generateResult(rest::ResponseCode::OK, builder.slice());
+    return;
+  }
+
   if (suffixes.size() != 1 || suffixes[0].empty()) {
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
@@ -204,7 +215,8 @@ void RestControlPregelHandler::getExecutionStatus() {
     return;
   }
 
-  VPackBuilder builder = c->toVelocyPack();
+  VPackBuilder builder;
+  c->toVelocyPack(builder);
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
