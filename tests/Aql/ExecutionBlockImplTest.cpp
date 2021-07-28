@@ -763,6 +763,100 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_ful
   }
 }
 
+TEST_P(ExecutionBlockImplExecuteSpecificTest, retain_once_thrown_error) {
+  AqlCall fullCall{};
+  // Let the executor only throw once
+  // and assert that it is never called again.
+  bool hasThrown = false;
+
+  ProduceCall execImpl = [&hasThrown](AqlItemBlockInputRange&, OutputAqlItemRow&)
+      -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
+    // Crash if we get called twice
+    TRI_ASSERT(!hasThrown);
+    hasThrown = true;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  };
+  SkipCall skipCall = generateNeverSkipCall();
+
+  auto stack = buildStack(fullCall);
+  auto singleton = createSingleton();
+  std::unique_ptr<ExecutionBlock> testee =
+      passthrough()
+          ? static_cast<std::unique_ptr<ExecutionBlock>>(
+                std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
+                    fakedQuery->rootEngine(), generateNodeDummy(),
+                    makeRegisterInfos(0, 0), makeExecutorInfos(execImpl)))
+          : std::make_unique<ExecutionBlockImpl<LambdaExe>>(
+                fakedQuery->rootEngine(), generateNodeDummy(),
+                makeRegisterInfos(0, 0), makeSkipExecutorInfos(execImpl, skipCall));
+  try {
+    testee->execute(stack);
+    // This error is on purpose different, and cannot happen in AQL
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEAD_PID);
+  } catch (arangodb::basics::Exception const& e) {
+    // Make sure we get the correct error.
+    EXPECT_EQ(e.code(), TRI_ERROR_DEBUG);
+  }
+
+  try {
+    // And call Execute again, we should see the same error,
+    // But we should crash if we ask the Produce again.
+    testee->execute(stack);
+    // This error is on purpose different, and cannot happen in AQL
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEAD_PID);
+  } catch (arangodb::basics::Exception const& e) {
+    // Make sure we get the correct error.
+    EXPECT_EQ(e.code(), TRI_ERROR_DEBUG);
+  }
+}
+
+TEST_P(ExecutionBlockImplExecuteSpecificTest, retain_once_thrown_std_error) {
+  AqlCall fullCall{};
+  // Let the executor only throw once
+  // and assert that it is never called again.
+  bool hasThrown = false;
+
+  ProduceCall execImpl = [&hasThrown](AqlItemBlockInputRange&, OutputAqlItemRow&)
+      -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
+    // Crash if we get called twice
+    TRI_ASSERT(!hasThrown);
+    hasThrown = true;
+    throw std::runtime_error("Debug Error");
+  };
+  SkipCall skipCall = generateNeverSkipCall();
+
+  auto stack = buildStack(fullCall);
+  auto singleton = createSingleton();
+  std::unique_ptr<ExecutionBlock> testee =
+      passthrough()
+          ? static_cast<std::unique_ptr<ExecutionBlock>>(
+                std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
+                    fakedQuery->rootEngine(), generateNodeDummy(),
+                    makeRegisterInfos(0, 0), makeExecutorInfos(execImpl)))
+          : std::make_unique<ExecutionBlockImpl<LambdaExe>>(
+                fakedQuery->rootEngine(), generateNodeDummy(),
+                makeRegisterInfos(0, 0), makeSkipExecutorInfos(execImpl, skipCall));
+  try {
+    testee->execute(stack);
+    // This error is on purpose different, and cannot happen in AQL
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEAD_PID);
+  } catch (arangodb::basics::Exception const& e) {
+    // Make sure we get the correct error.
+    EXPECT_EQ(e.code(), TRI_ERROR_INTERNAL);
+  }
+
+  try {
+    // And call Execute again, we should see the same error,
+    // But we should crash if we ask the Produce again.
+    testee->execute(stack);
+    // This error is on purpose different, and cannot happen in AQL
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEAD_PID);
+  } catch (arangodb::basics::Exception const& e) {
+    // Make sure we get the correct error.
+    EXPECT_EQ(e.code(), TRI_ERROR_INTERNAL);
+  }
+}
+
 auto printTestCase = [](testing::TestParamInfo<bool> const& paramInfo) -> std::string {
   using namespace std::string_literals;
 
