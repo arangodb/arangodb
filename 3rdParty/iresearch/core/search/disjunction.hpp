@@ -766,6 +766,9 @@ class disjunction final
   virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
     assert(ctx);
     assert(visitor);
+    if (heap_.empty()) {
+      return;
+    }
     hitch_all_iterators();
     auto& lead = itrs_[heap_.back()];
     auto cont = visitor(ctx, lead);
@@ -908,6 +911,7 @@ class disjunction final
   }
 
   std::pair<heap_iterator, heap_iterator> hitch_all_iterators() {
+    assert(!heap_.empty());
     // hitch all iterators in head to the lead (current doc_)
     auto begin = heap_.begin(), end = heap_.end()-1;
 

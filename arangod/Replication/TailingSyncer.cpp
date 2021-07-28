@@ -1995,8 +1995,7 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
     // do not fetch the same batch next time we enter processLeaderLog
     // (that would be duplicate work)
     mustFetchBatch = false;
-    auto self = shared_from_this();
-    sharedStatus->request([this, self, sharedStatus, fetchTick, lastScannedTick,
+    sharedStatus->request([this, self = shared_from_this(), sharedStatus, fetchTick, lastScannedTick,
                            firstRegularTick]() {
       fetchLeaderLog(sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
     });
