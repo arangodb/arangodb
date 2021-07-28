@@ -1,6 +1,9 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed a bug, where Coordinators handled plan changes for databases in
+  heartbeat thread in wrong order. Databases could be listed, but not used.
+
 * Include K_SHORTEST_PATHS and SHORTEST_PATH execution nodes in AQL query memory
   usage accounting. The memory used by these execution node types was previously
   not tracked against the configured query memory limit (BTS-411).
