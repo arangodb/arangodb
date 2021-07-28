@@ -1,20 +1,20 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
-* Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
-  iterator.
-
-* Fixed reloading of users within the Cluster.
+* Fixed ES-863: reloading of users within the Cluster.
   If a Coordinator is asked to reload its users (e.g. by the UserManager in
   Foxx, it is also possible to do via API, but this is internal and on purpose
   not documented, so unlikely that it is used), in concurrency with user
-  management updates there is a chance that the reload is not correctly performed
-  on this coordinator. It may have missed the last update locally, causing
-  one user to have an older state. It will be fixed on the next modification
-  of any other users/permissions. Unfortunately this bug can cascade and when
-  hit again, the coordinator can now be off by two updates.
-  In DC2DC this situation is more likely to happen on the target datacenter, 
+  management updates there is a chance that the reload is not correctly
+  performed on this coordinator. It may have missed the last update locally,
+  causing one user to have an older state. It will be fixed on the next
+  modification of any other users/permissions. Unfortunately this bug can
+  cascade and when hit again, the coordinator can now be off by two updates.
+  In DC2DC this situation is more likely to happen on the target datacenter,
   causing this datacenter to have other users/permissions than the source one.
+
+* Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
+  iterator.
 
 * Slightly improve specific warning messages for better readability.
 
