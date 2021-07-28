@@ -75,7 +75,7 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
       // wait for enough servers to report the current term
       // a server is counted if:
       //    - its reported term is the current term
-      //    - it is seen as healthy be the supervision
+      //    - it is seen as healthy by the supervision
 
       // if enough servers are found, declare the server with
       // the "best" log as leader in a new term
@@ -187,7 +187,7 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
    * There are three situations to handle here:
    *  - We don't have that log entry
    *    - It is behind our last entry
-   *    - It is before out first entry
+   *    - It is before our first entry
    *  - The term does not match.
    */
   auto entry = log.getEntryByIndex(prevLog.index);
@@ -242,7 +242,7 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
     auto log = ctx.ensureReplicatedLog(logId);
 
     if (leader.has_value() && leader->serverId == serverId && leader->rebootId == rebootId) {
-      auto follower =
+      auto followers =
           std::vector<std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
       for (auto const& [participant, data] : spec->currentTerm->participants) {
         if (participant != serverId) {
