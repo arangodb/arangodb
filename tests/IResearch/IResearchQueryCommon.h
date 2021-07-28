@@ -108,6 +108,15 @@ class IResearchQueryTest
                             VPackParser::fromJson("\"abc\"")->slice(),
                             irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get()}  // required for PHRASE
     );  // cache analyzer
+
+    res = analyzers.emplace(result, "_system::ngram_test_analyzer13", "ngram",
+                            VPackParser::fromJson("{\"min\":1, \"max\":3, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
+                            irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get()});  // required for PHRASE
+
+    res = analyzers.emplace(result, "_system::ngram_test_analyzer2", "ngram",
+                            VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
+                            irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get()});  // required for PHRASE
+
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(result, "_system::test_csv_analyzer",
