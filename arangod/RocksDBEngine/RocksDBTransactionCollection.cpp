@@ -169,6 +169,11 @@ void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e ope
 void RocksDBTransactionCollection::prepareTransaction(TransactionId trxId, uint64_t beginSeq) {
   TRI_ASSERT(_collection != nullptr);
   if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
+  
+    TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
+    }
+
     auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
     TRI_ASSERT(beginSeq > 0);
     coll->meta().placeBlocker(trxId, beginSeq);
