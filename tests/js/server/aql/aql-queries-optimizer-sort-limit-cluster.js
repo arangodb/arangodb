@@ -28,7 +28,6 @@ const jsunity = require('jsunity');
 const assert = jsunity.jsUnity.assertions;
 const internal = require('internal');
 const db = internal.db;
-const console = require('console');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
