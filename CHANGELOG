@@ -1,6 +1,11 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Only build actually used subattributes of traversal paths, i.e. "vertices",
+  "edges" or "weights". If any of the paths subcomponents is not used, the
+  optimizer will try to save these components from being built for each result
+  item.
+
 * Backport bugfix from upstream rocksdb repository for calculating the free disk
   space for the database directory. Before the bugfix, rocksdb could
   overestimate the amount of free space when the arangod process was run as
