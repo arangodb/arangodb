@@ -12,13 +12,8 @@
         <%= model.get('status') %>
       </div>
     <% } else if (model.get('status') === "loaded") { %>
-      <% if (!model.get('locked')) { %>
-        <div class="corneredBadge <%= model.get('status') %>">
-          <%= model.get('status') %>
-        </div>
-      <% } else { %>
+      <% if (model.get('locked')) { %>
         <div class="corneredBadge inProgress">
-          <%= model.get('status') %>
         </div>
       <% } %>
     <% } %>

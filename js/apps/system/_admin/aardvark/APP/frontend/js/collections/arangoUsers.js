@@ -96,10 +96,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     window.location.reload();
   },
 
-  setUserSettings: function (identifier, content) {
-    this.activeUserSettings.identifier = content;
-  },
-
   loadUserSettings: function (callback) {
     var self = this;
 
