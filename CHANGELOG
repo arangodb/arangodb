@@ -42,7 +42,7 @@ v3.7.13 (2021-07-20)
 
 * Added a retry loop for arangorestore during the initial connection phase. The
   number of retries defaults to 3 and can be configured using
-  --initial-connect-retries.
+  --initial-connect-retries (BTS-491).
 
 * Fixed display of running and slow queries in web UI when there are multiple
   coordinators. Previously, the display order of queries was undefined, which
