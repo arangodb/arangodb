@@ -73,11 +73,10 @@ namespace arangodb::arangobench {
         for (uint64_t i = 1; i <= n; ++i) {
           values += ", \"value" + std::to_string(i) + "\": true";
         }
-        values += " } INTO " + _arangobench.collection() + std::string(" OPTIONS { \"ignoreErrors\": true } ");
+        values += " } INTO " + _arangobench.collection() + std::string(" OPTIONS { ignoreErrors: true }");
         b.add("query", Value(values));
       } else {
-        values = "FOR doc IN " + _arangobench.collection() 
-          += std::string(" RETURN doc");
+        values = "FOR doc IN " + _arangobench.collection() + std::string(" RETURN doc");
         b.add("query", Value(values));
         b.add("options", Value(ValueType::Object));
         b.add("stream", Value(true));

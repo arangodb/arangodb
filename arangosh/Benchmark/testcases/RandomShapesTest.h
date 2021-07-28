@@ -86,7 +86,7 @@ namespace arangodb::arangobench {
           if (t % 3 == 0) {
             b.add(fieldName, Value(true));
           } else if (t % 3 == 1) {
-            b.add(fieldName, Value(NULL));
+            b.add(fieldName, Value(ValueType::Null));
           } else {
             b.add(fieldName, Value("some bogus string value to fill up the datafile..."));
           }
