@@ -9002,6 +9002,136 @@ AqlValue Functions::DecayLinear(arangodb::aql::ExpressionContext* expressionCont
   return decayFuncImpl(expressionContext, node, parameters, linearDecayFactory);
 }
 
+template <typename F>
+AqlValue DistanceImpl(arangodb::aql::ExpressionContext* expressionContext,
+                       AstNode const& node,
+                       VPackFunctionParameters const& parameters,
+                       F&& distanceFunc) {
+
+  auto calculateDistance = [&distanceFunc, expressionContext, &node]
+      (const VPackSlice lhs, const VPackSlice rhs) {
+    TRI_ASSERT(lhs.isArray());
+    TRI_ASSERT(rhs.isArray());
+    auto lhsLength = lhs.length();
+    auto rhsLength = lhs.length();
+
+    if (lhsLength!= rhsLength || lhsLength == 0 || rhsLength == 0) {
+      registerWarning(expressionContext,
+                      getFunctionName(node).c_str(),
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    return distanceFunc(lhs, rhs, lhsLength);
+  };
+
+  // extract arguments
+  AqlValue const& argLhs = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& argRhs = extractFunctionParameterValue(parameters, 1);
+
+  // check type of arguments
+  if (!argLhs.isArray() && !argRhs.isArray()) {
+    registerInvalidArgumentWarning(expressionContext,
+                                   getFunctionName(node).c_str());
+    return AqlValue(AqlValueHintNull());
+  }
+
+  auto lhsFirstElem = argLhs.slice().at(0);
+  auto rhsFirstElem = argRhs.slice().at(0);
+
+  // matrix
+  if (lhsFirstElem.isArray() || rhsFirstElem.isArray()) {
+    decltype (lhsFirstElem) matrix;
+    decltype (lhsFirstElem) array;
+
+    if (lhsFirstElem.isArray()) {
+      matrix = argLhs.slice();
+      array = argRhs.slice();
+    } else {
+      matrix = argRhs.slice();
+      array = argLhs.slice();
+    }
+
+    VPackBuilder builder;
+    {
+      VPackArrayBuilder arrayBuilder(&builder);
+      for (VPackSlice currRow : VPackArrayIterator(matrix)) {
+        if (!currRow.isArray()) {
+          registerWarning(expressionContext,
+                          getFunctionName(node).c_str(),
+                          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+          return AqlValue(AqlValueHintNull());
+        }
+
+        AqlValue dist = calculateDistance(currRow, array);
+        if (dist.isNull(true)) {
+          return AqlValue(AqlValueHintNull());
+        }
+
+        builder.add(dist.slice());
+      }
+    }
+    return AqlValue(std::move(*builder.steal()));
+
+  } else {
+    // two vectors
+    return calculateDistance(argLhs.slice(), argRhs.slice());
+  }
+}
+
+AqlValue Functions::CosineSimilarity(
+    arangodb::aql::ExpressionContext* expressionContext,
+    AstNode const& node,
+    VPackFunctionParameters const& parameters) {
+
+  auto cosineSimilarityFunc = [expressionContext, &node]
+        (const VPackSlice lhs, const VPackSlice rhs, const VPackValueLength& length) {
+
+    double numerator = 0.0;
+    double lhsSum = 0;
+    double rhsSum = 0;
+
+    for (VPackValueLength i = 0; i < length; ++i) {
+      auto lhsSlice = lhs.at(i);
+      auto rhsSlice = rhs.at(i);
+      if (!lhsSlice.isNumber() || !rhsSlice.isNumber()) {
+        registerWarning(expressionContext,
+                        getFunctionName(node).c_str(),
+                        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return AqlValue(AqlValueHintNull());
+      }
+
+      double lhsVal = lhsSlice.getNumber<double>();
+      double rhsVal = rhsSlice.getNumber<double>();
+
+      numerator += lhsVal * rhsVal;
+      lhsSum += lhsVal * lhsVal;
+      rhsSum += rhsVal * rhsVal;
+    }
+
+    return ::numberValue(numerator / (std::sqrt(lhsSum) * std::sqrt(rhsSum)), true);
+  };
+
+  return DistanceImpl(expressionContext, node, parameters, cosineSimilarityFunc);
+}
+
+AqlValue Functions::L1Distance(
+    arangodb::aql::ExpressionContext* expressionContext,
+    AstNode const& node,
+    VPackFunctionParameters const& parameters) {
+
+  return AqlValue(AqlValueHintNull());
+}
+
+AqlValue Functions::L2Distance(
+    arangodb::aql::ExpressionContext* expressionContext,
+    AstNode const& node,
+    VPackFunctionParameters const& parameters) {
+
+  return AqlValue(AqlValueHintNull());
+}
+
+
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext, AstNode const&,
                                    VPackFunctionParameters const& params) {
   registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
