@@ -19,9 +19,9 @@ devel
   but are changed to no-ops. They will removed eventually in a future version
   of ArangoDB. This will be announced separately.
 
-* Include K_SHORTEST_PATHS and SHORTEST_PATH execution nodes in AQL query 
-  memory usage accounting. The memory used by these execution node types was
-  previously not tracked against the configured query memory limit.
+* Include K_SHORTEST_PATHS and SHORTEST_PATH execution nodes in AQL query memory
+  usage accounting. The memory used by these execution node types was previously
+  not tracked against the configured query memory limit (BTS-411).
 
 * Reduce default value for max-nodes-per-callstack to 200 for OSX, because on
   OSX worker threads have a stack size of only 512kb.
