@@ -66,14 +66,13 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 /// @brief create the context
 transaction::Context::Context(TRI_vocbase_t& vocbase)
     : _vocbase(vocbase),
-      _resolver(nullptr),
       _customTypeHandler(),
       _builders{_arena},
       _stringBuffer(),
       _strings{_strArena},
       _options(arangodb::velocypack::Options::Defaults),
-      _transaction{TransactionId::none(), false, false},
-      _ownsResolver(false) {}
+      _resolver(nullptr),
+      _transaction{TransactionId::none(), false, false} {}
 
 /// @brief destroy the context
 transaction::Context::~Context() {
@@ -109,10 +108,7 @@ void transaction::Context::cleanup() noexcept {
 
   _stringBuffer.reset();
 
-  if (_ownsResolver) {
-    delete _resolver;
-    _resolver = nullptr;
-  }
+  _resolver.reset();
 }
 
 /// @brief factory to create a custom type handler, not managed
@@ -198,12 +194,11 @@ VPackOptions* transaction::Context::getVPackOptions() {
 }
 
 /// @brief create a resolver
-CollectionNameResolver const* transaction::Context::createResolver() {
-  TRI_ASSERT(_resolver == nullptr);
-  _resolver = new CollectionNameResolver(_vocbase);
-  _ownsResolver = true;
-
-  return _resolver;
+CollectionNameResolver const& transaction::Context::resolver() {
+  if (_resolver == nullptr) {
+    _resolver = std::make_unique<CollectionNameResolver>(_vocbase);
+  }
+  return *_resolver;
 }
 
 std::shared_ptr<TransactionState> transaction::Context::createState(transaction::Options const& options) {
