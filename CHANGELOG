@@ -1,8 +1,80 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
-* Lower log level to warning, when take over shard leadership finds
-  an agency Current entry is missing the server taking over.
+* Lower log level to warning, when take over shard leadership finds an agency
+  Current entry is missing the server taking over.
+
+* Fixed BTS-408: treat positive or negative signed numbers as constants
+  immediately during AQL query parsing.
+  Previously, a value of `-1` was parsed initially as `unary minus(value(1))`,
+  which was not treated in the same way as a constant value `value(-1)`.
+  The value was later optimized to just `value(-1)`, but this only happened
+  during constant-folding after parsing. Any operations that referred to the
+  unfolded values during parsing thus did not treat such values as constants.
+
+* Fix startup issues with encryption-at-rest enabled when there were empty (0
+  byte) RocksDB WAL files present. Such empty files caused RocksDB to abort the
+  startup, reporting corruption. However, empty WAL files are possible in case
+  of server crashes etc. Now, if a WAL file is completely empty, there will be
+  no attempt to read the encryption meta data from it, so the startup succeeds
+	(BTS-392).
+
+* Fixes a bug in the maintenance's error-handling code. A shard error would
+  result in log messages like
+    ```
+    WARNING [ceb1a] {maintenance} caught exception in Maintenance shards error
+    reporting: Expecting Object
+    ERROR [c9a75] {maintenance} Error reporting in current: Expecting Object
+    ```
+  and also prevent the maintenance from reporting the current state to the
+  agency, which in turn can prevent cluster-wide progress of various actions.
+
+* APM-107: Added metric "rocksdb_read_only" to determine whether RocksDB is
+  currently in read-only mode due to a background error. The metric will have a
+  value of "1" if RocksDB is in read-only mode and "0" if RocksDB is in normal
+  operations mode. If the metric value is "1" it means all writes into RocksDB
+  will fail, so inspecting the logfiles and acting on the actual error situation
+  is required.
+
+* Fix numeric overflow in AQL WINDOW node cost estimation if the number of
+  preceding rows was set to `unbounded`.
+
+* Added a retry loop for arangorestore during the initial connection phase. The
+  number of retries defaults to 3 and can be configured using
+  --initial-connect-retries (BTS-491).
+
+* Add following term ids, which prevents old synchronous replication requests
+  to be accepted after a follower was dropped and has gotten in sync again.
+  This makes the chaos tests which delay synchronous replication requests more
+  reliable and prevent inconsistent shard replicas under bad network conditions.
+
+* Enable process metrics on agent instances by default. Previously, some metrics
+  (including the metrics starting with `arangodb_process` prefix) were not
+  returned by agent instances.
+
+* Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
+  (DEVSUPP-753).
+
+* Bug-fix: Pregel WCC algorithm could yield incorrect results if a part of the
+  connected component was only attached via OUTBOUND edges.
+  The underlying algorithm is now modified to properly retain INBOUND edges for
+  the runtime of the execution. This uses more RAM for the algorithm but
+  guarantees correctness.
+
+* Fix serialization of query shutdown error code when sending it to DB servers.
+  The error code is numeric, but it was sent to the `/_api/aql/finish` API as a
+  string. This led to the DB servers always assuming the default error code
+  TRI_ERROR_INTERAL (error code 4). This was not a problem for normal query
+  operations, but it could have led to warnings being logged stating "please
+  contact ArangoDB support". Now the actual error code is using during query
+  shutdown.
+
+* Fix display of running and slow queries in web UI when there are multiple
+  coordinators. Previously, the display order of queries was undefined, which
+  could lead to queries from one coordinator being display on top once and then
+  the queries from another. That made using this UI harder than necessary.
+
+  Now queries are sorted for display, according to their query IDs.
 
 * Fixed an issue in index selection, when the selectivty estimate of another
   prefix index was used without checking if the other index covered the FILTER
