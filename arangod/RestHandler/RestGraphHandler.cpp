@@ -30,7 +30,6 @@
 #include "Graph/GraphOperations.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Collection.h>
 #include <utility>
