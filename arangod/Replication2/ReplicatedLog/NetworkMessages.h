@@ -119,3 +119,12 @@ struct AppendEntriesRequest {
 };
 
 }  // namespace arangodb::replication2::replicated_log
+
+namespace arangodb {
+template <>
+struct velocypack::Extractor<replication2::replicated_log::MessageId> {
+  static auto extract(velocypack::Slice slice) -> replication2::replicated_log::MessageId {
+    return replication2::replicated_log::MessageId{slice.getNumericValue<uint64_t>()};
+  }
+};
+}

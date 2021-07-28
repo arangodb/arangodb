@@ -103,8 +103,8 @@ void PersistingLogEntry::entriesWithoutIndexToVelocyPack(velocypack::Builder& bu
 }
 
 auto PersistingLogEntry::fromVelocyPack(velocypack::Slice slice) -> PersistingLogEntry {
-  auto const logTerm = LogTerm{slice.get("logTerm").getNumericValue<std::size_t>()};
-  auto const logIndex = LogIndex{slice.get("logIndex").getNumericValue<std::size_t>()};
+  auto const logTerm = slice.get("logTerm").extract<LogTerm>();
+  auto const logIndex = slice.get("logIndex").extract<LogIndex>();
   auto payload = std::invoke([&]() -> std::optional<LogPayload> {
     if (auto payloadSlice = slice.get("payload"); !payloadSlice.isNone()) {
       return LogPayload::createFromSlice(payloadSlice);
@@ -126,7 +126,7 @@ auto PersistingLogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
 
 PersistingLogEntry::PersistingLogEntry(LogIndex index, velocypack::Slice persisted) {
   _logIndex = index;
-  _logTerm = LogTerm{persisted.get("logTerm").getNumericValue<std::size_t>()};
+  _logTerm = persisted.get("logTerm").extract<LogTerm>();
   if (auto payload = persisted.get("payload"); !payload.isNone()) {
     _payload = LogPayload::createFromSlice(payload);
   }
@@ -167,7 +167,7 @@ void LogEntryView::toVelocyPack(velocypack::Builder& builder) const {
 }
 
 auto LogEntryView::fromVelocyPack(velocypack::Slice slice) -> LogEntryView {
-  return LogEntryView(LogIndex{slice.get("logIndex").getNumericValue<std::size_t>()},
+  return LogEntryView(slice.get("logIndex").extract<LogIndex>(),
                       slice.get("payload"));
 }
 
@@ -265,8 +265,8 @@ void replication2::TermIndexPair::toVelocyPack(velocypack::Builder& builder) con
 
 auto replication2::TermIndexPair::fromVelocyPack(velocypack::Slice slice) -> TermIndexPair {
   TermIndexPair pair;
-  pair.term = LogTerm{slice.get(StaticStrings::Term).getNumericValue<size_t>()};
-  pair.index = LogIndex{slice.get(StaticStrings::Index).getNumericValue<size_t>()};
+  pair.term = slice.get(StaticStrings::Term).extract<LogTerm>();
+  pair.index = slice.get(StaticStrings::Index).extract<LogIndex>();
   return pair;
 }
 

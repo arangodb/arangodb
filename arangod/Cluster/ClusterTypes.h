@@ -178,4 +178,12 @@ struct QueryAnalyzerRevisions {
 std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r);
 std::ostream& operator<<(std::ostream& o, arangodb::QueryAnalyzerRevisions const& r);
 
+template<>
+struct velocypack::Extractor<arangodb::RebootId> {
+  static auto extract(velocypack::Slice slice) -> RebootId {
+    return RebootId{slice.getNumericValue<std::size_t>()};
+  }
+};
+
 }  // namespace arangodb
+

@@ -37,34 +37,6 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 
-template<>
-struct velocypack::Extractor<LogTerm> {
-  static auto extract(VPackSlice slice) -> LogTerm {
-    return LogTerm{slice.getNumericValue<std::size_t>()};
-  }
-};
-
-template<>
-struct velocypack::Extractor<LogIndex> {
-  static auto extract(VPackSlice slice) -> LogIndex {
-    return LogIndex{slice.getNumericValue<std::size_t>()};
-  }
-};
-
-template<>
-struct velocypack::Extractor<LogId> {
-  static auto extract(VPackSlice slice) -> LogId {
-    return LogId{slice.getNumericValue<std::size_t>()};
-  }
-};
-
-template<>
-struct velocypack::Extractor<RebootId> {
-  static auto extract(VPackSlice slice) -> RebootId {
-    return RebootId{slice.getNumericValue<std::size_t>()};
-  }
-};
-
 auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Term, VPackValue(term.value));

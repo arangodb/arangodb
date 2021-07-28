@@ -90,6 +90,7 @@ auto replicated_log::InMemoryLog::getEntryByIndex(LogIndex const idx) const noex
 
 auto replicated_log::InMemoryLog::splice(LogIndex from, LogIndex to) const -> log_type {
   from = LogIndex{std::max<decltype(from.value)>(from.value, 1)};
+  TRI_ASSERT(from <= to);
   auto res = _log.take(to.value - 1).drop(from.value - 1);
   TRI_ASSERT(res.size() == to.value - from.value);
   return res;

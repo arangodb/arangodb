@@ -164,10 +164,10 @@ void replicated_log::AppendEntriesResult::toVelocyPack(velocypack::Builder& buil
 
 auto replicated_log::AppendEntriesResult::fromVelocyPack(velocypack::Slice slice)
 -> AppendEntriesResult {
-  auto logTerm = LogTerm{slice.get("term").extract<size_t>()};
+  auto logTerm = slice.get("term").extract<LogTerm>();
   auto errorCode = ErrorCode{slice.get("errorCode").extract<int>()};
   auto reason = AppendEntriesErrorReason{slice.get("reason").extract<int>()};
-  auto messageId = MessageId{slice.get("messageId").extract<uint64_t>()};
+  auto messageId = slice.get("messageId").extract<MessageId>();
 
   if (reason == AppendEntriesErrorReason::NO_PREV_LOG_MATCH) {
     TRI_ASSERT(errorCode == TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
@@ -250,11 +250,11 @@ void replicated_log::AppendEntriesRequest::toVelocyPack(velocypack::Builder& bui
 
 auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slice)
 -> AppendEntriesRequest {
-  auto leaderTerm = LogTerm{slice.get("leaderTerm").getNumericValue<size_t>()};
+  auto leaderTerm = slice.get("leaderTerm").extract<LogTerm>();
   auto leaderId = ParticipantId{slice.get("leaderId").copyString()};
   auto prevLogEntry = TermIndexPair::fromVelocyPack(slice.get("prevLogEntry"));
-  auto leaderCommit = LogIndex{slice.get("leaderCommit").getNumericValue<size_t>()};
-  auto messageId = MessageId{slice.get("messageId").getNumericValue<uint64_t>()};
+  auto leaderCommit = slice.get("leaderCommit").extract<LogIndex>();
+  auto messageId = slice.get("messageId").extract<MessageId>();
   auto waitForSync = slice.get("waitForSync").extract<bool>();
   auto entries = std::invoke([&] {
     auto entriesVp = velocypack::ArrayIterator(slice.get("entries"));

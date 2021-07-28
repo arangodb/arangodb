@@ -262,6 +262,30 @@ struct LogConfig {
 
 }  // namespace arangodb::replication2
 
+namespace arangodb {
+template<>
+struct velocypack::Extractor<replication2::LogTerm> {
+  static auto extract(velocypack::Slice slice) -> replication2::LogTerm {
+    return replication2::LogTerm{slice.getNumericValue<std::uint64_t>()};
+  }
+};
+
+template<>
+struct velocypack::Extractor<replication2::LogIndex> {
+  static auto extract(velocypack::Slice slice) -> replication2::LogIndex {
+    return replication2::LogIndex{slice.getNumericValue<std::uint64_t>()};
+  }
+};
+
+template<>
+struct velocypack::Extractor<replication2::LogId> {
+  static auto extract(velocypack::Slice slice) -> replication2::LogId {
+    return replication2::LogId{slice.getNumericValue<std::uint64_t>()};
+  }
+};
+
+}
+
 template <>
 struct std::hash<arangodb::replication2::LogIndex> {
   [[nodiscard]] auto operator()(arangodb::replication2::LogIndex const& v) const noexcept -> std::size_t {

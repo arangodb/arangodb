@@ -56,7 +56,7 @@ void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
 auto FollowerStatus::fromVelocyPack(velocypack::Slice slice) -> FollowerStatus {
   TRI_ASSERT(slice.get("role").isEqualString(StaticStrings::Follower));
   FollowerStatus status;
-  status.term = LogTerm{slice.get(StaticStrings::Term).getNumericValue<std::size_t>()};
+  status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
   status.local = LogStatistics::fromVelocyPack(slice);
   if (auto leader = slice.get(StaticStrings::Leader); !leader.isNone()) {
     status.leader = leader.copyString();
@@ -82,7 +82,7 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
 auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
   TRI_ASSERT(slice.get("role").isEqualString(StaticStrings::Leader));
   LeaderStatus status;
-  status.term = LogTerm{slice.get(StaticStrings::Term).getNumericValue<std::size_t>()};
+  status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
   status.local = LogStatistics::fromVelocyPack(slice.get("local"));
   for (auto [key, value] : VPackObjectIterator(slice.get(StaticStrings::Follower))) {
     auto id = ParticipantId{key.copyString()};
@@ -104,7 +104,7 @@ void LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::Builder& builder
 
 auto LeaderStatus::FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics {
   FollowerStatistics stats;
-  stats.commitIndex = LogIndex{slice.get("commitIndex").getNumericValue<size_t>()};
+  stats.commitIndex = slice.get("commitIndex").extract<LogIndex>();
   stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
   stats.lastErrorReason = AppendEntriesErrorReason{slice.get("lastErrorReason").getNumericValue<int>()};
   stats.lastRequestLatencyMS = slice.get("lastRequestLatencyMS").getDouble();
