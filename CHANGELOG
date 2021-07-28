@@ -1,6 +1,10 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Include K_SHORTEST_PATHS and SHORTEST_PATH execution nodes in AQL query memory
+  usage accounting. The memory used by these execution node types was previously
+  not tracked against the configured query memory limit (BTS-411).
+
 * Lower log level to warning, when take over shard leadership finds an agency
   Current entry is missing the server taking over.
 
