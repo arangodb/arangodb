@@ -236,9 +236,6 @@ class LogicalCollection : public LogicalDataSource {
   bool allowUserKeys() const;
 
   // SECTION: Modification Functions
-  void load();
-  void unload();
-
   virtual arangodb::Result drop() override;
   virtual Result rename(std::string&& name) override;
   virtual void setStatus(TRI_vocbase_col_status_e);

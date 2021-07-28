@@ -18,39 +18,44 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <rocksdb/iterator.h>
-#include <rocksdb/options.h>
-#include <rocksdb/snapshot.h>
+#include "RocksDBEngine/Methods/RocksDBReadOnlyBaseMethods.h"
 
-#include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "StorageEngine/ReplicationIterator.h"
+namespace rocksdb {
+class TransactionDB;
+}  // namespace rocksdb
 
 namespace arangodb {
-class LogicalCollection;
 
-class RocksDBRevisionReplicationIterator : public RevisionReplicationIterator {
+// only implements GET
+class RocksDBSingleOperationReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
  public:
-  RocksDBRevisionReplicationIterator(LogicalCollection&, rocksdb::Snapshot const*);
-  RocksDBRevisionReplicationIterator(LogicalCollection&, transaction::Methods&);
+  explicit RocksDBSingleOperationReadOnlyMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db);
 
-  virtual bool hasMore() const override;
-  virtual void reset() override;
+  Result beginTransaction() override;
+  
+  Result commitTransaction() override;
 
-  virtual RevisionId revision() const override;
-  virtual VPackSlice document() const override;
+  Result abortTransaction() override;
 
-  virtual void next() override;
-  virtual void seek(RevisionId) override;
+  rocksdb::ReadOptions iteratorReadOptions() const override;
+  
+  bool ensureSnapshot() override { return false; }
 
+  rocksdb::SequenceNumber GetSequenceNumber() const noexcept override;
+
+  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
+                      rocksdb::PinnableSlice* val) override;
+
+  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
+                                                 ReadOptionsCallback) override;
  private:
-  std::unique_ptr<rocksdb::Iterator> _iter;
-  RocksDBKeyBounds _bounds;
-  rocksdb::Comparator const* _cmp;
+  rocksdb::TransactionDB* _db;
 };
 
 }  // namespace arangodb
+

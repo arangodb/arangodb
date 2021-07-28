@@ -27,7 +27,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/Methods.h"
 
