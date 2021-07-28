@@ -134,6 +134,12 @@ class Traverser {
 
     virtual void reset(arangodb::velocypack::StringRef const&);
 
+    virtual void clear();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    virtual bool pointsIntoTraverserCache() const noexcept;
+#endif
+
    protected:
     Traverser* _traverser;
   };
@@ -158,6 +164,12 @@ class Traverser {
     bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) override;
 
     void reset(arangodb::velocypack::StringRef const&) override;
+
+    void clear() override;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    bool pointsIntoTraverserCache() const noexcept override;
+#endif
 
    private:
     std::unordered_set<arangodb::velocypack::StringRef> _returnedVertices;

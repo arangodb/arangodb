@@ -4,6 +4,49 @@ v3.8.1 (XXXX-XX-XX)
 * Lower log level to warning, when take over shard leadership finds
   an agency Current entry is missing the server taking over.
 
+* Fixed an issue in index selection, when the selectivty estimate of another
+  prefix index was used without checking if the other index covered the FILTER
+  condition.
+
+  For example, given the following indexes:
+
+  - index 1: ["e", "a", "b", "c"]
+  - index 2: ["e", "a", "b"]
+  - index 3: ["d", "e", "f", "g"]
+
+  and the FILTER condition `d == 1 && e == 2 && f == 3`, then the best index to
+  pick would be index 3. However, the optimizer may have picked index 1 here.
+  All indexes are valid candidates for this FILTER condition, but none of the
+  indexes covered all attributes of the FILTER condition. So the index
+  selectivity estimates were (correctly) not used directly to determine the best
+  index.
+  The actual bug happened when comparing the usefulness of the candidate
+  indexes, when figuring out that even though the selectivity estimate for index
+  1 could not be used, but that there existed a prefix index of index 1 (index
+  2). The selecivity estimate of this index was taken _without_ checking that
+  prefix index actually satisfied the FILTER condition fully.
+  The prefix index' selectivity estimate must only be used if it fully satisfies
+  the FILTER condition, which was not the case here.
+
+* Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
+  resetted, resulting in undefined behavior for traversals returning unique
+  vertices from inner FOR loops.
+
+* Improve usability of hidden options: `--help` mentions that these exist and
+  how to display them.
+
+* Fixed ES-863: reloading of users within the Cluster.
+  If a Coordinator is asked to reload its users (e.g. by the UserManager in
+  Foxx, it is also possible to do via API, but this is internal and on purpose
+  not documented, so unlikely that it is used), in concurrency with user
+  management updates there is a chance that the reload is not correctly
+  performed on this coordinator. It may have missed the last update locally,
+  causing one user to have an older state. It will be fixed on the next
+  modification of any other users/permissions. Unfortunately this bug can
+  cascade and when hit again, the coordinator can now be off by two updates.
+  In DC2DC this situation is more likely to happen on the target datacenter,
+  causing this datacenter to have other users/permissions than the source one.
+
 * Fix BTS-446: When finding a not yet fully initialized agency, do not
   immediately fatal exit. Keep trying for (very generous) 5 minutes.
 
