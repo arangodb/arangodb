@@ -964,3 +964,9 @@ double SupervisedScheduler::approximateQueueFillGrade() const {
 double SupervisedScheduler::unavailabilityQueueFillGrade() const {
   return _unavailabilityQueueFillGrade;
 }
+
+std::pair<uint64_t, uint64_t> SupervisedScheduler::getNumberLowPrioOngoingAndQueued() const {
+  return std::pair(_ongoingLowPriorityGauge.load(std::memory_order_relaxed),
+                   _metricsQueueLengths[NumberOfQueues - 1].get().load(std::memory_order_relaxed));
+}
+

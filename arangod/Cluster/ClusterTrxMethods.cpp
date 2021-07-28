@@ -64,6 +64,10 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
         return true;
       }
       if (!state.isCoordinator()) {
+        TRI_IF_FAILURE("buildTransactionBodyEmpty") {
+          return true;  // continue
+        }
+
         if (col.collection()->followers()->contains(server)) {
           if (numCollections == 0) {
             builder.add(key, VPackValue(VPackValueType::Array));
@@ -225,13 +229,16 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
                   ServerState::instance()->getId());
   }
 
+  char const* stateString = nullptr;
   fuerte::RestVerb verb;
   if (status == transaction::Status::COMMITTED) {
+    stateString = "commit";
     verb = fuerte::RestVerb::Put;
   } else if (status == transaction::Status::ABORTED) {
+    stateString = "abort";
     verb = fuerte::RestVerb::Delete;
   } else {
-    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid state for commit/abort operation");
   }
 
   auto* pool = state->vocbase().server().getFeature<NetworkFeature>().pool();
@@ -270,7 +277,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
           if (res.fail()) {  // remove followers for all participating collections
             ServerID follower = resp.serverId();
             LOG_TOPIC("230c3", INFO, Logger::REPLICATION)
-                << "synchronous replication of transaction commit/abort operation: "
+                << "synchronous replication of transaction " << stateString << " operation: "
                 << "dropping follower " << follower << " for all participating shards in"
                 << " transaction " << state->id().id() << " (status "
                 << arangodb::transaction::statusString(status)
@@ -280,7 +287,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
               auto cc = tc.collection();
               if (cc) {
                 LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
-                    << "synchronous replication of transaction commit/abort operation: "
+                    << "synchronous replication of transaction " << stateString << " operation: "
                     << "dropping follower " << follower << " for shard " 
                     << cc->vocbase().name() << "/" << tc.collectionName() << ": "
                     << resp.combinedResult().errorMessage();

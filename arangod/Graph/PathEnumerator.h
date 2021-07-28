@@ -182,7 +182,7 @@ class DepthFirstEnumerator final : public PathEnumerator {
  private:
   bool shouldPrune();
 
-  velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result);
+  velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result, bool fromPrune);
 };
 }  // namespace traverser
 }  // namespace arangodb

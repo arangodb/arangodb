@@ -75,7 +75,7 @@ class Query : public QueryContext {
 
  protected:
   /// @brief internal constructor, Used to construct a full query or a ClusterQuery
-  Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
+  Query(QueryId id, std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
         std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
         aql::QueryOptions&& options, std::shared_ptr<SharedQueryState> sharedState);
 
