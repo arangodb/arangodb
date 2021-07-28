@@ -298,7 +298,6 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/LogReclaimTest.cpp
   Replication2/MaintenanceTests.cpp
   Replication2/MultiTermTest.cpp
-  Replication2/PrevTermCommitTest.cpp
   Replication2/ReplicatedLogMetricsMock.cpp
   Replication2/ReplicatedLogTest.cpp
   Replication2/RewriteLogTest.cpp
