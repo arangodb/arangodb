@@ -27,14 +27,13 @@
 
 // custom algorithm types
 template class arangodb::pregel::Worker<uint64_t, uint64_t, SenderMessage<uint64_t>>;
+template class arangodb::pregel::Worker<WCCValue, uint64_t, SenderMessage<uint64_t>>;
 template class arangodb::pregel::Worker<SCCValue, int8_t, SenderMessage<uint64_t>>;
 template class arangodb::pregel::Worker<HITSValue, int8_t, SenderMessage<double>>;
 template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
 template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
 template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
 template class arangodb::pregel::Worker<SLPAValue, int8_t, uint64_t>;
-
-
 
 using namespace arangodb::pregel::algos::accumulators;
 template class arangodb::pregel::Worker<VertexData, EdgeData, MessageData>;
