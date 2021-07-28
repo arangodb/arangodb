@@ -233,7 +233,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           break;
         }
 
+        if (startStopHandlers && startStopHandlers.hasOwnProperty('preRun')) {
+          startStopHandlers.preRun(te);
+        }
         pu.getMemProfSnapshot(instanceInfo, options, memProfCounter++);
+        
         print('\n' + (new Date()).toISOString() + GREEN + " [============] " + runFn.info + ': Trying', te, '...', RESET);
         let reply = runFn(options, instanceInfo, te, env);
 
@@ -934,7 +938,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   } catch (ex) {
     let timeout = SetGlobalExecutionDeadlineTo(0.0);
     print(RED + 'test has thrown: ' + (timeout? "because of timeout in execution":""));
-    print(ex);
+    print(ex, ex.stack);
     print(RESET);
     return {
       timeout: timeout,

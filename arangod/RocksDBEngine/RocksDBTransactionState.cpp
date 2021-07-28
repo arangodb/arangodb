@@ -34,12 +34,14 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "Statistics/ServerStatistics.h"
@@ -139,6 +141,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   rocksdb::TransactionDB* db = engine.db();
   _rocksReadOptions.prefix_same_as_start = true;  // should always be true
 
+  _rocksReadOptions.fill_cache = options().fillBlockCache; 
+
   TRI_ASSERT(_readSnapshot == nullptr);
   if (isReadOnlyTransaction()) {
     // no need to acquire a snapshot for a single op
@@ -147,7 +151,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       TRI_ASSERT(_readSnapshot != nullptr);
       _rocksReadOptions.snapshot = _readSnapshot;
     }
-    _rocksMethods.reset(new RocksDBReadOnlyMethods(this));
+    _rocksMethods = std::make_unique<RocksDBReadOnlyMethods>(this);
   } else {
     createTransaction();
     TRI_ASSERT(_rocksTransaction != nullptr);
@@ -160,7 +164,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       TRI_ASSERT(_readSnapshot != nullptr);
     }
 
-    _rocksMethods.reset(new RocksDBTrxMethods(this));
+    _rocksMethods = std::make_unique<RocksDBTrxMethods>(this);
     if (hasHint(transaction::Hints::Hint::NO_INDEXING)) {
       // do not track our own writes... we can only use this in very
       // specific scenarios, i.e. when we are sure that we will have a
@@ -247,6 +251,7 @@ void RocksDBTransactionState::prepareCollections() {
   auto& engine = selector.engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
+
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
     coll->prepareTransaction(id(), preSeq);
@@ -354,6 +359,17 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   TRI_ASSERT(x > 0);
 
   prepareCollections();
+
+  TRI_IF_FAILURE("TransactionChaos::randomSync") {
+    if (RandomGenerator::interval(uint32_t(1000)) > 950) {
+      auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+      auto& engine = selector.engine<RocksDBEngine>();
+      auto* sm = engine.settingsManager();
+      if (sm) {
+        sm->sync(true);  // force
+      }
+    }
+  }
 
   // if we fail during commit, make sure we remove blockers, etc.
   auto cleanupCollTrx = scopeGuard([this]() { cleanupCollections(); });
