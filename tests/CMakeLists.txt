@@ -158,6 +158,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/WindowExecutorTest.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerTest.cpp
+  Auth/UserManagerClusterTest.cpp
   Basics/conversions-test.cpp
   Basics/csv-test.cpp
   Basics/datetime.cpp

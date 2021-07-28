@@ -728,7 +728,6 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     ASSERT_TRUE(action.has(DATABASE));
     ASSERT_TRUE(action.has(COLLECTION));
     ASSERT_TRUE(action.has(SHARD));
-    ASSERT_TRUE(action.has(THE_LEADER));
     ASSERT_TRUE(action.has(LOCAL_LEADER));
     ASSERT_TRUE(action.has(PLAN_RAFT_INDEX));
     ASSERT_EQ(action.get(DATABASE), dbName);
@@ -1205,7 +1204,6 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_other) {
       auto shardName = action->get(SHARD);
       auto removed = relevantShards.erase(shardName);
       EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
-      EXPECT_EQ(action->get(THE_LEADER), "");
       EXPECT_EQ(action->get(LOCAL_LEADER), unusedServer());
     }
   }
@@ -1303,7 +1301,6 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_resigned)
       auto shardName = action->get(SHARD);
       auto removed = relevantShards.erase(shardName);
       EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
-      EXPECT_EQ(action->get(THE_LEADER), "");
       EXPECT_EQ(action->get(LOCAL_LEADER), ResignShardLeadership::LeaderNotYetKnownString);
     }
   }
@@ -1397,7 +1394,6 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_reboot) {
       auto shardName = action->get(SHARD);
       auto removed = relevantShards.erase(shardName);
       EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
-      EXPECT_EQ(action->get(THE_LEADER), "");
       EXPECT_EQ(action->get(LOCAL_LEADER), LEADER_NOT_YET_KNOWN);
     }
   }
