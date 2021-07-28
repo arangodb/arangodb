@@ -4,9 +4,6 @@ v3.8.1 (XXXX-XX-XX)
 * Lower log level to warning, when take over shard leadership finds
   an agency Current entry is missing the server taking over.
 
-v3.8.0-rc.2 (2021-06-07)
-------------------------
-
 * Fix BTS-446: When finding a not yet fully initialized agency, do not
   immediately fatal exit. Keep trying for (very generous) 5 minutes.
 
