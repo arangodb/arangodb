@@ -83,11 +83,11 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 
 /// @brief internal constructor, Used to construct a full query or a ClusterQuery
-Query::Query(std::shared_ptr<transaction::Context> const& ctx,
+Query::Query(QueryId id, std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
              aql::QueryOptions&& options,
              std::shared_ptr<SharedQueryState> sharedState)
-    : QueryContext(ctx->vocbase()),
+    : QueryContext(ctx->vocbase(), id),
       _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
       _transactionContext(ctx),
@@ -161,13 +161,13 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
              QueryOptions&& options)
-    : Query(ctx, queryString, bindParameters, std::move(options),
+    : Query(0, ctx, queryString, bindParameters, std::move(options),
             std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
              VPackSlice options)
-    : Query(ctx, queryString, bindParameters,
+    : Query(0, ctx, queryString, bindParameters,
             QueryOptions(options),
             std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 

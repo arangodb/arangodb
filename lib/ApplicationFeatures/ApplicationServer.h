@@ -176,6 +176,9 @@ class ApplicationServer {
    // signal. after that, it will shutdown all features
    void run(int argc, char* argv[]);
 
+   // signal a soft shutdown (only used for coordinators so far)
+   void initiateSoftShutdown();
+
    // signal the server to shut down
    void beginShutdown();
 

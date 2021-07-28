@@ -36,7 +36,7 @@ class ClusterQuery final : public arangodb::aql::Query {
  public:
   
   /// Used to construct a full query
-  ClusterQuery(std::shared_ptr<arangodb::transaction::Context> const& ctx,
+  ClusterQuery(QueryId id, std::shared_ptr<arangodb::transaction::Context> const& ctx,
                QueryOptions&& options);
   ~ClusterQuery();
   
