@@ -134,11 +134,15 @@ std::atomic<std::size_t> Logger::_loggingThreadRefs(0);
 std::atomic<LogThread*> Logger::_loggingThread(nullptr);
 
 Logger::ThreadRef::ThreadRef() {
-  Logger::_loggingThreadRefs.fetch_add(1, std::memory_order_relaxed);
+  // (1) - this acquire-fetch-add synchronizes with the release-fetch-add (5)
+  Logger::_loggingThreadRefs.fetch_add(1, std::memory_order_acquire);
+  // (2) - this acquire-load synchronizes with the release-store (4)
   _thread = Logger::_loggingThread.load(std::memory_order_acquire);
 }
 
 Logger::ThreadRef::~ThreadRef() {
+  // (3) - this relaxed-fetch-add is potentially part of a release-sequence
+  //       headed by (5)
   Logger::_loggingThreadRefs.fetch_sub(1, std::memory_order_relaxed);
 }
   
@@ -721,14 +725,15 @@ void Logger::initialize(application_features::ApplicationServer& server, bool th
 
   // logging is now active
   if (threaded) {
-    auto loggingThread = new LogThread(server, ::LogThreadName);
+    auto loggingThread = std::make_unique<LogThread>(server, ::LogThreadName);
     if (!loggingThread->start()) {
       LOG_TOPIC("28bd9", FATAL, arangodb::Logger::FIXME)
           << "could not start logging thread";
       FATAL_ERROR_EXIT();
     }
   
-    _loggingThread.store(loggingThread, std::memory_order_release);
+    // (4) - this release-store synchronizes with the acquire-load (2)
+    _loggingThread.store(loggingThread.release(), std::memory_order_release);
   }
 }
 
@@ -744,11 +749,17 @@ void Logger::shutdown() {
   // logging is now inactive
 
   // reset the instance variable in Logger, so that others won't see it anymore
-  auto loggingThread = _loggingThread.exchange(nullptr, std::memory_order_relaxed);
+  std::unique_ptr<LogThread> loggingThread(_loggingThread.exchange(nullptr, std::memory_order_relaxed));
   
   // logging is now inactive (this will terminate the logging thread)
   // join with the logging thread
   if (loggingThread != nullptr) {
+    // (5) - this release-fetch-add synchronizes with the acquire-fetch-add (1)
+    // Even though a fetch-add with 0 is essentially a noop, this is necessary to
+    // ensure that threads which try to get a reference to the _loggingThread
+    // actually see the new nullptr value.
+    _loggingThreadRefs.fetch_add(0, std::memory_order_release);
+    
     // wait until all threads have dropped their reference to the logging thread
     while (_loggingThreadRefs.load(std::memory_order_relaxed)) {
       std::this_thread::sleep_for(std::chrono::milliseconds(20));

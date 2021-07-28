@@ -341,6 +341,12 @@ class Logger {
   struct ThreadRef {
     ThreadRef();
     ~ThreadRef();
+    
+    ThreadRef(const ThreadRef&) = delete;
+    ThreadRef(ThreadRef&&) = delete;
+    ThreadRef& operator=(const ThreadRef&) = delete;
+    ThreadRef& operator=(ThreadRef&&) = delete;
+    
     LogThread* operator->() const noexcept { return _thread; }
     operator bool() const noexcept { return _thread != nullptr; }
    private:
