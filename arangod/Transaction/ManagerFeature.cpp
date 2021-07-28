@@ -144,6 +144,12 @@ void ManagerFeature::start() {
   }
 }
   
+void ManagerFeature::initiateSoftShutdown() {
+  if (MANAGER != nullptr) {
+    MANAGER->initiateSoftShutdown();
+  }
+}
+
 void ManagerFeature::beginShutdown() {
   {
     // when we get here, ApplicationServer::isStopping() will always return

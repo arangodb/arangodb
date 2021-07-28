@@ -98,22 +98,17 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_ASSERT(builder.get() != nullptr);
 
-  try {
-    arangodb::Cursor* cursor =
-        cursors->createFromQueryResult(std::move(result),
-                                       static_cast<size_t>(batchSize), ttl, true);
+  arangodb::Cursor* cursor =
+      cursors->createFromQueryResult(std::move(result),
+                                     static_cast<size_t>(batchSize), ttl, true);
+  TRI_ASSERT(cursor != nullptr);
+  TRI_DEFER(cursors->release(cursor));
 
-    TRI_ASSERT(cursor != nullptr);
-    TRI_DEFER(cursors->release(cursor));
+  // need to fetch id before release() as release() might delete the cursor
+  CursorId id = cursor->id();
 
-    // need to fetch id before release() as release() might delete the cursor
-    CursorId id = cursor->id();
-
-    auto result = TRI_V8UInt64String<TRI_voc_tick_t>(isolate, id);
-    TRI_V8_RETURN(result);
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
+  auto result2 = TRI_V8UInt64String<TRI_voc_tick_t>(isolate, id);
+  TRI_V8_RETURN(result2);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -338,7 +333,9 @@ struct V8Cursor final {
                                           options.slice());
     
     // specify ID 0 so it uses the external V8 context
-    auto cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
+    Cursor* cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
+    // a soft shutdown will throw here!
+ 
     arangodb::ScopeGuard releaseCursorGuard([&]() {
       cc->release();
     });
