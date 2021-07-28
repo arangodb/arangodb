@@ -158,7 +158,7 @@ TEST_F(ReplicatedLogTest, test_override_committed_entries) {
     ASSERT_TRUE(fut.isReady());
     auto iter = std::move(fut).get();
     while (auto entry = iter->next()) {
-      firstCheckPoint.emplace_back(entry->logIndex(), entry->logPayload());
+      firstCheckPoint.emplace_back(entry->logIndex(), entry->clonePayload());
     }
     EXPECT_EQ(firstCheckPoint.size(), 1);
   }
@@ -241,7 +241,7 @@ auto const secondCheckPoint = std::invoke([&] {
   auto fut = C->getParticipant()->waitForIterator(LogIndex{1});
   auto iter = std::move(fut).get();
   while (auto entry = iter->next()) {
-    result.emplace_back(entry->logIndex(), entry->logPayload());
+    result.emplace_back(entry->logIndex(), entry->clonePayload());
   }
   return result;
 });

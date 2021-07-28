@@ -216,6 +216,7 @@ class LogEntryView {
 
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto logPayload() const noexcept -> velocypack::Slice;
+  [[nodiscard]] auto clonePayload() const -> LogPayload;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LogEntryView;

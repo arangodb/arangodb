@@ -171,6 +171,10 @@ auto LogEntryView::fromVelocyPack(velocypack::Slice slice) -> LogEntryView {
                       slice.get("payload"));
 }
 
+auto LogEntryView::clonePayload() const -> LogPayload {
+  return LogPayload::createFromSlice(_payload);
+}
+
 auto LogTerm::operator<=(LogTerm other) const -> bool {
   return value <= other.value;
 }

@@ -114,8 +114,8 @@ auto LeaderStatus::FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -
 auto LogStatus::getCurrentTerm() const noexcept -> std::optional<LogTerm> {
   return std::visit(
       overload{[&](replicated_log::UnconfiguredStatus) -> std::optional<LogTerm> {
-        return std::nullopt;
-      },
+                 return std::nullopt;
+               },
                [&](replicated_log::LeaderStatus const& s) -> std::optional<LogTerm> {
                  return s.term;
                },
@@ -125,12 +125,11 @@ auto LogStatus::getCurrentTerm() const noexcept -> std::optional<LogTerm> {
       _variant);
 }
 
-auto LogStatus::getLocalStatistics() const noexcept
--> std::optional<LogStatistics> {
+auto LogStatus::getLocalStatistics() const noexcept -> std::optional<LogStatistics> {
   return std::visit(
       overload{[&](replicated_log::UnconfiguredStatus const& s) -> std::optional<LogStatistics> {
-        return std::nullopt;
-      },
+                 return std::nullopt;
+               },
                [&](replicated_log::LeaderStatus const& s) -> std::optional<LogStatistics> {
                  return s.local;
                },
