@@ -1,6 +1,16 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Fixes a bug in the maintenance's error-handling code. A shard error would
+  result in log messages like
+    ```
+    WARNING [ceb1a] {maintenance} caught exception in Maintenance shards error
+    reporting: Expecting Object
+    ERROR [c9a75] {maintenance} Error reporting in current: Expecting Object
+    ```
+  and also prevent the maintenance from reporting the current state to the
+  agency, which in turn can prevent cluster-wide progress of various actions.
+
 * APM-107: Added metric "rocksdb_read_only" to determine whether RocksDB is
   currently in read-only mode due to a background error. The metric will have a
   value of "1" if RocksDB is in read-only mode and "0" if RocksDB is in normal
