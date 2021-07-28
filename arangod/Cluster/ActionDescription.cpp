@@ -65,7 +65,7 @@ std::string ActionDescription::operator()(std::string const& p) const {
 }
 
 /// @brief Does this description have a "p" parameter?
-std::string ActionDescription::get(std::string const& p) const {
+std::string const& ActionDescription::get(std::string const& p) const {
   return _description.at(p);
 }
 

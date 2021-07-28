@@ -43,15 +43,7 @@ SmartContext::SmartContext(TRI_vocbase_t& vocbase,
   TRI_ASSERT(_globalId.isSet());
 }
   
-SmartContext::~SmartContext() {
-//  if (_state) {
-//    if (_state->isTopLevelTransaction()) {
-//      std::this_thread::sleep_for(std::chrono::seconds(60));
-//      TRI_ASSERT(false); // probably should not happen
-//      delete _state;
-//    }
-//  }
-}
+SmartContext::~SmartContext() = default;
 
 /// @brief order a custom type handler for the collection
 arangodb::velocypack::CustomTypeHandler* transaction::SmartContext::orderCustomTypeHandler() {
@@ -84,16 +76,36 @@ ManagedContext::ManagedContext(TransactionId globalId,
                                std::shared_ptr<TransactionState> state,
                                bool responsibleForCommit, bool cloned)
   : SmartContext(state->vocbase(), globalId, state),
-    _responsibleForCommit(responsibleForCommit), _cloned(cloned) {}
+    _responsibleForCommit(responsibleForCommit), 
+    _cloned(cloned),
+    _isSideUser(false) {}
+
+ManagedContext::ManagedContext(TransactionId globalId,
+                               std::shared_ptr<TransactionState> state,
+                               TransactionContextSideUser /*sideUser*/)
+  : SmartContext(state->vocbase(), globalId, state),
+    _responsibleForCommit(false),
+    _cloned(true),
+    _isSideUser(true) {}
   
 ManagedContext::~ManagedContext() {
+  bool doReturn = false;
+
   if (_state != nullptr && !_cloned) {
     TRI_ASSERT(!_responsibleForCommit);
-    
+    TRI_ASSERT(!_isSideUser);
+    doReturn = true;
+  } else if (_isSideUser) {
+    TRI_ASSERT(!_responsibleForCommit);
+    TRI_ASSERT(_cloned);
+    doReturn = true;
+  }
+  
+  if (doReturn) {
+    // we are responsible for returning the lease for the managed transaction
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
-    mgr->returnManagedTrx(_globalId);
-    _state = nullptr;
+    mgr->returnManagedTrx(_globalId, _isSideUser);
   }
 }
 
@@ -115,7 +127,7 @@ void ManagedContext::unregisterTransaction() noexcept {
 std::shared_ptr<transaction::Context> ManagedContext::clone() const {
   // cloned transactions may never be responsible for commits
   auto clone = std::make_shared<transaction::ManagedContext>(_globalId, _state,
-                                                             /*responsibleForCommit*/false, /*cloned*/true);
+                                                             /*responsibleForCommit*/ false, /*cloned*/ true);
   clone->_state = _state;
   return clone;
 }

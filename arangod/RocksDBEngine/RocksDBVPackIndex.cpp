@@ -35,10 +35,10 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
@@ -184,24 +184,22 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
         _bounds(std::move(bounds)),
+        _rangeBound(reverse ? _bounds.start() : _bounds.end()),
         _mustSeek(true) {
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex));
 
-    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-    rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-    // we need to have a pointer to a slice for the upper bound
-    // so we need to assign the slice to an instance variable here
-    if constexpr (reverse) {
-      _rangeBound = _bounds.start();
-      options.iterate_lower_bound = &_rangeBound;
-    } else {
-      _rangeBound = _bounds.end();
-      options.iterate_upper_bound = &_rangeBound;
-    }
-
-    TRI_ASSERT(options.prefix_same_as_start);
-    _iterator = mthds->NewIterator(options, index->columnFamily());
+    RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(trx);
+    _iterator = mthds->NewIterator(index->columnFamily(), [&](rocksdb::ReadOptions& options) {
+      TRI_ASSERT(options.prefix_same_as_start);
+      // we need to have a pointer to a slice for the upper bound
+      // so we need to assign the slice to an instance variable here
+      if constexpr (reverse) {
+        options.iterate_lower_bound = &_rangeBound;
+      } else {
+        options.iterate_upper_bound = &_rangeBound;
+      }
+    });
   }
 
  public:

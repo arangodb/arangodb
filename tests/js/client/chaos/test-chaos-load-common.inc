@@ -141,6 +141,9 @@ function BaseChaosSuite(testOpts) {
           debugSetFailAt(getEndpointById(server.id), "replicateOperations_randomize_timeout");
           debugSetFailAt(getEndpointById(server.id), "delayed_synchronous_replication_request_processing");
           debugSetFailAt(getEndpointById(server.id), "Query::setupTimeout");
+          debugSetFailAt(getEndpointById(server.id), "Query::setupLockTimeout");
+          debugSetFailAt(getEndpointById(server.id), "Query::setupTimeoutFailSequence");
+          debugSetFailAt(getEndpointById(server.id), "Query::setupTimeoutFailSequenceRandom");
           debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::insertFail1");
           debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::insertFail2");
           debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail1");
@@ -153,6 +156,17 @@ function BaseChaosSuite(testOpts) {
         assertTrue(servers.length > 0);
         for (const server of servers) {
           debugSetFailAt(getEndpointById(server.id), "Query::setupTimeout");
+          debugSetFailAt(getEndpointById(server.id), "Query::setupTimeoutFailSequence");
+        }
+      }
+      if (testOpts.withDelays) {
+        let servers = getDBServers();
+        assertTrue(servers.length > 0);
+        for (const server of servers) {
+          debugSetFailAt(getEndpointById(server.id), "TransactionChaos::blockerOnSync");
+          debugSetFailAt(getEndpointById(server.id), "TransactionChaos::randomSleep");
+          debugSetFailAt(getEndpointById(server.id), "TransactionChaos::randomSync");
+          debugSetFailAt(getEndpointById(server.id), "RocksDBMetaCollection::forceSerialization");
         }
       }
     },
@@ -178,7 +192,7 @@ function BaseChaosSuite(testOpts) {
         const docs = () => {
           let result = [];
           const max = 2000;
-          const r = Math.floor(Math.random() * max) + 1;
+          let r = Math.floor(Math.random() * max) + 1;
           if (r > (max * 0.8)) {
             // we want ~20% of all requests to be single document operations
             r = 1;
@@ -247,16 +261,29 @@ function BaseChaosSuite(testOpts) {
               const limit = Math.floor(Math.random() * 2000);
               log(`RUNNING AQL REPLACE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
               query("FOR doc IN " + c.name() + " LIMIT @limit REPLACE doc WITH { pfihg: 434, fjgjg: 555 } IN " + c.name(), {limit}, o);
+            } else if (d >= 0.68) {
+              const limit = Math.floor(Math.random() * 10) + 1;
+              log(`RUNNING DOCUMENT SINGLE LOOKUP QUERY WITH LIMIT=${limit}`);
+              query("FOR doc IN " + c.name() + " LIMIT @limit RETURN DOCUMENT(doc._id)", {limit});
+            } else if (d >= 0.66) {
+              const limit = Math.floor(Math.random() * 10) + 1;
+              log(`RUNNING DOCUMENT ARRAY LOOKUP QUERY WITH LIMIT=${limit}`);
+              query("LET keys = (FOR doc IN " + c.name() + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
+            } else if (d >= 0.65) {
+              let o = opts();
+              const limit = Math.floor(Math.random() * 10) + 1;
+              log(`RUNNING DOCUMENT LOOKUP AND WRITE QUERY WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(0)}`);
+              query("FOR doc IN " + c.name() + " LIMIT @limit LET d = DOCUMENT(doc._id) INSERT UNSET(doc, '_key') INTO " + c.name(), {limit}, o);
             } else if (d >= 0.25) {
               let o = opts();
               let d = docs();
               log(`RUNNING INSERT WITH ${d.length} DOCS. OPTIONS: ${JSON.stringify(o)}`);
-              d = d.length == 1 ? d[0] : d;
+              d = d.length === 1 ? d[0] : d;
               c.insert(d, o);
             } else {
               let d = docs();
               log(`RUNNING REMOVE WITH ${d.length} DOCS`);
-              d = d.length == 1 ? d[0] : d;
+              d = d.length === 1 ? d[0] : d;
               c.remove(d);
             }
           } catch (err) {}
@@ -291,7 +318,7 @@ function BaseChaosSuite(testOpts) {
 }
 
 // truncate is disabled because it does not work reliably ATM
-const params = ["IntermediateCommits", "FailurePoints", /*"Truncate",*/ "VaryingOverwriteMode", "StreamingTransactions"];
+const params = ["IntermediateCommits", "FailurePoints", "Delays", /*"Truncate",*/ "VaryingOverwriteMode", "StreamingTransactions"];
 
 const makeConfig = (paramValues) => {
   let suffix = "";
@@ -302,7 +329,7 @@ const makeConfig = (paramValues) => {
     opts["with" + params[j]] = paramValues[j];
   }
   return { suffix: suffix, options: opts };
-}
+};
 
 const run = () => {
   if (!global.currentTestConfig) {
@@ -322,7 +349,7 @@ const run = () => {
   jsunity.run(func);
 
   return jsunity.done();
-}
+};
 
 module.exports.parameters = params;
 module.exports.makeConfig = makeConfig;

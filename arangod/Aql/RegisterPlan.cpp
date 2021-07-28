@@ -139,8 +139,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
              varsSetHere.end();
     };
     auto isUsedLater = [&](Variable const* var) {
-      return std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
-             varsUsedLater.end();
+      return varsUsedLater.contains(var);
     };
 
     // items are pushed for each SubqueryStartNode and popped for
@@ -562,8 +561,7 @@ auto RegisterPlanT<T>::calcRegsToKeep(VarSetStack const& varsUsedLaterStack,
       auto reg = variableToRegisterId(var);
       TRI_ASSERT(reg.isRegularRegister());
 
-      bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
-                         varsUsedLater.end();
+      bool isUsedLater = varsUsedLater.contains(var);
       if (isUsedLater) {
         bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
                          varsSetHere.end();

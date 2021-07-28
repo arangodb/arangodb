@@ -143,11 +143,8 @@ struct Collections {
   /// @brief filters properties for collection creation
   static arangodb::velocypack::Builder filterInput(arangodb::velocypack::Slice slice);
 };
-#ifdef USE_ENTERPRISE
-Result ULColCoordinatorEnterprise(ClusterFeature& feature, std::string const& databaseName,
-                                  std::string const& collectionCID,
-                                  TRI_vocbase_col_status_e status);
 
+#ifdef USE_ENTERPRISE
 Result DropColCoordinatorEnterprise(LogicalCollection* collection, bool allowDropSystem);
 #endif
 }  // namespace methods

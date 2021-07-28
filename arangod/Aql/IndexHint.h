@@ -35,6 +35,7 @@ class Slice;
 
 namespace aql {
 struct AstNode;
+class QueryContext;
 
 /// @brief container for index hint information
 class IndexHint {
@@ -43,7 +44,7 @@ class IndexHint {
 
  public:
   explicit IndexHint();
-  explicit IndexHint(AstNode const* node);
+  explicit IndexHint(QueryContext& query, AstNode const* node);
   explicit IndexHint(arangodb::velocypack::Slice const& slice);
 
  public:
