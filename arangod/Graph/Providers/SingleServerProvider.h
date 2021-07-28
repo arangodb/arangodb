@@ -70,7 +70,7 @@ class SingleServerProvider {
 
   SingleServerProvider& operator=(SingleServerProvider const&) = delete;
 
-  auto startVertex(VertexType vertex, size_t depth = 0) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,

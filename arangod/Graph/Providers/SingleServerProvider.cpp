@@ -108,13 +108,14 @@ void SingleServerProvider<Step>::activateCache(bool enableDocumentCache) {
 }
 
 template <class Step>
-auto SingleServerProvider<Step>::startVertex(VertexType vertex, size_t depth) -> Step {
+auto SingleServerProvider<Step>::startVertex(VertexType vertex, size_t depth, double weight)
+    -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Start Vertex:" << vertex;
 
   // Create default initial step
   // Note: Refactor naming, Strings in our cache here are not allowed to be removed.
-  return Step(_cache.persistString(vertex), depth);
+  return Step(_cache.persistString(vertex), depth, weight);
 }
 
 template <class Step>

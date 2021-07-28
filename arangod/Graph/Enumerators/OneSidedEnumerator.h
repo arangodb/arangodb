@@ -83,7 +83,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
   [[nodiscard]] bool isDone() const override;
 
   /**
-   * @brief Reset to new source and target vertices.
+   * @brief Reset to new source vertex.
    * This API uses string references, this class will not take responsibility
    * for the referenced data. It is caller's responsibility to retain the
    * underlying data and make sure the StringRefs stay valid until next
@@ -91,8 +91,13 @@ class OneSidedEnumerator : public TraversalEnumerator {
    *
    * @param source The source vertex to start the paths
    * @param depth The depth we're starting the search at
+   * @param weight The vertex ist starting to search at, only relevant for weighted searches
+   * @param keepPathStore flag to determine that we should keep internas of last
+   * run in memory. should be used if the last result is not processed yet, as
+   * we will create invalid memory access in the handed out Paths.
    */
-  void reset(VertexRef source, size_t depth = 0, bool keepPathStore = false) override;
+  void reset(VertexRef source, size_t depth = 0, double weight = 0.0,
+             bool keepPathStore = false) override;
 
   /**
    * @brief Get the next path, if available written into the result build.
