@@ -74,6 +74,7 @@ struct Options {
   bool skipInaccessibleCollections;
 #endif
   bool waitForSync;
+  bool fillBlockCache;
   bool isFollowerTransaction;
 
   /// @brief originating server of this transaction. will be populated

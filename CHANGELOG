@@ -1,12 +1,180 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
-* Fixed a bug, where Coordinators handled plan changes for databases
-  in heartbeat thread in wrong order. Databases could be listed, but
-  not used.
+* Fixed a bug, where Coordinators handled plan changes for databases in
+  heartbeat thread in wrong order. Databases could be listed, but not used.
+
+* Include K_SHORTEST_PATHS and SHORTEST_PATH execution nodes in AQL query memory
+  usage accounting. The memory used by these execution node types was previously
+  not tracked against the configured query memory limit (BTS-411).
+
+* Lower log level to warning, when take over shard leadership finds an agency
+  Current entry is missing the server taking over.
+
+* Fixed BTS-408: treat positive or negative signed numbers as constants
+  immediately during AQL query parsing.
+  Previously, a value of `-1` was parsed initially as `unary minus(value(1))`,
+  which was not treated in the same way as a constant value `value(-1)`.
+  The value was later optimized to just `value(-1)`, but this only happened
+  during constant-folding after parsing. Any operations that referred to the
+  unfolded values during parsing thus did not treat such values as constants.
+
+* Fix startup issues with encryption-at-rest enabled when there were empty (0
+  byte) RocksDB WAL files present. Such empty files caused RocksDB to abort the
+  startup, reporting corruption. However, empty WAL files are possible in case
+  of server crashes etc. Now, if a WAL file is completely empty, there will be
+  no attempt to read the encryption meta data from it, so the startup succeeds
+	(BTS-392).
+
+* Fixes a bug in the maintenance's error-handling code. A shard error would
+  result in log messages like
+    ```
+    WARNING [ceb1a] {maintenance} caught exception in Maintenance shards error
+    reporting: Expecting Object
+    ERROR [c9a75] {maintenance} Error reporting in current: Expecting Object
+    ```
+  and also prevent the maintenance from reporting the current state to the
+  agency, which in turn can prevent cluster-wide progress of various actions.
+
+* APM-107: Added metric "rocksdb_read_only" to determine whether RocksDB is
+  currently in read-only mode due to a background error. The metric will have a
+  value of "1" if RocksDB is in read-only mode and "0" if RocksDB is in normal
+  operations mode. If the metric value is "1" it means all writes into RocksDB
+  will fail, so inspecting the logfiles and acting on the actual error situation
+  is required.
+
+* Fix numeric overflow in AQL WINDOW node cost estimation if the number of
+  preceding rows was set to `unbounded`.
+
+* Added a retry loop for arangorestore during the initial connection phase. The
+  number of retries defaults to 3 and can be configured using
+  --initial-connect-retries (BTS-491).
+
+* Add following term ids, which prevents old synchronous replication requests
+  to be accepted after a follower was dropped and has gotten in sync again.
+  This makes the chaos tests which delay synchronous replication requests more
+  reliable and prevent inconsistent shard replicas under bad network conditions.
+
+* Enable process metrics on agent instances by default. Previously, some metrics
+  (including the metrics starting with `arangodb_process` prefix) were not
+  returned by agent instances.
+
+* Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
+  (DEVSUPP-753).
+
+* Bug-fix: Pregel WCC algorithm could yield incorrect results if a part of the
+  connected component was only attached via OUTBOUND edges.
+  The underlying algorithm is now modified to properly retain INBOUND edges for
+  the runtime of the execution. This uses more RAM for the algorithm but
+  guarantees correctness.
+
+* Fix serialization of query shutdown error code when sending it to DB servers.
+  The error code is numeric, but it was sent to the `/_api/aql/finish` API as a
+  string. This led to the DB servers always assuming the default error code
+  TRI_ERROR_INTERAL (error code 4). This was not a problem for normal query
+  operations, but it could have led to warnings being logged stating "please
+  contact ArangoDB support". Now the actual error code is using during query
+  shutdown.
+
+* Fix display of running and slow queries in web UI when there are multiple
+  coordinators. Previously, the display order of queries was undefined, which
+  could lead to queries from one coordinator being display on top once and then
+  the queries from another. That made using this UI harder than necessary.
+
+  Now queries are sorted for display, according to their query IDs.
+
+* Fixed an issue in index selection, when the selectivty estimate of another
+  prefix index was used without checking if the other index covered the FILTER
+  condition.
+
+  For example, given the following indexes:
+
+  - index 1: ["e", "a", "b", "c"]
+  - index 2: ["e", "a", "b"]
+  - index 3: ["d", "e", "f", "g"]
+
+  and the FILTER condition `d == 1 && e == 2 && f == 3`, then the best index to
+  pick would be index 3. However, the optimizer may have picked index 1 here.
+  All indexes are valid candidates for this FILTER condition, but none of the
+  indexes covered all attributes of the FILTER condition. So the index
+  selectivity estimates were (correctly) not used directly to determine the best
+  index.
+  The actual bug happened when comparing the usefulness of the candidate
+  indexes, when figuring out that even though the selectivity estimate for index
+  1 could not be used, but that there existed a prefix index of index 1 (index
+  2). The selecivity estimate of this index was taken _without_ checking that
+  prefix index actually satisfied the FILTER condition fully.
+  The prefix index' selectivity estimate must only be used if it fully satisfies
+  the FILTER condition, which was not the case here.
+
+* Fixed DEVSUP-799: unique vertex getter may point to invalid memory after being
+  resetted, resulting in undefined behavior for traversals returning unique
+  vertices from inner FOR loops.
+
+* Improve usability of hidden options: `--help` mentions that these exist and
+  how to display them.
+
+* Fixed ES-863: reloading of users within the Cluster.
+  If a Coordinator is asked to reload its users (e.g. by the UserManager in
+  Foxx, it is also possible to do via API, but this is internal and on purpose
+  not documented, so unlikely that it is used), in concurrency with user
+  management updates there is a chance that the reload is not correctly
+  performed on this coordinator. It may have missed the last update locally,
+  causing one user to have an older state. It will be fixed on the next
+  modification of any other users/permissions. Unfortunately this bug can
+  cascade and when hit again, the coordinator can now be off by two updates.
+  In DC2DC this situation is more likely to happen on the target datacenter,
+  causing this datacenter to have other users/permissions than the source one.
+
+* Fix BTS-446: When finding a not yet fully initialized agency, do not
+  immediately fatal exit. Keep trying for (very generous) 5 minutes.
+
+* Only build actually used subattributes of traversal paths, i.e. "vertices",
+  "edges" or "weights". If any of the paths subcomponents is not used, the
+  optimizer will try to save these components from being built for each result
+  item.
+
+* Backport bugfix from upstream rocksdb repository for calculating the free disk
+  space for the database directory. Before the bugfix, rocksdb could
+  overestimate the amount of free space when the arangod process was run as
+  non-privileged users.
+
+* Fixed a problem with active failover, where a failover could take 5 mins
+  because the follower was caught in a bad state during replication. This fixes
+  BTS-425.
+
+* Add soft coordinator shutdown: This is a new option `soft=true` for the
+  DELETE /_admin/shutdown API. Has only meaning for coordinators, otherwise
+  ignored. A number of things are allowed to finish but no new things are
+  allowed when in soft coordinator shutdown:
+    - AQL cursors
+    - transactions
+    - asynchronous operations
+    - Pregel runs
+  Once all of the ongoing operations of these have finished and all requests on
+  the low priority queue have been executed, the coordinator shuts down the
+  normal way. This is supposed to make a coordinator restart less intrusive for
+  clients.
+
+* Fix BTS-398: Cannot force index hint for primary index if FILTER has multiple
+  OR conditions that require different indexes.
+
+* Bug-fix (macOs): in macOs there is an upper bound for descriptors defined by
+  the system, which is independend of the settings in `ulimit -n`. If the hard
+  limit is set above this upper bound value ArangoDB tries to raise the soft
+  limit to the hard limit on boot. This will fail due to the system limit. This
+  could cause ArangoDB to not start, asking you to lower the minimum of required
+  file descriptors. The system set upper bound is now honored and the soft limit
+  will be set to either hard limit or system limit whichever is lower.
+
+* Implemented APM-86: add query option `fillBlockCache` to control population of
+  RocksDB block cache with data read by the query. The default value for this
+  per-query option is `true`, which mimics the previous behavior.
+  Setting the option to off allows not storing data in RocksDB's block cache for
+  queries that are known to read only semi-relevant or unimportant data.
 
 
-v3.8.0 (XXXX-XX-XX)
+v3.8.0 (2021-07-14)
 -------------------
 
 * Always remove blocker object for revision trees in case of replication
@@ -77,12 +245,6 @@ v3.8.0 (XXXX-XX-XX)
 * Added more context to "dropping follower" messages, so it is easier to analyze
   what exactly went wrong.
 
-* Fixed invalid shard synchronization for documents not added via INSERT with
-  `overwriteMode` set to `ignore`. In this case, if a document with the given key
-  already exists, it is not changed on the leader (i.e. no write happens on the
-  leader). However, a write was replicated to the follower, which was wrong.
-  This write is now suppressed, which can only make such insert operations faster.
-
 * Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
   iterator.
 
@@ -98,7 +260,6 @@ v3.8.0 (XXXX-XX-XX)
 * Added check to utils/generateAllMetricsDocumentation.py to check that the file
   name and the value of the name attribute are the same in the metrics
   documentation snippets. Correct a few such names.
-
 
 v3.8.0-rc.2 (2021-06-07)
 ------------------------

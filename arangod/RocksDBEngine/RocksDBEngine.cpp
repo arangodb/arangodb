@@ -480,6 +480,18 @@ void RocksDBEngine::start() {
     }
   }
 
+  uint64_t totalSpace;
+  uint64_t freeSpace;
+  if (TRI_GetDiskSpaceInfo(_path, totalSpace, freeSpace).ok() && totalSpace != 0) {
+    LOG_TOPIC("b71b9", DEBUG, arangodb::Logger::ENGINES)
+      << "total disk space for database directory mount: " 
+      << totalSpace << " bytes"
+      << ", free disk space for database directory mount: " 
+      << freeSpace << " bytes"
+      << " (" << (100.0 * double(freeSpace) / double(totalSpace)) << "% free)";
+  }
+
+
   // options imported set by RocksDBOptionFeature
   auto const& opts = server().getFeature<arangodb::RocksDBOptionFeature>();
 
@@ -2395,6 +2407,7 @@ DECLARE_GAUGE(rocksdb_total_disk_space, uint64_t, "rocksdb_total_disk_space");
 DECLARE_GAUGE(rocksdb_total_inodes, uint64_t, "rocksdb_total_inodes");
 DECLARE_GAUGE(rocksdb_total_sst_files_size, uint64_t, "rocksdb_total_sst_files_size");
 DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t, "rocksdb_engine_throttle_bps");
+DECLARE_GAUGE(rocksdb_read_only, uint64_t, "rocksdb_read_only");
 
 void RocksDBEngine::getStatistics(std::string& result, bool v2) const {
   VPackBuilder stats;
@@ -2605,6 +2618,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder, bool v2) const {
       builder.add("rocksdb.free-inodes", VPackValue(VPackValueType::Null));
       builder.add("rocksdb.total-inodes", VPackValue(VPackValueType::Null));
     }
+  }
+
+  if (_errorListener) {
+    builder.add("rocksdb.read-only", VPackValue(_errorListener->called() ? 1 : 0));
   }
 
   builder.close();

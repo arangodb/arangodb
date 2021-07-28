@@ -858,7 +858,7 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.value, 'foo', 2, true, 42, null) RETURN d");
+        "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.value, 'foo', 2, true, 42, null, null) RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
