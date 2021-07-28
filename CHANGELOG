@@ -2,7 +2,8 @@ devel
 -----
 
 * Web UI: Fixes a logical error which occured after re-visiting the logs view
-  which lead to not displaying the logs view and its entries correctly.
+  which lead to not displaying the logs view and its entries correctly
+  (BTS-507).
 
 * Slightly increase internal AQL query and transaction timeout on DB servers 
   from 3 to 5 minutes.
