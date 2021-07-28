@@ -147,7 +147,20 @@ class EngineInfoContainerDBServerServerBased {
 
  private:
 
-  std::vector<bool> buildEngineInfo(VPackBuilder& infoBuilder, ServerID const& server,
+  /**
+  * @brief Helper method to generate the Request to be send to a specific database server.
+  * this request contains all the necessary information to create a transaction with correct shard
+  * locking, as well as QuerySnippets and GraphEngines on the receiver side.
+  *
+  * @param clusterQueryId cluster-wide query id (used from 3.8 onwards)
+  * @param infoBuilder (mutable) the request body will be written into this builder. 
+  * @param server The DatabaseServer we suppose to send the request to, used to identify the shards on this server
+  * @param nodesById A vector to get Nodes by their id.
+  * @param nodeAliases (mutable) A map of node-aliases, if a server is responsible for more then one shard we need to duplicate some nodes in the query (e.g. an IndexNode can only access one shard at a time) this list can map cloned node -> original node ids.
+  *
+  * @return A vector with one entry per GraphNode in the query (in order) it indicates if this Server has created a GraphEngine for this Node and needs to participate in the GraphOperation or not.
+  */
+  std::vector<bool> buildEngineInfo(QueryId clusterQueryId, VPackBuilder& infoBuilder, ServerID const& server,
                                     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
                                     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
@@ -168,7 +181,6 @@ class EngineInfoContainerDBServerServerBased {
    * they may be leftovers from Coordinator.
    * Will also clear the list of queryIds after return.
    *
-   * @param pool The ConnectionPool
    * @param errorCode error Code to be send to DBServers for logging.
    * @param dbname Name of the database this query is executed in.
    * @param serverQueryIds A map of QueryIds of the format: (remoteNodeId:shardId)
