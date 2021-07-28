@@ -285,34 +285,6 @@ ErrorCode RocksDBCollection::close() {
   return TRI_ERROR_NO_ERROR;
 }
 
-void RocksDBCollection::load() {
-  if (_cacheEnabled) {
-    createCache();
-    if (_cache) {
-      uint64_t numDocs = _meta.numberDocuments();
-      if (numDocs > 0) {
-        _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
-      }
-    }
-  }
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto it : _indexes) {
-    it->load();
-  }
-}
-
-void RocksDBCollection::unload() {
-  WRITE_LOCKER(guard, _exclusiveLock);
-  if (useCache()) {
-    destroyCache();
-    TRI_ASSERT(_cache.get() == nullptr);
-  }
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto it : _indexes) {
-    it->unload();
-  }
-}
-
 /// return bounds for all documents
 RocksDBKeyBounds RocksDBCollection::bounds() const  {
   return RocksDBKeyBounds::CollectionDocuments(objectId());

@@ -1,6 +1,22 @@
 devel
 -----
 
+* APM-132: Clean up collection statuses
+  Removes collection statuses "new born", "loading", "unloading" and "unloaded".
+  These statuses were last relevant with the MMFiles storage engine, when it
+  was important to differentiate which collections are present in main memory
+  memory and which aren't. With the RocksDB storage engine, all that was 
+  automatically handled anyway, and the statuses were not important anymore.
+
+  The change removes the "Load" and "Unload" buttons for collections from the
+  web interface. All collections in the web interface will be marked as
+  "loaded" permanently.
+  
+  This change also obsoletes the `load()` and `unload()` calls for collections
+  as well as their HTTP API equivalents. The APIs will remain in place for now
+  but are changed to no-ops. They will removed eventually in a future version
+  of ArangoDB. This will be announced separately.
+
 * Include K_SHORTEST_PATHS and SHORTEST_PATH execution nodes in AQL query 
   memory usage accounting. The memory used by these execution node types was
   previously not tracked against the configured query memory limit.
