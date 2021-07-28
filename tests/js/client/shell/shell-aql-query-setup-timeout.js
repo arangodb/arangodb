@@ -2,7 +2,7 @@
 /* global fail, assertEqual, assertTrue, assertFalse, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief dropping followers while replicating
+// / @brief timeouts during query setup
 // /
 // / DISCLAIMER
 // /
@@ -71,8 +71,10 @@ function aqlQuerySetupTimeout() {
 
       try {
         db._query("FOR i IN 1..1000 INSERT {} INTO " + cn);
+        fail();
       } catch (e) {
-        assertEqual(e.errorNum, ERRORS.ERROR_CLUSTER_TIMEOUT.code);
+        assertTrue(e.errorNum === ERRORS.ERROR_CLUSTER_TIMEOUT.code ||
+                   e.errorNum === ERRORS.ERROR_CLUSTER_CONNECTION_LOST.code);
       }
 
       assertEqual(0, c.count());
