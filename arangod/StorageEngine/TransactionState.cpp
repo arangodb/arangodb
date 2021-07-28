@@ -161,17 +161,38 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
     }
   }
 #endif
-  Result res;
 
-  // upgrade transaction type if required
-  if (_status == transaction::Status::CREATED) {
+  Result res = addCollectionInternal(cid, cname, accessType, lockUsage);
+
+  if (res.ok()) {
+    // upgrade transaction type if required
     if (AccessMode::isWriteOrExclusive(accessType) &&
         !AccessMode::isWriteOrExclusive(_type)) {
-      // if one collection is written to, the whole transaction becomes a
-      // write-y transaction
-      _type = std::max(_type, accessType);
+        // if one collection is written to, the whole transaction becomes a
+        // write-y transaction
+      if (_status == transaction::Status::CREATED) {
+        // this is safe to do before the transaction has started
+        _type = std::max(_type, accessType);
+      } else if (_status == transaction::Status::RUNNING &&
+                 _options.allowImplicitCollectionsForWrite &&
+                 !isReadOnlyTransaction()) {
+        // it is also safe to add another write collection to a write
+        _type = std::max(_type, accessType);
+      } else {
+        // everything else is not safe and must be rejected
+        res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+                  std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
+                  ": " + cname + " [" + AccessMode::typeString(accessType) + "]");
+      }
     }
   }
+
+  return res;
+}
+
+Result TransactionState::addCollectionInternal(DataSourceId cid, std::string const& cname,
+                                               AccessMode::Type accessType, bool lockUsage) {
+  Result res;
 
   // check if we already got this collection in the _collections vector
   size_t position = 0;
@@ -217,7 +238,7 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
                          ": " + cname + " [" +
                          AccessMode::typeString(accessType) + "]");
   }
-
+  
   // now check the permissions
   res = checkCollectionPermission(cid, cname, accessType);
 
