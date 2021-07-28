@@ -72,12 +72,12 @@ devel
 * Fix invalid assertion for insert/removal buffers positioning and internals of
   `hasBlockerUpTo` function.
 
-* Fix startup issues with encryption-at-rest enabled when there were empty
-  (0 byte) RocksDB WAL files present. Such empty files caused RocksDB to
-  abort the startup, reporting corruption. However, empty WAL files are 
-  possible in case of server crashes etc. Now, if a WAL file is completely
-  empty, there will be no attempt to read the encryption meta data from it,
-  so the startup succeeds.
+* Fix startup issues with encryption-at-rest enabled when there were empty (0
+  byte) RocksDB WAL files present. Such empty files caused RocksDB to abort the
+  startup, reporting corruption. However, empty WAL files are possible in case
+  of server crashes etc. Now, if a WAL file is completely empty, there will be
+  no attempt to read the encryption meta data from it, so the startup succeeds
+	(BTS-392).
 
 * Remove _msg/please-upgrade handler.
 
@@ -190,7 +190,7 @@ devel
 
 * Added a retry loop for arangorestore during the initial connection phase. The
   number of retries defaults to 3 and can be configured using
-  --initial-connect-retries.
+  --initial-connect-retries (BTS-491).
 
 * Fix numeric overflow in AQL WINDOW node cost estimation if the number of
   preceding rows was set to `unbounded`.
@@ -212,6 +212,7 @@ devel
   to one hour. Older versions of ArangoDB had longer session timeouts.
 
 * Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
+  (DEVSUPP-753).
 
 * Removed redirects from /_admin/cluster* to /_admin/cluster/*. Adjusted
   internal requests to use the new url.
