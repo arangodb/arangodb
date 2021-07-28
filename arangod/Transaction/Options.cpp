@@ -47,6 +47,7 @@ Options::Options()
       skipInaccessibleCollections(false),
 #endif
       waitForSync(false),
+      fillBlockCache(true),
       isFollowerTransaction(false),
       origin("", arangodb::RebootId(0)) {
 
@@ -121,6 +122,10 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   if (value.isBool()) {
     waitForSync = value.getBool();
   }
+  value = slice.get("fillBlockCache");
+  if (value.isBool()) {
+    fillBlockCache = value.getBool();
+  }
   
   if (!ServerState::instance()->isSingleServer()) {
     value = slice.get("isFollowerTransaction");
@@ -157,6 +162,7 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("skipInaccessibleCollections", VPackValue(skipInaccessibleCollections));
 #endif
   builder.add("waitForSync", VPackValue(waitForSync));
+  builder.add("fillBlockCache", VPackValue(fillBlockCache));
   // we are intentionally *not* writing allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
 

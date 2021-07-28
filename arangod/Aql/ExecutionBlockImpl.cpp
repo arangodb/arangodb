@@ -332,16 +332,41 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  initOnce();
-  auto res = executeWithoutTrace(std::move(stack));
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto const& [state, skipped, block] = res;
-  if (block != nullptr) {
-    block->validateShadowRowConsistency();
+
+  // check if this block failed already.
+  if (_firstFailure.fail()) {
+    // if so, just return the stored error.
+    // we need to do this because if a block fails with
+    // an exception, it is in an invalid state, and all
+    // subsequent calls into it may behave badly.
+    THROW_ARANGO_EXCEPTION(_firstFailure);
   }
+
+  try {
+    initOnce();
+    auto res = executeWithoutTrace(stack);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto const& [state, skipped, block] = res;
+    if (block != nullptr) {
+      block->validateShadowRowConsistency();
+    }
 #endif
-  traceExecuteEnd(res);
-  return res;
+    traceExecuteEnd(res);
+    return res;
+  } catch (basics::Exception const& ex) {
+    TRI_ASSERT(_firstFailure.ok());
+    // store only the first failure we got
+    _firstFailure = {ex.code(), ex.what()};
+    LOG_QUERY("7289a", DEBUG) << printBlockInfo() << " local statemachine failed with exception: " << ex.what();
+    throw;
+  } catch (std::exception const& ex) {
+    TRI_ASSERT(_firstFailure.ok());
+    // store only the first failure we got
+    _firstFailure = {TRI_ERROR_INTERNAL, ex.what()};
+    LOG_QUERY("2bbd5", DEBUG) << printBlockInfo() << " local statemachine failed with exception: " << ex.what();
+    // Rewire the error, to be consistent with potentially next caller.
+    THROW_ARANGO_EXCEPTION(_firstFailure);
+  }
 }
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480

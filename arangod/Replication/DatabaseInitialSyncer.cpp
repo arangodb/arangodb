@@ -38,6 +38,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/utilities.h"
 #include "Rest/CommonDefines.h"
@@ -520,6 +521,16 @@ bool DatabaseInitialSyncer::isAborted() const {
       (vocbase().replicationApplier() != nullptr &&
        vocbase().replicationApplier()->stopInitialSynchronization())) {
     return true;
+  }
+
+  if (_state.isChildSyncer) {
+    // this syncer is used as a child syncer of the GlobalInitialSyncer.
+    // now check if parent was aborted
+    ReplicationFeature& replication = vocbase().server().getFeature<ReplicationFeature>();
+    GlobalReplicationApplier* applier = replication.globalReplicationApplier();
+    if (applier != nullptr && applier->stopInitialSynchronization()) {
+      return true;
+    }
   }
 
   return Syncer::isAborted();
@@ -1364,6 +1375,10 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   auto context = arangodb::transaction::StandaloneContext::Create(coll->vocbase());
   TransactionId blockerId = context->generateId();
   physical->placeRevisionTreeBlocker(blockerId);
+  
+  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
+    physical->removeRevisionTreeBlocker(blockerId);
+  });
   std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
   transaction::Options options;
   TRI_IF_FAILURE("IncrementalReplicationFrequentIntermediateCommit") {
@@ -1416,7 +1431,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     guard.fire();
     return fetchCollectionSyncByKeys(coll, leaderColl, maxTick);
   }
-  physical->removeRevisionTreeBlocker(blockerId);
+  // make sure revision tree blocker is removed
+  blockerGuard.fire();
+
   std::vector<std::pair<std::uint64_t, std::uint64_t>> ranges =
       treeLeader->diff(*treeLocal);
   if (ranges.empty()) {

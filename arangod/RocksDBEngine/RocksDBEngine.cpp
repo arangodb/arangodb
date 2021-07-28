@@ -480,6 +480,18 @@ void RocksDBEngine::start() {
     }
   }
 
+  uint64_t totalSpace;
+  uint64_t freeSpace;
+  if (TRI_GetDiskSpaceInfo(_path, totalSpace, freeSpace).ok() && totalSpace != 0) {
+    LOG_TOPIC("b71b9", DEBUG, arangodb::Logger::ENGINES)
+      << "total disk space for database directory mount: " 
+      << totalSpace << " bytes"
+      << ", free disk space for database directory mount: " 
+      << freeSpace << " bytes"
+      << " (" << (100.0 * double(freeSpace) / double(totalSpace)) << "% free)";
+  }
+
+
   // options imported set by RocksDBOptionFeature
   auto const& opts = server().getFeature<arangodb::RocksDBOptionFeature>();
 
