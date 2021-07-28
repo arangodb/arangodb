@@ -94,16 +94,15 @@ enum TRI_vocbase_type_e {
 };
 
 /// @brief status of a collection
-/// note: the NEW_BORN status is not used in ArangoDB 1.3 anymore, but is left
-/// in this enum for compatibility with earlier versions
+/// note: the following status existed before, but are now obosolete:
+/// - TRI_VOC_COL_STATUS_NEW_BORN = 1
+/// - TRI_VOC_COL_STATUS_UNLOADED = 2
+/// - TRI_VOC_COL_STATUS_UNLOADING = 4
+/// - TRI_VOC_COL_STATUS_LOADING = 6
 enum TRI_vocbase_col_status_e : int {
   TRI_VOC_COL_STATUS_CORRUPTED = 0,
-  TRI_VOC_COL_STATUS_NEW_BORN = 1,  // DEPRECATED, and shouldn't be used anymore
-  TRI_VOC_COL_STATUS_UNLOADED = 2,
   TRI_VOC_COL_STATUS_LOADED = 3,
-  TRI_VOC_COL_STATUS_UNLOADING = 4,
   TRI_VOC_COL_STATUS_DELETED = 5,
-  TRI_VOC_COL_STATUS_LOADING = 6
 };
 
 /// @brief database
@@ -313,9 +312,6 @@ struct TRI_vocbase_t {
   /// write lock for using the collection.
   arangodb::Result dropCollection(arangodb::DataSourceId cid,
                                   bool allowDropSystem, double timeout);
-
-  /// @brief unloads a collection
-  arangodb::Result unloadCollection(arangodb::LogicalCollection* collection, bool force);
 
   /// @brief locks a collection for usage by id
   /// Note that this will READ lock the collection you have to release the
