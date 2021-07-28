@@ -376,7 +376,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   _state->commitCollections(_lastWrittenOperationTick);
   cleanupCollTrx.cancel();
 
-  // wait for sync if required, for all other platforms but Windows
+  // wait for sync if required
   if (_state->waitForSync()) {
     auto& selector = _state->vocbase().server().getFeature<EngineSelectorFeature>();
     auto& engine = selector.engine<RocksDBEngine>();
