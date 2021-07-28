@@ -1,6 +1,11 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Backport bugfix from upstream rocksdb repository for calculating the free disk
+  space for the database directory. Before the bugfix, rocksdb could
+  overestimate the amount of free space when the arangod process was run as
+  non-privileged users.
+
 * Fixed a problem with active failover, where a failover could take 5 mins
   because the follower was caught in a bad state during replication. This fixes
   BTS-425.
