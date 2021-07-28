@@ -1,6 +1,9 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Lower log level to warning, when take over shard leadership finds an agency
+  Current entry is missing the server taking over.
+
 * Fixed BTS-408: treat positive or negative signed numbers as constants
   immediately during AQL query parsing.
   Previously, a value of `-1` was parsed initially as `unary minus(value(1))`,
@@ -250,7 +253,6 @@ v3.8.0 (2021-07-14)
 * Added check to utils/generateAllMetricsDocumentation.py to check that the file
   name and the value of the name attribute are the same in the metrics
   documentation snippets. Correct a few such names.
-
 
 v3.8.0-rc.2 (2021-06-07)
 ------------------------
