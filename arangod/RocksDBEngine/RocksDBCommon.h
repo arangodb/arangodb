@@ -87,10 +87,11 @@ Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLeve)
 // to avoid template
 // this helper is not meant for transactional usage!
 template <typename T>  // T is an invokeable that takes a rocksdb::Iterator*
-void iterateBounds(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds, T callback,
-                   rocksdb::ReadOptions options = rocksdb::ReadOptions()) {
+void iterateBounds(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds, T callback) {
   rocksdb::Slice const end = bounds.end();
-  options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
+  
+  rocksdb::ReadOptions options;
+  options.iterate_upper_bound = &end;  // safe to use on rocksb::DB directly
   options.prefix_same_as_start = true;
   options.verify_checksums = false;
   options.fill_cache = false;
