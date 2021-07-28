@@ -159,11 +159,6 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     traversalProfile = static_cast<TraversalProfileLevel>(value.getNumber<uint16_t>());
   }
 
-  value = slice.get("stream");
-  if (value.isBool()) {
-    stream = value.getBool();
-  }
-
   value = slice.get("allPlans");
   if (value.isBool()) {
     allPlans = value.getBool();

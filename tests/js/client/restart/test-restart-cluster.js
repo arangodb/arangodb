@@ -86,6 +86,27 @@ function testSuite() {
   };
 
   return {
+    tearDownAll : function() {
+      // Need to restart without authentication for other tests to succeed:
+      let coordinators = getServers('coordinator');
+      let coordinator = coordinators[0];
+      let instanceInfo = global.instanceInfo;
+      let newInstanceInfo = {
+        arangods: [ coordinator ],
+        endpoint: instanceInfo.endpoint,
+      };
+      let options = global.testOptions;
+      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
+      coordinator.pid = null;
+      console.warn("Cleaning up and restarting coordinator without authentication...", coordinator);
+      let extraOptions = {
+        "server.authentication": "false"
+      };
+      pu.reStartInstance(options, instanceInfo, extraOptions);
+      let aliveStatus = waitForAlive(30, coordinator.url, {});
+      assertEqual(200, aliveStatus);
+    },
+
     testRestartCoordinatorNormal : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
