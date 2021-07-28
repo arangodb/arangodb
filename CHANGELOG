@@ -1,5 +1,8 @@
-v3.8.1 (2021-07-28)
+v3.8.1 (XXXX-XX-XX)
 -------------------
+
+* Fix BTS-398: Cannot force index hint for primary index if FILTER has multiple
+  OR conditions that require different indexes.
 
 * Bug-fix (macOs): in macOs there is an upper bound for descriptors defined by
   the system, which is independend of the settings in `ulimit -n`. If the hard
