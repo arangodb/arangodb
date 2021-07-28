@@ -1,6 +1,14 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-408: treat positive or negative signed numbers as constants
+  immediately during AQL query parsing.
+  Previously, a value of `-1` was parsed initially as `unary minus(value(1))`,
+  which was not treated in the same way as a constant value `value(-1)`.
+  The value was later optimized to just `value(-1)`, but this only happened
+  during constant-folding after parsing. Any operations that referred to the
+  unfolded values during parsing thus did not treat such values as constants.
+
 * Fix startup issues with encryption-at-rest enabled when there were empty (0
   byte) RocksDB WAL files present. Such empty files caused RocksDB to abort the
   startup, reporting corruption. However, empty WAL files are possible in case
