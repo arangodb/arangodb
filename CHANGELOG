@@ -1,6 +1,9 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
+  (DEVSUPP-753).
+
 * Bug-fix: Pregel WCC algorithm could yield incorrect results if a part of the
   connected component was only attached via OUTBOUND edges.
   The underlying algorithm is now modified to properly retain INBOUND edges for
