@@ -3,7 +3,7 @@ v3.8.1 (XXXX-XX-XX)
 
 * Added a retry loop for arangorestore during the initial connection phase. The
   number of retries defaults to 3 and can be configured using
-  --initial-connect-retries.
+  --initial-connect-retries (BTS-491).
 
 * Add following term ids, which prevents old synchronous replication requests
   to be accepted after a follower was dropped and has gotten in sync again.
