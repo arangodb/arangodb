@@ -4,6 +4,36 @@ v3.8.1 (XXXX-XX-XX)
 * Fix BTS-446: When finding a not yet fully initialized agency, do not
   immediately fatal exit. Keep trying for (very generous) 5 minutes.
 
+* Only build actually used subattributes of traversal paths, i.e. "vertices",
+  "edges" or "weights". If any of the paths subcomponents is not used, the
+  optimizer will try to save these components from being built for each result
+  item.
+
+* Backport bugfix from upstream rocksdb repository for calculating the free disk
+  space for the database directory. Before the bugfix, rocksdb could
+  overestimate the amount of free space when the arangod process was run as
+  non-privileged users.
+
+* Fixed a problem with active failover, where a failover could take 5 mins
+  because the follower was caught in a bad state during replication. This fixes
+  BTS-425.
+
+* Add soft coordinator shutdown: This is a new option `soft=true` for the
+  DELETE /_admin/shutdown API. Has only meaning for coordinators, otherwise
+  ignored. A number of things are allowed to finish but no new things are
+  allowed when in soft coordinator shutdown:
+    - AQL cursors
+    - transactions
+    - asynchronous operations
+    - Pregel runs
+  Once all of the ongoing operations of these have finished and all requests on
+  the low priority queue have been executed, the coordinator shuts down the
+  normal way. This is supposed to make a coordinator restart less intrusive for
+  clients.
+
+* Fix BTS-398: Cannot force index hint for primary index if FILTER has multiple
+  OR conditions that require different indexes.
+
 * Bug-fix (macOs): in macOs there is an upper bound for descriptors defined by
   the system, which is independend of the settings in `ulimit -n`. If the hard
   limit is set above this upper bound value ArangoDB tries to raise the soft
