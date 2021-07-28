@@ -9,13 +9,39 @@ v3.8.1 (XXXX-XX-XX)
     - transactions
     - asynchronous operations
     - Pregel runs
-  Once all of the ongoing operations of these have finished and all requests
-  on the low priority queue have been executed, the coordinator shuts down
-  the normal way. This is supposed to make a coordinator restart less
-  intrusive for clients.
+  Once all of the ongoing operations of these have finished and all requests on
+  the low priority queue have been executed, the coordinator shuts down the
+  normal way. This is supposed to make a coordinator restart less intrusive for
+  clients.
 
-v3.8.0 (XXXX-XX-XX)
+* Fix BTS-398: Cannot force index hint for primary index if FILTER has multiple
+  OR conditions that require different indexes.
+
+* Bug-fix (macOs): in macOs there is an upper bound for descriptors defined by
+  the system, which is independend of the settings in `ulimit -n`. If the hard
+  limit is set above this upper bound value ArangoDB tries to raise the soft
+  limit to the hard limit on boot. This will fail due to the system limit. This
+  could cause ArangoDB to not start, asking you to lower the minimum of required
+  file descriptors. The system set upper bound is now honored and the soft limit
+  will be set to either hard limit or system limit whichever is lower.
+
+* Implemented APM-86: add query option `fillBlockCache` to control population of
+  RocksDB block cache with data read by the query. The default value for this
+  per-query option is `true`, which mimics the previous behavior.
+  Setting the option to off allows not storing data in RocksDB's block cache for
+  queries that are known to read only semi-relevant or unimportant data.
+
+
+v3.8.0 (2021-07-14)
 -------------------
+
+* Always remove blocker object for revision trees in case of replication
+  failures.
+
+* Fix invalid assertion for insert/removal buffers positioning and internals of
+  `hasBlockerUpTo` function.
+
+* Updated ArangoDB Starter to 0.15.0-1.
 
 * Updated arangosync to 2.4.0.
 
@@ -76,12 +102,6 @@ v3.8.0 (XXXX-XX-XX)
 
 * Added more context to "dropping follower" messages, so it is easier to analyze
   what exactly went wrong.
-
-* Fixed invalid shard synchronization for documents not added via INSERT with
-  `overwriteMode` set to `ignore`. In this case, if a document with the given key
-  already exists, it is not changed on the leader (i.e. no write happens on the
-  leader). However, a write was replicated to the follower, which was wrong.
-  This write is now suppressed, which can only make such insert operations faster.
 
 * Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
   iterator.
