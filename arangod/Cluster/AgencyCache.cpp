@@ -259,7 +259,7 @@ void AgencyCache::handleCallbacksNoLock(
                    r.compare(0, strlen(CURRENT_DATABASES), CURRENT_DATABASES) == 0) {
           auto tmp = r.substr(strlen(CURRENT_DATABASES));
           currentChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
-        } else if (rs > strlen(CURRENT_REPLICATED_LOGS) &&      // Current/Databases
+        } else if (rs > strlen(CURRENT_REPLICATED_LOGS) &&      // Current/ReplicatedLogs
                    r.compare(0, strlen(CURRENT_REPLICATED_LOGS), CURRENT_REPLICATED_LOGS) == 0) {
           auto tmp = r.substr(strlen(CURRENT_REPLICATED_LOGS));
           currentChanges.emplace(tmp.substr(0, tmp.find(SLASH)));

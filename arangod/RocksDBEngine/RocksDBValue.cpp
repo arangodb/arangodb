@@ -152,7 +152,7 @@ S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
 }
 
 replication2::LogTerm RocksDBValue::logTerm(const rocksdb::Slice& slice) {
-  TRI_ASSERT(slice.size() >= 8);
+  TRI_ASSERT(slice.size() >= sizeof(uint64_t));
   return replication2::LogTerm(uint64FromPersistent(slice.data()));
 }
 
