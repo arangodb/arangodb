@@ -129,7 +129,7 @@
         var stat = new window.Statistics({name: dbserver.id});
         stat.url = coord.get('protocol') + '://' +
         coord.get('address') +
-        '/_admin/clusterStatistics?DBserver=' + encodeURIComponent(dbserver.get('name'));
+        '/_admin/cluster/statistics?DBserver=' + encodeURIComponent(dbserver.get('name'));
         self.statCollectDBS.add(stat);
       });
 

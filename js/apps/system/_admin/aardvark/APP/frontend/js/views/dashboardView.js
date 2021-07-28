@@ -496,7 +496,7 @@
           'values': [
             {
               label: 'used',
-              value: newData.residentSizePercent * 100
+              value: parseFloat((newData.residentSizePercent * 100).toFixed(2))
             }
           ]
         },
@@ -506,7 +506,7 @@
           'values': [
             {
               label: 'used',
-              value: 100 - newData.residentSizePercent * 100
+              value: parseFloat((100 - newData.residentSizePercent * 100).toFixed(2))
             }
           ]
         }
@@ -898,7 +898,11 @@
               return d + '%';
             })
             .showMaxMin(false);
-          self.residentChart.xAxis.showMaxMin(false);
+          self.residentChart.xAxis
+            .tickFormat(function () {
+              return "";
+            })
+            .showMaxMin(false);
 
           d3.select('#residentSizeChart svg')
             .datum(self.history[self.server].residentSizeChart)

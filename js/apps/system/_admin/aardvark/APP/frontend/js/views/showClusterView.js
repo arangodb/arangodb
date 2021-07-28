@@ -331,7 +331,7 @@
 
         stat.url = coord.get('protocol') + '://' +
         coord.get('address') +
-        '/_admin/clusterStatistics?DBserver=' + encodeURIComponent(dbserver.get('name'));
+        '/_admin/cluster/statistics?DBserver=' + encodeURIComponent(dbserver.get('name'));
 
         statCollect.add(stat);
       });

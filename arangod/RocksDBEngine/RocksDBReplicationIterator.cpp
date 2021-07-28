@@ -30,7 +30,7 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -40,25 +40,25 @@ namespace arangodb {
 RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
     LogicalCollection& collection, rocksdb::Snapshot const* snapshot)
     : RevisionReplicationIterator(collection),
-      _readOptions(),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())) {
   auto& selector = collection.vocbase().server().getFeature<EngineSelectorFeature>();
   RocksDBEngine& engine = *static_cast<RocksDBEngine*>(&selector.engine());
   rocksdb::TransactionDB* db = engine.db();
 
+  rocksdb::ReadOptions ro{};
   if (snapshot) {
-    _readOptions.snapshot = snapshot;
+    ro.snapshot = snapshot;
   }
 
-  _readOptions.verify_checksums = false;
-  _readOptions.fill_cache = false;
-  _readOptions.prefix_same_as_start = true;
+  ro.verify_checksums = false;
+  ro.fill_cache = false;
+  ro.prefix_same_as_start = true;
 
   rocksdb::ColumnFamilyHandle* cf = _bounds.columnFamily();
   _cmp = cf->GetComparator();
 
-  _iter.reset(db->NewIterator(_readOptions, cf));
+  _iter.reset(db->NewIterator(ro, cf));
   TRI_ASSERT(_iter != nullptr);
   if (_iter == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to build RocksDBRevisionReplicationIterator for snapshot");
@@ -69,20 +69,18 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
 RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
     LogicalCollection& collection, transaction::Methods& trx)
     : RevisionReplicationIterator(collection),
-      _readOptions(),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())) {
-  RocksDBMethods* methods = RocksDBTransactionState::toMethods(&trx);
-  _readOptions = methods->iteratorReadOptions();
-
-  _readOptions.verify_checksums = false;
-  _readOptions.fill_cache = false;
-  _readOptions.prefix_same_as_start = true;
+  RocksDBTransactionMethods* methods = RocksDBTransactionState::toMethods(&trx);
 
   rocksdb::ColumnFamilyHandle* cf = _bounds.columnFamily();
   _cmp = cf->GetComparator();
 
-  _iter = methods->NewIterator(_readOptions, cf);
+  _iter = methods->NewIterator(cf, [](rocksdb::ReadOptions& ro) {
+    ro.verify_checksums = false;
+    ro.fill_cache = false;
+    ro.prefix_same_as_start = true;
+  });
   if (_iter == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to build RocksDBRevisionReplicationIterator for transaction");
   }

@@ -144,8 +144,15 @@ bool WeightedEnumerator::expand() {
     TRI_ASSERT(!_queue.empty());
     NextEdge nextEdge = _queue.popTop();
 
-    bool const shouldReturnPath = nextEdge.depth + 1 >= _opts->minDepth;
+    bool shouldReturnPath = nextEdge.depth + 1 >= _opts->minDepth;
     bool const didInsert = expandEdge(std::move(nextEdge));
+
+    if (didInsert && _opts->usesPostFilter()) {
+      auto evaluator = _opts->getPostFilterEvaluator();
+      if (!usePostFilter(evaluator)) {
+        shouldReturnPath = false;
+      }
+    }
 
     if (!shouldReturnPath) {
       _lastReturned = _schreierIndex;
@@ -166,8 +173,16 @@ bool WeightedEnumerator::next() {
     }
     // We have faked the 0 position in schreier for pruning
     _schreierIndex++;
+
     if (_opts->minDepth == 0) {
-      return true;
+      if (_opts->usesPostFilter()) {
+        auto evaluator = _opts->getPostFilterEvaluator();
+        if (usePostFilter(evaluator)) {
+          return true;
+        }
+      } else {
+        return true;
+      }
     }
   }
   _lastReturned++;
@@ -175,6 +190,13 @@ bool WeightedEnumerator::next() {
   if (_lastReturned < _schreierIndex) {
     // We still have something on our stack.
     // Paths have been read but not returned.
+    if (_opts->usesPostFilter()) {
+      auto evaluator = _opts->getPostFilterEvaluator();
+      if (!usePostFilter(evaluator)) {
+        return false;
+      }
+    }
+
     return true;
   }
 
@@ -214,7 +236,7 @@ arangodb::aql::AqlValue WeightedEnumerator::edgeToAqlValue(size_t index) {
   return _opts->cache()->fetchEdgeAqlResult(_schreier[index].fromEdgeToken);
 }
 
-VPackSlice WeightedEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t index) {
+VPackSlice WeightedEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t index, bool fromPrune) {
   for (_tempPathHelper.clear(); index != 0; index = _schreier[index].fromIndex) {
     _tempPathHelper.emplace_back(index);
   }
@@ -222,21 +244,21 @@ VPackSlice WeightedEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t i
   result.clear();
   {
     VPackObjectBuilder ob(&result);
-    {  // edges
+    if (fromPrune || _opts->producePathsEdges()) {  // edges
       VPackArrayBuilder ab(&result, StaticStrings::GraphQueryEdges);
       std::for_each(_tempPathHelper.rbegin(), _tempPathHelper.rend(), [&](size_t idx) {
         _opts->cache()->insertEdgeIntoResult(_schreier[idx].fromEdgeToken, result);
       });
     }
-    {  // vertices
+    if (fromPrune || _opts->producePathsVertices()) {  // vertices
       VPackArrayBuilder ab(&result, StaticStrings::GraphQueryVertices);
       _traverser->addVertexToVelocyPack(_schreier[0].currentVertexId, result);
       std::for_each(_tempPathHelper.rbegin(), _tempPathHelper.rend(), [&](size_t idx) {
         _traverser->addVertexToVelocyPack(_schreier[idx].currentVertexId, result);
       });
     }
-    {  // weights
-      VPackArrayBuilder ab(&result, "weights");
+    if (fromPrune || _opts->producePathsWeights()) {  // weights
+      VPackArrayBuilder ab(&result, StaticStrings::GraphQueryWeights);
       result.add(VPackValue(_schreier[0].accumWeight));
       std::for_each(_tempPathHelper.rbegin(), _tempPathHelper.rend(), [&](size_t idx) {
         result.add(VPackValue(_schreier[idx].accumWeight));
@@ -249,7 +271,7 @@ VPackSlice WeightedEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t i
 
 arangodb::aql::AqlValue WeightedEnumerator::pathToIndexToAqlValue(arangodb::velocypack::Builder& result,
                                                                   size_t index) {
-  return arangodb::aql::AqlValue(pathToIndexToSlice(result, index));
+  return arangodb::aql::AqlValue(pathToIndexToSlice(result, index, false));
 }
 
 bool WeightedEnumerator::pathContainsVertex(size_t index,
@@ -313,7 +335,7 @@ bool WeightedEnumerator::shouldPrune() {
     evaluator->injectEdge(edge.slice());
   }
   if (evaluator->needsPath()) {
-    VPackSlice path = pathToIndexToSlice(*pathBuilder.get(), _schreierIndex);
+    VPackSlice path = pathToIndexToSlice(*pathBuilder.get(), _schreierIndex, true);
     evaluator->injectPath(path);
   }
   return evaluator->evaluate();

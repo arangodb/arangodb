@@ -40,6 +40,7 @@
 #include "AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
+#include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/Metrics.h"
 
@@ -195,6 +196,8 @@ class AgencyCommHelper {
   static std::vector<std::string> slicePath(std::string const&);
 
   static std::string generateStamp();
+
+  static network::Timeout defaultTimeout();
 };
 
 // -----------------------------------------------------------------------------
@@ -252,8 +255,12 @@ class AgencyOperation {
 
   AgencyOperation(std::string const& key, AgencySimpleOperationType opType);
 
+  // Note that this constructor does not copy the Slice, so it has to stay valid
+  // at least as long as the AgencyOperation might be used!
+  AgencyOperation(std::string const& key, AgencyValueOperationType opType, velocypack::Slice value);
+
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
-                  velocypack::Slice const value);
+                  std::shared_ptr<velocypack::Builder> value);
 
   template <typename T>
   AgencyOperation(std::string const& key, AgencyValueOperationType opType, T const& value)
@@ -266,8 +273,40 @@ class AgencyOperation {
     _opType.value = opType;
   }
 
+  // Note that this constructor does not copy the Slices, so they have to stay
+  // valid at least as long as the AgencyOperation might be used!
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
-                  velocypack::Slice const newValue, velocypack::Slice const oldValue);
+                  velocypack::Slice newValue, velocypack::Slice oldValue);
+
+  explicit AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path);
+
+  AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
+                  AgencySimpleOperationType opType);
+
+  // Note that this constructor does not copy the Slice, so it has to stay valid
+  // at least as long as the AgencyOperation might be used!
+  AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
+                  AgencyValueOperationType opType, velocypack::Slice value);
+
+  AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
+                  AgencyValueOperationType opType,
+                  std::shared_ptr<velocypack::Builder> value);
+
+  template <typename T>
+  AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
+                  AgencyValueOperationType opType, T const& value)
+      : _key(path->str()), _opType(), _holder(std::make_shared<VPackBuilder>()) {
+    _holder->add(VPackValue(value));
+    _value = _holder->slice();
+    _opType.type = AgencyOperationType::Type::VALUE;
+    _opType.value = opType;
+  }
+
+  // Note that this constructor does not copy the Slices, so they have to stay
+  // valid at least as long as the AgencyOperation might be used!
+  AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
+                  AgencyValueOperationType opType, velocypack::Slice newValue,
+                  velocypack::Slice oldValue);
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;

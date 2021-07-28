@@ -845,7 +845,8 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
 
 /// @brief Helper function to get a document by it's identifier
 ///        Lazy Locks the collection if necessary.
-void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionName,
+void getDocumentByIdentifier(transaction::Methods* trx, OperationOptions const& options,
+                             std::string& collectionName,
                              std::string const& identifier, bool ignoreError,
                              VPackBuilder& result) {
   transaction::BuilderLeaser searchBuilder(trx);
@@ -874,7 +875,7 @@ void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionN
 
   Result res;
   try {
-    res = trx->documentFastPath(collectionName, searchBuilder->slice(), result);
+    res = trx->documentFastPath(collectionName, searchBuilder->slice(), options, result);
   } catch (arangodb::basics::Exception const& ex) {
     res.reset(ex.code());
   }
@@ -1311,6 +1312,14 @@ Result parseShape(ExpressionContext* exprCtx,
   } else {
     return {TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON"};
   }
+}
+
+irs::string_ref getFunctionName(const AstNode& node) {
+
+  TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
+  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
+  TRI_ASSERT(impl != nullptr);
+  return impl->name;
 }
 
 }  // namespace
@@ -6596,6 +6605,9 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, AstNode const
   // cppcheck-suppress variableScope
   static char const* AFN = "DOCUMENT";
 
+  OperationOptions options;
+  options.documentCallFromAql = true;
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   if (parameters.size() == 1) {
@@ -6604,7 +6616,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, AstNode const
     if (id.isString()) {
       std::string identifier(id.slice().copyString());
       std::string colName;
-      ::getDocumentByIdentifier(trx, colName, identifier, true, *builder.get());
+      ::getDocumentByIdentifier(trx, options, colName, identifier, true, *builder.get());
       if (builder->isEmpty()) {
         // not found
         return AqlValue(AqlValueHintNull());
@@ -6619,7 +6631,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, AstNode const
         if (next.isString()) {
           std::string identifier = next.copyString();
           std::string colName;
-          ::getDocumentByIdentifier(trx, colName, identifier, true, *builder.get());
+          ::getDocumentByIdentifier(trx, options, colName, identifier, true, *builder.get());
         }
       }
       builder->close();
@@ -6639,7 +6651,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, AstNode const
   if (id.isString()) {
     transaction::BuilderLeaser builder(trx);
     std::string identifier(id.slice().copyString());
-    ::getDocumentByIdentifier(trx, collectionName, identifier, true, *builder.get());
+    ::getDocumentByIdentifier(trx, options, collectionName, identifier, true, *builder.get());
     if (builder->isEmpty()) {
       return AqlValue(AqlValueHintNull());
     }
@@ -6655,7 +6667,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, AstNode const
     for (auto const& next : VPackArrayIterator(idSlice)) {
       if (next.isString()) {
         std::string identifier(next.copyString());
-        ::getDocumentByIdentifier(trx, collectionName, identifier, true,
+        ::getDocumentByIdentifier(trx, options, collectionName, identifier, true,
                                   *builder.get());
       }
     }
@@ -8846,6 +8858,148 @@ AqlValue Functions::MakeDistributeGraphInput(arangodb::aql::ExpressionContext* e
   }
 
   return AqlValue{input};
+}
+
+template <typename F>
+AqlValue decayFuncImpl(arangodb::aql::ExpressionContext* expressionContext,
+                       AstNode const& node,
+                       VPackFunctionParameters const& parameters,
+                       F&& decayFuncFactory) {
+
+  AqlValue const& argValue = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& originValue = extractFunctionParameterValue(parameters, 1);
+  AqlValue const& scaleValue = extractFunctionParameterValue(parameters, 2);
+  AqlValue const& offsetValue = extractFunctionParameterValue(parameters, 3);
+  AqlValue const& decayValue = extractFunctionParameterValue(parameters, 4);
+
+  // check type of arguments
+  if ((!argValue.isRange() && !argValue.isArray() && !argValue.isNumber()) ||
+    !originValue.isNumber() || !scaleValue.isNumber() ||
+    !offsetValue.isNumber() || !decayValue.isNumber()) {
+
+    registerInvalidArgumentWarning(expressionContext,
+                                   getFunctionName(node).c_str());
+    return AqlValue(AqlValueHintNull());
+  }
+
+  // extracting values
+  bool failed;
+  bool error = false;
+  double origin = originValue.toDouble(failed);
+  error |= failed;
+  double scale = scaleValue.toDouble(failed);
+  error |= failed;
+  double offset = offsetValue.toDouble(failed);
+  error |= failed;
+  double decay = decayValue.toDouble(failed);
+  error |= failed;
+
+  if (error) {
+    registerWarning(expressionContext,
+                    getFunctionName(node).c_str(),
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  // check that parameters are correct
+  if (scale <= 0 || offset < 0 || decay <= 0 || decay >= 1) {
+    registerWarning(expressionContext,
+                    getFunctionName(node).c_str(),
+                    TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  // get lambda for further calculation
+  auto decayFunc = decayFuncFactory(origin, scale, offset, decay);
+
+  // argument is number
+  if (argValue.isNumber()) {
+      double arg = argValue.slice().getNumber<double>();
+      double funcRes = decayFunc(arg);
+      return ::numberValue(funcRes, true);
+  } else {
+    // argument is array or range
+    auto* trx = &expressionContext->trx();
+    AqlValueMaterializer materializer(&trx->vpackOptions());
+    VPackSlice slice = materializer.slice(argValue, true);
+    TRI_ASSERT(slice.isArray());
+
+    VPackBuilder builder;
+    {
+      VPackArrayBuilder arrayBuilder(&builder);
+      for (VPackSlice currArg : VPackArrayIterator(slice)) {
+        if (!currArg.isNumber()) {
+          registerWarning(expressionContext,
+                          getFunctionName(node).c_str(),
+                          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+          return AqlValue(AqlValueHintNull());
+        }
+        double arg = currArg.getNumber<double>();
+        double funcRes = decayFunc(arg);
+        builder.add(VPackValue(funcRes));
+      }
+    }
+
+    return AqlValue(std::move(*builder.steal()));
+  }
+}
+
+AqlValue Functions::DecayGauss(arangodb::aql::ExpressionContext* expressionContext,
+                               AstNode const& node,
+                               VPackFunctionParameters const& parameters) {
+
+  auto gaussDecayFactory = [](const double origin,
+                              const double scale,
+                              const double offset,
+                              const double decay) {
+    const double sigmaSqr = - (scale * scale) / (2 * std::log(decay));
+    return [=](double arg) {
+      double max = std::max(0.0, std::fabs(arg - origin) - offset);
+      double numerator = max * max;
+      double val = std::exp(- numerator / (2 * sigmaSqr));
+      return val;
+    };
+  };
+
+  return decayFuncImpl(expressionContext, node, parameters, gaussDecayFactory);
+}
+
+AqlValue Functions::DecayExp(arangodb::aql::ExpressionContext* expressionContext,
+                             AstNode const& node,
+                             VPackFunctionParameters const& parameters) {
+
+  auto expDecayFactory = [](const double origin,
+                            const double scale,
+                            const double offset,
+                            const double decay) {
+    const double lambda = std::log(decay) / scale;
+    return [=](double arg) {
+      double numerator = lambda * std::max(0.0, std::abs(arg - origin) - offset);
+      double val = std::exp(numerator);
+      return val;
+    };
+  };
+
+  return decayFuncImpl(expressionContext, node, parameters, expDecayFactory);
+}
+
+AqlValue Functions::DecayLinear(arangodb::aql::ExpressionContext* expressionContext,
+                                AstNode const& node,
+                                VPackFunctionParameters const& parameters) {
+
+  auto linearDecayFactory = [](const double origin,
+                               const double scale,
+                               const double offset,
+                               const double decay) {
+    const double s = scale / (1.0 - decay);
+    return [=](double arg) {
+      double max = std::max(0.0, std::fabs(arg - origin) - offset);
+      double val = std::max((s - max) / s, 0.0);
+      return val;
+    };
+  };
+
+  return decayFuncImpl(expressionContext, node, parameters, linearDecayFactory);
 }
 
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext, AstNode const&,

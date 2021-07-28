@@ -469,7 +469,7 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
 
   bool returnOld = false;
   if (options->type == NODE_TYPE_OBJECT) {
-    auto ops = ExecutionPlan::parseModificationOptions(options);
+    auto ops = ExecutionPlan::parseModificationOptions(query(), "INSERT", options, /*addWarnings*/ false);
     returnOld = ops.isOverwriteModeUpdateReplace();
   }
 
@@ -1943,8 +1943,9 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
 
 /// @brief replace variables
 /*static*/ AstNode* Ast::replaceVariables(AstNode* node,
-                               std::unordered_map<VariableId, Variable const*> const& replacements) {
-  auto visitor = [&replacements](AstNode* node) -> AstNode* {
+                                          std::unordered_map<VariableId, Variable const*> const& replacements,
+                                          bool unlockNodes) {
+  auto visitor = [&replacements, &unlockNodes](AstNode* node) -> AstNode* {
     if (node == nullptr) {
       return nullptr;
     }
@@ -1957,8 +1958,13 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
         auto it = replacements.find(variable->id);
 
         if (it != replacements.end()) {
-          // overwrite the node in place
-          node->setData((*it).second);
+          if (unlockNodes) {
+            TEMPORARILY_UNLOCK_NODE(node);
+            // overwrite the node in place
+            node->setData((*it).second);
+          } else {
+            node->setData((*it).second);
+          }
         }
       }
       // intentionally falls through
@@ -2049,8 +2055,9 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     AqlFunctionsInternalCache aqlFunctionsInternalCache;
     transaction::Methods& trx;
     int64_t stopOptimizationRequests = 0;
-    int64_t nestingLevel = 0;
+    int64_t nestingLevel = 0;  // only used for subqueries
     int64_t filterDepth = -1;  // -1 = not in filter
+    uint64_t recursionDepth = 0;  // current depth of the tree we walk
     bool hasSeenAnyWriteNode = false;
     bool hasSeenWriteNodeInCurrentScope = false;
   };
@@ -2059,6 +2066,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 
   auto preVisitor = [&](AstNode const* node) -> bool {
     auto ctx = &context;
+    
     if (ctx->filterDepth >= 0) {
       ++ctx->filterDepth;
     }
@@ -2114,12 +2122,22 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       // nothing to be done in constant arrays
       return false;
     }
+    
+    if (++ctx->recursionDepth > maxExpressionNesting) {
+      // maximum nesting level for expressions/other constructs reached.
+      // we abort to prevent a potential stack overflow
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_TOO_MUCH_NESTING);
+    }
 
     return true;
   };
 
   auto postVisitor = [&](AstNode const* node) -> void {
     auto ctx = &context;
+   
+    TRI_ASSERT(ctx->recursionDepth > 0);
+    --ctx->recursionDepth;
+
     if (ctx->filterDepth >= 0) {
       --ctx->filterDepth;
     }
@@ -2339,6 +2357,9 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 
   // run the optimizations
   _root = traverseAndModify(_root, preVisitor, visitor, postVisitor);
+
+  // must be back to 0 after the traversal
+  TRI_ASSERT(context.recursionDepth == 0);
 }
 
 /// @brief determines the variables referenced in an expression

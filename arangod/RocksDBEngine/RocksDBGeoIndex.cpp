@@ -32,7 +32,7 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -52,10 +52,8 @@ class RDBNearIterator final : public IndexIterator {
   RDBNearIterator(LogicalCollection* collection, transaction::Methods* trx,
                   RocksDBGeoIndex const* index, geo::QueryParams&& params)
       : IndexIterator(collection, trx), _index(index), _near(std::move(params)) {
-    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-    rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-    TRI_ASSERT(options.prefix_same_as_start);
-    _iter = mthds->NewIterator(options, _index->columnFamily());
+    RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(trx);
+    _iter = mthds->NewIterator(_index->columnFamily(), {});
     TRI_ASSERT(_index->columnFamily()->GetID() ==
                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex)
                    ->GetID());
