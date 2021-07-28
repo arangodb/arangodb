@@ -101,7 +101,7 @@ class WeightedQueue {
     // Now we steal the last element.
     std::pop_heap(_queue.begin(), _queue.end(), _cmpHeap);
     Step first = std::move(_queue.back());
-    LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS)
+    LOG_TOPIC("9cd66", TRACE, Logger::GRAPHS)
         << "<WeightedQueue> Pop: " << first.toString();
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_back();
