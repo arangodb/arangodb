@@ -294,8 +294,8 @@ authRouter.get('/query/download/:user', function (req, res) {
     res.throw('not found');
   }
 
-  // TODO: properly escape name here
-  res.attachment(`queries-${db._name()}-${user.user}.json`);
+  const namePart = `${db._name()}-${user.user}`.replace(/[^-_a-z0-9]/gi, "_");
+  res.attachment(`queries-${namePart}.json`);
   res.json(user.extra.queries || []);
 })
 .pathParam('user', joi.string().required(), 'Username. Ignored if authentication is enabled.')
@@ -315,8 +315,8 @@ authRouter.get('/query/result/download/:query', function (req, res) {
   }
 
   const result = db._query(query.query, query.bindVars).toArray();
-  // TODO: needs proper escaping of filename 
-  res.attachment(`results-${db._name()}.json`);
+  const namePart = `${db._name()}`.replace(/[^-_a-z0-9]/gi, "_");
+  res.attachment(`results-${namePart}.json`);
   res.json(result);
 })
 .pathParam('query', joi.string().required(), 'Base64 encoded query.')

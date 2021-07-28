@@ -1040,12 +1040,9 @@
         a.style = 'display: none';
         a.href = blobUrl;
 
-        // TODO: needs proper escaping of filename 
-        if (filename) {
-          a.download = filename + '-' + window.frontendConfig.db + '.' + type;
-        } else {
-          a.download = 'results-' + window.frontendConfig.db + '.' + type;
-        }
+        a.download = (filename ? filename : 'results') + '-' + 
+                     window.frontendConfig.db.replace(/[^-_a-z0-9]/gi, "_") + 
+                     '.' + type;
 
         a.click();
 
