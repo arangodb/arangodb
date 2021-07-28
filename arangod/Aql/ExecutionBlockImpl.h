@@ -336,6 +336,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   AqlCallStack _stackBeforeWaiting;
   
+  Result _firstFailure;
+  
   bool _hasMemoizedCall{false};
 
   // Only used in passthrough variant.

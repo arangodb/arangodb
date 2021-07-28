@@ -1,14 +1,128 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
-* Backport bugfix from upstream rocksdb repository for calculating the
-  free disk space for the database directory. Before the bugfix, rocksdb
-  could overestimate the amount of free space when the arangod process 
-  was run as non-privileged users.
+* Backport bugfix from upstream rocksdb repository for calculating the free disk
+  space for the database directory. Before the bugfix, rocksdb could
+  overestimate the amount of free space when the arangod process was run as
+  non-privileged users.
+
+* Fixed a problem with active failover, where a failover could take 5 mins
+  because the follower was caught in a bad state during replication. This fixes
+  BTS-425.
+
+* Add soft coordinator shutdown: This is a new option `soft=true` for the
+  DELETE /_admin/shutdown API. Has only meaning for coordinators, otherwise
+  ignored. A number of things are allowed to finish but no new things are
+  allowed when in soft coordinator shutdown:
+    - AQL cursors
+    - transactions
+    - asynchronous operations
+    - Pregel runs
+  Once all of the ongoing operations of these have finished and all requests on
+  the low priority queue have been executed, the coordinator shuts down the
+  normal way. This is supposed to make a coordinator restart less intrusive for
+  clients.
+
+* Fix BTS-398: Cannot force index hint for primary index if FILTER has multiple
+  OR conditions that require different indexes.
+
+* Bug-fix (macOs): in macOs there is an upper bound for descriptors defined by
+  the system, which is independend of the settings in `ulimit -n`. If the hard
+  limit is set above this upper bound value ArangoDB tries to raise the soft
+  limit to the hard limit on boot. This will fail due to the system limit. This
+  could cause ArangoDB to not start, asking you to lower the minimum of required
+  file descriptors. The system set upper bound is now honored and the soft limit
+  will be set to either hard limit or system limit whichever is lower.
+
+* Implemented APM-86: add query option `fillBlockCache` to control population of
+  RocksDB block cache with data read by the query. The default value for this
+  per-query option is `true`, which mimics the previous behavior.
+  Setting the option to off allows not storing data in RocksDB's block cache for
+  queries that are known to read only semi-relevant or unimportant data.
 
 
-v3.8.0-rc.2 (2021-06-07)
-------------------------
+v3.8.0 (2021-07-14)
+-------------------
+
+* Always remove blocker object for revision trees in case of replication
+  failures.
+
+* Fix invalid assertion for insert/removal buffers positioning and internals of
+  `hasBlockerUpTo` function.
+
+* Updated ArangoDB Starter to 0.15.0-1.
+
+* Updated arangosync to 2.4.0.
+
+* For cluster AQL queries, let the coordinator determine the query id to be used
+  on DB servers. This allows the coordinator to roll back AQL query setup
+  requests via the query id. Previously, the DB servers each generated a local
+  query id and returned it to the coordinator, who would then keep track of them
+  for later use. The problem with this was that if an AQL query setup request
+  timed out, the coordinator had no way to roll it back.
+
+  In addition, if setting up a query takes long on a DB server so that the
+  coordinator sends a rollback request, there are some measures in place for the
+  unlikely case in which the rollback request overtakes the setup request. In
+  this case, the rollback request will not find a query yet, but will register a
+  tombstone for it. Once the query gets registered by the delayed request, it
+  will (correctly) fail because of the tombstone.
+
+* Removed a special case for empty document update operations (i.e. update
+  requests in which no attributes were specified to be updated) were handled in
+  a special way without performing any writes. The problem was that such updates
+  did not update the local state, but could have been replicated to followers.
+  This special empty update case is now removed and update operations that do
+  not update any attributes are treated as normal write operations both locally
+  and in the replication.
+
+* Fix partial cleanup of internal write batches for multi-document operations of
+  which one or multiple failed. The previous implementation had an unreleased
+  performance optimization that wouldn't clean up the write batch completely.
+  That could have led to a wrong sequence of events being accumulated in the
+  write batch, which may have confused the WAL tailing API later. This bug was
+  only present in 3.8 RCs.
+
+* Fix some occurrences in which Merkle trees could silently apply the same
+  change multiple times, which led to data drift between the Merkle tree and the
+  underlying collection's data. This bug was only present in 3.8 but no earlier
+  versions.
+
+* On a failure during synchronous replication, do not remove the failed follower
+  from the list of known servers in the transaction.
+  If we do, we would not be able to send the commit/abort to the follower later.
+  However, we still need to send the commit/abort to the follower at transaction
+  end, because the follower may be responsible  for _other_ shards as well.
+
+  This change also removes dangling transactions that could stay around on
+  followers until they expired after the transaction idle timeout (180 seconds),
+  and that could prevent a follower from getting back in sync during this
+  period.
+
+* Added more context to "dropping follower" messages, so it is easier to analyze
+  what exactly went wrong.
+
+* Fixed invalid shard synchronization for documents not added via INSERT with
+  `overwriteMode` set to `ignore`. In this case, if a document with the given
+  key already exists, it is not changed on the leader (i.e. no write happens on
+  the leader). However, a write was replicated to the follower, which was wrong.
+  This write is now suppressed, which can only make such insert operations
+  faster.
+
+* Added more context to "dropping follower" messages, so it is easier to analyze
+  what exactly went wrong.
+
+* Fix DEVSUP-753: now it is safe to call visit on exhausted disjunction
+  iterator.
+
+* Slightly improve specific warning messages for better readability.
+
+* Fix URL request parsing in case data is handed in in small chunks.
+  Previously the URL could be cut off if the chunk size was smaller than the URL
+  size.
+
+* Fix BTS-430: Added missing explain output about indexes for SHORTEST_PATH,
+  K_SHORTEST_PATHS and K_PATHS.
 
 * Added check to utils/generateAllMetricsDocumentation.py to check that the file
   name and the value of the name attribute are the same in the metrics
