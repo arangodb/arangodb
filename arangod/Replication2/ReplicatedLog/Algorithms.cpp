@@ -246,12 +246,12 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
           std::vector<std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
       for (auto const& [participant, data] : spec->currentTerm->participants) {
         if (participant != serverId) {
-          follower.emplace_back(ctx.buildAbstractFollowerImpl(logId, participant));
+          followers.emplace_back(ctx.buildAbstractFollowerImpl(logId, participant));
         }
       }
 
       auto newLeader = log->becomeLeader(spec->currentTerm->config, serverId,
-                                         spec->currentTerm->term, follower);
+                                         spec->currentTerm->term, followers);
       newLeader->triggerAsyncReplication(); // TODO move this call into becomeLeader?
     } else {
       auto leaderString = std::optional<ParticipantId>{};
