@@ -40,75 +40,116 @@ using namespace arangodb::pregel::algos;
 
 namespace {
 
-struct WCCComputation : public VertexComputation<uint64_t, uint64_t, SenderMessage<uint64_t>> {
+struct WCCComputation
+    : public VertexComputation<WCCValue, uint64_t, SenderMessage<uint64_t>> {
   WCCComputation() {}
   void compute(MessageIterator<SenderMessage<uint64_t>> const& messages) override {
-    uint64_t currentComponent = vertexData();
+    bool shouldPropagate = selectMinimumOfLocalAndInput(messages);
+    // We need to propagate on first step
+    TRI_ASSERT(globalSuperstep() != 0 || shouldPropagate);
 
-    if (globalSuperstep() > 0) {  
-      bool halt = true;
+    if (shouldPropagate) {
+      propagate();
+    }
+    // We can always stop.
+    // Every vertex will be awoken on
+    // input messages. If there are no input
+    // messages for us, we have the same ID
+    // as our neighbors.
+    voteHalt();
+  }
 
-      for (const SenderMessage<uint64_t>* msg : messages) {
-        if (msg->value < currentComponent) {
-          currentComponent = msg->value;
-          // TODO: optimization update the edge value if present
-          // problem: there might be loads of edges, could be expensive
+ private:
+  /**
+   * @brief Scan the input, compare it pairwise with our current value.
+   * We store the minimum into our current value.
+   * And return true, whenever there was a difference between input and our
+   * value. This difference indicates that the sender or this vertex are in
+   * different components if this vertex is off, we will send the new component
+   * to all our neighbors, if the other vertex is off, we will send our
+   * component back. Will always return true in the very first step, as this
+   * kicks of the algorithm and does not yet have input.
+   */
+  bool selectMinimumOfLocalAndInput(MessageIterator<SenderMessage<uint64_t>> const& messages) {
+    // On first iteration, we need to propagate.
+    // Otherwise the default is to stay silent, unless some message
+    // sends a different component then us.
+    // Either the sender has a wrong component or we have.
+    bool shouldPropagate = globalSuperstep() == 0;
+
+    auto& myData = *mutableVertexData();
+    for (const SenderMessage<uint64_t>* msg : messages) {
+      if (globalSuperstep() == 1) {
+        // In the first step, we need to retain all inbound connections
+        // for propagation
+        myData.inboundNeighbors.emplace(msg->senderId);
+      }
+      if (msg->value != myData.component) {
+        // we have a difference. Send updates
+        shouldPropagate = true;
+        if (msg->value < myData.component) {
+          // The other component is lower.
+          // We join this component
+          myData.component = msg->value;
         }
-      }
-      
-      SenderMessage<uint64_t> message(pregelId(), currentComponent);
-      for (const SenderMessage<uint64_t>* msg : messages) {
-        if (msg->value > currentComponent) {
-          TRI_ASSERT(msg->senderId != pregelId());
-          sendMessage(msg->senderId, message);
-          halt = false;
-        }
-      }
-
-      if (currentComponent != vertexData()) {
-        *mutableVertexData() = currentComponent;
-        halt = false;
-      }
-      
-      if (halt) {
-        voteHalt();
-      } else {
-        voteActive();
       }
     }
-       
-    if (this->getEdgeCount() > 0) {
-      SenderMessage<uint64_t> message(pregelId(), currentComponent);    
-      RangeIterator<Edge<uint64_t>> edges = this->getEdges();
-      for (; edges.hasMore(); ++edges) {
-        Edge<uint64_t>* edge = *edges;
-        if (edge->toKey() == this->key()) {
-          continue; // no need to send message to self
-        }
-      
-        // remember the value we send
-        edge->data() = currentComponent;
+    return shouldPropagate;
+  }
 
-        sendMessage(edge, message);
+  /**
+   * @brief
+   * Send the current vertex data to all our neighbors, inbound
+   * and outbound.
+   * Store the component value in the outbound edges
+   */
+  void propagate() {
+    auto const& myData = vertexData();
+    SenderMessage<uint64_t> message(pregelId(), myData.component);
+    // Send to OUTBOUND neighbors
+    RangeIterator<Edge<uint64_t>> edges = this->getEdges();
+    for (; edges.hasMore(); ++edges) {
+      Edge<uint64_t>* edge = *edges;
+      if (edge->toKey() == this->key()) {
+        continue;  // no need to send message to self
       }
+
+      // remember the value we send
+      // NOTE: I have done refactroing of the algorithm
+      // the original variant saved this, i do not know
+      // if it is actually relevant for anything.
+      edge->data() = myData.component;
+
+      sendMessage(edge, message);
+    }
+    // Also send to INBOUND neighbors
+    for (auto const& target : myData.inboundNeighbors) {
+      sendMessage(target, message);
     }
   }
+
+ private:
 };
 
-struct WCCGraphFormat final : public GraphFormat<uint64_t, uint64_t> {
+struct WCCGraphFormat final : public GraphFormat<WCCValue, uint64_t> {
   explicit WCCGraphFormat(application_features::ApplicationServer& server,
-                         std::string const& result)
-      : GraphFormat<uint64_t, uint64_t>(server), _resultField(result) {}
-  
+                          std::string const& result)
+      : GraphFormat<WCCValue, uint64_t>(server), _resultField(result) {}
+
   std::string const _resultField;
-  
-  size_t estimatedVertexSize() const override { return sizeof(uint64_t); }
+
+  size_t estimatedVertexSize() const override {
+    // This is a very rough and guessed estimate.
+    // We need some space for the inbound connections,
+    // but we have not a single clue how many we will have
+    return sizeof(uint64_t) + 8 * sizeof(PregelID);
+  }
   size_t estimatedEdgeSize() const override { return sizeof(uint64_t); }
 
   void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
-                      uint64_t& targetPtr, uint64_t& vertexIdRange) override {
-    targetPtr = vertexIdRange++;
+                      WCCValue& targetPtr, uint64_t& vertexIdRange) override {
+    targetPtr.component = vertexIdRange++;
   }
 
   void copyEdgeData(arangodb::velocypack::Options const&,
@@ -116,19 +157,19 @@ struct WCCGraphFormat final : public GraphFormat<uint64_t, uint64_t> {
     targetPtr = std::numeric_limits<uint64_t>::max();
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b, uint64_t const* ptr) const override {
-    b.add(_resultField, arangodb::velocypack::Value(*ptr));
+  bool buildVertexDocument(arangodb::velocypack::Builder& b, WCCValue const* ptr) const override {
+    b.add(_resultField, arangodb::velocypack::Value(ptr->component));
     return true;
   }
 };
-}
+}  // namespace
 
-VertexComputation<uint64_t, uint64_t, SenderMessage<uint64_t>>* WCC::createComputation(
+VertexComputation<WCCValue, uint64_t, SenderMessage<uint64_t>>* WCC::createComputation(
     WorkerConfig const* config) const {
   return new ::WCCComputation();
 }
 
-GraphFormat<uint64_t, uint64_t>* WCC::inputFormat() const {
+GraphFormat<WCCValue, uint64_t>* WCC::inputFormat() const {
   return new ::WCCGraphFormat(_server, _resultField);
 }
 
