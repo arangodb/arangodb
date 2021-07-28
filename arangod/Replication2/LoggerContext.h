@@ -94,5 +94,7 @@ struct LoggerContext {
 };
 }
 
-#define LOG_CTX(id, level, ctx) LOG_TOPIC(id, level, (ctx).topic) << (ctx) << " "
-#define LOG_CTX_IF(id, level, ctx, cond) LOG_TOPIC_IF(id, level, (ctx).topic, cond) << (ctx) << " "
+#define LOG_CTX(id, level, ctx) \
+  LOG_TOPIC(id, level, (ctx).topic) << (ctx) << " "
+#define LOG_CTX_IF(id, level, ctx, cond) \
+  LOG_TOPIC_IF(id, level, (ctx).topic, cond) << (ctx) << " "

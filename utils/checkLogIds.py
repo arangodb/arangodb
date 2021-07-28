@@ -207,6 +207,6 @@ if __name__ == "__main__":
             ,["arangod", "arangosh", "enterprise", "lib"]    #dirs to include
             ,[".", "lib/Logger/LogMacros.h",
               "arangod/StorageEngine/TransactionState.h",
-              "arangod/Replication2/LogContext.h"]    #dirs and files to exclude (does not purge the dir)
+              "arangod/Replication2/LoggerContext.h"]    #dirs and files to exclude (does not purge the dir)
             , dict()                                         #database
             ))
