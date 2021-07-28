@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_META_COLLECTION_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_META_COLLECTION_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -244,5 +242,3 @@ class RocksDBMetaCollection : public PhysicalCollection {
 };
 
 } // namespace arangodb
-  
-#endif
