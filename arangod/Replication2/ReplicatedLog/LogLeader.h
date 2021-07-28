@@ -22,9 +22,9 @@
 
 #pragma once
 
+#include "Replication2/ReplicatedLog/ILogParticipant.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/types.h"
 
@@ -69,7 +69,7 @@ namespace arangodb::replication2::replicated_log {
 /**
  * @brief Leader instance of a replicated log.
  */
-class LogLeader : public std::enable_shared_from_this<LogLeader>, public LogParticipantI {
+class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogParticipant {
  public:
   ~LogLeader() override;
 

@@ -20,7 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LogParticipantI.h"
+#include "ILogParticipant.h"
 
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
@@ -48,19 +48,19 @@ auto replicated_log::LogUnconfiguredParticipant::resign() && -> std::tuple<std::
 }
 
 auto replicated_log::LogUnconfiguredParticipant::waitFor(LogIndex)
-    -> replicated_log::LogParticipantI::WaitForFuture {
+    -> replicated_log::ILogParticipant::WaitForFuture {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 replicated_log::LogUnconfiguredParticipant::~LogUnconfiguredParticipant() {
   _logMetrics->replicatedLogInactiveNumber->fetch_sub(1);
 }
 
-auto replicated_log::LogParticipantI::waitForIterator(LogIndex index)
-    -> replicated_log::LogParticipantI::WaitForIteratorFuture {
+auto replicated_log::ILogParticipant::waitForIterator(LogIndex index)
+    -> replicated_log::ILogParticipant::WaitForIteratorFuture {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-auto replicated_log::LogParticipantI::getTerm() const noexcept -> std::optional<LogTerm> {
+auto replicated_log::ILogParticipant::getTerm() const noexcept -> std::optional<LogTerm> {
   return getStatus().getCurrentTerm();
 }

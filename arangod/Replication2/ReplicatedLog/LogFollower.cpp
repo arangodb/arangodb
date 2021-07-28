@@ -313,7 +313,7 @@ replicated_log::LogFollower::LogFollower(LoggerContext const& logContext,
 }
 
 auto replicated_log::LogFollower::waitFor(LogIndex idx)
-    -> replicated_log::LogParticipantI::WaitForFuture {
+    -> replicated_log::ILogParticipant::WaitForFuture {
   auto self = _guardedFollowerData.getLockedGuard();
   if (self->_commitIndex >= idx) {
     return futures::Future<std::shared_ptr<QuorumData const>>{
@@ -329,7 +329,7 @@ auto replicated_log::LogFollower::waitFor(LogIndex idx)
 }
 
 auto replicated_log::LogFollower::waitForIterator(LogIndex index)
-    -> replicated_log::LogParticipantI::WaitForIteratorFuture {
+    -> replicated_log::ILogParticipant::WaitForIteratorFuture {
   if (index == LogIndex{0}) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid parameter; log index 0 is invalid");
   }

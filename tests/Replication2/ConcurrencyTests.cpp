@@ -4,7 +4,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Replication2/ReplicatedLog/LogParticipantI.h"
+#include "Replication2/ReplicatedLog/ILogParticipant.h"
 #include "Replication2/ReplicatedLog/types.h"
 #include "TestHelper.h"
 
@@ -25,7 +25,7 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
 
   struct alignas(128) ThreadCoordinationData {
     // the testee
-    std::shared_ptr<LogParticipantI> log;
+    std::shared_ptr<ILogParticipant> log;
 
     // only when set to true, all client threads start
     std::atomic<bool> go = false;

@@ -45,9 +45,9 @@ struct LogStatus;
 * The most prominent thing this interface provides is that each instance is
 * responsible for a singular LogCore, which can be moved out with resign().
 */
-struct LogParticipantI {
+struct ILogParticipant {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
-  virtual ~LogParticipantI() = default;
+  virtual ~ILogParticipant() = default;
   [[nodiscard]] virtual auto resign() &&
       -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
 
@@ -67,7 +67,7 @@ struct LogParticipantI {
 */
 struct LogUnconfiguredParticipant
     : std::enable_shared_from_this<LogUnconfiguredParticipant>,
-      LogParticipantI {
+      ILogParticipant {
   ~LogUnconfiguredParticipant() override;
   explicit LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore,
                                       std::shared_ptr<ReplicatedLogMetrics> logMetrics);

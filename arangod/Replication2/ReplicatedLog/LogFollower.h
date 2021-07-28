@@ -23,10 +23,10 @@
 #pragma once
 
 #include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/ILogParticipant.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
-#include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/types.h"
@@ -43,7 +43,7 @@ namespace arangodb::replication2::replicated_log {
 /**
  * @brief Follower instance of a replicated log.
  */
-class LogFollower : public LogParticipantI,
+class LogFollower : public ILogParticipant,
                     public AbstractFollower,
                     public std::enable_shared_from_this<LogFollower> {
  public:

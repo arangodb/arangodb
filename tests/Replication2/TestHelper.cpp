@@ -35,7 +35,6 @@ using namespace arangodb::replication2::replicated_log;
 
 auto MockLog::insert(PersistedLogIterator& iter, WriteOptions const&) -> arangodb::Result {
   auto lastIndex = LogIndex{0};
-  auto lastTerm = LogTerm{0};
 
   while (auto entry = iter.next()) {
     auto const res = _storage.try_emplace(entry->logIndex(), entry.value());

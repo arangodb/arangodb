@@ -789,7 +789,7 @@ auto replicated_log::LogLeader::getReplicatedLogSnapshot() const -> InMemoryLog:
 }
 
 auto replicated_log::LogLeader::waitForIterator(LogIndex index)
-    -> replicated_log::LogParticipantI::WaitForIteratorFuture {
+    -> replicated_log::ILogParticipant::WaitForIteratorFuture {
   if (index == LogIndex{0}) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "invalid parameter; log index 0 is invalid");

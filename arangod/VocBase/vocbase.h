@@ -62,7 +62,7 @@ struct LogPayload;
 namespace replicated_log {
 class LogLeader;
 class LogFollower;
-struct LogParticipantI;
+struct ILogParticipant;
 struct LogStatus;
 struct PersistedLog;
 struct ReplicatedLog;
@@ -325,7 +325,7 @@ struct TRI_vocbase_t {
       noexcept;
 
   /// @brief looks up a replicated log by identifier
-  std::shared_ptr<arangodb::replication2::replicated_log::LogParticipantI> lookupLog(
+  std::shared_ptr<arangodb::replication2::replicated_log::ILogParticipant> lookupLog(
       arangodb::replication2::LogId id) const noexcept;
 
   /// @brief looks up a view by identifier

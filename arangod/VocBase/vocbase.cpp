@@ -65,11 +65,11 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/ILogParticipant.h"
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
-#include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
@@ -1924,7 +1924,7 @@ auto TRI_vocbase_t::ensureReplicatedLog(arangodb::replication2::LogId id,
   return res.get();
 }
 
-std::shared_ptr<arangodb::replication2::replicated_log::LogParticipantI> TRI_vocbase_t::lookupLog(
+std::shared_ptr<arangodb::replication2::replicated_log::ILogParticipant> TRI_vocbase_t::lookupLog(
     arangodb::replication2::LogId id) const noexcept {
   try {
     if (auto log = getReplicatedLogById(id)) {
