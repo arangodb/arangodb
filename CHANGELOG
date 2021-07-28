@@ -1,6 +1,11 @@
 devel
 -----
 
+* Honor the value of startup option `--rocksdb.sync-interval` on Windows, too.
+  Previously, the value was ignored and WAL syncing on Windows was using a
+  different code paths than on the other supported platforms. Now syncing is
+  unified across all platforms, and they all call RocksDB's `SyncWAL()`.
+
 * Updated ArangoDB Starter to 0.15.1-preview-4.
 
 * APM-132: Clean up collection statuses
