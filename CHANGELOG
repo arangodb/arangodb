@@ -1,6 +1,10 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed a problem with active failover, where a failover could take 5 mins
+  because the follower was caught in a bad state during replication. This fixes
+  BTS-425.
+
 * Add soft coordinator shutdown: This is a new option `soft=true` for the
   DELETE /_admin/shutdown API. Has only meaning for coordinators, otherwise
   ignored. A number of things are allowed to finish but no new things are
