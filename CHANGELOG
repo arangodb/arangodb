@@ -1,3 +1,13 @@
+v3.8.1 (2021-07-28)
+-------------------
+
+* Implemented APM-86: add query option `fillBlockCache` to control population of
+  RocksDB block cache with data read by the query. The default value for this
+  per-query option is `true`, which mimics the previous behavior.
+  Setting the option to off allows not storing data in RocksDB's block cache for
+  queries that are known to read only semi-relevant or unimportant data.
+
+
 v3.8.0 (2021-07-14)
 -------------------
 
