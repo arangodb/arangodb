@@ -28,6 +28,9 @@ v3.7.14 (XXXX-XX-XX)
     - underscore: 1.9.1 -> 1.13.1
     - xmldom: 0.1.27 -> 0.6.0
 
+* Fixed a bug, where Coordinators handled plan changes for databases in
+  heartbeat thread in wrong order. Databases could be listed, but not used.
+
 * Fix BTS-453: Download of a HotBackup from remote source doesn't work on macOS.
 
 * Updated ArangoDB Starter to 0.15.1.
