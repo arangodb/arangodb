@@ -28,8 +28,8 @@
 
 const _ = require('lodash');
 const fs = require('fs');
-const Chalk = require('chalk').constructor;
-const chalk = new Chalk({enabled: true});
+const Chalk = require('chalk').Instance;
+const chalk = new Chalk({level: 2});
 const dedent = require('dedent');
 const internal = require('internal');
 const codeFrame = require('babel-code-frame');
