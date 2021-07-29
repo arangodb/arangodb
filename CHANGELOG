@@ -3,6 +3,17 @@ devel
 
 * Add 3 AQL functions: COSINE_SIMILARITY, L1_DISTANCE and L2_DISTANCE.
 
+* Updated ArangoDB Starter to 0.15.1.
+
+* Updated arangosync to 2.5.0.
+
+* Fix BTS-453: Download of a HotBackup from remote source doesn't work on macOS
+
+* Honor the value of startup option `--rocksdb.sync-interval` on Windows, too.
+  Previously, the value was ignored and WAL syncing on Windows was using a
+  different code paths than on the other supported platforms. Now syncing is
+  unified across all platforms, and they all call RocksDB's `SyncWAL()`.
+
 * Updated ArangoDB Starter to 0.15.1-preview-4.
 
 * APM-132: Clean up collection statuses
@@ -21,9 +32,9 @@ devel
   but are changed to no-ops. They will removed eventually in a future version
   of ArangoDB. This will be announced separately.
 
-* Include K_SHORTEST_PATHS and SHORTEST_PATH execution nodes in AQL query 
-  memory usage accounting. The memory used by these execution node types was
-  previously not tracked against the configured query memory limit.
+* Include K_SHORTEST_PATHS and SHORTEST_PATH execution nodes in AQL query memory
+  usage accounting. The memory used by these execution node types was previously
+  not tracked against the configured query memory limit (BTS-411).
 
 * Reduce default value for max-nodes-per-callstack to 200 for OSX, because on
   OSX worker threads have a stack size of only 512kb.
@@ -74,12 +85,12 @@ devel
 * Fix invalid assertion for insert/removal buffers positioning and internals of
   `hasBlockerUpTo` function.
 
-* Fix startup issues with encryption-at-rest enabled when there were empty
-  (0 byte) RocksDB WAL files present. Such empty files caused RocksDB to
-  abort the startup, reporting corruption. However, empty WAL files are 
-  possible in case of server crashes etc. Now, if a WAL file is completely
-  empty, there will be no attempt to read the encryption meta data from it,
-  so the startup succeeds.
+* Fix startup issues with encryption-at-rest enabled when there were empty (0
+  byte) RocksDB WAL files present. Such empty files caused RocksDB to abort the
+  startup, reporting corruption. However, empty WAL files are possible in case
+  of server crashes etc. Now, if a WAL file is completely empty, there will be
+  no attempt to read the encryption meta data from it, so the startup succeeds
+	(BTS-392).
 
 * Remove _msg/please-upgrade handler.
 
@@ -192,7 +203,7 @@ devel
 
 * Added a retry loop for arangorestore during the initial connection phase. The
   number of retries defaults to 3 and can be configured using
-  --initial-connect-retries.
+  --initial-connect-retries (BTS-491).
 
 * Fix numeric overflow in AQL WINDOW node cost estimation if the number of
   preceding rows was set to `unbounded`.
@@ -214,6 +225,7 @@ devel
   to one hour. Older versions of ArangoDB had longer session timeouts.
 
 * Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
+  (DEVSUPP-753).
 
 * Removed redirects from /_admin/cluster* to /_admin/cluster/*. Adjusted
   internal requests to use the new url.

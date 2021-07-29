@@ -348,17 +348,6 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   // if we fail during commit, make sure we remove blockers, etc.
   auto cleanupCollTrx = scopeGuard([this]() { _state->cleanupCollections(); });
 
-#ifdef _WIN32
-  // set wait for sync flag if required
-  // we do this only for Windows here, because all other platforms use the
-  // RocksDB SyncThread to do the syncing
-  if (_state->waitForSync()) {
-    rocksdb::WriteOptions wo;
-    wo.sync = true;
-    _rocksTransaction->SetWriteOptions(wo);
-  }
-#endif
-
   // total number of sequence ID consuming records
   uint64_t numOps = _rocksTransaction->GetNumPuts() +
                     _rocksTransaction->GetNumDeletes() +
@@ -387,8 +376,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   _state->commitCollections(_lastWrittenOperationTick);
   cleanupCollTrx.cancel();
 
-#ifndef _WIN32
-  // wait for sync if required, for all other platforms but Windows
+  // wait for sync if required
   if (_state->waitForSync()) {
     auto& selector = _state->vocbase().server().getFeature<EngineSelectorFeature>();
     auto& engine = selector.engine<RocksDBEngine>();
@@ -402,7 +390,6 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
       return RocksDBSyncThread::sync(engine.db()->GetBaseDB());
     }
   }
-#endif
 
   return Result();
 }
