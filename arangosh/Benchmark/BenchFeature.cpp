@@ -47,6 +47,7 @@
 #include "Logger/LogMacros.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
+#include "Benchmark/BenchmarkStats.h"
 #include "Benchmark/BenchmarkThread.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -72,31 +73,31 @@ using namespace arangodb::rest;
 
 BenchFeature::BenchFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "Bench"),
-      _async(false),
       _concurrency(1),
       _operations(1000),
       _realOperations(0),
       _batchSize(0),
       _duration(0),
-      _keepAlive(true),
       _collection("ArangoBenchmark"),
       _testCase("version"),
       _complexity(1),
+      _async(false),
+      _keepAlive(true),
       _createDatabase(false),
       _delay(false),
       _progress(true),
       _verbose(false),
       _quiet(false),
+      _waitForSync(false),
       _runs(1),
       _junitReportFile(""),
       _jsonReportFile(""),
       _replicationFactor(1),
       _numberOfShards(1),
-      _waitForSync(false),
       _result(result),
       _histogramNumIntervals(1000),
       _histogramIntervalSize(0.0),
-      _percentiles({50.0, 80.0, 85.0, 90.0, 95.0, 99.0}) {
+      _percentiles({50.0, 80.0, 85.0, 90.0, 95.0, 99.0, 99.99}) {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
@@ -241,11 +242,6 @@ void BenchFeature::updateStartCounter() { ++_started; }
 int BenchFeature::getStartCounter() { return _started; }
 
 void BenchFeature::start() {
-  double minTime = std::numeric_limits<double>::infinity();
-  double maxTime = 0.0;
-  double avgTime = 0.0;
-  uint64_t counter = 0;
-
   sort(_percentiles.begin(), _percentiles.end());
   
   if (!_jsonReportFile.empty() && FileUtils::exists(_jsonReportFile)) {
@@ -321,7 +317,10 @@ void BenchFeature::start() {
   // add some more offset so we don't get into trouble with threads of different
   // speed
   realStep += 10000;
-
+  
+  // aggregated stats for all runs
+  BenchmarkStats totalStats;
+  
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
   builder->add("histogram", VPackValue(VPackValueType::Object));
@@ -399,14 +398,15 @@ void BenchFeature::start() {
         nextReportValue += stepValue;
       }
       
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
     double time = TRI_microtime() - start;
-    double requestTime = 0.0;
 
+    // sum up times of all threads
+    double requestTime = 0.0;
     for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
-      requestTime += threads[i]->getTime();
+      requestTime += threads[i]->stats().total;
     }
 
     if (operationsCounter.failures() > 0) {
@@ -425,7 +425,7 @@ void BenchFeature::start() {
         _realOperations += threads[i]->_counter;
       }
 
-      threads[i]->aggregateValues(minTime, maxTime, avgTime, counter);
+      totalStats.add(threads[i]->stats());
 
       double scope;
       auto res = threads[i]->getPercentiles(_percentiles, scope);
@@ -434,15 +434,15 @@ void BenchFeature::start() {
       size_t j = 0;
 
       pp << " " << std::left << std::setfill('0') << std::fixed << std::setw(10)
-	 << std::setprecision(6) << (threads[i]->_histogramIntervalSize * 1000)
-	 << std::setw(0) << "ms       ";
+         << std::setprecision(6) << (threads[i]->_histogramIntervalSize * 1000)
+         << std::setw(0) << "ms       ";
 
       builder->add("IntervalSize", VPackValue(threads[i]->_histogramIntervalSize));
 
       for (auto time : res) {
         builder->add(std::to_string(_percentiles[j]), VPackValue(time));
         pp << "   " << std::left << std::setfill('0') << std::fixed << std::setw(10)
-	   << std::setprecision(4) << (time * 1000) << std::setw(0) << "ms";
+           << std::setprecision(4) << (time * 1000) << std::setw(0) << "ms";
         j++;
       }
 
@@ -456,7 +456,7 @@ void BenchFeature::start() {
   std::cout << std::endl;
   builder->close();
 
-  report(client, results, minTime, maxTime, avgTime, pp.str(), *builder);
+  report(client, results, totalStats, pp.str(), *builder);
 
   if (!ok) {
     std::cout << "At least one of the runs produced failures!" << std::endl;
@@ -471,7 +471,7 @@ void BenchFeature::start() {
   *_result = ret;
 }
 
-bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results, double minTime, double maxTime, double avgTime, std::string const& histogram, VPackBuilder& builder) {
+bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results, BenchmarkStats const& stats, std::string const& histogram, VPackBuilder& builder) {
   std::cout << std::endl;
 
   std::cout << "Total number of operations: " << _realOperations << ", runs: " << _runs
@@ -545,15 +545,15 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
   builder.close();
 
   std::cout <<
-    "Min Request time: " << (minTime * 1000) << "ms" << std::endl <<
-    "Avg Request time: " << (avgTime * 1000) << "ms" << std::endl <<
-    "Max Request time: " << (maxTime * 1000) << "ms" << std::endl << std::endl;
+    "Min Request time: " << (stats.min * 1000) << "ms" << std::endl <<
+    "Avg Request time: " << (stats.avg() * 1000) << "ms" << std::endl <<
+    "Max Request time: " << (stats.max * 1000) << "ms" << std::endl << std::endl;
 
   std::cout << histogram;
 
-  builder.add("min", VPackValue(minTime));
-  builder.add("avg", VPackValue(avgTime));
-  builder.add("max", VPackValue(maxTime)); 
+  builder.add("min", VPackValue(stats.min));
+  builder.add("avg", VPackValue(stats.avg()));
+  builder.add("max", VPackValue(stats.max)); 
   builder.close();
 
   if (!_jsonReportFile.empty()) {

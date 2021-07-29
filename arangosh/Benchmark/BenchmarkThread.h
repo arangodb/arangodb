@@ -36,6 +36,7 @@
 #include "Basics/system-functions.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
+#include "Benchmark/BenchmarkStats.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -75,32 +76,21 @@ namespace arangodb {
           _httpClient(nullptr),
           _offset(0),
           _counter(0),
-          _time(0.0),
           _errorHeader(basics::StringUtils::tolower(StaticStrings::Errors)),
           _verbose(verbose),
-          _minTime(-1.0),
-          _maxTime(0.0),
-          _avgTime(0.0),
           _histogramNumIntervals(histogramNumIntervals),
           _histogramIntervalSize(histogramIntervalSize),
           _histogramScope(histogramIntervalSize * histogramNumIntervals),
           _histogram(histogramNumIntervals, 0) { }
 
         ~BenchmarkThread() { shutdown(); }
+    
         //////////////////////////////////////////////////////////////////////////////
         /// @brief add one time
         //////////////////////////////////////////////////////////////////////////////
 
-        void oneTime(double time) {
-          if (_minTime == -1.0 || time < _minTime) {
-            _minTime = time;
-          }
-
-          if (time > _maxTime) {
-            _maxTime = time;
-          }
-
-          _avgTime = ((_avgTime * _counter) + time) / (_counter + 1);
+        void trackTime(double time) {
+          _stats.track(time);
 
           if (_histogramScope == 0.0) {
             _histogramScope = time * 20;
@@ -111,22 +101,8 @@ namespace arangodb {
           if (bucket >= _histogramNumIntervals) {
             bucket = _histogramNumIntervals - 1;
           }
-          _histogram[bucket] ++;
-        }
 
-        void aggregateValues(double& minTime, double& maxTime, double& avgTime, uint64_t& counter) {
-          minTime = std::min(_minTime, minTime);
-          maxTime = std::max(_maxTime, maxTime);
-
-          if (counter == 0) {
-            avgTime = _avgTime;
-            counter = _counter;
-          } else {
-            avgTime = ((avgTime * counter) +
-                (_avgTime * _counter)) /
-              (counter + _counter);
-            counter += _counter;
-          }
+          ++_histogram[bucket];
         }
 
         std::vector<double> getPercentiles(std::vector<double> const& which, double& histogramIntervalSize) {
@@ -134,8 +110,9 @@ namespace arangodb {
           std::vector<size_t> counts(which.size());
           size_t i = 0;
           histogramIntervalSize = _histogramIntervalSize;
+          uint64_t divisor = std::max(std::uint64_t(1), _batchSize);
           while (i < which.size()) {
-            counts[i] = static_cast<size_t>(lround(_counter * which[i] / 100));
+            counts[i] = static_cast<size_t>(lround(_counter * which[i] / divisor / 100.0));
             i++;
           }
           i = 0;
@@ -144,7 +121,7 @@ namespace arangodb {
           size_t vecPos = 0;
           while (vecPos < _histogramNumIntervals && i < which.size()) {
             count += _histogram[vecPos];
-            if (count >= nextCount) {
+            while (count >= nextCount) {
               res[i] = _histogramIntervalSize * vecPos;
               i++;
               if (i >= which.size()) {
@@ -331,8 +308,7 @@ namespace arangodb {
             _httpClient->request(rest::RequestType::POST, "/_api/batch",
                 batchPayload.c_str(), batchPayload.length(), _headers);
           double delta = TRI_microtime() - start;
-          oneTime(delta);
-          _time += delta;
+          trackTime(delta);
 
           if (result == nullptr || !result->isComplete()) {
             if (result != nullptr) {
@@ -414,8 +390,7 @@ namespace arangodb {
             result = _httpClient->request(_requestData.type, _requestData.url, payload.data(), payload.size(), _headers);
           }
           double delta = TRI_microtime() - start;
-          oneTime(delta);
-          _time += delta;
+          trackTime(delta);
           if (result == nullptr || !result->isComplete()) {
             _operationsCounter->incFailures(1);
             if (result != nullptr) {
@@ -453,11 +428,10 @@ namespace arangodb {
 
         void setOffset(size_t offset) { _offset = offset; }
 
-        //////////////////////////////////////////////////////////////////////////////
-        /// @brief return the total time accumulated by the thread
-        //////////////////////////////////////////////////////////////////////////////
-
-        double getTime() const { return _time; }
+        // return a copy of the thread's stats
+        BenchmarkStats stats() const {
+          return _stats;
+        }
 
       private:
 
@@ -572,12 +546,6 @@ namespace arangodb {
         uint64_t _counter;
 
         //////////////////////////////////////////////////////////////////////////////
-        /// @brief time
-        //////////////////////////////////////////////////////////////////////////////
-
-        double _time;
-
-        //////////////////////////////////////////////////////////////////////////////
         /// @brief lower-case error header we look for
         //////////////////////////////////////////////////////////////////////////////
 
@@ -596,22 +564,9 @@ namespace arangodb {
         bool _verbose;
 
         //////////////////////////////////////////////////////////////////////////////
-        /// @brief the number of operations done
+        /// @brief statistics for the thread
         //////////////////////////////////////////////////////////////////////////////
-
-        double _minTime;
-
-        //////////////////////////////////////////////////////////////////////////////
-        /// @brief the number of operations done
-        //////////////////////////////////////////////////////////////////////////////
-
-        double _maxTime;
-
-        //////////////////////////////////////////////////////////////////////////////
-        /// @brief the number of operations done
-        //////////////////////////////////////////////////////////////////////////////
-
-        double _avgTime;
+        BenchmarkStats _stats;
 
         uint64_t _histogramNumIntervals;
         double _histogramIntervalSize;
