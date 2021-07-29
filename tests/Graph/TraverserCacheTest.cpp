@@ -87,8 +87,38 @@ TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_is_not_ava
 
   // NOTE: we do not have the data, so we get null for any vertex
   traverserCache->insertVertexIntoResult(stats, arangodb::velocypack::HashedStringRef(id),
-                                         builder);
+                                         builder, false);
   ASSERT_TRUE(builder.slice().isNull());
+  auto all = query->warnings().all();
+  ASSERT_EQ(all.size(), 1);
+  ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  ASSERT_TRUE(all[0].second == expectedMessage);
+
+  // check stats
+  EXPECT_EQ(stats.getHttpRequests(), 0);
+  EXPECT_EQ(stats.getFiltered(), 0);
+  EXPECT_EQ(stats.getScannedIndex(), 0);
+}
+
+TEST_F(TraverserCacheTest, it_should_on_request_return_the_id_aqlvalue_if_vertex_is_not_available) {
+  // prepare graph data - in this case, no data (no vertices and no edges, but collections v and e)
+  graph::MockGraph graph{};
+  gdb.addGraph(graph);
+
+  std::string vertexId = "v/Vertex";
+  std::string expectedMessage = "vertex '" + vertexId + "' not found";
+
+  auto data = VPackParser::fromJson(R"({"_key":"Vertex", "_id": "v/Vertex"})");
+  VPackSlice doc = data->slice();
+  HashedStringRef id{doc.get("_id")};
+  VPackBuilder builder;
+
+  // NOTE: we do not have the data, so we get null for any vertex
+  traverserCache->insertVertexIntoResult(stats, arangodb::velocypack::HashedStringRef(id),
+                                         builder, true);
+  ASSERT_FALSE(builder.slice().isNull());
+  ASSERT_TRUE(builder.slice().isString());
+  ASSERT_EQ(builder.slice().copyString(), "v/Vertex");
   auto all = query->warnings().all();
   ASSERT_EQ(all.size(), 1);
   ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
@@ -225,7 +255,7 @@ TEST_F(TraverserCacheTest, it_should_insert_a_vertex_into_a_result_builder) {
   VPackBuilder builder;
 
   traverserCache->insertVertexIntoResult(stats, arangodb::velocypack::HashedStringRef(id),
-                                         builder);
+                                         builder, false);
   EXPECT_TRUE(builder.slice().get("_key").isString());
   EXPECT_EQ(builder.slice().get("_key").toString(), "0");
 

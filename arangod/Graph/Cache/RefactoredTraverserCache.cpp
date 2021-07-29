@@ -248,11 +248,15 @@ void RefactoredTraverserCache::insertEdgeIdIntoResult(EdgeDocumentToken const& i
   }
 }
 
-void RefactoredTraverserCache::insertVertexIntoResult(aql::TraversalStats& stats,
-                                                      arangodb::velocypack::HashedStringRef const& idString,
-                                                      VPackBuilder& builder) {
+void RefactoredTraverserCache::insertVertexIntoResult(
+    aql::TraversalStats& stats, arangodb::velocypack::HashedStringRef const& idString,
+    VPackBuilder& builder, bool writeIdIfNotFound) {
   if (!appendVertex(stats, idString, builder)) {
-    builder.add(VPackSlice::nullSlice());
+    if (writeIdIfNotFound) {
+      builder.add(VPackValue(idString.toString()));
+    } else {
+      builder.add(VPackSlice::nullSlice());
+    }
   }
 }
 

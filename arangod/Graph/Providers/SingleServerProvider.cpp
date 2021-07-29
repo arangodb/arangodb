@@ -167,8 +167,9 @@ auto SingleServerProvider<Step>::expand(Step const& step, size_t previous,
 
 template <class Step>
 void SingleServerProvider<Step>::addVertexToBuilder(typename Step::Vertex const& vertex,
-                                                    arangodb::velocypack::Builder& builder) {
-  _cache.insertVertexIntoResult(_stats, vertex.getID(), builder);
+                                                    arangodb::velocypack::Builder& builder,
+                                                    bool writeIdIfNotFound) {
+  _cache.insertVertexIntoResult(_stats, vertex.getID(), builder, writeIdIfNotFound);
 };
 
 template <class Step>

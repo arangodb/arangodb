@@ -93,7 +93,7 @@ class RefactoredTraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   void insertVertexIntoResult(aql::TraversalStats& stats,
                               arangodb::velocypack::HashedStringRef const& idString,
-                              velocypack::Builder& builder);
+                              velocypack::Builder& builder, bool writeIdIfNotFound);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Persist the given id string. The return value is guaranteed to
