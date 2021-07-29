@@ -843,7 +843,7 @@ bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice c
   return !Helper::equal(n, o, false);
 }
 
-void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart, 
+void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
                              VPackSlice value, VPackBuilder& builder) {
   TRI_ASSERT(value.isObject());
   TRI_ASSERT(builder.slice().isObject());
@@ -910,7 +910,7 @@ void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
         indexes.emplace(idSlice.getNumber<uint64_t>(), std::make_pair(it, VPackSlice::noneSlice()));
       }
     }
-  
+
     rocksDBValues = builder.slice().get("engine");
     if (rocksDBValues.isObject()) {
       for (auto const& it : VPackArrayIterator(rocksDBValues.get("indexes"))) {
@@ -1072,7 +1072,7 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
 
 futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
                                                       std::string const& dbname,
-                                                      std::string const& collname, 
+                                                      std::string const& collname,
                                                       bool details) {
   // Set a few variables needed for our work:
   ClusterInfo& ci = feature.clusterInfo();
@@ -1178,6 +1178,9 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shardIds) {
+    if (p.second.empty()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+    }
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(trx, /*leader*/ p.second[0], headers);
 
@@ -1243,7 +1246,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
   reqOpts.database = dbname;
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = true;
-  
+
   if (TRI_vocbase_t::IsSystemName(collname)) {
     // system collection (e.g. _apps, _jobs, _graphs...
     // very likely this is an internal request that should not block other processing
@@ -2427,7 +2430,7 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
   }
   return TRI_ERROR_NO_ERROR;
 }
- 
+
 /// @brief compact the database on all DB servers
 Result compactOnAllDBServers(ClusterFeature& feature,
                              bool changeLevel, bool compactBottomMostLevel) {
@@ -2687,7 +2690,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     }
   }
   return usableCollectionPointers;
-}  
+}
 
 std::string const apiStr("/_admin/backup/");
 
@@ -2698,7 +2701,7 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
   TRI_ASSERT(pool);
   hotBackups.clear();
   TRI_ASSERT(idSlice.isArray() || idSlice.isString() || idSlice.isNone());
-  
+
   std::map<std::string, std::vector<BackupMeta>> dbsBackups;
 
   VPackBufferUInt8 body;
@@ -2708,7 +2711,7 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
     b.add("id", idSlice);
   }
   b.close();
-  
+
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
 
@@ -3273,6 +3276,11 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
     }
   }
 
+  auto incRes = ci.incrementPlanVersion();
+  if (!incRes.ok()) {
+    return incRes;
+  }
+
   {
     VPackObjectBuilder o(&report);
     report.add("previous", VPackValue(previous));
@@ -3505,7 +3513,7 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
                               std::string("no backup with id ") + backupId +
                                   " on server " + r.destination);
     }
-    
+
     value = resSlice.get(BackupMeta::SECRETHASH);
     if (value.isArray()) {
       for (VPackSlice hash : VPackArrayIterator(value)) {
@@ -3535,7 +3543,7 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
     LOG_TOPIC("b370d", DEBUG, Logger::BACKUP) << r.destination << " created local backup "
                                               << resSlice.get(BackupMeta::ID).copyString();
   }
-  
+
   // remove duplicate hashes
   std::sort(secretHashes.begin(), secretHashes.end());
   secretHashes.erase(std::unique(secretHashes.begin(), secretHashes.end()), secretHashes.end());

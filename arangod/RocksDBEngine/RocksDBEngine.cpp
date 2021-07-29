@@ -642,7 +642,8 @@ void RocksDBEngine::start() {
     _options.listeners.push_back(_shaListener);
   }  // if
 
-  _options.listeners.push_back(std::make_shared<RocksDBBackgroundErrorListener>());
+  _errorListener = std::make_shared<RocksDBBackgroundErrorListener>();
+  _options.listeners.push_back(_errorListener);
 
   if (opts._totalWriteBufferSize > 0) {
     _options.db_write_buffer_size = opts._totalWriteBufferSize;
@@ -2467,6 +2468,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   if (_listener) {
     builder.add("rocksdbengine.throttle.bps", VPackValue(_listener->GetThrottle()));
   }  // if
+
+  if (_errorListener) {
+    builder.add("rocksdb.read-only", VPackValue(_errorListener->called() ? 1 : 0));
+  }
 
   builder.close();
 }

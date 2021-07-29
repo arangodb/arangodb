@@ -1347,6 +1347,12 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                   new UInt32Parameter(&_options.threadCount))
       .setIntroducedIn(30400);
 
+  options
+      ->addOption("--initial-connect-retries",
+          "number of connect retries for initial connection",
+          new UInt32Parameter(&_options.initialConnectRetries))
+      .setIntroducedIn(30713);
+
   options->addOption("--include-system-collections",
                      "include system collections",
                      new BooleanParameter(&_options.includeSystemCollections));
@@ -1610,9 +1616,24 @@ void RestoreFeature::start() {
 
   std::unique_ptr<SimpleHttpClient> httpClient;
 
+  auto const connectRetry = [&](size_t numRetries) -> Result {
+    for (size_t i = 0; i < numRetries; i++) {
+      if (i > 0) {
+        LOG_TOPIC("5855a", WARN, Logger::RESTORE) << "Failed to connect to server, retrying...";
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(i * 1s);
+      }
+      Result result = _clientManager.getConnectedClient(httpClient, _options.force,
+          true, !_options.createDatabase, false);
+      if (!result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT) && !result.is(TRI_ERROR_INTERNAL)) {
+        return result;
+      }
+    }
+    return {TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT};
+  };
+
   // final result
-  Result result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                             true, !_options.createDatabase, false);
+  Result result = connectRetry(std::max<uint32_t>(1, _options.initialConnectRetries));
   if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC("c23bf", FATAL, Logger::RESTORE)
         << "cannot create server connection, giving up!";

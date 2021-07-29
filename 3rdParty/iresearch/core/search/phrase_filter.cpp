@@ -150,7 +150,7 @@ struct prepare : util::noncopyable {
       index, order, boost, field, part.term,
       0, // collect all terms
       part.max_distance, part.provider,
-      part.with_transpositions);
+      part.with_transpositions, part.prefix);
   }
 
   result_type operator()(const by_terms_options& /*part*/) const {

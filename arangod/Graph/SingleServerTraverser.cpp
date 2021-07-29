@@ -67,6 +67,10 @@ void SingleServerTraverser::setStartVertex(std::string const& vid) {
 }
 
 void SingleServerTraverser::clear() {
+  _vertexGetter->clear();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(!_vertexGetter->pointsIntoTraverserCache());
+#endif
   traverserCache()->clear();
 }
 

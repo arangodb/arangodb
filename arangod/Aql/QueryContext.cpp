@@ -48,8 +48,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief creates a query
-QueryContext::QueryContext(TRI_vocbase_t& vocbase)
-    : _queryId(TRI_NewServerSpecificTick()),
+QueryContext::QueryContext(TRI_vocbase_t& vocbase, QueryId id)
+    : _queryId(id ? id : TRI_NewServerSpecificTick()),
       _resourceMonitor(),
       _collections(&vocbase),
       _vocbase(vocbase),

@@ -306,6 +306,7 @@ std::string const StaticStrings::RevisionTreeRangeMin("rangeMin");
 std::string const StaticStrings::RevisionTreeRanges("ranges");
 std::string const StaticStrings::RevisionTreeResume("resume");
 std::string const StaticStrings::RevisionTreeVersion("version");
+std::string const StaticStrings::FollowingTermId("followingTermId");
 
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");
