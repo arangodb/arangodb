@@ -64,6 +64,10 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
         return true;
       }
       if (!state.isCoordinator()) {
+        TRI_IF_FAILURE("buildTransactionBodyEmpty") {
+          return true;  // continue
+        }
+
         if (col.collection()->followers()->contains(server)) {
           if (numCollections == 0) {
             builder.add(key, VPackValue(VPackValueType::Array));
@@ -131,6 +135,8 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
                                                   ServerID const& server) {
   TransactionId tid = state.id().child();
   TRI_ASSERT(!tid.isLegacyTransactionId());
+  
+  TRI_ASSERT(server.substr(0, 7) != "server:");
 
   double const lockTimeout = state.options().lockTimeout;
 
@@ -231,19 +237,23 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
                   ServerState::instance()->getId());
   }
 
+  char const* stateString = nullptr;
   fuerte::RestVerb verb;
   if (status == transaction::Status::COMMITTED) {
+    stateString = "commit";
     verb = fuerte::RestVerb::Put;
   } else if (status == transaction::Status::ABORTED) {
+    stateString = "abort";
     verb = fuerte::RestVerb::Delete;
   } else {
-    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid state for commit/abort operation");
   }
 
   auto* pool = state->vocbase().server().getFeature<NetworkFeature>().pool();
   std::vector<Future<network::Response>> requests;
   requests.reserve(state->knownServers().size());
   for (std::string const& server : state->knownServers()) {
+    TRI_ASSERT(server.substr(0, 7) != "server:");
     requests.emplace_back(network::sendRequestRetry(pool, "server:" + server, verb, path,
                                                VPackBuffer<uint8_t>(), reqOpts));
   }
@@ -276,7 +286,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
           if (res.fail()) {  // remove followers for all participating collections
             ServerID follower = resp.serverId();
             LOG_TOPIC("230c3", INFO, Logger::REPLICATION)
-                << "synchronous replication of transaction commit/abort operation: "
+                << "synchronous replication of transaction " << stateString << " operation: "
                 << "dropping follower " << follower << " for all participating shards in"
                 << " transaction " << state->id().id() << " (status "
                 << arangodb::transaction::statusString(status)
@@ -286,7 +296,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
               auto cc = tc.collection();
               if (cc) {
                 LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
-                    << "synchronous replication of transaction commit/abort operation: "
+                    << "synchronous replication of transaction " << stateString << " operation: "
                     << "dropping follower " << follower << " for shard " 
                     << cc->vocbase().name() << "/" << tc.collectionName() << ": "
                     << resp.combinedResult().errorMessage();
@@ -513,6 +523,8 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
   if (!ClusterTrxMethods::isElCheapo(trx)) {
     return;
   }
+  
+  TRI_ASSERT(server.substr(0, 7) != "server:");
 
   std::string value = std::to_string(state.id().child().id());
   bool const addBegin = !state.knowsServer(server);

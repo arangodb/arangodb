@@ -34,8 +34,7 @@ namespace algos {
 /// vertex id along the edges to all vertices of a connected component. The
 /// number of supersteps necessary is equal to the length of the maximum
 /// diameter of all components + 1
-/// doesn't necessarily leads to a correct result on unidirected graphs
-struct WCC : public SimpleAlgorithm<uint64_t, uint64_t, SenderMessage<uint64_t>> {
+struct WCC : public SimpleAlgorithm<WCCValue, uint64_t, SenderMessage<uint64_t>> {
  public:
   explicit WCC(application_features::ApplicationServer& server, VPackSlice userParams)
       : SimpleAlgorithm(server, "WCC", userParams) {}
@@ -43,7 +42,7 @@ struct WCC : public SimpleAlgorithm<uint64_t, uint64_t, SenderMessage<uint64_t>>
   bool supportsAsyncMode() const override { return false; }
   bool supportsCompensation() const override { return false; }
 
-  GraphFormat<uint64_t, uint64_t>* inputFormat() const override;
+  GraphFormat<WCCValue, uint64_t>* inputFormat() const override;
 
   MessageFormat<SenderMessage<uint64_t>>* messageFormat() const override {
     return new SenderMessageFormat<uint64_t>();
@@ -51,7 +50,8 @@ struct WCC : public SimpleAlgorithm<uint64_t, uint64_t, SenderMessage<uint64_t>>
   MessageCombiner<SenderMessage<uint64_t>>* messageCombiner() const override {
     return nullptr;
   }
-  VertexComputation<uint64_t, uint64_t, SenderMessage<uint64_t>>* createComputation(WorkerConfig const*) const override;
+  VertexComputation<WCCValue, uint64_t, SenderMessage<uint64_t>>* createComputation(
+      WorkerConfig const*) const override;
 };
 }  // namespace algos
 }  // namespace pregel

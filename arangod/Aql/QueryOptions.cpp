@@ -38,6 +38,13 @@ using namespace arangodb::aql;
 
 size_t QueryOptions::defaultMemoryLimit = 0;
 size_t QueryOptions::defaultMaxNumberOfPlans = 128;
+#ifdef __APPLE__
+// On OSX the default stack size for worker threads (non-main thread) is 512kb
+// which is rather low, so we have to use a lower default
+size_t QueryOptions::defaultMaxNodesPerCallstack = 200;
+#else
+size_t QueryOptions::defaultMaxNodesPerCallstack = 250;
+#endif
 double QueryOptions::defaultMaxRuntime = 0.0;
 double QueryOptions::defaultTtl;
 bool QueryOptions::defaultFailOnWarning = false;
@@ -47,6 +54,7 @@ QueryOptions::QueryOptions()
     : memoryLimit(0),
       maxNumberOfPlans(QueryOptions::defaultMaxNumberOfPlans),
       maxWarningCount(10),
+      maxNodesPerCallstack(QueryOptions::defaultMaxNodesPerCallstack),
       maxRuntime(0.0),
       satelliteSyncWait(60.0),
       ttl(QueryOptions::defaultTtl),  // get global default ttl
@@ -128,6 +136,11 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     maxWarningCount = value.getNumber<size_t>();
   }
 
+  value = slice.get("maxNodesPerCallstack");
+  if (value.isNumber()) {
+    maxNodesPerCallstack = value.getNumber<size_t>();
+  }
+  
   value = slice.get("maxRuntime");
   if (value.isNumber()) {
     maxRuntime = value.getNumber<double>();
@@ -157,11 +170,6 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
                                        : TraversalProfileLevel::None;
   } else if (value.isNumber()) {
     traversalProfile = static_cast<TraversalProfileLevel>(value.getNumber<uint16_t>());
-  }
-
-  value = slice.get("stream");
-  if (value.isBool()) {
-    stream = value.getBool();
   }
 
   value = slice.get("allPlans");
@@ -256,6 +264,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("memoryLimit", VPackValue(memoryLimit));
   builder.add("maxNumberOfPlans", VPackValue(maxNumberOfPlans));
   builder.add("maxWarningCount", VPackValue(maxWarningCount));
+  builder.add("maxNodesPerCallstack", VPackValue(maxNodesPerCallstack));
   builder.add("maxRuntime", VPackValue(maxRuntime));
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));

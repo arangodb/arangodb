@@ -106,10 +106,6 @@ class TraversalNode : public virtual GraphNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return TRAVERSAL; }
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -121,7 +117,7 @@ class TraversalNode : public virtual GraphNode {
 
   /// @brief Test if this node uses an in variable or constant
   bool usesInVariable() const { return _inVariable != nullptr; }
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere
@@ -180,24 +176,30 @@ class TraversalNode : public virtual GraphNode {
   ///        The condition will contain the local variable for it's accesses.
   void registerGlobalCondition(bool, AstNode const*);
 
+  /// @brief register a filter condition to be applied before the result is returned.
+  ///        This condition validates the edge
+  void registerPostFilterCondition(AstNode const* condition);
+
   bool allDirectionsEqual() const;
 
   void getConditionVariables(std::vector<Variable const*>&) const override;
 
   void getPruneVariables(std::vector<Variable const*>&) const;
 
+  void getPostFilterVariables(std::vector<Variable const*>&) const;
+
   /// @brief Compute the traversal options containing the expressions
   ///        MUST! be called after optimization and before creation
   ///        of blocks.
   void prepareOptions() override;
 
-  // @brief Get reference to the Prune expression.
-  //        You are not responsible for it!
-  Expression* pruneExpression() const { return _pruneExpression.get(); }
-
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into traverser::TraverserOptions*)
   auto options() const -> traverser::TraverserOptions*;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -205,6 +207,14 @@ class TraversalNode : public virtual GraphNode {
 #endif
 
   void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c, bool withProperties) const;
+
+  // @brief Get reference to the Prune expression.
+  //        You are not responsible for it!
+  Expression* pruneExpression() const { return _pruneExpression.get(); }
+
+  // @brief Get reference to the postFilter expression.
+  //        You are not responsible for it!
+  Expression* postFilterExpression() const;
 
  private:
   /// @brief vertex output variable
@@ -246,8 +256,16 @@ class TraversalNode : public virtual GraphNode {
 
   /// @brief the hashSet for variables used in pruning
   VarSet _pruneVariables;
+
+  /// @brief conditions to be applied before returning the result
+  std::vector<AstNode const*> _postFilterConditions;
+
+  /// @brief The condition used as PostFilter (might be empty)
+  mutable std::unique_ptr<Expression> _postFilterExpression;
+
+  /// @brief the hashSet for variables used in postFilter
+  VarSet _postFilterVariables;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-

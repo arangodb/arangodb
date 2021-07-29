@@ -30,6 +30,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryProfile.h"
 #include "Cluster/ServerState.h"
+#include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -41,9 +42,9 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ClusterQuery::ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
+ClusterQuery::ClusterQuery(QueryId id, std::shared_ptr<transaction::Context> const& ctx,
                            QueryOptions&& options)
-    : Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, std::move(options),
+    : Query(id, ctx, aql::QueryString(), /*bindParams*/ nullptr, std::move(options),
             /*sharedState*/ ServerState::instance()->isDBServer()
                 ? nullptr
                 : std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
@@ -102,6 +103,13 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
   if (_trx->state()->isDBServer()) {
     _trx->state()->acceptAnalyzersRevision(analyzersRevision);
   }
+  
+  TRI_IF_FAILURE("Query::setupLockTimeout") {
+    if (RandomGenerator::interval(uint32_t(100)) >= 95) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
+    }
+  }
+
   Result res = _trx->begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);

@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Cluster/FollowerInfo.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Rest/CommonDefines.h"
@@ -103,8 +104,13 @@ class Methods {
  public:
   
   /// @brief create the transaction
-  explicit Methods(std::shared_ptr<transaction::Context> const& transactionContext,
+  explicit Methods(std::shared_ptr<transaction::Context> const& ctx,
                    transaction::Options const& options = transaction::Options());
+
+  /// @brief create the transaction, and add a collection to it.
+  /// use on followers only!
+  Methods(std::shared_ptr<transaction::Context> ctx,
+          std::string const& collectionName, AccessMode::Type type); 
 
   /// @brief create the transaction, used to be UserTransaction
   Methods(std::shared_ptr<transaction::Context> const& ctx,
@@ -251,6 +257,7 @@ class Methods {
   ///        it is already locked!)
   ENTERPRISE_VIRT Result documentFastPath(std::string const& collectionName,
                                           arangodb::velocypack::Slice value,
+                                          OperationOptions const& options,
                                           arangodb::velocypack::Builder& result);
 
   /// @brief return one  document from a collection, fast path
@@ -405,10 +412,10 @@ class Methods {
 
   Future<OperationResult> documentCoordinator(std::string const& collectionName,
                                               VPackSlice value,
-                                              OperationOptions& options);
+                                              OperationOptions const& options);
 
   Future<OperationResult> documentLocal(std::string const& collectionName,
-                                        VPackSlice value, OperationOptions& options);
+                                        VPackSlice value, OperationOptions const& options);
 
   Future<OperationResult> insertCoordinator(std::string const& collectionName,
                                             VPackSlice value,
@@ -492,7 +499,9 @@ class Methods {
       LogicalCollection* collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options, VPackSlice value, TRI_voc_document_operation_e operation,
-      std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops);
+      std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops,
+      std::unordered_set<size_t> const& excludePositions,
+      FollowerInfo& followerInfo);
 
  private:
   /// @brief transaction hints

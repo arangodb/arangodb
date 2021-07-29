@@ -58,7 +58,6 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 using namespace arangodb::basics::StringUtils;
 
-static std::vector<std::string> const compareProperties{WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED};
 static std::unordered_set<std::string> const alwaysRemoveProperties({ID, NAME});
 
 static VPackValue const VP_DELETE("delete");
@@ -88,12 +87,15 @@ static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
 
 static std::shared_ptr<VPackBuilder> compareRelevantProps(VPackSlice const& first,
                                                           VPackSlice const& second) {
+  static std::vector<std::string> const compareProperties{WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED,
+                                                          StaticStrings::InternalValidatorTypes};
   auto result = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder b(result.get());
     for (auto const& property : compareProperties) {
       auto const& planned = first.get(property);
-      if (!basics::VelocyPackHelper::equal(planned, second.get(property), false)) {  // Register any change
+      if (!basics::VelocyPackHelper::equal(planned, second.get(property), false) &&
+          !planned.isNone()) {  // Register any change
         result->add(property, planned);
       }
     }
@@ -318,7 +320,6 @@ void handlePlanShard(StorageEngine& engine, uint64_t planIndex, VPackSlice const
             {DATABASE, dbname},
             {COLLECTION, colname},
             {SHARD, shname},
-            {THE_LEADER, std::string()},
             {LOCAL_LEADER, std::string(localLeader)},
             {OLD_CURRENT_COUNTER, "0"},  // legacy, no longer used
             {PLAN_RAFT_INDEX, std::to_string(planIndex)}},
@@ -1464,13 +1465,23 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
           std::string c = key.substr(pos + 1, pos2);
           std::string s = key.substr(pos2 + 1);  // shard name
-          auto const pdb = pit->second->slice();
+          TRI_ASSERT(pit->second->slice().isArray());
+          TRI_ASSERT(pit->second->slice().length() == 1);
+          auto const pdb = pit->second->slice()[0];
           auto const ldb = lit->second->slice();
 
           // Now find out if the shard appears in the Plan but not in Local:
-          std::vector<std::string> const planPath {
-            AgencyCommHelper::path(), PLAN, COLLECTIONS, d, c, "shards", s};
+          std::vector<std::string> const planPath{
+              AgencyCommHelper::path(), PLAN, COLLECTIONS, d, c, "shards", s};
 
+          if (!pdb.isObject()) {
+            LOG_TOPIC("2647d", WARN, Logger::MAINTENANCE) 
+              << "plan database in error reporting struct is not an object: " << pdb.toJson();
+          }
+          if (!ldb.isObject()) {
+            LOG_TOPIC("8fe58", WARN, Logger::MAINTENANCE) 
+              << "local database in error reporting struct is not an object: " << ldb.toJson();
+          }
           TRI_ASSERT(pdb.isObject());
           TRI_ASSERT(ldb.isObject());
           if (pdb.hasKey(planPath) && !ldb.hasKey(s)) {

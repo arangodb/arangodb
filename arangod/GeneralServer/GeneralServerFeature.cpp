@@ -78,11 +78,9 @@
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
 #include "RestHandler/RestMetricsHandler.h"
-#include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
-#include "RestHandler/RestRedirectHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
@@ -261,6 +259,12 @@ void GeneralServerFeature::start() {
   }
 }
 
+void GeneralServerFeature::initiateSoftShutdown() {
+  if (_jobManager != nullptr) {
+    _jobManager->initiateSoftShutdown();
+  }
+}
+
 void GeneralServerFeature::beginShutdown() {
   for (auto& server : _servers) {
     server->stopListening();
@@ -360,13 +364,6 @@ void GeneralServerFeature::defineHandlers() {
 #ifdef USE_ENTERPRISE
   HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
 #endif
-
-  // ...........................................................................
-  // /_msg
-  // ...........................................................................
-
-  _handlerFactory->addPrefixHandler("/_msg/please-upgrade",
-                                    RestHandlerCreator<RestPleaseUpgradeHandler>::createNoData);
 
   // ...........................................................................
   // /_api
@@ -624,22 +621,6 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
 
   _handlerFactory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createNoData);
-
-  // ...........................................................................
-  // redirects
-  // ...........................................................................
-
-  // UGLY HACK INCOMING!
-
-#define ADD_REDIRECT(from, to) do{_handlerFactory->addPrefixHandler(from, \
-                                    RestHandlerCreator<RestRedirectHandler>::createData<const char*>, \
-                                    (void*) to);}while(0)
-
-  ADD_REDIRECT("/_admin/clusterNodeVersion", "/_admin/cluster/nodeVersion");
-  ADD_REDIRECT("/_admin/clusterNodeEngine", "/_admin/cluster/nodeEngine");
-  ADD_REDIRECT("/_admin/clusterNodeStats", "/_admin/cluster/nodeStatistics");
-  ADD_REDIRECT("/_admin/clusterStatistics", "/_admin/cluster/statistics");
-
 
   // engine specific handlers
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();

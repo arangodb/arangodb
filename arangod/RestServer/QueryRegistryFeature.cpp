@@ -169,6 +169,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _queryMemoryLimit(defaultMemoryLimit(PhysicalMemory::getValue(), 0.2, 0.75)),
       _queryMaxRuntime(aql::QueryOptions::defaultMaxRuntime),
       _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
+      _maxNodesPerCallstack(aql::QueryOptions::defaultMaxNodesPerCallstack),
       _queryCacheMaxResultsCount(0),
       _queryCacheMaxResultsSize(0),
       _queryCacheMaxEntrySize(0),
@@ -301,11 +302,18 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--query.optimizer-max-plans",
                      "maximum number of query plans to create for a query",
                      new UInt64Parameter(&_maxQueryPlans));
+                     
+options->addOption("--query.max-nodes-per-callstack",
+                     "maximum number execution nodes on the callstack before "
+                     "splitting the remaining nodes into a separate thread",
+                     new UInt64Parameter(&_maxNodesPerCallstack),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30900);
 
   options->addOption("--query.registry-ttl",
                      "default time-to-live of cursors and query snippets (in "
                      "seconds); if <= 0, value will default to 30 for "
-                     "single-server instances or 600 for cluster instances",
+                     "single-server instances or 600 for coordinator instances",
                      new DoubleParameter(&_queryRegistryTTL),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   
@@ -373,13 +381,14 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
   if (_queryRegistryTTL <= 0) {
     TRI_ASSERT(ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED);
     // set to default value based on instance type
-    _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30 : 600;
+    _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30.0 : 600.0;
   }
 
   TRI_ASSERT(_queryGlobalMemoryLimit == 0 || _queryMemoryLimit <= _queryGlobalMemoryLimit);
   
   aql::QueryOptions::defaultMemoryLimit = _queryMemoryLimit;
   aql::QueryOptions::defaultMaxNumberOfPlans = _maxQueryPlans;
+  aql::QueryOptions::defaultMaxNodesPerCallstack = _maxNodesPerCallstack;
   aql::QueryOptions::defaultMaxRuntime = _queryMaxRuntime;
   aql::QueryOptions::defaultTtl = _queryRegistryTTL;
   aql::QueryOptions::defaultFailOnWarning = _failOnWarning;
@@ -419,7 +428,7 @@ void QueryRegistryFeature::prepare() {
                                                  _trackBindVars};
   arangodb::aql::QueryCache::instance()->properties(properties);
   // create the query registry
-  _queryRegistry.reset(new aql::QueryRegistry(_queryRegistryTTL));
+  _queryRegistry = std::make_unique<aql::QueryRegistry>(_queryRegistryTTL);
   QUERY_REGISTRY.store(_queryRegistry.get(), std::memory_order_release);
 }
 

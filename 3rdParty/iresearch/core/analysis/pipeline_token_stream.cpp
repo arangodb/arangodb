@@ -229,7 +229,7 @@ bool all_have_offset(const std::vector<irs::analysis::analyzer::ptr>& pipeline) 
   });
 }
 
-}
+} // namespace
 
 namespace iresearch {
 namespace analysis {
@@ -248,7 +248,7 @@ pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& 
     } {
   const auto track_offset = irs::get<offset>(*this) != nullptr;
   pipeline_.reserve(options.size());
-  for (const auto& p : options) {
+  for (auto& p : options) {
     assert(p);
     pipeline_.emplace_back(std::move(p), track_offset);
   }
@@ -325,6 +325,7 @@ bool pipeline_token_stream::reset(const string_ref& data) {
   return pipeline_.front().reset(0, static_cast<uint32_t>(data.size()), data);
 }
 
+
 /*static*/ void pipeline_token_stream::init() {
   REGISTER_ANALYZER_JSON(pipeline_token_stream, make_json,
     normalize_json_config);  // match registration above
@@ -345,5 +346,5 @@ pipeline_token_stream::sub_analyzer_t::sub_analyzer_t()
   : term(nullptr), inc(nullptr), offs(nullptr),
     analyzer(irs::analysis::analyzer::ptr(), &EMPTY_ANALYZER) { }
 
-}
-}
+} // namespace analysis
+} // namespace iresearch

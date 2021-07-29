@@ -66,8 +66,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   /// @brief closes an open collection
   ErrorCode close() override;
-  void load() override;
-  void unload() override;
 
   /// return bounds for all documents
   RocksDBKeyBounds bounds() const override;
@@ -159,21 +157,24 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                   RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& documentId,
                                   arangodb::velocypack::Slice doc,
-                                  OperationOptions const& options) const;
+                                  OperationOptions const& options,
+                                  RevisionId const& revisionId) const;
 
   arangodb::Result removeDocument(arangodb::transaction::Methods* trx,
                                   RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& documentId,
                                   arangodb::velocypack::Slice doc,
-                                  OperationOptions const& options) const;
+                                  OperationOptions const& options,
+                                  RevisionId const& revisionId) const;
 
-  arangodb::Result updateDocument(transaction::Methods* trx, 
+  arangodb::Result modifyDocument(transaction::Methods* trx, 
                                   RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& oldDocumentId,
                                   arangodb::velocypack::Slice const& oldDoc,
                                   LocalDocumentId const& newDocumentId,
                                   arangodb::velocypack::Slice const& newDoc,
-                                  OperationOptions& options) const;
+                                  OperationOptions& options,
+                                  RevisionId const& revisionId) const;
 
   /// @brief lookup document in cache and / or rocksdb
   /// @param readCache attempt to read from cache

@@ -213,7 +213,7 @@ TEST_F(RemoveFollowerTest, collection_still_exists_if_missing_job_is_finished_mo
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
 TEST_F(RemoveFollowerTest,
@@ -264,7 +264,7 @@ TEST_F(RemoveFollowerTest,
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
 TEST_F(RemoveFollowerTest, condition_still_holds_for_the_mentioned_collections_move_to_finished) {
@@ -321,7 +321,7 @@ TEST_F(RemoveFollowerTest, condition_still_holds_for_the_mentioned_collections_m
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
 TEST_F(RemoveFollowerTest,
@@ -380,7 +380,7 @@ TEST_F(RemoveFollowerTest,
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
 TEST_F(RemoveFollowerTest, all_good_should_remove_folower) {
@@ -427,7 +427,7 @@ TEST_F(RemoveFollowerTest, all_good_should_remove_folower) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 
   EXPECT_NO_THROW(Verify(Method(mockAgent, write)));
 }
@@ -598,7 +598,7 @@ TEST(RemoveFollowerLargeTest, an_agency_with_12_dbservers) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 
   EXPECT_NO_THROW(Verify(Method(mockAgent, write)));
 }

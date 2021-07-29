@@ -103,10 +103,6 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addObsoleteOption("--vst.maxsize", "maximal size (in bytes) "
                              "for a VelocyPack chunk", true);
   
-  options->addObsoleteOption(
-      "--server.session-timeout",
-      "timeout of web interface server sessions (in seconds)", true);
-
   // add obsolete MMFiles WAL options (obsoleted in 3.7)
   options->addSection("wal", "WAL of the MMFiles engine", "", true, true);
   options->addObsoleteOption("--wal.allow-oversize-entries",
