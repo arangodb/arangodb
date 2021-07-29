@@ -1,4 +1,10 @@
-v3.6.15 (XXXX-XX-XX)
+v3.6.16 (XXXX-XX-XX)
+--------------------
+
+* Updated arangosync to 1.7.0.
+
+
+v3.6.15 (2021-07-14)
 --------------------
 * Updated JavaScript dependencies, including breaking changes to non-public
   modules. We recommend always bundling your own copy of third-party modules,
