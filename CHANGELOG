@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add 3 AQL functions: COSINE_SIMILARITY, L1_DISTANCE and L2_DISTANCE.
+
 * Updated ArangoDB Starter to 0.15.1-preview-4.
 
 * APM-132: Clean up collection statuses
