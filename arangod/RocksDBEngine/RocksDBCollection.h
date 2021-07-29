@@ -141,6 +141,11 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 RevisionId expectedRev, ManagedDocumentResult& previous,
                 OperationOptions& options);
 
+  Result performUpdateOrReplace(transaction::Methods* trx,
+                                velocypack::Slice newSlice,
+                                ManagedDocumentResult& resultMdr, OperationOptions& options,
+                                ManagedDocumentResult& previousMdr, bool isUpdate);
+                                 
   /// @brief return engine-specific figures
   void figuresSpecific(bool details, velocypack::Builder&) override;
 
