@@ -42,8 +42,8 @@ JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
   auto typePair = snapshot.hasAsString(path + "/type");
   std::string type;
 
-  if (typePair.second) {
-    type = typePair.first;
+  if (typePair) {
+    type = typePair.value();
   }  // if
 
   if (type == "failedLeader") {

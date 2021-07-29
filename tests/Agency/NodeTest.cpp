@@ -232,8 +232,8 @@ TEST_F(NodeTest, node_assign_string_slice) {
   auto b = std::make_shared<VPackBuilder>();
   
   b->add(VPackValue(val));
-  n(path) = b->slice();
-  EXPECT_EQ(n(path).getString(), val);
+  n.getOrCreate(path) = b->slice();
+  EXPECT_EQ(n.getOrCreate(path).getString(), val);
    
 }
 
@@ -246,8 +246,8 @@ TEST_F(NodeTest, node_assign_double_slice) {
   auto b = std::make_shared<VPackBuilder>();
   
   b->add(VPackValue(val));
-  n(path) = b->slice();
-  EXPECT_DOUBLE_EQ(n(path).getDouble(), val);
+  n.getOrCreate(path) = b->slice();
+  EXPECT_DOUBLE_EQ(n.getOrCreate(path).getDouble().value(), val);
    
 }
 
@@ -259,8 +259,8 @@ TEST_F(NodeTest, node_assign_int_slice) {
   auto b = std::make_shared<VPackBuilder>();
   
   b->add(VPackValue(val));
-  n(path) = b->slice();
-  EXPECT_EQ(n(path).getInt(), val);
+  n.getOrCreate(path) = b->slice();
+  EXPECT_EQ(n.getOrCreate(path).getInt(), val);
    
 }
 
@@ -274,8 +274,8 @@ TEST_F(NodeTest, node_assign_array_slice) {
     b->add(VPackValue(3.14159265359));
     b->add(VPackValue(64)); }
 
-  n(path) = b->slice();
-  EXPECT_EQ(n(path).getArray().binaryEquals(b->slice()), true);
+  n.getOrCreate(path) = b->slice();
+  EXPECT_EQ(n.getOrCreate(path).getArray()->binaryEquals(b->slice()), true);
    
 }
 
@@ -291,26 +291,26 @@ TEST_F(NodeTest, node_applyOp_set) {
     b->add("op", VPackValue("set"));
     b->add("new", VPackValue(pi)); }
 
-  auto ret = n(path).applyOp(b->slice());
+  auto ret = n.getOrCreate(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), true);
   EXPECT_EQ(ret.get(), nullptr);
-  EXPECT_DOUBLE_EQ(n(path).getDouble(), pi);
+  EXPECT_DOUBLE_EQ(n.getOrCreate(path).getDouble().value(), pi);
 
   b = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder a(b.get());
     b->add("op", VPackValue("set"));
     b->add("new", VPackValue(eleven)); }
 
-  ret = n(path).applyOp(b->slice());
+  ret = n.getOrCreate(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), true);
-  EXPECT_EQ(n(path).getInt(), eleven);
+  EXPECT_EQ(n.getOrCreate(path).getInt(), eleven);
 
   b = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder a(b.get());
     b->add("op", VPackValue("set"));
     b->add("val", VPackValue(eleven)); }
 
-  ret = n(path).applyOp(b->slice());
+  ret = n.getOrCreate(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), false);
   // std::cout << ret.errorMessage() << std::endl;
 
@@ -318,7 +318,7 @@ TEST_F(NodeTest, node_applyOp_set) {
   { VPackObjectBuilder a(b.get());
     b->add("op", VPackValue("set")); }
 
-  ret = n(path).applyOp(b->slice());
+  ret = n.getOrCreate(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), false);
   // std::cout << ret.errorMessage() << std::endl;
 }
@@ -334,14 +334,14 @@ TEST_F(NodeTest, node_applyOp_delete) {
     b.add("op", VPackValue("set"));
     b.add("new", VPackValue(pi)); }
 
-  auto ret = n(path).applyOp(b.slice());
+  auto ret = n.getOrCreate(path).applyOp(b.slice());
   EXPECT_EQ(ret.ok(), true);
 
   b.clear();
   { VPackObjectBuilder a(&b);
     b.add("op", VPackValue("delete")); }
 
-  ret = n(path).applyOp(b.slice());
+  ret = n.getOrCreate(path).applyOp(b.slice());
   EXPECT_EQ(ret.ok(), true);
   EXPECT_NE(ret.get(), nullptr);
   EXPECT_EQ(ret.get()->getDouble(), pi);
@@ -359,7 +359,7 @@ TEST_F(NodeTest, node_applyOp_bs) {
   { VPackObjectBuilder a(&b);
     b.add("op", VPackValue(oper)); }
 
-  auto ret = n(path).applyOp(b.slice());
+  auto ret = n.getOrCreate(path).applyOp(b.slice());
   EXPECT_EQ(ret.ok(), false);
   EXPECT_EQ(ret.errorMessage(), error);
 
@@ -407,47 +407,47 @@ TEST_F(NodeTest, node_applyOp_lock) {
     ulck3.add("by", VPackValue(caller3)); }
 
   // caller1 unlock -> reject (no locks yet)
-  ret = n(path).applyOp(ulck1.slice());
+  ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
   
   // caller1 lock -> accept
-  ret = n(path).applyOp(lck1.slice());
+  ret = n.getOrCreate(path).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), true);
 
   // caller1 lock -> reject (same locker)
-  ret = n(path).applyOp(lck1.slice());
+  ret = n.getOrCreate(path).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), false);
   
   // caller2 lock -> accept
-  ret = n(path).applyOp(lck2.slice());
+  ret = n.getOrCreate(path).applyOp(lck2.slice());
   EXPECT_EQ(ret.ok(), true);
   
   // caller2 lock -> reject (same locker)
-  ret = n(path).applyOp(lck2.slice());
+  ret = n.getOrCreate(path).applyOp(lck2.slice());
   EXPECT_EQ(ret.ok(), false);
   
   // caller1 unlock -> accept
-  ret = n(path).applyOp(ulck1.slice());
+  ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), true);
   
   // caller1 lock -> accept
-  ret = n(path).applyOp(lck1.slice());
+  ret = n.getOrCreate(path).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), true);
   
   // caller1 unlock -> accept
-  ret = n(path).applyOp(ulck1.slice());
+  ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), true);
   
   // caller1 unlock -> reject (not a locker)
-  ret = n(path).applyOp(ulck1.slice());
+  ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
   
   // caller1 write lock -> reject (cannot write lock while still locked by caller2) 
-  ret = n(path).applyOp(wlck1.slice());
+  ret = n.getOrCreate(path).applyOp(wlck1.slice());
   EXPECT_EQ(ret.ok(), false);
 
   // caller2 unlock -> accept
-  ret = n(path).applyOp(ulck2.slice());
+  ret = n.getOrCreate(path).applyOp(ulck2.slice());
   EXPECT_EQ(ret.ok(), true);
 
   // Node should be gone
@@ -455,19 +455,19 @@ TEST_F(NodeTest, node_applyOp_lock) {
   EXPECT_EQ(n.has(path), false);
   
   // caller1 write lock -> accept
-  ret = n(path).applyOp(wlck1.slice());
+  ret = n.getOrCreate(path).applyOp(wlck1.slice());
   EXPECT_EQ(ret.ok(), true);
 
   // caller1 write lock -> reject (exclusive)
-  ret = n(path).applyOp(wlck1.slice());
+  ret = n.getOrCreate(path).applyOp(wlck1.slice());
   EXPECT_EQ(ret.ok(), false);
 
   // caller1 write lock -> reject (exclusive)
-  ret = n(path).applyOp(wlck2.slice());
+  ret = n.getOrCreate(path).applyOp(wlck2.slice());
   EXPECT_EQ(ret.ok(), false);
 
   // caller1 write unlock -> accept
-  ret = n(path).applyOp(wulck1.slice());
+  ret = n.getOrCreate(path).applyOp(wulck1.slice());
   EXPECT_EQ(ret.ok(), true);
 
   // Node should be gone
@@ -479,20 +479,20 @@ TEST_F(NodeTest, node_applyOp_lock) {
   { VPackObjectBuilder a(&b);
     b.add("op", VPackValue("set"));
     b.add("new", VPackValue(pi)); }
-  ret = n(pathpi).applyOp(b.slice());
+  ret = n.getOrCreate(pathpi).applyOp(b.slice());
 
   //////////////// Only lockable I
   
   // caller1 unlock -> reject (no locks yet)
-  ret = n(path).applyOp(ulck1.slice());
+  ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
   
   // caller1 lock -> accept
-  ret = n(path).applyOp(lck1.slice());
+  ret = n.getOrCreate(path).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), false);
 
   // caller1 unlock -> reject (no locks yet)
-  ret = n(path).applyOp(ulck1.slice());
+  ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
 
   // Node should not be gone (pathpi is beneath)
@@ -501,15 +501,15 @@ TEST_F(NodeTest, node_applyOp_lock) {
   //////////////// Only lockable caller1
     
   // II unlock -> reject (no locks yet)
-  ret = n(pathpi).applyOp(ulck1.slice());
+  ret = n.getOrCreate(pathpi).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
   
   // caller1 lock -> accept
-  ret = n(pathpi).applyOp(lck1.slice());
+  ret = n.getOrCreate(pathpi).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), false);
 
   // caller1 unlock -> reject (no locks yet)
-  ret = n(pathpi).applyOp(ulck1.slice());
+  ret = n.getOrCreate(pathpi).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
 
   // Node should not be gone (pathpipi holds pi)
