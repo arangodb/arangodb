@@ -1,6 +1,8 @@
 v3.6.16 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to 0.15.1.
+
 * Fix BTS-453: Download of a HotBackup from remote source doesn't work on macOS.
 
 * Updated arangosync to 1.7.0.
