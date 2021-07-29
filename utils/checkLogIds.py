@@ -18,7 +18,7 @@ def is_good(status):
     return status in (Status.OK, Status.OK_REPLACED)
 
 import re
-g_log_topic_pattern = re.compile(r'(?P<macro>LOG_(TOPIC(_IF)?|TRX))\((?P<param>[^),]*),(?P<rest>.*)')
+g_log_topic_pattern = re.compile(r'(?P<macro>LOG_(TOPIC(_IF)?|TRX|QUERY))\((?P<param>[^),]*),(?P<rest>.*)')
 
 import hashlib
 g_hash_algorithm = hashlib.md5()
