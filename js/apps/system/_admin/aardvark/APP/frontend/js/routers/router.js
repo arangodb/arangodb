@@ -20,6 +20,7 @@
       'replication': 'replication',
       'replication/applier/:endpoint/:database': 'applier',
       'collections': 'collections',
+      'analyzers': 'analyzers',
       'new': 'newCollection',
       'login': 'login',
       'collection/:colid/documents/:pageid': 'documents',
@@ -319,6 +320,13 @@
         self.handleResize();
       });
 
+    },
+
+    analyzers: function () {
+      this.checkUser();
+
+      this.init.then(() => ReactDOM.render(React.createElement(window.AnalyzersReactView),
+        document.getElementById('content')));
     },
 
     cluster: function () {

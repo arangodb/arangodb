@@ -12,6 +12,7 @@ window.parsePrometheusTextFormat = parsePrometheusTextFormat;
 
 // import new react views
 require('./views/shards/ShardsReactView');
+require('./views/analyzers/AnalyzersReactView');
 
 // old libraries
 const jQuery = require('jquery');
