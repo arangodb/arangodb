@@ -123,7 +123,6 @@
 
       if (this.lastRoute === '#services') {
         window.App.replaceApp = false;
-        // console.log('set replace to false!');
       }
 
       if (this.graphViewer) {
