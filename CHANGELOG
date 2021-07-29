@@ -1,12 +1,20 @@
 v3.7.14 (XXXX-XX-XX)
--------------------
-
-* Fixed a bug, where Coordinators handled plan changes for databases
-  in heartbeat thread in wrong order. Databases could be listed, but
-  not used.
-
-v3.7.13 (XXXX-XX-XX)
 --------------------
+
+* Fixed a bug, where Coordinators handled plan changes for databases in
+  heartbeat thread in wrong order. Databases could be listed, but not used.
+
+* Fix BTS-453: Download of a HotBackup from remote source doesn't work on macOS.
+
+* Updated ArangoDB Starter to 0.15.1.
+
+* Updated arangosync to 1.7.0.
+
+
+v3.7.13 (2021-07-20)
+--------------------
+
+* Fix race, where coordinator miss existing databases after hot restore.
 
 * Updated ArangoDB Starter to 0.15.0-1.
 
@@ -14,7 +22,8 @@ v3.7.13 (XXXX-XX-XX)
   byte) RocksDB WAL files present. Such empty files caused RocksDB to abort the
   startup, reporting corruption. However, empty WAL files are possible in case
   of server crashes etc. Now, if a WAL file is completely empty, there will be
-  no attempt to read the encryption meta data from it, so the startup succeeds.
+  no attempt to read the encryption meta data from it, so the startup succeeds
+	(BTS-392).
 
 * Fixes a bug in the maintenance's error-handling code. A shard error would
   result in log messages like
@@ -47,7 +56,7 @@ v3.7.13 (XXXX-XX-XX)
 
 * Added a retry loop for arangorestore during the initial connection phase. The
   number of retries defaults to 3 and can be configured using
-  --initial-connect-retries.
+  --initial-connect-retries (BTS-491).
 
 * Fixed display of running and slow queries in web UI when there are multiple
   coordinators. Previously, the display order of queries was undefined, which
