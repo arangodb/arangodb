@@ -1,6 +1,8 @@
 v3.7.14 (XXXX-XX-XX)
 --------------------
 
+* Fix BTS-453: Download of a HotBackup from remote source doesn't work on macOS.
+
 * Updated arangosync to 1.7.0.
 
 
