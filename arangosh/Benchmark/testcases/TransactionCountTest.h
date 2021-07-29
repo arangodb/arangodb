@@ -43,27 +43,26 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    std::string url(int const threadNumber, size_t const threadCounter,
-                    size_t const globalCounter) override {
-      return std::string("/_api/transaction");
-    }
-
-    rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                           size_t const globalCounter) override {
-      return rest::RequestType::POST;
-    }
-
-    void payload(int threadNumber, size_t threadCounter, 
-                 size_t globalCounter, std::string& buffer) const override {
+    void buildRequest(int threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.url = "/_api/transaction";
+      requestData.type = rest::RequestType::POST;
       using namespace arangodb::velocypack;
-      Builder b;
-      b(Value(ValueType::Object));
-      b.add("collections", Value(ValueType::Object));
-      b.add("write", Value(_arangobench.collection()));
-      b.close();
-      b.add("action", Value(std::string("function () { var c = require(\"internal\").db[\"") + _arangobench.collection() + std::string("\"]; var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw \"error, counters deviate!\"; } c.save({ }); } }")));   
-      b.close();
-      buffer = b.toJson();
+      requestData.payload(Value(ValueType::Object));
+      requestData.payload.add("collections", Value(ValueType::Object));
+      requestData.payload.add("write", Value(_arangobench.collection()));
+      requestData.payload.close();
+      requestData.payload.add("action", Value(std::string("function () { var c = require(\"internal\").db[\"") + _arangobench.collection() + std::string("\"]; var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw \"error, counters deviate!\"; } c.save({ }); } }")));
+      requestData.payload.close();
+    }
+
+    //log in only one place, this returns string for the description;
+    char const* getDescription() const noexcept override {
+      return "executes JavaScript Transactions that each insert 50 (empty) documents into a collection and validates that collection counts are as expected. There will be 50 times the number of --requests documents inserted in total. The --complexity parameter is not used.";
+    }
+
+    bool isDeprecated() const noexcept override {
+      return false;
     }
 
   };

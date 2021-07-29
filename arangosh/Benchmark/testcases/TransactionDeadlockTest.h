@@ -50,38 +50,37 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    std::string url(int const threadNumber, size_t const threadCounter,
-                    size_t const globalCounter) override {
-      return std::string("/_api/transaction");
-    }
-
-    rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                           size_t const globalCounter) override {
-      return rest::RequestType::POST;
-    }
-
-    void payload(int threadNumber, size_t threadCounter,
-                 size_t globalCounter, std::string& buffer) const override {
+    void buildRequest(int threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.url = "/_api/transaction";
+      requestData.type = rest::RequestType::POST;
       size_t mod = globalCounter % 2;
       using namespace arangodb::velocypack;
-      Builder b;
-      b(Value(ValueType::Object));
-      b.add("collections", Value(ValueType::Object));
-      b.add("write", Value(ValueType::Array));
+      requestData.payload(Value(ValueType::Object));
+      requestData.payload.add("collections", Value(ValueType::Object));
+      requestData.payload.add("write", Value(ValueType::Array));
       std::string actionValue = std::string("function () { var c = require(\"internal\").db[\"");
       if(mod == 0) {
-        b.add(Value(_c1));
+        requestData.payload.add(Value(_c1));
         actionValue += _c2;
       } else {
-        b.add(Value(_c2));
+        requestData.payload.add(Value(_c2));
         actionValue += _c1;
       }
-      b.close();
-      b.close();
+      requestData.payload.close();
+      requestData.payload.close();
       actionValue += std::string("\"]; c.any(); }");
-      b.add("action", Value(actionValue));
-      b.close();
-      buffer = b.toJson();
+      requestData.payload.add("action", Value(actionValue));
+      requestData.payload.close();
+    }
+
+    //log in only one place, this returns string for the description;
+    char const* getDescription() const noexcept override {
+      return "creates two collections and executes JavaScript Transactions that first access one collection, and then the other. This test was once used as a means to detect deadlocks caused by collection locking, but is obsolete nowadays. The --complexity parameter is not used.";
+    }
+
+    bool isDeprecated() const noexcept override {
+      return false;
     }
 
     std::string _c1;

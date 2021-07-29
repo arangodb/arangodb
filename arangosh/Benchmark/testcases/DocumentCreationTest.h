@@ -34,18 +34,7 @@ namespace arangodb::arangobench {
   struct DocumentCreationTest : public Benchmark<DocumentCreationTest> {
     static std::string name() { return "document"; }
     DocumentCreationTest(BenchFeature& arangobench)
-      : Benchmark<DocumentCreationTest>(arangobench),
-      _url("/_api/document?collection=" + _arangobench.collection()) {
-        uint64_t const n = _arangobench.complexity();
-        using namespace arangodb::velocypack;
-        Builder b;
-        b.openObject();
-        for (uint64_t i = 1; i <= n; ++i) {
-          b.add(std::string("test") + std::to_string(i), Value("some test value"));
-        }
-        b.close();
-        _buffer = b.toJson();
-      }
+      : Benchmark<DocumentCreationTest>(arangobench) {}
 
     bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
       return DeleteCollection(client, _arangobench.collection()) &&
@@ -54,24 +43,26 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    std::string url(int const threadNumber, size_t const threadCounter,
-                    size_t const globalCounter) override {
-      return _url;
+    void buildRequest(int threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.url = std::string("/_api/document?collection=") + _arangobench.collection();
+      requestData.type = rest::RequestType::POST;
+      uint64_t const n = _arangobench.complexity();
+      using namespace arangodb::velocypack;
+      requestData.payload.openObject();
+      for (uint64_t i = 1; i <= n; ++i) {
+        requestData.payload.add(std::string("test") + std::to_string(i), Value("some test value"));
+      }
+      requestData.payload.close();
     }
 
-    rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                           size_t const globalCounter) override {
-      return rest::RequestType::POST;
+    char const* getDescription() const noexcept override {
+      return "performs single-document insert operations via the specialized insert API (in contrast to performing inserts via generic AQL). The --complexity parameter controls the number of attributes per document. The attribute values for the inserted documents will be hard-coded. The total number of documents to be inserted is equal to the value of --requests.";
     }
 
-    void payload(int threadNumber, size_t threadCounter, 
-                 size_t globalCounter, std::string& buffer) const override {
-      buffer = _buffer;
+    bool isDeprecated() const noexcept override {
+      return false;
     }
-
-    private:
-    std::string _url;
-    std::string _buffer;
   };
 
 }  // namespace arangodb::arangobench

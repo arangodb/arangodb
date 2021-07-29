@@ -27,6 +27,7 @@
 
 #include <map>
 #include <memory>
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 
@@ -39,6 +40,13 @@ namespace arangodb {
     ////////////////////////////////////////////////////////////////////////////////
 
     struct BenchmarkOperation {
+
+      struct RequestData { //name to RequestData
+        std::string url;
+        arangodb::rest::RequestType type;
+        arangodb::velocypack::Builder payload;
+      };
+
       //////////////////////////////////////////////////////////////////////////////
       /// @brief ctor, derived class can implemented something sensible
       //////////////////////////////////////////////////////////////////////////////
@@ -64,22 +72,11 @@ namespace arangodb {
       virtual void tearDown() = 0;
 
       //////////////////////////////////////////////////////////////////////////////
-      /// @brief return the URL of the operation to execute
+      /// @brief build the HTTP request and set it's values (url, type and payload) inside RequestData.
+      //  The caller must provide it and clean its values before the call
       //////////////////////////////////////////////////////////////////////////////
-
-      virtual std::string url(int const, size_t const, size_t const) = 0;
-
-      //////////////////////////////////////////////////////////////////////////////
-      /// @brief return the HTTP method of the operation to execute
-      //////////////////////////////////////////////////////////////////////////////
-
-      virtual arangodb::rest::RequestType type(int const, size_t const, size_t const) = 0;
-
-      //////////////////////////////////////////////////////////////////////////////
-      /// @brief return the payload (body) of the HTTP request to execute
-      //////////////////////////////////////////////////////////////////////////////
-
-      virtual void payload(int, size_t, size_t, std::string&) const = 0;
+  
+      virtual void buildRequest(int threadNumber, size_t threadCounter, size_t globalCounter, RequestData&) const;
 
       using BenchmarkFactory = std::function<std::unique_ptr<BenchmarkOperation>(BenchFeature&)>;
 
@@ -91,6 +88,12 @@ namespace arangodb {
 
       /// @brief return the benchmark for a name
       static std::unique_ptr<BenchmarkOperation> createBenchmark(std::string const& name, BenchFeature& arangobench);
+  
+      /// @brief prints the description of the testcase
+      virtual char const* getDescription() const noexcept = 0;
+      
+      /// @brief returns wether testcase is deprecated or not 
+      virtual bool isDeprecated() const noexcept = 0;
 
       protected:
       arangodb::BenchFeature& _arangobench;

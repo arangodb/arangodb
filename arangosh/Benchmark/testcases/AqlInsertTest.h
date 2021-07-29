@@ -43,35 +43,33 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    std::string url(int const threadNumber, size_t const threadCounter,
-                    size_t const globalCounter) override {
-      return std::string("/_api/cursor");
-    }
-
-    rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                           size_t const globalCounter) override {
-      return rest::RequestType::POST;
-    }
-
-    void payload(int threadNumber, size_t threadCounter, 
-                 size_t globalCounter, std::string& buffer) const override {
+    void buildRequest(int threadNumber, size_t threadCounter, 
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
       using namespace arangodb::velocypack;
-      Builder b;
-      b.openObject();
-      b.add("query", Value(std::string("INSERT @data INTO " + _arangobench.collection())));
-      b.add(Value("bindVars"));
-      b.openObject();
-      b.add(Value("data"));
-      b.openObject();
-      b.add("_key", Value(std::string("test") + std::to_string((int64_t)globalCounter)));
+      requestData.url = "/_api/cursor";
+      requestData.type = rest::RequestType::POST;
+      requestData.payload.openObject();
+      requestData.payload.add("query", Value(std::string("INSERT @data INTO " + _arangobench.collection())));
+      requestData.payload.add(Value("bindVars"));
+      requestData.payload.openObject();
+      requestData.payload.add(Value("data"));
+      requestData.payload.openObject();
+      requestData.payload.add("_key", Value(std::string("test") + std::to_string((int64_t)globalCounter)));
       uint64_t const n = _arangobench.complexity();
       for (uint64_t i = 1; i <= n; ++i) {
-        b.add(std::string("value") + std::to_string(i), Value(true));
+        requestData.payload.add(std::string("value") + std::to_string(i), Value(true));
       }
-      b.close();
-      b.close();
-      b.close();
-      buffer = b.toJson();
+      requestData.payload.close();
+      requestData.payload.close();
+      requestData.payload.close();
+    }
+
+    char const* getDescription() const noexcept override {
+      return "performs AQL queries that insert one document per query. The --complexity parameter controls the number of attributes per document. The    attribute values for the inserted documents will be hard-coded, except _key. The total number of documents to be inserted is equal to the value of --requests.";
+    }
+
+    bool isDeprecated() const noexcept override {
+      return true;
     }
   };
 

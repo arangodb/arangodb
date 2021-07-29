@@ -50,27 +50,18 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    std::string url(int const threadNumber, size_t const threadCounter,
-                    size_t const globalCounter) override {
-      return std::string("/_api/transaction");
-    }
-
-    rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                           size_t const globalCounter) override {
-      return rest::RequestType::POST;
-    }
-
-    void payload(int threadNumber, size_t threadCounter,
-                 size_t globalCounter, std::string& buffer) const override {
+    void buildRequest(int threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.url = "/_api/transaction";
+      requestData.type = rest::RequestType::POST;
       using namespace arangodb::velocypack;
-      Builder b;
-      b(Value(ValueType::Object));
-      b.add("collections", Value(ValueType::Object));
-      b.add("write", Value(ValueType::Array));
-      b.add(Value(_c1));
-      b.add(Value(_c2));
-      b.close();
-      b.close();
+      requestData.payload(Value(ValueType::Object));
+      requestData.payload.add("collections", Value(ValueType::Object));
+      requestData.payload.add("write", Value(ValueType::Array));
+      requestData.payload.add(Value(_c1));
+      requestData.payload.add(Value(_c2));
+      requestData.payload.close();
+      requestData.payload.close();
       std::string actionValue = std::string("function () { var c1 = require(\"internal\").db[\"") + _c1 + std::string("\"]; var c2 = require(\"internal\").db[\"") + _c2 + std::string("\"]; var doc = {");
       uint64_t const n = _arangobench.complexity();
       for (uint64_t i = 0; i < n; ++i) {
@@ -80,9 +71,17 @@ namespace arangodb::arangobench {
         actionValue += std::string("value") + std::to_string(i) + ": " + std::to_string(i);
       }
       actionValue += " }; c1.save(doc); c2.save(doc); }";
-      b.add("action", Value(actionValue));
-      b.close();
-      buffer = b.toJson();
+      requestData.payload.add("action", Value(actionValue));
+      requestData.payload.close();
+    }
+
+    //log in only one place, this returns string for the description;
+    char const* getDescription() const noexcept override {
+      return "creates two collections and then executes JavaScript Transactions that first write into one and then the other collection. The documents written into both collections are identical, and the number of their attributes can be controlled via the --complexity parameter. There will be as many JavaScript Transactions as --requests, and twice the number of documents inserted.";
+    }
+
+    bool isDeprecated() const noexcept override {
+      return false;
     }
 
     std::string _c1;

@@ -28,6 +28,8 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/files.h"
 #include "Basics/StringBuffer.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
 #include <string>
 
 namespace arangodb::arangobench {
@@ -51,7 +53,7 @@ namespace arangodb::arangobench {
       }
 
       if (_query.empty()) {
-        LOG_TOPIC("79cce", FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("79cce", FATAL, arangodb::Logger::BENCH)
           << "custom benchmark requires --custom-query or --custom-query-file to "
           "be specified";
         return false;
@@ -68,19 +70,22 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    std::string url(int const threadNumber, size_t const threadCounter,
-                    size_t const globalCounter) override {
-      return std::string("/_api/cursor");
+    void buildRequest(int threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.url = "/_api/cursor";
+      requestData.type = rest::RequestType::POST;
+      using namespace arangodb::velocypack;
+      requestData.payload.openObject();
+      requestData.payload.add(Value(_query));
+      requestData.payload.close();
     }
 
-    rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                           size_t const globalCounter) override {
-      return rest::RequestType::POST;
+    char const* getDescription() const noexcept override {
+      return "executes a custom AQL query, that can be specified either via the --custom-query option or be read from a file specified via the --custom-query-file option. The query will be executed as many times as the value of --requests. The --complexity parameter is not used.";
     }
 
-    void payload(int threadNumber, size_t threadCounter,
-                 size_t globalCounter, std::string& buffer) const override {
-      buffer = _query;
+    bool isDeprecated() const noexcept override {
+      return false;
     }
 
     private:

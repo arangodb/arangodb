@@ -50,41 +50,40 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    std::string url(int const threadNumber, size_t const threadCounter,
-                    size_t const globalCounter) override {
-      return std::string("/_api/transaction");
-    }
-
-    rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                           size_t const globalCounter) override {
-      return rest::RequestType::POST;
-    }
-
-    void payload(int threadNumber, size_t threadCounter, 
-                 size_t globalCounter, std::string& buffer) const override {
+    void buildRequest(int threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.url = "/_api/transaction";
+      requestData.type = rest::RequestType::POST;
       size_t mod = globalCounter % 2;
       using namespace arangodb::velocypack;
-      Builder b;
-      b(Value(ValueType::Object));
-      b.add("collections", Value(ValueType::Object));
+      requestData.payload(Value(ValueType::Object));
+      requestData.payload.add("collections", Value(ValueType::Object));
       if (mod == 0) {
-        b.add("exclusive", Value(ValueType::Array));
+        requestData.payload.add("exclusive", Value(ValueType::Array));
       } else {
-        b.add("read", Value(ValueType::Array));
+        requestData.payload.add("read", Value(ValueType::Array));
       }
-      b.add(Value(_c1));
-      b.add(Value(_c2));
-      b.close();
-      b.close();
-      std::string actionValue = std::string("function () { var c1 = require(\"internal\").db[\"") + _c1 + std::string("\"]; var c2 = require(\"internal\").db[\"") + _c2 + std::string("\"];"); 
+      requestData.payload.add(Value(_c1));
+      requestData.payload.add(Value(_c2));
+      requestData.payload.close();
+      requestData.payload.close();
+      std::string actionValue = std::string("function () { var c1 = require(\"internal\").db[\"") + _c1 + std::string("\"]; var c2 = require(\"internal\").db[\"") + _c2 + std::string("\"];");
       if (mod == 0) {
         actionValue += std::string("var n = Math.floor(Math.random() * 25) + 1; c1.save({count : n}); var d = c2.document(\"sum\"); c2.update(d, { count: d.count + n }); }");
       } else {
         actionValue += std::string("var r1 = 0; c1.toArray().forEach(function (d) { r1 += d.count }); var r2 = c2.document(\"sum\").count; if (r1 !== r2) { throw \"error, counters deviate!\"; } }");
       }
-      b.add("action", Value(actionValue));
-      b.close();
-      buffer = b.toJson();
+      requestData.payload.add("action", Value(actionValue));
+      requestData.payload.close();
+    }
+
+    //log in only one place, this returns string for the description;
+    char const* getDescription() const noexcept override {
+      return "creates two collections and then executes JavaScript Transactions that read from and write to both collections. There will be as many JavaScript Transactions as --requests. The --complexity parameter is ignored.";
+    }
+
+    bool isDeprecated() const noexcept override {
+      return false;
     }
 
     std::string _c1;

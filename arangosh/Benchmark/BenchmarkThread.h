@@ -166,7 +166,7 @@ namespace arangodb {
           try {
             _httpClient = _client.createHttpClient();
           } catch (...) {
-            LOG_TOPIC("b69d7", FATAL, arangodb::Logger::FIXME)
+            LOG_TOPIC("b69d7", FATAL, arangodb::Logger::BENCH)
               << "cannot create server connection, giving up!";
             FATAL_ERROR_EXIT();
           }
@@ -185,7 +185,7 @@ namespace arangodb {
               delete result;
             }
 
-            LOG_TOPIC("5cda7", FATAL, arangodb::Logger::FIXME)
+            LOG_TOPIC("5cda7", FATAL, arangodb::Logger::BENCH)
               << "could not connect to server";
             FATAL_ERROR_EXIT();
           }
@@ -195,7 +195,7 @@ namespace arangodb {
           // if we're the first thread, set up the test
           if (_threadNumber == 0) {
             if (!_operation->setUp(_httpClient.get())) {
-              LOG_TOPIC("528b6", FATAL, arangodb::Logger::FIXME)
+              LOG_TOPIC("528b6", FATAL, arangodb::Logger::BENCH)
                 << "could not set up the test";
               FATAL_ERROR_EXIT();
             }
@@ -227,20 +227,20 @@ namespace arangodb {
               try {
                 executeBatchRequest(numOps);
               } catch (arangodb::basics::Exception const& ex) {
-                LOG_TOPIC("bd1d1", FATAL, arangodb::Logger::FIXME)
+                LOG_TOPIC("bd1d1", FATAL, arangodb::Logger::BENCH)
                   << "Caught exception during test execution: " << ex.code() << " "
                   << ex.what();
                 FATAL_ERROR_EXIT();
               } catch (std::bad_alloc const&) {
-                LOG_TOPIC("29451", FATAL, arangodb::Logger::FIXME)
+                LOG_TOPIC("29451", FATAL, arangodb::Logger::BENCH)
                   << "Caught OOM exception during test execution!";
                 FATAL_ERROR_EXIT();
               } catch (std::exception const& ex) {
-                LOG_TOPIC("793e3", FATAL, arangodb::Logger::FIXME)
+                LOG_TOPIC("793e3", FATAL, arangodb::Logger::BENCH)
                   << "Caught STD exception during test execution: " << ex.what();
                 FATAL_ERROR_EXIT();
               } catch (...) {
-                LOG_TOPIC("c1d6d", FATAL, arangodb::Logger::FIXME)
+                LOG_TOPIC("c1d6d", FATAL, arangodb::Logger::BENCH)
                   << "Caught unknown exception during test execution!";
                 FATAL_ERROR_EXIT();
               }
@@ -278,11 +278,10 @@ namespace arangodb {
         void executeBatchRequest(const uint64_t numOperations) {
           static char const boundary[] = "XXXarangobench-benchmarkXXX";
           size_t blen = strlen(boundary);
-
           basics::StringBuffer batchPayload(true);
           auto ret = batchPayload.reserve(numOperations * 1024);
           if (ret != TRI_ERROR_NO_ERROR) {
-            LOG_TOPIC("bd98d", FATAL, arangodb::Logger::FIXME)
+            LOG_TOPIC("bd98d", FATAL, arangodb::Logger::BENCH)
               << "Failed to reserve " << numOperations * 1024 << " bytes for "
               << numOperations << " batch operations: " << ret;
             FATAL_ERROR_EXIT();
@@ -301,22 +300,22 @@ namespace arangodb {
             // body
             size_t const threadCounter = _counter++;
             size_t const globalCounter = _offset + threadCounter;
-            std::string const url = _operation->url(_threadNumber, threadCounter, globalCounter);
-            const rest::RequestType type =
-              _operation->type(_threadNumber, threadCounter, globalCounter);
-            if (url.empty()) {
-              LOG_TOPIC("65da1", WARN, arangodb::Logger::FIXME) << "URL is empty!";
+            _requestData.payload.clear();
+            _operation->buildRequest(_threadNumber, threadCounter, globalCounter, _requestData);
+            if (_requestData.url.empty()) {
+              LOG_TOPIC("65da1", WARN, arangodb::Logger::BENCH) << "URL is empty!";
             }
 
             // headline, e.g. POST /... HTTP/1.1
-            HttpRequest::appendMethod(type, &batchPayload);
-            batchPayload.appendText(url);
+            HttpRequest::appendMethod(_requestData.type, &batchPayload);
+            batchPayload.appendText(_requestData.url);
             batchPayload.appendText(TRI_CHAR_LENGTH_PAIR(" HTTP/1.1\r\n"));
             batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-            std::string payload;
-            _operation->payload(_threadNumber, threadCounter, globalCounter, payload);
-            batchPayload.appendText(payload.c_str(), payload.size());
-            batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+            if (!_requestData.payload.slice().isNone()) {
+              std::string const payload = _requestData.payload.toJson();
+              batchPayload.appendText(payload.c_str(), payload.size());
+              batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+            }
           }
 
           // end of MIME
@@ -345,7 +344,7 @@ namespace arangodb {
             }
             _warningCount++;
             if (_warningCount < MaxWarnings) {
-              LOG_TOPIC("04e82", WARN, arangodb::Logger::FIXME)
+              LOG_TOPIC("04e82", WARN, arangodb::Logger::BENCH)
                 << "batch operation failed because server did not reply";
             }
             return;
@@ -356,16 +355,16 @@ namespace arangodb {
 
             _warningCount++;
             if (_warningCount < MaxWarnings) {
-              LOG_TOPIC("948a3", WARN, arangodb::Logger::FIXME)
+              LOG_TOPIC("948a3", WARN, arangodb::Logger::BENCH)
                 << "batch operation failed with HTTP code " << result->getHttpReturnCode()
                 << " - " << result->getHttpReturnMessage() << " ";
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-              LOG_TOPIC("ea82d", WARN, arangodb::Logger::FIXME)
+              LOG_TOPIC("ea82d", WARN, arangodb::Logger::BENCH)
                 << "We tried to send this:\n "
                 << std::string(batchPayload.c_str(), batchPayload.length());
 #endif
             } else if (_warningCount == MaxWarnings) {
-              LOG_TOPIC("3ac4b", WARN, arangodb::Logger::FIXME) << "...more warnings...";
+              LOG_TOPIC("3ac4b", WARN, arangodb::Logger::BENCH) << "...more warnings...";
             }
           } else {
             auto const& headers = result->getHeaderFields();
@@ -378,13 +377,13 @@ namespace arangodb {
                 _operationsCounter->incFailures(errorCount);
                 _warningCount++;
                 if (_warningCount < MaxWarnings) {
-                  LOG_TOPIC("b1db5", WARN, arangodb::Logger::FIXME)
+                  LOG_TOPIC("b1db5", WARN, arangodb::Logger::BENCH)
                     << "Server side warning count: " << errorCount;
                   if (_verbose) {
-                    LOG_TOPIC("890f9", WARN, arangodb::Logger::FIXME)
+                    LOG_TOPIC("890f9", WARN, arangodb::Logger::BENCH)
                       << "Server reply: " << result->getBody().c_str();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-                    LOG_TOPIC("4a645", WARN, arangodb::Logger::FIXME)
+                    LOG_TOPIC("4a645", WARN, arangodb::Logger::BENCH)
                       << "We tried to send this:\n "
                       << std::string(batchPayload.c_str(), batchPayload.length());
 #endif
@@ -403,18 +402,17 @@ namespace arangodb {
         void executeSingleRequest() {
           size_t const threadCounter = _counter++;
           size_t const globalCounter = _offset + threadCounter;
-          rest::RequestType const type =
-            _operation->type(_threadNumber, threadCounter, globalCounter);
-          std::string const url = _operation->url(_threadNumber, threadCounter, globalCounter);
-
-          // std::cout << "thread number #" << _threadNumber << ", threadCounter " <<
-          // threadCounter << ", globalCounter " << globalCounter << "\n";
+          _requestData.payload.clear();
 
           httpclient::SimpleHttpResult* result = nullptr;
-          std::string payload;
-          _operation->payload(_threadNumber, threadCounter, globalCounter, payload);
+          _operation->buildRequest(_threadNumber, threadCounter, globalCounter, _requestData);
           double start = TRI_microtime();
-          result = _httpClient->request(type, url, payload.data(), payload.size(), _headers);
+          if (_requestData.payload.slice().isNone()) {
+            result = _httpClient->request(_requestData.type, _requestData.url, "", 0, _headers);
+          } else {
+            std::string const payload = _requestData.payload.toJson();
+            result = _httpClient->request(_requestData.type, _requestData.url, payload.data(), payload.size(), _headers);
+          }
           double delta = TRI_microtime() - start;
           oneTime(delta);
           _time += delta;
@@ -426,7 +424,7 @@ namespace arangodb {
             }
             _warningCount++;
             if (_warningCount < MaxWarnings) {
-              LOG_TOPIC("f5982", WARN, arangodb::Logger::FIXME)
+              LOG_TOPIC("f5982", WARN, arangodb::Logger::BENCH)
                 << "single operation failed because server did not reply";
             }
             return;
@@ -437,12 +435,12 @@ namespace arangodb {
 
             _warningCount++;
             if (_warningCount < MaxWarnings) {
-              LOG_TOPIC("fb835", WARN, arangodb::Logger::FIXME)
-                << "request for URL '" << url << "' failed with HTTP code "
+              LOG_TOPIC("fb835", WARN, arangodb::Logger::BENCH)
+                << "request for URL '" << _requestData.url << "' failed with HTTP code "
                 << result->getHttpReturnCode() << ": "
                 << std::string(result->getBody().c_str(), result->getBody().length());
             } else if (_warningCount == MaxWarnings) {
-              LOG_TOPIC("6daf1", WARN, arangodb::Logger::FIXME) << "...more warnings...";
+              LOG_TOPIC("6daf1", WARN, arangodb::Logger::BENCH) << "...more warnings...";
             }
           }
           delete result;
@@ -462,6 +460,13 @@ namespace arangodb {
         double getTime() const { return _time; }
 
       private:
+
+        //////////////////////////////////////////////////////////////////////////////
+        /// @brief the request builder with HTTP request values
+        //////////////////////////////////////////////////////////////////////////////
+
+        BenchmarkOperation::RequestData _requestData;
+
         //////////////////////////////////////////////////////////////////////////////
         /// @brief the operation to benchmark
         //////////////////////////////////////////////////////////////////////////////

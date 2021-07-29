@@ -43,18 +43,10 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    std::string url(int const threadNumber, size_t const threadCounter,
-                    size_t const globalCounter) override {
-      return std::string("/_api/cursor");
-    }
-
-    rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                           size_t const globalCounter) override {
-      return rest::RequestType::POST;
-    }
-
-    void payload(int threadNumber, size_t threadCounter, 
-                 size_t globalCounter, std::string& buffer) const override {
+    void buildRequest(int threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.url = "/_api/cursor";
+      requestData.type = rest::RequestType::POST;
       using namespace arangodb::velocypack;
       uint64_t const n = _arangobench.complexity();
       std::string values = "INSERT {\"_key\": \"test" + std::to_string(static_cast<int64_t>(globalCounter)) + "\"";
@@ -63,11 +55,17 @@ namespace arangodb::arangobench {
         values += ",\"test" + std::to_string(i) + "\": RANDOM_TOKEN(32)"; 
       }
       values += "} INTO " + _arangobench.collection();
-      Builder b;
-      b.openObject();
-      b.add("query", Value(values));
-      b.close();
-      buffer = b.toJson();
+      requestData.payload.openObject();
+      requestData.payload.add("query", Value(values));
+      requestData.payload.close();
+    }
+
+    char const* getDescription() const noexcept override {
+      return "performs AQL queries that insert one document per query. The --complexity parameter controls the number of attributes per document. The attribute values for the inserted documents are generated using AQL functions RAND() and RANDOM_TOKEN(). The total number of documents to be inserted is equal to the value of --requests.";
+    }
+
+    bool isDeprecated() const noexcept override {
+      return true;
     }
 
   };

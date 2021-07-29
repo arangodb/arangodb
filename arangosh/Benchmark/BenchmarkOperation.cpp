@@ -39,6 +39,10 @@ std::unique_ptr<BenchmarkOperation> BenchmarkOperation::createBenchmark(std::str
   return nullptr;
 }
 
+void BenchmarkOperation::buildRequest(int threadNumber, size_t threadCounter, size_t globalCounter, BenchmarkOperation::RequestData&) const {
+
+}
+
 void BenchmarkOperation::registerBenchmark(std::string name, BenchmarkFactory factory) {
   allBenchmarks().emplace(std::move(name), std::move(factory));
 }

@@ -35,22 +35,7 @@ namespace arangodb::arangobench {
     static std::string name() { return "import-document"; }
 
     DocumentImportTest(BenchFeature& arangobench)
-      : Benchmark<DocumentImportTest>(arangobench),
-      _url("/_api/import?collection=" + _arangobench.collection() +
-          "&type=documents") {
-        uint64_t const n = _arangobench.complexity();
-        using namespace arangodb::velocypack;
-        Builder b;
-        for (uint64_t i = 0; i < n; ++i) {
-          b.clear();
-          b.openObject();
-          b.add("key1", Value(i));
-          b.add("key2", Value(i));
-          b.close();
-          _buffer += b.toJson();
-          _buffer.push_back('\n');
-        }
-      }
+      : Benchmark<DocumentImportTest>(arangobench) {}
 
     bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
       return DeleteCollection(client, _arangobench.collection()) &&
@@ -59,25 +44,29 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    std::string url(int const threadNumber, size_t const threadCounter,
-                    size_t const globalCounter) override {
-      return _url;
+    void buildRequest(int threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.type = rest::RequestType::POST;
+      requestData.url = std::string("/_api/import?collection=" + _arangobench.collection() +
+          "&type=documents");
+      uint64_t const n = _arangobench.complexity();
+      using namespace arangodb::velocypack;
+      for (uint64_t i = 0; i < n; ++i) {
+        requestData.payload.openObject();
+        requestData.payload.add("key1", Value(i));
+        requestData.payload.add("key2", Value(i));
+        requestData.payload.close();
+      }
     }
 
-    rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                           size_t const globalCounter) override {
-      return rest::RequestType::POST;
+    //log in only one place, this returns string for the description;
+    char const* getDescription() const noexcept override {
+      return "performs multi-document imports using the specialized import API (in contrast to performing inserts via generic AQL). Each inserted document will have two attributes. The --complexity parameter controls the number of documents per import request. The total number of documents to be inserted is equal to the value of --requests times the value of --complexity.";
     }
 
-    void payload(int threadNumber, size_t threadCounter,
-                 size_t globalCounter, std::string& buffer) const override {
-      buffer = _buffer;
+    bool isDeprecated() const noexcept override {
+      return false;
     }
-
-    private: 
-    std::string _url;
-
-    std::string _buffer;
 
   };
 

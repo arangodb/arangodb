@@ -230,7 +230,7 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void BenchFeature::status(std::string const& value) {
   if (!_quiet) {
-    std::cout << value << std::endl;
+    LOG_TOPIC("a6905", INFO, arangodb::Logger::BENCH) << value;
   }
 }
 
@@ -249,7 +249,7 @@ void BenchFeature::start() {
   sort(_percentiles.begin(), _percentiles.end());
   
   if (!_jsonReportFile.empty() && FileUtils::exists(_jsonReportFile)) {
-    LOG_TOPIC("ee2a4", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("ee2a4", FATAL, arangodb::Logger::BENCH)
         << "file already exists: '" << _jsonReportFile << "' - won't overwrite it.";
     FATAL_ERROR_EXIT();
   }
@@ -275,7 +275,7 @@ void BenchFeature::start() {
         delete result;
       }
 
-      LOG_TOPIC("5cda8", FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("5cda8", FATAL, arangodb::Logger::BENCH)
         << "failed to create the specified database: " << msg;
       FATAL_ERROR_EXIT();
     }
@@ -290,9 +290,16 @@ void BenchFeature::start() {
   std::unique_ptr<BenchmarkOperation> benchmark = BenchmarkOperation::createBenchmark(_testCase, *this);
 
   if (benchmark == nullptr) {
-    LOG_TOPIC("ee2a5", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("ee2a5", FATAL, arangodb::Logger::BENCH)
         << "invalid test case name '" << _testCase << "'";
     FATAL_ERROR_EXIT();
+  }
+
+  LOG_TOPIC("69091", INFO, arangodb::Logger::BENCH)
+      << "Running test case '" <<  _testCase << "': " << benchmark->getDescription();
+  if (benchmark->isDeprecated()) {
+    LOG_TOPIC("caf8a", WARN, arangodb::Logger::BENCH)
+        << "Please note: this test case is deprecated and will be removed in a future version.";
   }
 
   if (_duration != 0) {
@@ -388,7 +395,7 @@ void BenchFeature::start() {
       }
 
       if (_progress && numOperations >= nextReportValue) {
-        LOG_TOPIC("c3604", INFO, arangodb::Logger::FIXME) << "number of operations: " << nextReportValue;
+        LOG_TOPIC("c3604", INFO, arangodb::Logger::BENCH) << "number of operations: " << nextReportValue;
         nextReportValue += stepValue;
       }
       
@@ -629,12 +636,12 @@ void BenchFeature::printResult(BenchRunResult const& result, VPackBuilder& build
 
   builder.add("failures", VPackValue(result._failures));
   if (result._failures > 0) {
-    LOG_TOPIC("a826b", WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("a826b", WARN, arangodb::Logger::BENCH)
         << result._failures << " arangobench request(s) failed!";
   }
   builder.add("incompleteResults", VPackValue(result._incomplete));
   if (result._incomplete > 0) {
-    LOG_TOPIC("41006", WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("41006", WARN, arangodb::Logger::BENCH)
         << result._incomplete << " arangobench requests with incomplete results!";
   }
 }

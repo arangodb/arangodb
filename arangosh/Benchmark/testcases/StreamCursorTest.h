@@ -43,23 +43,14 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    std::string url(int const threadNumber, size_t const threadCounter,
-                    size_t const globalCounter) override {
-      return std::string("/_api/cursor");
-    }
-
-    rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                           size_t const globalCounter) override {
-      return rest::RequestType::POST;
-    }
-
-    void payload(int threadNumber, size_t threadCounter,
-                 size_t globalCounter, std::string& buffer) const override {
+    void buildRequest(int threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.url = "/_api/cursor";
+      requestData.type = rest::RequestType::POST;
       size_t mod = globalCounter % 2;
       uint64_t n = _arangobench.complexity();
       using namespace arangodb::velocypack;
-      Builder b;
-      b.openObject();
+      requestData.payload.openObject();
       std::string values;
       if (globalCounter == 0) {
         values = "FOR i IN 1..500 INSERT { \"_key\": TO_STRING(i)";
@@ -67,23 +58,31 @@ namespace arangodb::arangobench {
           values += ", \"value" + std::to_string(i) + "\": true";
         }
         values += "} INTO " + _arangobench.collection();
-        b.add("query", Value(values));
+        requestData.payload.add("query", Value(values));
       } else if (mod == 0) {
         values = "UPDATE { \"_key\": \"1\" } WITH { \"foo\": 1";
         for (uint64_t i = 1; i <= n; ++i) {
           values += ", \"value" + std::to_string(i) + "\": true";
         }
         values += " } INTO " + _arangobench.collection() + std::string(" OPTIONS { ignoreErrors: true }");
-        b.add("query", Value(values));
+        requestData.payload.add("query", Value(values));
       } else {
         values = "FOR doc IN " + _arangobench.collection() + std::string(" RETURN doc");
-        b.add("query", Value(values));
-        b.add("options", Value(ValueType::Object));
-        b.add("stream", Value(true));
-        b.close();
+        requestData.payload.add("query", Value(values));
+        requestData.payload.add("options", Value(ValueType::Object));
+        requestData.payload.add("stream", Value(true));
+        requestData.payload.close();
       }
-      b.close();
-      buffer = b.toJson();
+      requestData.payload.close();
+    }
+
+    //log in only one place, this returns string for the description;
+    char const* getDescription() const noexcept override {
+      return "creates 500 documents in a collection, and then performs a mix of AQL update queries (all on the same document) and a streaming AQL query that returns all documents from the collection. The --complexity parameter can be used to control the number of attributes for the inserted documents and the update queries. This test will trigger a lot of write-write conflicts with --concurrency bigger than 2.";
+    }
+
+    bool isDeprecated() const noexcept override {
+      return false;
     }
 
   };

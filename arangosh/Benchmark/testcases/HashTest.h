@@ -44,51 +44,46 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    std::string url(int const threadNumber, size_t const threadCounter,
-                    size_t const globalCounter) override {
+    void buildRequest(int threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
       size_t const mod = globalCounter % 4;
-
       if (mod == 0) {
-        return std::string("/_api/document?collection=" + _arangobench.collection());
+        requestData.url = std::string("/_api/document?collection=" + _arangobench.collection());
       } else {
         size_t keyId = (size_t)(globalCounter / 4);
         std::string const key = "testkey" + StringUtils::itoa(keyId);
-
-        return std::string("/_api/document/" + _arangobench.collection() + "/" + key);
+        requestData.url = std::string("/_api/document/" + _arangobench.collection() + "/" + key);
       }
-    }
-
-    rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                           size_t const globalCounter) override {
-      size_t const mod = globalCounter % 4;
-
       if (mod == 0) {
-        return rest::RequestType::POST;
+        requestData.type = rest::RequestType::POST;
       } else if (mod == 1) {
-        return rest::RequestType::GET;
+        requestData.type = rest::RequestType::GET;
       } else if (mod == 2) {
-        return rest::RequestType::PATCH;
+        requestData.type = rest::RequestType::PATCH;
       } else if (mod == 3) {
-        return rest::RequestType::GET;
+        requestData.type = rest::RequestType::GET;
       } else {
         TRI_ASSERT(false);
-        return rest::RequestType::GET;
+        requestData.type = rest::RequestType::GET;
       }
-    }
-
-    void payload(int threadNumber, size_t threadCounter,
-                 size_t globalCounter, std::string& buffer) const override {
-      size_t mod = globalCounter % 4;
       if (mod == 0 || mod == 2) {
         size_t keyId = static_cast<size_t>(globalCounter / 4);
         using namespace arangodb::velocypack;
-        Builder b;
-        b.openObject();
-        b.add("_key", Value(std::string("testkey") + std::to_string(keyId)));
-        b.add("value", Value(static_cast<uint32_t>(threadCounter)));
-        b.close();
-        buffer = b.toJson();
+        requestData.payload.openObject();
+        requestData.payload.add("_key", Value(std::string("testkey") + std::to_string(keyId)));
+        requestData.payload.add("value", Value(static_cast<uint32_t>(threadCounter)));
+        requestData.payload.close();
       }
+
+    }
+
+    //log in only one place, this returns string for the description;
+    char const* getDescription() const noexcept override {
+      return "performs multi-document imports using the specialized import API (in contrast to performing inserts via generic AQL). Each inserted document will have two attributes. The --complexity parameter controls the number of documents per import request. The total number of documents to be inserted is equal to the value of --requests times the value of --complexity.";
+    }
+
+    bool isDeprecated() const noexcept override {
+      return false;
     }
 
   };

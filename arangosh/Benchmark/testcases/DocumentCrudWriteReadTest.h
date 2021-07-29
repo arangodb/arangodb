@@ -42,44 +42,41 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    std::string url(int const threadNumber, size_t const threadCounter,
-                    size_t const globalCounter) override {
+    void buildRequest(int threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
       size_t const mod = globalCounter % 2;
       if (mod == 0) {
-        return std::string("/_api/document?collection=" + _arangobench.collection());
+        requestData.url = std::string("/_api/document?collection=" + _arangobench.collection());
       } else {
         size_t keyId = (size_t)(globalCounter / 2);
         std::string const key = "testkey" + StringUtils::itoa(keyId);
-        return std::string("/_api/document/" + _arangobench.collection() + "/" + key);
+        requestData.url = std::string("/_api/document/" + _arangobench.collection() + "/" + key);
       }
-    }
-
-    rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                           size_t const globalCounter) override {
-      size_t const mod = globalCounter % 2;
       if (mod == 0) {
-        return rest::RequestType::POST;
+        requestData.type = rest::RequestType::POST;
       } else {
-        return rest::RequestType::GET;
+        requestData.type = rest::RequestType::GET;
       }
-    }
-
-    void payload(int threadNumber, size_t threadCounter,
-                 size_t globalCounter, std::string& buffer) const override {
-      size_t mod = globalCounter % 2;
       if (mod == 0) {
         uint64_t n = _arangobench.complexity();
         size_t keyId = static_cast<size_t>(globalCounter / 2);
         using namespace arangodb::velocypack;
-        Builder b;
-        b.openObject();
-        b.add("_key", Value(std::string("testkey") + std::to_string(keyId)));
+        requestData.payload.openObject();
+        requestData.payload.add("_key", Value(std::string("testkey") + std::to_string(keyId)));
         for (uint64_t i = 1; i <= n; ++i) {
-          b.add(std::string("value") + std::to_string(i), Value(true));
+          requestData.payload.add(std::string("value") + std::to_string(i), Value(true));
         }
-        b.close();
-        buffer = b.toJson();
+        requestData.payload.close();
       }
+    }
+
+    //log in only one place, this returns string for the description;
+    char const* getDescription() const noexcept override {
+      return "will perform a 50-50 mix of insert and retrieval operations for documents. 50% of the operations will be single-document inserts, 50% of the operations will be single-document read requests. There will be a total of --requests operations. The --complexity parameter can be used to control the number of attributes for the inserted documents.";
+    }
+
+    bool isDeprecated() const noexcept override {
+      return false;
     }
 
   };
