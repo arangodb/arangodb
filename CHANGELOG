@@ -1,6 +1,8 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Fix BTS-453: Download of a HotBackup from remote source doesn't work on macOS.
+
 * Web UI: Fixes a logical error which occured after re-visiting the logs view
   which lead to not displaying the logs view and its entries correctly
   (BTS-507).
