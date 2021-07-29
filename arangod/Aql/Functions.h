@@ -542,13 +542,13 @@ struct Functions {
                               AstNode const&, VPackFunctionParameters const&);
 
   static AqlValue CosineSimilarity(arangodb::aql::ExpressionContext*,
-                              AstNode const&, VPackFunctionParameters const&);
+                                   AstNode const&, VPackFunctionParameters const&);
 
   static AqlValue L1Distance(arangodb::aql::ExpressionContext*,
-                              AstNode const&, VPackFunctionParameters const&);
+                             AstNode const&, VPackFunctionParameters const&);
 
   static AqlValue L2Distance(arangodb::aql::ExpressionContext*,
-                              AstNode const&, VPackFunctionParameters const&);
+                             AstNode const&, VPackFunctionParameters const&);
 
   /// @brief dummy function that will only throw an error when called
   static AqlValue NotImplemented(arangodb::aql::ExpressionContext*,

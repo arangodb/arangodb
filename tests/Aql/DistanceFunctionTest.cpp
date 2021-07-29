@@ -50,6 +50,10 @@ namespace {
 // helper functions
 AqlValue createArray(const VPackSlice slice) {
 
+  if (!slice.isArray()) {
+    return AqlValue(slice);
+  }
+
   VPackBuilder builder;
   {
     VPackArrayBuilder arrayBuilder(&builder);
@@ -124,7 +128,6 @@ void assertDistanceFunction(char const* expected, char const* x, char const* y,
   // get slice for x value
   auto const jsonX = VPackParser::fromJson(x);
   auto const sliceX = jsonX->slice();
-  ASSERT_TRUE(sliceX.isArray());
 
   // create params vector from x slice
   AqlValue arrayX = createArray(sliceX);
@@ -132,11 +135,9 @@ void assertDistanceFunction(char const* expected, char const* x, char const* y,
   // get slice for y value
   auto const jsonY = VPackParser::fromJson(y);
   auto const sliceY = jsonY->slice();
-  ASSERT_TRUE(sliceY.isArray());
 
   // create params vector from y slice
   AqlValue arrayY = createArray(sliceY);
-
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   SmallVector<AqlValue> params{2,arena};
@@ -157,15 +158,119 @@ void assertDistanceFunction(char const* expected, char const* x, char const* y,
   actual_value.destroy();
 }
 
-TEST(CosineSimilarityTest, test) {
+void assertDecayFunctionFail(char const* x, char const* y,
+                             const arangodb::aql::AstNode& node) {
+  // get slice for x value
+  auto const jsonX = VPackParser::fromJson(x);
+  auto const sliceX = jsonX->slice();
+
+  // create params vector from x slice
+  AqlValue arrayX = createArray(sliceX);
+
+  // get slice for y value
+  auto const jsonY = VPackParser::fromJson(y);
+  auto const sliceY = jsonY->slice();
+
+  // create params vector from y slice
+  AqlValue arrayY = createArray(sliceY);
+
+  SmallVector<AqlValue>::allocator_type::arena_type arena;
+  SmallVector<AqlValue> params{2,arena};
+  params[0] = arrayX;
+  params[1] = arrayY;
+
+  ASSERT_TRUE(evaluateDistanceFunction(params, node).isNull(false));
+
+  // destroy AqlValues
+  for (auto& p : params) {
+    p.destroy();
+  }
+}
+
+TEST(DistanceFuncton, CosineSimilarityTest) {
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   arangodb::aql::Function f("COSINE_SIMILARITY", &Functions::CosineSimilarity);
   node.setData(static_cast<void const*>(&f));
 
-
+  // correct result
   assertDistanceFunction("0", "[0,1]","[1,0]", node);
+  assertDistanceFunction("0.9769856305801876", "[0.5, -1.23, 0.33]", "[1.0,-3.015,0.1231]", node);
+  assertDistanceFunction("-0.00026332365622013654", "[19, 14, -8, 6317]","[0.89, 0.19, 1000, 1]", node);
+  assertDistanceFunction("0.7817515661170301", "[3456, 191, -90, 500, 0.32]", "[713, 201, 508, -0.5, 0.75]", node);
+  assertDistanceFunction("-1", "[2]", "[-1]", node);
+  assertDistanceFunction("1", "[1]","[1]", node);
+  assertDistanceFunction("-1", "[-1,0]","[1,0]", node);
+  assertDistanceFunction("0", "[0,1,0]","[1,0,1]", node);
+  assertDistanceFunction("0", "[1,1,1,1,1,0]","[0,0,0,0,0,1]", node);
+  assertDistanceFunction("0", "[1,1]","[-1,1]", node);
+  assertDistanceFunction("0", "[1,-1]","[-1,-1]", node);
 
+  // with matrix
+  assertDistanceFunction("[1,1,1,1]", "[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]", "[1,1,1,1]", node);
+  assertDistanceFunction("[1,1,1]", "[[1,1,1,1],[1,1,1,1],[1,1,1,1]]", "[1,1,1,1]", node);
+  assertDistanceFunction("[1,1,1]", "[1,1,1,1]", "[[1,1,1,1],[1,1,1,1],[1,1,1,1]]", node);
+  assertDistanceFunction("[0.7071067811865475, 0.7071067811865475, 0.8660254037844387, 0.5]", "[[0,1,0,1],[1,0,0,1],[1,1,1,0],[0,0,0,1]]", "[1,1,1,1]", node);
+  assertDistanceFunction("[0.7071067811865475, 0.7071067811865475, 0.8660254037844387, 0.5]", "[1,1,1,1]", "[[0,1,0,1],[1,0,0,1],[1,1,1,0],[0,0,0,1]]", node);
+
+  // will fail
+  assertDecayFunctionFail("[0]","[0]", node);
+  assertDecayFunctionFail("[0]","[1]", node);
+  assertDecayFunctionFail("[1]","[0]", node);
+  assertDecayFunctionFail("[]","[]", node);
+  assertDecayFunctionFail("[1]","[]", node);
+  assertDecayFunctionFail("[]","[1]", node);
+  assertDecayFunctionFail("[\"one\"]","[\"zero\"]", node);
+  assertDecayFunctionFail("[true]","[false]", node);
+  assertDecayFunctionFail("[1]","0", node);
+  assertDecayFunctionFail("1","[0]", node);
+  assertDecayFunctionFail("true","false", node);
+  assertDecayFunctionFail("\"one\"","\"zero\"", node);
+
+  // with matrix
+  assertDecayFunctionFail("[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]","[1,1,1,1]", node);
+  assertDecayFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1,1]]", "[1,1,1,1]", node);
+  assertDecayFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]", "[1,1,1,1,1]", node);
+  assertDecayFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]", "[1,1,1,true]", node);
+  assertDecayFunctionFail("[[1,1,1,1],[0,0,0,0],[1,1,1,1],[1,1,1,1]]", "[1,1,1,1]", node);
+  assertDecayFunctionFail("[1,1,1,1]", "[[1,1,1,1],[0,0,0,0],[1,1,1,1],[1,1,1,1]]", node);
+  assertDecayFunctionFail("[[1,1,1,1],1,1,1,1,1,1,1,1,1,1,1,1]", "[1,1,1,1]", node);
+}
+
+TEST(DistanceFuncton, L1DistanceTest) {
+  // preparing
+  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+  arangodb::aql::Function f("L1_DISTANCE", &Functions::L1Distance);
+  node.setData(static_cast<void const*>(&f));
+
+  // correct result
+  assertDistanceFunction("6", "[-1,-1]","[2,2]", node);
+  assertDistanceFunction("0", "[0,0,0]","[0,0,0]", node);
+  assertDistanceFunction("3", "[-1,0,-1]","[0,-1,0]", node);
+  assertDistanceFunction("3", "[-0.5,0.5,-0.5]","[0.5,-0.5,0.5]", node);
+  assertDistanceFunction("7", "[0,0,0,0,0,0,0]", "[1,1,1,1,1,1,1]", node);
+  assertDistanceFunction("1.5", "[1.5]", "[3]", node);
+
+  // with matrix
+  assertDistanceFunction("[3,9,9,7]", "[[1,2,3],[-1,-2,-3],[3,4,5],[-5,2,1]]","[1,1,1]", node);
+  assertDistanceFunction("[4,4,4,4]", "[1,1,1,1]", "[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]", node);
+
+  // will fail with matrix
+  assertDecayFunctionFail("[[1,1,1,1]]", "[[1,1,1,1]]", node);
+  assertDecayFunctionFail("[[1,1,1,1]]", "[[1,1,1,1]]", node);
+}
+
+TEST(DistanceFuncton, L2DistanceTest) {
+  // preparing
+  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+  arangodb::aql::Function f("L2_DISTANCE", &Functions::L2Distance);
+  node.setData(static_cast<void const*>(&f));
+
+  // correct result
+  assertDistanceFunction("0", "[0,0]","[0,0]", node);
+  assertDistanceFunction("4.1231056256176606", "[1,1]","[5,2]", node);
+  assertDistanceFunction("1.4142135623730951", "[0,1]","[1,0]", node);
+  assertDistanceFunction("2.449489742783178", "[0,1,0,0,1]", "[2,0,0,0,0]", node);
 }
 
 }
