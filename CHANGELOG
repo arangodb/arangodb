@@ -1,6 +1,8 @@
 v3.7.14 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to 0.15.1.
+
 * Updated arangosync to 1.7.0.
 
 
