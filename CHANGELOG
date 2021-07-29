@@ -1,29 +1,6 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
-* Updated ArangoDB Starter to 0.15.1.
-
-* Updated arangosync to 2.5.0.
-
-* Fix BTS-453: Download of a HotBackup from remote source doesn't work on macOS.
-
-* Web UI: Fixes a logical error which occured after re-visiting the logs view
-  which lead to not displaying the logs view and its entries correctly
-  (BTS-507).
-
-* Raised the versions of the node modules `node-sass` and `sass-loader` to be
-  able to build the Web UI with Node v16+.
-
-* Suppress repeated warnings when settings LDAP options which turn out to be
-  unsupported on the target system. This avoids logging the same warnings
-  repeatedly.
-
-* Make `--javascript.copy-installation` also copy the `node_modules` sub
-  directory. This is required so we have a full copy of the JavaScript
-  dependencies and not one that excludes some infrequently changed modules.
-  In addition, file copying now intentionally excludes .map files as they are
-  not needed.
-
 * Updated JavaScript dependencies, including breaking changes to non-public
   modules. We recommend always bundling your own copy of third-party modules,
   even ones listed as public.
@@ -50,6 +27,29 @@ v3.8.1 (XXXX-XX-XX)
   - type-is: 1.6.16 -> 1.6.18
   - underscore: 1.9.1 -> 1.13.1
   - xmldom: 0.1.27 -> 0.6.0
+
+* Updated ArangoDB Starter to 0.15.1.
+
+* Updated arangosync to 2.5.0.
+
+* Fix BTS-453: Download of a HotBackup from remote source doesn't work on macOS.
+
+* Web UI: Fixes a logical error which occured after re-visiting the logs view
+  which lead to not displaying the logs view and its entries correctly
+  (BTS-507).
+
+* Raised the versions of the node modules `node-sass` and `sass-loader` to be
+  able to build the Web UI with Node v16+.
+
+* Suppress repeated warnings when settings LDAP options which turn out to be
+  unsupported on the target system. This avoids logging the same warnings
+  repeatedly.
+
+* Make `--javascript.copy-installation` also copy the `node_modules` sub
+  directory. This is required so we have a full copy of the JavaScript
+  dependencies and not one that excludes some infrequently changed modules.
+  In addition, file copying now intentionally excludes .map files as they are
+  not needed.
 
 * Fixed a bug, where Coordinators handled plan changes for databases in
   heartbeat thread in wrong order. Databases could be listed, but not used.
