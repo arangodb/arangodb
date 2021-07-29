@@ -1,6 +1,8 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Fix BTS-453: Download of a HotBackup from remote source doesn't work on macOS
+
 * Make `--javascript.copy-installation` also copy the `node_modules` sub
   directory. This is required so we have a full copy of the JavaScript
   dependencies and not one that excludes some infrequently changed modules.
