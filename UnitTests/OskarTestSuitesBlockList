@@ -9,3 +9,4 @@ agency-restart
 dump_jwt
 dump_no_envelope
 dump_with_crashes
+replication2_client
