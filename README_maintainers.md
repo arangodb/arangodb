@@ -127,6 +127,8 @@ but do not include `Documentation/Metrics/allMetrics.yaml` in your PR
 
 ## Building
 
+Note: Make sure that your source path does not contain spaces otherwise the build process will likely fail.
+
 ### Building the binaries
 
 ArangoDB uses a build system called [Oskar](https://github.com/arangodb/oskar).
