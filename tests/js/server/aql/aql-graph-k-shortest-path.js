@@ -31,7 +31,7 @@
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const gm = require("@arangodb/general-graph");
-const _ = require("underscore");
+const _ = require("lodash");
 const internal = require('internal');
 
 const graphName = "UnitTestGraph";
