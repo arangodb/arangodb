@@ -158,7 +158,7 @@ void assertDistanceFunction(char const* expected, char const* x, char const* y,
   actual_value.destroy();
 }
 
-void assertDecayFunctionFail(char const* x, char const* y,
+void assertDistanceFunctionFail(char const* x, char const* y,
                              const arangodb::aql::AstNode& node) {
   // get slice for x value
   auto const jsonX = VPackParser::fromJson(x);
@@ -214,27 +214,27 @@ TEST(DistanceFuncton, CosineSimilarityTest) {
   assertDistanceFunction("[0.7071067811865475, 0.7071067811865475, 0.8660254037844387, 0.5]", "[1,1,1,1]", "[[0,1,0,1],[1,0,0,1],[1,1,1,0],[0,0,0,1]]", node);
 
   // will fail
-  assertDecayFunctionFail("[0]","[0]", node);
-  assertDecayFunctionFail("[0]","[1]", node);
-  assertDecayFunctionFail("[1]","[0]", node);
-  assertDecayFunctionFail("[]","[]", node);
-  assertDecayFunctionFail("[1]","[]", node);
-  assertDecayFunctionFail("[]","[1]", node);
-  assertDecayFunctionFail("[\"one\"]","[\"zero\"]", node);
-  assertDecayFunctionFail("[true]","[false]", node);
-  assertDecayFunctionFail("[1]","0", node);
-  assertDecayFunctionFail("1","[0]", node);
-  assertDecayFunctionFail("true","false", node);
-  assertDecayFunctionFail("\"one\"","\"zero\"", node);
+  assertDistanceFunctionFail("[0]","[0]", node);
+  assertDistanceFunctionFail("[0]","[1]", node);
+  assertDistanceFunctionFail("[1]","[0]", node);
+  assertDistanceFunctionFail("[]","[]", node);
+  assertDistanceFunctionFail("[1]","[]", node);
+  assertDistanceFunctionFail("[]","[1]", node);
+  assertDistanceFunctionFail("[\"one\"]","[\"zero\"]", node);
+  assertDistanceFunctionFail("[true]","[false]", node);
+  assertDistanceFunctionFail("[1]","0", node);
+  assertDistanceFunctionFail("1","[0]", node);
+  assertDistanceFunctionFail("true","false", node);
+  assertDistanceFunctionFail("\"one\"","\"zero\"", node);
 
   // with matrix
-  assertDecayFunctionFail("[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]","[1,1,1,1]", node);
-  assertDecayFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1,1]]", "[1,1,1,1]", node);
-  assertDecayFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]", "[1,1,1,1,1]", node);
-  assertDecayFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]", "[1,1,1,true]", node);
-  assertDecayFunctionFail("[[1,1,1,1],[0,0,0,0],[1,1,1,1],[1,1,1,1]]", "[1,1,1,1]", node);
-  assertDecayFunctionFail("[1,1,1,1]", "[[1,1,1,1],[0,0,0,0],[1,1,1,1],[1,1,1,1]]", node);
-  assertDecayFunctionFail("[[1,1,1,1],1,1,1,1,1,1,1,1,1,1,1,1]", "[1,1,1,1]", node);
+  assertDistanceFunctionFail("[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]","[1,1,1,1]", node);
+  assertDistanceFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1,1]]", "[1,1,1,1]", node);
+  assertDistanceFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]", "[1,1,1,1,1]", node);
+  assertDistanceFunctionFail("[[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]", "[1,1,1,true]", node);
+  assertDistanceFunctionFail("[[1,1,1,1],[0,0,0,0],[1,1,1,1],[1,1,1,1]]", "[1,1,1,1]", node);
+  assertDistanceFunctionFail("[1,1,1,1]", "[[1,1,1,1],[0,0,0,0],[1,1,1,1],[1,1,1,1]]", node);
+  assertDistanceFunctionFail("[[1,1,1,1],1,1,1,1,1,1,1,1,1,1,1,1]", "[1,1,1,1]", node);
 }
 
 TEST(DistanceFuncton, L1DistanceTest) {
@@ -256,8 +256,8 @@ TEST(DistanceFuncton, L1DistanceTest) {
   assertDistanceFunction("[4,4,4,4]", "[1,1,1,1]", "[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]", node);
 
   // will fail with matrix
-  assertDecayFunctionFail("[[1,1,1,1]]", "[[1,1,1,1]]", node);
-  assertDecayFunctionFail("[[1,1,1,1]]", "[[1,1,1,1]]", node);
+  assertDistanceFunctionFail("[[1,1,1,1]]", "[[1,1,1,1]]", node);
+  assertDistanceFunctionFail("[[1,1,1,1]]", "[[1,1,1,1]]", node);
 }
 
 TEST(DistanceFuncton, L2DistanceTest) {

@@ -9144,10 +9144,8 @@ AqlValue Functions::L1Distance(
         return AqlValue(AqlValueHintNull());
       }
 
-      double lhsVal = lhsSlice.getNumber<double>();
-      double rhsVal = rhsSlice.getNumber<double>();
-
-      dist += std::abs(lhsVal - rhsVal);
+      dist += std::abs(lhsSlice.getNumber<double>() -
+                       rhsSlice.getNumber<double>());
     }
 
     return ::numberValue(dist, true);
@@ -9176,10 +9174,9 @@ AqlValue Functions::L2Distance(
         return AqlValue(AqlValueHintNull());
       }
 
-      double lhsVal = lhsSlice.getNumber<double>();
-      double rhsVal = rhsSlice.getNumber<double>();
+      double diff = lhsSlice.getNumber<double>() - rhsSlice.getNumber<double>();
 
-      dist += (lhsVal - rhsVal) * (lhsVal - rhsVal);
+      dist += std::pow(diff, 2);
     }
 
     return ::numberValue(std::sqrt(dist), true);
