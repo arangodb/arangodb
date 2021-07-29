@@ -3850,6 +3850,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
   auto collection = static_cast<Collection const*>(nullptr);
   auto inputVariable = static_cast<Variable const*>(nullptr);
 
+  bool isGraphNode = false;
   // TODO: this seems a bit verbose, but is at least local & simple
   //       the modification nodes are all collectionaccessing, the graph nodes
   //       are currently assumed to be disjoint, and hence smart, so all
@@ -3886,6 +3887,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       TRI_ASSERT(traversalNode->isDisjoint());
       collection = traversalNode->collection();
       inputVariable = traversalNode->inVariable();
+      isGraphNode = true;
     } break;
     case ExecutionNode::K_SHORTEST_PATHS: {
       auto kShortestPathsNode = ExecutionNode::castTo<KShortestPathsNode const*>(node);
@@ -3893,12 +3895,14 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       collection = kShortestPathsNode->collection();
       // Subtle: KShortestPathsNode uses a reference when returning startInVariable
       inputVariable = &kShortestPathsNode->startInVariable();
+      isGraphNode = true;
     } break;
     case ExecutionNode::SHORTEST_PATH: {
       auto shortestPathNode = ExecutionNode::castTo<ShortestPathNode const*>(node);
       TRI_ASSERT(shortestPathNode->isDisjoint());
       collection = shortestPathNode->collection();
       inputVariable = shortestPathNode->startInVariable();
+      isGraphNode = true;
     } break;
     default: {
       TRI_ASSERT(false);
@@ -3920,6 +3924,18 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       plan.createNode<DistributeNode>(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD,
                                       collection, inputVariable, node->id());
 
+#ifdef USE_ENTERPRISE
+  // Only relevant for Disjoint Smart Graphs that can only be part of the Enterprise version
+  if (isGraphNode) {
+    auto graphNode = ExecutionNode::castTo<GraphNode const*>(node);
+    auto vertices = graphNode->vertexColls();
+    for (auto const& it : vertices) {
+      if (it->isSatellite()) {
+        distNode->addSatellite(it);
+      }
+    }
+  }
+#endif
   TRI_ASSERT(distNode != nullptr);
   return distNode;
 }
