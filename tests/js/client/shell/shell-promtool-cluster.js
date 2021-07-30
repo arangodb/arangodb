@@ -87,7 +87,7 @@ function checkThatServerIsResponsive(server) {
 }
 
 function checkThatAllDbServersAreHealthy() {
-  print("Checking that all DB servers are healthy.")
+  print("Checking that all DB servers are healthy.");
   let clusterHealth = arango.GET_RAW(healthUrl).parsedBody.Health;
   let dbServers = Object.keys(clusterHealth)
     .filter(x => {
@@ -95,7 +95,7 @@ function checkThatAllDbServersAreHealthy() {
     })
     .map(x => clusterHealth[x]);
     for(let i = 0; i < dbServers.length; i++) {
-      print("Server "+ dbServers[i].ShortName + " status is " + dbServers[i]["Status"])
+      print("Server "+ dbServers[i].ShortName + " status is " + dbServers[i]["Status"]);
       if(!(dbServers[i]["Status"] === "GOOD")){
         return false;
       }
