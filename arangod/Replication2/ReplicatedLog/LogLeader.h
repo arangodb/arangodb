@@ -217,11 +217,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
         std::chrono::steady_clock::duration latency, MessageId messageId)
         -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet>;
 
-    [[nodiscard]] auto checkCommitIndex()
-        -> ResolvedPromiseSet;
+    [[nodiscard]] auto checkCommitIndex() -> ResolvedPromiseSet;
 
     [[nodiscard]] auto updateCommitIndexLeader(LogIndex newIndex,
-                                               std::shared_ptr<QuorumData> const& quorum)
+                                               std::shared_ptr<QuorumData> quorum)
         -> ResolvedPromiseSet;
 
     [[nodiscard]] auto getInternalLogIterator(LogIndex firstIdx) const
