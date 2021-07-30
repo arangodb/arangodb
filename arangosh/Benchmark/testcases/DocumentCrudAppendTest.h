@@ -45,31 +45,21 @@ namespace arangodb::arangobench {
 
     void buildRequest(int threadNumber, size_t threadCounter,
                       size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      size_t keyId = static_cast<size_t>(globalCounter / 4);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
       size_t const mod = globalCounter % 4;
       if (mod == 0) {
         requestData.type = rest::RequestType::POST;
         requestData.url = std::string("/_api/document?collection=" + _arangobench.collection());
-      }  else if (mod == 1) {
-        requestData.type = rest::RequestType::GET;
-      } else if (mod == 2) {
-        requestData.type = rest::RequestType::PATCH;
-      } else if (mod == 3) {
-        requestData.type = rest::RequestType::GET;
       } else {
-        TRI_ASSERT(false);
-        requestData.type = rest::RequestType::GET;
-      }
-      if (mod != 0) {
-        size_t keyId = (size_t)(globalCounter / 4);
-        std::string const key = "testkey" + StringUtils::itoa(keyId);
+        requestData.type = (mod == 2 ? rest::RequestType::PATCH : rest::RequestType::GET);
         requestData.url = std::string("/_api/document/" + _arangobench.collection() + "/" + key);
       }
       if (mod == 0 || mod == 2) {
-        uint64_t const n = _arangobench.complexity();
         using namespace arangodb::velocypack;
         requestData.payload.openObject();
-        size_t keyId = static_cast<size_t>(globalCounter / 4);
-        requestData.payload.add("_key", Value(std::string("testkey") + std::to_string(keyId)));
+        requestData.payload.add(StaticStrings::KeyString, Value(key));
+        uint64_t const n = _arangobench.complexity();
         for (uint64_t i = 1; i <= n; ++i) {
           bool value = (mod == 0) ? true : false;
           requestData.payload.add(std::string("value") + std::to_string(i), Value(value));

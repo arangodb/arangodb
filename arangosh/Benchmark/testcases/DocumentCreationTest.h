@@ -47,9 +47,9 @@ namespace arangodb::arangobench {
                       size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
       requestData.url = std::string("/_api/document?collection=") + _arangobench.collection();
       requestData.type = rest::RequestType::POST;
-      uint64_t const n = _arangobench.complexity();
       using namespace arangodb::velocypack;
       requestData.payload.openObject();
+      uint64_t const n = _arangobench.complexity();
       for (uint64_t i = 1; i <= n; ++i) {
         requestData.payload.add(std::string("test") + std::to_string(i), Value("some test value"));
       }
