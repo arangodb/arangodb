@@ -277,7 +277,7 @@ void HeartbeatThread::run() {
     };
     std::vector<std::string> const serverAgencyPaths{
       "Current/ServersRegistered", "Target/MapUniqueToShortID", "Current/ServersKnown", "Supervision/Health",
-      "Current/ServersKnown/" + ServerState::instance()->getId(), ""};
+      "Current/ServersKnown/" + ServerState::instance()->getId()};
     for (auto const& path : serverAgencyPaths) {
       serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, upsrv, true, false));
     }
