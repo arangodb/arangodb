@@ -49,7 +49,7 @@ namespace arangodb::arangobench {
       size_t const mod = globalCounter % 2;
       if (mod == 0) {
         requestData.type = rest::RequestType::POST;
-        requestData.url = std::string("/_api/document?collection=" + _arangobench.collection());
+        requestData.url = std::string("/_api/document?collection=" + _arangobench.collection()) + "&silent=true";
         using namespace arangodb::velocypack;
         requestData.payload.openObject();
         requestData.payload.add(StaticStrings::KeyString, Value(key));

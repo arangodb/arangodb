@@ -48,7 +48,6 @@ namespace arangodb::arangobench {
       requestData.type = rest::RequestType::GET;
     }
 
-    //log in only one place, this returns string for the description;
     char const* getDescription() const noexcept override {
       return "queries the server version and then instantly returns. In a cluster, this means that Coordinators instantly respond to the requests without ever accessing DB-Servers. This test can be used to establish a baseline for single server or Coordinator throughput. The --complexity parameter is not used.";
     }
