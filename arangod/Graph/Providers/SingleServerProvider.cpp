@@ -157,7 +157,7 @@ template <class Step>
 void SingleServerProvider<Step>::addVertexToBuilder(typename Step::Vertex const& vertex,
                                                     arangodb::velocypack::Builder& builder) {
   _cache.insertVertexIntoResult(_stats, vertex.getID(), builder);
-};
+}
 
 template <class Step>
 void SingleServerProvider<Step>::insertEdgeIntoResult(EdgeDocumentToken edge,

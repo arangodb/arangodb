@@ -60,18 +60,11 @@ namespace {
 
 static std::string translateStatus(TRI_vocbase_col_status_e status) {
   switch (status) {
-    case TRI_VOC_COL_STATUS_UNLOADED:
-      return "unloaded";
     case TRI_VOC_COL_STATUS_LOADED:
       return "loaded";
-    case TRI_VOC_COL_STATUS_UNLOADING:
-      return "unloading";
     case TRI_VOC_COL_STATUS_DELETED:
       return "deleted";
-    case TRI_VOC_COL_STATUS_LOADING:
-      return "loading";
     case TRI_VOC_COL_STATUS_CORRUPTED:
-    case TRI_VOC_COL_STATUS_NEW_BORN:
     default:
       return "unknown";
   }
@@ -585,16 +578,9 @@ Result LogicalCollection::rename(std::string&& newName) {
       break;
   }
 
-  switch (_status) {
-    case TRI_VOC_COL_STATUS_UNLOADED:
-    case TRI_VOC_COL_STATUS_LOADED:
-    case TRI_VOC_COL_STATUS_UNLOADING:
-    case TRI_VOC_COL_STATUS_LOADING: {
-      break;
-    }
-    default:
-      // Unknown status
-      return TRI_ERROR_INTERNAL;
+  if (_status != TRI_VOC_COL_STATUS_LOADED) {
+    // Unknown status
+    return TRI_ERROR_INTERNAL;
   }
 
   auto doSync = databaseFeature.forceSyncProperties();
@@ -625,13 +611,8 @@ Result LogicalCollection::rename(std::string&& newName) {
 }
 
 ErrorCode LogicalCollection::close() {
-  // This was unload() in 3.0
   return getPhysical()->close();
 }
-
-void LogicalCollection::load() { _physical->load(); }
-
-void LogicalCollection::unload() { _physical->unload(); }
 
 arangodb::Result LogicalCollection::drop() {
   // make sure collection has been closed

@@ -66,8 +66,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   /// @brief closes an open collection
   ErrorCode close() override;
-  void load() override;
-  void unload() override;
 
   /// return bounds for all documents
   RocksDBKeyBounds bounds() const override;
