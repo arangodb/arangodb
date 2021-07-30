@@ -1,6 +1,10 @@
 v3.7.14 (XXXX-XX-XX)
 --------------------
 
+* Suppress repeated warnings when settings LDAP options which turn out to be
+  unsupported on the target system. This avoids logging the same warnings
+  repeatedly.
+
 * Make `--javascript.copy-installation` also copy the `node_modules`
   subdirectory. This is required so we have a full copy of the JavaScript
   dependencies and not one that excludes some infrequently changed modules.
