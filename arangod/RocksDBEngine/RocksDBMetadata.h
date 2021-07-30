@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include <mutex>
 #include <map>
+#include <mutex>
 #include <set>
 
 #include <rocksdb/types.h>
@@ -79,21 +79,8 @@ struct RocksDBMetadata final {
    *
    * @param  trxId The identifier for the active transaction
    * @param  seq   The sequence number immediately prior to call
-   * @return       May return error if we fail to allocate and place blocker
    */
-  Result placeBlocker(TransactionId trxId, rocksdb::SequenceNumber& seq);
-
-  /**
-   * @brief Update a blocker to allow proper commit/serialize semantics
-   *
-   * Should be called after initializing an internal trx.
-   *
-   * @param  trxId The identifier for the active transaction (should match input
-   *               to earlier `placeBlocker` call)
-   * @param  seq   The sequence number from the internal snapshot
-   * @return       May return error if we fail to allocate and place blocker
-   */
-  Result updateBlocker(TransactionId trxId, rocksdb::SequenceNumber seq);
+  rocksdb::SequenceNumber placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq);
 
   /**
    * @brief Removes an existing transaction blocker
@@ -105,7 +92,11 @@ struct RocksDBMetadata final {
    * @param trxId Identifier for active transaction (should match input to
    *              earlier `placeBlocker` call)
    */
-  void removeBlocker(TransactionId trxId);
+  void removeBlocker(TransactionId trxId) noexcept;
+
+  /// @brief check if there is blocker with a seq number lower or equal to
+  /// the specified number
+  bool hasBlockerUpTo(rocksdb::SequenceNumber seq) const noexcept;
 
   /// @brief returns the largest safe seq to squash updates against
   rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber maxCommitSeq) const;
@@ -150,10 +141,6 @@ struct RocksDBMetadata final {
   /// @brief remove collection index estimate
   static Result deleteIndexEstimate(rocksdb::DB*, uint64_t objectId);
 
-  /// @brief check if there is blocker with a seq number lower or equal to
-  /// the specified number
-  bool hasBlockerUpTo(rocksdb::SequenceNumber seq) const;
-
  private:
   /// @brief apply counter adjustments, only call from sync thread
   bool applyAdjustments(rocksdb::SequenceNumber commitSeq);
@@ -185,5 +172,38 @@ struct RocksDBMetadata final {
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<RevisionId> _revisionId;
 };
-}  // namespace arangodb
 
+/// helper class for acquiring and releasing a blocker.
+/// constructing an object of this class will do nothing, but once
+/// placeBlocker() is called, the object takes care of releasing the
+/// blocker upon destruction. An acquired blocker can also be released
+/// prematurely by calling releaseBlocker().
+class RocksDBBlockerGuard {
+ public:
+  explicit RocksDBBlockerGuard(LogicalCollection* collection);
+  ~RocksDBBlockerGuard();
+  RocksDBBlockerGuard(RocksDBBlockerGuard const&) = delete;
+  RocksDBBlockerGuard& operator=(RocksDBBlockerGuard const&) = delete;
+  RocksDBBlockerGuard(RocksDBBlockerGuard&&) noexcept;
+  RocksDBBlockerGuard& operator=(RocksDBBlockerGuard&&) noexcept;
+
+  /// @brief place a blocker without prescribing a transaction id.
+  /// it is not allowed to call placeBlocker() if a blocker is already
+  /// acquired by the object.
+  rocksdb::SequenceNumber placeBlocker();
+
+  /// @brief place a blocker for a specific transaction id.
+  /// it is not allowed to call placeBlocker() if a blocker is already
+  /// acquired by the object.
+  rocksdb::SequenceNumber placeBlocker(TransactionId id);
+
+  /// @brief releases an acquired blocker. will do nothing if no
+  /// blocker is currently acquired by the object.
+  void releaseBlocker() noexcept;
+
+ private:
+  LogicalCollection* _collection;
+  TransactionId _trxId;
+};
+
+}  // namespace arangodb

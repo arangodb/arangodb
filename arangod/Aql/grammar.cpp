@@ -3951,7 +3951,7 @@ yyreduce:
   case 127: /* operator_unary: "+ operator" expression  */
 #line 1435 "Aql/grammar.y"
                                   {
-      (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_PLUS, (yyvsp[0].node));
+      (yyval.node) = parser->ast()->optimizeUnaryOperatorArithmetic(parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_PLUS, (yyvsp[0].node)));
     }
 #line 3957 "Aql/grammar.cpp"
     break;
@@ -3959,7 +3959,7 @@ yyreduce:
   case 128: /* operator_unary: "- operator" expression  */
 #line 1438 "Aql/grammar.y"
                                     {
-      (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, (yyvsp[0].node));
+      (yyval.node) = parser->ast()->optimizeUnaryOperatorArithmetic(parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, (yyvsp[0].node)));
     }
 #line 3965 "Aql/grammar.cpp"
     break;

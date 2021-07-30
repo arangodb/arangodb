@@ -27,6 +27,7 @@
 
 #include "LogTopic.h"
 
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"

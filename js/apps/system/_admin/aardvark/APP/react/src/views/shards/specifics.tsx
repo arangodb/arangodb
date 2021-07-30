@@ -2,8 +2,8 @@ import React, { Component, Dispatch } from 'react';
 import { connect } from "react-redux";
 
 import styled from 'styled-components';
-import { CheckCircle, ArrowDown, ArrowRight } from 'styled-icons/fa-solid';
-import { Grid, Cell } from "styled-css-grid";
+import { ArrowDown, ArrowRight, CheckCircle } from 'styled-icons/fa-solid';
+import { Cell, Grid } from "styled-css-grid";
 import ShardInfoRow from "./shardInfoRow";
 
 import { ClusterActions } from '../../store/cluster/types';
@@ -21,11 +21,11 @@ type ShardInfo = {
 export interface IOwnProps {
   name: string,
   selected: boolean
-};
+}
 
 interface IStateProps {
   shards: any,
-};
+}
 
 interface IDispatchProps {
   select: () => void,
@@ -76,17 +76,17 @@ text-align: right;
 const InSync = styled(CheckCircle as any)`
   color: #2ecc71;
   width: 12pt;
-  padding: 0px 5px;
+  padding: 0 5px;
 `;
 
 const IsColapsed = styled(ArrowRight as any)`
   width: 12pt;
-  padding: 0px 5px;
+  padding: 0 5px;
 `;
 
 const IsDetailed = styled(ArrowDown as any)`
   width: 12pt;
-  padding: 0px 5px;
+  padding: 0 5px;
 `;
 
 const makeShards = (args : any) => {
@@ -94,7 +94,11 @@ const makeShards = (args : any) => {
   const shards:Array<Object> = [];
   for (const [name, info] of Object.entries(Plan)) {
     if (!(info as object).hasOwnProperty("progress")) {
-      shards.push({name, sync: true, ...(info as object) });
+      shards.push({
+        name,
+        sync: true,
+        ...(info as object)
+      });
     }
   }
   return shards;
@@ -103,44 +107,61 @@ const makeShards = (args : any) => {
 const shardSorting = (a: ShardInfo, b: ShardInfo) => {
   const an = a.name;
   const bn = b.name;
-  if (an < bn) { return -1; }
-  if (an > bn) { return 1; }
+  if (an < bn) {
+    return -1;
+  }
+  if (an > bn) {
+    return 1;
+  }
   return 0;
-}
+};
 
 const mapStateToProps = (state : ApplicationState, own : IOwnProps) : IStateProps => {
   const { shardDistribution } = state.cluster;
   const shards = makeShards(shardDistribution[own.name]);
-  return { ...own, shards};
+  return {
+    ...own,
+    shards
+  };
 };
 
 const mapDispatch = (dispatch : Dispatch<ClusterActions>, own : IOwnProps) : IDispatchProps => {
   const { name } = own;
   return {
-    select: () => { dispatch(fetchShardDetails(name)); },
-    deselect: () => { dispatch(unselectShardDetails()); }
+    select: () => {
+      dispatch(fetchShardDetails(name));
+    },
+    deselect: () => {
+      dispatch(unselectShardDetails());
+    }
   };
 };
 
 class Specifics extends Component<Props, IState> {
 
-  render() {
+  render () {
     const { selected, name, shards, select, deselect } = this.props;
     if (!selected) {
       return (
         <List>
-          <Name onClick={(e : React.MouseEvent<HTMLDivElement>) => {e.preventDefault(); select()}} columns={2}>
+          <Name onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+            e.preventDefault();
+            select();
+          }} columns={2}>
             <LeftAlign>{name}</LeftAlign>
-            <RightAlign><InSync /><IsColapsed /></RightAlign>
+            <RightAlign><InSync/><IsColapsed/></RightAlign>
           </Name>
         </List>
       );
     }
     return (
       <List>
-        <Name onClick={(e : React.MouseEvent<HTMLDivElement>)=> {e.preventDefault(); deselect()}} columns={2}>
+        <Name onClick={(e: React.MouseEvent<HTMLDivElement>) => {
+          e.preventDefault();
+          deselect();
+        }} columns={2}>
           <LeftAlign>{name}</LeftAlign>
-          <RightAlign><InSync /><IsDetailed /></RightAlign>
+          <RightAlign><InSync/><IsDetailed/></RightAlign>
         </Name>
         <Header columns={4}>
           <LeftAlign>Shard</LeftAlign>
@@ -148,9 +169,10 @@ class Specifics extends Component<Props, IState> {
           <LeftAlign>Followers</LeftAlign>
           <RightAlign>Sync</RightAlign>
         </Header>
-        { shards.sort(shardSorting).map((s : ShardInfo) => <ShardInfoRow key={s.name} collection={name} {...s} />) }
+        {shards.sort(shardSorting).map((s: ShardInfo) => <ShardInfoRow key={s.name}
+                                                                       collection={name} {...s} />)}
       </List>
-    )
+    );
   }
 }
 

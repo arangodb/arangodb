@@ -184,12 +184,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   // makes sure collection doesn't get unloaded
   CollectionGuard collGuard(&vocbase, _logicalCollection.id());
 
-  TransactionId trxId{0};
-  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
-    if (trxId.isSet()) {
-      _meta.removeBlocker(trxId);
-    }
-  });
+  RocksDBBlockerGuard blocker(&_logicalCollection);
 
   uint64_t snapNumberOfDocuments = 0;
   {
@@ -202,12 +197,8 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
       THROW_ARANGO_EXCEPTION(res);
     }
  
-    // generate a unique transaction id for a blocker
-    trxId = TransactionId(transaction::Context::makeTransactionId());
-
     // place a blocker. will be removed by blockerGuard automatically
-    rocksdb::SequenceNumber seqNo = engine.db()->GetLatestSequenceNumber();
-    _meta.placeBlocker(trxId, seqNo);
+    blocker.placeBlocker();
 
     snapshot = engine.db()->GetSnapshot();
     snapNumberOfDocuments = _meta.numberDocuments();
@@ -850,7 +841,10 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
                    .inRecovery());
     return;
   }
-
+        
+  TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+    std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
+  }
 
   TRI_ASSERT(!inserts.empty() || !removals.empty());
 
@@ -939,11 +933,22 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         }
       }
     };
+  
+    TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
+    }
 
     std::unique_lock<std::mutex> guard(_revisionBufferLock);
 
     auto insertIt = _revisionInsertBuffers.begin();
     auto removeIt = _revisionRemovalBuffers.begin();
+
+    auto checkIterators = [&]() {
+      TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || 
+                 _revisionInsertBuffers.empty() || _revisionInsertBuffers.begin()->first > commitSeq);
+      TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || 
+                 _revisionRemovalBuffers.empty() || _revisionRemovalBuffers.begin()->first > commitSeq);
+    };
 
     auto it = _revisionTruncateBuffer.begin();  // sorted ASC
     
@@ -968,9 +973,8 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         while (removeIt != _revisionRemovalBuffers.end() && removeIt->first <= ignoreSeq) {
           removeIt = _revisionRemovalBuffers.erase(removeIt);
         }
-      
-        TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || (insertIt == _revisionInsertBuffers.end() && (_revisionInsertBuffers.empty() || _revisionInsertBuffers.begin()->first > commitSeq)));
-        TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || (removeIt == _revisionRemovalBuffers.end() && (_revisionRemovalBuffers.empty() || _revisionRemovalBuffers.begin()->first > commitSeq)));
+ 
+        checkIterators();
 
         // we can clear the revision tree without holding the mutex here
         guard.unlock();
@@ -978,9 +982,8 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         _revisionTree->clear();
 
         guard.lock();
-      
-        TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || (insertIt == _revisionInsertBuffers.end() && (_revisionInsertBuffers.empty() || _revisionInsertBuffers.begin()->first > commitSeq)));
-        TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || (removeIt == _revisionRemovalBuffers.end() && (_revisionRemovalBuffers.empty() || _revisionRemovalBuffers.begin()->first > commitSeq)));
+
+        checkIterators();
 
         // we have applied all changes up to here
         bumpSequence(ignoreSeq);
@@ -990,10 +993,9 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
     // still holding the mutex here
 
     while (true) {
-      // find out if we still have buffers to apply
-      TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || (insertIt == _revisionInsertBuffers.end() && (_revisionInsertBuffers.empty() || _revisionInsertBuffers.begin()->first > commitSeq)));
-      TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || (removeIt == _revisionRemovalBuffers.end() && (_revisionRemovalBuffers.empty() || _revisionRemovalBuffers.begin()->first > commitSeq)));
+      checkIterators();
 
+      // find out if we still have buffers to apply
       bool haveInserts = insertIt != _revisionInsertBuffers.end() &&
                          insertIt->first <= commitSeq;
       bool haveRemovals = removeIt != _revisionRemovalBuffers.end() &&
@@ -1006,6 +1008,9 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
       // no inserts or removals left to apply, drop out of loop
       if (!applyInserts && !applyRemovals) {
         // we have applied all changes up to including commitSeq
+        TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+          std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
+        }
         bumpSequence(commitSeq);
         return;
       }
@@ -1048,6 +1053,10 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
           // it is safe to retry it next time.
           throw;
         }
+    
+        TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+          std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
+        }
 
         // move iterator forward, we need the mutex for this
         guard.lock();
@@ -1086,6 +1095,10 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
           
           // if an exception escapes from here, the same remove will be retried next time.
           throw;
+        }
+    
+        TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+          std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
         }
 
         // move iterator forward, we need the mutex for this
