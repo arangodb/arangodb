@@ -145,14 +145,14 @@ auto replicated_log::LogLeader::instantiateFollowers(
     -> std::vector<FollowerInfo> {
   auto initLastIndex = lastEntry.index.saturatedDecrement();
 
-  std::vector<FollowerInfo> follower_vec;
-  follower_vec.reserve(follower.size() + 1);
-  follower_vec.emplace_back(localFollower, lastEntry, logContext);
-  std::transform(follower.cbegin(), follower.cend(), std::back_inserter(follower_vec),
+  std::vector<FollowerInfo> followers_vec;
+  followers_vec.reserve(follower.size() + 1);
+  followers_vec.emplace_back(localFollower, lastEntry, logContext);
+  std::transform(follower.cbegin(), follower.cend(), std::back_inserter(followers_vec),
                  [&](std::shared_ptr<AbstractFollower> const& impl) -> FollowerInfo {
                    return FollowerInfo{impl, TermIndexPair{LogTerm{0}, initLastIndex}, logContext};
                  });
-  return follower_vec;
+  return followers_vec;
 }
 
 namespace {
@@ -188,7 +188,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
     std::shared_ptr<ReplicatedLogMetrics> const& logMetrics) {
   for (auto& it : requests) {
     if (it.has_value()) {
-      delayedFuture(it->_executionDelay).thenFinal([it = it, logMetrics](auto&&) mutable {
+      delayedFuture(it->_executionDelay).thenFinal([it = std::move(it), logMetrics](auto&&) mutable {
         // _follower is an alias of _parentLog
         TRI_ASSERT(!it->_parentLog.owner_before(it->_follower) &&
                    !it->_follower.owner_before(it->_parentLog));
@@ -238,6 +238,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
               if (auto self = weakParentLog.lock()) {
                 // If we successfully acquired parentLog, this cannot fail.
                 auto follower = weakFollower.lock();
+                TRI_ASSERT(follwer != nullptr);
                 using namespace std::chrono_literals;
                 auto const duration = endTime - startTime;
                 self->_logMetrics->replicatedLogAppendEntriesRttUs->count(duration / 1us);
@@ -494,10 +495,21 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     }
     return ResolvedPromiseSet{std::move(toBeResolved), std::move(quorum),
                               _inMemoryLog.splice(oldIndex, newIndex + 1)};
+  } catch (std::exception const& e) {
+    // If those promises are not fulfilled we can not continue.
+    // Note that the move constructor of std::multi_map is not noexcept.
+    LOG_CTX("e7a4d", FATAL, _self._logContext)
+        << "failed to fulfill replication promises due to exception; system "
+           "can not continue. message: "
+        << e.what();
+    FATAL_ERROR_EXIT();
   } catch (...) {
     // If those promises are not fulfilled we can not continue.
     // Note that the move constructor of std::multi_map is not noexcept.
-    abort();
+    LOG_CTX("e7a4d", FATAL, _self._logContext)
+        << "failed to fulfill replication promises due to exception; system "
+           "can not continue";
+    FATAL_ERROR_EXIT();
   }
 }
 
