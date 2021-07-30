@@ -45,7 +45,7 @@ namespace arangodb::arangobench {
 
     void buildRequest(int threadNumber, size_t threadCounter,
                       size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
-      requestData.url = std::string("/_api/document?collection=") + _arangobench.collection();
+      requestData.url = std::string("/_api/document?collection=") + _arangobench.collection() + "&silent=true";
       requestData.type = rest::RequestType::POST;
       using namespace arangodb::velocypack;
       requestData.payload.openObject();
