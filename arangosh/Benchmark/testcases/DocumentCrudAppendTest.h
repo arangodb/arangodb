@@ -69,7 +69,7 @@ namespace arangodb::arangobench {
     }
   
     char const* getDescription() const noexcept override {
-      return "will perform a mix of insert, update and get operations for documents. 25\% of the operations will be single-document inserts, 25\% of the operations will be single-document updates, and 50\% of the operations are single-document read requests. There will be a total of --requests operations. The --complexity parameter can be used to control the number of attributes for the inserted and updated documents.";
+      return "will perform a mix of insert, update and get operations for documents. 25% of the operations will be single-document inserts, 25% of the operations will be single-document updates, and 50% of the operations are single-document read requests. There will be a total of --requests operations. The --complexity parameter can be used to control the number of attributes for the inserted and updated documents.";
     }
 
     bool isDeprecated() const noexcept override {
