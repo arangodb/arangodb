@@ -3924,9 +3924,9 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       plan.createNode<DistributeNode>(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD,
                                       collection, inputVariable, node->id());
 
-#ifdef USE_ENTERPRISE
-  // Only relevant for Disjoint Smart Graphs that can only be part of the Enterprise version
   if (isGraphNode) {
+#ifdef USE_ENTERPRISE
+    // Only relevant for Disjoint Smart Graphs that can only be part of the Enterprise version
     auto graphNode = ExecutionNode::castTo<GraphNode const*>(node);
     auto vertices = graphNode->vertexColls();
     for (auto const& it : vertices) {
@@ -3934,8 +3934,8 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
         distNode->addSatellite(it);
       }
     }
-  }
 #endif
+  }
   TRI_ASSERT(distNode != nullptr);
   return distNode;
 }
