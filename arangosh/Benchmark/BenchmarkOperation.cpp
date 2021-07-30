@@ -25,6 +25,9 @@
 
 namespace arangodb::arangobench {
 
+BenchmarkOperation::RequestData::RequestData()
+    : type(arangodb::rest::RequestType::ILLEGAL) {}
+
 std::map<std::string, BenchmarkOperation::BenchmarkFactory>& BenchmarkOperation::allBenchmarks() {
   // this is a static inline variable to avoid issues with initialization order.
   static std::map<std::string, BenchmarkFactory> benchmarks;
@@ -37,10 +40,6 @@ std::unique_ptr<BenchmarkOperation> BenchmarkOperation::createBenchmark(std::str
     return it->second.operator()(arangobench);
   }
   return nullptr;
-}
-
-void BenchmarkOperation::buildRequest(int threadNumber, size_t threadCounter, size_t globalCounter, BenchmarkOperation::RequestData&) const {
-
 }
 
 void BenchmarkOperation::registerBenchmark(std::string name, BenchmarkFactory factory) {

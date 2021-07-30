@@ -27,6 +27,7 @@
 
 #include <map>
 #include <memory>
+
 #include <velocypack/Builder.h>
 
 namespace arangodb {
@@ -35,16 +36,21 @@ namespace arangodb {
 
   namespace arangobench {
 
-    ////////////////////////////////////////////////////////////////////////////////
     /// @brief simple interface for benchmark operations
-    ////////////////////////////////////////////////////////////////////////////////
-
     struct BenchmarkOperation {
 
-      struct RequestData { //name to RequestData
+      struct RequestData {
+        RequestData();
+
         std::string url;
         arangodb::rest::RequestType type;
         arangodb::velocypack::Builder payload;
+
+        void clear() {
+          url.clear();
+          payload.clear();
+          type = arangodb::rest::RequestType::ILLEGAL;
+        }
       };
 
       //////////////////////////////////////////////////////////////////////////////
@@ -76,7 +82,7 @@ namespace arangodb {
       //  The caller must provide it and clean its values before the call
       //////////////////////////////////////////////////////////////////////////////
   
-      virtual void buildRequest(int threadNumber, size_t threadCounter, size_t globalCounter, RequestData&) const;
+      virtual void buildRequest(int threadNumber, size_t threadCounter, size_t globalCounter, RequestData&) const = 0;
 
       using BenchmarkFactory = std::function<std::unique_ptr<BenchmarkOperation>(BenchFeature&)>;
 
