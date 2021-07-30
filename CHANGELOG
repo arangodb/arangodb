@@ -1,6 +1,8 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Timely update of database server list on health check fixes BTS-505.
+
 * Updated JavaScript dependencies, including breaking changes to non-public
   modules. We recommend always bundling your own copy of third-party modules,
   even ones listed as public.
