@@ -52,17 +52,16 @@ namespace arangodb::arangobench {
       requestData.payload.add("collections", Value(ValueType::Object));
       requestData.payload.add("write", Value(_arangobench.collection()));
       requestData.payload.close();
-      requestData.payload.add("action", Value(std::string("function () { var c = require(\"internal\").db[\"") + _arangobench.collection() + std::string("\"]; var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw \"error, counters deviate!\"; } c.save({ }); } }")));
+      requestData.payload.add("action", Value(std::string("function () { var c = require('internal').db['") + _arangobench.collection() + std::string("']; var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw 'error, counters deviate!'; } c.save({ }); } }")));
       requestData.payload.close();
     }
 
-    //log in only one place, this returns string for the description;
     char const* getDescription() const noexcept override {
       return "executes JavaScript Transactions that each insert 50 (empty) documents into a collection and validates that collection counts are as expected. There will be 50 times the number of --requests documents inserted in total. The --complexity parameter is not used.";
     }
 
     bool isDeprecated() const noexcept override {
-      return false;
+      return true;
     }
 
   };

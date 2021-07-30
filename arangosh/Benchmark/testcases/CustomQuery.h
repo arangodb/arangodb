@@ -58,13 +58,6 @@ namespace arangodb::arangobench {
           "be specified";
         return false;
       }
-
-      basics::StringBuffer buff;
-      buff.appendText("{\"query\":");
-      buff.appendJsonEncoded(_query.c_str(), _query.size());
-      buff.appendChar('}');
-      _query = buff.toString();
-
       return true;
     }
 
@@ -76,7 +69,7 @@ namespace arangodb::arangobench {
       requestData.type = rest::RequestType::POST;
       using namespace arangodb::velocypack;
       requestData.payload.openObject();
-      requestData.payload.add(Value(_query));
+      requestData.payload.add("query", Value(_query));
       requestData.payload.close();
     }
 
@@ -88,7 +81,7 @@ namespace arangodb::arangobench {
       return false;
     }
 
-    private:
+   private:
     std::string _query;
   };
 

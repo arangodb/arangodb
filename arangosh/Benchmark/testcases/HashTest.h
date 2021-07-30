@@ -46,40 +46,27 @@ namespace arangodb::arangobench {
 
     void buildRequest(int threadNumber, size_t threadCounter,
                       size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      size_t keyId = static_cast<size_t>(globalCounter / 4);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
       size_t const mod = globalCounter % 4;
       if (mod == 0) {
-        requestData.url = std::string("/_api/document?collection=" + _arangobench.collection());
-      } else {
-        size_t keyId = (size_t)(globalCounter / 4);
-        std::string const key = "testkey" + StringUtils::itoa(keyId);
-        requestData.url = std::string("/_api/document/" + _arangobench.collection() + "/" + key);
-      }
-      if (mod == 0) {
+        requestData.url = std::string("/_api/document?collection=" + _arangobench.collection()) + "&silent=true";
         requestData.type = rest::RequestType::POST;
-      } else if (mod == 1) {
-        requestData.type = rest::RequestType::GET;
-      } else if (mod == 2) {
-        requestData.type = rest::RequestType::PATCH;
-      } else if (mod == 3) {
-        requestData.type = rest::RequestType::GET;
       } else {
-        TRI_ASSERT(false);
-        requestData.type = rest::RequestType::GET;
+        requestData.url = std::string("/_api/document/" + _arangobench.collection() + "/" + key);
+        requestData.type = (mod == 2) ? rest::RequestType::PATCH : rest::RequestType::GET;
       }
       if (mod == 0 || mod == 2) {
-        size_t keyId = static_cast<size_t>(globalCounter / 4);
         using namespace arangodb::velocypack;
         requestData.payload.openObject();
-        requestData.payload.add("_key", Value(std::string("testkey") + std::to_string(keyId)));
+        requestData.payload.add(StaticStrings::KeyString, Value(key));
         requestData.payload.add("value", Value(static_cast<uint32_t>(threadCounter)));
         requestData.payload.close();
       }
-
     }
 
-    //log in only one place, this returns string for the description;
     char const* getDescription() const noexcept override {
-      return "performs multi-document imports using the specialized import API (in contrast to performing inserts via generic AQL). Each inserted document will have two attributes. The --complexity parameter controls the number of documents per import request. The total number of documents to be inserted is equal to the value of --requests times the value of --complexity.";
+      return "will perform a mix of insert, update and get operations for documents. The collection created by this test does have an extra, non-unique, non-sparse persistent index on one attribute. 25% of the operations will be single-document inserts, 25% of the operations will be single-document updates, and 50% of the operations are single-document read requests. There will be a total of --requests operations. The --complexity parameter can be used to control the number of attributes for the inserted and updated documents. This test case can be used to determine the effects on write throughput caused by adding a secondary index to a collection. It originally tested a hash index, but both the in-memory hash and skiplist index types were removed in favor of the RocksDB-based persistent index type.";
     }
 
     bool isDeprecated() const noexcept override {

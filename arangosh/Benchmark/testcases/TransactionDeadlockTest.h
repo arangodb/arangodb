@@ -59,8 +59,8 @@ namespace arangodb::arangobench {
       requestData.payload(Value(ValueType::Object));
       requestData.payload.add("collections", Value(ValueType::Object));
       requestData.payload.add("write", Value(ValueType::Array));
-      std::string actionValue = std::string("function () { var c = require(\"internal\").db[\"");
-      if(mod == 0) {
+      std::string actionValue = std::string("function () { var c = require('internal').db['");
+      if (mod == 0) {
         requestData.payload.add(Value(_c1));
         actionValue += _c2;
       } else {
@@ -69,18 +69,17 @@ namespace arangodb::arangobench {
       }
       requestData.payload.close();
       requestData.payload.close();
-      actionValue += std::string("\"]; c.any(); }");
+      actionValue += std::string("']; c.any(); }");
       requestData.payload.add("action", Value(actionValue));
       requestData.payload.close();
     }
 
-    //log in only one place, this returns string for the description;
     char const* getDescription() const noexcept override {
       return "creates two collections and executes JavaScript Transactions that first access one collection, and then the other. This test was once used as a means to detect deadlocks caused by collection locking, but is obsolete nowadays. The --complexity parameter is not used.";
     }
 
     bool isDeprecated() const noexcept override {
-      return false;
+      return true;
     }
 
     std::string _c1;

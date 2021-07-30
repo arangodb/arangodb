@@ -67,17 +67,16 @@ namespace arangodb::arangobench {
       requestData.payload.add(Value(_c2));
       requestData.payload.close();
       requestData.payload.close();
-      std::string actionValue = std::string("function () { var c1 = require(\"internal\").db[\"") + _c1 + std::string("\"]; var c2 = require(\"internal\").db[\"") + _c2 + std::string("\"];");
+      std::string actionValue = std::string("function () { var c1 = require('internal').db['") + _c1 + std::string("']; var c2 = require('internal').db['") + _c2 + std::string("'];");
       if (mod == 0) {
-        actionValue += std::string("var n = Math.floor(Math.random() * 25) + 1; c1.save({count : n}); var d = c2.document(\"sum\"); c2.update(d, { count: d.count + n }); }");
+        actionValue += std::string("var n = Math.floor(Math.random() * 25) + 1; c1.save({count : n}); var d = c2.document('sum'); c2.update(d, { count: d.count + n }); }");
       } else {
-        actionValue += std::string("var r1 = 0; c1.toArray().forEach(function (d) { r1 += d.count }); var r2 = c2.document(\"sum\").count; if (r1 !== r2) { throw \"error, counters deviate!\"; } }");
+        actionValue += std::string("var r1 = 0; c1.toArray().forEach(function (d) { r1 += d.count }); var r2 = c2.document('sum').count; if (r1 !== r2) { throw 'error, counters deviate!'; } }");
       }
       requestData.payload.add("action", Value(actionValue));
       requestData.payload.close();
     }
 
-    //log in only one place, this returns string for the description;
     char const* getDescription() const noexcept override {
       return "creates two collections and then executes JavaScript Transactions that read from and write to both collections. There will be as many JavaScript Transactions as --requests. The --complexity parameter is ignored.";
     }

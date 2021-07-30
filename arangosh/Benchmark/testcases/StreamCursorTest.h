@@ -51,32 +51,29 @@ namespace arangodb::arangobench {
       uint64_t n = _arangobench.complexity();
       using namespace arangodb::velocypack;
       requestData.payload.openObject();
-      std::string values;
+      std::string query;
       if (globalCounter == 0) {
-        values = "FOR i IN 1..500 INSERT { \"_key\": TO_STRING(i)";
+        query = "FOR i IN 1..500 INSERT { \"_key\": TO_STRING(i)";
         for (uint64_t i = 1; i <= n; ++i) {
-          values += ", \"value" + std::to_string(i) + "\": true";
+          query += ", \"value" + std::to_string(i) + "\": true";
         }
-        values += "} INTO " + _arangobench.collection();
-        requestData.payload.add("query", Value(values));
+        query += "} INTO " + _arangobench.collection();
       } else if (mod == 0) {
-        values = "UPDATE { \"_key\": \"1\" } WITH { \"foo\": 1";
+        query = "UPDATE { \"_key\": \"1\" } WITH { \"foo\": 1";
         for (uint64_t i = 1; i <= n; ++i) {
-          values += ", \"value" + std::to_string(i) + "\": true";
+          query += ", \"value" + std::to_string(i) + "\": true";
         }
-        values += " } INTO " + _arangobench.collection() + std::string(" OPTIONS { ignoreErrors: true }");
-        requestData.payload.add("query", Value(values));
+        query += " } INTO " + _arangobench.collection() + std::string(" OPTIONS { ignoreErrors: true }");
       } else {
-        values = "FOR doc IN " + _arangobench.collection() + std::string(" RETURN doc");
-        requestData.payload.add("query", Value(values));
+        query = "FOR doc IN " + _arangobench.collection() + std::string(" RETURN doc");
         requestData.payload.add("options", Value(ValueType::Object));
         requestData.payload.add("stream", Value(true));
         requestData.payload.close();
       }
+      requestData.payload.add("query", Value(query));
       requestData.payload.close();
     }
 
-    //log in only one place, this returns string for the description;
     char const* getDescription() const noexcept override {
       return "creates 500 documents in a collection, and then performs a mix of AQL update queries (all on the same document) and a streaming AQL query that returns all documents from the collection. The --complexity parameter can be used to control the number of attributes for the inserted documents and the update queries. This test will trigger a lot of write-write conflicts with --concurrency bigger than 2.";
     }

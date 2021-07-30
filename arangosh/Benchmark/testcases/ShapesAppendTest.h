@@ -44,26 +44,17 @@ namespace arangodb::arangobench {
 
     void buildRequest(int threadNumber, size_t threadCounter,
                       size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      size_t keyId = static_cast<size_t>(globalCounter / 2);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
       size_t const mod = globalCounter % 2;
       if (mod == 0) {
-        requestData.url = std::string("/_api/document?collection=" + _arangobench.collection());
-      } else {
-        size_t keyId = (size_t)(globalCounter / 2);
-        std::string const key = "testkey" + StringUtils::itoa(keyId);
-
-        requestData.url = std::string("/_api/document/" + _arangobench.collection() + "/" + key);
-      }
-      if (mod == 0) {
+        requestData.url = std::string("/_api/document?collection=" + _arangobench.collection()) + "&silent=true";
         requestData.type = rest::RequestType::POST;
-      } else {
-        requestData.type = rest::RequestType::GET;
-      }
-      if (mod == 0) {
-        uint64_t const n = _arangobench.complexity();
+        
         using namespace arangodb::velocypack;
         requestData.payload.openObject();
-        size_t keyId = (size_t)(globalCounter / 2);
-        requestData.payload.add("_key", Value(std::string("testkey") + std::to_string(keyId)));
+        requestData.payload.add(StaticStrings::KeyString, Value(key));
+        uint64_t const n = _arangobench.complexity();
         for (uint64_t i = 1; i <= n; ++i) {
           uint64_t mod = _arangobench.operations() / 10;
           if (mod < 100) {
@@ -72,10 +63,12 @@ namespace arangodb::arangobench {
           requestData.payload.add(std::string("value") + std::to_string(static_cast<uint64_t>((globalCounter + i) % mod)), Value("some bogus string value to fill up the datafile..."));
         }
         requestData.payload.close();;
+      } else {
+        requestData.url = std::string("/_api/document/" + _arangobench.collection() + "/" + key);
+        requestData.type = rest::RequestType::GET;
       }
     }
 
-    //log in only one place, this returns string for the description;
     char const* getDescription() const noexcept override {
       return "will perform a mix of insert and get operations for documents with randomized attribute names. 50% of the operations will be single-document inserts, and 50% of the operations will be single-document reads. There will be a total of --requests operations. The --complexity parameter can be used to control the number of attributes for the inserted documents.";
     }

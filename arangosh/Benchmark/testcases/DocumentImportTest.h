@@ -51,15 +51,16 @@ namespace arangodb::arangobench {
           "&type=documents");
       uint64_t const n = _arangobench.complexity();
       using namespace arangodb::velocypack;
+      requestData.payload.openArray();
       for (uint64_t i = 0; i < n; ++i) {
         requestData.payload.openObject();
         requestData.payload.add("key1", Value(i));
         requestData.payload.add("key2", Value(i));
         requestData.payload.close();
       }
+      requestData.payload.close();
     }
 
-    //log in only one place, this returns string for the description;
     char const* getDescription() const noexcept override {
       return "performs multi-document imports using the specialized import API (in contrast to performing inserts via generic AQL). Each inserted document will have two attributes. The --complexity parameter controls the number of documents per import request. The total number of documents to be inserted is equal to the value of --requests times the value of --complexity.";
     }

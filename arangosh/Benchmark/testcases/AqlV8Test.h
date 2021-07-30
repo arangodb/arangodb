@@ -49,10 +49,10 @@ namespace arangodb::arangobench {
       requestData.type = rest::RequestType::POST;
       using namespace arangodb::velocypack;
       uint64_t const n = _arangobench.complexity();
-      std::string values = "INSERT {\"_key\": \"test" + std::to_string(static_cast<int64_t>(globalCounter)) + "\"";
+      std::string values = "INSERT { _key: 'test" + std::to_string(static_cast<int64_t>(globalCounter)) + "'";
       for (uint64_t i = 1; i <= n; ++i) {
-        values += ",\"value" + std::to_string(i) + "\": RAND()"; 
-        values += ",\"test" + std::to_string(i) + "\": RANDOM_TOKEN(32)"; 
+        values += ", value" + std::to_string(i) + ": RAND()"; 
+        values += ", test" + std::to_string(i) + ": RANDOM_TOKEN(32)"; 
       }
       values += "} INTO " + _arangobench.collection();
       requestData.payload.openObject();

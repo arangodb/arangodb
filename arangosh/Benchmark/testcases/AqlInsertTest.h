@@ -54,7 +54,7 @@ namespace arangodb::arangobench {
       requestData.payload.openObject();
       requestData.payload.add(Value("data"));
       requestData.payload.openObject();
-      requestData.payload.add("_key", Value(std::string("test") + std::to_string((int64_t)globalCounter)));
+      requestData.payload.add(StaticStrings::KeyString, Value(std::string("test") + std::to_string((int64_t)globalCounter)));
       uint64_t const n = _arangobench.complexity();
       for (uint64_t i = 1; i <= n; ++i) {
         requestData.payload.add(std::string("value") + std::to_string(i), Value(true));
@@ -69,7 +69,7 @@ namespace arangodb::arangobench {
     }
 
     bool isDeprecated() const noexcept override {
-      return true;
+      return false;
     }
   };
 

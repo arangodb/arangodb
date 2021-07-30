@@ -47,29 +47,18 @@ namespace arangodb::arangobench {
 
     void buildRequest(int threadNumber, size_t threadCounter,
                       size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      size_t keyId = static_cast<size_t>(globalCounter / 3);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
       size_t const mod = globalCounter % 3;
       if (mod == 0) {
-        requestData.url = std::string("/_api/document?collection=") + _arangobench.collection();
-      } else {
-        size_t keyId = (size_t)(globalCounter / 3);
-        std::string const key = "testkey" + StringUtils::itoa(keyId);
-        requestData.url = std::string("/_api/document/") + _arangobench.collection() +
-        std::string("/") + key;
-      }
-      if (mod == 0) {
+        requestData.url = std::string("/_api/document?collection=") + _arangobench.collection() + "&silent=true";
         requestData.type = rest::RequestType::POST;
-      } else if (mod == 1) {
-        requestData.type = rest::RequestType::GET;
-      } else {
-        requestData.type = rest::RequestType::DELETE_REQ;
-      }
-      if (mod == 0) {
-        uint64_t n = _arangobench.complexity();
-        size_t keyId = static_cast<size_t>(globalCounter / 3);
+        
         using namespace arangodb::velocypack;
         requestData.payload.openObject();
-        requestData.payload.add("_key", Value(std::string("testkey") + std::to_string(keyId)));
+        requestData.payload.add(StaticStrings::KeyString, Value(key));
         uint32_t t = _randomValue % static_cast<uint32_t>(globalCounter + threadNumber + 1);
+        uint64_t n = _arangobench.complexity();
         for (uint64_t i = 1; i <= n; ++i) {
           std::string fieldName = "value" + std::to_string(static_cast<uint64_t>(globalCounter + i));
           if (t % 3 == 0) {
@@ -81,10 +70,12 @@ namespace arangodb::arangobench {
           }
         }
         requestData.payload.close();
+      } else {
+        requestData.url = std::string("/_api/document/") + _arangobench.collection() + "/" + key;
+        requestData.type = (mod == 1) ? rest::RequestType::GET : rest::RequestType::DELETE_REQ;
       }
     }
 
-    //log in only one place, this returns string for the description;
     char const* getDescription() const noexcept override {
       return "will perform a mix of insert, get and remove operations for documents with randomized attribute names. 33% of the operations will be single-document inserts, 33% of the operations will be single-document reads, and 33% of the operations are single-document removals. There will be a total of --requests operations. The --complexity parameter can be used to control the number of attributes for the inserted documents.";
     }
