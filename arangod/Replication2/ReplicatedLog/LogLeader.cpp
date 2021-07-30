@@ -475,7 +475,7 @@ auto replicated_log::LogLeader::triggerAsyncReplication() -> void {
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
-    LogIndex newIndex, std::shared_ptr<QuorumData> const& quorum) -> ResolvedPromiseSet {
+    LogIndex newIndex, std::shared_ptr<QuorumData> quorum) -> ResolvedPromiseSet {
   LOG_CTX("a9a7e", TRACE, _self._logContext)
       << "updating commit index to " << newIndex << "with quorum " << quorum->quorum;
   auto oldIndex = _commitIndex;
@@ -492,7 +492,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
           << "resolving promise for index " << it->first;
       toBeResolved.insert(_waitForQueue.extract(it++));
     }
-    return ResolvedPromiseSet{std::move(toBeResolved), quorum,
+    return ResolvedPromiseSet{std::move(toBeResolved), std::move(quorum),
                               _inMemoryLog.splice(oldIndex, newIndex + 1)};
   } catch (...) {
     // If those promises are not fulfilled we can not continue.
@@ -732,7 +732,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
 
   LOG_CTX("a2d04", TRACE, _self._logContext) << "checking commit index on set " << indexes;
 
-  if (quorum_size <= 0 || quorum_size > indexes.size()) {
+  if (quorum_size == 0 || quorum_size > indexes.size()) {
     LOG_CTX("24e92", WARN, _self._logContext)
         << "not enough participants to fulfill quorum size requirement";
     return {};
@@ -759,7 +759,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
 
     auto const quorum_data =
         std::make_shared<QuorumData>(commitIndex, _self._currentTerm, std::move(quorum));
-    return updateCommitIndexLeader(commitIndex, quorum_data);
+    return updateCommitIndexLeader(commitIndex, std::move(quorum_data));
   }
   return {};
 }

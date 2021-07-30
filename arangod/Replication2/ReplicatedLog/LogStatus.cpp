@@ -87,7 +87,7 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
   for (auto [key, value] : VPackObjectIterator(slice.get(StaticStrings::Follower))) {
     auto id = ParticipantId{key.copyString()};
     auto stat = FollowerStatistics::fromVelocyPack(value);
-    status.follower.emplace(id, stat);
+    status.follower.emplace(std::move(id), std::move(stat));
   }
   return status;
 }
@@ -163,4 +163,3 @@ auto LogStatus::getVariant() const noexcept -> VariantType const& {
 auto LogStatus::toVelocyPack(velocypack::Builder& builder) const -> void {
   std::visit([&](auto const& s) { s.toVelocyPack(builder); }, _variant);
 }
-

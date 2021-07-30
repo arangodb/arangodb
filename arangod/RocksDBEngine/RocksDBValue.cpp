@@ -157,9 +157,9 @@ replication2::LogTerm RocksDBValue::logTerm(const rocksdb::Slice& slice) {
 }
 
 replication2::LogPayload RocksDBValue::logPayload(const rocksdb::Slice& slice) {
-  TRI_ASSERT(slice.size() >= 8);
+  TRI_ASSERT(slice.size() >= sizeof(uint64_t));
   auto data = slice.ToStringView();
-  data.remove_prefix(8);
+  data.remove_prefix(sizeof(uint64_t));
   return replication2::LogPayload::createFromSlice(
       VPackSlice(reinterpret_cast<uint8_t const*>(data.data())));
 }

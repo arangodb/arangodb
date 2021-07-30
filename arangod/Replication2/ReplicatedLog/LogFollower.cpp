@@ -173,7 +173,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
                                    toBeResolved = std::move(toBeResolved)](
                                       Result&& res) mutable noexcept {
     // We have to release the guard after this lambda is finished.
-    // Otherwise it would be release when the lambda is destructed, which
+    // Otherwise it would be released when the lambda is destroyed, which
     // happens *after* the following thenValue calls have been executed. In
     // particular the lock is held until the end of the future chain is reached.
     // This will cause deadlocks.
