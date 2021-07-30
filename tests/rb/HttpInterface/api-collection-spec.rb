@@ -795,7 +795,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2, 4].should include(doc.parsed_response['status'])
+        doc.parsed_response['status'].should eq(3)
 
         ArangoDB.drop_collection(@cn)
       end
@@ -813,7 +813,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2, 4].should include(doc.parsed_response['status'])
+        doc.parsed_response['status'].should eq(3)
 
         ArangoDB.drop_collection(@cn)
       end
