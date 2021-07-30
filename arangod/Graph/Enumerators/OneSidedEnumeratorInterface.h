@@ -67,8 +67,7 @@ class TraversalEnumerator {
 
   // NOTE: keepPathStore is only required for 3.8 compatibility and
   // can be removed in the version after 3.9
-  virtual void reset(VertexRef source, size_t depth = 0, double weight = 0.0,
-                     bool keepPathStore = false) = 0;
+  virtual void reset(VertexRef source, size_t depth = 0, bool keepPathStore = false) = 0;
   virtual auto getNextPath() -> std::unique_ptr<PathResultInterface> = 0;
   virtual bool skipPath() = 0;
   virtual auto destroyEngines() -> void = 0;

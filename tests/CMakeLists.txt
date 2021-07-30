@@ -161,6 +161,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/WaitingExecutionBlockMock.cpp
   Aql/WindowExecutorTest.cpp
   Aql/DecaysFunctionTest.cpp
+  Aql/DistanceFunctionTest.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerTest.cpp
   Auth/UserManagerClusterTest.cpp

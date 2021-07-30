@@ -366,7 +366,7 @@ arangodb::futures::Future<Result> EngineInfoContainerDBServerServerBased::buildS
       .then([buildCallback = std::move(buildCallback)](futures::Try<network::Response>&& resp) mutable {
         return buildCallback(resp);
       });
-};
+}
 
 bool EngineInfoContainerDBServerServerBased::isNotSatelliteLeader(VPackSlice infoSlice) const {
   // Partial assertions to check if all required keys are present

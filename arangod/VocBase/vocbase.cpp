@@ -223,7 +223,7 @@ void TRI_vocbase_t::registerCollection(bool doLock, std::shared_ptr<arangodb::Lo
       throw;
     }
 
-    collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
+    collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
   }
 }
 
@@ -450,118 +450,25 @@ arangodb::Result TRI_vocbase_t::loadCollection(arangodb::LogicalCollection& coll
 
   // read lock
   // check if the collection is already loaded
-  {
-    READ_LOCKER_EVENTUAL(locker, collection.statusLock());
+  READ_LOCKER_EVENTUAL(locker, collection.statusLock());
 
-    TRI_vocbase_col_status_e status = collection.status();
-
-    if (status == TRI_VOC_COL_STATUS_LOADED) {
-      // DO NOT release the lock
-      locker.steal();
-      return {};
-    }
-
-    if (status == TRI_VOC_COL_STATUS_DELETED) {
-      return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, std::string("collection '") + collection.name() + "' not found"};
-    }
-
-    if (status == TRI_VOC_COL_STATUS_CORRUPTED) {
-      return {TRI_ERROR_ARANGO_CORRUPTED_COLLECTION};
-    }
-  }
-  // release the read lock and acquire a write lock, we have to do some work
-
-  // .............................................................................
-  // write lock
-  // .............................................................................
-
-  WRITE_LOCKER_EVENTUAL(locker, collection.statusLock());
-    
   TRI_vocbase_col_status_e status = collection.status();
 
-  // someone else loaded the collection, release the WRITE lock and try again
   if (status == TRI_VOC_COL_STATUS_LOADED) {
-    // we should never get here
-    locker.unlock();
-    return loadCollection(collection, false);
+    // DO NOT release the lock
+    locker.steal();
+    return {};
   }
 
-  // someone is trying to unload the collection, cancel this,
-  // release the WRITE lock and try again
-  if (status == TRI_VOC_COL_STATUS_UNLOADING) {
-    // check if the collection is dropped
-    if (!collection.deleted()) {
-      collection.setStatus(TRI_VOC_COL_STATUS_LOADED);
-    }
-    locker.unlock();
-
-    return loadCollection(collection, false);
-  }
-
-  // deleted, give up
   if (status == TRI_VOC_COL_STATUS_DELETED) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, std::string("collection '") + collection.name() + "' not found"};
   }
 
-  // corrupted, give up
   if (status == TRI_VOC_COL_STATUS_CORRUPTED) {
     return {TRI_ERROR_ARANGO_CORRUPTED_COLLECTION};
   }
 
-  // currently loading
-  if (status == TRI_VOC_COL_STATUS_LOADING) {
-    locker.unlock();
-
-    // loop until the status changes
-    while (true) {
-      {
-        READ_LOCKER_EVENTUAL(readLocker, collection.statusLock());
-        status = collection.status();
-      }
-
-      if (status != TRI_VOC_COL_STATUS_LOADING) {
-        break;
-      }
-
-      std::this_thread::sleep_for(std::chrono::microseconds(collectionStatusPollInterval()));
-    }
-
-    return loadCollection(collection, false);
-  }
-
-  // unloaded, load collection
-  if (collection.status() == TRI_VOC_COL_STATUS_UNLOADED) {
-    // set the status to loading
-    collection.setStatus(TRI_VOC_COL_STATUS_LOADING);
-
-    // release the lock on the collection temporarily
-    // this will allow other threads to check the collection's
-    // status while it is loading (loading may take a long time because of
-    // disk activity, index creation etc.)
-    locker.unlock();
-
-    TRI_UpdateTickServer(collection.id().id());
-
-    // lock again to adjust the status
-    locker.lockEventual();
-
-    // no one else must have changed the status
-    TRI_ASSERT(collection.status() == TRI_VOC_COL_STATUS_LOADING);
-
-    collection.setStatus(TRI_VOC_COL_STATUS_LOADED);
-    collection.load();
-
-    // release the WRITE lock and try again
-    locker.unlock();
-
-    return loadCollection(collection, false);
-  }
-
-  std::string const colName(collection.name());
-  LOG_TOPIC("56df6", ERR, arangodb::Logger::FIXME)
-      << "unknown collection status " << collection.status() << " for '"
-      << colName << "'";
-
+  TRI_ASSERT(false);
   return {TRI_ERROR_INTERNAL, "unknwon collection status"};
 }
 
@@ -634,47 +541,7 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* colle
       unregisterCollection(*collection);
       break;
     }
-    case TRI_VOC_COL_STATUS_LOADING: {
-      // collection is loading
-      // loop until status changes
-      // try again later
-      state = DROP_AGAIN;
-      break;
-    }
-    case TRI_VOC_COL_STATUS_UNLOADED: {
-      // collection is unloaded
-      bool doSync = !engine.inRecovery() &&
-                    server().getFeature<DatabaseFeature>().forceSyncProperties();
-
-      if (!collection->deleted()) {
-        collection->deleted(true);
-
-        try {
-          engine.changeCollection(*this, *collection, doSync);
-        } catch (arangodb::basics::Exception const& ex) {
-          collection->deleted(false);
-          events::DropCollection(dbName, colName, ex.code());
-          return ex.code();
-        } catch (std::exception const&) {
-          collection->deleted(false);
-          events::DropCollection(dbName, colName, TRI_ERROR_INTERNAL);
-          return TRI_ERROR_INTERNAL;
-        }
-      }
-
-      collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
-      unregisterCollection(*collection);
-
-      locker.unlock();
-      writeLocker.unlock();
-
-      engine.dropCollection(*this, *collection);
-
-      dropCollectionCallback(*collection);
-      break;
-    }
-    case TRI_VOC_COL_STATUS_LOADED:
-    case TRI_VOC_COL_STATUS_UNLOADING: {
+    case TRI_VOC_COL_STATUS_LOADED: {
       // collection is loaded
       collection->deleted(true);
 
@@ -746,11 +613,8 @@ void TRI_vocbase_t::shutdown() {
 
   // starts unloading of collections
   for (auto& collection : collections) {
-    {
-      WRITE_LOCKER_EVENTUAL(locker, collection->statusLock());
-      collection->close();  // required to release indexes
-    }
-    unloadCollection(collection.get(), true);
+    WRITE_LOCKER_EVENTUAL(locker, collection->statusLock());
+    collection->close();  // required to release indexes
   }
 
   {
@@ -1056,65 +920,6 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
   }
 
   return collection;
-}
-
-/// @brief unloads a collection
-arangodb::Result TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, bool force) {
-  {
-    WRITE_LOCKER_EVENTUAL(locker, collection->statusLock());
-        
-    TRI_vocbase_col_status_e status = collection->status();
-
-    // an unloaded collection is unloaded
-    // a deleted collection is treated as unloaded
-    if (status == TRI_VOC_COL_STATUS_UNLOADED ||
-        status == TRI_VOC_COL_STATUS_UNLOADING ||
-        status == TRI_VOC_COL_STATUS_DELETED) {
-      return {};
-    }
-    
-    // cannot unload a corrupted collection
-    if (status == TRI_VOC_COL_STATUS_CORRUPTED) {
-      return {TRI_ERROR_ARANGO_CORRUPTED_COLLECTION};
-    }
-
-    // a loading collection
-    if (status == TRI_VOC_COL_STATUS_LOADING) {
-      // throw away the write locker. we're going to switch to a read locker now
-      locker.unlock();
-
-      // loop until status changes
-      while (1) {
-        {
-          READ_LOCKER_EVENTUAL(readLocker, collection->statusLock());
-          status = collection->status();
-        }
-
-        if (status != TRI_VOC_COL_STATUS_LOADING) {
-          break;
-        }
-        // sleep without lock
-        std::this_thread::sleep_for(
-            std::chrono::microseconds(collectionStatusPollInterval()));
-      }
-      // if we get here, the status has changed
-      return unloadCollection(collection, force);
-    }
-
-    // must be loaded
-    if (collection->status() != TRI_VOC_COL_STATUS_LOADED) {
-      return {TRI_ERROR_INTERNAL, "invalid collection status"};
-    }
-
-    // mark collection as unloading
-    collection->setStatus(TRI_VOC_COL_STATUS_UNLOADING);
-  }  // release locks
-
-  collection->unload();
-  
-  collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
-
-  return {};
 }
 
 /// @brief drops a collection
