@@ -41,6 +41,7 @@
 #include "Basics/voc-errors.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogContext.h"
 #include "Logger/LogGroup.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogThread.h"
@@ -403,6 +404,7 @@ std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
 void Logger::log(char const* logid, char const* function, char const* file, int line,
                  LogLevel level, size_t topicId, std::string const& message) try {
   TRI_ASSERT(logid != nullptr);
+  LogContext& logContext = LogContext::current();
 
   // we only determine our pid once, as currentProcessId() will
   // likely do a syscall.
@@ -529,6 +531,12 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       dumper.appendString(_hostname.data(), _hostname.size());
     }
 
+    // meta data from log context
+    logContext.each([&out](std::string const& key, std::string const& value) {
+      out.append(",\"", 2).append(key).append("\":\"", 3).append(value);
+      out.push_back('"');
+    });
+    
     // the message itself
     {
       out.append(",\"message\":");
@@ -654,6 +662,12 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       out.append("} ", 2);
     }
 
+    // meta data from log context
+    logContext.each([&out](std::string const& key, std::string const& value) {
+      out.push_back('[');
+      out.append(key).append(": ", 2).append(value).append("] ", 2);
+    });
+    
     // generate the complete message
     out.append(message);
   }

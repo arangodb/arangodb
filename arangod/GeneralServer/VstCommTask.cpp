@@ -36,6 +36,7 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
+#include "Logger/LogContext.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -154,7 +155,8 @@ void VstCommTask<T>::setIOTimeout() {
   auto millis = std::chrono::milliseconds(static_cast<int64_t>(secs * 1000));
   this->_protocol->timer.expires_after(millis);  // cancels old waiters
   this->_protocol->timer.async_wait(
-      [=, self = CommTask::weak_from_this()](asio_ns::error_code const& ec) {
+      [=, self = CommTask::weak_from_this(), ctx = LogContext::current()](asio_ns::error_code const& ec) {
+        LogContext::setCurrent(std::move(ctx));
         std::shared_ptr<CommTask> s;
         if (ec || !(s = self.lock())) {  // was canceled / deallocated
           return;
@@ -464,7 +466,8 @@ void VstCommTask<T>::doWrite() {
   auto& buffers = item->buffers;
   asio_ns::async_write(this->_protocol->socket, buffers,
                        [self(CommTask::shared_from_this()),
-                        rsp(std::move(item))](asio_ns::error_code const& ec, size_t) {
+                        rsp(std::move(item)), ctx = LogContext::current()](asio_ns::error_code const& ec, size_t) {
+                         LogContext::setCurrent(std::move(ctx));
                          DTraceVstCommTaskAfterAsyncWrite((size_t)self.get());
 
                          auto& me = static_cast<VstCommTask<T>&>(*self);

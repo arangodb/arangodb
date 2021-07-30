@@ -30,6 +30,7 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/H2CommTask.h"
 #include "GeneralServer/HttpCommTask.h"
+#include "Logger/LogContext.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -146,7 +147,8 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   auto asioSocket = std::make_unique<AsioSocket<SocketType::Tcp>>(_server.selectIoContext());
   auto& socket = asioSocket->socket;
   auto& peer = asioSocket->peer;
-  auto handler = [this, asioSocket = std::move(asioSocket)](asio_ns::error_code const& ec) mutable {
+  auto handler = [this, asioSocket = std::move(asioSocket), ctx = LogContext::current()](asio_ns::error_code const& ec) mutable {
+    LogContext::setCurrent(std::move(ctx));
     if (ec) {
       handleError(ec);
       return;
@@ -215,7 +217,8 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
     ptr->shutdown([](asio_ns::error_code const&) {});  // ignore error
   });
 
-  auto cb = [this, as = std::move(proto)](asio_ns::error_code const& ec) mutable {
+  auto cb = [this, as = std::move(proto), ctx = LogContext::current()](asio_ns::error_code const& ec) mutable {
+    LogContext::setCurrent(std::move(ctx));
     as->timer.cancel();
     if (ec) {
       LOG_TOPIC("4c6b4", DEBUG, arangodb::Logger::COMMUNICATION)
@@ -257,7 +260,8 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   auto asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
   auto& socket = asioSocket->socket.lowest_layer();
   auto& peer =  asioSocket->peer;
-  auto handler = [this, asioSocket = std::move(asioSocket)](asio_ns::error_code const& ec) mutable {
+  auto handler = [this, asioSocket = std::move(asioSocket), ctx = LogContext::current()](asio_ns::error_code const& ec) mutable {
+    LogContext::setCurrent(std::move(ctx));
     if (ec) {
       handleError(ec);
       return;

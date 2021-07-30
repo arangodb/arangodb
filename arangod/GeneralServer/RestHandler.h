@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 #include "Basics/ResultT.h"
 #include "GeneralServer/RequestLane.h"
+#include "Logger/LogContext.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
 
@@ -161,7 +162,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
       return RestStatus::DONE;
     }
     bool done = false;
-    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>&& t) -> void {
+    std::move(f).thenFinal([self = shared_from_this(), &done, ctx = LogContext::current()](futures::Try<T>&& t) -> void {
+      LogContext::setCurrent(ctx);
       auto thisPtr = self.get();
       if (t.hasException()) {
         thisPtr->handleExceptionPtr(std::move(t).exception());

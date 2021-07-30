@@ -32,6 +32,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/H2CommTask.h"
 #include "GeneralServer/VstCommTask.h"
+#include "Logger/LogContext.h"
 #include "Logger/LogMacros.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -322,7 +323,8 @@ void HttpCommTask<T>::setIOTimeout() {
   auto millis = std::chrono::milliseconds(static_cast<int64_t>(secs * 1000));
   this->_protocol->timer.expires_after(millis);
   this->_protocol->timer.async_wait(
-      [=, self = CommTask::weak_from_this()](asio_ns::error_code const& ec) {
+      [=, self = CommTask::weak_from_this(), ctx = LogContext::current()](asio_ns::error_code const& ec) {
+        LogContext::setCurrent(std::move(ctx));
         std::shared_ptr<CommTask> s;
         if (ec || !(s = self.lock())) {  // was canceled / deallocated
           return;
@@ -348,7 +350,8 @@ static constexpr size_t minHttpRequestLen = 18;  // min length of http 1.0 reque
 
 template <SocketType T>
 void HttpCommTask<T>::checkVSTPrefix() {
-  auto cb = [self = this->shared_from_this()](asio_ns::error_code const& ec, size_t nread) {
+  auto cb = [self = this->shared_from_this(), ctx = LogContext::current()](asio_ns::error_code const& ec, size_t nread) {
+    LogContext::setCurrent(std::move(ctx));
     auto& me = static_cast<HttpCommTask<T>&>(*self);
     if (ec || nread < vstLen) {
       me.close(ec);
@@ -687,7 +690,9 @@ void HttpCommTask<T>::writeResponse(RequestStatistics::Item stat) {
   // FIXME measure performance w/o sync write
   asio_ns::async_write(this->_protocol->socket, buffers,
                        [self = this->shared_from_this(),
-                        stat = std::move(stat)](asio_ns::error_code ec, size_t nwrite) {
+                        stat = std::move(stat),
+                        ctx = LogContext::current()](asio_ns::error_code ec, size_t nwrite) {
+                         LogContext::setCurrent(std::move(ctx));
                          DTraceHttpCommTaskResponseWritten((size_t)self.get());
 
                          auto& me = static_cast<HttpCommTask<T>&>(*self);

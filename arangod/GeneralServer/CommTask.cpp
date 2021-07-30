@@ -318,6 +318,8 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                               std::unique_ptr<GeneralResponse> response) {
   DTRACE_PROBE1(arangod, CommTaskExecuteRequest, this);
 
+  LogContext::Scoped commTaskGuard("CommTask", std::to_string((size_t)this));
+
   response->setContentTypeRequested(request->contentTypeResponse());
   response->setGenerateBody(request->requestType() != RequestType::HEAD);
 

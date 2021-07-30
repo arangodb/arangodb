@@ -68,7 +68,8 @@ void AcceptorUnixDomain::asyncAccept() {
   auto asioSocket = std::make_unique<AsioSocket<SocketType::Unix>>(context);
   auto& socket = asioSocket->socket;
   auto& peer = asioSocket->peer;
-  auto handler = [this, asioSocket = std::move(asioSocket)](asio_ns::error_code const& ec) mutable {
+  auto handler = [this, asioSocket = std::move(asioSocket), ctx = LogContext::current()](asio_ns::error_code const& ec) mutable {
+    LogContext::setCurrent(std::move(ctx));
     if (ec) {
       handleError(ec);
       return;
