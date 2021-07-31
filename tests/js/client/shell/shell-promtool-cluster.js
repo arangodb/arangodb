@@ -78,7 +78,7 @@ function checkThatServerIsResponsive(server) {
       print("Server " + serverName + " is OK!");
       return true;
     } else {
-      print("Server " + serverName + " doesn't respond properly to reauests.");
+      print("Server " + serverName + " doesn't respond properly to requests.");
       return false;
     }
   } catch(error){
