@@ -33,6 +33,9 @@
 namespace arangodb {
 
 class LogContext {
+ private:
+  struct Impl;
+  
  public:
   /// @brief sets the key/value pair in the LogContext for the current scope.
   /// If an entry with the specified key already exists it is overwritten,
@@ -40,9 +43,9 @@ class LogContext {
   /// Returns a `Scoped` instance that restores the previous state. That is,
   /// if the value of an existing entry was overwritten, the old value is
   /// restored, otherwise the key/value pair is removed.
-  struct Scoped {
-    Scoped(std::string key, std::string value);
-    ~Scoped();
+  struct ScopedValue {
+    ScopedValue(std::string key, std::string value);
+    ~ScopedValue();
   private:
     std::size_t _idx;
     std::optional<std::string> _oldValue;
@@ -56,9 +59,18 @@ class LogContext {
   struct ScopedMerge {
     ScopedMerge(LogContext ctx);
    private:
-    std::vector<Scoped> _values;
+    std::vector<ScopedValue> _values;
   };
 
+  /// @brief sets the given LogContext as the thread's current context for the
+  /// current scope; restores the previous LogContext upon destruction.
+  struct ScopedContext {
+    ScopedContext(LogContext ctx);
+    ~ScopedContext();
+   private:
+    std::shared_ptr<Impl> _oldContext;
+  };
+  
   LogContext();
 
   /// @brief iterates through the local LogContext's key/value pairs and calls
@@ -72,20 +84,21 @@ class LogContext {
   static void setCurrent(LogContext ctx);
   
  private:
-  std::pair<std::size_t, std::optional<std::string>> set(std::string key, std::string value);
+  LogContext(std::shared_ptr<Impl> impl) : _impl(std::move(impl)) {}
+  
+  auto set(std::string key, std::string value) -> std::pair<std::size_t, std::optional<std::string>>;
   
   void restore(std::size_t index, std::optional<std::string>&& value);
   
   void ensureUniqueOwner();
   
-  struct Impl;
   std::shared_ptr<Impl> _impl;
 };
 
 template <typename Func>
 auto withLogContext(Func func) {
   return [func = std::move(func), ctx = LogContext::current()](auto&&... args) mutable {
-    LogContext::setCurrent(std::move(ctx));
+    LogContext::ScopedContext ctxGuard(std::move(ctx));
     using result_t = std::invoke_result_t<Func, decltype(args)...>;
     if constexpr (std::is_same_v<result_t, void>) {
       func(std::forward<decltype(args)>(args)...);

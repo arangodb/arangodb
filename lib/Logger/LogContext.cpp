@@ -38,14 +38,14 @@ struct LogContext::Impl {
   std::vector<std::pair<std::string, std::string>> values;
 };
 
-LogContext::Scoped::Scoped(std::string key, std::string value) {
+LogContext::ScopedValue::ScopedValue(std::string key, std::string value) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _newValue = value;
 #endif
   std::tie(_idx, _oldValue) = LogContext::current().set(std::move(key), std::move(value));
 }
 
-LogContext::Scoped::~Scoped() {
+LogContext::ScopedValue::~ScopedValue() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(_idx < LogContext::current()._impl->values.size());
   TRI_ASSERT(LogContext::current()._impl->values[_idx].second == _newValue);
@@ -60,6 +60,19 @@ LogContext::ScopedMerge::ScopedMerge(LogContext ctx) {
   }
 }
 
+LogContext::ScopedContext::ScopedContext(LogContext ctx) {
+  if (ctx._impl != LogContext::current()._impl) {
+    _oldContext = ctx._impl;
+    LogContext::setCurrent(std::move(ctx));
+  }
+}
+
+LogContext::ScopedContext::~ScopedContext() {
+  if (_oldContext) {
+    LogContext::setCurrent(LogContext(std::move(_oldContext)));
+  }
+}
+  
 LogContext::LogContext() : _impl(std::make_shared<Impl>()) {}
 
 std::pair<std::size_t, std::optional<std::string>> LogContext::set(std::string key, std::string value) {

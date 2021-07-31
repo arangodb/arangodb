@@ -148,7 +148,7 @@ class Scheduler {
   struct WorkItem final : WorkItemBase, F {
     explicit WorkItem(F f) : F(std::move(f)), logContext(LogContext::current()) {}
     void invoke() override {
-      LogContext::setCurrent(logContext);
+      LogContext::ScopedContext ctxGuard(logContext);
       this->operator()();
     }
    private:
