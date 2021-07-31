@@ -27,6 +27,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace arangodb {
@@ -80,6 +81,19 @@ class LogContext {
   struct Impl;
   std::shared_ptr<Impl> _impl;
 };
+
+template <typename Func>
+auto withLogContext(Func func) {
+  return [func = std::move(func), ctx = LogContext::current()](auto&&... args) mutable {
+    LogContext::setCurrent(std::move(ctx));
+    using result_t = std::invoke_result_t<Func, decltype(args)...>;
+    if constexpr (std::is_same_v<result_t, void>) {
+      func(std::forward<decltype(args)>(args)...);
+    } else {
+      return func(std::forward<decltype(args)>(args)...);
+    }
+  };
+}
 
 }  // namespace arangodb
 

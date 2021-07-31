@@ -147,8 +147,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   auto asioSocket = std::make_unique<AsioSocket<SocketType::Tcp>>(_server.selectIoContext());
   auto& socket = asioSocket->socket;
   auto& peer = asioSocket->peer;
-  auto handler = [this, asioSocket = std::move(asioSocket), ctx = LogContext::current()](asio_ns::error_code const& ec) mutable {
-    LogContext::setCurrent(std::move(ctx));
+  auto handler = [this, asioSocket = std::move(asioSocket)](asio_ns::error_code const& ec) mutable {
     if (ec) {
       handleError(ec);
       return;
@@ -176,7 +175,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   };
 
   // cppcheck-suppress accessMoved
-  _acceptor.async_accept(socket, peer, std::move(handler));
+  _acceptor.async_accept(socket, peer, withLogContext(std::move(handler)));
 }
 
 template <>
@@ -217,8 +216,7 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
     ptr->shutdown([](asio_ns::error_code const&) {});  // ignore error
   });
 
-  auto cb = [this, as = std::move(proto), ctx = LogContext::current()](asio_ns::error_code const& ec) mutable {
-    LogContext::setCurrent(std::move(ctx));
+  auto cb = [this, as = std::move(proto)](asio_ns::error_code const& ec) mutable {
     as->timer.cancel();
     if (ec) {
       LOG_TOPIC("4c6b4", DEBUG, arangodb::Logger::COMMUNICATION)
@@ -247,7 +245,7 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
     
     _server.registerTask(std::move(task));
   };
-  ptr->handshake(std::move(cb));
+  ptr->handshake(withLogContext(std::move(cb)));
 }
 
 template <>
@@ -260,8 +258,7 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   auto asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
   auto& socket = asioSocket->socket.lowest_layer();
   auto& peer =  asioSocket->peer;
-  auto handler = [this, asioSocket = std::move(asioSocket), ctx = LogContext::current()](asio_ns::error_code const& ec) mutable {
-    LogContext::setCurrent(std::move(ctx));
+  auto handler = [this, asioSocket = std::move(asioSocket)](asio_ns::error_code const& ec) mutable {
     if (ec) {
       handleError(ec);
       return;
@@ -272,7 +269,7 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   };
 
   // cppcheck-suppress accessMoved
-  _acceptor.async_accept(socket, peer, std::move(handler));
+  _acceptor.async_accept(socket, peer, withLogContext(std::move(handler)));
 }
 }  // namespace rest
 }  // namespace arangodb

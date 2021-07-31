@@ -68,8 +68,7 @@ void AcceptorUnixDomain::asyncAccept() {
   auto asioSocket = std::make_unique<AsioSocket<SocketType::Unix>>(context);
   auto& socket = asioSocket->socket;
   auto& peer = asioSocket->peer;
-  auto handler = [this, asioSocket = std::move(asioSocket), ctx = LogContext::current()](asio_ns::error_code const& ec) mutable {
-    LogContext::setCurrent(std::move(ctx));
+  auto handler = [this, asioSocket = std::move(asioSocket)](asio_ns::error_code const& ec) mutable {
     if (ec) {
       handleError(ec);
       return;
@@ -94,7 +93,7 @@ void AcceptorUnixDomain::asyncAccept() {
   };
 
   // cppcheck-suppress accessMoved
-  _acceptor.async_accept(socket, peer, std::move(handler));
+  _acceptor.async_accept(socket, peer, withLogContext(std::move(handler))};
 }
 
 void AcceptorUnixDomain::close() {

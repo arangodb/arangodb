@@ -370,10 +370,9 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
     }
     std::shared_ptr<SharedQueryState> ss = _engine->sharedState();
     ss->setWakeupHandler(
-        [self = shared_from_this(), ctx = LogContext::current()] {
-          LogContext::setCurrent(ctx);
+        withLogContext([self = shared_from_this()] {
           return self->wakeupHandler();
-        });
+        }));
   }
 
   TRI_ASSERT(_engine != nullptr);
