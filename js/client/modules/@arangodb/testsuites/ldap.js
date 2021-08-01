@@ -31,7 +31,9 @@ const functionsDocumentation = {
 const optionsDocumentation = [
   '   - `skipLdap` : if set to true the LDAP tests are skipped',
   '   - `ldapHost : Host/IP of the ldap server',
-  '   - `ldapPort : Port of the ldap server'
+  '   - `ldapPort : Port of the ldap server',
+  '   - `ldap2Host : Host/IP of the ldap server (ignored)',
+  '   - `ldap2Port : Port of the ldap server (ignored)'
 ];
 
 // const helper = require('@arangodb/user-helper');
