@@ -83,7 +83,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
  private:
   template <typename Func>
-  bool doNext(size_t limit, Func func);
+  bool doNext(size_t limit, Func const& func);
   
   bool outOfRange() const;
   bool checkIter();

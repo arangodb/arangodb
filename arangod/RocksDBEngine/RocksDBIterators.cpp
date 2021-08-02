@@ -228,7 +228,7 @@ bool RocksDBAnyIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback c
 }
                                                  
 template <typename Func>
-bool RocksDBAnyIndexIterator::doNext(size_t limit, Func func) {
+bool RocksDBAnyIndexIterator::doNext(size_t limit, Func const& func) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
