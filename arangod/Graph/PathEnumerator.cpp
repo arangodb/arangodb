@@ -421,7 +421,7 @@ bool DepthFirstEnumerator::shouldPrune() {
 }
 
 #ifndef USE_ENTERPRISE
-bool DepthFirstEnumerator::validDisjointPath() {
+bool DepthFirstEnumerator::validDisjointPath() const {
   return true;
 }
 #endif
