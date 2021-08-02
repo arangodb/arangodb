@@ -184,12 +184,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _pruneWaitTimeInitial(180.0),
       _maxWalArchiveSizeLimit(0),
       _releasedTick(0),
-#ifdef _WIN32
-      // background syncing is not supported on Windows
-      _syncInterval(0),
-#else
       _syncInterval(100),
-#endif
       _syncDelayThreshold(5000),
       _requiredDiskFreePercentage(0.01),
       _requiredDiskFreeBytes(16 * 1024 * 1024),
@@ -410,14 +405,6 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     }
   }
 
-#ifdef _WIN32
-  if (_syncInterval > 0) {
-    LOG_TOPIC("68301", WARN, arangodb::Logger::CONFIG)
-        << "automatic syncing of RocksDB WAL via background thread is not "
-        << " supported on this platform";
-  }
-#endif
-
   if (_pruneWaitTimeInitial < 10) {
     LOG_TOPIC("a9667", WARN, arangodb::Logger::ENGINES)
         << "consider increasing the value for "
@@ -478,6 +465,17 @@ void RocksDBEngine::start() {
           << "': " << systemErrorStr;
       FATAL_ERROR_EXIT();
     }
+  }
+  
+  uint64_t totalSpace;
+  uint64_t freeSpace;
+  if (TRI_GetDiskSpaceInfo(_path, totalSpace, freeSpace).ok() && totalSpace != 0) {
+    LOG_TOPIC("b71b9", DEBUG, arangodb::Logger::ENGINES)
+      << "total disk space for database directory mount: " 
+      << basics::StringUtils::formatSize(totalSpace)
+      << ", free disk space for database directory mount: " 
+      << basics::StringUtils::formatSize(freeSpace)
+      << " (" << (100.0 * double(freeSpace) / double(totalSpace)) << "% free)";
   }
 
   // options imported set by RocksDBOptionFeature
@@ -2395,6 +2393,7 @@ DECLARE_GAUGE(rocksdb_total_disk_space, uint64_t, "rocksdb_total_disk_space");
 DECLARE_GAUGE(rocksdb_total_inodes, uint64_t, "rocksdb_total_inodes");
 DECLARE_GAUGE(rocksdb_total_sst_files_size, uint64_t, "rocksdb_total_sst_files_size");
 DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t, "rocksdb_engine_throttle_bps");
+DECLARE_GAUGE(rocksdb_read_only, uint64_t, "rocksdb_read_only");
 
 void RocksDBEngine::getStatistics(std::string& result, bool v2) const {
   VPackBuilder stats;
@@ -2605,6 +2604,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder, bool v2) const {
       builder.add("rocksdb.free-inodes", VPackValue(VPackValueType::Null));
       builder.add("rocksdb.total-inodes", VPackValue(VPackValueType::Null));
     }
+  }
+
+  if (_errorListener) {
+    builder.add("rocksdb.read-only", VPackValue(_errorListener->called() ? 1 : 0));
   }
 
   builder.close();

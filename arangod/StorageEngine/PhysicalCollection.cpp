@@ -548,6 +548,10 @@ std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(uint6
   return nullptr;
 }
 
+std::unique_ptr<containers::RevisionTree> PhysicalCollection::computeRevisionTree(uint64_t batchId) {
+  return nullptr;
+}
+
 Result PhysicalCollection::rebuildRevisionTree() {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }

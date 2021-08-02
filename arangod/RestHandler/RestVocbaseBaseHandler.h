@@ -101,18 +101,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief simple query by example path
   static std::string const SIMPLE_QUERY_BY_EXAMPLE;
 
-  /// @brief simple query first example path
-  static std::string const SIMPLE_FIRST_EXAMPLE;
-
-  /// @brief simple query remove by example path
-  static std::string const SIMPLE_REMOVE_BY_EXAMPLE;
-
-  /// @brief simple query replace by example path
-  static std::string const SIMPLE_REPLACE_BY_EXAMPLE;
-
-  /// @brief simple query replace by example path
-  static std::string const SIMPLE_UPDATE_BY_EXAMPLE;
-
   /// @brief simple batch document lookup path
   static std::string const SIMPLE_LOOKUP_PATH;
 

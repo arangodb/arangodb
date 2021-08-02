@@ -74,7 +74,7 @@ Node createAgencyFromBuilder(VPackBuilder const& builder) {
   }
 
   node.handle<SET>(opBuilder.slice());
-  return node(PREFIX);
+  return node.getOrCreate(PREFIX);
 }
 
 #define CHECK_FAILURE(source, query)                                           \

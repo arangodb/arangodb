@@ -15,4 +15,3 @@ description: |
   "rocksdb-num-entries-imm-mem-tables".
   It shows the total number of entries in the unflushed immutable memtables,
   summed over all column families.
-

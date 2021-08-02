@@ -68,8 +68,6 @@ class PhysicalCollection {
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
 
   virtual ErrorCode close() = 0;
-  virtual void load() = 0;
-  virtual void unload() = 0;
 
   // @brief Return the number of documents in this collection
   virtual uint64_t numberDocuments(transaction::Methods* trx) const = 0;
@@ -215,6 +213,7 @@ class PhysicalCollection {
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
       transaction::Methods& trx);
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId);
+  virtual std::unique_ptr<containers::RevisionTree> computeRevisionTree(uint64_t batchId);
 
   virtual Result rebuildRevisionTree();
 

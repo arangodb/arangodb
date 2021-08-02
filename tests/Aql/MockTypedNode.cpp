@@ -50,8 +50,7 @@ std::unique_ptr<::arangodb::aql::ExecutionBlock> MockTypedNode::createBlock(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-void MockTypedNode::toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                                       std::unordered_set<ExecutionNode const*>& seen) const {
+void MockTypedNode::doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

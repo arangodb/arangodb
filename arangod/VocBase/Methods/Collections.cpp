@@ -293,32 +293,6 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
     if (addUseRevs) {
       helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
                  arangodb::velocypack::Value(useRevs));
-      bool isSmartChild =
-          Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
-
-      // determine the minimum revision id for the collection.
-      // for smart edge collection children collections, the _rev values are determined
-      // via the agency's uniqid() function. they can be anything, so we need to assume
-      // 0 as the lower bound.
-      // for system collections, we can assume that there will be no data inserted with
-      // revisions older than lowerBound(), which is a HLC value from January 2020. We
-      // cannot assume a current revision id because that may cause trouble in replication.
-      // replication for some system collections may not drop and recreate them, but
-      // reuse the existing collections. this is done at least for the _users collection,
-      // which is not dropped by the replication. that means we must be careful to avoid
-      // min revisions on the follower to be higher than on the leader, and we cannot use
-      // a recent revision id. so for system collections, we simply use a 2020 HLC value,
-      // which should be good enough for all cases given that 3.8 is released in 2021.
-      // for all other collections (non-smart edge children, non-system collections) we
-      // for now also use a HLC value from the past, because a DC2DC can be connected
-      // to an existing 3.8 collection at any point.
-      RevisionId minRev =
-          (isSmartChild 
-           ? RevisionId::none()
-           : RevisionId::lowerBound());
-
-      helper.add(arangodb::StaticStrings::MinRevision,
-                 arangodb::velocypack::Value(minRev.toString()));
     }
 
     // If the PlanId is not set, we either are on a single server, or this is
@@ -609,50 +583,16 @@ void Collections::createSystemCollectionProperties(std::string const& collection
   return res;
 }
 
-Result Collections::load(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
-  TRI_ASSERT(coll != nullptr);
-
-  if (ServerState::instance()->isCoordinator()) {
-#ifdef USE_ENTERPRISE
-    auto& feature = vocbase.server().getFeature<ClusterFeature>();
-    return ULColCoordinatorEnterprise(feature, coll->vocbase().name(),
-                                      std::to_string(coll->id().id()),
-                                      TRI_VOC_COL_STATUS_LOADED);
-#else
-    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-    return ci.setCollectionStatusCoordinator(coll->vocbase().name(),
-                                             std::to_string(coll->id().id()),
-                                             TRI_VOC_COL_STATUS_LOADED);
-#endif
-  }
-
-  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-  SingleCollectionTransaction trx(ctx, *coll, AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    return res;
-  }
-
-  return trx.finish(res);
+Result Collections::load(TRI_vocbase_t& /*vocbase*/, LogicalCollection* /*coll*/) {
+  // load doesn't do anything from ArangoDB 3.9 onwards, and the method
+  // may be deleted in a future version
+  return {};
 }
 
-Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
-  if (ServerState::instance()->isCoordinator()) {
-#ifdef USE_ENTERPRISE
-    auto& feature = vocbase->server().getFeature<ClusterFeature>();
-    return ULColCoordinatorEnterprise(feature, vocbase->name(),
-                                      std::to_string(coll->id().id()),
-                                      TRI_VOC_COL_STATUS_UNLOADED);
-#else
-    auto& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-    return ci.setCollectionStatusCoordinator(vocbase->name(),
-                                             std::to_string(coll->id().id()),
-                                             TRI_VOC_COL_STATUS_UNLOADED);
-#endif
-  }
-
-  return vocbase->unloadCollection(coll, false);
+Result Collections::unload(TRI_vocbase_t* /*vocbase*/, LogicalCollection* /*coll*/) {
+  // unload doesn't do anything from ArangoDB 3.9 onwards, and the method
+  // may be deleted in a future version
+  return {};
 }
 
 Result Collections::properties(Context& ctxt, VPackBuilder& builder) {

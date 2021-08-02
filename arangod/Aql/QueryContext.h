@@ -66,8 +66,8 @@ class QueryContext {
   QueryContext& operator=(QueryContext const&) = delete;
 
  public:
-  explicit QueryContext(TRI_vocbase_t& vocbase);
-
+  explicit QueryContext(TRI_vocbase_t& vocbase, QueryId id = 0);
+  
   virtual ~QueryContext();
 
   arangodb::ResourceMonitor& resourceMonitor() noexcept { return _resourceMonitor; }
@@ -104,6 +104,8 @@ class QueryContext {
   }
       
   virtual QueryOptions const& queryOptions() const = 0;
+  
+  virtual QueryOptions& queryOptions() = 0;
   
   /// @brief pass-thru a resolver object from the transaction context
   virtual CollectionNameResolver const& resolver() const = 0;
@@ -146,9 +148,6 @@ class QueryContext {
   /// @brief current resources and limits used by query
   arangodb::ResourceMonitor _resourceMonitor;
 
-  /// @brief registers/unregisters query base ovehead
-  arangodb::ResourceUsageScope _baseOverHeadTracker;
-  
   TRI_voc_tick_t const _queryId;
   
   /// @brief thread-safe query warnings collector

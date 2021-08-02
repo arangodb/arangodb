@@ -237,7 +237,7 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
     query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
 
     spo = gdb.getShortestPathOptions(query.get());
-    spo->weightAttribute = "cost";
+    spo->setWeightAttribute("cost");
 
     finder = new KShortestPathsFinder(*spo);
   }

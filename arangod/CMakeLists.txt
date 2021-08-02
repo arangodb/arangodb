@@ -711,10 +711,8 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestImportHandler.cpp
   RestHandler/RestIndexHandler.cpp
   RestHandler/RestJobHandler.cpp
-  RestHandler/RestPleaseUpgradeHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
-  RestHandler/RestRedirectHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
@@ -750,6 +748,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
+  RestServer/SoftShutdownFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp

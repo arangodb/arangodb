@@ -112,7 +112,7 @@ struct ActionDescription final {
    * @exception    std::out_of_range if the we do not have this key in discriminatory container
    * @return       Value to specified key
    */
-  std::string get(std::string const& key) const;
+  std::string const& get(std::string const& key) const;
 
   /**
    * @brief Get a string value from description

@@ -173,8 +173,10 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   bool didWork = false;
   auto mappings = _engine.collectionMappings();
-  std::string scratch;
-  scratch.reserve(10485760);  // reserve 10MB of scratch space to work with
+
+  // reserve 1MB of scratch space to work with
+  _scratch.reserve(10485760);  
+
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
     DataSourceId cid = pair.second;
@@ -198,11 +200,14 @@ Result RocksDBSettingsManager::sync(bool force) {
 
     LOG_TOPIC("afb17", TRACE, Logger::ENGINES)
         << "syncing metadata for collection '" << coll->name() << "'";
+  
+    // clear our scratch buffer for this round
+    _scratch.clear();
 
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
     rocksdb::SequenceNumber appliedSeq = maxSeqNr;
     Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder,
-                                             appliedSeq, scratch);
+                                             appliedSeq, _scratch);
     minSeqNr = std::min(minSeqNr, appliedSeq);
 
     const std::string err = "could not sync metadata for collection '";
@@ -220,6 +225,12 @@ Result RocksDBSettingsManager::sync(bool force) {
       didWork = true;
     }
     batch.Clear();
+  }
+
+  if (_scratch.capacity() >= 32 * 1024 * 1024) {
+    // much data in _scratch, let's shrink it to save memory
+    _scratch.clear();
+    _scratch.shrink_to_fit();
   }
 
   auto const lastSync = _lastSync.load();

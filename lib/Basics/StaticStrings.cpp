@@ -244,7 +244,6 @@ std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::IsSmartChild("isSmartChild");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
-std::string const StaticStrings::MinRevision("minRevision");
 std::string const StaticStrings::ObjectId("objectId");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
 std::string const StaticStrings::Satellite("satellite");
@@ -256,6 +255,8 @@ std::string const StaticStrings::SyncByRevision("syncByRevision");
 std::string const StaticStrings::UsesRevisionsAsDocumentIds(
     "usesRevisionsAsDocumentIds");
 std::string const StaticStrings::Schema("schema");
+std::string const StaticStrings::InternalValidatorTypes(
+    "internalValidatorType");
 std::string const StaticStrings::Version("version");
 std::string const StaticStrings::WriteConcern("writeConcern");
 std::string const StaticStrings::ShardingSingle("single");
@@ -290,7 +291,8 @@ std::string const StaticStrings::AccumulatorName("accumulator");
 std::string const StaticStrings::VertexComputationPregelId("pregel-id");
 std::string const StaticStrings::VertexComputationVertexId("vertex");
 std::string const StaticStrings::VertexComputationPhase("phase");
-std::string const StaticStrings::VertexComputationGlobalSuperstep("global-superstep");
+std::string const StaticStrings::VertexComputationGlobalSuperstep(
+    "global-superstep");
 std::string const StaticStrings::VertexComputationPhaseStep("phase-step");
 std::string const StaticStrings::VertexComputationMessage("message");
 std::string const StaticStrings::VertexComputationVoteActive("vote-active");
@@ -324,16 +326,17 @@ std::string const StaticStrings::GraphCreateCollection("createCollection");
 // Replication
 std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
 std::string const StaticStrings::FailoverCandidates("failoverCandidates");
-std::string const StaticStrings::RevisionTreeBranchingFactor("branchingFactor");
 std::string const StaticStrings::RevisionTreeCount("count");
 std::string const StaticStrings::RevisionTreeHash("hash");
 std::string const StaticStrings::RevisionTreeMaxDepth("maxDepth");
 std::string const StaticStrings::RevisionTreeNodes("nodes");
 std::string const StaticStrings::RevisionTreeRangeMax("rangeMax");
 std::string const StaticStrings::RevisionTreeRangeMin("rangeMin");
+std::string const StaticStrings::RevisionTreeInitialRangeMin("initialRangeMin");
 std::string const StaticStrings::RevisionTreeRanges("ranges");
 std::string const StaticStrings::RevisionTreeResume("resume");
 std::string const StaticStrings::RevisionTreeVersion("version");
+std::string const StaticStrings::FollowingTermId("followingTermId");
 
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");
@@ -357,6 +360,7 @@ std::string const StaticStrings::BackupSearchToDeleteName(
 
 // aql api strings
 std::string const StaticStrings::SerializationFormat("serializationFormat");
+std::string const StaticStrings::AqlDocumentCall("x-arango-aql-document-aql");
 std::string const StaticStrings::AqlRemoteExecute("execute");
 std::string const StaticStrings::AqlRemoteCallStack("callStack");
 std::string const StaticStrings::AqlRemoteLimit("limit");
@@ -392,6 +396,7 @@ std::string const StaticStrings::ValidationLevelStrict("strict");
 std::string const StaticStrings::ValidationParameterMessage("message");
 std::string const StaticStrings::ValidationParameterLevel("level");
 std::string const StaticStrings::ValidationParameterRule("rule");
+std::string const StaticStrings::ValidationParameterType("type");
 
 // TODO REMOVE ME AFTER REFACTOR IS DONE
 std::string const StaticStrings::GraphRefactorFlag("refactor");

@@ -33,6 +33,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-compiler.h"
+#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
@@ -41,8 +42,12 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <chrono>
+#include <thread>
 
 using namespace arangodb;
 
@@ -78,7 +83,8 @@ void RocksDBMetadata::DocCount::toVelocyPack(VPackBuilder& b) const {
 }
 
 RocksDBMetadata::RocksDBMetadata()
-    : _count(0, 0, 0, RevisionId::none()),
+    : _maxBlockersSequenceNumber(0),
+      _count(0, 0, 0, RevisionId::none()),
       _numberDocuments(0),
       _revisionId(RevisionId::none()) {}
 
@@ -92,72 +98,33 @@ RocksDBMetadata::RocksDBMetadata()
  *
  * @param  trxId The identifier for the active transaction
  * @param  seq   The sequence number immediately prior to call
- * @return       May return error if we fail to allocate and place blocker
  */
-Result RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
-  return basics::catchToResult([&]() -> Result {
-    Result res;
-    WRITE_LOCKER(locker, _blockerLock);
+rocksdb::SequenceNumber RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
+  WRITE_LOCKER(locker, _blockerLock);
 
-    TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
-    TRI_ASSERT(_blockersBySeq.end() == _blockersBySeq.find(std::make_pair(seq, trxId)));
+  seq = std::max(seq, _maxBlockersSequenceNumber);
 
-    auto insert = _blockers.try_emplace(trxId, seq);
-    if (!insert.second) {
-      return res.reset(TRI_ERROR_INTERNAL);
+  TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
+  TRI_ASSERT(_blockersBySeq.end() == _blockersBySeq.find(std::make_pair(seq, trxId)));
+
+  auto insert = _blockers.try_emplace(trxId, seq);
+  if (!insert.second) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate sequence number in placeBlocker");
+  }
+  try {
+    if (!_blockersBySeq.emplace(seq, trxId).second) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate sequence number for crosslist in placeBlocker");
     }
-    try {
-      auto crosslist = _blockersBySeq.emplace(seq, trxId);
-      if (!crosslist.second) {
-        return res.reset(TRI_ERROR_INTERNAL);
-      }
-      LOG_TOPIC("1587a", TRACE, Logger::ENGINES)
-          << "[" << this << "] placed blocker (" << trxId.id() << ", " << seq << ")";
-      return res;
-    } catch (...) {
-      _blockers.erase(trxId);
-      throw;
-    }
-  });
-}
+  } catch (...) {
+    _blockers.erase(trxId);
+    throw;
+  }
 
-/**
- * @brief Update a blocker to allow proper commit/serialize semantics
- *
- * Should be called after initializing an internal trx.
- *
- * @param  trxId The identifier for the active transaction (should match input
- *               to earlier `placeBlocker` call)
- * @param  seq   The sequence number from the internal snapshot
- * @return       May return error if we fail to allocate and place blocker
- */
-Result RocksDBMetadata::updateBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
-  return basics::catchToResult([&]() -> Result {
-    Result res;
-    WRITE_LOCKER(locker, _blockerLock);
-
-    auto previous = _blockers.find(trxId);
-    if (_blockers.end() == previous ||
-        _blockersBySeq.end() ==
-            _blockersBySeq.find(std::make_pair(previous->second, trxId))) {
-      res.reset(TRI_ERROR_INTERNAL);
-    }
-
-    auto removed = _blockersBySeq.erase(std::make_pair(previous->second, trxId));
-    if (!removed) {
-      return res.reset(TRI_ERROR_INTERNAL);
-    }
-
-    TRI_ASSERT(seq >= _blockers[trxId]);
-    _blockers[trxId] = seq;
-    auto crosslist = _blockersBySeq.emplace(seq, trxId);
-    if (!crosslist.second) {
-      return res.reset(TRI_ERROR_INTERNAL);
-    }
-    LOG_TOPIC("1587c", TRACE, Logger::ENGINES)
-        << "[" << this << "] updated blocker (" << trxId.id() << ", " << seq << ")";
-    return res;
-  });
+  _maxBlockersSequenceNumber = seq;
+    
+  LOG_TOPIC("1587a", TRACE, Logger::ENGINES)
+      << "[" << this << "] placed blocker (" << trxId.id() << ", " << seq << ")";
+  return seq;
 }
 
 /**
@@ -170,9 +137,10 @@ Result RocksDBMetadata::updateBlocker(TransactionId trxId, rocksdb::SequenceNumb
  * @param trxId Identifier for active transaction (should match input to
  *              earlier `placeBlocker` call)
  */
-void RocksDBMetadata::removeBlocker(TransactionId trxId) {
+void RocksDBMetadata::removeBlocker(TransactionId trxId) noexcept try {
   WRITE_LOCKER(locker, _blockerLock);
   auto it = _blockers.find(trxId);
+
   if (ADB_LIKELY(_blockers.end() != it)) {
     auto cross = _blockersBySeq.find(std::make_pair(it->second, it->first));
     TRI_ASSERT(_blockersBySeq.end() != cross);
@@ -183,6 +151,22 @@ void RocksDBMetadata::removeBlocker(TransactionId trxId) {
     LOG_TOPIC("1587b", TRACE, Logger::ENGINES)
         << "[" << this << "] removed blocker (" << trxId.id() << ")";
   }
+} catch (...) {}
+
+/// @brief check if there is blocker with a seq number lower or equal to
+/// the specified number
+bool RocksDBMetadata::hasBlockerUpTo(rocksdb::SequenceNumber seq) const noexcept {
+  READ_LOCKER(locker, _blockerLock);
+
+  if (_blockersBySeq.empty()) {
+    return false;
+  }
+
+  // _blockersBySeq is sorted by sequence number first, then transaction id
+  // if the seq no in the first item is already less equal to our search
+  // value, we can abort the search. all following items in _blockersBySeq
+  // will only have the same or higher sequence numbers.
+  return _blockersBySeq.begin()->first <= seq;
 }
 
 /// @brief returns the largest safe seq to squash updates against
@@ -315,9 +299,25 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   const rocksdb::SequenceNumber maxCommitSeq = committableSeq(appliedSeq);
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // simulate another transaction coming along and trying to commit while
+  // we are serializing
+  RocksDBBlockerGuard blocker(&coll);
+  
+  TRI_IF_FAILURE("TransactionChaos::blockerOnSync") {
+    blocker.placeBlocker();
+  }
+#endif
+
   TRI_ASSERT(maxCommitSeq <= appliedSeq);
   TRI_ASSERT(maxCommitSeq != UINT64_MAX);
   TRI_ASSERT(maxCommitSeq > 0);
+  
+  TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+    std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
+  }
+    
   bool didWork = applyAdjustments(maxCommitSeq);
   appliedSeq = maxCommitSeq;
 
@@ -751,4 +751,60 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
     return rocksutils::convertStatus(s);
   }
   return Result();
+}
+  
+RocksDBBlockerGuard::RocksDBBlockerGuard(LogicalCollection* collection)
+    : _collection(collection),
+      _trxId(TransactionId::none()) {
+  TRI_ASSERT(_collection != nullptr);
+}
+
+RocksDBBlockerGuard::~RocksDBBlockerGuard() {
+  releaseBlocker();
+}
+
+RocksDBBlockerGuard::RocksDBBlockerGuard(RocksDBBlockerGuard&& other) noexcept
+    : _collection(other._collection),
+      _trxId(other._trxId) {
+  other._trxId = TransactionId::none();
+}
+
+RocksDBBlockerGuard& RocksDBBlockerGuard::operator=(RocksDBBlockerGuard&& other) noexcept {
+  releaseBlocker();
+
+  _collection = other._collection;
+  _trxId = other._trxId;
+  other._trxId = TransactionId::none();
+  return *this;
+}
+
+rocksdb::SequenceNumber RocksDBBlockerGuard::placeBlocker() {
+  TransactionId trxId = TransactionId(transaction::Context::makeTransactionId());
+  // generated trxId must be > 0
+  TRI_ASSERT(trxId.isSet());
+  return placeBlocker(trxId);
+}
+
+rocksdb::SequenceNumber RocksDBBlockerGuard::placeBlocker(TransactionId trxId) {
+  // note: input trxId can be 0 during unit tests, so we cannot assert trxId.isSet() here!
+  
+  TRI_ASSERT(!_trxId.isSet());
+
+  auto& engine = _collection->vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  rocksdb::SequenceNumber blockerSeq = engine.db()->GetLatestSequenceNumber();
+
+  auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+  // placeBlocker() may increase the blockerSeq
+  blockerSeq = rcoll->meta().placeBlocker(trxId, blockerSeq);
+  // only set _trxId if placing the blocker succeeded
+  _trxId = trxId;
+  return blockerSeq;
+}
+
+void RocksDBBlockerGuard::releaseBlocker() noexcept {
+  if (_trxId.isSet()) {
+    auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+    rcoll->meta().removeBlocker(_trxId);
+    _trxId = TransactionId::none();
+  }
 }
