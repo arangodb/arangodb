@@ -137,10 +137,10 @@ struct SimpleHttpClientParams {
   static void setDefaultMaxPacketSize(size_t value) { MaxPacketSize = value; }
 
  private:
+  double _requestTimeout;
+  
   // flag whether or not we keep the connection on destruction
   bool _keepConnectionOnDestruction = false;
-
-  double _requestTimeout;
 
   bool _warn;
 
@@ -154,13 +154,13 @@ struct SimpleHttpClientParams {
 
   uint64_t _retryWaitTime = 1 * 1000 * 1000;
 
-  std::string _retryMessage = "";
+  std::string _retryMessage;
 
   size_t _maxPacketSize = SimpleHttpClientParams::MaxPacketSize;
 
   std::string _basicAuth;
 
-  std::string _jwt = "";
+  std::string _jwt;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief struct for rewriting location URLs
@@ -206,7 +206,10 @@ class SimpleHttpClient {
   SimpleHttpClient(GeneralClientConnection*, SimpleHttpClientParams const&);
   ~SimpleHttpClient();
 
- public:
+  /// @brief allow the SimpleHttpClient to reuse/recycle the result. 
+  /// the SimpleHttpClient will assume ownership for it
+  void recycleResult(std::unique_ptr<SimpleHttpResult> result);
+
   void setInterrupted(bool value);
 
   request_state state() const { return _state; }
@@ -379,11 +382,10 @@ class SimpleHttpClient {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the result
-  /// the caller has to delete the result object
+  /// @brief set the type of the result
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* getResult(bool haveSentRequest);
+  void setResultType(bool haveSentRequest);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the request
@@ -500,7 +502,7 @@ class SimpleHttpClient {
 
   rest::RequestType _method;
 
-  SimpleHttpResult* _result;
+  std::unique_ptr<SimpleHttpResult> _result;
 
   std::atomic<bool> _aborted;
 

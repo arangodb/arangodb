@@ -301,6 +301,8 @@ class BenchmarkThread : public arangodb::Thread {
     trackTime(delta);
 
     processResponse(result.get(), /*batch*/ true);
+
+    _httpClient->recycleResult(std::move(result));
   }
 
   /// @brief execute a single request
@@ -340,6 +342,8 @@ class BenchmarkThread : public arangodb::Thread {
     trackTime(delta);
 
     processResponse(result.get(), /*batch*/ false);
+    
+    _httpClient->recycleResult(std::move(result));
   }
 
   void processResponse(httpclient::SimpleHttpResult const* result, bool batch) {

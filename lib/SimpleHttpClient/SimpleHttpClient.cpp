@@ -80,7 +80,6 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
       _errorMessage(""),
       _nextChunkedSize(0),
       _method(rest::RequestType::GET),
-      _result(nullptr),
       _aborted(false),
       _comm(_connection->server().getFeature<application_features::CommunicationFeaturePhase>()) {
   TRI_ASSERT(connection != nullptr);
@@ -117,6 +116,10 @@ SimpleHttpClient::~SimpleHttpClient() {
 // -----------------------------------------------------------------------------
 // public methods
 // -----------------------------------------------------------------------------
+  
+void SimpleHttpClient::recycleResult(std::unique_ptr<SimpleHttpResult> result) {
+  _result = std::move(result);
+}
 
 void SimpleHttpClient::setAborted(bool value) noexcept {
   _aborted.store(value, std::memory_order_release);
@@ -255,17 +258,21 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
   }
 
   // ensure that result is empty
-  TRI_ASSERT(_result == nullptr);
+  if (_result == nullptr) {
+    // create a new result
+    _result = std::make_unique<SimpleHttpResult>();
+  } else {
+    _result->clear();
+  }
 
-  // create a new result
-  _result = new SimpleHttpResult();
+  TRI_ASSERT(_result != nullptr);
+
   auto resultGuard = scopeGuard([this] {
-    delete _result;
-    _result = nullptr;
+    _result.reset();
   });
 
   // reset error message
-  _errorMessage = "";
+  _errorMessage.clear();
 
   // set body
   setRequest(method, rewriteLocation(location), body, bodyLength, headers);
@@ -438,11 +445,11 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
   }
 
   // set result type in getResult()
-  SimpleHttpResult* result = getResult(haveSentRequest);
-  _result = nullptr;
-  resultGuard.cancel();  // doesn't matter but do it anyway
+  setResultType(haveSentRequest);
 
-  return result;
+  // this method always returns a raw pointer to the result. 
+  // the caller must take ownership.
+  return _result.release();
 }
 
 // -----------------------------------------------------------------------------
@@ -482,10 +489,10 @@ void SimpleHttpClient::clearReadBuffer() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the result
+/// @brief set the type of the result
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleHttpResult* SimpleHttpClient::getResult(bool haveSentRequest) {
+void SimpleHttpClient::setResultType(bool haveSentRequest) {
   _result->setHaveSentRequestFully(haveSentRequest);
   switch (_state) {
     case IN_WRITE:
@@ -516,8 +523,6 @@ SimpleHttpResult* SimpleHttpClient::getResult(bool haveSentRequest) {
   if (haveErrorMessage() && _result->getHttpReturnMessage().empty()) {
     _result->setHttpReturnMessage(_errorMessage);
   }
-
-  return _result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -631,7 +636,6 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
   }
 
   _writeBuffer.ensureNullTerminated();
-
   if (exclusions.empty()) {
     LOG_TOPIC("12c4c", TRACE, arangodb::Logger::HTTPCLIENT)
         << "request: " << _writeBuffer;
@@ -647,7 +651,7 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
     LOG_TOPIC("12c4e", TRACE, arangodb::Logger::HTTPCLIENT)
         << "request: " << std::string_view(_writeBuffer.data() + pos, _writeBuffer.size() - pos);
   }
-
+  
   if (_state == DEAD) {
     _connection->resetNumConnectRetries();
   }
