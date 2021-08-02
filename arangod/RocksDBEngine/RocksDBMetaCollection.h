@@ -145,6 +145,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   // helper function to build revision trees
   std::unique_ptr<containers::RevisionTree> revisionTree(
+    rocksdb::SequenceNumber notAfter,
     std::function<std::unique_ptr<containers::RevisionTree>(std::unique_ptr<containers::RevisionTree>)> const& callback);
 
  protected:
