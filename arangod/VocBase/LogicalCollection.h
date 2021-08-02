@@ -369,6 +369,12 @@ class LogicalCollection : public LogicalDataSource {
 
   Result updateSchema(VPackSlice schema);
 
+  /**
+   * Enterprise only method. See enterprise code for implementation
+   * Community has a dummy stub.
+   */
+  std::string createSmartToSatKey(arangodb::velocypack::Slice input);
+
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 

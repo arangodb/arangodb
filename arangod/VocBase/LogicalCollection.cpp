@@ -398,9 +398,18 @@ ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice sli
 }
 
 /// @briefs creates a new document key, the input slice is ignored here
-std::string LogicalCollection::createKey(VPackSlice) {
+std::string LogicalCollection::createKey(VPackSlice input) {
+  if (isSatToSmartEdgeCollection() || isSmartToSatEdgeCollection()) {
+    return createSmartToSatKey(input);
+  }
   return keyGenerator()->generate();
 }
+
+#ifndef USE_ENTERPRISE
+std::string LogicalCollection::createSmartToSatKey(VPackSlice) {
+  return keyGenerator()->generate();
+}
+#endif
 
 void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(_physical != nullptr);
@@ -610,9 +619,7 @@ Result LogicalCollection::rename(std::string&& newName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-ErrorCode LogicalCollection::close() {
-  return getPhysical()->close();
-}
+ErrorCode LogicalCollection::close() { return getPhysical()->close(); }
 
 arangodb::Result LogicalCollection::drop() {
   // make sure collection has been closed
