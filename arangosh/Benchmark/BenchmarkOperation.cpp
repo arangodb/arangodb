@@ -26,7 +26,12 @@
 namespace arangodb::arangobench {
 
 BenchmarkOperation::RequestData::RequestData()
-    : type(arangodb::rest::RequestType::ILLEGAL) {}
+    : type(arangodb::rest::RequestType::ILLEGAL),
+      payload(&options) {
+
+  options.buildUnindexedObjects = true;
+  options.paddingBehavior = arangodb::velocypack::Options::PaddingBehavior::UsePadding;
+}
 
 std::map<std::string, BenchmarkOperation::BenchmarkFactory>& BenchmarkOperation::allBenchmarks() {
   // this is a static inline variable to avoid issues with initialization order.

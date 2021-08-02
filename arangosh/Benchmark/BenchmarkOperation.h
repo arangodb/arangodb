@@ -29,6 +29,7 @@
 #include <memory>
 
 #include <velocypack/Builder.h>
+#include <velocypack/Options.h>
 
 namespace arangodb {
 class BenchFeature;
@@ -42,6 +43,7 @@ struct BenchmarkOperation {
 
     std::string url;
     arangodb::rest::RequestType type;
+    arangodb::velocypack::Options options;
     arangodb::velocypack::Builder payload;
 
     void clear() {
