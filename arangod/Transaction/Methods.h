@@ -483,8 +483,8 @@ class Methods {
 
   /// @brief add a collection by name
   Result addCollection(std::string const&, AccessMode::Type);
-  
- protected:
+   
+ private:
   /// @brief the state
   std::shared_ptr<TransactionState> _state;
 
@@ -492,9 +492,7 @@ class Methods {
   std::shared_ptr<transaction::Context> _transactionContext;
   
   bool _mainTransaction;
-  
- private:
-  
+
   Future<Result> replicateOperations(
       LogicalCollection* collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,
