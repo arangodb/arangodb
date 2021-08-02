@@ -51,8 +51,8 @@ auto replication2::operator<<(std::ostream& os, const LogIndex& idx) -> std::ost
   return os << idx.value;
 }
 
-auto LogIndex::saturatedDecrement() const noexcept -> LogIndex {
-  if (value > 0) {
+auto LogIndex::saturatedDecrement(uint64_t delta) const noexcept -> LogIndex {
+  if (value > delta) {
     return LogIndex{value - 1};
   }
 

@@ -117,6 +117,11 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
         return spec->participants.size() - spec->config.writeConcern + 1;
       });
 
+      LOG_TOPIC("8a53d", TRACE, Logger::REPLICATION2)
+          << "participant size = " << spec.currentTerm->participants.size()
+          << " writeConcern = " << spec.currentTerm->config.writeConcern
+          << " requiredNumberOfAvailableParticipants = " << requiredNumberOfAvailableParticipants;
+
       TRI_ASSERT(requiredNumberOfAvailableParticipants > 0);
 
       election.participantsRequired = requiredNumberOfAvailableParticipants;
