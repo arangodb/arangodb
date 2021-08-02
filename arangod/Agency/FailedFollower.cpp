@@ -52,22 +52,22 @@ FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
   // set only if already started (test to prevent warning)
   if (_snapshot.has(path + "toServer")) {
     auto tmp_to = _snapshot.hasAsString(path + "toServer");
-    _to = tmp_to.first;
+    _to = tmp_to.value();
   }
 
   auto tmp_shard = _snapshot.hasAsString(path + "shard");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
   auto tmp_created = _snapshot.hasAsString(path + "timeCreated");
 
-  if (tmp_database.second && tmp_collection.second && tmp_from.second &&
-      tmp_shard.second && tmp_creator.second && tmp_created.second) {
-    _database = tmp_database.first;
-    _collection = tmp_collection.first;
-    _from = tmp_from.first;
+  if (tmp_database && tmp_collection && tmp_from &&
+      tmp_shard && tmp_creator && tmp_created) {
+    _database = tmp_database.value();
+    _collection = tmp_collection.value();
+    _from = tmp_from.value();
     // _to conditionally set above
-    _shard = tmp_shard.first;
-    _creator = tmp_creator.first;
-    _created = stringToTimepoint(tmp_created.first);
+    _shard = tmp_shard.value();
+    _creator = tmp_creator.value();
+    _created = stringToTimepoint(tmp_created.value());
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency";
@@ -143,12 +143,12 @@ bool FailedFollower::start(bool& aborts) {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
   auto plannedPair = _snapshot.hasAsSlice(planPath);
-  Slice const& planned = plannedPair.first;
-  if (!plannedPair.second) {
+  if (!plannedPair) {
     finish("", _shard, true,
         "Plan entry for collection " + _collection + " gone");
     return false;
   }
+  Slice const& planned = plannedPair.value();
 
   // Now check if _server is still in this plan, note that it could have
   // been removed by RemoveFollower already, in which case we simply stop:
@@ -205,8 +205,8 @@ bool FailedFollower::start(bool& aborts) {
     VPackArrayBuilder a(&todo);
     if (_jb == nullptr) {
       auto const& jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
-      if (jobIdNode.second) {
-        jobIdNode.first.toBuilder(todo);
+      if (jobIdNode) {
+        jobIdNode->get().toBuilder(todo);
       } else {
         LOG_TOPIC("4571c", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
                                                     " from agency snapshot";
@@ -284,8 +284,8 @@ bool FailedFollower::start(bool& aborts) {
               std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
               foCandsPath += StaticStrings::FailoverCandidates;
               auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
-              if (foCands.second) {
-                addPreconditionUnchanged(job, foCandsPath, foCands.first);
+              if (foCands) {
+                addPreconditionUnchanged(job, foCandsPath, foCands.value());
               }
             });
         // toServer not blocked
@@ -302,11 +302,11 @@ bool FailedFollower::start(bool& aborts) {
   //  (likely to not exist, avoid warning message by testing first)
   if (_snapshot.has(blockedShardsPrefix + _shard)) {
     auto jobId = _snapshot.hasAsString(blockedShardsPrefix + _shard);
-    if (jobId.second && !abortable(_snapshot, jobId.first)) {
+    if (jobId && !abortable(_snapshot, *jobId)) {
       return false;
-    } else if (jobId.second) {
+    } else if (jobId) {
       aborts = true;
-      JobContext(PENDING, jobId.first, _snapshot, _agent).abort("failed follower requests abort");
+      JobContext(PENDING, *jobId, _snapshot, _agent).abort("failed follower requests abort");
       return false;
     }
   }

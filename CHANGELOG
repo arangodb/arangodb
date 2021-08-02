@@ -1,6 +1,16 @@
 devel
 -----
 
+* Timely update of database server list on health check fixes BTS-505.
+
+* Add 3 AQL functions: COSINE_SIMILARITY, L1_DISTANCE and L2_DISTANCE.
+
+* Updated ArangoDB Starter to 0.15.1.
+
+* Updated arangosync to 2.5.0.
+
+* Fix BTS-453: Download of a HotBackup from remote source doesn't work on macOS
+
 * Honor the value of startup option `--rocksdb.sync-interval` on Windows, too.
   Previously, the value was ignored and WAL syncing on Windows was using a
   different code paths than on the other supported platforms. Now syncing is
