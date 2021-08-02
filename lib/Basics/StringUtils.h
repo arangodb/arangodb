@@ -185,6 +185,19 @@ void toupperInPlace(std::string& str);
 /// @brief converts string to upper case - locale-independent, ASCII only!
 std::string toupper(std::string const& str);
 
+template<typename T1, typename T2>
+[[nodiscard]] bool equalStringsCaseInsensitive(T1 const& lhs, T2 const& rhs) noexcept {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < lhs.size(); ++i) {    
+    if (tolower(lhs[i]) != tolower(rhs[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /// @brief checks for a prefix
 bool isPrefix(std::string const& str, std::string const& prefix);
 

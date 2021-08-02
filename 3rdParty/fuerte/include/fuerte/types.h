@@ -29,6 +29,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
@@ -117,7 +118,8 @@ enum class RestVerb {
   Options = 6
 };
 std::string to_string(RestVerb type);
-RestVerb from_string(std::string const&);
+RestVerb from_string(std::string_view type);
+RestVerb from_string(std::string const& type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       MessageType

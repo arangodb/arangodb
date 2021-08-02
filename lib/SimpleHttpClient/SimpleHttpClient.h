@@ -28,6 +28,7 @@
 #include <string.h>
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -44,6 +45,10 @@
 #include "Rest/GeneralRequest.h"
 
 namespace arangodb {
+namespace application_features {
+class CommunicationFeaturePhase;
+}
+
 namespace httpclient {
 
 class SimpleHttpResult;
@@ -499,8 +504,12 @@ class SimpleHttpClient {
 
   std::atomic<bool> _aborted;
 
-  // empty map, used for headers
-  static std::unordered_map<std::string, std::string> const NO_HEADERS;
+  std::string _hostname;
+  
+  // reference to communication feature phase (populated only once for
+  // the entire lifetime of the SimpleHttpClient, as the repeated feature
+  // lookup may be expensive otherwise)
+  application_features::CommunicationFeaturePhase& _comm;
 };
 }  // namespace httpclient
 }  // namespace arangodb

@@ -45,7 +45,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
