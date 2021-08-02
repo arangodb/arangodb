@@ -276,7 +276,7 @@ void HeartbeatThread::run() {
       return true;
     };
     std::vector<std::string> const serverAgencyPaths{
-      "Current/ServersRegistered", "Target/MapUniqueToShortID", "Current/ServersKnown",
+      "Current/ServersRegistered", "Target/MapUniqueToShortID", "Current/ServersKnown", "Supervision/Health",
       "Current/ServersKnown/" + ServerState::instance()->getId()};
     for (auto const& path : serverAgencyPaths) {
       serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(_server, path, upsrv, true, false));
@@ -284,6 +284,7 @@ void HeartbeatThread::run() {
     std::function<bool(VPackSlice const& result)> upcrd = [self = shared_from_this()] (VPackSlice const& result) {
       LOG_TOPIC("2f09e", DEBUG, Logger::HEARTBEAT) << "Updating cluster's cache of current coordinators";
       self->server().getFeature<ClusterFeature>().clusterInfo().loadCurrentCoordinators();
+      self->server().getFeature<ClusterFeature>().clusterInfo().loadCurrentDBServers();
       return true;
     };
     std::string const path = "Current/Coordinators";
