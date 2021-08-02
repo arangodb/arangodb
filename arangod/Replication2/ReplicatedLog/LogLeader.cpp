@@ -238,7 +238,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
               if (auto self = weakParentLog.lock()) {
                 // If we successfully acquired parentLog, this cannot fail.
                 auto follower = weakFollower.lock();
-                TRI_ASSERT(follwer != nullptr);
+                TRI_ASSERT(follower != nullptr);
                 using namespace std::chrono_literals;
                 auto const duration = endTime - startTime;
                 self->_logMetrics->replicatedLogAppendEntriesRttUs->count(duration / 1us);
