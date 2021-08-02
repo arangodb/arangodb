@@ -2521,6 +2521,23 @@ void RestReplicationHandler::handleCommandAddFollower() {
                   "'readLockId' is not a string or empty");
     return;
   }
+
+  auto cleanup = scopeGuard([&body, this]() {
+    // untrack the (async) replication client, so the WAL may be cleaned
+    arangodb::ServerId const serverId{StringUtils::uint64(
+        basics::VelocyPackHelper::getStringValue(body, "serverId", ""))};
+    SyncerId const syncerId = SyncerId{StringUtils::uint64(
+        basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
+    std::string const clientInfo =
+        basics::VelocyPackHelper::getStringValue(body, "clientInfo", "");
+
+    try {
+      _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId, clientInfo);
+    } catch (...) {
+    }
+  });
+
+
   LOG_TOPIC("23b9f", DEBUG, Logger::REPLICATION)
       << "Try add follower with documents";
   // previous versions < 3.3x might not send the checksum, if mixed clusters
@@ -2561,17 +2578,6 @@ void RestReplicationHandler::handleCommandAddFollower() {
   if (res.fail()) {
     // this will create an error response with the appropriate message
     THROW_ARANGO_EXCEPTION(res);
-  }
-
-  {  // untrack the (async) replication client, so the WAL may be cleaned
-    arangodb::ServerId const serverId{StringUtils::uint64(
-        basics::VelocyPackHelper::getStringValue(body, "serverId", ""))};
-    SyncerId const syncerId = SyncerId{StringUtils::uint64(
-        basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
-    std::string const clientInfo =
-        basics::VelocyPackHelper::getStringValue(body, "clientInfo", "");
-
-    _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId, clientInfo);
   }
 
   VPackBuilder b;
@@ -2659,6 +2665,10 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   VPackSlice const leaderIdSlice = body.get("leaderId");
   VPackSlice const oldLeaderIdSlice = body.get("oldLeaderId");
   VPackSlice const shard = body.get("shard");
+  VPackSlice const followingTermId = body.get(StaticStrings::FollowingTermId);
+  // Note that we tolerate if followingTermId is not present or not a number
+  // for upgrade scenarios. If the new leader does not send it, it will also
+  // not send it in the option IsSynchronousReplication.
   if (!leaderIdSlice.isString() || !shard.isString() || !oldLeaderIdSlice.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "'leaderId' and 'shard' attributes must be strings");
@@ -2692,7 +2702,12 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
       return;
     }
 
-    col->followers()->setTheLeader(leaderId);
+    if (followingTermId.isNumber()) {
+      col->followers()->setTheLeader(leaderId + "_" +
+          StringUtils::itoa(followingTermId.getNumber<uint64_t>()));
+    } else {
+      col->followers()->setTheLeader(leaderId);
+    }
   }
 
   VPackBuilder b;
@@ -2799,6 +2814,23 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
+  // check if we are not the actual leader anymore. this can
+  // happen if there is a leader change after a follower scheduled a
+  // synchronize shard job
+  bool isLeader = col->followers()->getLeader().empty();
+  if (!isLeader) {
+    auto res = cancelBlockingTransaction(id);
+    if (!res.ok()) {
+      // this is potentially bad!
+      LOG_TOPIC("957fa", WARN, Logger::REPLICATION)
+          << "Lock " << id << " could not be canceled because of: " << res.errorMessage();
+    }
+    // indicate that we are not the leader
+    generateError(TRI_ERROR_CLUSTER_NOT_LEADER);
+    return;
+  }
+
+
   TRI_ASSERT(isLockHeld(id).ok());
   TRI_ASSERT(isLockHeld(id).get() == true);
 
@@ -2806,6 +2838,10 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   {
     VPackObjectBuilder bb(&b);
     b.add(StaticStrings::Error, VPackValue(false));
+    if (!serverId.empty()) {
+      b.add(StaticStrings::FollowingTermId,
+            VPackValue(col->followers()->newFollowingTermId(serverId)));
+    }
   }
 
   LOG_TOPIC("61a9d", DEBUG, Logger::REPLICATION)

@@ -132,6 +132,7 @@ void RocksDBReplicationContext::removeVocbase(TRI_vocbase_t& vocbase) {
     if (it->second->vocbase.id() == vocbase.id()) {
       if (it->second->isUsed()) {
         LOG_TOPIC("543d4", ERR, Logger::REPLICATION) << "trying to delete used context";
+        it++;
       } else {
         found = true;
         it = _iterators.erase(it);

@@ -68,7 +68,7 @@ class QueryContext {
 
  public:
   
-  explicit QueryContext(TRI_vocbase_t& vocbase);
+  explicit QueryContext(TRI_vocbase_t& vocbase, QueryId id = 0);
 
   virtual ~QueryContext();
 
