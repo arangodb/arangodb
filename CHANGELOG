@@ -1,6 +1,10 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Web UI: Fixes the loading of map tiles which are being used to display the
+  query output based on a world map when using SSL encryption. This lead to
+  not displaying some world map tiles correctly (OASIS-590).
+
 * Timely update of database server list on health check fixes BTS-505.
 
 * Updated JavaScript dependencies, including breaking changes to non-public
