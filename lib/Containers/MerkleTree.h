@@ -81,8 +81,8 @@ class MerkleTreeBase {
 
     bool operator==(Node const& other) const noexcept;
   };
-  static_assert(sizeof(Node) == 16, "Node size assumptions invalid.");
   static constexpr std::uint64_t NodeSize = sizeof(Node);
+  static_assert(NodeSize == 16, "Node size assumptions invalid.");
   
   // an empty dummy node with count=0, hash=0, shared and read-only
   static Node const emptyNode;
@@ -96,12 +96,9 @@ class MerkleTreeBase {
       
     // used for older versions. unfortunately needed
     struct Padding {
-      std::uint64_t p0 = 0;
-      std::uint64_t p1 = 0;
-
-      constexpr Padding() noexcept : p0(0), p1(0) {}
-      constexpr Padding(std::uint64_t p0, std::uint64_t p1) noexcept : p0(0), p1(0) {}
-    } padding = { 0, 0 };
+      std::uint64_t p0 ;
+      std::uint64_t p1;
+    } padding;
 
     void serialize(std::string& output, bool addPadding) const;
   };
@@ -114,16 +111,20 @@ class MerkleTreeBase {
   // note: trees with a small depth may only have a single shard which is smaller than this value
   static constexpr std::uint64_t ShardSize = (1 << 16);
 
-  using ShardsType = std::vector<std::unique_ptr<uint8_t[]>>;
-  
   struct Data {
+    using ShardType = std::unique_ptr<std::uint8_t[]>;
+
     Meta meta;
-    ShardsType shards;
+    std::vector<ShardType> shards;
   
     void clear() {
       shards.clear();
       meta.summary = { 0, 0 };
     }
+
+    void ensureShard(std::uint64_t shard, std::uint64_t shardSize);
+
+    static ShardType buildShard(std::uint64_t shardSize);
   };
 };
 
@@ -441,7 +442,7 @@ class MerkleTree : public MerkleTreeBase {
   std::uint64_t index(std::uint64_t key) const noexcept;
   void modify(std::uint64_t key, bool isInsert);
   void modify(std::vector<std::uint64_t> const& keys, bool isInsert);
-  bool modifyLocal(Node& node, std::uint64_t count, std::uint64_t value, bool isInsert);
+  bool modifyLocal(Node& node, std::uint64_t count, std::uint64_t value, bool isInsert) noexcept;
   bool modifyLocal(std::uint64_t key, std::uint64_t value, bool isInsert);
   void leftCombine(bool withShift);
   void rightCombine(bool withShift);

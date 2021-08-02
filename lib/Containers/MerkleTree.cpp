@@ -74,6 +74,20 @@ template<typename T> T readUInt(char const*& p) noexcept {
   return arangodb::basics::littleToHost<T>(value);
 };
 
+/// @brief an empty shard that is reused when serializing empty shards
+struct EmptyShard {
+  EmptyShard()
+    : buffer(arangodb::containers::MerkleTreeBase::Data::buildShard(arangodb::containers::MerkleTreeBase::ShardSize)) {}
+
+  char* data() const { return reinterpret_cast<char*>(buffer.get()); }
+
+  arangodb::containers::MerkleTreeBase::Data::ShardType buffer;
+};
+
+/// @brief an empty shard that is reused when serializing empty shards
+EmptyShard const emptyShard;
+
+
 class SnappyStringAppendSink : public snappy::Sink {
  public:
   explicit SnappyStringAppendSink(std::string& output) 
@@ -86,19 +100,6 @@ class SnappyStringAppendSink : public snappy::Sink {
  private:
   std::string& output;
 };
-
-struct EmptyShard {
-  EmptyShard()
-    : buffer(std::make_unique<char[]>(arangodb::containers::MerkleTreeBase::ShardSize)) {
-    memset(buffer.get(), 0, arangodb::containers::MerkleTreeBase::ShardSize);
-  }
-
-  char* data() const { return buffer.get(); }
-
-  std::unique_ptr<char[]> buffer;
-};
-
-EmptyShard const emptyShard;
   
 /// @brief helper class for compressing a Merkle tree using Snappy
 class MerkleTreeSnappySource : public snappy::Source {
@@ -160,6 +161,27 @@ namespace containers {
 
 std::uint64_t FnvHashProvider::hash(std::uint64_t input) const {
   return TRI_FnvHashPod(input);
+}
+  
+static_assert(std::is_pod_v<MerkleTreeBase::Meta>);
+    
+void MerkleTreeBase::Data::ensureShard(std::uint64_t shard, std::uint64_t shardSize) {
+  if (shards.size() <= shard) {
+    // allocate a few shards at once
+    std::size_t capacity = std::max(std::size_t(shard + 1), std::max(std::size_t(4), shards.size() * 2));
+    shards.resize(capacity);
+  }
+  if (shards[shard] == nullptr) {
+    shards[shard] = buildShard(shardSize);
+  }
+}
+
+/*static*/ MerkleTreeBase::Data::ShardType MerkleTreeBase::Data::buildShard(std::uint64_t shardSize) {
+  static_assert(std::is_pod_v<MerkleTreeBase::Node>);
+  TRI_ASSERT(shardSize % NodeSize == 0);
+  auto p = std::make_unique<uint8_t[]>(shardSize);
+  memset(p.get(), 0, shardSize);
+  return p;
 }
   
 /*static*/ MerkleTreeBase::Node const MerkleTreeBase::emptyNode{ 0, 0 };
@@ -304,17 +326,9 @@ MerkleTree<Hasher, BranchingBits>::fromSnappyLazyCompressed(std::string_view buf
     if (compressedLength != 0) {
       size_t shardLength = shardSize(data.meta.depth);
       TRI_ASSERT(shardLength % NodeSize == 0);
-      std::uint64_t nodesPerShard = shardLength / NodeSize;
       // ShardSize may be more than we actually need (if we only have a single
       // shard), but it doesn't matter for correctness here.
-      data.shards[i] = std::make_unique<uint8_t[]>(shardLength);
-      {
-        Node* ptr = reinterpret_cast<Node*>(data.shards[i].get());
-        for (std::uint64_t i = 0; i < nodesPerShard; ++i) {
-          new (ptr) Node{0, 0};
-          ++ptr;
-        }
-      }
+      data.shards[i] = MerkleTreeBase::Data::buildShard(shardLength);
 
       size_t length;
       bool canUncompress = snappy::GetUncompressedLength(compressedData, compressedLength, &length);
@@ -536,7 +550,7 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t depth,
              (rangeMax - rangeMin));
   
   // no lock necessary here
-  _data.meta = Meta{rangeMin, rangeMax, depth, initialRangeMin, /*summary node*/ {0, 0}};
+  _data.meta = Meta{rangeMin, rangeMax, depth, initialRangeMin, /*summary node*/ {0, 0}, /*padding*/ {0, 0}};
   
   TRI_ASSERT(this->meta().summary.count == 0);
   TRI_ASSERT(this->meta().summary.hash == 0);
@@ -986,12 +1000,8 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
           compressedLength = output.size() - previousLength;
         }
         uint32_t value = basics::hostToLittle(static_cast<uint32_t>(compressedLength));
-        char const* p = reinterpret_cast<const char*>(&value);
-
         // patch offsets table with compressed length
-        for (size_t j = 0; j < sizeof(uint32_t); ++j) {
-          output[tableBase + i * sizeof(uint32_t) + j] = p[j];
-        }
+        memcpy(&output[tableBase + i * sizeof(uint32_t)], &value, sizeof(value));
       }
       break;
     }
@@ -1108,7 +1118,12 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(MerkleTree<Hasher, BranchingBits> 
   // in this case `other` is already properly locked
   
   // no lock necessary here for ourselves, as no other thread can see us yet
-  _data.meta = Meta{other.meta().rangeMin, other.meta().rangeMax, other.meta().depth, other.meta().initialRangeMin, other.meta().summary};
+  _data.meta = Meta{other.meta().rangeMin, 
+                    other.meta().rangeMax, 
+                    other.meta().depth, 
+                    other.meta().initialRangeMin, 
+                    other.meta().summary, 
+                    /*padding*/ {0, 0}};
 
   std::uint64_t nodesPerShard = shardSize(_data.meta.depth) / NodeSize;
 
@@ -1164,20 +1179,7 @@ MerkleTreeBase::Node& MerkleTree<Hasher, BranchingBits>::node(std::uint64_t inde
   TRI_ASSERT(shard < numberOfShards());
 
   // lazily allocate backing memory
-  if (_data.shards.size() <= shard) {
-    // allocate a few shards at once
-    _data.shards.resize(std::max(shard + 1, std::uint64_t(4)));
-  }
-  if (_data.shards[shard] == nullptr) {
-    _data.shards[shard] = std::make_unique<uint8_t[]>(ShardSize);
-    Node* p = reinterpret_cast<Node*>(_data.shards[shard].get());
-    
-    std::uint64_t nodesPerShard = shardSize(meta().depth) / NodeSize;
-    for (std::uint64_t i = 0; i < nodesPerShard; ++i) {
-      new (p) Node{0, 0};
-      ++p;
-    }
-  }
+  _data.ensureShard(shard, ShardSize);
 
   TRI_ASSERT(_data.shards[shard] != nullptr);
   TRI_ASSERT(index < nodeCountAtDepth(meta().depth));
@@ -1297,7 +1299,7 @@ void MerkleTree<Hasher, BranchingBits>::modify(std::vector<std::uint64_t> const&
 
 template <typename Hasher, std::uint64_t const BranchingBits>
 bool MerkleTree<Hasher, BranchingBits>::modifyLocal(
-    Node& node, std::uint64_t count, std::uint64_t value, bool isInsert) {
+    Node& node, std::uint64_t count, std::uint64_t value, bool isInsert) noexcept {
   // only use via modify
   if (isInsert) {
     node.count += count;
