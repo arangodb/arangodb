@@ -374,8 +374,8 @@ constexpr size_t BreadthFirstEnumerator::pathStepSize() const noexcept {
 }
 
 #ifndef USE_ENTERPRISE
-bool BreathFirstEnumerator::validDisjointPath(size_t /*index*/,
-                                              arangodb::velocypack::StringRef /*vertex*/) const {
+bool BreadthFirstEnumerator::validDisjointPath(size_t /*index*/,
+                                               arangodb::velocypack::StringRef /*vertex*/) const {
   return true;
 }
 #endif
