@@ -43,6 +43,14 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/Listeners/RocksDBMetricsListener.cpp
   RocksDBEngine/Listeners/RocksDBShaCalculator.cpp
   RocksDBEngine/Listeners/RocksDBThrottle.cpp
+  RocksDBEngine/Methods/RocksDBBatchedMethods.cpp
+  RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.cpp
+  RocksDBEngine/Methods/RocksDBReadOnlyBaseMethods.cpp
+  RocksDBEngine/Methods/RocksDBReadOnlyMethods.cpp
+  RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.cpp
+  RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.cpp
+  RocksDBEngine/Methods/RocksDBTrxBaseMethods.cpp
+  RocksDBEngine/Methods/RocksDBTrxMethods.cpp
   RocksDBEngine/RocksDBBackgroundThread.cpp
   RocksDBEngine/RocksDBBuilderIndex.cpp
   RocksDBEngine/RocksDBCollection.cpp
@@ -64,7 +72,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBLogValue.cpp
   RocksDBEngine/RocksDBMetaCollection.cpp
   RocksDBEngine/RocksDBMetadata.cpp
-  RocksDBEngine/RocksDBMethods.cpp
+  RocksDBEngine/RocksDBTransactionMethods.cpp
   RocksDBEngine/RocksDBOptimizerRules.cpp
   RocksDBEngine/RocksDBOptionFeature.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
