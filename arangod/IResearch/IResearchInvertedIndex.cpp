@@ -36,9 +36,6 @@
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "store/directory.hpp"
-#include "search/boolean_filter.hpp"
-#include "search/score.hpp"
-#include "search/cost.hpp"
 #include "utils/utf8_path.hpp"
 
 namespace {
@@ -79,68 +76,6 @@ struct CheckFieldsAccess {
                      std::hash<std::vector<basics::AttributeName>>,
                      std::equal_to<std::vector<basics::AttributeName>>> _fields;
 };
-/*
-class FieldsBuilder {
- public:
-  explicit FieldsBuilder(std::vector<std::vector<basics::AttributeName>>& fields) : _fields(fields) {}
-
-  bool operator()(irs::hashed_string_ref const name, FieldMeta const& meta) {
-    if (!name.empty()) {
-      if (meta._fields.empty()) {
-        // found last field in branch
-        _fields.push_back(_stack);
-        _fields.back().emplace_back(velocypack::StringRef(name.c_str(), name.size()), false);
-        processLeaf(meta);
-      } else {
-        _stack.emplace_back(velocypack::StringRef(name.c_str(), name.size()), false);
-      }
-    }
-    return true;
-  }
-
-  void pop() {
-    if (!_stack.empty()) {
-      _stack.pop_back();
-    }
-  }
-
-  virtual void processLeaf(FieldMeta const& meta) {}
-
- private:
-  std::vector<basics::AttributeName> _stack;
-  std::vector<std::vector<basics::AttributeName>>& _fields;
-};
-
-class FieldsBuilderWithAnalyzer : public FieldsBuilder {
- public:
-  explicit FieldsBuilderWithAnalyzer(std::vector<std::vector<basics::AttributeName>>& fields)
-    : FieldsBuilder(fields) {}
-
-  void processLeaf(FieldMeta const& meta) override {
-     if (!meta._analyzers.empty()) {
-        TRI_ASSERT(meta._analyzers.size() == 1);
-        _analyzerNames.emplace_back(meta._analyzers.front()._pool->name());
-      }
-  }
-
-  std::vector<irs::string_ref> _analyzerNames;
-};
-
-template<typename Visitor>
-bool visitFields(
-    irs::hashed_string_ref const myName,
-    FieldMeta const& meta, Visitor& visitor) {
-  if (visitor(myName, meta)) {
-    for (auto const& f : meta._fields) {
-      visitFields<Visitor>(f.key(),  *f.value().get(), visitor);
-    }
-    visitor.pop();
-  } else {
-    return false;
-  }
-  return true;
-}
-*/
 
 constexpr irs::payload NoPayload;
 
@@ -206,6 +141,22 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
     return limit == 0;
   }
 
+  bool canRearm() const override { 
+    return _immutableCache != nullptr;
+  }
+
+  bool rearmImpl(arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* variable,
+    IndexIteratorOptions const& opts) override {
+    if (node == &_condition) {
+      reset();
+    } else {
+      _immutableCache.reset();
+      reset();
+    }
+    return true;
+  }
+
   // FIXME: track if the filter condition is volatile! 
   // FIXME: support sorting!
   // FIXME: consider rearm implementation!
@@ -241,8 +192,10 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
     _reader =  &static_cast<irs::directory_reader const&>(ctx->snapshot);
     QueryContext const queryCtx = { _trx, nullptr, nullptr,
                                     nullptr, _reader, _variable};
-    irs::Or root;
-    auto rv = FilterFactory::filter(&root, queryCtx, _condition, false);
+
+    irs::And full;
+    auto& root = full.add<irs::Or>();
+    auto rv = FilterFactory::filter(&root, queryCtx, *_condition.getMember(1), false);
 
     if (rv.fail()) {
       arangodb::velocypack::Builder builder;
@@ -253,7 +206,25 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
                                "inverted index, query '",
                                builder.toJson(), "': ", rv.errorMessage()));
     }
-    _filter = root.prepare(*_reader, _order, irs::no_boost(), nullptr);
+    
+    auto immutable_root = std::make_unique<irs::Or>();
+    TRI_ASSERT(immutable_root.get() != nullptr);
+    rv = FilterFactory::filter(immutable_root.get(), queryCtx, *_condition.getMember(0), false);
+
+    if (rv.fail()) {
+      arangodb::velocypack::Builder builder;
+      _condition.toVelocyPack(builder, true);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          rv.errorNumber(),
+          basics::StringUtils::concatT("failed to build filter while querying "
+                               "inverted index, query '",
+                               builder.toJson(), "': ", rv.errorMessage()));
+    }
+    if (_immutableCache == nullptr) {
+      _immutableCache.reset(new proxy_query::proxy_cache());
+    }
+    full.add<proxy_filter>().add(std::move(immutable_root)).set_cache(_immutableCache.get());
+    _filter = full.prepare(*_reader, _order, irs::no_boost(), nullptr);
   }
 
   void resetImpl() override {
@@ -276,11 +247,14 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   IResearchInvertedIndex* _index;
   aql::AstNode const& _condition;
   aql::Variable const* _variable;
+  std::unique_ptr<proxy_query::proxy_cache> _immutableCache;
 };
 } // namespace
 
 namespace arangodb {
 namespace iresearch {
+
+DEFINE_FACTORY_DEFAULT(proxy_filter);
 
 arangodb::iresearch::IResearchInvertedIndex::IResearchInvertedIndex(
     IndexId iid, LogicalCollection& collection, InvertedIndexFieldMeta&& meta)
