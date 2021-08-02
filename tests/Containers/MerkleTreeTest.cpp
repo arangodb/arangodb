@@ -1607,3 +1607,40 @@ TEST(MerkleTreeTest, overflow_underflow) {
     ASSERT_TRUE(msg.find("underflow") != std::string::npos);
   }
 };
+
+class MerkleTreeSpecialGrowTests
+    : public ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>,
+      public ::testing::Test {
+ public:
+  MerkleTreeSpecialGrowTests()
+      : MerkleTree<::arangodb::containers::FnvHashProvider, 3>(
+          6, 0 /* rangeMin */, 1ULL << 24 /* rangeMax */, 0 /* initial */) {}
+ public:
+  uint64_t rangeMin = range().first;
+  uint64_t initWidth = 1ULL << 24;
+  uint64_t bucketWidth = 1ULL << 6;
+  uint64_t rangeMax = range().second;
+};
+
+TEST_F(MerkleTreeSpecialGrowTests, test_grow_right_simple) {
+  ASSERT_EQ(rangeMin + initWidth, rangeMax);
+
+  arangodb::containers::FnvHashProvider hasher;
+
+  ASSERT_EQ(6, depth());
+  ASSERT_EQ(0, count());
+  ASSERT_EQ(0, rootValue());
+
+  // There are 2^18 buckets, and initWidth is 2^24, so 2^6=64 values
+  // per bucket. We put something in bucket 1, but nothing in buckets
+  // 2 and 3. When we grow right, it does a leftCombine without shift
+  // and then buckets 0 and 1 are combined into 0 and buckets 2 and 3
+  // (both empty) must be combined into the new bucket 1.
+
+  insert(64);
+  // Now grow to the right:
+  insert(rangeMax);
+
+  // Must not throw:
+  checkConsistency();
+}

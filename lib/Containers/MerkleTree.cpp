@@ -1341,6 +1341,13 @@ void MerkleTree<Hasher, BranchingBits>::leftCombine(bool withShift) {
     // empty -> n
     for (std::uint64_t i = 2; i < n; ++i) {
       if (!this->empty(i)) {
+        // Please note: If both src Nodes are empty for some dst,
+        // nothing is combined. This is OK, for the following reason:
+        // The respective dst Node was a src in a previous loop
+        // iteration. Either it was empty then, then it can stay empty
+        // in this case. If it wasn't empty, then the assignmend
+        // `src // = { 0, 0 };` at the end of the loop has erased it, so
+        // it is empty now, also good.
         Node& src = this->node(i);
         Node& dst = this->node((i + 1) / 2);
 
@@ -1362,6 +1369,13 @@ void MerkleTree<Hasher, BranchingBits>::leftCombine(bool withShift) {
     // empty     -> n - 1
     for (std::uint64_t i = 1; i < n; ++i) {
       if (!this->empty(i)) {
+        // Please note: If both src Nodes are empty for some dst,
+        // nothing is combined. This is OK, for the following reason:
+        // The respective dst Node was a src in a previous loop
+        // iteration. Either it was empty then, then it can stay empty
+        // in this case. If it wasn't empty, then the assignmend
+        // `src // = { 0, 0 };` at the end of the loop has erased it, so
+        // it is empty now, also good.
         Node& src = this->node(i);
         Node& dst = this->node(i / 2);
 
@@ -1461,6 +1475,13 @@ void MerkleTree<Hasher, BranchingBits>::rightCombine(bool withShift) {
     // n-1       -> n - 1
     for (std::uint64_t i = n - 3; /* i >= 0 */ ; --i) {
       if (!this->empty(i)) {
+        // Please note: If both src Nodes are empty for some dst,
+        // nothing is combined. This is OK, for the following reason:
+        // The respective dst Node was a src in a previous loop
+        // iteration. Either it was empty then, then it can stay empty
+        // in this case. If it wasn't empty, then the assignmend
+        // `src // = { 0, 0 };` at the end of the loop has erased it, so
+        // it is empty now, also good.
         Node& src = this->node(i);
         Node& dst = this->node((n + i - 1) / 2);
 
@@ -1485,6 +1506,13 @@ void MerkleTree<Hasher, BranchingBits>::rightCombine(bool withShift) {
     // n-2, n-1  -> n - 1
     for (std::uint64_t i = n - 2; /* i >= 0 */; --i) {
       if (!this->empty(i)) {
+        // Please note: If both src Nodes are empty for some dst,
+        // nothing is combined. This is OK, for the following reason:
+        // The respective dst Node was a src in a previous loop
+        // iteration. Either it was empty then, then it can stay empty
+        // in this case. If it wasn't empty, then the assignmend
+        // `src // = { 0, 0 };` at the end of the loop has erased it, so
+        // it is empty now, also good.
         Node& src = this->node(i);
         Node& dst = this->node((n + i) / 2);
 
