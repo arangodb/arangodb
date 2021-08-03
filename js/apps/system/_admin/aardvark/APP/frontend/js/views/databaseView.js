@@ -317,7 +317,7 @@
       var tableContent = [];
 
       tableContent.push(
-        window.modalView.createReadOnlyEntry('id_name', 'Name', dbName, '')
+        window.modalView.createReadOnlyEntry('id_name', 'Name', _.escape(dbName), '')
       );
       
       if (isDeletable) {
