@@ -615,27 +615,16 @@ ExecutionNode* tryOptimize(ExecutionNode* node) {
   }
 
   auto deps = node->getDependencies();
+  if(deps.size() == 1 && deps[0]->getType() == ExecutionNode::NodeType::CALCULATION) {
+    auto calcNode = deps[0];
 
-  for (auto currNode : deps) {
-
-    if (currNode == nullptr) {
-      continue;
+    auto deps2 = calcNode->getDependencies();
+    if(deps2.size() == 1 && deps2[0]->getType() == ExecutionNode::NodeType::SINGLETON) {
+      return calcNode;
     }
-
-    if(currNode->getType() == ExecutionNode::NodeType::CALCULATION)
-    {
-      auto deps2 = currNode->getDependencies();
-      auto singletonNodeItr = std::find_if(deps2.begin(), deps2.end(), [](const ExecutionNode* n) {
-        return n->getType() == ExecutionNode::NodeType::SINGLETON;
-        });
-
-      if(singletonNodeItr != deps2.end()) {
-       return currNode;
-      }
-    }
-
-    return tryOptimize(currNode);
   }
+
+  return nullptr;
 }
 
 bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
@@ -701,19 +690,15 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
         // create context
         FixedVarExpressionContext ctx(trx, _query->ast()->query(), cache);
 
-        VPackSlice slice(reinterpret_cast<const uint8_t*>(field.c_str()));
-        AqlValue aqlValue(slice);
+        AqlValue value(field.c_str());
 
         // set value in context
-        ctx.setVariableValue(v, aqlValue);
-
-        bool mustDestroy = false;
-        // extarct variable's value from context
-        AqlValue value = ctx.getVariableValue(v, true, mustDestroy);
+        ctx.setVariableValue(v, value);
 
         // set the value in expression
         e->setVariable(v, value.slice());
         // calculate expression
+        bool mustDestroy = false;
         AqlValue calculatedValue = e->execute(&ctx, mustDestroy);
 
         _executionState = ExecutionState::DONE; // already calculated
