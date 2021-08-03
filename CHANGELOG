@@ -5,6 +5,10 @@ devel
   The web UI can now call a backend route to renew its JWT, so there will not
   be any rude logouts in the middle of an active session.
 
+  Active web UI sessions (here: sessions with user activity within the last
+  90 minutes) will automatically renew their JWT if they get close to the
+  JWT expiry date.
+
 * Timely update of database server list on health check fixes BTS-505.
 
 * Add 3 AQL functions: COSINE_SIMILARITY, L1_DISTANCE and L2_DISTANCE.
