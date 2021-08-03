@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Noty, Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
+/* global Noty, Blob, window, atob, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -120,6 +120,55 @@
           if (jqXHR.status === 401) {
             window.App.navigate('login', {trigger: true});
           }
+        }
+      });
+    },
+  
+    renewJwt: function (callback) {
+      if (!window.atob) {
+        return;
+      }
+      var self = this;
+      var currentUser = self.getCurrentJwtUsername();
+      if (currentUser === undefined || currentUser === "") {
+        return;
+      }
+
+      $.ajax({
+        cache: false,
+        type: 'POST',
+        url: self.databaseUrl('/_open/auth/renew'),
+        data: JSON.stringify({ username: currentUser }),
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          var updated = false;
+          if (data.jwt) {
+            try {
+              var jwtParts = data.jwt.split('.');
+              if (!jwtParts[1]) {
+                throw "invalid token!";
+              }
+              var payload = JSON.parse(atob(jwtParts[1]));
+              if (payload.preferred_username === currentUser) {
+                self.setCurrentJwt(data.jwt, currentUser);
+                updated = true;
+              }
+            } catch (err) {
+            }
+          }
+          if (updated) {
+            // success
+            callback();
+          }
+        },
+        error: function (data) {
+          // this function is triggered by a non-interactive
+          // background task. if it fails for whatever reason,
+          // we don't report this error. 
+          // the worst thing that can happen is that the JWT
+          // is not renewed and thus the user eventually gets
+          // logged out
         }
       });
     },

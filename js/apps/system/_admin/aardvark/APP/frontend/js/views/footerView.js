@@ -13,6 +13,10 @@
     timer: 15000,
     lap: 0,
     timerFunction: null,
+    // last time of JWT renewal call, in seconds.
+    // this is initialized to the current time so we don't 
+    // fire off a renewal request at the very beginning.
+    lastTokenRenewal: Date.now() / 1000, 
 
     events: {
       'click .footer-center p': 'showShortcutModal'
@@ -43,6 +47,24 @@
           });
         }
       }, 1000);
+      
+      window.setInterval(function () {
+        if (self.isOffline) {
+          // only try to renew token if we are online
+          return;
+        }
+        var now = Date.now() / 1000;
+        // to save request, try to renew only if session time is x% or more over
+        var frac = (frontendConfig.sessionTimeout >= 1800) ? 0.95 : 0.8;
+        if (now - self.lastTokenRenewal >= frontendConfig.sessionTimeout * frac) {
+          arangoHelper.renewJwt(function() {
+            // successful renewal of token. now store last renewal time so
+            // that we later only renew if the session is again about to
+            // expire
+            self.lastTokenRenewal = now;
+          });
+        }
+      }, 15 * 1000);
     },
 
     template: templateEngine.createTemplate('footerView.ejs'),

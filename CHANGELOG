@@ -1,6 +1,10 @@
 devel
 -----
 
+* Automatically extend web UI sessions while they are still active. 
+  The web UI can now call a backend route to renew its JWT, so there will not
+  be any rude logouts in the middle of an active session.
+
 * Timely update of database server list on health check fixes BTS-505.
 
 * Add 3 AQL functions: COSINE_SIMILARITY, L1_DISTANCE and L2_DISTANCE.
