@@ -361,7 +361,7 @@ velocypack::StringRef WeightedEnumerator::getToVertex(velocypack::Slice edge,
 }
 
 #ifndef USE_ENTERPRISE
-bool WeightedEnumerator::validDisjointPath() const {
+bool WeightedEnumerator::validDisjointPath(size_t index, arangodb::velocypack::StringRef vertex) const {
   return true;
 }
 #endif
