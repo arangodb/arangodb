@@ -29,6 +29,7 @@
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/LifoQueue.h"
 #include "Graph/Queues/QueueTracer.h"
+#include "Graph/Queues/WeightedQueue.h"
 
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
@@ -76,6 +77,18 @@ struct DFSConfiguration {
   using Validator = PathValidator<Provider, Store, vertexUniqueness>;
 };
 
+template <class ProviderType, VertexUniquenessLevel vertexUniqueness, bool useTracing>
+struct WeightedConfiguration {
+  using Provider =
+      typename std::conditional<useTracing, ProviderTracer<ProviderType>, ProviderType>::type;
+  using Step = typename Provider::Step;
+  using Queue =
+      typename std::conditional<useTracing, QueueTracer<WeightedQueue<Step>>, WeightedQueue<Step>>::type;
+  using Store =
+      typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>, PathStore<Step>>::type;
+  using Validator = PathValidator<Provider, Store, vertexUniqueness>;
+};
+
 // BFS Traversal Enumerator implementation
 template <class Provider, VertexUniquenessLevel vertexUniqueness>
 using BFSEnumerator =
@@ -86,8 +99,6 @@ template <class Provider, VertexUniquenessLevel vertexUniqueness>
 using TracedBFSEnumerator =
     OneSidedEnumerator<BFSConfiguration<Provider, vertexUniqueness, true>>;
 
-// BFS Traversal Enumerator implementation using Tracing (without provider tracing)
-
 // DFS Traversal Enumerator implementation
 template <class Provider, VertexUniquenessLevel vertexUniqueness>
 using DFSEnumerator =
@@ -97,6 +108,17 @@ using DFSEnumerator =
 template <class Provider, VertexUniquenessLevel vertexUniqueness>
 using TracedDFSEnumerator =
     OneSidedEnumerator<DFSConfiguration<Provider, vertexUniqueness, true>>;
+
+// Weighted Traversal Enumerator implementation
+// TODO: Needs to be renamed as soon as we replace the existing variant, whic occupies this name
+template <class Provider, VertexUniquenessLevel vertexUniqueness>
+using WeightedEnumeratorRefactored =
+    OneSidedEnumerator<WeightedConfiguration<Provider, vertexUniqueness, false>>;
+
+// BFS Traversal Enumerator implementation using Tracing
+template <class Provider, VertexUniquenessLevel vertexUniqueness>
+using TracedWeightedEnumerator =
+    OneSidedEnumerator<WeightedConfiguration<Provider, vertexUniqueness, true>>;
 
 }  // namespace graph
 }  // namespace arangodb

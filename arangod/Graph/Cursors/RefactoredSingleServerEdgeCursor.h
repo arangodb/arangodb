@@ -97,7 +97,8 @@ class RefactoredSingleServerEdgeCursor {
       transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
       std::vector<IndexAccessor> const& globalIndexConditions,
       std::unordered_map<uint64_t, std::vector<IndexAccessor>> const& depthBasedIndexConditions,
-      arangodb::aql::FixedVarExpressionContext& expressionContext);
+      arangodb::aql::FixedVarExpressionContext& expressionContext, bool requiresFullDocument);
+
   ~RefactoredSingleServerEdgeCursor();
 
   using Callback =
@@ -110,6 +111,7 @@ class RefactoredSingleServerEdgeCursor {
 
   transaction::Methods* _trx;
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
+  bool _requiresFullDocument;
 
  public:
   void readAll(SingleServerProvider<StepType>& provider,

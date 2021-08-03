@@ -63,7 +63,8 @@ BaseProviderOptions::BaseProviderOptions(
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
       _expressionContext(expressionContext),
-      _collectionToShardMap(collectionToShardMap) {}
+      _collectionToShardMap(collectionToShardMap),
+      _weightCallback(std::nullopt) {}
 
 aql::Variable const* BaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
@@ -81,6 +82,23 @@ std::unordered_map<std::string, std::vector<std::string>> const& BaseProviderOpt
 
 aql::FixedVarExpressionContext& BaseProviderOptions::expressionContext() const {
   return _expressionContext;
+}
+
+bool BaseProviderOptions::hasWeightMethod() const {
+  return _weightCallback.has_value();
+}
+
+void BaseProviderOptions::setWeightEdgeCallback(WeightCallback callback) {
+  _weightCallback = std::move(callback);
+}
+
+double BaseProviderOptions::weightEdge(double prefixWeight,
+                                       arangodb::velocypack::Slice edge) const {
+  if (!hasWeightMethod()) {
+    // We do not have a weight. Hardcode.
+    return 1.0;
+  }
+  return _weightCallback.value()(prefixWeight, edge);
 }
 
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(

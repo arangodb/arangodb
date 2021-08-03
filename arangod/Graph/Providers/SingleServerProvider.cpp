@@ -56,6 +56,20 @@ void SingleServerProvider<Step>::addEdgeToBuilder(typename Step::Edge const& edg
   if (edge.isValid()) {
     insertEdgeIntoResult(edge.getID(), builder);
   } else {
+    // We can never hand out invalid ids.
+    // For production just be sure to add something sensible.
+    builder.add(VPackSlice::nullSlice());
+  }
+};
+
+template <class Step>
+void SingleServerProvider<Step>::addEdgeIDToBuilder(typename Step::Edge const& edge,
+                                                    arangodb::velocypack::Builder& builder) {
+  if (edge.isValid()) {
+    insertEdgeIntoResult(edge.getID(), builder);
+  } else {
+    // We can never hand out invalid ids.
+    // For production just be sure to add something sensible.
     builder.add(VPackSlice::nullSlice());
   }
 };
@@ -94,13 +108,14 @@ void SingleServerProvider<Step>::activateCache(bool enableDocumentCache) {
 }
 
 template <class Step>
-auto SingleServerProvider<Step>::startVertex(VertexType vertex, size_t depth) -> Step {
+auto SingleServerProvider<Step>::startVertex(VertexType vertex, size_t depth, double weight)
+    -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Start Vertex:" << vertex;
 
   // Create default initial step
   // Note: Refactor naming, Strings in our cache here are not allowed to be removed.
-  return Step(_cache.persistString(vertex), depth);
+  return Step(_cache.persistString(vertex), depth, weight);
 }
 
 template <class Step>
@@ -141,22 +156,20 @@ auto SingleServerProvider<Step>::expand(Step const& step, size_t previous,
     // TODO: Adjust log output
     LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
         << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> " << id;
-#ifdef USE_ENTERPRISE
-    if constexpr (std::is_same_v<arangodb::graph::enterprise::SmartGraphStep, Step>) {
-      callback(Step{id, std::move(eid), previous, step.getDepth() + 1, cursorID});
+    if (_opts.hasWeightMethod()) {
+      callback(Step{id, std::move(eid), previous, step.getDepth() + 1,
+                    _opts.weightEdge(step.getWeight(), edge), cursorID});
     } else {
-      callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
+      callback(Step{id, std::move(eid), previous, step.getDepth() + 1, 1.0, cursorID});
     }
-#else
-    callback(Step{id, std::move(eid), previous, step.getDepth() + 1});
-#endif
   });
 }
 
 template <class Step>
 void SingleServerProvider<Step>::addVertexToBuilder(typename Step::Vertex const& vertex,
-                                                    arangodb::velocypack::Builder& builder) {
-  _cache.insertVertexIntoResult(_stats, vertex.getID(), builder);
+                                                    arangodb::velocypack::Builder& builder,
+                                                    bool writeIdIfNotFound) {
+  _cache.insertVertexIntoResult(_stats, vertex.getID(), builder, writeIdIfNotFound);
 }
 
 template <class Step>
@@ -166,11 +179,17 @@ void SingleServerProvider<Step>::insertEdgeIntoResult(EdgeDocumentToken edge,
 }
 
 template <class Step>
+void SingleServerProvider<Step>::insertEdgeIdIntoResult(EdgeDocumentToken edge,
+                                                        arangodb::velocypack::Builder& builder) {
+  _cache.insertEdgeIdIntoResult(edge, builder);
+}
+
+template <class Step>
 std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> SingleServerProvider<Step>::buildCursor(
     arangodb::aql::FixedVarExpressionContext& expressionContext) {
   return std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
       trx(), _opts.tmpVar(), _opts.indexInformations().first,
-      _opts.indexInformations().second, expressionContext);
+      _opts.indexInformations().second, expressionContext, _opts.hasWeightMethod());
 }
 
 template <class Step>

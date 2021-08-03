@@ -117,9 +117,10 @@ void ClusterProvider::clear() {
   }
 }
 
-auto ClusterProvider::startVertex(VertexType vertex, size_t depth) -> Step {
+auto ClusterProvider::startVertex(VertexType vertex, size_t depth, double weight) -> Step {
   LOG_TOPIC("da308", TRACE, Logger::GRAPHS) << "<ClusterProvider> Start Vertex:" << vertex;
   // Create the default initial step.
+  TRI_ASSERT(weight == 0.0);  // Not implemented yet
   return Step(_opts.getCache()->persistString(vertex));
 }
 

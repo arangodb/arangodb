@@ -70,17 +70,23 @@ class SingleServerProvider {
 
   SingleServerProvider& operator=(SingleServerProvider const&) = delete;
 
-  auto startVertex(VertexType vertex, size_t depth = 0) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;  // index
 
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
+  void insertEdgeIdIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder);
 
   void addVertexToBuilder(typename Step::Vertex const& vertex,
+                          arangodb::velocypack::Builder& builder,
+                          bool writeIdIfNotFound = false);
+  void addEdgeToBuilder(typename Step::Edge const& edge,
+                        arangodb::velocypack::Builder& builder);
+
+  void addEdgeIDToBuilder(typename Step::Edge const& edge,
                           arangodb::velocypack::Builder& builder);
-  void addEdgeToBuilder(typename Step::Edge const& edge, arangodb::velocypack::Builder& builder);
 
   void destroyEngines(){};
 

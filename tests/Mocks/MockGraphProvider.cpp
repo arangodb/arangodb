@@ -95,9 +95,10 @@ auto MockGraphProvider::decideProcessable() const -> bool {
   }
 }
 
-auto MockGraphProvider::startVertex(VertexType v, size_t depth) -> Step {
+auto MockGraphProvider::startVertex(VertexType v, size_t depth, double weight) -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Start Vertex:" << v;
+  TRI_ASSERT(weight == 0.0);  // Not handled yet
   return Step(v, decideProcessable());
 }
 

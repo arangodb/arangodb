@@ -422,7 +422,3 @@ void TraverserEngine::smartSearchNew(VPackSlice, VPackBuilder&) {
 void TraverserEngine::smartSearchBFS(VPackSlice, VPackBuilder&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
 }
-
-void TraverserEngine::smartSearchWeighted(VPackSlice, VPackBuilder&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
-}

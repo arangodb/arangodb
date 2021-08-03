@@ -144,9 +144,10 @@ bool OneSidedEnumerator<Configuration>::isDone() const {
  * @param source The source vertex to start the paths
  */
 template <class Configuration>
-void OneSidedEnumerator<Configuration>::reset(VertexRef source, size_t depth, bool keepPathStore) {
+void OneSidedEnumerator<Configuration>::reset(VertexRef source, size_t depth,
+                                              double weight, bool keepPathStore) {
   clear(keepPathStore);
-  auto firstStep = _provider.startVertex(source, depth);
+  auto firstStep = _provider.startVertex(source, depth, weight);
   _queue.append(std::move(firstStep));
 }
 
@@ -315,5 +316,21 @@ template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise
 template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
     SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, true>>;
 template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, true>>;
+
+// Weighted Search
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, false>>;
+
+// Weighted Tracing
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
+    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
     SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, true>>;
 #endif
