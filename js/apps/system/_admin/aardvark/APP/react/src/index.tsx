@@ -5,14 +5,14 @@ import { Provider } from 'react-redux';
 import App from "./App";
 import store from "./configureStore";
 import { checkHealth } from "./store/cluster/actions";
-import { taskRepeater, Task } from "./actions/taskRepeater";
+import { Task, taskRepeater } from "./actions/taskRepeater";
 
 ReactDOM.render(<Provider store={store}>
   <App />
 </Provider>, document.getElementById("root"));
 
 class CheckHealthTask implements Task {
-  execute() {
+  execute () {
     store.dispatch(checkHealth());
   }
 }

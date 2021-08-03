@@ -27,6 +27,7 @@
 
 #include "LogTopic.h"
 
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -137,7 +138,7 @@ LogTopic Logger::PERFORMANCE("performance", LogLevel::WARN);
 LogTopic Logger::PREGEL("pregel", LogLevel::INFO);
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
-LogTopic Logger::REPLICATION2("replication2", LogLevel::DEBUG);
+LogTopic Logger::REPLICATION2("replication2", LogLevel::INFO);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
 LogTopic Logger::RESTORE("restore", LogLevel::INFO);
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);

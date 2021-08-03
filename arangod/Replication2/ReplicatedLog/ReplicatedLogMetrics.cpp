@@ -89,8 +89,8 @@ MeasureTimeGuard::MeasureTimeGuard(std::shared_ptr<Histogram<log_scale_t<std::ui
     : _start(std::chrono::steady_clock::now()), _histogram(std::move(histogram)) {}
 
 void MeasureTimeGuard::fire() {
-  auto const endTime = std::chrono::steady_clock::now();
   if (_histogram) {
+    auto const endTime = std::chrono::steady_clock::now();
     auto const duration =
         std::chrono::duration_cast<std::chrono::microseconds>(endTime - _start);
     _histogram->count(duration.count());

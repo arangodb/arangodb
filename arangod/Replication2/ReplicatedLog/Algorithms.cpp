@@ -75,7 +75,7 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
       // wait for enough servers to report the current term
       // a server is counted if:
       //    - its reported term is the current term
-      //    - it is seen as healthy be the supervision
+      //    - it is seen as healthy by the supervision
 
       // if enough servers are found, declare the server with
       // the "best" log as leader in a new term
@@ -116,6 +116,11 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
       auto const requiredNumberOfAvailableParticipants = std::invoke([&spec = spec.currentTerm] {
         return spec->participants.size() - spec->config.writeConcern + 1;
       });
+
+      LOG_TOPIC("8a53d", TRACE, Logger::REPLICATION2)
+          << "participant size = " << spec.currentTerm->participants.size()
+          << " writeConcern = " << spec.currentTerm->config.writeConcern
+          << " requiredNumberOfAvailableParticipants = " << requiredNumberOfAvailableParticipants;
 
       TRI_ASSERT(requiredNumberOfAvailableParticipants > 0);
 
@@ -187,16 +192,16 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
    * There are three situations to handle here:
    *  - We don't have that log entry
    *    - It is behind our last entry
-   *    - It is before out first entry
+   *    - It is before our first entry
    *  - The term does not match.
    */
   auto entry = log.getEntryByIndex(prevLog.index);
   if (entry.has_value()) {
     // check if the term matches
-    if (entry->logTerm() != prevLog.term) {
+    if (entry->entry().logTerm() != prevLog.term) {
       auto conflict = std::invoke([&] {
-        if (auto idx = log.getFirstIndexOfTerm(entry->logTerm()); idx.has_value()) {
-          return TermIndexPair{entry->logTerm(), *idx};
+        if (auto idx = log.getFirstIndexOfTerm(entry->entry().logTerm()); idx.has_value()) {
+          return TermIndexPair{entry->entry().logTerm(), *idx};
         }
         return TermIndexPair{};
       });
@@ -211,15 +216,16 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
     if (!lastEntry.has_value()) {
       // The log is empty, reset to (0, 0)
       return std::make_pair(ConflictReason::LOG_EMPTY, TermIndexPair{});
-    } else if (prevLog.index > lastEntry->logIndex()) {
+    } else if (prevLog.index > lastEntry->entry().logIndex()) {
       // the given entry is too far ahead
       return std::make_pair(ConflictReason::LOG_ENTRY_AFTER_END,
-                            TermIndexPair{lastEntry->logTerm(), lastEntry->logIndex() + 1});
+                            TermIndexPair{lastEntry->entry().logTerm(),
+                                          lastEntry->entry().logIndex() + 1});
     } else {
       // this can only happen if we drop log entries, check the code below before removing the assert
       TRI_ASSERT(false);
-      TRI_ASSERT(prevLog.index < lastEntry->logIndex());
-      TRI_ASSERT(prevLog.index < log.getFirstEntry()->logIndex());
+      TRI_ASSERT(prevLog.index < lastEntry->entry().logIndex());
+      TRI_ASSERT(prevLog.index < log.getFirstEntry()->entry().logIndex());
       // the given index too old, reset to (0, 0)
       return std::make_pair(ConflictReason::LOG_ENTRY_BEFORE_BEGIN, TermIndexPair{});
     }
@@ -241,17 +247,17 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
     auto log = ctx.ensureReplicatedLog(logId);
 
     if (leader.has_value() && leader->serverId == serverId && leader->rebootId == rebootId) {
-      auto follower =
+      auto followers =
           std::vector<std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
       for (auto const& [participant, data] : spec->currentTerm->participants) {
         if (participant != serverId) {
-          follower.emplace_back(ctx.buildAbstractFollowerImpl(logId, participant));
+          followers.emplace_back(ctx.buildAbstractFollowerImpl(logId, participant));
         }
       }
 
       auto newLeader = log->becomeLeader(spec->currentTerm->config, serverId,
-                                         spec->currentTerm->term, follower);
-      newLeader->runAsyncStep(); // TODO move this call into becomeLeader?
+                                         spec->currentTerm->term, followers);
+      newLeader->triggerAsyncReplication(); // TODO move this call into becomeLeader?
     } else {
       auto leaderString = std::optional<ParticipantId>{};
       if (spec->currentTerm->leader) {

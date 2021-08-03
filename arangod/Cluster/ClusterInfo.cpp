@@ -1470,10 +1470,6 @@ void ClusterInfo::loadPlan() {
     }
 
     {
-      /*auto collectionGroupsPaths = cluster::paths::aliases::plan()
-          ->replicatedLogs()
-          ->database(databaseName)
-          ->vec(); TODO */
       auto collectionGroupsPath =
           std::initializer_list<std::string_view>{AgencyCommHelper::path(),
                                                   "Plan", "CollectionGroups", databaseName};

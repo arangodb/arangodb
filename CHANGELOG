@@ -1,6 +1,61 @@
 devel
 -----
 
+* Timely update of database server list on health check fixes BTS-505.
+
+* Add 3 AQL functions: COSINE_SIMILARITY, L1_DISTANCE and L2_DISTANCE.
+
+* Updated ArangoDB Starter to 0.15.1.
+
+* Updated arangosync to 2.5.0.
+
+* Fix BTS-453: Download of a HotBackup from remote source doesn't work on macOS
+
+* Honor the value of startup option `--rocksdb.sync-interval` on Windows, too.
+  Previously, the value was ignored and WAL syncing on Windows was using a
+  different code paths than on the other supported platforms. Now syncing is
+  unified across all platforms, and they all call RocksDB's `SyncWAL()`.
+
+* Updated ArangoDB Starter to 0.15.1-preview-4.
+
+* APM-132: Clean up collection statuses
+  Removes collection statuses "new born", "loading", "unloading" and "unloaded".
+  These statuses were last relevant with the MMFiles storage engine, when it
+  was important to differentiate which collections are present in main memory
+  memory and which aren't. With the RocksDB storage engine, all that was 
+  automatically handled anyway, and the statuses were not important anymore.
+
+  The change removes the "Load" and "Unload" buttons for collections from the
+  web interface. All collections in the web interface will be marked as
+  "loaded" permanently.
+  
+  This change also obsoletes the `load()` and `unload()` calls for collections
+  as well as their HTTP API equivalents. The APIs will remain in place for now
+  but are changed to no-ops. They will removed eventually in a future version
+  of ArangoDB. This will be announced separately.
+
+* Include K_SHORTEST_PATHS and SHORTEST_PATH execution nodes in AQL query memory
+  usage accounting. The memory used by these execution node types was previously
+  not tracked against the configured query memory limit (BTS-411).
+
+* Reduce default value for max-nodes-per-callstack to 200 for OSX, because on
+  OSX worker threads have a stack size of only 512kb.
+
+* Make `--javascript.copy-installation` also copy the `node_modules` sub
+  directory. This is required so we have a full copy of the JavaScript
+  dependencies and not one that excludes some infrequently changed modules.
+  In addition, file copying now intentionally excludes .map files as they
+  are not needed. 
+
+* Fixed BTS-408: treat positive or negative signed numbers as constants 
+  immediately during AQL query parsing. 
+  Previously, a value of `-1` was parsed initially as `unary minus(value(1))`,
+  which was not treated in the same way as a constant value `value(-1)`. 
+  The value was later optimized to just `value(-1)`, but this only happened 
+  during constant-folding after parsing. Any operations that referred to 
+  the unfolded values during parsing thus did not treat such values as
+  constants. 
+
 * Slightly increase internal AQL query and transaction timeout on DB servers 
   from 3 to 5 minutes.
   Previously, queries and transactions on DB servers could expire quicker,
@@ -32,12 +87,12 @@ devel
 * Fix invalid assertion for insert/removal buffers positioning and internals of
   `hasBlockerUpTo` function.
 
-* Fix startup issues with encryption-at-rest enabled when there were empty
-  (0 byte) RocksDB WAL files present. Such empty files caused RocksDB to
-  abort the startup, reporting corruption. However, empty WAL files are 
-  possible in case of server crashes etc. Now, if a WAL file is completely
-  empty, there will be no attempt to read the encryption meta data from it,
-  so the startup succeeds.
+* Fix startup issues with encryption-at-rest enabled when there were empty (0
+  byte) RocksDB WAL files present. Such empty files caused RocksDB to abort the
+  startup, reporting corruption. However, empty WAL files are possible in case
+  of server crashes etc. Now, if a WAL file is completely empty, there will be
+  no attempt to read the encryption meta data from it, so the startup succeeds
+	(BTS-392).
 
 * Remove _msg/please-upgrade handler.
 
@@ -55,9 +110,8 @@ devel
   - js-yaml: 3.13.1 -> 3.14.1
   - lodash: 4.17.13 -> 4.17.21
   - marked: 0.6.2 -> removed
-  - media-typer: 0.3.0 -> removed
   - mime-types: 2.1.22 -> 2.1.31
-  - mocha: 6.1.3 -> removed
+  - mocha: 6.1.3 -> 6.2.3
   - netmask: 1.0.6 -> 2.0.2
   - qs: 6.7.0 -> 6.10.1
   - range-parser: 1.2.0 -> 1.2.1
@@ -151,7 +205,7 @@ devel
 
 * Added a retry loop for arangorestore during the initial connection phase. The
   number of retries defaults to 3 and can be configured using
-  --initial-connect-retries.
+  --initial-connect-retries (BTS-491).
 
 * Fix numeric overflow in AQL WINDOW node cost estimation if the number of
   preceding rows was set to `unbounded`.
@@ -173,6 +227,7 @@ devel
   to one hour. Older versions of ArangoDB had longer session timeouts.
 
 * Add prefix parameter to LEVENSHTEIN_MATCH function in ArangoSearch
+  (DEVSUPP-753).
 
 * Removed redirects from /_admin/cluster* to /_admin/cluster/*. Adjusted
   internal requests to use the new url.

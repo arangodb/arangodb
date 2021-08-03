@@ -104,9 +104,9 @@ void StorageEngine::registerView(TRI_vocbase_t& vocbase,
   vocbase.registerView(true, view);
 }
 
-void StorageEngine::registerReplicatedLog(TRI_vocbase_t& vocbase,
-                                          arangodb::replication2::LogId id,
-                                          std::shared_ptr<arangodb::replication2::PersistedLog> log) {
+void StorageEngine::registerReplicatedLog(
+    TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
+    std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log) {
   vocbase.registerReplicatedLog(id, std::move(log));
 }
 

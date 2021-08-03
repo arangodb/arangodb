@@ -24,11 +24,11 @@
 
 #include "ReplicatedLogMetricsMock.h"
 
+#include "Replication2/ReplicatedLog/ILogParticipant.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
-#include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
@@ -44,24 +44,24 @@ namespace arangodb::replication2 {
 
 using namespace replicated_log;
 
-struct MockLog : replication2::PersistedLog {
-  using storeType = std::map<replication2::LogIndex, replication2::LogEntry>;
+struct MockLog : replication2::replicated_log::PersistedLog {
+  using storeType = std::map<replication2::LogIndex, replication2::PersistingLogEntry>;
 
   explicit MockLog(replication2::LogId id);
   MockLog(replication2::LogId id, storeType storage);
 
-  auto insert(replication2::LogIterator& iter, WriteOptions const&) -> Result override;
-  auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
+  auto insert(replication2::replicated_log::PersistedLogIterator& iter, WriteOptions const&) -> Result override;
+  auto insertAsync(std::unique_ptr<replication2::replicated_log::PersistedLogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
   auto read(replication2::LogIndex start)
-      -> std::unique_ptr<replication2::LogIterator> override;
+      -> std::unique_ptr<replication2::replicated_log::PersistedLogIterator> override;
   auto removeFront(replication2::LogIndex stop) -> Result override;
   auto removeBack(replication2::LogIndex start) -> Result override;
   auto drop() -> Result override;
 
   void setEntry(replication2::LogIndex idx, replication2::LogTerm term,
                 replication2::LogPayload payload);
-  void setEntry(replication2::LogEntry);
+  void setEntry(replication2::PersistingLogEntry);
 
   [[nodiscard]] storeType getStorage() const { return _storage; }
  private:
@@ -75,7 +75,7 @@ struct AsyncMockLog : MockLog {
 
   ~AsyncMockLog() noexcept;
 
-  auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
+  auto insertAsync(std::unique_ptr<replication2::replicated_log::PersistedLogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
 
   auto stop() noexcept -> void {
@@ -92,7 +92,7 @@ struct AsyncMockLog : MockLog {
  private:
   struct QueueEntry {
     WriteOptions opts;
-    std::unique_ptr<replication2::LogIterator> iter;
+    std::unique_ptr<replication2::replicated_log::PersistedLogIterator> iter;
     futures::Promise<Result> promise;
   };
 
@@ -189,39 +189,16 @@ struct DelayedFollowerLog : AbstractFollower {
   std::shared_ptr<LogFollower> _follower;
 };
 
-struct DelayedLogLeader : LogParticipantI {
-  explicit DelayedLogLeader(std::shared_ptr<LogLeader> leader);
-  auto getStatus() const -> LogStatus override;
-  auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
-
-  auto insert(LogPayload payload) -> LogIndex {
-    return _leader->insert(std::move(payload));
-  }
-
-  auto waitFor(LogIndex idx) -> WaitForFuture override {
-    return _leader->waitFor(idx);
-  }
-
-  void runAsyncStep() {
-    return _leader->runAsyncStep();
-  }
-
-  auto getReplicatedLogSnapshot() {
-    return _leader->getReplicatedLogSnapshot();
-  }
- private:
-  std::shared_ptr<LogLeader> _leader;
-};
-
 struct TestReplicatedLog : ReplicatedLog {
   using ReplicatedLog::ReplicatedLog;
-  auto becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId) -> std::shared_ptr<DelayedFollowerLog>;
+  auto becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId)
+      -> std::shared_ptr<DelayedFollowerLog>;
   auto becomeLeader(ParticipantId const& id, LogTerm term,
                     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-                    std::size_t writeConcern) -> std::shared_ptr<DelayedLogLeader>;
+                    std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
   auto becomeLeader(LogConfig config, ParticipantId id, LogTerm term,
                     std::vector<std::shared_ptr<AbstractFollower>> const& follower)
-      -> std::shared_ptr<DelayedLogLeader>;
+      -> std::shared_ptr<LogLeader>;
 };
 
 struct ReplicatedLogTest : ::testing::Test {

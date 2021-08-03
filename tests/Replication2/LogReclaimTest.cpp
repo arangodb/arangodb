@@ -39,18 +39,20 @@ TEST_F(ReplicatedLogTest, reclaim_leader_after_term_change) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
   auto leader = leaderLog->becomeLeader(LogConfig{2, false}, "leader", LogTerm{1}, {follower});
 
-  auto idx = leader->insert(LogPayload{"payload"});
-  auto f = leader->waitFor(idx).then([&](futures::Try<std::shared_ptr<QuorumData const>>&& quorum) {
-    EXPECT_TRUE(quorum.hasException());
-    try {
-      quorum.throwIfFailed();
-    } catch(basics::Exception const& ex) {
-      EXPECT_EQ(ex.code(), TRI_ERROR_REPLICATION_LEADER_CHANGE);
-    } catch(...) {
-      ADD_FAILURE() << "unexpected exception";
-    }
+  auto idx = leader->insert(LogPayload::createFromString("payload"), false,
+                            LogLeader::doNotTriggerAsyncReplication);
+  auto f = leader->waitFor(idx).then(
+      [&](futures::Try<std::shared_ptr<QuorumData const>>&& quorum) {
+        EXPECT_TRUE(quorum.hasException());
+        try {
+          quorum.throwIfFailed();
+        } catch (basics::Exception const& ex) {
+          EXPECT_EQ(ex.code(), TRI_ERROR_REPLICATION_LEADER_CHANGE);
+        } catch (...) {
+          ADD_FAILURE() << "unexpected exception";
+        }
 
-    return leaderLog->getLeader();
+        return leaderLog->getLeader();
   });
 
   leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 1);
@@ -68,18 +70,20 @@ TEST_F(ReplicatedLogTest, reclaim_follower_after_term_change) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
   auto leader = leaderLog->becomeLeader(LogConfig{2, false}, "leader", LogTerm{1}, {follower});
 
-  auto idx = leader->insert(LogPayload{"payload"});
-  auto f = follower->waitFor(idx).then([&](futures::Try<std::shared_ptr<QuorumData const>>&& quorum) {
-    EXPECT_TRUE(quorum.hasException());
-    try {
-      quorum.throwIfFailed();
-    } catch (basics::Exception const& ex) {
-      EXPECT_EQ(ex.code(), TRI_ERROR_REPLICATION_LEADER_CHANGE);
-    } catch (std::exception const& e) {
-      ADD_FAILURE() << "unexpected exception: " << e.what();
-    } catch (...) {
-      ADD_FAILURE() << "unexpected exception";
-    }
+  auto idx = leader->insert(LogPayload::createFromString("payload"), false,
+                            LogLeader::doNotTriggerAsyncReplication);
+  auto f = follower->waitFor(idx).then(
+      [&](futures::Try<std::shared_ptr<QuorumData const>>&& quorum) {
+        EXPECT_TRUE(quorum.hasException());
+        try {
+          quorum.throwIfFailed();
+        } catch (basics::Exception const& ex) {
+          EXPECT_EQ(ex.code(), TRI_ERROR_REPLICATION_LEADER_CHANGE);
+        } catch (std::exception const& e) {
+          ADD_FAILURE() << "unexpected exception: " << e.what();
+        } catch (...) {
+          ADD_FAILURE() << "unexpected exception";
+        }
 
     return leaderLog->getLeader();
   });

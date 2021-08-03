@@ -42,8 +42,10 @@ struct FakeAbstractFollower : replicated_log::AbstractFollower {
     return id;
   }
 
-  auto appendEntries(AppendEntriesRequest) -> futures::Future<AppendEntriesResult> override {
-    TRI_ASSERT(false);
+  auto appendEntries(AppendEntriesRequest req)
+      -> futures::Future<AppendEntriesResult> override {
+    // Silently ignore
+    return {AppendEntriesResult::withOk(req.leaderTerm, req.messageId)};
   }
 
   LogId logId;

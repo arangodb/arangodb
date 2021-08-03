@@ -37,24 +37,52 @@
 #pragma warning(pop)
 #endif
 
-#include "LogCommon.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/PersistedLog.h"
 
 namespace arangodb::replication2::replicated_log {
 
 class ReplicatedLogIterator : public LogIterator {
  public:
-  using log_type = ::immer::flex_vector<LogEntry, arangodb::immer::arango_memory_policy>;
+  using log_type = ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy>;
 
   explicit ReplicatedLogIterator(log_type container)
       : _container(std::move(container)),
         _begin(_container.begin()),
         _end(_container.end()) {}
 
-  auto next() -> std::optional<LogEntry> override {
-    if (_begin != _end) {
-      auto const& res = *_begin;
+  auto next() -> std::optional<LogEntryView> override {
+    while (_begin != _end) {
+      auto const& it = *_begin;
       ++_begin;
-      return res;
+      auto const& entry = it.entry();
+      if (entry.logPayload()) {
+        return LogEntryView(entry.logIndex(), *entry.logPayload());
+      }
+    }
+    return std::nullopt;
+  }
+
+ private:
+  log_type _container;
+  log_type::const_iterator _begin;
+  log_type::const_iterator _end;
+};
+
+class InMemoryPersistedLogIterator : public PersistedLogIterator {
+ public:
+  using log_type = ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy>;
+
+  explicit InMemoryPersistedLogIterator(log_type container)
+      : _container(std::move(container)),
+        _begin(_container.begin()),
+        _end(_container.end()) {}
+
+  auto next() -> std::optional<PersistingLogEntry> override {
+    if (_begin != _end) {
+      auto const& it = *_begin;
+      ++_begin;
+      return it.entry();
     }
     return std::nullopt;
   }

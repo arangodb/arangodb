@@ -55,8 +55,6 @@ namespace aql {
 class QueryList;
 }
 namespace replication2 {
-struct LogManager;
-struct PersistedLog;
 class LogId;
 struct LogIndex;
 struct LogTerm;
@@ -64,11 +62,12 @@ struct LogPayload;
 namespace replicated_log {
 class LogLeader;
 class LogFollower;
-struct LogParticipantI;
-struct ReplicatedLog;
+struct ILogParticipant;
 struct LogStatus;
-}
-}
+struct PersistedLog;
+struct ReplicatedLog;
+}  // namespace replicated_log
+}  // namespace replication2
 namespace velocypack {
 class Builder;
 class Slice;
@@ -112,16 +111,15 @@ enum TRI_vocbase_type_e {
 };
 
 /// @brief status of a collection
-/// note: the NEW_BORN status is not used in ArangoDB 1.3 anymore, but is left
-/// in this enum for compatibility with earlier versions
+/// note: the following status existed before, but are now obosolete:
+/// - TRI_VOC_COL_STATUS_NEW_BORN = 1
+/// - TRI_VOC_COL_STATUS_UNLOADED = 2
+/// - TRI_VOC_COL_STATUS_UNLOADING = 4
+/// - TRI_VOC_COL_STATUS_LOADING = 6
 enum TRI_vocbase_col_status_e : int {
   TRI_VOC_COL_STATUS_CORRUPTED = 0,
-  TRI_VOC_COL_STATUS_NEW_BORN = 1,  // DEPRECATED, and shouldn't be used anymore
-  TRI_VOC_COL_STATUS_UNLOADED = 2,
   TRI_VOC_COL_STATUS_LOADED = 3,
-  TRI_VOC_COL_STATUS_UNLOADING = 4,
   TRI_VOC_COL_STATUS_DELETED = 5,
-  TRI_VOC_COL_STATUS_LOADING = 6
 };
 
 /// @brief database
@@ -327,7 +325,7 @@ struct TRI_vocbase_t {
       noexcept;
 
   /// @brief looks up a replicated log by identifier
-  std::shared_ptr<arangodb::replication2::replicated_log::LogParticipantI> lookupLog(
+  std::shared_ptr<arangodb::replication2::replicated_log::ILogParticipant> lookupLog(
       arangodb::replication2::LogId id) const noexcept;
 
   /// @brief looks up a view by identifier
@@ -354,9 +352,6 @@ struct TRI_vocbase_t {
   /// write lock for using the collection.
   arangodb::Result dropCollection(arangodb::DataSourceId cid,
                                   bool allowDropSystem, double timeout);
-
-  /// @brief unloads a collection
-  arangodb::Result unloadCollection(arangodb::LogicalCollection* collection, bool force);
 
   /// @brief locks a collection for usage by id
   /// Note that this will READ lock the collection you have to release the
@@ -418,7 +413,7 @@ struct TRI_vocbase_t {
   bool unregisterView(arangodb::LogicalView const& view);
 
   /// @brief adds a new replicated log with given log id
-  void registerReplicatedLog(arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::PersistedLog>);
+  void registerReplicatedLog(arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>);
 
   /// @brief removes the replicated log with the given id
   void unregisterReplicatedLog(arangodb::replication2::LogId);

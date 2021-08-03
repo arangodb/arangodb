@@ -121,7 +121,9 @@ class TwoSidedEnumerator {
                      TwoSidedEnumeratorOptions&& options,
                      arangodb::ResourceMonitor& resourceMonitor);
   TwoSidedEnumerator(TwoSidedEnumerator const& other) = delete;
-  TwoSidedEnumerator(TwoSidedEnumerator&& other) noexcept = default;
+  TwoSidedEnumerator& operator=(TwoSidedEnumerator const& other) = delete;
+  TwoSidedEnumerator(TwoSidedEnumerator&& other) = delete;
+  TwoSidedEnumerator& operator=(TwoSidedEnumerator&& other) = delete;
 
   ~TwoSidedEnumerator();
 

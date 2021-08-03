@@ -69,10 +69,5 @@ struct CollectionGroup {
 
 }  // namespace arangodb::replication2::agency
 
-template <>
-struct std::hash<arangodb::replication2::agency::CollectionGroupId> {
-  auto operator()(arangodb::replication2::agency::CollectionGroupId const& v) const noexcept
-      -> std::size_t {
-    return std::hash<arangodb::basics::Identifier>{}(v);
-  }
-};
+DECLARE_HASH_FOR_IDENTIFIER(arangodb::replication2::agency::CollectionGroupId)
+DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::replication2::agency::CollectionGroupId)

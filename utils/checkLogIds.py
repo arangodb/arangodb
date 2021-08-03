@@ -18,7 +18,7 @@ def is_good(status):
     return status in (Status.OK, Status.OK_REPLACED)
 
 import re
-g_log_topic_pattern = re.compile(r'(?P<macro>LOG_(TOPIC(_IF)?|TRX|CTX(_IF)?))\((?P<param>[^),]*),(?P<rest>.*)')
+g_log_topic_pattern = re.compile(r'(?P<macro>LOG_(TOPIC(_IF)?|TRX|CTX(_IF)?|QUERY))\((?P<param>[^),]*),(?P<rest>.*)')
 
 import hashlib
 g_hash_algorithm = hashlib.md5()
@@ -207,6 +207,6 @@ if __name__ == "__main__":
             ,["arangod", "arangosh", "enterprise", "lib"]    #dirs to include
             ,[".", "lib/Logger/LogMacros.h",
               "arangod/StorageEngine/TransactionState.h",
-              "arangod/Replication2/LogContext.h"]    #dirs and files to exclude (does not purge the dir)
+              "arangod/Replication2/LoggerContext.h"]    #dirs and files to exclude (does not purge the dir)
             , dict()                                         #database
             ))

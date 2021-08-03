@@ -23,10 +23,10 @@
 #pragma once
 
 #include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/ILogParticipant.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
-#include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/types.h"
@@ -43,7 +43,7 @@ namespace arangodb::replication2::replicated_log {
 /**
  * @brief Follower instance of a replicated log.
  */
-class LogFollower : public LogParticipantI,
+class LogFollower : public ILogParticipant,
                     public AbstractFollower,
                     public std::enable_shared_from_this<LogFollower> {
  public:
@@ -53,7 +53,7 @@ class LogFollower : public LogParticipantI,
               std::optional<ParticipantId> leaderId, InMemoryLog inMemoryLog);
 
   // follower only
-  auto appendEntries(AppendEntriesRequest) -> futures::Future<AppendEntriesResult> override;
+  [[nodiscard]] auto appendEntries(AppendEntriesRequest) -> futures::Future<AppendEntriesResult> override;
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
   [[nodiscard]] auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
@@ -61,7 +61,8 @@ class LogFollower : public LogParticipantI,
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   [[nodiscard]] auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
-  [[nodiscard]] auto getLogIterator(LogIndex fromIndex) const -> std::unique_ptr<LogIterator>;
+  [[nodiscard]] auto getLogIterator(LogIndex firstIndex) const -> std::unique_ptr<LogIterator>;
+  [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const -> std::unique_ptr<LogIterator>;
 
  private:
   struct GuardedFollowerData {
@@ -70,6 +71,8 @@ class LogFollower : public LogParticipantI,
                         InMemoryLog inMemoryLog);
 
     [[nodiscard]] auto getLocalStatistics() const noexcept -> LogStatistics;
+    [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
+        -> std::unique_ptr<LogIterator>;
 
     LogFollower const& _follower;
     InMemoryLog _inMemoryLog;
@@ -89,8 +92,8 @@ class LogFollower : public LogParticipantI,
   // Using the UnshackledMutex this is no longer required.
   Guarded<GuardedFollowerData, arangodb::basics::UnshackledMutex> _guardedFollowerData;
 
-  auto appendEntriesPreFlightChecks(GuardedFollowerData const&,
-                                    AppendEntriesRequest const&) const noexcept
+  [[nodiscard]] auto appendEntriesPreFlightChecks(GuardedFollowerData const&,
+                                                  AppendEntriesRequest const&) const noexcept
       -> std::optional<AppendEntriesResult>;
 };
 

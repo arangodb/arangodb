@@ -3014,8 +3014,7 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
   std::unordered_set<std::string>::iterator it;
   for (auto planned : VPackObjectIterator(planServers)) {
     auto const plannedStr = planned.key.copyString();
-    if ((it = std::find(localCopy.begin(), localCopy.end(), plannedStr)) !=
-        localCopy.end()) {
+    if ((it = localCopy.find(plannedStr)) != localCopy.end()) {
       localCopy.erase(it);
     } else {
       match.try_emplace(plannedStr, std::string());

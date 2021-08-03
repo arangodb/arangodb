@@ -52,8 +52,8 @@ replicated_log::QuorumData::QuorumData(LogIndex index, LogTerm term)
     : QuorumData(index, term, {}) {}
 
 replicated_log::QuorumData::QuorumData(VPackSlice slice) {
-  index = LogIndex{slice.get(StaticStrings::Index).extract<std::size_t>()};
-  term = LogTerm{slice.get("term").extract<std::size_t>()};
+  index = slice.get(StaticStrings::Index).extract<LogIndex>();
+  term = slice.get("term").extract<LogTerm>();
   for (auto part : VPackArrayIterator(slice.get("quorum"))) {
     quorum.push_back(part.copyString());
   }
@@ -81,7 +81,7 @@ void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) c
 
 auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice) -> LogStatistics {
   LogStatistics stats;
-  stats.commitIndex = LogIndex{slice.get("commitIndex").getNumericValue<size_t>()};
+  stats.commitIndex = slice.get("commitIndex").extract<LogIndex>();
   stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
   return stats;
 }

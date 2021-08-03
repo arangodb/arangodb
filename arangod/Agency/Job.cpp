@@ -98,10 +98,10 @@ bool Job::finish(std::string const& server, std::string const& shard,
     {
       VPackArrayBuilder guard(&pending);
       if (_snapshot.exists(pendingPrefix + _jobId).size() == 3) {
-        _snapshot.hasAsBuilder(pendingPrefix + _jobId, pending);
+        std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, pending);
         started = true;
       } else if (_snapshot.exists(toDoPrefix + _jobId).size() == 3) {
-        _snapshot.hasAsBuilder(toDoPrefix + _jobId, pending);
+        std::ignore = _snapshot.hasAsBuilder(toDoPrefix + _jobId, pending);
       } else {
         LOG_TOPIC("54fde", DEBUG, Logger::AGENCY)
             << "Nothing in pending to finish up for job " << _jobId;
@@ -204,7 +204,7 @@ std::string Job::randomIdleAvailableServer(Node const& snap,
 
   // Only take good servers as valid server.
   try {
-    for (auto const& srv : snap.hasAsChildren(healthPrefix).first) {
+    for (auto const& srv : snap.hasAsChildren(healthPrefix).value().get()) {
       // ignore excluded servers
       if (std::find(std::begin(exclude), std::end(exclude), srv.first) != std::end(exclude)) {
         continue;
@@ -214,7 +214,7 @@ std::string Job::randomIdleAvailableServer(Node const& snap,
         continue;
       }
 
-      std::string const& status = (*srv.second).hasAsString("Status").first;
+      std::string const status = (*srv.second).hasAsString("Status").value();
       if (status == "GOOD") {
         good.push_back(srv.first);
       }
@@ -259,8 +259,8 @@ size_t Job::countGoodOrBadServersInList(Node const& snap, VPackSlice const& serv
   }
   auto const& health = snap.hasAsChildren(healthPrefix);
   // Do we have a Health substructure?
-  if (health.second) {
-    Node::Children const& healthData = health.first;  // List of servers in Health
+  if (health) {
+    Node::Children const& healthData = *health;  // List of servers in Health
     for (VPackSlice const serverName : VPackArrayIterator(serverList)) {
       if (serverName.isString()) {
         // serverName not a string? Then don't count
@@ -275,8 +275,9 @@ size_t Job::countGoodOrBadServersInList(Node const& snap, VPackSlice const& serv
           // Only check if found
           std::shared_ptr<Node> healthNode = it->second;
           // Check its status:
-          auto status = healthNode->hasAsString("Status");
-          if (status.first == "GOOD" || status.first == "BAD") {
+
+          if (auto status = healthNode->hasAsString("Status");
+              status && (status.value() == "GOOD" || status.value() == "BAD")) {
             ++count;
           }
         }
@@ -293,8 +294,8 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
   size_t count = 0;
   auto const& health = snap.hasAsChildren(healthPrefix);
   // Do we have a Health substructure?
-  if (health.second) {
-    Node::Children const& healthData = health.first;  // List of servers in Health
+  if (health) {
+    Node::Children const& healthData = *health;  // List of servers in Health
     for (auto& serverStr : serverList) {
       // Now look up this server:
       auto it = healthData.find(serverStr);
@@ -302,8 +303,8 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
         // Only check if found
         std::shared_ptr<Node> healthNode = it->second;
         // Check its status:
-        auto status = healthNode->hasAsString("Status");
-        if (status.first == "GOOD" || status.first == "BAD") {
+        if (auto status = healthNode->hasAsString("Status");
+            status && (status.value() == "GOOD" || status.value() == "BAD")) {
           ++count;
         }
       }
@@ -315,13 +316,11 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
 /// @brief Check if a server is cleaned or to be cleaned out:
 bool Job::isInServerList(Node const& snap, std::string const& prefix,
                          std::string const& server, bool isArray) {
-  VPackSlice slice;
   bool found = false;
   if (isArray) {
-    bool has;
-    std::tie(slice, has) = snap.hasAsSlice(prefix);
-    if (has && slice.isArray()) {
-      for (VPackSlice srv : VPackArrayIterator(slice)) {
+    auto slice = snap.hasAsSlice(prefix);
+    if (slice && slice->isArray()) {
+      for (VPackSlice srv : VPackArrayIterator(*slice)) {
         if (srv.isEqualString(server)) {
           found = true;
           break;
@@ -330,8 +329,8 @@ bool Job::isInServerList(Node const& snap, std::string const& prefix,
     }
   } else {  // an object
     auto const& children = snap.hasAsChildren(prefix);
-    if (children.second) {
-      for (auto const& srv : children.first) {
+    if (children) {
+      for (auto const& srv : children->get()) {
         if (srv.first == server) {
           found = true;
           break;
@@ -347,26 +346,24 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
   std::vector<std::string> ret;
 
   // Get servers from plan
-  Node::Children const& dbservers = snapshot.hasAsChildren(plannedServers).first;
+  Node::Children const& dbservers = snapshot.hasAsChildren(plannedServers).value().get();
   for (auto const& srv : dbservers) {
     ret.push_back(srv.first);
   }
 
   auto excludePrefix = [&ret, &snapshot](std::string const& prefix, bool isArray) {
-    VPackSlice slice;
 
     if (isArray) {
-      bool has;
-      std::tie(slice, has) = snapshot.hasAsSlice(prefix);
-      if (has) {
-        for (VPackSlice srv : VPackArrayIterator(slice)) {
+      auto slice = snapshot.hasAsSlice(prefix);
+      if (slice) {
+        for (VPackSlice srv : VPackArrayIterator(*slice)) {
           ret.erase(std::remove(ret.begin(), ret.end(), srv.copyString()), ret.end());
         }
       }
     } else {
       auto const& children = snapshot.hasAsChildren(prefix);
-      if (children.second) {
-        for (auto const& srv : children.first) {
+      if (children) {
+        for (auto const& srv : children->get()) {
           ret.erase(std::remove(ret.begin(), ret.end(), srv.first), ret.end());
         }
       }
@@ -384,9 +381,9 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
 /// @brief Get servers from Supervision with health status GOOD
 std::vector<std::string> Job::healthyServers(arangodb::consensus::Node const& snapshot) {
   std::vector<std::string> ret;
-  for (auto const& srv : snapshot(healthPrefix).children()) {
+  for (auto const& srv : snapshot.get(healthPrefix).value().get().children()) {
     auto healthState = srv.second->hasAsString("Status");
-    if (healthState.second && healthState.first == Supervision::HEALTH_STATUS_GOOD) {
+    if (healthState && healthState.value() == Supervision::HEALTH_STATUS_GOOD) {
       ret.emplace_back(srv.first);
     }
   }
@@ -432,18 +429,18 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot, std::string const& d
   std::string databasePath = planColPrefix + database,
               planPath = databasePath + "/" + collection + "/shards";
 
-  auto myshards = sortedShardList(snapshot.hasAsNode(planPath).first);
+  auto myshards = sortedShardList(snapshot.hasAsNode(planPath).value());
   auto steps = std::distance(myshards.begin(),
                              std::find(myshards.begin(), myshards.end(), shard));
 
-  for (const auto& colptr : snapshot.hasAsChildren(databasePath).first) {  // collections
+  for (const auto& colptr : snapshot.hasAsChildren(databasePath).value().get()) {  // collections
 
     auto const& col = *colptr.second;
     auto const& otherCollection = colptr.first;
 
     if (otherCollection != collection && col.has("distributeShardsLike") &&  // use .has() form to prevent logging of missing
-        col.hasAsSlice("distributeShardsLike").first.copyString() == collection) {
-      auto const& theirshards = sortedShardList(col.hasAsNode("shards").first);
+        col.hasAsSlice("distributeShardsLike").value().copyString() == collection) {
+      auto const& theirshards = sortedShardList(col.hasAsNode("shards").value().get());
       if (theirshards.size() > 0) {  // do not care about virtual collections
         if (theirshards.size() == myshards.size()) {
           ret.emplace_back(otherCollection, theirshards[steps]);
@@ -470,8 +467,8 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
   auto nclones = cs.size();               // #clones
   std::unordered_map<std::string, bool> good;
 
-  for (const auto& i : snap.hasAsChildren(healthPrefix).first) {
-    good[i.first] = ((*i.second).hasAsString("Status").first == "GOOD");
+  for (const auto& i : snap.hasAsChildren(healthPrefix).value().get()) {
+    good[i.first] = ((*i.second).hasAsString("Status").value() == "GOOD");
   }
 
   std::unordered_map<std::string, size_t> currentServers;
@@ -488,16 +485,14 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
       continue;
     }  // if
 
-    bool isArray = false;
-    VPackSlice serverList;
     // If we do have failover candidates, we should use them
-    std::tie(serverList, isArray) = snap.hasAsArray(currentFailoverCandidatesPath);
-    if (!isArray) {
+    auto serverList = snap.hasAsArray(currentFailoverCandidatesPath);
+    if (!serverList.has_value()) {
       // We have old DBServers that do not report failover candidates,
       // Need to rely on current
-      std::tie(serverList, isArray) = snap.hasAsArray(currentShardPath);
-      TRI_ASSERT(isArray);
-      if (!isArray) {
+      serverList = snap.hasAsArray(currentShardPath);
+      TRI_ASSERT(serverList.has_value());
+      if (!serverList.has_value()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
             "Could not find common insync server for: " + currentShardPath +
@@ -505,9 +500,9 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
       }
     }
     // Guaranteed by if above
-    TRI_ASSERT(serverList.isArray());
+    TRI_ASSERT(serverList->isArray());
 
-    for (const auto& server : VPackArrayIterator(serverList)) {
+    for (const auto& server : VPackArrayIterator(*serverList)) {
       auto id = server.copyString();
       if (id == serverToAvoid) {
         // Skip current leader for which we are seeking a replacement
@@ -528,7 +523,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
       // leader will drop the collection
       bool found = false;
       for (const auto& plannedServer :
-           VPackArrayIterator(snap.hasAsArray(plannedShardPath).first)) {
+           VPackArrayIterator(snap.hasAsArray(plannedShardPath).value())) {
         if (plannedServer.isEqualString(server.stringRef())) {
           found = true;
           break;
@@ -566,13 +561,11 @@ std::vector<std::string> Job::findAllInSyncReplicas(
     auto sharedPath = db + "/" + clone.collection + "/";
     auto currentPath =
         curColPrefix + sharedPath + clone.shard + "/servers";
-    bool isArray = false;
-    VPackSlice serverList;
     // If we do have failover candidates, we should use them
-    std::tie(serverList, isArray) = snap.hasAsArray(currentPath);
-    if (isArray) {
+    auto serverList = snap.hasAsArray(currentPath);
+    if (serverList) {
       std::unordered_set<std::string> setHere;
-      for (const auto& server : VPackArrayIterator(serverList)) {
+      for (const auto& server : VPackArrayIterator(*serverList)) {
         auto id = server.copyString();
         if (first) {
           result.push_back(id);
@@ -612,12 +605,10 @@ std::unordered_set<std::string> Job::findAllFailoverCandidates(
     auto sharedPath = db + "/" + clone.collection + "/";
     auto currentFailoverCandidatesPath =
         curColPrefix + sharedPath + clone.shard + "/failoverCandidates";
-    bool isArray = false;
-    VPackSlice serverList;
     // If we do have failover candidates, we should use them
-    std::tie(serverList, isArray) = snap.hasAsArray(currentFailoverCandidatesPath);
-    if (isArray) {
-      for (const auto& server : VPackArrayIterator(serverList)) {
+    auto serverList = snap.hasAsArray(currentFailoverCandidatesPath);
+    if (serverList) {
+      for (const auto& server : VPackArrayIterator(*serverList)) {
         auto id = server.copyString();
         result.insert(id);
       }
@@ -628,8 +619,8 @@ std::unordered_set<std::string> Job::findAllFailoverCandidates(
 }
 
 std::string Job::uuidLookup(std::string const& shortID) {
-  for (auto const& uuid : _snapshot.hasAsChildren(mapUniqueToShortID).first) {
-    if ((*uuid.second).hasAsString("ShortName").first == shortID) {
+  for (auto const& uuid : _snapshot.hasAsChildren(mapUniqueToShortID).value().get()) {
+    if ((*uuid.second).hasAsString("ShortName").value() == shortID) {
       return uuid.first;
     }
   }
@@ -649,13 +640,15 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
     return false;
   }
   auto const& job = snapshot.hasAsNode(pendingPrefix + jobId);
-  if (!job.second || !job.first.has("type")) {
+  if (!job || !job->get().has("type")) {
     return false;
   }
-  auto const& tmp_type = job.first.hasAsString("type");
-
-  std::string const& type = tmp_type.first;
-  if (!tmp_type.second || type == "failedServer" || type == "failedLeader" ||
+  auto const& tmp_type = job->get().hasAsString("type");
+  if (!tmp_type) {
+    return false;
+  }
+  std::string const& type = tmp_type.value();
+  if (type == "failedServer" || type == "failedLeader" ||
       type == "activeFailover") {
     return false;
   } else if (type == "addFollower" || type == "moveShard" ||
@@ -680,8 +673,8 @@ void Job::doForAllShards(
     std::string curPath =
         curColPrefix + database + "/" + collection + "/" + shard + "/servers";
 
-    Slice plan = snapshot.hasAsSlice(planPath).first;
-    Slice current = snapshot.hasAsSlice(curPath).first;
+    Slice plan = snapshot.hasAsSlice(planPath).value();
+    Slice current = snapshot.hasAsSlice(curPath).value_or(Slice::noneSlice());
 
     worker(plan, current, planPath, curPath);
   }
@@ -837,10 +830,10 @@ void Job::addPreconditionJobStillInPending(Builder& pre, std::string const& jobI
 std::string Job::checkServerHealth(Node const& snapshot, std::string const& server) {
   auto status = snapshot.hasAsString(healthPrefix + server + "/Status");
 
-  if (!status.second) {
+  if (!status) {
     return "UNCLEAR";
   }
-  return status.first;
+  return status.value();
 }
 
 void Job::addReadLockServer(Builder& trx, std::string const& server, std::string const& jobId) {

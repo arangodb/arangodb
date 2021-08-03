@@ -81,8 +81,6 @@ class ClusterCollection final : public PhysicalCollection {
 
   /// @brief closes an open collection
   ErrorCode close() override;
-  void load() override;
-  void unload() override;
 
   RevisionId revision(arangodb::transaction::Methods* trx) const override;
   uint64_t numberDocuments(transaction::Methods* trx) const override;
