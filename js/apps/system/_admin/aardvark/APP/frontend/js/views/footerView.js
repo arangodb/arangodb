@@ -47,23 +47,38 @@
           });
         }
       }, 1000);
+
+      // track an activity once when we initialize this view
+      arangoHelper.noteActivity();
       
       window.setInterval(function () {
         if (self.isOffline) {
-          // only try to renew token if we are online
+          // only try to renew token if we are still online
           return;
         }
+
         var now = Date.now() / 1000;
-        // to save request, try to renew only if session time is x% or more over
-        var frac = (frontendConfig.sessionTimeout >= 1800) ? 0.95 : 0.8;
-        if (now - self.lastTokenRenewal >= frontendConfig.sessionTimeout * frac) {
-          arangoHelper.renewJwt(function() {
-            // successful renewal of token. now store last renewal time so
-            // that we later only renew if the session is again about to
-            // expire
-            self.lastTokenRenewal = now;
-          });
+        var lastActivity = arangoHelper.lastActivity();
+
+        if (lastActivity > 0 && (now - lastActivity) > 90 * 60) {
+          // don't make an attempt to renew the token if last 
+          // user activity is longer than 90 minutes ago
+          return;
         }
+
+        // to save some superfluous HTTP requests to the server, 
+        // try to renew only if session time is x% or more over
+        var frac = (frontendConfig.sessionTimeout >= 1800) ? 0.95 : 0.8;
+        if (now - self.lastTokenRenewal < frontendConfig.sessionTimeout * frac) {
+          return;
+        }
+
+        arangoHelper.renewJwt(function() {
+          // successful renewal of token. now store last renewal time so
+          // that we later only renew if the session is again about to
+          // expire
+          self.lastTokenRenewal = now;
+        });
       }, 15 * 1000);
     },
 

@@ -123,6 +123,16 @@
         }
       });
     },
+
+    lastActivity: function () {
+      // return timestamp of last activity (only seconds part)
+      return sessionStorage.getItem('lastActivity') || 0;
+    },
+
+    noteActivity: function () {
+      // note timestamp of last activity (only seconds part)
+      sessionStorage.setItem('lastActivity', Date.now() / 1000);
+    },
   
     renewJwt: function (callback) {
       if (!window.atob) {
