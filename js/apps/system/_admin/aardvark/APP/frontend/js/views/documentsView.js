@@ -840,18 +840,9 @@
         window.modalView.hide();
         data = data.split('/');
 
-        var url;
-        try {
-          url = 'collection/' + data[0] + '/' + data[1];
-          decodeURI(url);
-        } catch (ex) {
-          url = 'collection/' + data[0] + '/' + encodeURIComponent(data[1]);
-        }
-
-        window.location.hash = url;
+        window.location.hash = 'collection/' + encodeURIComponent(data[0]) + '/' + encodeURIComponent(data[1]);
       }
     },
-
 
     moveSelectedDocs: function () {
       var buttons = [];
@@ -1089,19 +1080,14 @@
     clicked: function (event) {
       var self = event.currentTarget;
 
-      var url;
       if (!$(self).attr('id')) {
         return;
       }
+
+      // substr(4) here to strip "row_" prefix from the id
       var doc = $(self).attr('id').substr(4);
 
-      try {
-        url = 'collection/' + this.collection.collectionID + '/' + doc;
-        decodeURI(doc);
-      } catch (ex) {
-        url = 'collection/' + this.collection.collectionID + '/' + encodeURIComponent(doc);
-      }
-      window.location.hash = url;
+      window.location.hash = 'collection/' + encodeURIComponent(this.collection.collectionID) + '/' + encodeURIComponent(doc);
     },
 
     drawTable: function () {
