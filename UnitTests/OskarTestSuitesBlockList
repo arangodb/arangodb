@@ -16,3 +16,6 @@ dump_no_envelope
 dump_with_crashes
 chaos
 replication2_client
+ldapdualldap
+ldapfirstldap
+ldapsecondldap
