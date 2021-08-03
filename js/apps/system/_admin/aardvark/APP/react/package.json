@@ -32,6 +32,7 @@
     "noty": "^3.2.0-beta",
     "nvd3": "^1.8.6",
     "parse-prometheus-text-format": "^1.1.1",
+    "picomodal": "^3.0.0",
     "postcss-flexbugs-fixes": "4.1.0",
     "postcss-loader": "3.0.0",
     "postcss-preset-env": "6.0.6",
