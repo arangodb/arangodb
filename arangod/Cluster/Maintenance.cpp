@@ -515,12 +515,11 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
   return shardMap;
 }
 
-auto arangodb::maintenance::diffReplicatedLogs(
+void arangodb::maintenance::diffReplicatedLogs(
     DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
     ReplicatedLogSpecMap const& planLogs, std::string const& serverId,
-    MaintenanceFeature::errors_t& errors,
-    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
-    std::vector<std::shared_ptr<ActionDescription>>& actions) -> arangodb::Result {
+    MaintenanceFeature::errors_t& errors, std::unordered_set<DatabaseID>& makeDirty,
+    bool& callNotify, std::vector<std::shared_ptr<ActionDescription>>& actions) {
   using namespace arangodb::replication2;
 
   auto const createReplicatedLogAction = [&](LogId id, agency::LogPlanSpecification const* spec) {
@@ -589,8 +588,6 @@ auto arangodb::maintenance::diffReplicatedLogs(
       createReplicatedLogAction(id, nullptr);
     }
   }
-
-  return Result{};
 }
 
 /// @brief calculate difference between plan and local for for databases
@@ -779,11 +776,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       planLogs.emplace(spec.id, std::move(spec));
     }
 
-    if (auto res = diffReplicatedLogs(dbname, logs, planLogs, serverId, errors,
-                                      makeDirty, callNotify, actions);
-        !res.ok()) {
-      return res;
-    }
+    diffReplicatedLogs(dbname, logs, planLogs, serverId, errors, makeDirty,
+                       callNotify, actions);
   }
 
   // See if shard errors can be thrown out:
