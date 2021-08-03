@@ -16,7 +16,7 @@
     </li>
     <li id="dbStatus" class="infoEntry subMenuEntry pull-right positive">
       <a class="info">DB:</a>
-      <a class="state"><span><%= currentDB.name %></span></a>
+      <a class="state"><span><%= _.escape(currentDB.name) %></span></a>
       <a class="icon db-icon default-icon">
         <i class="fa fa-refresh"></i>      
       </a>

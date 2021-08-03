@@ -62,11 +62,11 @@
               _.each(sortedObj, function (rule, db) {
                 if (frontendConfig.authenticationEnabled) {
                   $('#loginDatabase').append(
-                      '<option>' + _.escape(db) + '</option>'
+                      '<option value="' + _.escape(db) + '">' + _.escape(db) + '</option>'
                   );
                 } else {
                   $('#loginDatabase').append(
-                      '<option>' + _.escape(rule) + '</option>'
+                      '<option value="' + _.escape(rule) + '">' + _.escape(rule) + '</option>'
                   );
                 }
               });
@@ -272,7 +272,7 @@
           $('#goToDatabase').focus();
         }, 150);
       }
-      $('#goToDatabase').html(message);
+      $('#goToDatabase').html(_.escape(message));
     },
 
     logout: function () {
@@ -289,7 +289,6 @@
       } else {
         database = $('#loginDatabase').val();
       }
-      window.App.dbSet = database;
 
       var callback2 = function (error) {
         if (error) {
@@ -324,9 +323,9 @@
         },
         error: function (data) {
           if (data.responseJSON && data.responseJSON.errorMessage) {
-            $('#noAccess').html('Error (DB: ' + database + '): ' + data.responseJSON.errorMessage);
+            $('#noAccess').html('Error (DB: ' + _.escape(database) + '): ' + _.escape(data.responseJSON.errorMessage));
           } else {
-            $('#noAccess').html('Error (DB: ' + database + '): ' + data.statusText);
+            $('#noAccess').html('Error (DB: ' + _.escape(database) + '): ' + _.escape(data.statusText));
           }
           $('#noAccess').show();
         }
