@@ -13,6 +13,8 @@ it is used with exactly the same definition. It is not possible to
 store a definition "e" from "v1" to "v2" in the one graph, and "e"
 from "v2" to "v1" in the other graph.
 
+Additionally, optional options can be set (Enterprise-Only).
+
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{graph,string,required}
@@ -26,6 +28,9 @@ One or many vertex collections that can contain source vertices.
 
 @RESTBODYPARAM{to,array,required,string}
 One or many vertex collections that can contain target vertices.
+
+@RESTBODYPARAM{options,object,optional,edge_definition_options}
+Additional options for the edge definition.
 
 @RESTRETURNCODES
 
