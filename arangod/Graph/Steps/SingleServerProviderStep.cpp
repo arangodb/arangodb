@@ -41,16 +41,17 @@ auto operator<<(std::ostream& out, SingleServerProviderStep const& step) -> std:
 SingleServerProviderStep::SingleServerProviderStep(VertexType v)
     : _vertex(v), _edge() {}
 
-SingleServerProviderStep::SingleServerProviderStep(VertexType v, size_t depth)
-    : BaseStep(std::numeric_limits<size_t>::max(), depth), _vertex(v), _edge() {}
+SingleServerProviderStep::SingleServerProviderStep(VertexType v, size_t depth, double weight)
+    : BaseStep(std::numeric_limits<size_t>::max(), depth, weight), _vertex(v), _edge() {}
 
 SingleServerProviderStep::SingleServerProviderStep(VertexType v,
                                                    EdgeDocumentToken edge, size_t prev)
     : BaseStep(prev), _vertex(v), _edge(std::move(edge)) {}
 
 SingleServerProviderStep::SingleServerProviderStep(VertexType v, EdgeDocumentToken edge,
-                                                   size_t prev, size_t depth)
-    : BaseStep(prev, depth), _vertex(v), _edge(std::move(edge)) {}
+                                                   size_t prev, size_t depth,
+                                                   double weight, size_t)
+    : BaseStep(prev, depth, weight), _vertex(v), _edge(std::move(edge)) {}
 
 SingleServerProviderStep::~SingleServerProviderStep() = default;
 
@@ -72,5 +73,7 @@ void SingleServerProviderStep::Edge::addToBuilder(SingleServerProvider<SingleSer
 }
 
 #ifndef USE_ENTERPRISE
-bool SingleServerProviderStep::isResponsible(transaction::Methods* trx) const { return true; };
+bool SingleServerProviderStep::isResponsible(transaction::Methods* trx) const {
+  return true;
+};
 #endif

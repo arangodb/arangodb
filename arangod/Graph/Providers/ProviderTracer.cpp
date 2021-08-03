@@ -53,10 +53,11 @@ ProviderTracer<ProviderImpl>::~ProviderTracer() {
 
 template <class ProviderImpl>
 typename ProviderImpl::Step ProviderTracer<ProviderImpl>::startVertex(VertexType vertex,
-                                                                      size_t depth) {
+                                                                      size_t depth,
+                                                                      double weight) {
   double start = TRI_microtime();
   TRI_DEFER(_stats["startVertex"].addTiming(TRI_microtime() - start));
-  return _impl.startVertex(vertex, depth);
+  return _impl.startVertex(vertex, depth, weight);
 }
 
 template <class ProviderImpl>

@@ -34,11 +34,9 @@ namespace graph {
 template <class StepDetails>
 class BaseStep {
  public:
-  BaseStep() : _previous{std::numeric_limits<size_t>::max()}, _depth{0} {}
-
-  BaseStep(size_t prev) : _previous{prev}, _depth{0} {}
-
-  BaseStep(size_t prev, size_t depth) : _previous{prev}, _depth{depth} {}
+  BaseStep(size_t prev = std::numeric_limits<size_t>::max(), size_t depth = 0,
+           double weight = 1.0)
+      : _previous{prev}, _depth{depth}, _weight(weight) {}
 
   size_t getPrevious() const { return _previous; }
 
@@ -51,6 +49,8 @@ class BaseStep {
   }
 
   size_t getDepth() const { return _depth; }
+
+  double getWeight() const { return _weight; }
 
   ResultT<std::pair<std::string, size_t>> extractCollectionName(
       arangodb::velocypack::HashedStringRef const& idHashed) const {
@@ -70,6 +70,7 @@ class BaseStep {
  private:
   size_t _previous;
   size_t _depth;
+  double _weight;
 };
 }  // namespace graph
 }  // namespace arangodb

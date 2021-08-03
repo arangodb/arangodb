@@ -28,6 +28,7 @@
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/LifoQueue.h"
+#include "Graph/Queues/WeightedQueue.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 
 #ifdef USE_ENTERPRISE
@@ -112,10 +113,12 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 template class ::arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<SingleServerProviderStep>>;
 template class ::arangodb::graph::QueueTracer<arangodb::graph::LifoQueue<SingleServerProviderStep>>;
+template class ::arangodb::graph::QueueTracer<arangodb::graph::WeightedQueue<SingleServerProviderStep>>;
 
 #ifdef USE_ENTERPRISE
 template class ::arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<enterprise::SmartGraphStep>>;
 template class ::arangodb::graph::QueueTracer<arangodb::graph::LifoQueue<enterprise::SmartGraphStep>>;
+template class ::arangodb::graph::QueueTracer<arangodb::graph::WeightedQueue<enterprise::SmartGraphStep>>;
 #endif
 
 /* ClusterServerProvider Section */

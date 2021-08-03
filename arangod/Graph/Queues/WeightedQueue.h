@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,21 +28,22 @@
 #include "Logger/LogMacros.h"
 
 #include <queue>
+#include <vector>
 
 namespace arangodb {
 namespace graph {
 
 template <class StepType>
-class LifoQueue {
+class WeightedQueue {
  public:
-  static constexpr bool RequiresWeight = false;
+  static constexpr bool RequiresWeight = true;
   using Step = StepType;
   // TODO: Add Sorting (Performance - will be implemented in the future - cluster relevant)
   // -> loose ends to the end
 
-  explicit LifoQueue(arangodb::ResourceMonitor& resourceMonitor)
+  explicit WeightedQueue(arangodb::ResourceMonitor& resourceMonitor)
       : _resourceMonitor{resourceMonitor} {}
-  ~LifoQueue() { this->clear(); }
+  ~WeightedQueue() { this->clear(); }
 
   void clear() {
     if (!_queue.empty()) {
@@ -53,14 +54,22 @@ class LifoQueue {
 
   void append(Step step) {
     arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
-    // if push_front() throws, no harm is done, and the memory usage increase
+    // if emplace() throws, no harm is done, and the memory usage increase
     // will be rolled back
-    _queue.push_front(std::move(step));
+    _queue.emplace_back(std::move(step));
     guard.steal();  // now we are responsible for tracking the memory
+    // std::push_heap takes the last element in the queue, assumes that all
+    // other elements are in heap structure, and moves the last element into
+    // the correct position in the heap (incl. rebalancing of other elements)
+    // The heap structure guarantees that the first element in the queue
+    // is the "largest" element (in our case it is the smallest, as we inverted the comperator)
+    std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
   }
 
   bool hasProcessableElement() const {
     if (!isEmpty()) {
+      // The heap structure guarantees that the first element in the queue
+      // is the "largest" element (in our case it is the smallest, as we inverted the comperator)
       auto const& first = _queue.front();
       return first.isProcessable();
     }
@@ -87,16 +96,35 @@ class LifoQueue {
 
   Step pop() {
     TRI_ASSERT(!isEmpty());
-    Step first = std::move(_queue.front());
-    LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS) << "<LifoQueue> Pop: " << first.toString();
+    // std::pop_heap will move the front element (the one we would like to steal)
+    // to the back of the vector, keeping the tree intact otherwise.
+    // Now we steal the last element.
+    std::pop_heap(_queue.begin(), _queue.end(), _cmpHeap);
+    Step first = std::move(_queue.back());
+    LOG_TOPIC("9cd66", TRACE, Logger::GRAPHS)
+        << "<WeightedQueue> Pop: " << first.toString();
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
-    _queue.pop_front();
+    _queue.pop_back();
     return first;
   }
 
  private:
+  struct WeightedComparator {
+    bool operator()(Step const& a, Step const& b) {
+      if (a.getWeight() == b.getWeight()) {
+        // Only false if A is not processable but B is.
+        return !a.isProcessable() || b.isProcessable();
+      }
+      return a.getWeight() > b.getWeight();
+    }
+  };
+
+  WeightedComparator _cmpHeap{};
+
   /// @brief queue datastore
-  std::deque<Step> _queue;
+  /// Note: Mutable is a required for hasProcessableElement right now which is const. We can easily make it non const here.
+  mutable std::vector<Step> _queue;
+  // std::priority_queue<Step, std::vector<Step>, WeightedComparator> _queue;
 
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;

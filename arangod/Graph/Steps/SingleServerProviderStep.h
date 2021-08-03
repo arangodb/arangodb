@@ -71,8 +71,9 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerPr
 
   SingleServerProviderStep(VertexType v);
   SingleServerProviderStep(VertexType v, EdgeDocumentToken edge, size_t prev);
-  SingleServerProviderStep(VertexType v, EdgeDocumentToken edge, size_t prev, size_t depth);
-  SingleServerProviderStep(VertexType v, size_t depth);
+  SingleServerProviderStep(VertexType v, EdgeDocumentToken edge, size_t prev,
+                           size_t depth, double weight, size_t);
+  SingleServerProviderStep(VertexType v, size_t depth, double weight = 0.0);
   ~SingleServerProviderStep();
 
   bool operator<(SingleServerProviderStep const& other) const noexcept {
@@ -88,7 +89,9 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerPr
   bool isProcessable() const { return !isLooseEnd(); }
   bool isLooseEnd() const { return false; }
 
-  ::arangodb::graph::VertexType getVertexIdentifier() const { return _vertex.getID(); }
+  ::arangodb::graph::VertexType getVertexIdentifier() const {
+    return _vertex.getID();
+  }
 
   std::string getCollectionName() const {
     auto collectionNameResult = extractCollectionName(_vertex.getID());
@@ -100,7 +103,8 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerPr
 
   bool isResponsible(transaction::Methods* trx) const;
 
-  friend auto operator<<(std::ostream& out, SingleServerProviderStep const& step) -> std::ostream&;
+  friend auto operator<<(std::ostream& out, SingleServerProviderStep const& step)
+      -> std::ostream&;
 
  private:
   Vertex _vertex;
