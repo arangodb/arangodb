@@ -1019,125 +1019,26 @@ Result RocksDBCollection::update(transaction::Methods* trx,
                                  velocypack::Slice newSlice,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                                  ManagedDocumentResult& previousMdr) {
-  RocksDBTransactionStateGuard transactionStateGuard(RocksDBTransactionState::toState(trx));
-
-  TRI_ASSERT(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction());
-
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_update_sec, _statistics, options);
-
-  Result res;
-
-  VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
-  if (keySlice.isNone()) {
-    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
-  } else if (!keySlice.isString()) {
-    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  }
-  auto keyStr = VPackStringRef(keySlice);
-  if (keyStr.empty()) {
-    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  }
-
-  auto const oldDocumentId = primaryIndex()->lookupKey(trx, keyStr);
-  if (!oldDocumentId.isSet()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-  }
-  std::string* prevBuffer = previousMdr.setManaged();
-  // uses either prevBuffer or avoids memcpy (if read hits block cache)
-  rocksdb::PinnableSlice previousPS(prevBuffer);
-  res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
-                            /*readCache*/true, /*fillCache*/false);
-  if (res.fail()) {
-    return res;
-  }
-
-  TRI_ASSERT(previousPS.size() > 0);
-  VPackSlice const oldDoc(reinterpret_cast<uint8_t const*>(previousPS.data()));
-  previousMdr.setRevisionId(transaction::helpers::extractRevFromDocument(oldDoc));
-  TRI_ASSERT(previousMdr.revisionId().isSet());
-
-  if (!options.ignoreRevs) {  // Check old revision:
-    RevisionId expectedRev = RevisionId::fromSlice(newSlice);
-    if (!checkRevision(trx, expectedRev, previousMdr.revisionId())) {
-      return res.reset(TRI_ERROR_ARANGO_CONFLICT, "conflict, _rev values do not match");
-    }
-  }
-  
-  // merge old and new values
-  RevisionId revisionId;
-  auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
-
-  transaction::BuilderLeaser builder(trx);
-  res = mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
-                              options.mergeObjects, options.keepNull,
-                              *builder.get(), options.isRestore, revisionId);
-  if (res.fail()) {
-    return res;
-  }
-  LocalDocumentId const newDocumentId = ::generateDocumentId(_logicalCollection, revisionId);
-
-  if (_isDBServer) {
-    // Need to check that no sharding keys have changed:
-    if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), true)) {
-      return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
-    }
-    if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc,
-                                            builder->slice(), true)) {
-      return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
-    }
-  }
-
-  if (options.validate && options.isSynchronousReplicationFrom.empty()) {
-    res = _logicalCollection.validate(builder->slice(), oldDoc,
-                                      trx->transactionContextPtr()->getVPackOptions());
-    if (res.fail()) {
-      return res;
-    }
-  }
-
-  VPackSlice newDoc(builder->slice());
-  auto* state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint savepoint(state, trx, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-
-  res = modifyDocument(trx, savepoint, oldDocumentId, oldDoc, newDocumentId, newDoc, options, revisionId);
-
-  if (res.ok()) {
-    trackWaitForSync(trx, options);
-
-    if (options.returnNew) {
-      resultMdr.setManaged(newDoc.begin());
-      TRI_ASSERT(!resultMdr.empty());
-    } else {  //  need to pass revId manually
-      resultMdr.setRevisionId(revisionId);
-    }
-    if (options.returnOld) {
-      if (previousPS.IsPinned()) { // value was not copied
-        prevBuffer->assign(previousPS.data(), previousPS.size());
-      }  // else value is already assigned
-      TRI_ASSERT(!previousMdr.empty());
-    } else {
-      previousMdr.clearData();
-    }
-
-    res = savepoint.finish(_logicalCollection.id(), revisionId);
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  }
-    
-  return res;
+  return performUpdateOrReplace(trx, newSlice, resultMdr, options, previousMdr, true);
 }
 
 Result RocksDBCollection::replace(transaction::Methods* trx,
                                   velocypack::Slice newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_sec, _statistics, options);
+  return performUpdateOrReplace(trx, newSlice, resultMdr, options, previousMdr, false);
+}
+                                  
+Result RocksDBCollection::performUpdateOrReplace(transaction::Methods* trx,
+                                                 velocypack::Slice newSlice,
+                                                 ManagedDocumentResult& resultMdr, OperationOptions& options,
+                                                 ManagedDocumentResult& previousMdr, bool isUpdate) {
   RocksDBTransactionStateGuard transactionStateGuard(RocksDBTransactionState::toState(trx));
 
   TRI_ASSERT(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction());
 
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_sec, _statistics, options);
-  
   Result res;
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
@@ -1181,8 +1082,14 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   transaction::BuilderLeaser builder(trx);
-  res = newObjectForReplace(trx, oldDoc, newSlice, isEdgeCollection,
-                            *builder.get(), options.isRestore, revisionId);
+  if (isUpdate) {
+    res = mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
+                                options.mergeObjects, options.keepNull,
+                                *builder.get(), options.isRestore, revisionId);
+  } else {
+    res = newObjectForReplace(trx, oldDoc, newSlice, isEdgeCollection,
+                              *builder.get(), options.isRestore, revisionId);
+  }
   if (res.fail()) {
     return res;
   }
@@ -1190,11 +1097,11 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
-    if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), false)) {
+    if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), isUpdate)) {
       return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
     if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc,
-                                            builder->slice(), false)) {
+                                            builder->slice(), isUpdate)) {
       return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
     }
   }
@@ -1210,7 +1117,8 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   }
 
   auto* state = RocksDBTransactionState::toState(trx);
-  RocksDBSavePoint savepoint(state, trx, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+  auto opType = isUpdate ? TRI_VOC_DOCUMENT_OPERATION_UPDATE : TRI_VOC_DOCUMENT_OPERATION_REPLACE;
+  RocksDBSavePoint savepoint(state, trx, opType);
 
   res = modifyDocument(trx, savepoint, oldDocumentId, oldDoc, newDocumentId, newDoc, options, revisionId);
 
