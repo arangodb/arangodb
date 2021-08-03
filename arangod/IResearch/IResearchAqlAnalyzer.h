@@ -117,6 +117,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   aql::SharedAqlItemBlockPtr _queryResults;
   std::vector<aql::AstNode*> _bindedNodes;
   aql::ExecutionState _executionState{aql::ExecutionState::DONE};
+  bool _preCalculated{false};
 
   attributes _attrs;
   size_t _resultRowIdx{ 0 };

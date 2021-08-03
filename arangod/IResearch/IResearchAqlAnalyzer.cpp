@@ -38,6 +38,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Parser.h"
@@ -526,8 +527,9 @@ bool AqlAnalyzer::next() {
   do {
     if (_queryResults != nullptr) {
       while (_queryResults->numRows() > _resultRowIdx) {
-        AqlValue const& value =
-            _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister());
+        AqlValue const& value =  _preCalculated ?
+            _queryResults->getValueReference(_resultRowIdx++, 0) :
+            _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister()) ;
         if (_options.keepNull || !value.isNull(true)) {
           switch (_options.returnType) {
             case AnalyzerValueType::String:
@@ -606,6 +608,36 @@ bool AqlAnalyzer::next() {
   return false;
 }
 
+// return the calculation node
+ExecutionNode* tryOptimize(ExecutionNode* node) {
+  if (node == nullptr || node->getType() != ExecutionNode::RETURN) {
+    return nullptr;
+  }
+
+  auto deps = node->getDependencies();
+
+  for (auto currNode : deps) {
+
+    if (currNode == nullptr) {
+      continue;
+    }
+
+    if(currNode->getType() == ExecutionNode::NodeType::CALCULATION)
+    {
+      auto deps2 = currNode->getDependencies();
+      auto singletonNodeItr = std::find_if(deps2.begin(), deps2.end(), [](const ExecutionNode* n) {
+        return n->getType() == ExecutionNode::NodeType::SINGLETON;
+        });
+
+      if(singletonNodeItr != deps2.end()) {
+       return currNode;
+      }
+    }
+
+    return tryOptimize(currNode);
+  }
+}
+
 bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
   try {
     if (!_plan) {  // lazy initialization
@@ -652,6 +684,56 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
       optimizer.createPlans(std::move(plan), _query->queryOptions(), false);
 
       _plan = optimizer.stealBest();
+
+      // find here suitable situation
+      ExecutionNode* execNode = tryOptimize(_plan->root());
+      if(execNode != nullptr) {
+        CalculationNode* calcNode = dynamic_cast<CalculationNode*>(execNode);
+
+        //get expression
+        auto e = calcNode->expression();
+
+        auto& trx = _query->trxForOptimization();
+
+        // get variable ptr
+        auto v = static_cast<Variable const*>(e->node()->getData());
+        AqlFunctionsInternalCache cache;
+        // create context
+        FixedVarExpressionContext ctx(trx, _query->ast()->query(), cache);
+
+        VPackSlice slice(reinterpret_cast<const uint8_t*>(field.c_str()));
+        AqlValue aqlValue(slice);
+
+        // set value in context
+        ctx.setVariableValue(v, aqlValue);
+
+        bool mustDestroy = false;
+        // extarct variable's value from context
+        AqlValue value = ctx.getVariableValue(v, true, mustDestroy);
+
+        // set the value in expression
+        e->setVariable(v, value.slice());
+        // calculate expression
+        AqlValue calculatedValue = e->execute(&ctx, mustDestroy);
+
+        _executionState = ExecutionState::DONE; // already calculated
+        _resultRowIdx = 0;
+        _nextIncVal = 1;  // first increment always 1 to move from -1 to 0
+
+        if(calculatedValue.isNull(true) && !_options.keepNull) {
+          // result is null and we should't store it
+          _preCalculated = false;
+          _queryResults = nullptr;
+          return true;
+        } else {
+          // put calculated value in _queryResults
+          _queryResults = _itemBlockManager.requestBlock(1,1);
+          _queryResults->setValue(0,0, calculatedValue);
+          _preCalculated = true;
+        }
+
+        return true;
+      }
     } else {
       for (auto node : _bindedNodes) {
         node->setStringValue(field.c_str(), field.size());
