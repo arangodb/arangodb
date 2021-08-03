@@ -211,7 +211,7 @@ Depending on the platform, ArangoDB tries to locate the temporary directory:
 ### Local Cluster Startup
 
 The scripts `scripts/startLocalCluster` helps you to quickly fire up a testing
-cluster on your local machine. `scripts/stopLocalCluster` stops it again.
+cluster on your local machine. `scripts/shutdownLocalCluster` stops it again.
 
 `scripts/startLocalCluster [numDBServers numCoordinators [mode]]`
 
@@ -692,9 +692,13 @@ To locate the suite(s) associated with a specific test file use:
 
     ./scripts/unittest find --test tests/js/common/shell/shell-aqlfunctions.js
 
-Run all suite(s) associated with a specific test file:
+Run all suite(s) associated with a specific test file in single server mode:
 
     ./scripts/unittest auto --test tests/js/common/shell/shell-aqlfunctions.js
+
+Run all suite(s) associated with a specific test file in cluster mode:
+
+    ./scripts/unittest auto --cluster true --test tests/js/common/shell/shell-aqlfunctions.js
 
 Run all C++ based Google Test (gtest) tests using the `arangodbtests` binary:
 

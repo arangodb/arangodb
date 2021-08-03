@@ -409,8 +409,7 @@ static void handleLocalShard(std::string const& dbname, std::string const& colna
 
   std::shared_ptr<ActionDescription> description;
 
-  std::unordered_set<std::string>::const_iterator it =
-      std::find(commonShrds.begin(), commonShrds.end(), colname);
+  std::unordered_set<std::string>::const_iterator it = commonShrds.find(colname);
 
   auto localLeader = cprops.get(THE_LEADER).stringRef();
   bool const isLeading = localLeader.empty();
