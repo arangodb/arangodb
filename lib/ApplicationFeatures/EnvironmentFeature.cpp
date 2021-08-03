@@ -385,12 +385,11 @@ void EnvironmentFeature::prepare() {
     // file not found or value not convertible into integer
   }
 
-  bool showHuge = false;
   std::vector<std::string> paths = {
       "/sys/kernel/mm/transparent_hugepage/enabled",
       "/sys/kernel/mm/transparent_hugepage/defrag"};
 
-  for (auto file : paths) {
+  for (auto const& file : paths) {
     try {
       std::string value;
       auto rv = basics::FileUtils::slurp(file, value);
@@ -406,19 +405,13 @@ void EnvironmentFeature::prepare() {
                 << file << " is set to '" << value
                 << "'. It is recommended to set it to a value of 'never' "
                    "or 'madvise'";
-            showHuge = true;
+            LOG_TOPIC("f3108", WARN, Logger::MEMORY)
+              << "execute 'sudo bash -c \"echo madvise > " << file << "\"'";
           }
         }
       }
     } catch (...) {
       // file not found
-    }
-  }
-
-  if (showHuge) {
-    for (auto file : paths) {
-      LOG_TOPIC("f3108", WARN, Logger::MEMORY)
-          << "execute 'sudo bash -c \"echo madvise > " << file << "\"'";
     }
   }
 
