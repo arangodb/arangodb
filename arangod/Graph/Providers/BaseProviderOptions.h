@@ -99,9 +99,6 @@ struct BaseProviderOptions {
   // CollectionName to ShardMap, used if the Traversal is pushed down to DBServer
   std::unordered_map<std::string, std::vector<std::string>> const& _collectionToShardMap;
 
-  // Flag if we have a callback below. We cannot wrap a function into
-  // std::optional bool _hasWeightCallback;
-
   // Optional callback to compute the weight of an edge.
   std::optional<WeightCallback> _weightCallback;
 };

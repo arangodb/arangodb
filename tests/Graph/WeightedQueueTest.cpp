@@ -172,7 +172,7 @@ TEST_F(WeightedQueueTest, it_should_order_by_asc_weight) {
     for (auto s : input) {
       queue.append(s);
     }
-    // We start wich all inputs injected.
+    // We start with all inputs injected.
     EXPECT_EQ(queue.size(), input.size());
     // Input is required
     EXPECT_TRUE(queue.hasProcessableElement());
@@ -180,7 +180,7 @@ TEST_F(WeightedQueueTest, it_should_order_by_asc_weight) {
     double weightBefore = -1.0;
 
     // Consume everything from the queue.
-    // It needs to be in increaseing weight order.
+    // It needs to be in increasing weight order.
     while (queue.hasProcessableElement()) {
       Step myStep = queue.pop();
       EXPECT_GE(myStep.getWeight(), weightBefore);
