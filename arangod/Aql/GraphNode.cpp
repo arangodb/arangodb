@@ -686,7 +686,6 @@ void GraphNode::getConditionVariables(std::vector<Variable const*>& res) const {
 }
 
 Collection const* GraphNode::collection() const {
-  // TODO: We are not allowed to use a Satellite here!
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   TRI_ASSERT(!_edgeColls.empty());
   for (auto const* c : _edgeColls) {
