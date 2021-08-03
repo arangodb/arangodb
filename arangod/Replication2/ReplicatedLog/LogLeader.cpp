@@ -494,7 +494,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
       toBeResolved.insert(_waitForQueue.extract(it++));
     }
     return ResolvedPromiseSet{std::move(toBeResolved), std::move(quorum),
-                              _inMemoryLog.splice(oldIndex, newIndex + 1)};
+                              _inMemoryLog.slice(oldIndex, newIndex + 1)};
   } catch (std::exception const& e) {
     // If those promises are not fulfilled we can not continue.
     // Note that the move constructor of std::multi_map is not noexcept.
