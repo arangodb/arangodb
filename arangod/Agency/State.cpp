@@ -1418,7 +1418,6 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
           FATAL_ERROR_EXIT();
         }
       }
-      trx.truncate("log");
       res = trx.finish(result.result);
     } catch (std::exception const& e) {
       LOG_TOPIC("41965", FATAL, Logger::AGENCY)
