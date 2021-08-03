@@ -1,6 +1,13 @@
 devel
 -----
 
+* Refactored arangobench:
+  - Updated testcases to show description of them when beginning execution
+  - Fixed testcase histogram with time measures when batch size > 0
+  - Integrated testcases with Velocypack for simplification 
+  - Deprecated some testcases
+  - Internal changes for performance optimization
+
 * Timely update of database server list on health check fixes BTS-505.
 
 * Add 3 AQL functions: COSINE_SIMILARITY, L1_DISTANCE and L2_DISTANCE.
