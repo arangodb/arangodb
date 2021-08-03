@@ -266,9 +266,9 @@ class BenchmarkThread : public arangodb::Thread {
     }
 
     if (location[0] == '/') {
-      return std::string("/_db/" + t->_databaseName + location);
+      return std::string("/_db/" + basics::StringUtils::urlEncode(t->_databaseName) + location);
     }
-    return std::string("/_db/" + t->_databaseName + "/" + location);
+    return std::string("/_db/" + basics::StringUtils::urlEncode(t->_databaseName) + "/" + location);
   }
 
   //////////////////////////////////////////////////////////////////////////////
