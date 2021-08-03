@@ -2,31 +2,54 @@
 
 import minimatch from 'minimatch';
 import React, { useEffect, useState } from 'react';
-import { isEqual } from 'underscore';
-import useAPIFetch from '../../utils/arangoSWRClient';
+import useSWR from 'swr';
+import { compact, get, isEqual } from 'underscore';
+import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
+import Actions from './Actions';
+
+const typeMap = {
+  text: 'Text',
+  identity: 'Identity',
+  'stem': 'Stem'
+};
+
+const route = getApiRouteForCurrentDB();
 
 const AnalyzersReactView = () => {
   const {
     data,
     error
-  } = useAPIFetch('/analyzer');
+  } = useSWR('/analyzer', (path) => route.get(path));
+
   const {
     data: permData,
     error: permError
-  } = useAPIFetch(`/user/${arangoHelper.getCurrentJwtUsername()}/database/${frontendConfig.db}`);
+  } = useSWR(`/user/${arangoHelper.getCurrentJwtUsername()}/database/${frontendConfig.db}`,
+    (path) => route.get(path));
+
   const [filterExpr, setFilterExpr] = useState('');
   const [filteredAnalyzers, setFilteredAnalyzers] = useState([]);
   const [analyzers, setAnalyzers] = useState([]);
 
-  useEffect(() => {
-    if (filterExpr) {
-      let tempFilteredAnalyzers = analyzers;
+  function processAndSetFilteredAnalyzers (analyzers) {
+    analyzers.forEach(analyzer => {
+      analyzer.db = analyzer.name.includes('::') ? analyzer.name.split('::')[0] : '_system';
+    });
 
+    setFilteredAnalyzers(analyzers);
+  }
+
+  useEffect(() => {
+    let tempFilteredAnalyzers = analyzers;
+
+    if (filterExpr) {
       try {
         const filters = filterExpr.trim().split(/\s+/);
 
         for (const filter of filters) {
-          const [field, pattern] = filter.split(':');
+          const splitIndex = filter.indexOf(':');
+          const field = filter.slice(0, splitIndex);
+          const pattern = filter.slice(splitIndex + 1);
 
           tempFilteredAnalyzers = tempFilteredAnalyzers.filter(
             analyzer => minimatch(analyzer[field].toLowerCase(), `*${pattern.toLowerCase()}*`));
@@ -35,27 +58,36 @@ const AnalyzersReactView = () => {
         tempFilteredAnalyzers = tempFilteredAnalyzers.filter(analyzer => {
           const normalizedPattern = `*${filterExpr.toLowerCase()}*`;
 
-          return ['name', 'type'].some(
+          return ['db', 'name', 'type'].some(
             field => minimatch(analyzer[field].toLowerCase(), normalizedPattern));
         });
       }
-
-      setFilteredAnalyzers(tempFilteredAnalyzers);
-    } else {
-      setFilteredAnalyzers(analyzers);
     }
+
+    processAndSetFilteredAnalyzers(tempFilteredAnalyzers);
   }, [analyzers, filterExpr]);
 
   function handleChange (event) {
     setFilterExpr(event.target.value);
   }
 
-  if (!error && data && !data.body.error && !permError && permData && !permData.body.error) {
+  const errMsgs = compact([
+    get(error, 'message'),
+    get(permError, 'message'),
+    get(data, ['body', 'errorMessage']),
+    get(permData, ['body', 'errorMessage'])
+  ]);
+
+  for (const emsg in errMsgs) {
+    arangoHelper.arangoError('Failure', `Got unexpected server response: ${emsg}`);
+  }
+
+  if (!errMsgs.length && data && permData) {
     const permission = permData.body.result;
 
     if (!isEqual(data.body.result, analyzers)) {
       setAnalyzers(data.body.result);
-      setFilteredAnalyzers(data.body.result);
+      processAndSetFilteredAnalyzers(data.body.result);
     }
 
     return <div className={'innerContent'} id={'analyzersContent'} style={{ paddingTop: 0 }}>
@@ -67,22 +99,19 @@ const AnalyzersReactView = () => {
             </div>
 
             <div className={'pure-u-3-5'}>
-              <span className={'search-field'} style={{
+              <label htmlFor={'filterInput'} style={{
+                color: '#fff',
                 marginRight: 10,
-                whiteSpace: 'nowrap'
+                float: 'right'
               }}>
-                <label htmlFor={'filterInput'} style={{
-                  color: '#fff',
-                  display: 'inline'
-                }}>Filter: </label>
-                <input type={'text'} id={'filterInput'} className={'search-input'}
-                       value={filterExpr} onChange={handleChange}
-                       placeholder={'<glob> | (<name|type>:<glob> )+'}
-                       style={{
-                         marginRight: 0,
-                         width: 300,
-                         paddingLeft: 25
-                       }}/>
+                Filter: <input type={'text'} id={'filterInput'} className={'search-input'}
+                               value={filterExpr} onChange={handleChange}
+                               placeholder={'<glob> | (<db|name|type>:<glob> )+'}
+                               style={{
+                                 marginRight: 0,
+                                 width: 300,
+                                 paddingLeft: 25
+                               }}/>
                 <i className={'fa fa-search'} style={{
                   position: 'relative',
                   float: 'left',
@@ -90,35 +119,31 @@ const AnalyzersReactView = () => {
                   left: 65,
                   cursor: 'default'
                 }}/>
-              </span>
+              </label>
             </div>
           </div>
           <table className={'arango-table'}>
             <thead>
             <tr>
-              <th className={'arango-table-th table-cell0'}>Name</th>
-              <th className={'arango-table-th table-cell1'}>Type</th>
-              <th className={'arango-table-th table-cell2'}>Actions</th>
+              <th className={'arango-table-th table-cell0'}>DB</th>
+              <th className={'arango-table-th table-cell1'}>Name</th>
+              <th className={'arango-table-th table-cell2'}>Type</th>
+              <th className={'arango-table-th table-cell3'}>Actions</th>
             </tr>
             </thead>
             <tbody>
-            {filteredAnalyzers.map((analyzer, idx) => (
-              <tr key={idx}>
-                <td className={'arango-table-td table-cell0'}>{analyzer.name}</td>
-                <td className={'arango-table-td table-cell1'}>{analyzer.type}</td>
-                <td className={'arango-table-td table-cell2'}>
-                  <a href={`#analyzers/view/${analyzer.name}`}><i className={'fa fa-eye'}/></a>
-                  &nbsp;
-                  {
-                    permission === 'rw' && analyzer.name.includes('::')
-                      ? <a href={`#analyzers/remove/${analyzer.name}`}>
-                        <i className={'fa fa-trash-o'}/>
-                      </a>
-                      : null
-                  }
-                </td>
-              </tr>
-            ))}
+            {
+              filteredAnalyzers.map((analyzer, idx) => (
+                <tr key={idx}>
+                  <td className={'arango-table-td table-cell0'}>{analyzer.db}</td>
+                  <td className={'arango-table-td table-cell1'}>{analyzer.name}</td>
+                  <td className={'arango-table-td table-cell2'}>{typeMap[analyzer.type]}</td>
+                  <td className={'arango-table-td table-cell3'}>
+                    <Actions analyzer={analyzer} permission={permission}/>
+                  </td>
+                </tr>
+              ))
+            }
             </tbody>
           </table>
         </div>
