@@ -30,6 +30,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/Events.h"
 
 namespace arangodb {
@@ -290,14 +291,10 @@ Result CreateDatabaseInfo::checkOptions() {
     _validId = false;
   }
 
-  // we cannot use IsAllowedName for database name length validation alone, because
-  // IsAllowedName allows up to 256 characters. Database names are just up to 64
-  // chars long, as their names are also used as filesystem directories (for Foxx apps)
   bool isSystem = _name == StaticStrings::SystemDatabase;
+  bool allowUnicode = _server.getFeature<DatabaseFeature>().allowUnicodeNames();
 
-  if (_name.empty() ||
-      !TRI_vocbase_t::IsAllowedName(isSystem, arangodb::velocypack::StringRef(_name)) ||
-      _name.size() > 64) {
+  if (!TRI_vocbase_t::isAllowedName(isSystem, allowUnicode, arangodb::velocypack::StringRef(_name))) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 

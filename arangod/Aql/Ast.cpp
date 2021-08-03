@@ -50,6 +50,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Containers/SmallVector.h"
 #include "Graph/Graph.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -4047,11 +4048,13 @@ AstNode* Ast::createNode(AstNodeType type) {
 /// in case validation fails, will throw an exception
 void Ast::validateDataSourceName(arangodb::velocypack::StringRef const& name,
                                  bool validateStrict) {
+  bool allowUnicode = _query.vocbase().server().getFeature<DatabaseFeature>().allowUnicodeNames();
+
   // common validation
   if (name.empty() ||
       (validateStrict &&
-       !TRI_vocbase_t::IsAllowedName(
-           true, arangodb::velocypack::StringRef(name.data(), name.size())))) {
+       !LogicalCollection::isAllowedName(
+           /*allowSystem*/ true, allowUnicode, name))) {
     // will throw    
     std::string errorMessage(TRI_errno_string(TRI_ERROR_ARANGO_ILLEGAL_NAME));
     errorMessage.append(": ");

@@ -756,7 +756,8 @@ Result Collections::rename(LogicalCollection& collection,
                               "a system collection name");
     }
 
-    if (!TRI_vocbase_t::IsAllowedName(isSystem, arangodb::velocypack::StringRef(newName))) {
+    bool allowUnicode = collection.vocbase().server().getFeature<DatabaseFeature>().allowUnicodeNames(); 
+    if (!LogicalCollection::isAllowedName(isSystem, allowUnicode, arangodb::velocypack::StringRef(newName))) {
       return TRI_ERROR_ARANGO_ILLEGAL_NAME;
     }
   }

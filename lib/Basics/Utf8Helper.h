@@ -212,6 +212,9 @@ char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength);
 
 char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLength);
 
+std::string normalizeUtf8ToNFC(char const* value, size_t length);
+std::string normalizeUtf8ToNFC(std::string const& name);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf16 string (NFC) and export it to utf8
 ////////////////////////////////////////////////////////////////////////////////

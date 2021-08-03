@@ -288,8 +288,9 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(splittedAnalyzerName.second.c_str(),
-                                                                           splittedAnalyzerName.second.size()))) {
+  if (!TRI_vocbase_t::isAllowedName(/*allowSystem*/ false, /*allowUnicode*/ false,
+                                    arangodb::velocypack::StringRef(splittedAnalyzerName.second.c_str(),
+                                                                    splittedAnalyzerName.second.size()))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_BAD_PARAMETER,
       std::string("invalid characters in analyzer name '").append(splittedAnalyzerName.second.c_str()).append("'")
@@ -577,8 +578,9 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(splittedAnalyzerName.second.c_str(),
-                                                                           splittedAnalyzerName.second.size()))) {
+  if (!TRI_vocbase_t::isAllowedName(/*allowSystem*/ false, /*allowUnicode*/ false,
+                                    arangodb::velocypack::StringRef(splittedAnalyzerName.second.c_str(),
+                                                                    splittedAnalyzerName.second.size()))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_BAD_PARAMETER,
       std::string("Invalid characters in analyzer name '").append(splittedAnalyzerName.second)

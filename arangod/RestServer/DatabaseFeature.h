@@ -140,6 +140,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool forceSyncProperties() const { return _forceSyncProperties; }
   void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
+  bool allowUnicodeNames() const { return _allowUnicodeNames; }
 
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
@@ -184,6 +185,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
+
+  bool _allowUnicodeNames;
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 

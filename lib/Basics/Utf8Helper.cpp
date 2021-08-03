@@ -46,6 +46,7 @@
 
 #include "Utf8Helper.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Basics/memory.h"
@@ -736,6 +737,21 @@ char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLe
   }
 
   return utf8Dest;
+}
+
+std::string normalizeUtf8ToNFC(char const* value, size_t length) {
+  size_t outLength = 0;
+  char* normalized = TRI_normalize_utf8_to_NFC(value, length, &outLength);
+  if (normalized == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  std::string result(normalized, outLength);
+  TRI_Free(normalized);
+  return result;
+}
+
+std::string normalizeUtf8ToNFC(std::string const& value) {
+  return normalizeUtf8ToNFC(value.data(), value.size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

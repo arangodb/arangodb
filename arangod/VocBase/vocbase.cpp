@@ -32,6 +32,7 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
+#include <velocypack/Utf8Helper.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
@@ -392,7 +393,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
 /// @brief creates a new collection, worker function
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWorker(VPackSlice parameters) {
   std::string name =
-      arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+      arangodb::basics::VelocyPackHelper::getStringValue(parameters, StaticStrings::DataSourceName, "");
   TRI_ASSERT(!name.empty());
   
   std::string const& dbName = _info.getName();
@@ -884,14 +885,18 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
     arangodb::velocypack::Slice parameters) {
   // check that the name does not contain any strange characters
 
-  if (!IsAllowedName(parameters)) {
-    std::string name;
-    std::string const& dbName = _info.getName();
-    if (parameters.isObject()) {
-      name = VelocyPackHelper::getStringValue(parameters,
-                                              StaticStrings::DataSourceName, "");
-    }
+  std::string name;
+  bool valid = parameters.isObject();
+  if (valid) {
+    name = VelocyPackHelper::getStringValue(parameters,
+                                            StaticStrings::DataSourceName, "");
+    bool isSystem = VelocyPackHelper::getBooleanValue(parameters, StaticStrings::DataSourceSystem, false);
+    bool allowUnicode = server().getFeature<DatabaseFeature>().allowUnicodeNames();
+    valid &= LogicalCollection::isAllowedName(isSystem, allowUnicode, arangodb::velocypack::StringRef(name));
+  }
 
+  if (!valid) {
+    std::string const& dbName = _info.getName();
     events::CreateCollection(dbName, name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -1021,7 +1026,8 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid, std::string const& 
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (!IsAllowedName(IsSystemName(newName), arangodb::velocypack::StringRef(newName))) {
+  bool allowUnicode = databaseFeature.allowUnicodeNames();
+  if (!LogicalView::isAllowedName(/*allowSystem*/ false, allowUnicode, arangodb::velocypack::StringRef(newName))) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1231,15 +1237,18 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto& engine = server().getFeature<EngineSelectorFeature>().engine();
   std::string const& dbName = _info.getName();
+  
+  std::string name;
+  bool valid = parameters.isObject();
+  if (valid) {
+    name = VelocyPackHelper::getStringValue(parameters,
+                                            StaticStrings::DataSourceName, "");
+    bool allowUnicode = server().getFeature<DatabaseFeature>().allowUnicodeNames();
+    valid &= LogicalView::isAllowedName(/*allowSystem*/ false, allowUnicode, arangodb::velocypack::StringRef(name));
+  }
 
-  // check that the name does not contain any strange characters
-  if (!IsAllowedName(parameters)) {
-    std::string n;
-    if (parameters.isObject()) {
-      n = VelocyPackHelper::getStringValue(parameters,
-                                           StaticStrings::DataSourceName, "");
-    }
-    events::CreateView(dbName, n, TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  if (!valid) {
+    events::CreateView(dbName, name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1247,12 +1256,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
   auto res = LogicalView::instantiate(view, *this, parameters);
 
   if (!res.ok() || !view) {
-    std::string n;
-    if (parameters.isObject()) {
-      n = VelocyPackHelper::getStringValue(parameters,
-                                           StaticStrings::DataSourceName, "");
-    }
-    events::CreateView(dbName, n, res.errorNumber());
+    events::CreateView(dbName, name, res.errorNumber());
     THROW_ARANGO_EXCEPTION_MESSAGE(
         res.errorNumber(),
         res.errorMessage().empty()
@@ -1442,30 +1446,39 @@ std::uint32_t TRI_vocbase_t::writeConcern() const {
   return _info.writeConcern();
 }
 
-bool TRI_vocbase_t::IsAllowedName(arangodb::velocypack::Slice slice) noexcept {
-  return !slice.isObject()
-             ? false
-             : IsAllowedName(arangodb::basics::VelocyPackHelper::getBooleanValue(
-                                 slice, StaticStrings::DataSourceSystem, false),
-                             arangodb::basics::VelocyPackHelper::getStringRef(
-                                 slice, StaticStrings::DataSourceName, VPackStringRef()));
-}
-
-/// @brief checks if a database name is allowed
+/// @brief checks if a database name is valid
 /// returns true if the name is allowed and false otherwise
-bool TRI_vocbase_t::IsAllowedName(bool allowSystem,
+bool TRI_vocbase_t::isAllowedName(bool allowSystem, bool allowUnicode,
                                   arangodb::velocypack::StringRef const& name) noexcept {
   size_t length = 0;
 
-  // check allow characters: must start with letter or underscore if system is
-  // allowed
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
-    bool ok;
-    if (length == 0) {
-      ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z') || (allowSystem && *ptr == '_');
+    bool ok = true;
+
+    if (allowUnicode) {
+      // forward slashes are disallowed inside database names
+      ok &= (*ptr != '/');
+
+      if (length == 0) {
+        // a database name must not start with a digit, because then it can be confused with
+        // database ids
+        ok &= (*ptr < '0' || *ptr > '9');
+        
+        // a database name must not start with an underscore unless it is the system database 
+        // (which is not created via any checked API)
+        ok &= (*ptr != '_' || allowSystem);
+
+        // finally, a database name must not start with a dot, because this is used for hidden
+        // agency entries
+        ok &= (*ptr != '.');
+      }
     } else {
-      ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z') ||
-           (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9');
+      if (length == 0) {
+        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || (allowSystem && *ptr == '_');
+      } else {
+        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || 
+              (*ptr == '_') || (*ptr == '-') || (*ptr >= '0' && *ptr <= '9');
+      }
     }
 
     if (!ok) {
@@ -1473,7 +1486,10 @@ bool TRI_vocbase_t::IsAllowedName(bool allowSystem,
     }
   }
 
-  return (length > 0 && length <= LogicalCollection::maxNameLength);
+  // collection names must be within the expected length limits
+  return (length > 0 && 
+          ((!allowUnicode && length <= maxNameLength) || (allowUnicode && length <= maxNameLengthUnicode)) && 
+          velocypack::Utf8Helper::isValidUtf8(reinterpret_cast<uint8_t const*>(name.data()), name.size()));
 }
 
 /// @brief determine whether a collection name is a system collection name

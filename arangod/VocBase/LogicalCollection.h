@@ -83,7 +83,7 @@ class LogicalCollection : public LogicalDataSource {
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
 
-  /// @brief maximal collection name length
+  /// @brief maximal collection name length, in bytes
   static constexpr size_t maxNameLength = 256;
 
   enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
@@ -105,9 +105,12 @@ class LogicalCollection : public LogicalDataSource {
     RemoteSmartEdge = 4,
   };
 
-  //////////////////////////////////////////////////////////////////////////////
+  /// @brief checks if a collection name is valid
+  /// returns true if the name is allowed and false otherwise
+  static bool isAllowedName(bool allowSystem, bool allowUnicode,
+                            arangodb::velocypack::StringRef const& name) noexcept;
+
   /// @brief the category representing a logical collection
-  //////////////////////////////////////////////////////////////////////////////
   static Category const& category() noexcept;
 
   /// @brief hard-coded minimum version number for collections

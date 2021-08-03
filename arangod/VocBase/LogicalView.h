@@ -39,8 +39,9 @@
 namespace arangodb {
 namespace velocypack {
 
-class Slice;
 class Builder;
+class Slice;
+class StringRef;
 
 }  // namespace velocypack
 } // arangodb
@@ -101,6 +102,11 @@ class LogicalView : public LogicalDataSource {
     return static_cast<target_type_t>(view);
 #endif
   }
+  
+  /// @brief checks if a view name is allowed
+  /// returns true if the name is allowed and false otherwise
+  static bool isAllowedName(bool allowSystem, bool allowUnicode,
+                            arangodb::velocypack::StringRef const& name) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief queries properties of an existing view
@@ -187,6 +193,13 @@ class LogicalView : public LogicalDataSource {
   ///        including persistance of properties
   //////////////////////////////////////////////////////////////////////////////
   virtual Result renameImpl(std::string const& oldName) = 0;
+  
+  /// @brief maximal view name length, in bytes (old convention, used when
+  /// `--database.allow-unicode-names=false`)
+  static constexpr size_t maxNameLength = 64;
+  /// @brief maximal view name length, in bytes (new convention, used when
+  /// `--database.allow-unicode-names=true`)
+  static constexpr size_t maxNameLengthUnicode = 256;
 
  private:
   // FIXME seems to be ugly

@@ -277,6 +277,7 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
+      _allowUnicodeNames(true),
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _checkVersion(false),
@@ -318,6 +319,11 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "load collections even if datafiles may contain errors",
                      new BooleanParameter(&_ignoreDatafileErrors),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  
+  options->addOption("--database.allow-unicode-names",
+                     "allow Unicode characters in database and collection names",
+                     new BooleanParameter(&_allowUnicodeNames))
+                     .setIntroducedIn(30900);
 
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
@@ -629,7 +635,8 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   }
   result = nullptr;
 
-  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
+  bool allowUnicode = allowUnicodeNames();
+  if (!TRI_vocbase_t::isAllowedName(/*allowSystem*/ false, allowUnicode, arangodb::velocypack::StringRef(name))) {
     return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};
   }
 

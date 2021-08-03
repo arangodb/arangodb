@@ -111,6 +111,13 @@ struct TRI_vocbase_t {
 
   TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&&);
   TEST_VIRTUAL ~TRI_vocbase_t();
+  
+  /// @brief maximal database name length, in bytes (old convention, used when
+  /// `--database.allow-unicode-names=false`)
+  static constexpr size_t maxNameLength = 64;
+  /// @brief maximal database name length, in bytes (new convention, used when
+  /// `--database.allow-unicode-names=true`)
+  static constexpr size_t maxNameLengthUnicode = 256;
 
  private:
   // explicitly document implicit behavior (due to presence of locks)
@@ -168,8 +175,7 @@ struct TRI_vocbase_t {
  public:
   /// @brief checks if a database name is allowed
   /// returns true if the name is allowed and false otherwise
-  static bool IsAllowedName(arangodb::velocypack::Slice slice) noexcept;
-  static bool IsAllowedName(bool allowSystem,
+  static bool isAllowedName(bool allowSystem, bool allowUnicode,
                             arangodb::velocypack::StringRef const& name) noexcept;
 
   /// @brief determine whether a data-source name is a system data-source name

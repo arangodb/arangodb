@@ -32,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "RestServer/BootstrapFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -253,7 +254,8 @@ Result IndexFactory::enhanceIndexDefinition(  // normalizze deefinition
       }
     }
 
-    if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(name))) {
+    bool allowUnicode = _server.getFeature<DatabaseFeature>().allowUnicodeNames(); 
+    if (!Index::isAllowedName(allowUnicode, velocypack::StringRef(name))) {
       return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
 

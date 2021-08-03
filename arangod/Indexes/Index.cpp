@@ -27,6 +27,7 @@
 #include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
+#include <velocypack/Utf8Helper.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Index.h"
@@ -256,6 +257,44 @@ void Index::name(std::string const& newName) {
   }
 }
 
+/// @brief checks if an index name is valid
+/// returns true if the name is allowed and false otherwise
+bool Index::isAllowedName(bool allowUnicode,
+                          arangodb::velocypack::StringRef const& name) noexcept {
+  size_t length = 0;
+
+  for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
+    bool ok = true;
+
+    if (allowUnicode) {
+      // forward slashes are disallowed inside collection names
+      ok &= (*ptr != '/');
+
+      if (length == 0) {
+        // a collection name must not start with a digit, because then it can be confused with
+        // collection ids
+        ok &= (*ptr < '0' || *ptr > '9');
+      }
+    } else {
+      if (length == 0) {
+        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z');
+      } else {
+        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || 
+              (*ptr == '_') || (*ptr == '-') || (*ptr >= '0' && *ptr <= '9');
+      }
+    }
+
+    if (!ok) {
+      return false;
+    }
+  }
+
+  // collection names must be within the expected length limits
+  return (length > 0 && 
+          length <= maxNameLength && 
+          velocypack::Utf8Helper::isValidUtf8(reinterpret_cast<uint8_t const*>(name.data()), name.size()));
+}
+
 size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
   switch (node->type) {
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
@@ -381,68 +420,43 @@ char const* Index::oldtypeName(Index::IndexType type) {
   return "";
 }
 
-/// @brief validate an index id
-bool Index::validateId(char const* key) {
-  char const* p = key;
-
-  while (1) {
-    char const c = *p;
-
-    if (c == '\0') {
-      return (p - key) > 0;
-    }
-    if (c >= '0' && c <= '9') {
-      ++p;
-      continue;
-    }
-
+/// @brief validate an index handle (collection name + / + index id)
+bool Index::validateHandle(bool allowUnicode, arangodb::velocypack::StringRef handle) noexcept {
+  std::size_t pos = handle.find('/');
+  if (pos == std::string::npos) {
+    // no prefix
     return false;
   }
-}
-
-/// @brief validate an index name
-bool Index::validateName(char const* key) {
-  return TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(key, strlen(key)));
-}
-
-namespace {
-bool validatePrefix(char const* key, size_t* split) {
-  char const* p = key;
-
-  // find divider
-  while (1) {
-    char c = *p;
-
-    if (c == '\0') {
+  // check collection name part
+  if (!LogicalCollection::isAllowedName(/*allowSystem*/ true, allowUnicode, handle.substr(0, pos))) {
+    return false;
+  }
+  // check remainder (index id)
+  handle = handle.substr(pos + 1);
+  if (handle.empty()) {
+    return false;
+  }
+  for (std::size_t i = 0; i < handle.size(); ++i) {
+    if (handle[i] < '0' || handle[i] > '9') {
       return false;
     }
-
-    if (c == '/') {
-      break;
-    }
-
-    p++;
   }
-
-  // store split position
-  *split = p - key;
-
-  return TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(key, *split));
-}
-}  // namespace
-
-/// @brief validate an index handle (collection name + / + index id)
-bool Index::validateHandle(char const* key, size_t* split) {
-  bool ok = validatePrefix(key, split);
-  // validate index id
-  return ok && validateId(key + *split + 1);
+  return true;
 }
 
 /// @brief validate an index handle (collection name + / + index name)
-bool Index::validateHandleName(char const* key, size_t* split) {
-  bool ok = validatePrefix(key, split);
-  // validate index id
-  return ok && validateName(key + *split + 1);
+bool Index::validateHandleName(bool allowUnicode, arangodb::velocypack::StringRef name) noexcept {
+  std::size_t pos = name.find('/');
+  if (pos == std::string::npos) {
+    // no prefix
+    return false;
+  }
+  // check collection name part
+  if (!LogicalCollection::isAllowedName(/*allowSystem*/ true, allowUnicode, name.substr(0, pos))) {
+    return false;
+  }
+  // check remainder (index name)
+  return Index::isAllowedName(allowUnicode, name.substr(pos + 1));
 }
 
 /// @brief generate a new index id

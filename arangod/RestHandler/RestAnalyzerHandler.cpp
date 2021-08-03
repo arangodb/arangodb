@@ -91,8 +91,9 @@ void RestAnalyzerHandler::createAnalyzer( // create
       return;
   }
 
-  if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(splittedAnalyzerName.second.c_str(),
-                                                                 splittedAnalyzerName.second.size()))) {
+  if (!TRI_vocbase_t::isAllowedName(/*allowSystem*/ false, /*allowUnicode*/ false,
+                                    velocypack::StringRef(splittedAnalyzerName.second.c_str(),
+                                                          splittedAnalyzerName.second.size()))) {
     generateError(arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       "invalid characters in analyzer name '" + static_cast<std::string>(splittedAnalyzerName.second) + "'"
@@ -380,7 +381,8 @@ void RestAnalyzerHandler::removeAnalyzer(
   auto splittedAnalyzerName = IResearchAnalyzerFeature::splitAnalyzerName(requestedName);
   auto name = splittedAnalyzerName.second;
 
-  if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(name.c_str(), name.size()))) {
+  if (!TRI_vocbase_t::isAllowedName(/*allowSystem*/ false, /*allowUnicode*/ false,
+                                    velocypack::StringRef(name.c_str(), name.size()))) {
     generateError(arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("Invalid characters in analyzer name '").append(name)

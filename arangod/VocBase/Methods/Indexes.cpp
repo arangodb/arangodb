@@ -510,7 +510,7 @@ arangodb::Result Indexes::createIndex(LogicalCollection* coll, Index::IndexType 
 /// @brief checks if argument is an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ExtractIndexHandle(VPackSlice const& arg,
+static bool ExtractIndexHandle(VPackSlice const& arg, bool allowUnicode,
                                std::string& collectionName, IndexId& iid) {
   TRI_ASSERT(collectionName.empty());
   TRI_ASSERT(iid.empty());
@@ -525,26 +525,30 @@ static bool ExtractIndexHandle(VPackSlice const& arg,
     return false;
   }
 
-  std::string str = arg.copyString();
-  size_t split;
-  if (arangodb::Index::validateHandle(str.data(), &split)) {
-    collectionName = std::string(str.data(), split);
-    iid = IndexId{StringUtils::uint64(str.data() + split + 1, str.length() - split - 1)};
+  arangodb::velocypack::StringRef handle = arg.stringRef();
+  if (arangodb::Index::validateHandle(allowUnicode, handle)) {
+    std::size_t split = handle.find('/');
+    TRI_ASSERT(split != std::string::npos);
+    collectionName = std::string(handle.data(), split);
+    iid = IndexId{StringUtils::uint64(handle.data() + split + 1, handle.size() - split - 1)};
     return true;
   }
 
-  if (arangodb::Index::validateId(str.data())) {
-    iid = IndexId{StringUtils::uint64(str)};
-    return true;
+  for (std::size_t i = 0; i < handle.size(); ++i) {
+    if (handle[i] < '0' || handle[i] > '9') {
+      return false;
+    }
   }
-  return false;
+  iid = IndexId{StringUtils::uint64(handle.data(), handle.size())};
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if argument is an index name
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ExtractIndexName(VPackSlice const& arg, std::string& collectionName,
+static bool ExtractIndexName(VPackSlice const& arg, bool allowUnicode,
+                             std::string& collectionName,
                              std::string& name) {
   TRI_ASSERT(collectionName.empty());
   TRI_ASSERT(name.empty());
@@ -552,17 +556,18 @@ static bool ExtractIndexName(VPackSlice const& arg, std::string& collectionName,
   if (!arg.isString()) {
     return false;
   }
-
-  std::string str = arg.copyString();
-  size_t split;
-  if (arangodb::Index::validateHandleName(str.data(), &split)) {
-    collectionName = std::string(str.data(), split);
-    name = std::string(str.data() + split + 1, str.length() - split - 1);
+  
+  arangodb::velocypack::StringRef handle = arg.stringRef();
+  if (arangodb::Index::validateHandleName(allowUnicode, handle)) {
+    std::size_t split = handle.find('/');
+    TRI_ASSERT(split != std::string::npos);
+    collectionName = std::string(handle.data(), split);
+    name = std::string(handle.data() + split + 1, handle.size() - split - 1);
     return true;
   }
 
-  if (arangodb::Index::validateName(str.data())) {
-    name = str;
+  if (arangodb::Index::isAllowedName(allowUnicode, handle)) {
+    name = std::string(handle.data(), handle.size());
     return true;
   }
   return false;
@@ -581,10 +586,12 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
   // assume we are already loaded
   TRI_ASSERT(collection != nullptr);
 
+  bool allowUnicode = collection->vocbase().server().getFeature<DatabaseFeature>().allowUnicodeNames(); 
+
   // extract the index identifier from a string
   if (val.isString() || val.isNumber()) {
-    if (!ExtractIndexHandle(val, collectionName, iid) &&
-        !ExtractIndexName(val, collectionName, name)) {
+    if (!ExtractIndexHandle(val, allowUnicode, collectionName, iid) &&
+        !ExtractIndexName(val, allowUnicode, collectionName, name)) {
       return Result(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
     }
   }
@@ -592,9 +599,9 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
   // extract the index identifier from an object
   else if (val.isObject()) {
     VPackSlice iidVal = val.get(StaticStrings::IndexId);
-    if (!ExtractIndexHandle(iidVal, collectionName, iid)) {
+    if (!ExtractIndexHandle(iidVal, allowUnicode, collectionName, iid)) {
       VPackSlice nameVal = val.get(StaticStrings::IndexName);
-      if (!ExtractIndexName(nameVal, collectionName, name)) {
+      if (!ExtractIndexName(nameVal, allowUnicode, collectionName, name)) {
         return Result(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
       }
     }
