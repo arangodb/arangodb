@@ -160,8 +160,8 @@ bool FailedServer::start(bool& aborts) {
       for (auto const& database : databases) {
         // dead code   auto cdatabase = current.at(database.first)->children();
 
-        if (auto [version, has] = database.second->hasAsString(StaticStrings::ReplicationVersion); has) {
-          if (auto res = replication::parseVersion(version); res.ok()) {
+        if (auto version = database.second->hasAsString(StaticStrings::ReplicationVersion); version.has_value()) {
+          if (auto res = replication::parseVersion(*version); res.ok()) {
             switch (res.get()) {
               case replication::Version::ONE:
                 break;
