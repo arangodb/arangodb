@@ -6,8 +6,6 @@ import { mutate } from "swr";
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };
 
-const route = getApiRouteForCurrentDB();
-
 interface Analyzer {
   name: string;
 }
@@ -17,21 +15,17 @@ interface ButtonProps {
 }
 
 const DeleteButton = ({ analyzer }: ButtonProps) => {
-  const [showDelete, setShowDelete] = useState(false);
+  const [show, setShow] = useState(false);
   const [forceDelete, setForceDelete] = useState(false);
-
-  const toggleShow = () => {
-    setShowDelete(!showDelete);
-  };
 
   const toggleForce = () => {
     setForceDelete(!forceDelete);
   };
 
   const handleDelete = async () => {
-    toggleShow();
+    setShow(false);
 
-    const result = await route.delete(`/analyzer/${analyzer.name}`, { force: forceDelete });
+    const result = await getApiRouteForCurrentDB().delete(`/analyzer/${analyzer.name}`, { force: forceDelete });
     if (result.body.error) {
       arangoHelper.arangoError('Failure', `Got unexpected server response: ${result.body.errorMessage}`);
     } else {
@@ -40,10 +34,11 @@ const DeleteButton = ({ analyzer }: ButtonProps) => {
   };
 
   return <>
-    <button className={'pure-button'} onClick={() => setShowDelete(true)}>
+    <button className={'pure-button'} onClick={() => setShow(true)}
+            style={{ background: 'transparent' }}>
       <i className={'fa fa-trash-o'}/>
     </button>
-    <Modal show={showDelete} toggle={toggleShow}>
+    <Modal show={show} setShow={setShow}>
       <ModalHeader title={`Delete Analyzer ${analyzer.name}?`}/>
       <ModalBody>
         <p>
@@ -60,8 +55,8 @@ const DeleteButton = ({ analyzer }: ButtonProps) => {
         </label>
       </ModalBody>
       <ModalFooter>
-        <button className="button-close" onClick={toggleShow}>Close</button>
-        <button id="confirmDeleteBtn" className="button-danger" style={{ float: 'right' }}
+        <button className="button-close" onClick={() => setShow(false)}>Close</button>
+        <button className="button-danger" style={{ float: 'right' }}
                 onClick={handleDelete}>Delete
         </button>
       </ModalFooter>
@@ -70,24 +65,20 @@ const DeleteButton = ({ analyzer }: ButtonProps) => {
 };
 
 const ViewButton = ({ analyzer }: ButtonProps) => {
-  const [showView, setShowView] = useState(false);
-
-  const toggle = () => {
-    setShowView(!showView);
-  };
+  const [show, setShow] = useState(false);
 
   const handleClick = (event: MouseEvent<HTMLElement>) => {
     event.preventDefault();
 
     // console.log(analyzer);
-    setShowView(true);
+    setShow(true);
   };
 
   return <>
-    <button className={'pure-button'} onClick={handleClick}>
+    <button className={'pure-button'} onClick={handleClick} style={{ background: 'transparent' }}>
       <i className={'fa fa-eye'}/>
     </button>
-    <Modal show={showView} toggle={toggle}>
+    <Modal show={show} setShow={setShow}>
       <span>Are you sure?! {analyzer.name}</span>
     </Modal>
   </>;

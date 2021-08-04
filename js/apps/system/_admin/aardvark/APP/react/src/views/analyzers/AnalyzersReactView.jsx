@@ -5,27 +5,23 @@ import React, { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { compact, get, isEqual } from 'underscore';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
+import { getChangeHandler } from '../../utils/helpers';
 import Actions from './Actions';
+import AddAnalyzer from './AddAnalyzer';
+import { typeNameMap } from './constants';
 
-const typeMap = {
-  text: 'Text',
-  identity: 'Identity',
-  'stem': 'Stem'
-};
-
-const route = getApiRouteForCurrentDB();
 
 const AnalyzersReactView = () => {
   const {
     data,
     error
-  } = useSWR('/analyzer', (path) => route.get(path));
+  } = useSWR('/analyzer', (path) => getApiRouteForCurrentDB().get(path));
 
   const {
     data: permData,
     error: permError
   } = useSWR(`/user/${arangoHelper.getCurrentJwtUsername()}/database/${frontendConfig.db}`,
-    (path) => route.get(path));
+    (path) => getApiRouteForCurrentDB().get(path));
 
   const [filterExpr, setFilterExpr] = useState('');
   const [filteredAnalyzers, setFilteredAnalyzers] = useState([]);
@@ -67,10 +63,6 @@ const AnalyzersReactView = () => {
     processAndSetFilteredAnalyzers(tempFilteredAnalyzers);
   }, [analyzers, filterExpr]);
 
-  function handleChange (event) {
-    setFilterExpr(event.target.value);
-  }
-
   const errMsgs = compact([
     get(error, 'message'),
     get(permError, 'message'),
@@ -95,6 +87,13 @@ const AnalyzersReactView = () => {
         <div className={'pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1'}>
           <div className={'sectionHeader pure-g'}>
             <div className={'pure-u-2-5'}>
+              <div className={'title'}><AddAnalyzer/></div>
+            </div>
+          </div>
+        </div>
+        <div className={'pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1'}>
+          <div className={'sectionHeader pure-g'}>
+            <div className={'pure-u-2-5'}>
               <div className={'title'}>List of Analyzers</div>
             </div>
 
@@ -105,10 +104,10 @@ const AnalyzersReactView = () => {
                 float: 'right'
               }}>
                 Filter: <input type={'text'} id={'filterInput'} className={'search-input'}
-                               value={filterExpr} onChange={handleChange}
+                               value={filterExpr} onChange={getChangeHandler(setFilterExpr)}
                                placeholder={'<glob> | (<db|name|type>:<glob> )+'}
                                style={{
-                                 marginRight: 0,
+                                 margin: 0,
                                  width: 300,
                                  paddingLeft: 25
                                }}/>
@@ -137,7 +136,7 @@ const AnalyzersReactView = () => {
                 <tr key={idx}>
                   <td className={'arango-table-td table-cell0'}>{analyzer.db}</td>
                   <td className={'arango-table-td table-cell1'}>{analyzer.name}</td>
-                  <td className={'arango-table-td table-cell2'}>{typeMap[analyzer.type]}</td>
+                  <td className={'arango-table-td table-cell2'}>{typeNameMap[analyzer.type]}</td>
                   <td className={'arango-table-td table-cell3'}>
                     <Actions analyzer={analyzer} permission={permission}/>
                   </td>
@@ -147,6 +146,7 @@ const AnalyzersReactView = () => {
             </tbody>
           </table>
         </div>
+
       </div>
     </div>;
   }
