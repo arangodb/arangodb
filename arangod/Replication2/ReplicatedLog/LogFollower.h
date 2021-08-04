@@ -79,7 +79,7 @@ class LogFollower : public ILogParticipant,
     std::unique_ptr<LogCore> _logCore;
     LogIndex _commitIndex{0};
     MessageId _lastRecvMessageId{0};
-    Guarded<WaitForQueue> _waitForQueue;
+    Guarded<WaitForQueue, arangodb::basics::UnshackledMutex> _waitForQueue;
   };
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   LoggerContext const _loggerContext;
