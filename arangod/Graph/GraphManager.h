@@ -207,6 +207,7 @@ class GraphManager {
       Graph const* graph, bool waitForSync,
       std::unordered_set<std::string> const& documentsCollectionNames,
       std::unordered_set<std::string> const& edgeCollectionNames,
+      std::unordered_set<std::string> const& satellites,
       std::vector<std::shared_ptr<VPackBuffer<uint8_t>>>& vpackLake) const;
 };
 }  // namespace graph

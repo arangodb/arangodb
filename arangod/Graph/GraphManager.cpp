@@ -502,6 +502,7 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
 }
 
 Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
+  std::unordered_set<std::string> satellites = graph->satelliteCollections();;
   // Validation Phase collect a list of collections to create
   std::unordered_set<std::string> documentCollectionsToCreate{};
   std::unordered_set<std::string> edgeCollectionsToCreate{};
@@ -543,6 +544,9 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
     Result res = methods::Collections::lookup(vocbase, vertexColl, col);
     if (res.ok()) {
       TRI_ASSERT(col);
+      if (col->isSatellite()) {
+        satellites.emplace(col->name());
+      }
       existentDocumentCollections.emplace(col);
     } else if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
@@ -593,7 +597,7 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
 
   auto collectionsToCreate =
       prepareCollectionsToCreate(graph, waitForSync, documentCollectionsToCreate,
-                                 edgeCollectionsToCreate, vpackLake);
+                                 edgeCollectionsToCreate, satellites, vpackLake);
   if (!collectionsToCreate.ok()) {
     return collectionsToCreate.result();
   }
@@ -614,6 +618,7 @@ ResultT<std::vector<CollectionCreationInfo>> GraphManager::prepareCollectionsToC
     Graph const* graph, bool waitForSync,
     std::unordered_set<std::string> const& documentsCollectionNames,
     std::unordered_set<std::string> const& edgeCollectionNames,
+    std::unordered_set<std::string> const& satellites,
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>>& vpackLake) const {
   std::vector<CollectionCreationInfo> collectionsToCreate;
   collectionsToCreate.reserve(documentsCollectionNames.size() +
