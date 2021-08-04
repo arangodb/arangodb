@@ -238,7 +238,7 @@ std::set<std::string> const& Graph::orphanCollections() const {
   return _orphanColls;
 }
 
-std::set<std::string> const& Graph::satelliteCollections() const {
+std::unordered_set<std::string> const& Graph::satelliteCollections() const {
   return _satelliteColls;
 }
 
@@ -453,7 +453,7 @@ void EdgeDefinition::toVelocyPack(VPackBuilder& builder) const {
   builder.close();  // array
 }
 
-ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefinition, std::set<std::string> const& satCollections) {
+ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefinition) {
   Result res = EdgeDefinition::validateEdgeDefinition(edgeDefinition);
   if (res.fail()) {
     return res;
@@ -639,7 +639,7 @@ ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(EdgeDefinition const& ed
 }
 
 ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
-  auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice, satelliteCollections());
+  auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
 
   if (res.fail()) {
     return std::move(res).result();

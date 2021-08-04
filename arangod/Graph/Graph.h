@@ -80,8 +80,7 @@ class EdgeDefinition {
   /// types of values.
   static Result validateEdgeDefinition(const velocypack::Slice& edgeDefinition);
 
-  static ResultT<EdgeDefinition> createFromVelocypack(velocypack::Slice edgeDefinition,
-                                                      std::set<std::string> const& satCollections);
+  static ResultT<EdgeDefinition> createFromVelocypack(velocypack::Slice edgeDefinition);
 
   void toVelocyPack(velocypack::Builder&) const;
 
@@ -185,7 +184,7 @@ class Graph {
   std::set<std::string> const& orphanCollections() const;
 
   /// @brief get the cids of all satelliteCollections
-  std::set<std::string> const& satelliteCollections() const;
+  std::unordered_set<std::string> const& satelliteCollections() const;
 
   /// @brief get the cids of all edgeCollections
   std::set<std::string> const& edgeCollections() const;
@@ -325,7 +324,7 @@ class Graph {
   std::set<std::string> _orphanColls;
 
   /// @brief the names of all satelliteCollections
-  std::set<std::string> _satelliteColls;
+  std::unordered_set<std::string> _satelliteColls;
 
   /// @brief the names of all edgeCollections
   std::set<std::string> _edgeColls;
