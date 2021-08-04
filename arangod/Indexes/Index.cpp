@@ -261,6 +261,9 @@ void Index::name(std::string const& newName) {
 /// returns true if the name is allowed and false otherwise
 bool Index::isAllowedName(bool allowUnicode,
                           arangodb::velocypack::StringRef const& name) noexcept {
+  // intentionally false for now - Unicode collection/index names not yet supported
+  TRI_ASSERT(!allowUnicode);
+
   size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
@@ -292,7 +295,7 @@ bool Index::isAllowedName(bool allowUnicode,
   // collection names must be within the expected length limits
   return (length > 0 && 
           length <= maxNameLength && 
-          velocypack::Utf8Helper::isValidUtf8(reinterpret_cast<uint8_t const*>(name.data()), name.size()));
+          (!allowUnicode || velocypack::Utf8Helper::isValidUtf8(reinterpret_cast<uint8_t const*>(name.data()), name.size())));
 }
 
 size_t Index::sortWeight(arangodb::aql::AstNode const* node) {

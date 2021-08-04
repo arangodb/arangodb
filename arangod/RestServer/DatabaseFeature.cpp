@@ -277,7 +277,8 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
-      _allowUnicodeNames(true),
+      _allowUnicodeNamesForDatabases(true),
+      _allowUnicodeNamesForCollections(false),
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _checkVersion(false),
@@ -320,9 +321,16 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_ignoreDatafileErrors),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   
-  options->addOption("--database.allow-unicode-names",
-                     "allow Unicode characters in database and collection names",
-                     new BooleanParameter(&_allowUnicodeNames))
+  options->addOption("--database.allow-unicode-names-databases",
+                     "allow Unicode characters in database names",
+                     new BooleanParameter(&_allowUnicodeNamesForDatabases),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30900);
+  
+  options->addOption("--database.allow-unicode-names-collections",
+                     "allow Unicode characters in collection, view and index names",
+                     new BooleanParameter(&_allowUnicodeNamesForCollections),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30900);
 
   // the following option was obsoleted in 3.9
@@ -368,6 +376,12 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
            "'--database.auto-upgrade'";
     FATAL_ERROR_EXIT();
   }
+  
+  if (_allowUnicodeNamesForCollections) {
+    LOG_TOPIC("b3703", FATAL, arangodb::Logger::FIXME)
+        << "unicode names for collections are currently unsupported";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void DatabaseFeature::initCalculationVocbase(application_features::ApplicationServer& server) {
@@ -377,6 +391,12 @@ void DatabaseFeature::initCalculationVocbase(application_features::ApplicationSe
 }
 
 void DatabaseFeature::start() {
+  if (_allowUnicodeNamesForDatabases) {
+    LOG_TOPIC("2c0c6", WARN, arangodb::Logger::FIXME)
+        << "unicode names for databases are an experimental feature which can "
+        << "cause incompatibility issues with client tools, drivers and applications - do not use in production!";
+  }
+
   verifyAppPaths();
 
   // scan all databases
@@ -401,7 +421,7 @@ void DatabaseFeature::start() {
   }
 
   // start database manager thread
-  _databaseManager.reset(new DatabaseManagerThread(server()));
+  _databaseManager = std::make_unique<DatabaseManagerThread>(server());
 
   if (!_databaseManager->start()) {
     LOG_TOPIC("7eb06", FATAL, arangodb::Logger::FIXME)
@@ -635,7 +655,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   }
   result = nullptr;
 
-  bool allowUnicode = allowUnicodeNames();
+  bool allowUnicode = allowUnicodeNamesForDatabases();
   if (!TRI_vocbase_t::isAllowedName(/*allowSystem*/ false, allowUnicode, arangodb::velocypack::StringRef(name))) {
     return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};
   }

@@ -38,6 +38,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -152,9 +153,14 @@ void VstRequest::parseHeaderInformation() {
 
   try {
     TRI_ASSERT(vHeader.isArray());
-    auto version = vHeader.at(0).getInt();                      // version
-    auto type = vHeader.at(1).getInt();                         // type
-    _databaseName = vHeader.at(2).copyString();                 // database
+    auto version = vHeader.at(0).getInt();       // version
+    auto type = vHeader.at(1).getInt();          // type
+    { 
+      VPackSlice dbName = vHeader.at(2);
+      VPackValueLength l;
+      char const* p = dbName.getString(l);
+      _databaseName = normalizeUtf8ToNFC(p, l); // database
+    }
     _type = meta::toEnum<RequestType>(vHeader.at(3).getInt());  // request type
     _requestPath = vHeader.at(4).copyString();  // request (path)
     VPackSlice params = vHeader.at(5);          // parameter

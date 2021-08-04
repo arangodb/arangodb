@@ -740,14 +740,13 @@ char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLe
 }
 
 std::string normalizeUtf8ToNFC(char const* value, size_t length) {
+  auto deleter = [](char* data) { TRI_Free(data); };
   size_t outLength = 0;
-  char* normalized = TRI_normalize_utf8_to_NFC(value, length, &outLength);
+  std::unique_ptr<char, decltype(deleter)> normalized(TRI_normalize_utf8_to_NFC(value, length, &outLength), deleter);
   if (normalized == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-  std::string result(normalized, outLength);
-  TRI_Free(normalized);
-  return result;
+  return std::string(normalized.get(), outLength);
 }
 
 std::string normalizeUtf8ToNFC(std::string const& value) {

@@ -180,7 +180,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 
   TRI_ASSERT(info.isObject());
 
-  bool allowUnicode = vocbase.server().getFeature<DatabaseFeature>().allowUnicodeNames();
+  // intentionally false for now - Unicode collection names not yet supported
+  bool allowUnicode = vocbase.server().getFeature<DatabaseFeature>().allowUnicodeNamesForCollections();
+  TRI_ASSERT(!allowUnicode);
+
   if (!LogicalCollection::isAllowedName(system(), allowUnicode, arangodb::velocypack::StringRef(name()))) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -286,6 +289,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 /// returns true if the name is allowed and false otherwise
 bool LogicalCollection::isAllowedName(bool allowSystem, bool allowUnicode,
                                       arangodb::velocypack::StringRef const& name) noexcept {
+  // intentionally false for now - Unicode collection names not yet supported
+  TRI_ASSERT(!allowUnicode);
+
   size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
@@ -324,7 +330,7 @@ bool LogicalCollection::isAllowedName(bool allowSystem, bool allowUnicode,
   // collection names must be within the expected length limits
   return (length > 0 && 
           length <= maxNameLength && 
-          velocypack::Utf8Helper::isValidUtf8(reinterpret_cast<uint8_t const*>(name.data()), name.size()));
+          (!allowUnicode || velocypack::Utf8Helper::isValidUtf8(reinterpret_cast<uint8_t const*>(name.data()), name.size())));
 }
 
 Result LogicalCollection::updateSchema(VPackSlice schema) {

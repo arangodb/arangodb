@@ -292,7 +292,7 @@ Result CreateDatabaseInfo::checkOptions() {
   }
 
   bool isSystem = _name == StaticStrings::SystemDatabase;
-  bool allowUnicode = _server.getFeature<DatabaseFeature>().allowUnicodeNames();
+  bool allowUnicode = _server.getFeature<DatabaseFeature>().allowUnicodeNamesForDatabases();
 
   if (!TRI_vocbase_t::isAllowedName(isSystem, allowUnicode, arangodb::velocypack::StringRef(_name))) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);

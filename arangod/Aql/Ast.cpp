@@ -4048,7 +4048,9 @@ AstNode* Ast::createNode(AstNodeType type) {
 /// in case validation fails, will throw an exception
 void Ast::validateDataSourceName(arangodb::velocypack::StringRef const& name,
                                  bool validateStrict) {
-  bool allowUnicode = _query.vocbase().server().getFeature<DatabaseFeature>().allowUnicodeNames();
+  // intentionally false for now - Unicode collection names not yet supported
+  bool allowUnicode = _query.vocbase().server().getFeature<DatabaseFeature>().allowUnicodeNamesForCollections();
+  TRI_ASSERT(!allowUnicode);
 
   // common validation
   if (name.empty() ||

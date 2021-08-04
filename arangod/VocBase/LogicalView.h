@@ -195,10 +195,10 @@ class LogicalView : public LogicalDataSource {
   virtual Result renameImpl(std::string const& oldName) = 0;
   
   /// @brief maximal view name length, in bytes (old convention, used when
-  /// `--database.allow-unicode-names=false`)
+  /// `--database.allow-unicode-names-collections=false`)
   static constexpr size_t maxNameLength = 64;
   /// @brief maximal view name length, in bytes (new convention, used when
-  /// `--database.allow-unicode-names=true`)
+  /// `--database.allow-unicode-names-collections=true`)
   static constexpr size_t maxNameLengthUnicode = 256;
 
  private:

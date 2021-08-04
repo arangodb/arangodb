@@ -586,7 +586,9 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
   // assume we are already loaded
   TRI_ASSERT(collection != nullptr);
 
-  bool allowUnicode = collection->vocbase().server().getFeature<DatabaseFeature>().allowUnicodeNames(); 
+  // intentionally false for now - Unicode collection/index names not yet supported
+  bool allowUnicode = collection->vocbase().server().getFeature<DatabaseFeature>().allowUnicodeNamesForCollections(); 
+  TRI_ASSERT(!allowUnicode);
 
   // extract the index identifier from a string
   if (val.isString() || val.isNumber()) {

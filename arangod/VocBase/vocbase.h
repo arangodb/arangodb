@@ -113,10 +113,10 @@ struct TRI_vocbase_t {
   TEST_VIRTUAL ~TRI_vocbase_t();
   
   /// @brief maximal database name length, in bytes (old convention, used when
-  /// `--database.allow-unicode-names=false`)
+  /// `--database.allow-unicode-names-databases=false`)
   static constexpr size_t maxNameLength = 64;
   /// @brief maximal database name length, in bytes (new convention, used when
-  /// `--database.allow-unicode-names=true`)
+  /// `--database.allow-unicode-names-databases=true`)
   static constexpr size_t maxNameLengthUnicode = 256;
 
  private:

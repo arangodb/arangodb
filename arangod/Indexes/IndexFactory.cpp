@@ -254,7 +254,10 @@ Result IndexFactory::enhanceIndexDefinition(  // normalizze deefinition
       }
     }
 
-    bool allowUnicode = _server.getFeature<DatabaseFeature>().allowUnicodeNames(); 
+    // intentionally false for now - Unicode collection/index names not yet supported
+    bool allowUnicode = _server.getFeature<DatabaseFeature>().allowUnicodeNamesForCollections(); 
+    TRI_ASSERT(!allowUnicode);
+
     if (!Index::isAllowedName(allowUnicode, velocypack::StringRef(name))) {
       return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }

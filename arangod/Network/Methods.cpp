@@ -29,6 +29,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/Utf8Helper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
@@ -149,6 +150,7 @@ auto prepareRequest(ConnectionPool* pool, RestVerb type, std::string path,
                     Headers headers) {
   TRI_ASSERT(path.find("/_db/") == std::string::npos);
   TRI_ASSERT(path.find('?') == std::string::npos);
+  TRI_ASSERT(options.database == normalizeUtf8ToNFC(options.database)); 
 
   auto req = fuerte::createRequest(type, path, options.parameters, std::move(payload));
 
