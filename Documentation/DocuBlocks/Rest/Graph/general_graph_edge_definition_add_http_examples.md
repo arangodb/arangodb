@@ -29,8 +29,16 @@ One or many vertex collections that can contain source vertices.
 @RESTBODYPARAM{to,array,required,string}
 One or many vertex collections that can contain target vertices.
 
-@RESTBODYPARAM{options,object,optional,edge_definition_options}
-Additional options for the edge definition.
+@RESTBODYPARAM{options,object,optional,post_api_edgedef_create_opts}
+a JSON object to define options for creating collections within this
+edge definition. It can contain the following attributes:
+
+@RESTSTRUCT{satellites,post_api_edgedef_create_opts,array,optional,}
+Only has effect in Enterprise Edition. The graph needs to be created either
+as SmartGraph or as a Smart Disjoint Graph. The collection names that are
+going to be created as SatelliteCollections. Each array entry must be set
+as String and must be a valid collection name. The collection type cannot
+be modified later.
 
 @RESTRETURNCODES
 

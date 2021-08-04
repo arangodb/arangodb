@@ -12,6 +12,17 @@ If the collection does not exist, it will be created.
 @RESTURLPARAM{graph,string,required}
 The name of the graph.
 
+@RESTBODYPARAM{options,object,optional,post_api_vertex_create_opts}
+a JSON object to define options for creating vertex collections.
+It can contain the following attributes:
+
+@RESTSTRUCT{satellites,post_api_vertex_create_opts,array,optional,}
+Only has effect in Enterprise Edition. The graph needs to be created either
+as SmartGraph or as a Smart Disjoint Graph. The collection names that are
+going to be created as SatelliteCollections. Each array entry must be set
+as String and must be a valid collection name. The collection type cannot
+be modified later.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
