@@ -1,7 +1,7 @@
+import 'jsoneditor-react/es/editor.min.css';
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 
-// import Overview from './views/shards/overview';
 const jsoneditor = require('jsoneditor');
 const d3 = require('d3');
 require('nvd3');

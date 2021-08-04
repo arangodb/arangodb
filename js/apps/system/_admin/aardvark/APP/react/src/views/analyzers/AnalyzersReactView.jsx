@@ -1,9 +1,9 @@
 /* global arangoHelper, frontendConfig */
 
+import { compact, get, isEqual } from 'lodash';
 import minimatch from 'minimatch';
 import React, { useEffect, useState } from 'react';
 import useSWR from 'swr';
-import { compact, get, isEqual } from 'underscore';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { getChangeHandler } from '../../utils/helpers';
 import Actions from './Actions';
@@ -132,8 +132,8 @@ const AnalyzersReactView = () => {
             </thead>
             <tbody>
             {
-              filteredAnalyzers.map((analyzer, idx) => (
-                <tr key={idx}>
+              filteredAnalyzers.map(analyzer => (
+                <tr key={analyzer.name}>
                   <td className={'arango-table-td table-cell0'}>{analyzer.db}</td>
                   <td className={'arango-table-td table-cell1'}>{analyzer.name}</td>
                   <td className={'arango-table-td table-cell2'}>{typeNameMap[analyzer.type]}</td>

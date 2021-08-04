@@ -6,3 +6,8 @@ export const typeNameMap = {
   ngram: 'N-Gram',
   text: 'Text'
 };
+
+export interface FormProps {
+  formState: { [key: string]: any };
+  updateFormField: (field: string, value: any) => void;
+}

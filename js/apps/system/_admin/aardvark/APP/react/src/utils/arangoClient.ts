@@ -1,6 +1,6 @@
 import { Database } from 'arangojs';
 import useSWR from 'swr';
-import { memoize } from 'underscore';
+import { memoize } from 'lodash';
 
 declare var frontendConfig: { [key: string]: any };
 

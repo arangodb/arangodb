@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useRef } from "react";
 import { createPortal, render, unmountComponentAtNode } from "react-dom";
 import picoModal from 'picomodal';
-import { uniqueId } from 'underscore';
+import { uniqueId } from 'lodash';
 
 interface ModalProps {
   show: boolean;
