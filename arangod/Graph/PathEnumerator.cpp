@@ -296,6 +296,12 @@ bool DepthFirstEnumerator::next() {
           }
         }
 
+#ifdef USE_ENTERPRISE
+        if (!validDisjointPath()) {
+          return;
+        }
+#endif
+
         _enumeratedPath.pushEdge(eid);
         foundPath = true;
       }
@@ -413,3 +419,9 @@ bool DepthFirstEnumerator::shouldPrune() {
   }
   return evaluator->evaluate();
 }
+
+#ifndef USE_ENTERPRISE
+bool DepthFirstEnumerator::validDisjointPath() const {
+  return true;
+}
+#endif

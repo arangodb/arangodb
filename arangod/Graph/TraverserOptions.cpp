@@ -749,6 +749,16 @@ auto TraverserOptions::explicitDepthLookupAt() const -> std::unordered_set<std::
   return result;
 }
 
+#ifndef USE_ENTERPRISE
+auto TraverserOptions::setDisjoint() -> void {
+  return;
+}
+
+auto TraverserOptions::isDisjoint() const -> bool {
+  return false;
+}
+#endif
+
 bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vertex,
                                                 uint64_t depth) {
   arangodb::aql::Expression* expression = nullptr;
@@ -765,6 +775,12 @@ bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vert
   return evaluateExpression(expression, vertex);
 }
 
+#ifndef USE_ENTERPRISE
+bool TraverserOptions::checkSmartDestination(VPackSlice edge, velocypack::StringRef sourceVertex) {
+  return false;
+}
+#endif
+
 bool TraverserOptions::destinationCollectionAllowed(VPackSlice edge,
                                                     velocypack::StringRef sourceVertex) {
   if (hasVertexCollectionRestrictions()) {
@@ -777,6 +793,11 @@ bool TraverserOptions::destinationCollectionAllowed(VPackSlice edge,
       return false;
     }
   }
+#ifdef USE_ENTERPRISE
+  if (!checkSmartDestination(edge, sourceVertex)) {
+    return false;
+  }
+#endif
 
   return true;
 }
@@ -873,7 +894,8 @@ auto TraverserOptions::estimateDepth() const noexcept -> uint64_t {
 
 void TraverserOptions::readProduceInfo(VPackSlice obj) {
   _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
-  _producePathsVertices = VPackHelper::getBooleanValue(obj, "producePathsVertices", true);
+  _producePathsVertices =
+      VPackHelper::getBooleanValue(obj, "producePathsVertices", true);
   _producePathsEdges = VPackHelper::getBooleanValue(obj, "producePathsEdges", true);
   _producePathsWeights = VPackHelper::getBooleanValue(obj, "producePathsWeights", true);
 }

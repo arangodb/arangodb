@@ -103,6 +103,8 @@ class LogicalCollection : public LogicalDataSource {
     LogicalSmartEdge = 1,
     LocalSmartEdge = 2,
     RemoteSmartEdge = 4,
+    SmartToSatEdge = 8,
+    SatToSmartEdge = 16,
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -355,6 +357,10 @@ class LogicalCollection : public LogicalDataSource {
 
   bool isSmartEdgeCollection() const noexcept;
 
+  bool isSatToSmartEdgeCollection() const noexcept;
+
+  bool isSmartToSatEdgeCollection() const noexcept;
+
  protected:
   void addInternalValidator(std::unique_ptr<arangodb::ValidatorBase>);
 
@@ -362,6 +368,12 @@ class LogicalCollection : public LogicalDataSource {
                                             Serialization context) const override;
 
   Result updateSchema(VPackSlice schema);
+
+  /**
+   * Enterprise only method. See enterprise code for implementation
+   * Community has a dummy stub.
+   */
+  std::string createSmartToSatKey(arangodb::velocypack::Slice input);
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);

@@ -30,20 +30,23 @@
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
 #include "Basics/ReadWriteLock.h"
-#include "Cluster/ClusterInfo.h"
 #include "Basics/ResultT.h"
+#include "Cluster/ClusterInfo.h"
 #include "Graph/Graph.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
 
 namespace arangodb {
+
+struct CollectionCreationInfo;
+
 namespace graph {
 
 class GraphManager {
  private:
   TRI_vocbase_t& _vocbase;
-  
+
   std::shared_ptr<transaction::Context> ctx() const;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -199,6 +202,12 @@ class GraphManager {
   Result checkDropGraphPermissions(Graph const& graph,
                                    std::unordered_set<std::string> const& followersToBeRemoved,
                                    std::unordered_set<std::string> const& leadersToBeRemoved);
+
+  ResultT<std::vector<CollectionCreationInfo>> prepareCollectionsToCreate(
+      Graph const* graph, bool waitForSync,
+      std::unordered_set<std::string> const& documentsCollectionNames,
+      std::unordered_set<std::string> const& edgeCollectionNames,
+      std::vector<std::shared_ptr<VPackBuffer<uint8_t>>>& vpackLake) const;
 };
 }  // namespace graph
 }  // namespace arangodb

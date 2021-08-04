@@ -604,7 +604,7 @@ auto QuerySnippet::prepareFirstBranch(
 
       // Check whether `servers` is the leader for any of the shards of the
       // prototype collection.
-      // We want to instantiate this snippet here exactly iff this is the case.
+      // We want to instantiate this snippet here exactly if this is the case.
       auto needInstanceHere = std::invoke([&]() {
         auto const* const protoCol =
             localGraphNode->isUsedAsSatellite()
@@ -631,7 +631,7 @@ auto QuerySnippet::prepareFirstBranch(
       }
 
       // This is either one shard or a single SatelliteGraph which is not used
-      // as SatelliteGraph or a Disjoint SmartGraph.
+      // as SatelliteGraph or a (Hybrid-)Disjoint SmartGraph.
       uint64_t numShards = 0;
       for (auto* aqlCollection : localGraphNode->collections()) {
         // It is of utmost importance that this is an ordered set of Shards.
@@ -654,18 +654,11 @@ auto QuerySnippet::prepareFirstBranch(
           // to be used in toVelocyPack methods of classes derived
           // from GraphNode
           if (localGraphNode->isDisjoint()) {
-            if (found->second == server) {
+            if (aqlCollection->isSatellite()) {
               myExp.emplace(shard);
-            } else {
-              // the target server does not have anything to do with the particular
-              // collection (e.g. because the collection's shards are all on other
-              // servers), but it may be asked for this collection, because vertex
-              // collections are registered _globally_ with the TraversalNode and
-              // not on a per-target server basis.
-              // so in order to serve later lookups for this collection, we insert
-              // an empty string into the collection->shard map.
-              // on lookup, we will react to this.
-              localGraphNode->addCollectionToShard(aqlCollection->name(), "");
+              TRI_ASSERT(shards.size() == 1);
+            } else if (found->second == server) {
+              myExp.emplace(shard);
             }
           } else {
             localGraphNode->addCollectionToShard(aqlCollection->name(), shard);
@@ -678,16 +671,41 @@ auto QuerySnippet::prepareFirstBranch(
           if (myExp.size() > 1) {
             myExpFinal.insert({aqlCollection->name(), std::move(myExp)});
           }
+        } else {
+          if (localGraphNode->isDisjoint()) {
+            // the target server does not have anything to do with the particular
+            // collection (e.g. because the collection's shards are all on other
+            // servers), but it may be asked for this collection, because vertex
+            // collections are registered _globally_ with the TraversalNode and
+            // not on a per-target server basis.
+            // so in order to serve later lookups for this collection, we insert
+            // an empty string into the collection->shard map.
+            // on lookup, we will react to this.
+            localGraphNode->addCollectionToShard(aqlCollection->name(), "");
+          }
         }
       }
+
+      // TODO: We need to exclude DBServers which only do have Satellite
+      // collections only This server is not allowed to receive a setup call
+
+      // 1.) Satellites: 1x shard exists (681) -> not landing in myExpFinal
+      // => 2x shards vertex collections -> DB1 v: [s1, s2] , DB2 []
+      // 2.)
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // additional verification checks for Disjoint SmartGraphs
       if (localGraphNode->isDisjoint()) {
         if (!myExpFinal.empty()) {
           size_t numberOfShards = myExpFinal.begin()->second.size();
-          // We need one expansion for every collection in the Graph
-          TRI_ASSERT(myExpFinal.size() == localGraphNode->collections().size());
+          // We need one expansion for every collection in the Graph (-1 per satellite)
+          size_t amountOfNonSatellites = 0;
+          for (auto const& col : localGraphNode->collections()) {
+            if (!col->isSatellite()) {
+              amountOfNonSatellites++;
+            }
+          }
+          TRI_ASSERT(myExpFinal.size() == amountOfNonSatellites);
           for (auto const& expDefinition : myExpFinal) {
             TRI_ASSERT(expDefinition.second.size() == numberOfShards);
           }

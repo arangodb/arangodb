@@ -504,9 +504,7 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
 Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
   // Validation Phase collect a list of collections to create
   std::unordered_set<std::string> documentCollectionsToCreate{};
-  std::unordered_set<std::string> satelliteDocumentCollectionsToCreate{};
   std::unordered_set<std::string> edgeCollectionsToCreate{};
-  std::unordered_set<std::string> satelliteEdgeCollectionsToCreate{};
   std::unordered_set<std::shared_ptr<LogicalCollection>> existentDocumentCollections{};
   std::unordered_set<std::shared_ptr<LogicalCollection>> existentEdgeCollections{};
 
@@ -533,12 +531,7 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
     } else if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     } else {
-      // not found the collection, need to create it later
-      if (graph->needsToBeSatellite(edgeColl)) {  // check for satellites
-        satelliteEdgeCollectionsToCreate.emplace(edgeColl);
-      } else {
-        edgeCollectionsToCreate.emplace(edgeColl);
-      }
+      edgeCollectionsToCreate.emplace(edgeColl);
     }
   }
 
@@ -555,13 +548,7 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
       return res;
     } else {
       if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
-        if (!graph->satelliteCollections().empty() &&
-            graph->satelliteCollections().find(vertexColl) !=
-                graph->satelliteCollections().end()) {
-          satelliteDocumentCollectionsToCreate.emplace(vertexColl);
-        } else {
-          documentCollectionsToCreate.emplace(vertexColl);
-        }
+        documentCollectionsToCreate.emplace(vertexColl);
       }
     }
   }
@@ -601,52 +588,58 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
     }
   }
 
-  // IV. Create collections
-  VPackBuilder optionsBuilder;
-  optionsBuilder.openObject();
-  graph->createCollectionOptions(optionsBuilder, waitForSync);
-  optionsBuilder.close();
-  VPackSlice options = optionsBuilder.slice();
-  std::vector<CollectionCreationInfo> collectionsToCreate;
-  collectionsToCreate.reserve(documentCollectionsToCreate.size() +
-                              edgeCollectionsToCreate.size());
-  // Create Document Collections
-  for (auto const& vertexColl : documentCollectionsToCreate) {
-    collectionsToCreate.emplace_back(
-        CollectionCreationInfo{vertexColl, TRI_COL_TYPE_DOCUMENT, options});
+  // Storage space for VPackSlices used in options
+  std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackLake{};
+
+  auto collectionsToCreate =
+      prepareCollectionsToCreate(graph, waitForSync, documentCollectionsToCreate,
+                                 edgeCollectionsToCreate, vpackLake);
+  if (!collectionsToCreate.ok()) {
+    return collectionsToCreate.result();
   }
 
-  // Create Edge Collections
-  for (auto const& edgeColl : edgeCollectionsToCreate) {
-    collectionsToCreate.emplace_back(
-        CollectionCreationInfo{edgeColl, TRI_COL_TYPE_EDGE, options});
-  }
-
-  // new builder
-  VPackBuilder satOptionsBuilder;
-  if (!satelliteDocumentCollectionsToCreate.empty() || !satelliteEdgeCollectionsToCreate.empty()) {
-    satOptionsBuilder.openObject();
-    graph->createSatelliteCollectionOptions(satOptionsBuilder, waitForSync);
-    satOptionsBuilder.close();
-    for (auto const& satColl : satelliteDocumentCollectionsToCreate) {
-      collectionsToCreate.emplace_back(CollectionCreationInfo{satColl, TRI_COL_TYPE_DOCUMENT,
-                                                              satOptionsBuilder.slice()});
-    }
-    for (auto const& satEdgeColl : satelliteEdgeCollectionsToCreate) {
-      collectionsToCreate.emplace_back(CollectionCreationInfo{satEdgeColl, TRI_COL_TYPE_EDGE,
-                                                              satOptionsBuilder.slice()});
-    }
-  }
-  if (collectionsToCreate.empty()) {
+  if (collectionsToCreate.get().empty()) {
     // NOTE: Empty graph is allowed.
     return TRI_ERROR_NO_ERROR;
   }
 
   std::vector<std::shared_ptr<LogicalCollection>> created;
   OperationOptions opOptions(ExecContext::current());
-  return methods::Collections::create(vocbase, opOptions, collectionsToCreate,
+  return methods::Collections::create(vocbase, opOptions, collectionsToCreate.get(),
                                       waitForSync, true, false, nullptr, created);
 }
+
+#ifndef USE_ENTERPRISE
+ResultT<std::vector<CollectionCreationInfo>> GraphManager::prepareCollectionsToCreate(
+    Graph const* graph, bool waitForSync,
+    std::unordered_set<std::string> const& documentsCollectionNames,
+    std::unordered_set<std::string> const& edgeCollectionNames,
+    std::vector<std::shared_ptr<VPackBuffer<uint8_t>>>& vpackLake) const {
+  std::vector<CollectionCreationInfo> collectionsToCreate;
+  collectionsToCreate.reserve(documentsCollectionNames.size() +
+                              edgeCollectionNames.size());
+  // IV. Create collections
+  VPackBuilder optionsBuilder;
+  optionsBuilder.openObject();
+  graph->createCollectionOptions(optionsBuilder, waitForSync);
+  optionsBuilder.close();
+  VPackSlice options = optionsBuilder.slice();
+  //  Retain the options storage space
+  vpackLake.emplace_back(optionsBuilder.steal());
+  // Create Document Collections
+  for (auto const& vertexColl : documentsCollectionNames) {
+    collectionsToCreate.emplace_back(
+        CollectionCreationInfo{vertexColl, TRI_COL_TYPE_DOCUMENT, options});
+  }
+
+  // Create Edge Collections
+  for (auto const& edgeColl : edgeCollectionNames) {
+    collectionsToCreate.emplace_back(
+        CollectionCreationInfo{edgeColl, TRI_COL_TYPE_EDGE, options});
+  }
+  return collectionsToCreate;
+}
+#endif
 
 bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
   for (auto const& cname : graph->vertexCollections()) {
