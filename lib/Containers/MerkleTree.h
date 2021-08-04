@@ -112,7 +112,7 @@ class MerkleTreeBase {
   static constexpr std::uint64_t ShardSize = (1 << 16);
 
   struct Data {
-    using ShardType = std::unique_ptr<std::uint8_t[]>;
+    using ShardType = std::unique_ptr<Node[]>;
 
     Meta meta;
     std::vector<ShardType> shards;

@@ -134,7 +134,7 @@ class MerkleTreeSnappySource : public snappy::Source {
         // which consists of one shard that is completely empty
         return emptyShard.data() + offsetInShard;
       }
-      return reinterpret_cast<char const*>(data.shards[shard].get() + offsetInShard);
+      return reinterpret_cast<char const*>(data.shards[shard].get()) + offsetInShard;
     }
     // no more data
     *len = 0;
@@ -178,8 +178,9 @@ void MerkleTreeBase::Data::ensureShard(std::uint64_t shard, std::uint64_t shardS
 
 /*static*/ MerkleTreeBase::Data::ShardType MerkleTreeBase::Data::buildShard(std::uint64_t shardSize) {
   static_assert(std::is_pod_v<MerkleTreeBase::Node>);
+  // note: shardSize is currently passed in bytes, not in number of nodes!
   TRI_ASSERT(shardSize % NodeSize == 0);
-  auto p = std::make_unique<uint8_t[]>(shardSize);
+  auto p = std::make_unique<Node[]>(shardSize / NodeSize);
   memset(p.get(), 0, shardSize);
   return p;
 }
@@ -1184,8 +1185,7 @@ MerkleTreeBase::Node& MerkleTree<Hasher, BranchingBits>::node(std::uint64_t inde
   TRI_ASSERT(_data.shards[shard] != nullptr);
   TRI_ASSERT(index < nodeCountAtDepth(meta().depth));
   TRI_ASSERT(NodeSize * (index - shardBaseIndex(shard) + 1) <= ShardSize);
-  uint8_t* ptr = _data.shards[shard].get() + NodeSize * (index - shardBaseIndex(shard));
-  return *reinterpret_cast<Node*>(ptr);
+  return *(_data.shards[shard].get() + (index - shardBaseIndex(shard)));
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>
@@ -1198,8 +1198,7 @@ MerkleTreeBase::Node const& MerkleTree<Hasher, BranchingBits>::node(std::uint64_
     TRI_ASSERT(MerkleTreeBase::emptyNode.empty());
     return MerkleTreeBase::emptyNode;
   }
-  uint8_t* ptr = _data.shards[shard].get() + NodeSize * (index - shardBaseIndex(shard));
-  return *reinterpret_cast<Node const*>(ptr);
+  return *(_data.shards[shard].get() + (index - shardBaseIndex(shard)));
 }
 
 void MerkleTreeBase::Meta::serialize(std::string& output, bool addPadding) const {
