@@ -41,6 +41,12 @@ The attribute name that is used to smartly shard the vertices of a graph.
 Every vertex in this SmartGraph has to have this attribute.
 Cannot be modified later.
 
+@RESTSTRUCT{satellites,post_api_gharial_create_opts,array,optional,}
+Only has effect in Enterprise Edition and it is required if isSmart is true.
+The collection names that are going to be created as SatelliteCollections.
+Each array entry must be set as String and must be a valid collection name.
+The collection type cannot be modified later.
+
 @RESTSTRUCT{numberOfShards,post_api_gharial_create_opts,integer,required,}
 The number of shards that is used for every collection within this graph.
 Cannot be modified later.
