@@ -31,6 +31,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -40,33 +41,32 @@
 #include "Aql/UpdateReplaceModifier.h"
 #include "Aql/UpsertModifier.h"
 
-#include "Logger/LogMacros.h"
-
+#include <velocypack/velocypack-aliases.h>
 #include <algorithm>
-#include "velocypack/velocypack-aliases.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
+namespace {
 auto translateReturnType(ExecutorState state) noexcept -> ExecutionState {
   if (state == ExecutorState::DONE) {
     return ExecutionState::DONE;
   }
   return ExecutionState::HASMORE;
 }
+}  // namespace
 
 ModifierOutput::ModifierOutput(InputAqlItemRow const& inputRow, Type type)
-    : _inputRow(std::move(inputRow)), _type(type), _oldValue(), _newValue() {}
+    : _inputRow(inputRow), _type(type), _oldValue(), _newValue() {}
 ModifierOutput::ModifierOutput(InputAqlItemRow&& inputRow, Type type)
     : _inputRow(std::move(inputRow)), _type(type), _oldValue(), _newValue() {}
 
 ModifierOutput::ModifierOutput(InputAqlItemRow const& inputRow, Type type,
                                AqlValue const& oldValue, AqlValue const& newValue)
-    : _inputRow(std::move(inputRow)),
+    : _inputRow(inputRow),
       _type(type),
       _oldValue(oldValue),
       _oldValueGuard(std::in_place, _oldValue.value(), true),

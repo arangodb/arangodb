@@ -142,9 +142,17 @@ void SimpleModifier<ModifierCompletion, Enable>::resetResult() noexcept {
 
 template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::reset() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    std::unique_lock<std::mutex> guard(_resultStateMutex, std::try_to_lock);
+    TRI_ASSERT(guard.owns_lock());
+    TRI_ASSERT(_resultState != ModificationExecutorResultState::WaitingForResult);
+  }
+#endif
   _accumulator.reset();
   _operations.clear();
   _results.reset();
+  resetResult();
 }
 
 template <typename ModifierCompletion, typename Enable>
@@ -156,6 +164,16 @@ void SimpleModifier<ModifierCompletion, Enable>::accumulate(InputAqlItemRow& row
 template <typename ModifierCompletion, typename Enable>
 ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction::Methods& trx) {
   std::lock_guard<std::mutex> guard(_resultStateMutex);
+  switch (_resultState) {
+    case ModificationExecutorResultState::WaitingForResult:
+      return ExecutionState::WAITING;
+    case ModificationExecutorResultState::HaveResult:
+      return ExecutionState::DONE;
+    case ModificationExecutorResultState::NoResult:
+      // continue
+      break;
+  }
+
   TRI_ASSERT(_resultState == ModificationExecutorResultState::NoResult);
   _resultState = ModificationExecutorResultState::NoResult;
 
@@ -166,7 +184,7 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction:
     _resultState = ModificationExecutorResultState::HaveResult;
     return ExecutionState::DONE;
   } 
-    
+
   _resultState = ModificationExecutorResultState::WaitingForResult;
 
   TRI_ASSERT(!ServerState::instance()->isSingleServer());
@@ -177,6 +195,8 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction:
   std::move(result).thenValue([self, sqs = _infos.engine()->sharedState()](OperationResult&& opRes) {
     {
       std::lock_guard<std::mutex> guard(self->_resultStateMutex);
+      // TODO add corresponding a check in non-maintainer mode, and handle it somehow
+      TRI_ASSERT(self->_resultState == ModificationExecutorResultState::WaitingForResult);
       self->_results = std::move(opRes);
       self->_resultState = ModificationExecutorResultState::HaveResult;
     }
@@ -185,6 +205,7 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction:
       return true;
     });
   });
+
   return ExecutionState::WAITING;
 }
 

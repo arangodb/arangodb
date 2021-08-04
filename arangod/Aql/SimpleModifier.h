@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SIMPLE_MODIFIER_H
-#define ARANGOD_AQL_SIMPLE_MODIFIER_H
+#pragma once
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
@@ -38,8 +37,7 @@
 #include <mutex>
 #include <type_traits>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 struct ModificationExecutorInfos;
 
@@ -93,9 +91,9 @@ class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<Modifi
 
     OutputIterator& operator++();
     bool operator!=(OutputIterator const& other) const noexcept;
-    ModifierOutput operator*() const;
-    OutputIterator begin() const;
-    OutputIterator end() const;
+    [[nodiscard]] ModifierOutput operator*() const;
+    [[nodiscard]] OutputIterator begin() const;
+    [[nodiscard]] OutputIterator end() const;
 
    private:
     OutputIterator& next();
@@ -110,7 +108,6 @@ class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<Modifi
       : _infos(infos),
         _completion(infos),
         _results(Result(), infos._options),
-        _resultsIterator(VPackArrayIterator::Empty{}),
         _batchSize(ExecutionBlock::DefaultBatchSize),
         _resultState(ModificationExecutorResultState::NoResult) {
     TRI_ASSERT(_infos.engine() != nullptr);
@@ -121,9 +118,9 @@ class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<Modifi
   void reset();
 
   void accumulate(InputAqlItemRow& row);
-  ExecutionState transact(transaction::Methods& trx);
+  [[nodiscard]] ExecutionState transact(transaction::Methods& trx);
 
-  ModificationExecutorResultState resultState() const noexcept;
+  [[nodiscard]] ModificationExecutorResultState resultState() const noexcept;
     
   void checkException() const;
   void resetResult() noexcept;
@@ -132,23 +129,23 @@ class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<Modifi
   // can skip or ignore documents.
 
   // The number of operations
-  size_t nrOfOperations() const;
+  [[nodiscard]] size_t nrOfOperations() const;
   // The number of documents in the accumulator
-  size_t nrOfDocuments() const;
+  [[nodiscard]] size_t nrOfDocuments() const;
   // The number of entries in the results slice
-  size_t nrOfResults() const;
+  [[nodiscard]] [[maybe_unused]] size_t nrOfResults() const;
 
-  size_t nrOfErrors() const;
+  [[nodiscard]] size_t nrOfErrors() const;
 
-  size_t nrOfWritesExecuted() const;
-  size_t nrOfWritesIgnored() const;
+  [[nodiscard]] size_t nrOfWritesExecuted() const;
+  [[nodiscard]] size_t nrOfWritesIgnored() const;
 
-  ModificationExecutorInfos& getInfos() const noexcept;
-  size_t getBatchSize() const noexcept;
+  [[nodiscard]] ModificationExecutorInfos& getInfos() const noexcept;
+  [[nodiscard]] size_t getBatchSize() const noexcept;
 
  private:
-  bool resultAvailable() const;
-  VPackArrayIterator getResultsIterator() const;
+  [[nodiscard]] bool resultAvailable() const;
+  [[nodiscard]] VPackArrayIterator getResultsIterator() const;
 
   ModificationExecutorInfos& _infos;
   ModifierCompletion _completion;
@@ -157,9 +154,6 @@ class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<Modifi
   ModificationExecutorAccumulator _accumulator;
 
   OperationResult _results;
-
-  std::vector<ModOp>::const_iterator _operationsIterator;
-  VPackArrayIterator _resultsIterator;
 
   size_t const _batchSize;
 
@@ -171,7 +165,4 @@ using InsertModifier = SimpleModifier<InsertModifierCompletion>;
 using RemoveModifier = SimpleModifier<RemoveModifierCompletion>;
 using UpdateReplaceModifier = SimpleModifier<UpdateReplaceModifierCompletion>;
 
-}  // namespace aql
-}  // namespace arangodb
-
-#endif
+}  // namespace arangodb::aql

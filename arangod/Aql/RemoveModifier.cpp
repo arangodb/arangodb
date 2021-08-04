@@ -34,8 +34,6 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
-class CollectionNameResolver;
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;

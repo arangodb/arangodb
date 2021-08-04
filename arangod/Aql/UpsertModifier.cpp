@@ -136,12 +136,22 @@ ModificationExecutorResultState UpsertModifier::resultState() const noexcept {
 }
 
 void UpsertModifier::reset() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    std::unique_lock<std::mutex> guard(_resultStateMutex, std::try_to_lock);
+    TRI_ASSERT(guard.owns_lock());
+    TRI_ASSERT(_resultState != ModificationExecutorResultState::WaitingForResult);
+  }
+#endif
+
   _insertAccumulator.reset();
   _insertResults.reset();
   _updateAccumulator.reset();
   _updateResults.reset();
 
   _operations.clear();
+
+  resetResult();
 }
 
 void UpsertModifier::resetResult() noexcept {
@@ -243,11 +253,28 @@ void UpsertModifier::accumulate(InputAqlItemRow& row) {
     auto insertDoc = row.getValue(insertReg);
     result = insertCase(_insertAccumulator, insertDoc);
   }
-  _operations.push_back({result, row});
+  _operations.emplace_back(result, row);
 }
 
 ExecutionState UpsertModifier::transact(transaction::Methods& trx) {
   std::lock_guard<std::mutex> guard(_resultStateMutex);
+
+  switch (_resultState) {
+    case ModificationExecutorResultState::WaitingForResult:
+      // WAITING is not yet implemented for UpsertModifier, we shouldn't get here
+      TRI_ASSERT(false);
+      return ExecutionState::WAITING;
+    case ModificationExecutorResultState::HaveResult:
+      // WAITING is not yet implemented for UpsertModifier, we shouldn't get here
+      TRI_ASSERT(false);
+      return ExecutionState::DONE;
+    case ModificationExecutorResultState::NoResult:
+      // continue
+      break;
+  }
+
+  TRI_ASSERT(_resultState == ModificationExecutorResultState::NoResult);
+  _resultState = ModificationExecutorResultState::NoResult;
 
   auto toInsert = _insertAccumulator.closeAndGetContents();
   if (toInsert.isArray() && toInsert.length() > 0) {

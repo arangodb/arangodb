@@ -42,8 +42,8 @@ AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state)
 }
 
 // only used for block passthrough
-AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlockPtr const& block)
-    : _block{block}, _aqlItemMatrix{nullptr} {
+AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlockPtr block)
+    : _block{std::move(block)}, _aqlItemMatrix{nullptr} {
   TRI_ASSERT(_aqlItemMatrix == nullptr);
   TRI_ASSERT(!hasDataRow());
 }

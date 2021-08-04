@@ -38,7 +38,7 @@ class AqlItemBlockInputMatrix {
  public:
   explicit AqlItemBlockInputMatrix(ExecutorState state);
 
-  AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlockPtr const&);
+  AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlockPtr);
 
   AqlItemBlockInputMatrix(ExecutorState state, AqlItemMatrix* aqlItemMatrix);
 

@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MODIFICATION_EXECUTOR_H
-#define ARANGOD_AQL_MODIFICATION_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -40,8 +39,7 @@
 #include <memory>
 #include <optional>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 struct AqlCall;
 class AqlItemBlockInputRange;
@@ -197,13 +195,11 @@ class ModificationExecutor {
   void doCollect(AqlItemBlockInputRange& input, size_t maxOutputs);
   auto doCollectRange(typename FetcherType::DataRange& input, size_t maxOutputs) -> ExecutorState;
   void doOutput(OutputAqlItemRow& output);
-  
+
   transaction::Methods _trx;
 
   ModificationExecutorInfos& _infos;
   std::shared_ptr<ModifierType> _modifier;
 };
 
-}  // namespace aql
-}  // namespace arangodb
-#endif
+}  // namespace arangodb::aql

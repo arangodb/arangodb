@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_UPSERT_MODIFIER_H
-#define ARANGOD_AQL_UPSERT_MODIFIER_H
+#pragma once
 
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorAccumulator.h"
@@ -35,8 +34,7 @@
 
 #include <velocypack/Builder.h>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 struct ModificationExecutorInfos;
 
@@ -62,11 +60,11 @@ class UpsertModifier {
     OutputIterator& operator++();
     bool operator!=(OutputIterator const& other) const noexcept;
     ModifierOutput operator*() const;
-    OutputIterator begin() const;
-    OutputIterator end() const;
+    [[nodiscard]] OutputIterator begin() const;
+    [[nodiscard]] OutputIterator end() const;
 
    private:
-    OutputIterator& next();
+    [[nodiscard]] OutputIterator& next();
 
     UpsertModifier const& _modifier;
     std::vector<ModOp>::const_iterator _operationsIterator;
@@ -100,7 +98,7 @@ class UpsertModifier {
 
   size_t nrOfOperations() const;
   size_t nrOfDocuments() const;
-  size_t nrOfResults() const;
+  [[maybe_unused]] size_t nrOfResults() const;
   size_t nrOfErrors() const;
   size_t nrOfWritesExecuted() const;
   size_t nrOfWritesIgnored() const;
@@ -132,6 +130,4 @@ class UpsertModifier {
   ModificationExecutorResultState _resultState;
 };
 
-}  // namespace aql
-}  // namespace arangodb
-#endif
+}  // namespace arangodb::aql
