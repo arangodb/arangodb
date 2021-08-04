@@ -1,6 +1,14 @@
 devel
 -----
 
+* Automatically extend web UI sessions while they are still active. 
+  The web UI can now call a backend route to renew its JWT, so there will not
+  be any rude logouts in the middle of an active session.
+
+  Active web UI sessions (here: sessions with user activity within the last
+  90 minutes) will automatically renew their JWT if they get close to the
+  JWT expiry date.
+
 * Reduce memory usage for in-memory revision trees. Previously, a revision
   tree instance for a non-empty collection/shard was using 4 MB of memory
   when uncompressed. Trees that were unused for a while were compressed on

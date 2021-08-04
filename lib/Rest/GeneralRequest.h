@@ -92,6 +92,7 @@ class GeneralRequest {
       : _connectionInfo(connectionInfo),
         _messageId(mid),
         _requestContext(nullptr),
+        _tokenExpiry(0.0),
         _authenticationMethod(rest::AuthenticationMethod::NONE),
         _type(RequestType::ILLEGAL),
         _contentType(ContentType::UNSET),
@@ -116,6 +117,9 @@ class GeneralRequest {
   ///  to any specific resource.
   bool authenticated() const { return _authenticated; }
   void setAuthenticated(bool a) { _authenticated = a; }
+
+  double tokenExpiry() const { return _tokenExpiry; }
+  void setTokenExpiry(double value) { _tokenExpiry = value; }
 
   // @brief User sending this request
   std::string const& user() const { return _user; }
@@ -252,6 +256,8 @@ class GeneralRequest {
   
   // request context (might contain vocbase)
   RequestContext* _requestContext;
+
+  double _tokenExpiry;
   
   rest::AuthenticationMethod _authenticationMethod;
 
