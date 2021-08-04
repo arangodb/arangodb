@@ -193,9 +193,12 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
     QueryContext const queryCtx = { _trx, nullptr, nullptr,
                                     nullptr, _reader, _variable};
 
-    irs::And full;
-    auto& root = full.add<irs::Or>();
-    auto rv = FilterFactory::filter(&root, queryCtx, *_condition.getMember(1), false);
+    irs::Or root;
+    //auto rv = FilterFactory::filter(&root, queryCtx, _condition, false);
+    
+    auto& partsConjunction = root.add<irs::And>();
+    auto& mutable_root = partsConjunction.add<irs::Or>();
+    auto rv = FilterFactory::filter(&mutable_root, queryCtx, *_condition.getMember(1), false);
 
     if (rv.fail()) {
       arangodb::velocypack::Builder builder;
@@ -208,6 +211,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
     }
     
     auto immutable_root = std::make_unique<irs::Or>();
+    //auto& immutable_root = partsConjunction.add<irs::Or>();
     TRI_ASSERT(immutable_root.get() != nullptr);
     rv = FilterFactory::filter(immutable_root.get(), queryCtx, *_condition.getMember(0), false);
 
@@ -223,8 +227,8 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
     if (_immutableCache == nullptr) {
       _immutableCache.reset(new proxy_query::proxy_cache());
     }
-    full.add<proxy_filter>().add(std::move(immutable_root)).set_cache(_immutableCache.get());
-    _filter = full.prepare(*_reader, _order, irs::no_boost(), nullptr);
+    partsConjunction.add<proxy_filter>().add(std::move(immutable_root)).set_cache(_immutableCache.get());
+    _filter = root.prepare(*_reader, _order, irs::no_boost(), nullptr);
   }
 
   void resetImpl() override {
@@ -249,7 +253,10 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   aql::Variable const* _variable;
   std::unique_ptr<proxy_query::proxy_cache> _immutableCache;
 };
+
 } // namespace
+
+
 
 namespace arangodb {
 namespace iresearch {
@@ -439,6 +446,121 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
 aql::AstNode* IResearchInvertedIndex::specializeCondition(aql::AstNode* node,
                                                           aql::Variable const* reference) const {
   return node;
+}
+
+bool lazy_filter_bitset_iterator::next() {
+  while (!word_) {
+    if (next_ >= end_) {
+      if (refill(last_cached_doc_ + 1)) {
+        continue;
+      }
+      doc_.value = irs::doc_limits::eof();
+      word_ = 0;
+      TRI_ASSERT(end_ == begin_ + words_);
+      TRI_ASSERT(irs::doc_limits::eof(real_doc_->value));
+      return false;
+    }
+
+    word_ = *next_++;
+    base_ += irs::bits_required<word_t>();
+    doc_.value = base_ - 1;
+  }
+  const irs::doc_id_t delta = irs::doc_id_t(irs::math::math_traits<word_t>::ctz(word_));
+  assert(delta < irs::bits_required<word_t>());
+  word_ = (word_ >> delta) >> 1;
+  doc_.value += 1 + delta;
+  return true;
+}
+
+irs::doc_id_t lazy_filter_bitset_iterator::seek(irs::doc_id_t target) {
+  if (!real_doc_  || target > last_cached_doc_) {
+    if (!refill(target)) {
+      // target is not here for sure. Mark as exhausted
+      doc_.value = irs::doc_limits::eof();
+      word_ = 0;
+      TRI_ASSERT(end_ == begin_ + words_);
+      next_ = end_;
+      TRI_ASSERT(irs::doc_limits::eof(real_doc_->value));
+      return doc_.value;
+    }
+  }
+
+  const irs::doc_id_t word_idx = target / irs::bits_required<word_t>();
+  next_ = begin_ + word_idx;
+  if (next_ >= end_) {
+    doc_.value = irs::doc_limits::eof();
+    word_ = 0;
+    TRI_ASSERT(end_ == begin_ + words_);
+    next_ = end_;
+    TRI_ASSERT(irs::doc_limits::eof(real_doc_->value));
+    return doc_.value;
+  }
+  const irs::doc_id_t bit_idx = target % irs::bits_required<word_t>();
+  base_ = word_idx * irs::bits_required<word_t>();
+  word_ = (*next_++) >> bit_idx;
+  doc_.value = base_ - 1 + bit_idx;
+
+  // FIXME consider inlining to speedup
+  next();
+  return doc_.value;
+}
+
+irs::attribute* lazy_filter_bitset_iterator::get_mutable(irs::type_info::type_id id) noexcept {
+  if (irs::type<irs::document>::id() == id) {
+    return &doc_;
+  }
+  return irs::type<irs::cost>::id() == id
+    ? &cost_ : nullptr;
+}
+
+void lazy_filter_bitset_iterator::reset() noexcept {
+  next_ = begin_;
+  word_ = 0;
+  base_ = irs::doc_limits::invalid() - irs::bits_required<word_t>(); // before the first word
+  doc_.value = irs::doc_limits::invalid();
+}
+
+bool lazy_filter_bitset_iterator::refill(irs::doc_id_t target) {
+  TRI_ASSERT(!irs::doc_limits::eof(target));
+  constexpr auto BITS{ irs::bits_required<word_t>() };
+  if (!real_doc_itr_) {
+    const size_t bits = segment_->docs_count() + irs::doc_limits::min();
+    words_ = irs::bitset::bits_to_words(bits);
+    set_ = irs::memory::make_unique<word_t[]>(words_);
+    std::memset(set_.get(), 0, sizeof(word_t) * words_);
+    real_doc_itr_ = segment_->mask(filter_.execute(*segment_));
+    real_doc_ = irs::get<irs::document>(*real_doc_itr_);
+    begin_ = set_.get();
+    end_ = set_.get() + words_;
+    next_ = begin_;
+  }
+  TRI_ASSERT(target > real_doc_->value);
+  const irs::doc_id_t word_idx = target / BITS;
+
+  auto block_limit = ((word_idx + 1) * BITS) - 1;
+  bool target_passed{false};
+  auto doc_id{irs::doc_limits::invalid()};
+  while (real_doc_itr_->next()) {
+    doc_id = real_doc_->value;
+    irs::set_bit(set_[doc_id / BITS], doc_id % BITS);
+    target_passed = doc_id >= target;
+    if (doc_id >= block_limit) {
+      break; // we filled word containing target
+    }
+  }
+  if (irs::doc_limits::eof(real_doc_->value)) {
+    end_ = set_.get() + words_; // real is exhausted, mark all what is left as filled with zeroes
+    if (irs::doc_limits::valid(doc_id)) {
+      last_cached_doc_ = doc_id; // keep last available doc
+    }
+  } else {
+    TRI_ASSERT((word_idx + 1) <= words_);
+    end_ = set_.get() + (word_idx + 1); // mark only filled blocks as available!
+    if (block_limit > last_cached_doc_) {
+      last_cached_doc_ = block_limit;
+    }
+  }
+  return target_passed;
 }
 } // namespace iresearch
 } // namespace arangodb

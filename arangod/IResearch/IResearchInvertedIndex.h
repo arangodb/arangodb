@@ -41,51 +41,45 @@
 namespace arangodb {
 namespace iresearch {
 
-
-class lazy_filter_bitset_iterator final : public irs::bitset_doc_iterator {
+class lazy_filter_bitset_iterator final : public irs::doc_iterator,
+                                          private irs::util::noncopyable {
  public:
+  using word_t = size_t; 
+
   lazy_filter_bitset_iterator(
       const irs::sub_reader& segment,
       const irs::filter::prepared& filter,
       irs::cost::cost_t estimation) noexcept
-    : bitset_doc_iterator(estimation),
+    : cost_(estimation),
       filter_(filter),
       segment_(&segment) {
+    reset();
   }
 
+  bool next() override final;
+  irs::doc_id_t seek(irs::doc_id_t target) override final;
+  irs::doc_id_t value() const noexcept override final { return doc_.value; }
+  irs::attribute* get_mutable(irs::type_info::type_id id) noexcept override;
+  void reset() noexcept;
+
  protected:
-  bool refill(const word_t** begin, const word_t** end) {
-    if (refilled_) {
-     return false;
-    }
-    refilled_ = true;
-    const size_t bits = segment_->docs_count() + irs::doc_limits::min();
-    words_ = irs::bitset::bits_to_words(bits);
-    set_ = irs::memory::make_unique<word_t[]>(words_);
-    std::memset(set_.get(), 0, sizeof(word_t)*words_);
-    auto executed = segment_->mask(filter_.execute(*segment_));
-    auto doc = irs::get<irs::document>(*executed);
-    constexpr auto BITS{irs::bits_required<word_t>()};
-    if (executed->next()) {
-      auto doc_id = doc->value;
-      irs::set_bit(set_[doc_id / BITS], doc_id % BITS);
-      while (executed->next()) {
-        doc_id = doc->value;
-        irs::set_bit(set_[doc_id / BITS], doc_id % BITS);
-      }
-      *begin = set_.get();
-      *end = set_.get() + words_;
-      return true;
-    }
-    return false;
-  }
+   bool refill(irs::doc_id_t target);
 
  private:
   std::unique_ptr<word_t[]> set_;
   const irs::filter::prepared& filter_;
   const irs::sub_reader* segment_;
   size_t words_{0};
-  bool refilled_{false};
+  irs::cost cost_;
+  irs::document doc_;
+  const word_t* begin_{nullptr};
+  const word_t* end_{nullptr};
+  const word_t* next_{nullptr};
+  word_t word_{0};
+  irs::doc_id_t base_{irs::doc_limits::invalid()};
+  irs::doc_iterator::ptr real_doc_itr_;
+  const irs::document* real_doc_{nullptr};
+  irs::doc_id_t last_cached_doc_{irs::doc_limits::invalid()};
 };
 
 class proxy_query final : public irs::filter::prepared {
