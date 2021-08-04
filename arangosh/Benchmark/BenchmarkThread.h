@@ -300,7 +300,7 @@ class BenchmarkThread : public arangodb::Thread {
     double delta = TRI_microtime() - start;
     trackTime(delta);
 
-    processResponse(result.get(), /*batch*/ true);
+    processResponse(result.get(), /*batch*/ true, numOperations);
 
     _httpClient->recycleResult(std::move(result));
   }
@@ -341,13 +341,14 @@ class BenchmarkThread : public arangodb::Thread {
     double delta = TRI_microtime() - start;
     trackTime(delta);
 
-    processResponse(result.get(), /*batch*/ false);
+    processResponse(result.get(), /*batch*/ false, 1);
     
     _httpClient->recycleResult(std::move(result));
   }
 
-  void processResponse(httpclient::SimpleHttpResult const* result, bool batch) {
+  void processResponse(httpclient::SimpleHttpResult const* result, bool batch, uint64_t numOperations) {
     char const* type = (batch ? "batch" : "single");
+    TRI_ASSERT(numOperations > 0);
 
     if (result != nullptr && 
         result->isComplete() &&
@@ -371,9 +372,9 @@ class BenchmarkThread : public arangodb::Thread {
       return;
     }
 
-    _operationsCounter->incFailures(1);
+    _operationsCounter->incFailures(numOperations);
     if (result != nullptr && !result->isComplete()) {
-      _operationsCounter->incIncompleteFailures(1);
+      _operationsCounter->incIncompleteFailures(numOperations);
     }
     if (++_warningCount < maxWarnings) {
       if (result != nullptr && result->wasHttpError()) {
