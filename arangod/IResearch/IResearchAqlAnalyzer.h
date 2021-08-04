@@ -84,6 +84,12 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
     return "aql";
   }
 
+#ifdef TEST_F
+  bool isPreCalculated() const {
+    return _preCalculated;
+  }
+#endif
+
   static bool normalize_vpack(const irs::string_ref& args, std::string& out);
   static irs::analysis::analyzer::ptr make_vpack(irs::string_ref const& args);
   static bool normalize_json(const irs::string_ref& args, std::string& out);
@@ -105,6 +111,8 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
     irs::term_attribute,
     VPackTermAttribute>;
 
+  bool optimize(irs::string_ref const& field);
+
   Options _options;
   aql::AqlValue _valueBuffer;
   std::unique_ptr<aql::QueryContext> _query;
@@ -117,7 +125,9 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   aql::SharedAqlItemBlockPtr _queryResults;
   std::vector<aql::AstNode*> _bindedNodes;
   aql::ExecutionState _executionState{aql::ExecutionState::DONE};
+
   bool _preCalculated{false};
+  std::string _optimizedField;
 
   attributes _attrs;
   size_t _resultRowIdx{ 0 };

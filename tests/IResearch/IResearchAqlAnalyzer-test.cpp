@@ -93,7 +93,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                VPackParser::fromJson("{\"queryString\": \"RETURN '1'\"}")->slice()),
                                              false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "2", {{"1", 0}});
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
   }
   // just parameter
   {
@@ -103,7 +105,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
             VPackParser::fromJson("{\"queryString\": \"RETURN @param\"}")->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "2", {{"2", 0}});
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
   }
 
   // calculation
@@ -114,7 +118,15 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
             VPackParser::fromJson("{\"queryString\": \"RETURN TO_STRING(TO_NUMBER(@param)+1)\"}")->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "2", {{"3", 0}});
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
+    assert_analyzer(ptr.get(), "3", {{"4", 0}});
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
+    assert_analyzer(ptr.get(), "4", {{"5", 0}});
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
+    assert_analyzer(ptr.get(), "5", {{"6", 0}});
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
   }
   // object
   {
@@ -126,8 +138,11 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                           ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "2", {{"2test", 0}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "3", {{"3test", 0}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
   }
   // cycle
   {
@@ -137,10 +152,13 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
             VPackParser::fromJson("{\"queryString\": \"FOR d IN 1..5 RETURN CONCAT(UPPER(@param), d)\"}")->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "a",
                     {{"A1", 0}, {"A2", 1}, {"A3", 2}, {"A4", 3}, {"A5", 4}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "b",
                     {{"B1", 0}, {"B2", 1}, {"B3", 2}, {"B4", 3}, {"B5", 4}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
   }
   // cycle with collapse
   {
@@ -152,8 +170,10 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                          ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "a",
                     {{"A1", 0}, {"A2", 0}, {"A3", 0}, {"A4", 0}, {"A5", 0}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
   }
   // cycle with array
   {
@@ -165,10 +185,13 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                          ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "ArangoDB",
                     {{"ARANGODB", 0}, {"ArangoDB", 1}, {"arangodb", 2}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "TeST",
                     {{"TEST", 0}, {"TeST", 1}, {"test", 2}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
   }
   // nested cycles
   {
@@ -183,7 +206,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                  FILTER c%2 == 0\
                                                                    RETURN CONCAT(d,c)\"}")->slice()), false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "4", {{"12", 0}, {"14", 1}, {"32", 2}, {"34", 3}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
   }
   // subquery
   {
@@ -198,8 +223,11 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                          ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "4", {{"43", 0}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "5", {{"53", 0}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
   }
 
   // filter nulls
@@ -212,7 +240,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                 ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "a", {{"A2", 0}, {"A4", 1}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
   }
 
   // keep nulls
@@ -225,7 +255,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "a", {{"", 0}, {"A2", 1}, {"", 2}, {"A4", 3}, {"", 4}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
   }
 
   // only null
@@ -236,7 +268,23 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
             VPackParser::fromJson("{\"queryString\": \"RETURN null\", \"keepNull\":false}")->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     ASSERT_TRUE(ptr->reset("2"));
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
+    ASSERT_FALSE(ptr->next());
+  }
+
+  // only null with keepNull = true
+  {
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN null\", \"keepNull\":true}")->slice()),
+        false);
+    ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
+    assert_analyzer(ptr.get(), "a", {{"", 0}});
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     ASSERT_FALSE(ptr->next());
   }
 
@@ -248,7 +296,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
             VPackParser::fromJson("{\"queryString\": \"FOR d IN ['e', 1, ['v', 'w'], null, true, @param, 'b'] RETURN d\"}")->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "a", {{"e", 0}, {"1", 1}, {"[\"v\",\"w\"]", 2}, {"", 3}, {"true", 4}, {"a", 5}, {"b", 6}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
   }
 
   // nulls with collapsed positions
@@ -263,7 +313,28 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
             ->slice()),
           false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     assert_analyzer(ptr.get(), "a", {{"", 0}, {"", 0}, {"a", 0}, {"b", 0}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
+  }
+
+  // multiple resets with optimization
+  {
+    auto ptr =
+        irs::analysis::analyzers::get(
+          AQL_ANALYZER_NAME,
+          irs::type<irs::text_format::vpack>::get(),
+          arangodb::iresearch::ref<char>(VPackParser::fromJson(
+            "{\"collapsePositions\": true, \"keepNull\":true,"
+            "\"queryString\": \" RETURN TO_STRING(@param)\"}")
+            ->slice()),
+          false);
+    ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
+    assert_analyzer(ptr.get(), "ab", {{"ab", 0}});
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
+    assert_analyzer(ptr.get(), "abababababababab", {{"abababababababab", 0}});
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
   }
 
   // check memoryLimit does not kill query
@@ -275,8 +346,10 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                          ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
     ASSERT_TRUE(ptr->reset("AAAAAAAAA"));
-    ASSERT_TRUE(ptr->next());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isPreCalculated());
+    ASSERT_TRUE(ptr->next());                                                                                               
   }
 
   // check memoryLimit kills query

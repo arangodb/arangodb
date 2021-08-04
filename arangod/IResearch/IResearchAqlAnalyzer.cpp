@@ -509,6 +509,73 @@ namespace iresearch {
   return make_slice(builder->slice());
 }
 
+// return the calculation node
+ExecutionNode* tryOptimize(ExecutionNode* node) {
+  if (node == nullptr || node->getType() != ExecutionNode::RETURN) {
+    return nullptr;
+  }
+
+  auto deps = node->getDependencies();
+  if(deps.size() == 1 && deps[0]->getType() == ExecutionNode::NodeType::CALCULATION) {
+    auto calcNode = deps[0];
+
+    auto deps2 = calcNode->getDependencies();
+    if(deps2.size() == 1 && deps2[0]->getType() == ExecutionNode::NodeType::SINGLETON) {
+      return calcNode;
+    }
+  }
+
+  return nullptr;
+}
+
+bool AqlAnalyzer::optimize(irs::string_ref const& field) {
+
+  // find here suitable situation
+  ExecutionNode* execNode = tryOptimize(_plan->root());
+  if(execNode != nullptr) {
+    CalculationNode* calcNode = dynamic_cast<CalculationNode*>(execNode);
+
+    //get expression
+    auto e = calcNode->expression();
+
+    auto& trx = _query->trxForOptimization();
+
+    // get variable ptr
+    auto v = static_cast<Variable const*>(e->node()->getData());
+    AqlFunctionsInternalCache cache;
+    // create context
+    FixedVarExpressionContext ctx(trx, _query->ast()->query(), cache);
+
+    AqlValue value(field.c_str());
+
+    // set value in context
+    ctx.setVariableValue(v, value);
+    // set the value in expression
+    e->setVariable(v, value.slice());
+    // calculate expression
+    bool mustDestroy = false;
+    AqlValue calculatedValue = e->execute(&ctx, mustDestroy);
+
+    _executionState = ExecutionState::DONE; // already calculated
+    _resultRowIdx = 0;
+    _nextIncVal = 1;  // first increment always 1 to move from -1 to 0
+
+    if(calculatedValue.isNull(true) && !_options.keepNull) {
+      // result is null and we should't store it
+      _queryResults = nullptr;
+    } else {
+      // put calculated value in _queryResults
+      _queryResults = _itemBlockManager.requestBlock(1,1);
+      _queryResults->setValue(0,0, calculatedValue);
+    }
+
+    _preCalculated = true;
+    return true;
+  }
+
+  return false;
+}
+
 AqlAnalyzer::AqlAnalyzer(Options const& options)
   : irs::analysis::analyzer(irs::type<AqlAnalyzer>::get()),
     _options(options),
@@ -608,27 +675,9 @@ bool AqlAnalyzer::next() {
   return false;
 }
 
-// return the calculation node
-ExecutionNode* tryOptimize(ExecutionNode* node) {
-  if (node == nullptr || node->getType() != ExecutionNode::RETURN) {
-    return nullptr;
-  }
-
-  auto deps = node->getDependencies();
-  if(deps.size() == 1 && deps[0]->getType() == ExecutionNode::NodeType::CALCULATION) {
-    auto calcNode = deps[0];
-
-    auto deps2 = calcNode->getDependencies();
-    if(deps2.size() == 1 && deps2[0]->getType() == ExecutionNode::NodeType::SINGLETON) {
-      return calcNode;
-    }
-  }
-
-  return nullptr;
-}
-
 bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
   try {
+    _preCalculated = false; // reset this value
     if (!_plan) {  // lazy initialization
       // important to hold a copy here as parser accepts reference!
       auto queryString = arangodb::aql::QueryString(_options.queryString);
@@ -674,52 +723,18 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
 
       _plan = optimizer.stealBest();
 
-      // find here suitable situation
-      ExecutionNode* execNode = tryOptimize(_plan->root());
-      if(execNode != nullptr) {
-        CalculationNode* calcNode = dynamic_cast<CalculationNode*>(execNode);
-
-        //get expression
-        auto e = calcNode->expression();
-
-        auto& trx = _query->trxForOptimization();
-
-        // get variable ptr
-        auto v = static_cast<Variable const*>(e->node()->getData());
-        AqlFunctionsInternalCache cache;
-        // create context
-        FixedVarExpressionContext ctx(trx, _query->ast()->query(), cache);
-
-        AqlValue value(field.c_str());
-
-        // set value in context
-        ctx.setVariableValue(v, value);
-
-        // set the value in expression
-        e->setVariable(v, value.slice());
-        // calculate expression
-        bool mustDestroy = false;
-        AqlValue calculatedValue = e->execute(&ctx, mustDestroy);
-
-        _executionState = ExecutionState::DONE; // already calculated
-        _resultRowIdx = 0;
-        _nextIncVal = 1;  // first increment always 1 to move from -1 to 0
-
-        if(calculatedValue.isNull(true) && !_options.keepNull) {
-          // result is null and we should't store it
-          _preCalculated = false;
-          _queryResults = nullptr;
-          return true;
-        } else {
-          // put calculated value in _queryResults
-          _queryResults = _itemBlockManager.requestBlock(1,1);
-          _queryResults->setValue(0,0, calculatedValue);
-          _preCalculated = true;
-        }
-
+      // try to optimize
+      if(optimize(field)) {
+        _optimizedField.assign(field.c_str(), field.size());
         return true;
       }
+
     } else {
+      if(_optimizedField != field) {
+        if(optimize(field)) {
+          _optimizedField.assign(field.c_str(), field.size());
+        }
+      }
       for (auto node : _bindedNodes) {
         node->setStringValue(field.c_str(), field.size());
       }
