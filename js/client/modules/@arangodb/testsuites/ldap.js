@@ -231,7 +231,17 @@ const activateFailurePoint = function(options, server, instance, custom) {
     "exp": Math.floor(Date.now() / 1000) + 3600
   }, 'HS256');
 
-  const endpoints = instance.endpoints;
+  const endpoints = [];
+  if (!options.cluster) {
+    endpoints.push(instance.endpoint);
+  } else {
+    instance.arangods.forEach(arangod => {
+      if (arangod.role === 'coordinator') {
+        endpoints.push(arangod.endpoint);
+      }
+    });
+  }
+
   for (const endpoint of endpoints) {
     let result = request({
       method: "PUT",
