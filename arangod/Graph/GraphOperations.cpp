@@ -471,7 +471,9 @@ OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync,
 }
 
 OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinitionSlice,
+                                                   VPackSlice definitionOptions,
                                                    bool waitForSync) {
+  TRI_ASSERT(definitionOptions.isObject());
   OperationOptions options(ExecContext::current());
   ResultT<EdgeDefinition const*> defRes = _graph.addEdgeDefinition(edgeDefinitionSlice);
   if (defRes.fail()) {
@@ -487,6 +489,16 @@ OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinitionSlic
   if (res.fail()) {
     // If this fails we will not persist.
     return OperationResult(res, options);
+  }
+
+  auto satData = definitionOptions.get(StaticStrings::GraphSatellites);
+  if (satData.isArray()) {
+    auto res = _graph.addSatellites(satData);
+    if (res.fail()) {
+      // Handles invalid Slice Content
+      return OperationResult{std::move(res), options};
+    }
+    _graph.adjustEdgeDefinitionTypes();
   }
 
   res = gmngr.ensureCollections(&_graph, waitForSync);

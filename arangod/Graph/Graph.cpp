@@ -807,3 +807,12 @@ std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefini
   TRI_ASSERT(hasEdgeCollection(collectionName));
   return {it->second};
 }
+
+auto Graph::addSatellites(VPackSlice const&) -> Result {
+  // Enterprise only
+  return TRI_ERROR_NO_ERROR;
+}
+
+auto Graph::adjustEdgeDefinitionTypes() -> void {
+  // Enterprise only
+}

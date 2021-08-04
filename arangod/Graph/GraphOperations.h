@@ -154,7 +154,7 @@ class GraphOperations {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a new edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult addEdgeDefinition(VPackSlice edgeDefinition, bool waitForSync);
+  OperationResult addEdgeDefinition(VPackSlice edgeDefinition, VPackSlice options, bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an edge definition from an existing graph

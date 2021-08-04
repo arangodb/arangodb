@@ -680,9 +680,13 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph, EdgeDefinitio
   GraphOperations gops{graph, _vocbase, ctx};
   OperationOptions options(_context);
   OperationResult result(Result(), options);
+  VPackSlice editOptions = body.get(StaticStrings::GraphOptions);
+  if (!editOptions.isObject()) {
+    editOptions = VPackSlice::emptyObjectSlice();
+  }
 
   if (action == EdgeDefinitionAction::CREATE) {
-    result = gops.addEdgeDefinition(body, waitForSync);
+    result = gops.addEdgeDefinition(body, editOptions, waitForSync);
   } else if (action == EdgeDefinitionAction::EDIT) {
     result = gops.editEdgeDefinition(body, waitForSync, edgeDefinitionName);
   } else if (action == EdgeDefinitionAction::REMOVE) {

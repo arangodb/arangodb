@@ -281,6 +281,9 @@ class Graph {
   /// @brief Add an orphan vertex collection to this graphs definition
   Result addOrphanCollection(std::string&&);
 
+  virtual auto addSatellites(VPackSlice const& satellites) -> Result;
+  virtual auto adjustEdgeDefinitionTypes() -> void;
+
   std::ostream& operator<<(std::ostream& ostream);
 
  private:
