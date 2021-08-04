@@ -11,9 +11,12 @@ devel
   grow lazily when more parts of the trees get populated. The compression
   of unused in-memory tree data is still in place.
 
-* Include K_SHORTEST_PATHS and SHORTEST_PATH execution nodes in AQL query 
-  memory usage accounting. The memory used by these execution node types was
-  previously not tracked against the configured query memory limit.
+* Refactored arangobench:
+  - Updated testcases to show description of them when beginning execution
+  - Fixed testcase histogram with time measures when batch size > 0
+  - Integrated testcases with Velocypack for simplification 
+  - Deprecated some testcases
+  - Internal changes for performance optimization
 
 * Timely update of database server list on health check fixes BTS-505.
 
