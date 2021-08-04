@@ -32,13 +32,14 @@ const jsunity = require('jsunity');
 
 const colName1 = 'UnitTestsRecovery1';
 const colName2 = 'UnitTestsRecovery2';
+const colName3 = 'UnitTestsRecovery3';
+const colName4 = 'UnitTestsRecovery4';
 
 function runSetup () {
   'use strict';
-  jsunity.jsUnity.attachAssertions();
-  
-  internal.debugSetFailAt("MerkleTree::serializeUncompressed");
-  
+  internal.debugSetFailAt("MerkleTree::serializeOnlyPopulated");
+  internal.debugSetFailAt("applyUpdates::forceHibernation2");
+
   let c = db._create(colName1);
 
   for (let i = 0; i < 1000; ++i) {
@@ -46,12 +47,40 @@ function runSetup () {
   }
 
   c = db._create(colName2);
-  c.insert({ _key: "piff" });
+
+  for (let i = 0; i < 1000; ++i) {
+    c.insert({ _key: "test_" + i });
+  }
+  for (let i = 0; i < 500; ++i) {
+    c.remove({ _key: "test_" + i });
+  }
+
+  c = db._create(colName3);
+
+  let docs = [];
+  for (let i = 0; i < 100000; ++i) {
+    docs.push({ _key: "test" + i });
+    if (docs.length === 5000) {
+      c.insert(docs);
+      docs = [];
+    }
+  }
+  
+  c = db._create(colName4);
+  for (let i = 0; i < 100000; ++i) {
+    docs.push({ _key: "test" + i });
+    if (docs.length === 5000) {
+      c.insert(docs);
+      docs = [];
+    }
+  }
+
+  c.truncate();
 
   let haveUpdates;
   while (true) {
     haveUpdates = false;
-    [colName1, colName2].forEach((cn) => {
+    [colName1, colName2, colName3, colName4].forEach((cn) => {
       let updates = db[cn]._revisionTreePendingUpdates();
       if (!updates.hasOwnProperty('inserts')) {
         // no revision tree yet
@@ -67,45 +96,7 @@ function runSetup () {
     }
     internal.wait(0.25);
   }
-
-  // intentionally corrupt the trees
-  require("console").warn("intentionally corrupting revision trees");
-  db[colName1]._revisionTreeCorrupt(23, 42);
-  db[colName2]._revisionTreeCorrupt(42, 69);
-
-  assertEqual(23, db[colName1]._revisionTreeSummary().count);
-  assertEqual(42, db[colName2]._revisionTreeSummary().count);
-  
-  internal.debugSetFailAt("RocksDBMetaCollection::forceSerialization");
-  internal.debugSetFailAt("applyUpdates::forceHibernation1");
-  internal.debugSetFailAt("applyUpdates::forceHibernation2");
-
-  // and force a write
-  db[colName1].insert({});
-  db[colName2].insert({});
-  
-  while (true) {
-    haveUpdates = false;
-    [colName1, colName2].forEach((cn) => {
-      let updates = db[cn]._revisionTreePendingUpdates();
-      if (!updates.hasOwnProperty('inserts')) {
-        // no revision tree yet
-        haveUpdates = true;
-        return;
-      }
-      haveUpdates |= updates.inserts > 0;
-      haveUpdates |= updates.removes > 0;
-      haveUpdates |= updates.truncates > 0;
-    });
-    if (!haveUpdates) {
-      break;
-    }
-    internal.wait(0.25);
-  }
-  
-  assertEqual(24, db[colName1]._revisionTreeSummary().count);
-  assertEqual(43, db[colName2]._revisionTreeSummary().count);
-
+    
   c.insert({ _key: 'crashme' }, true);
 
   internal.debugTerminate('crashing server');
@@ -120,14 +111,39 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
-    testRevisionTreeCorruption: function() {
+    testRevisionTreeCompression: function() {
+      internal.debugSetFailAt("MerkleTree::serializeOnlyPopulated");
+
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
-      assertEqual(c1._revisionTreeSummary().count, 1001);
+      assertEqual(c1._revisionTreeSummary().count, 1000);
 
       const c2 = db._collection(colName2);
       assertEqual(c2._revisionTreeSummary().count, c2.count());
-      assertEqual(c2._revisionTreeSummary().count, 3);
+      assertEqual(c2._revisionTreeSummary().count, 500);
+      
+      const c3 = db._collection(colName3);
+      assertEqual(c3._revisionTreeSummary().count, c3.count());
+      assertEqual(c3._revisionTreeSummary().count, 100000);
+
+      const c4 = db._collection(colName4);
+      assertEqual(c4._revisionTreeSummary().count, c4.count());
+      assertEqual(c4._revisionTreeSummary().count, 1);
+     
+      // it depends a bit on luck how compressible the trees actually are.
+      // the reason is that _rev values and thus rangeMax in the trees are
+      // dynamic.
+      let summary = db[colName1]._revisionTreeSummary();
+      assertTrue(summary.byteSize < 15000, summary);
+      
+      summary = db[colName2]._revisionTreeSummary();
+      assertTrue(summary.byteSize < 15000, summary);
+      
+      summary = db[colName3]._revisionTreeSummary();
+      assertTrue(summary.byteSize < 700000, summary);
+      
+      summary = db[colName4]._revisionTreeSummary();
+      assertTrue(summary.byteSize < 500, summary);
     },
 
   };

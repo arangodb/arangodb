@@ -2,7 +2,9 @@
 /* global assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief tests for revision trees
+// / @brief tests for dump/reload
+// /
+// / @file
 // /
 // / DISCLAIMER
 // /
@@ -32,26 +34,46 @@ const jsunity = require('jsunity');
 
 const colName1 = 'UnitTestsRecovery1';
 const colName2 = 'UnitTestsRecovery2';
+const colName3 = 'UnitTestsRecovery3';
 
 function runSetup () {
   'use strict';
-  jsunity.jsUnity.attachAssertions();
-  
-  internal.debugSetFailAt("MerkleTree::serializeUncompressed");
-  
-  let c = db._create(colName1);
+  internal.debugClearFailAt();
 
-  for (let i = 0; i < 1000; ++i) {
-    c.insert({ _key: "test_" + i });
+  db._drop(colName1);
+  var c = db._create(colName1), i;
+  c.ensureHashIndex('value');
+
+  for (i = 0; i < 1000; ++i) {
+    c.save({ _key: "test_" + i });
   }
 
+  db._drop(colName2);
   c = db._create(colName2);
-  c.insert({ _key: "piff" });
+
+  for (i = 0; i < 1000; ++i) {
+    c.save({ _key: "test_" + i });
+  }
+  for (i = 0; i < 500; ++i) {
+    c.remove({ _key: "test_" + i });
+  }
+
+  db._drop(colName3);
+  c = db._create(colName3);
+
+  for (i = 0; i < 1000; ++i) {
+    c.save({ _key: "test_" + i });
+  }
+  c.truncate();
+
+  db._drop('test');
+  c = db._create('test');
+  c.save({ _key: 'crashme' }, true);
 
   let haveUpdates;
   while (true) {
     haveUpdates = false;
-    [colName1, colName2].forEach((cn) => {
+    [colName1, colName2, colName3].forEach((cn) => {
       let updates = db[cn]._revisionTreePendingUpdates();
       if (!updates.hasOwnProperty('inserts')) {
         // no revision tree yet
@@ -68,48 +90,15 @@ function runSetup () {
     internal.wait(0.25);
   }
 
-  // intentionally corrupt the trees
-  require("console").warn("intentionally corrupting revision trees");
-  db[colName1]._revisionTreeCorrupt(23, 42);
-  db[colName2]._revisionTreeCorrupt(42, 69);
-
-  assertEqual(23, db[colName1]._revisionTreeSummary().count);
-  assertEqual(42, db[colName2]._revisionTreeSummary().count);
-  
-  internal.debugSetFailAt("RocksDBMetaCollection::forceSerialization");
-  internal.debugSetFailAt("applyUpdates::forceHibernation1");
-  internal.debugSetFailAt("applyUpdates::forceHibernation2");
-
-  // and force a write
-  db[colName1].insert({});
-  db[colName2].insert({});
-  
-  while (true) {
-    haveUpdates = false;
-    [colName1, colName2].forEach((cn) => {
-      let updates = db[cn]._revisionTreePendingUpdates();
-      if (!updates.hasOwnProperty('inserts')) {
-        // no revision tree yet
-        haveUpdates = true;
-        return;
-      }
-      haveUpdates |= updates.inserts > 0;
-      haveUpdates |= updates.removes > 0;
-      haveUpdates |= updates.truncates > 0;
-    });
-    if (!haveUpdates) {
-      break;
-    }
-    internal.wait(0.25);
-  }
-  
-  assertEqual(24, db[colName1]._revisionTreeSummary().count);
-  assertEqual(43, db[colName2]._revisionTreeSummary().count);
-
-  c.insert({ _key: 'crashme' }, true);
+  internal.waitForEstimatorSync(); 
+  internal.sleep(2);
 
   internal.debugTerminate('crashing server');
 }
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function recoverySuite () {
   'use strict';
@@ -119,19 +108,28 @@ function recoverySuite () {
     setUp: function () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
+    tearDown: function () {},
 
-    testRevisionTreeCorruption: function() {
+    testRevisionTreeCounts: function() {
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
-      assertEqual(c1._revisionTreeSummary().count, 1001);
+      assertEqual(c1._revisionTreeSummary().count, 1000);
 
       const c2 = db._collection(colName2);
       assertEqual(c2._revisionTreeSummary().count, c2.count());
-      assertEqual(c2._revisionTreeSummary().count, 3);
+      assertEqual(c2._revisionTreeSummary().count, 500);
+
+      const c3 = db._collection(colName3);
+      assertEqual(c3._revisionTreeSummary().count, c3.count());
+      assertEqual(c3._revisionTreeSummary().count, 0);
     },
 
   };
 }
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function main (argv) {
   'use strict';
