@@ -304,9 +304,9 @@ void BenchFeature::start() {
     _realOperations = _operations;
   }
   double const stepSize = (double)_operations / (double)_concurrency;
-  int64_t realStep = (int64_t)stepSize;
+  uint64_t realStep = static_cast<uint64_t>(stepSize);
 
-  if (stepSize - (double)((int64_t)stepSize) > 0.0) {
+  if (stepSize - static_cast<double>(static_cast<uint64_t>(stepSize)) > 0.0) {
     realStep++;
   }
 
