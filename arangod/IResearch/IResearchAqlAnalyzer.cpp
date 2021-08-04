@@ -730,15 +730,20 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
       }
 
     } else {
-      if(_optimizedField != field) {
-        if(optimize(field)) {
-          _optimizedField.assign(field.c_str(), field.size());
-        }
-      }
+      // plan exists
+
       for (auto node : _bindedNodes) {
         node->setStringValue(field.c_str(), field.size());
       }
       _engine.reset();
+
+      if(_optimizedField != field) {
+        // try to optimize
+        if(optimize(field)) {
+          _optimizedField.assign(field.c_str(), field.size());
+          return true;
+        }
+      }
     }
     _queryResults = nullptr;
     _plan->clearVarUsageComputed();
