@@ -193,7 +193,8 @@ template<typename T1, typename T2>
   }
 
   size_t remain = lhs.size();
-  size_t offset = 0;
+  typename T1::value_type const* l = lhs.data();
+  typename T2::value_type const* r = rhs.data();
   int result = 0;
 
   while (remain > 0) {
@@ -201,19 +202,20 @@ template<typename T1, typename T2>
     size_t len = std::min(remain, size_t(4));
     switch (len) {
       case 4:
-        result += (tolower(lhs[offset + 3]) != tolower(rhs[offset + 3]));
+        result += (tolower(l + 3) != tolower(r + 3));
         [[fallthrough]];
       case 3:
-        result += (tolower(lhs[offset + 2]) != tolower(rhs[offset + 2]));
+        result += (tolower(l + 2) != tolower(r + 2));
         [[fallthrough]];
       case 2:
-        result += (tolower(lhs[offset + 1]) != tolower(rhs[offset + 1]));
+        result += (tolower(l + 1) != tolower(r + 1));
         [[fallthrough]];
       case 1:
-        result += (tolower(lhs[offset + 0]) != tolower(rhs[offset + 0]));
+        result += (tolower(l + 0) != tolower(r + 0));
     }
 
-    offset += len; 
+    l += len;
+    r += len;
     remain -= len;
 
     if (result != 0) {

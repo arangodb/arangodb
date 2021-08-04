@@ -42,25 +42,25 @@ using namespace arangodb::basics;
 std::string_view GeneralRequest::translateMethod(RequestType method) {
   switch (method) {
     case RequestType::DELETE_REQ:
-      return {"DELETE", 6};
+      return {"DELETE"};
 
     case RequestType::GET:
-      return {"GET", 3};
+      return {"GET"};
 
     case RequestType::HEAD:
-      return {"HEAD", 4};
+      return {"HEAD"};
 
     case RequestType::OPTIONS:
-      return {"OPTIONS", 7};
+      return {"OPTIONS"};
 
     case RequestType::PATCH:
-      return {"PATCH", 5};
+      return {"PATCH"};
 
     case RequestType::POST:
-      return {"POST", 4};
+      return {"POST"};
 
     case RequestType::PUT:
-      return {"PUT", 3};
+      return {"PUT"};
 
     case RequestType::ILLEGAL:
       break;
@@ -69,7 +69,7 @@ std::string_view GeneralRequest::translateMethod(RequestType method) {
   LOG_TOPIC("62a53", WARN, arangodb::Logger::FIXME)
         << "illegal http request method encountered in switch";
 
-  return {"UNKNOWN", 7};  // in order to please MSVC
+  return {"UNKNOWN"};  // in order to please MSVC
 }
 
 namespace  {
