@@ -24,11 +24,12 @@
 
 #pragma once
 
-#include <stddef.h>
+#include <cstddef>
+#include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
-#include <map>
 #include <utility>
 #include <vector>
 
@@ -65,7 +66,7 @@ class GeneralRequest {
   GeneralRequest(GeneralRequest&&) = default;
 
   // translate an RequestType enum value into an "HTTP method string"
-  static std::string translateMethod(RequestType);
+  static std::string_view translateMethod(RequestType);
 
   // translate "HTTP method string" into RequestType enum value
   static RequestType translateMethod(std::string const& method) {
