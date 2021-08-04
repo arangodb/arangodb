@@ -60,8 +60,8 @@ CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinitions, options)
   this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
-CommonGraph.prototype._addVertexCollection = function (vertexName, createCollection = true) {
-  let result = ArangoGraph._addVertexCollection(this.__name, vertexName, createCollection);
+CommonGraph.prototype._addVertexCollection = function (vertexName, createCollection = true, options = {}) {
+  let result = ArangoGraph._addVertexCollection(this.__name, vertexName, createCollection, options);
   this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 

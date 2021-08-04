@@ -300,11 +300,23 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
                                                      bool createCollection) {
   GraphManager gmngr{_vocbase};
   std::string collectionName = document.get("collection").copyString();
+
   std::shared_ptr<LogicalCollection> def;
 
   OperationOptions options(ExecContext::current());
   options.waitForSync = waitForSync;
   OperationResult result(Result(), options);
+
+  VPackSlice editOptions = document.get(StaticStrings::GraphOptions);
+  if (editOptions.isObject()) {
+    editOptions = editOptions.get(StaticStrings::GraphSatellites);
+    if (editOptions.isArray()) {
+      auto res = _graph.addSatellites(editOptions);
+      if (res.fail()) {
+        return OperationResult(std::move(res), options);
+      }
+    }
+  }
 
   if (_graph.hasVertexCollection(collectionName)) {
     if (_graph.hasOrphanCollection(collectionName)) {

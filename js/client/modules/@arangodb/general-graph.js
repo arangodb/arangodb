@@ -94,8 +94,8 @@ CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinition, options) 
   }
 };
 
-CommonGraph.prototype._addVertexCollection = function (name, createCollection) {
-  const data = {};
+CommonGraph.prototype._addVertexCollection = function (name, createCollection, options = {}) {
+  const data = { options };
   if (name) {
     data.collection = name;
   }

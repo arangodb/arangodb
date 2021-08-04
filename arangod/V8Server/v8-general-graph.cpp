@@ -499,6 +499,14 @@ static void JS_AddVertexCollection(v8::FunctionCallbackInfo<v8::Value> const& ar
   VPackBuilder builder;
   builder.openObject();
   builder.add("collection", VPackValue(vertexName));
+  {
+    if (args.Length() >= 4) {
+      // We have options
+      builder.add(VPackValue("options"));
+      // Merge them into the builder, as Options entry
+      TRI_V8ToVPack(isolate, builder, args[3], false);
+    }
+  }
   builder.close();
 
   OperationResult r = gops.addOrphanCollection(builder.slice(), false, createCollection);
