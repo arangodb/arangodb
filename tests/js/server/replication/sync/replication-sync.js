@@ -101,7 +101,7 @@ function BaseTestConfig () {
     testExistingPatchBrokenFollowerCounters1: function () {
       // can only use this with failure tests enabled
       let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
-      if (String(r) === "false") {
+      if (String(r) === "false" || r.error) {
         return;
       }
 
@@ -156,7 +156,7 @@ function BaseTestConfig () {
     testExistingPatchBrokenFollowerCounters2: function () {
       // can only use this with failure tests enabled
       let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
-      if (String(r) === "false") {
+      if (String(r) === "false" || r.error) {
         return;
       }
 
@@ -706,7 +706,7 @@ function BaseTestConfig () {
     testUpdateHugeIntermediateCommits: function () {
       // can only use this with failure tests enabled
       let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
-      if (String(r) === "false") {
+      if (String(r) === "false" || r.error) {
         return;
       }
 

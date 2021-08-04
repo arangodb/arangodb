@@ -160,11 +160,8 @@
         '_id': true,
         '_rev': true,
         '_key': true,
-        '_bidirectional': true,
-        '_vertices': true,
         '_from': true,
         '_to': true,
-        '$id': true
       };
     },
 
@@ -1043,11 +1040,9 @@
         a.style = 'display: none';
         a.href = blobUrl;
 
-        if (filename) {
-          a.download = filename + '-' + window.frontendConfig.db + '.' + type;
-        } else {
-          a.download = 'results-' + window.frontendConfig.db + '.' + type;
-        }
+        a.download = (filename ? filename : 'results') + '-' + 
+                     window.frontendConfig.db.replace(/[^-_a-z0-9]/gi, "_") + 
+                     '.' + type;
 
         a.click();
 
