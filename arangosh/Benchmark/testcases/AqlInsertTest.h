@@ -65,7 +65,7 @@ namespace arangodb::arangobench {
     }
 
     char const* getDescription() const noexcept override {
-      return "performs AQL queries that insert one document per query. The --complexity parameter controls the number of attributes per document. The    attribute values for the inserted documents will be hard-coded, except _key. The total number of documents to be inserted is equal to the value of --requests.";
+      return "performs AQL queries that insert one document per query. The --complexity parameter controls the number of attributes per document. The attribute values for the inserted documents will be hard-coded, except _key. The total number of documents to be inserted is equal to the value of --requests.";
     }
 
     bool isDeprecated() const noexcept override {
