@@ -11,6 +11,15 @@ Adds a vertex to the given collection.
 @RESTURLPARAM{graph,string,required}
 The name of the graph.
 
+@RESTBODYPARAM{options,object,optional,vertex_options}
+Additional options for the vertex to add.
+
+@RESTSTRUCT{satellites,vertex_options,array,optional,}
+Only has effect in Enterprise Edition and it is required if isSmart is true.
+List of collection names. If a collection is used in the graph definition and
+also defined inside the satellite options property, it will be created as a
+Satellite Collection.
+
 @RESTURLPARAM{collection,string,required}
 The name of the vertex collection the vertex should be inserted into.
 
