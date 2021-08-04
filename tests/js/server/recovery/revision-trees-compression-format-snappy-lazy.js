@@ -37,7 +37,7 @@ const colName4 = 'UnitTestsRecovery4';
 
 function runSetup () {
   'use strict';
-  internal.debugSetFailAt("MerkleTree::serializeBottomMost");
+  internal.debugSetFailAt("MerkleTree::serializeSnappyLazy");
   internal.debugSetFailAt("applyUpdates::forceHibernation2");
 
   let c = db._create(colName1);
@@ -112,7 +112,7 @@ function recoverySuite () {
     },
 
     testRevisionTreeCompression: function() {
-      internal.debugSetFailAt("MerkleTree::serializeBottomMost");
+      internal.debugSetFailAt("MerkleTree::serializeSnappyLazy");
 
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
@@ -129,21 +129,15 @@ function recoverySuite () {
       const c4 = db._collection(colName4);
       assertEqual(c4._revisionTreeSummary().count, c4.count());
       assertEqual(c4._revisionTreeSummary().count, 1);
-     
-      // it depends a bit on luck how compressible the trees actually are.
-      // the reason is that _rev values and thus rangeMax in the trees are
-      // dynamic.
-      let summary = db[colName1]._revisionTreeSummary();
-      assertTrue(summary.byteSize < 15000, summary);
       
-      summary = db[colName2]._revisionTreeSummary();
-      assertTrue(summary.byteSize < 15000, summary);
-      
-      summary = db[colName3]._revisionTreeSummary();
-      assertTrue(summary.byteSize < 700000, summary);
-      
-      summary = db[colName4]._revisionTreeSummary();
-      assertTrue(summary.byteSize < 500, summary);
+      [colName1, colName2, colName3, colName4].forEach((cn) => {
+        let summary = db[cn]._revisionTreeSummary();
+        // yes, the compression is that bad!
+        // how good/bad the compression is depends a bit on luck, as the _rev
+        // values in the tree are dynamic and also the tree's rangeMax.
+        assertTrue(summary.byteSize > 3000, summary);
+        assertTrue(summary.byteSize < 10000, summary);
+      });
     },
 
   };

@@ -1369,7 +1369,7 @@ std::uint64_t RocksDBMetaCollection::RevisionTreeAccessor::compressedSize() cons
     return _compressed.size();
   }
   std::string output;
-  _tree->serializeBinary(output, true);
+  _tree->serializeBinary(output, arangodb::containers::MerkleTreeBase::BinaryFormat::Optimal);
   return output.size();
 }
 
@@ -1432,7 +1432,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
   double start = TRI_microtime();
   
   _compressed.clear();
-  _tree->serializeBinary(_compressed, true);
+  _tree->serializeBinary(_compressed, arangodb::containers::MerkleTreeBase::BinaryFormat::Optimal);
 
   TRI_ASSERT(!_compressed.empty());
  
@@ -1461,7 +1461,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
 void RocksDBMetaCollection::RevisionTreeAccessor::serializeBinary(std::string& output) const {
   if (_tree != nullptr) {
     // compress tree into output
-    _tree->serializeBinary(output, true);
+    _tree->serializeBinary(output, arangodb::containers::MerkleTreeBase::BinaryFormat::Optimal);
   } else {
     // append our already compressed state
     output.append(_compressed);

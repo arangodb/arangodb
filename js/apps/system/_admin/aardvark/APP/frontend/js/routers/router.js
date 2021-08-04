@@ -28,7 +28,6 @@
       'cSchema/:colname': 'cSchema',
       'cInfo/:colname': 'cInfo',
       'collection/:colid/:docid': 'document',
-      'shell': 'shell',
       'queries': 'query',
       'databases': 'databases',
       'settings': 'databases',

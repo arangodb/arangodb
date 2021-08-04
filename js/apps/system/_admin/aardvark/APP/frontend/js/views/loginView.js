@@ -62,11 +62,11 @@
               _.each(sortedObj, function (rule, db) {
                 if (frontendConfig.authenticationEnabled) {
                   $('#loginDatabase').append(
-                      '<option>' + db + '</option>'
+                      '<option>' + _.escape(db) + '</option>'
                   );
                 } else {
                   $('#loginDatabase').append(
-                      '<option>' + rule + '</option>'
+                      '<option>' + _.escape(rule) + '</option>'
                   );
                 }
               });
@@ -225,11 +225,11 @@
             _.each(sortedObj, function (rule, db) {
               if (frontendConfig.authenticationEnabled) {
                 $('#loginDatabase').append(
-                    '<option>' + db + '</option>'
+                    '<option>' + _.escape(db) + '</option>'
                 );
               } else {
                 $('#loginDatabase').append(
-                    '<option>' + rule + '</option>'
+                    '<option>' + _.escape(rule) + '</option>'
                 );
               }
             });
@@ -298,10 +298,10 @@
       };
 
       var path = window.location.protocol + '//' + window.location.host +
-        frontendConfig.basePath + '/_db/' + database + '/_admin/aardvark/index.html';
+        frontendConfig.basePath + '/_db/' + encodeURIComponent(database) + '/_admin/aardvark/index.html';
       if (frontendConfig.react) {
         path = window.location.protocol + '//' + window.location.host +
-          '/_db/' + database + '/_admin/aardvark/index.html';
+          '/_db/' + encodeURIComponent(database) + '/_admin/aardvark/index.html';
       }
 
       var continueFunction = function () {

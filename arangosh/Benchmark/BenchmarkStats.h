@@ -23,29 +23,45 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-#include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/DatabaseGuard.h"
-#include "VocBase/AccessMode.h"
-#include "VocBase/vocbase.h"
+#include <cstdint>
+#include <limits>
+#include <utility>
 
-namespace arangodb {
+namespace arangodb::arangobench {
 
-class ReplicationTransaction : public transaction::Methods {
- public:
-  /// @brief create the transaction
-  explicit ReplicationTransaction(TRI_vocbase_t& vocbase)
-      : transaction::Methods(transaction::StandaloneContext::Create(vocbase), transaction::Options::replicationDefaults()),
-        _guard(vocbase) {
-    TRI_ASSERT(state() != nullptr);
-    state()->setExclusiveAccessType();
+struct BenchmarkStats {
+  constexpr BenchmarkStats() noexcept 
+      : min(std::numeric_limits<double>::max()),
+        max(std::numeric_limits<double>::min()),
+        total(0.0),
+        count(0) {}
+
+  void reset() noexcept {
+    *this = BenchmarkStats{};
   }
 
- private:
-  DatabaseGuard _guard;
+  void track(double time) noexcept {
+    min = std::min(min, time);
+    max = std::max(max, time);
+    total += time;
+    ++count;
+  }
+
+  void add(BenchmarkStats const& other) noexcept {
+    min = std::min(min, other.min);
+    max = std::max(max, other.max);
+    total += other.total;
+    count += other.count;
+  }
+
+  double avg() const noexcept {
+    return (count != 0) ? (total / count) : 0.0;
+  }
+
+  double min;
+  double max;
+  double total;
+  uint64_t count;
 };
 
-}  // namespace arangodb
-
+}

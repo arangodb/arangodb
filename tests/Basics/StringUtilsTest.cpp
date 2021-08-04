@@ -164,6 +164,43 @@ TEST_F(StringUtilsTest, test_toupper) {
   EXPECT_EQ(StringUtils::toupper("HELLo-world-NONO "), "HELLO-WORLD-NONO ");
 }
 
+TEST_F(StringUtilsTest, test_equalStringsCaseInsensitive) {
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string(), std::string()));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("ABC"), std::string("ABC")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("ABC 1235667"), std::string("ABC 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("abc 1235667"), std::string("ABC 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("abc 1235667"), std::string("AbC 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("abc 1235667"), std::string("aBc 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("ABC 1235667"), std::string("abc 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("mötör"), std::string("MöTöR")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string(".'2!#"), std::string(".'2!#")));
+  
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string(" ABC"), std::string("ABC")));
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string("ABC"), std::string("12345")));
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string("mötör"), std::string("MÖTÖR")));
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string(".'2!#"), std::string("abcd")));
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string(".'2!#"), std::string(".'2!!")));
+
+  {
+    std::string s1;
+    std::string s2;
+    for (std::size_t i = 0; i < 500; ++i) {
+      s1.push_back('a');
+      s2.push_back('a');
+    }
+    s1.push_back('A');
+    s2.push_back('B');
+  
+    EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(s1, s2));
+
+    s1.pop_back();
+    EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(s1, s2));
+
+    s2.pop_back();
+    EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(s1, s2));
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_uint64
 ////////////////////////////////////////////////////////////////////////////////
