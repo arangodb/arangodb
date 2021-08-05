@@ -88,6 +88,7 @@ class UpsertModifier {
   ~UpsertModifier() = default;
 
   ModificationExecutorResultState resultState() const noexcept;
+  [[nodiscard]] bool operationPending() const noexcept;
 
   void checkException() const {}
   void resetResult() noexcept;

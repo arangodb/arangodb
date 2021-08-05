@@ -121,7 +121,8 @@ class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<Modifi
   [[nodiscard]] ExecutionState transact(transaction::Methods& trx);
 
   [[nodiscard]] ModificationExecutorResultState resultState() const noexcept;
-    
+  [[nodiscard]] bool operationPending() const noexcept;
+
   void checkException() const;
   void resetResult() noexcept;
 

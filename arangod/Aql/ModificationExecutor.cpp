@@ -110,9 +110,13 @@ template <typename ProduceOrSkipData>
     upstreamCall.softLimit = _modifier->getBatchSize();
   }
 
+  auto const hasInputOrPreviousResult = [&] {
+    return input.hasDataRow() || _modifier->operationPending();
+  };
+
   // Make AqlItemBlockInputMatrix happy, which dislikes being asked for its
-  // input range in this state.
-  if (!input.hasDataRow()) {
+  // input range when empty.
+  if (!hasInputOrPreviousResult()) {
     // Input is empty
     return {translateReturnType(input.upstreamState()), ModificationStats{}, upstreamCall};
   }
@@ -125,7 +129,7 @@ template <typename ProduceOrSkipData>
   auto upstreamState = input.upstreamState();
   auto stats = ModificationStats{};
 
-  while (input.hasDataRow() && produceOrSkipData.needMoreOutput()) {
+  while (hasInputOrPreviousResult() && produceOrSkipData.needMoreOutput()) {
     auto& range = std::invoke([&]() -> AqlItemBlockInputRange& {
       if constexpr (inputIsMatrix::value) {
         return input.getInputRange();
@@ -228,17 +232,16 @@ template <typename FetcherType, typename ModifierType>
   };
 
   auto produceData = ProduceData(output, _infos, *_modifier);
-  auto&& [state, stats, upstreamCall] = produceOrSkip(input, produceData);
+  auto&& [state, localStats, upstreamCall] = produceOrSkip(input, produceData);
+
+  _stats += localStats;
 
   if (state == ExecutionState::WAITING) {
     return {state, ModificationStats{}, upstreamCall};
   }
 
-  auto skipCount = std::size_t{0};
-  auto returnedStats = ModificationStats{};
-
-  std::swap(skipCount, _skipCount);
-  std::swap(returnedStats, _stats);
+  auto stats = ModificationStats{};
+  std::swap(stats, _stats);
 
   return {state, stats, upstreamCall};
 }

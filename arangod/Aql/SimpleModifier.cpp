@@ -31,8 +31,8 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -126,7 +126,18 @@ SimpleModifier<ModifierCompletion, Enable>::OutputIterator::end() const {
 template <typename ModifierCompletion, typename Enable>
 ModificationExecutorResultState SimpleModifier<ModifierCompletion, Enable>::resultState() const noexcept {
   std::lock_guard<std::mutex> guard(_resultStateMutex);
-  return _resultState; 
+  return _resultState;
+}
+
+template <typename ModifierCompletion, typename Enable>
+bool SimpleModifier<ModifierCompletion, Enable>::operationPending() const noexcept {
+  switch (resultState()) {
+    case ModificationExecutorResultState::NoResult:
+      return false;
+    case ModificationExecutorResultState::WaitingForResult:
+    case ModificationExecutorResultState::HaveResult:
+      return true;
+  }
 }
 
 template <typename ModifierCompletion, typename Enable>

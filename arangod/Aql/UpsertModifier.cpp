@@ -135,6 +135,16 @@ ModificationExecutorResultState UpsertModifier::resultState() const noexcept {
   return _resultState; 
 }
 
+bool UpsertModifier::operationPending() const noexcept {
+  switch (resultState()) {
+    case ModificationExecutorResultState::NoResult:
+      return false;
+    case ModificationExecutorResultState::WaitingForResult:
+    case ModificationExecutorResultState::HaveResult:
+      return true;
+  }
+}
+
 void UpsertModifier::reset() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {

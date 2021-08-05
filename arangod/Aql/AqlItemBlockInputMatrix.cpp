@@ -64,7 +64,7 @@ AqlItemBlockInputRange& AqlItemBlockInputMatrix::getInputRange() {
   if (_lastRange.hasDataRow()) {
     return _lastRange;
   }
-  // Need initialze lastRange
+  // Need initialize lastRange
   if (_aqlItemMatrix->numberOfBlocks() == 0) {
     _lastRange = {AqlItemBlockInputRange{upstreamState()}};
   } else {
