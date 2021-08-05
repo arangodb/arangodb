@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed ES-867 and ES-922: removed eslint from NPM packages descriptions and
+  updated netmask package to non-vulnerable version.
+
 * Fix BTS-456, BTS-457: Make geo intersection between point and rectangle
   symmetrical.
 
