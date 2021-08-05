@@ -632,10 +632,19 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
       } else if (!other->Intersects(self->GetRectBound())) {
         return false;  // cheap rejection
       }
-      // construct bounding polyline of rect
-      S2Polyline rectBound({other->GetVertex(0), other->GetVertex(1),
-                            other->GetVertex(2), other->GetVertex(3)});
-      return self->Intersects(rectBound);
+      // Construct polygon from rect:
+      std::vector<S2Point> v;
+      v.reserve(5);
+      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(0)).toPoint());
+      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(1)).toPoint());
+      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(2)).toPoint());
+      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(3)).toPoint());
+      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(0)).toPoint());
+      std::unique_ptr<S2Loop> loop;
+      loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
+      std::unique_ptr<S2Polygon> rectPoly;
+      rectPoly = std::make_unique<S2Polygon>(std::move(loop), S2Debug::DISABLE);
+      return self->Intersects(rectPoly.get());
     }
 
     case ShapeContainer::Type::S2_MULTIPOINT: {
@@ -679,10 +688,19 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
       } else if (!self->Intersects(other->GetRectBound())) {
         return false;  // cheap rejection
       }
-      // construct bounding polyline of rect
-      S2Polyline rectBound({self->GetVertex(0), self->GetVertex(1),
-                            self->GetVertex(2), self->GetVertex(3)});
-      return other->Intersects(rectBound);
+      // construct bounding polygon of rect:
+      std::vector<S2Point> v;
+      v.reserve(5);
+      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(0)).toPoint());
+      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(1)).toPoint());
+      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(2)).toPoint());
+      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(3)).toPoint());
+      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(0)).toPoint());
+      std::unique_ptr<S2Loop> loop;
+      loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
+      std::unique_ptr<S2Polygon> rectPoly;
+      rectPoly = std::make_unique<S2Polygon>(std::move(loop), S2Debug::DISABLE);
+      return other->Intersects(rectPoly.get());
     }
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* self = static_cast<S2Polygon const*>(_data);
