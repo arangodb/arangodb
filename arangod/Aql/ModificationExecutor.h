@@ -199,13 +199,11 @@ class ModificationExecutor {
     virtual void doOutput() = 0;
     virtual auto getRemainingRows() -> std::size_t = 0;
     virtual auto needMoreOutput() -> bool = 0;
-    virtual auto getSkipCount() -> std::size_t = 0;
+    virtual auto getSkipCount() -> std::size_t = 0; // TODO remove
   };
 
-  // template <typename DoOutput, typename GetRemainingRows, typename NeedMoreOutput>
-  std::tuple<ExecutionState, Stats, size_t, AqlCall> produceOrSkip(
-      typename FetcherType::DataRange& input,
-      IProduceOrSkipData& produceOrSkipData);
+  std::tuple<ExecutionState, Stats, AqlCall> produceOrSkip(typename FetcherType::DataRange& input,
+                                                           IProduceOrSkipData& produceOrSkipData);
 
   transaction::Methods _trx;
 

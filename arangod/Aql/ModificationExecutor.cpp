@@ -140,7 +140,7 @@ void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow&
 template <typename FetcherType, typename ModifierType>
 [[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceOrSkip(
     typename FetcherType::DataRange& input, IProduceOrSkipData& produceOrSkipData)
-    -> std::tuple<ExecutionState, Stats, size_t, AqlCall> {
+    -> std::tuple<ExecutionState, Stats, AqlCall> {
   TRI_IF_FAILURE("ModificationBlock::getSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -155,8 +155,7 @@ template <typename FetcherType, typename ModifierType>
   // input range in this state.
   if (!input.hasDataRow()) {
     // Input is empty
-    return {translateReturnType(input.upstreamState()), ModificationStats{},
-            produceOrSkipData.getSkipCount(), upstreamCall};
+    return {translateReturnType(input.upstreamState()), ModificationStats{}, upstreamCall};
   }
 
   // MSVC doesn't see constexpr variables inside a lambda as constexpr, thus
@@ -200,7 +199,7 @@ template <typename FetcherType, typename ModifierType>
 
       if (modifierState == ExecutionState::WAITING) {
         TRI_ASSERT(!ServerState::instance()->isSingleServer());
-        return {ExecutionState::WAITING, stats, produceOrSkipData.getSkipCount(), upstreamCall};
+        return {ExecutionState::WAITING, stats, upstreamCall};
       }
 
       TRI_ASSERT(_modifier->resultState() == ModificationExecutorResultState::HaveResult);
@@ -216,8 +215,7 @@ template <typename FetcherType, typename ModifierType>
     }
   }
 
-  return {translateReturnType(upstreamState), stats,
-          produceOrSkipData.getSkipCount(), upstreamCall};
+  return {translateReturnType(upstreamState), stats, upstreamCall};
 }
 
 template <typename FetcherType, typename ModifierType>
@@ -276,7 +274,7 @@ template <typename FetcherType, typename ModifierType>
   };
 
   auto produceData = ProduceData(output, _infos, *_modifier);
-  auto [state, stats, skipCount, upstreamCall] = produceOrSkip(input, produceData);
+  auto&& [state, stats, upstreamCall] = produceOrSkip(input, produceData);
 
   return {state, stats, upstreamCall};
 }
@@ -288,6 +286,7 @@ template <typename FetcherType, typename ModifierType>
   struct SkipData final : public IProduceOrSkipData {
     AqlCall& _call;
     ModifierType& _modifier;
+    std::size_t _skipCount{};
 
     SkipData(AqlCall& call, ModifierType& modifier)
         : _call(call), _modifier(modifier) {}
@@ -300,13 +299,13 @@ template <typename FetcherType, typename ModifierType>
         // If we are in offset phase and need to produce data
         // after the toSkip is limited to offset().
         // otherwise we need to report everything we write
-        _call.didSkip(_modifier.nrOfWritesExecuted());
+        _skipCount += _modifier.nrOfWritesExecuted();
       } else {
         // If we do not need to report fullcount.
         // we cannot report more than offset
         // but also not more than the operations we
         // have successfully executed
-        _call.didSkip((std::min)(_call.getOffset(), _modifier.nrOfWritesExecuted()));
+        _skipCount += (std::min)(_call.getOffset(), _modifier.nrOfWritesExecuted());
       }
     }
     auto getRemainingRows() -> std::size_t final {
@@ -323,7 +322,11 @@ template <typename FetcherType, typename ModifierType>
   };
 
   auto skipData = SkipData(call, *_modifier);
-  return produceOrSkip(input, skipData);
+  auto&& [state, stats, upstreamCall] = produceOrSkip(input, skipData);
+
+  call.didSkip(skipData._skipCount);
+
+  return {state, stats, skipData._skipCount, upstreamCall};
 }
 
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;
