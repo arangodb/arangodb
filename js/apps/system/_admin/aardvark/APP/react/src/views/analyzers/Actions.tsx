@@ -23,12 +23,12 @@ const DeleteButton = ({ analyzer }: ButtonProps) => {
   };
 
   const handleDelete = async () => {
-    setShow(false);
-
     const result = await getApiRouteForCurrentDB().delete(`/analyzer/${analyzer.name}`, { force: forceDelete });
     if (result.body.error) {
       arangoHelper.arangoError('Failure', `Got unexpected server response: ${result.body.errorMessage}`);
     } else {
+      setShow(false);
+      arangoHelper.arangoNotification('Success', `Deleted Analyzer: ${analyzer.name}`);
       await mutate('/analyzer');
     }
   };
@@ -49,9 +49,9 @@ const DeleteButton = ({ analyzer }: ButtonProps) => {
           Select the <b>Force Delete</b> option below if you want to delete the Analyzer even if it is being
           used.
         </p>
-        <label htmlFor={'force-delete'}>
-          Force Delete: <input id={'force-delete'} type={'checkbox'} checked={forceDelete}
-                               onChange={toggleForce} style={{ width: 'auto' }}/>
+        <label htmlFor={'force-delete'} className="pure-checkbox">
+          <input id={'force-delete'} type={'checkbox'} checked={forceDelete} onChange={toggleForce}
+                 style={{ width: 'auto' }}/> Force Delete
         </label>
       </ModalBody>
       <ModalFooter>

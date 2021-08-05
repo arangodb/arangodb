@@ -1,13 +1,16 @@
-import React, { ChangeEvent, useState } from 'react';
+import React, { ReactFragment, useState } from 'react';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
-import { typeNameMap } from "./constants";
-import { cloneDeep, map, omit, set } from 'lodash';
+import { cloneDeep, set } from 'lodash';
 import JsonForm from "./forms/JsonForm";
 import FeatureForm from "./forms/FeatureForm";
 import DelimiterForm from "./forms/DelimiterForm";
+import StemForm from "./forms/StemForm";
+import NormForm from "./forms/NormForm";
+import NGramForm from "./forms/NGramForm";
+import BaseForm from "./forms/BaseForm";
+import TextForm from "./forms/TextForm";
 
 
-const restrictedTypeNameMap = omit(typeNameMap, 'identity');
 const initialFormState = {
   name: '',
   type: 'delimiter',
@@ -35,12 +38,13 @@ const AddAnalyzer = () => {
     setFormState(newFormState);
   };
 
-  const updateName = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFormField('name', event.target.value);
-  };
-
-  const updateType = (event: ChangeEvent<HTMLSelectElement>) => {
-    updateFormField('type', event.target.value);
+  const forms: { [key: string]: ReactFragment | null } = {
+    delimiter: <DelimiterForm formState={formState} updateFormField={updateFormField}/>,
+    stem: <StemForm formState={formState} updateFormField={updateFormField}/>,
+    norm: <NormForm formState={formState} updateFormField={updateFormField}/>,
+    ngram: <NGramForm formState={formState} updateFormField={updateFormField}/>,
+    text: <TextForm formState={formState} updateFormField={updateFormField}/>,
+    identity: null
   };
 
   return <>
@@ -64,47 +68,29 @@ const AddAnalyzer = () => {
       </ModalHeader>
       <ModalBody>
         <div className={'pure-g'} style={{ minWidth: '50vw' }}>
-          <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-            {
-              showJsonForm
-                ? <JsonForm formState={formState} setFormState={setFormState}/>
-                : <div className={'pure-g'}>
-                  <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-                    <label htmlFor={'analyzer-name'}>Analyzer Name:</label>
-                    <input id="analyzer-name" type="text" placeholder="Analyzer Name" value={formState.name}
-                           onChange={updateName} style={{
-                      height: 'auto',
-                      width: 'auto'
-                    }}/>
-                  </div>
-
-                  <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-                    <label htmlFor={'analyzer-type'}>Analyzer Type:</label>
-                    <select id="analyzer-type" value={formState.type} style={{ width: 'auto' }}
-                            onChange={updateType}>
-                      {
-                        map(restrictedTypeNameMap, (value, key) => <option key={key}
-                                                                           value={key}>{value}</option>)
-                      }
-                    </select>
-                  </div>
-
-                  <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-                    <fieldset>
-                      <legend>Features</legend>
-                      <FeatureForm formState={formState} updateFormField={updateFormField}/>
-                    </fieldset>
-                  </div>
-
-                  <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-                    <fieldset>
-                      <legend>Configuration</legend>
-                      <DelimiterForm formState={formState} updateFormField={updateFormField}/>
-                    </fieldset>
-                  </div>
+          {
+            showJsonForm
+              ? <JsonForm formState={formState} setFormState={setFormState}/>
+              : <>
+                <BaseForm formState={formState} updateFormField={updateFormField}/>
+                <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+                  <fieldset>
+                    <legend style={{ fontSize: '12pt' }}>Features</legend>
+                    <FeatureForm formState={formState} updateFormField={updateFormField}/>
+                  </fieldset>
                 </div>
-            }
-          </div>
+
+                {
+                  formState.type === 'identity' ? null
+                    : <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+                      <fieldset>
+                        <legend style={{ fontSize: '12pt' }}>Configuration</legend>
+                        {forms[formState.type]}
+                      </fieldset>
+                    </div>
+                }
+              </>
+          }
         </div>
       </ModalBody>
       <ModalFooter>
