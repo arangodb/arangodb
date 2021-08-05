@@ -259,12 +259,7 @@ OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSli
   }
 
   GraphManager gmngr{_vocbase};
-  VPackBuilder collectionsOptions;
-  collectionsOptions.openObject();
-  _graph.createCollectionOptions(collectionsOptions, waitForSync);
-  collectionsOptions.close();
-  res = gmngr.findOrCreateCollectionsByEdgeDefinition(_graph, edgeDefinition, waitForSync,
-                                                      collectionsOptions.slice());
+  res = gmngr.findOrCreateCollectionsByEdgeDefinition(_graph, edgeDefinition, waitForSync);
   if (res.fail()) {
     return OperationResult(res, options);
   }

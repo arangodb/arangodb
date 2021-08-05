@@ -190,9 +190,8 @@ Result GraphManager::checkForEdgeDefinitionConflicts(std::map<std::string, EdgeD
 
 Result GraphManager::findOrCreateCollectionsByEdgeDefinition(Graph& graph,
                                                              EdgeDefinition const& edgeDefinition,
-                                                             bool waitForSync,
-                                                             VPackSlice const options) {
-  std::unordered_set<std::string> satellites = graph.satelliteCollections();;
+                                                             bool waitForSync) {
+  std::unordered_set<std::string> satellites = graph.satelliteCollections();
   // Validation Phase collect a list of collections to create
   std::unordered_set<std::string> documentCollectionsToCreate{};
   std::unordered_set<std::string> edgeCollectionsToCreate{};
@@ -201,25 +200,23 @@ Result GraphManager::findOrCreateCollectionsByEdgeDefinition(Graph& graph,
 
 
   auto& vocbase = ctx()->vocbase();
-  std::string const& edgeColl = edgeDefinition.getName();
-  {
-    std::shared_ptr<LogicalCollection> col;
-    Result res = methods::Collections::lookup(vocbase, edgeColl, col);
-    if (res.ok()) {
-      TRI_ASSERT(col);
-      if (col->type() != TRI_COL_TYPE_EDGE) {
-        return Result(TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,
-                      "Collection: '" + col->name() +
-                          "' is not an EdgeCollection");
-      } else {
-        // found the collection
-        existentEdgeCollections.emplace(std::move(col));
-      }
-    } else if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-      return res;
+  std::string const& edgeCollName = edgeDefinition.getName();
+  std::shared_ptr<LogicalCollection> edgeColl;
+  Result res = methods::Collections::lookup(vocbase, edgeCollName, edgeColl);
+  if (res.ok()) {
+    TRI_ASSERT(edgeColl);
+    if (edgeColl->type() != TRI_COL_TYPE_EDGE) {
+      return Result(TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,
+                    "Collection: '" + edgeColl->name() +
+                        "' is not an EdgeCollection");
     } else {
-      edgeCollectionsToCreate.emplace(edgeColl);
+      // found the collection
+      existentEdgeCollections.emplace(edgeColl);
     }
+  } else if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    return res;
+  } else {
+    edgeCollectionsToCreate.emplace(edgeCollName);
   }
 
   for (auto const& vertexColl : edgeDefinition.getFrom()) {
@@ -235,6 +232,14 @@ Result GraphManager::findOrCreateCollectionsByEdgeDefinition(Graph& graph,
       return res;
     } else {
       if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
+        // We can make this EE Code
+        if (edgeColl) {
+          if (edgeColl->isSatToSmartEdgeCollection()) {
+            if (satellites.find(vertexColl) == satellites.end()) {
+              LOG_DEVEL << "From has to be sattelite";
+            }
+          }
+        }
         documentCollectionsToCreate.emplace(vertexColl);
       }
     }
@@ -253,6 +258,15 @@ Result GraphManager::findOrCreateCollectionsByEdgeDefinition(Graph& graph,
       return res;
     } else {
       if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
+        // We can make this EE Code
+        if (edgeColl) {
+          if (edgeColl->isSmartToSatEdgeCollection()) {
+            if (satellites.find(vertexColl) == satellites.end()) {
+              LOG_DEVEL << "To has to be sattelite";
+            }
+          }
+        }
+ 
         documentCollectionsToCreate.emplace(vertexColl);
       }
     }
