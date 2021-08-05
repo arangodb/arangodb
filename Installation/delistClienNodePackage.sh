@@ -23,7 +23,7 @@ fi
 test -d $installDir/../tmp/node && rm -rf $installDir/../tmp/node ; mkdir -p $installDir/../tmp/node
 pushd $installDir/../tmp/node
 cp $installDir/../js/node/package{,-lock}.json .
-npm un --save $package && $(for i in ( package.json package-lock.json ); do cp ./$i $installDir/../js/node/$i-no-$package)
+npm un --save $package && $(for i in ( package.json package-lock.json ); do cp ./$i $installDir/../js/node/$i-no-$package; done)
 popd
 
 rm -rf $installDir/../tmp/node
