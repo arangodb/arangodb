@@ -1,19 +1,40 @@
 import React, { ChangeEvent, useEffect } from "react";
 import { FormProps } from "../constants";
 import CaseInput from "./CaseInput";
-import { get, has } from 'lodash';
+import { filter, get, has, isEmpty, negate } from 'lodash';
 
-const TextForm = ({ formState, updateFormField }: FormProps) => {
+interface TextFormProps extends FormProps {
+  unsetFormField: (field: string) => void;
+}
+
+const TextForm = ({ formState, updateFormField, unsetFormField }: TextFormProps) => {
   const updateLocale = (event: ChangeEvent<HTMLInputElement>) => {
     updateFormField('properties.locale', event.target.value);
   };
 
   const updateStopwords = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFormField('properties.stopwords', event.target.value);
+    const stopwords = event.target.value.split(/[, ]+/);
+
+    if (filter(stopwords, negate(isEmpty)).length) {
+      updateFormField('properties.stopwords', stopwords);
+    } else {
+      unsetFormField('properties.stopwords');
+    }
+  };
+
+  const getStopwords = () => {
+    return get(formState, ['properties', 'stopwords'], []).join(',');
   };
 
   const updateStopwordsPath = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    updateFormField('properties.stopwordsPath', event.target.value);
+    const stopwordsPath = event.target.value;
+
+    if (stopwordsPath) {
+      updateFormField('properties.stopwordsPath', stopwordsPath);
+    } else {
+      unsetFormField('properties.stopwordsPath');
+    }
+
   };
 
   const toggleAccent = () => {
@@ -49,7 +70,8 @@ const TextForm = ({ formState, updateFormField }: FormProps) => {
 
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
           <label htmlFor={'stemming'} className="pure-checkbox">
-            <input id={'stemming'} type={'checkbox'} checked={get(formState, ['properties', 'stemming'], false)}
+            <input id={'stemming'} type={'checkbox'}
+                   checked={get(formState, ['properties', 'stemming'], false)}
                    onChange={toggleStemming} style={{ width: 'auto' }}/> Stemming
           </label>
         </div>
@@ -69,7 +91,8 @@ const TextForm = ({ formState, updateFormField }: FormProps) => {
       <div className={'pure-g'}>
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
           <label htmlFor={'stopwords'}>Stopwords</label>
-          <input id="stopwords" type="text" value={get(formState, ['properties', 'stopwords'], '')}
+          <input id="stopwords" type="text"
+                 value={getStopwords()}
                  onChange={updateStopwords}
                  style={{
                    height: 'auto',

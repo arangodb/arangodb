@@ -23,13 +23,17 @@ const DeleteButton = ({ analyzer }: ButtonProps) => {
   };
 
   const handleDelete = async () => {
-    const result = await getApiRouteForCurrentDB().delete(`/analyzer/${analyzer.name}`, { force: forceDelete });
-    if (result.body.error) {
-      arangoHelper.arangoError('Failure', `Got unexpected server response: ${result.body.errorMessage}`);
-    } else {
-      setShow(false);
-      arangoHelper.arangoNotification('Success', `Deleted Analyzer: ${analyzer.name}`);
-      await mutate('/analyzer');
+    try {
+      const result = await getApiRouteForCurrentDB().delete(`/analyzer/${analyzer.name}`, { force: forceDelete });
+
+      if (result.body.error) {
+        arangoHelper.arangoError('Failure', `Got unexpected server response: ${result.body.errorMessage}`);
+      } else {
+        arangoHelper.arangoNotification('Success', `Deleted Analyzer: ${analyzer.name}`);
+        await mutate('/analyzer');
+      }
+    } catch (e) {
+      arangoHelper.arangoError('Failure', `Got unexpected server response: ${e.message}`);
     }
   };
 

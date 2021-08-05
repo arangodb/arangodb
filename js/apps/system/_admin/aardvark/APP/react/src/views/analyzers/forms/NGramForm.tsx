@@ -4,11 +4,11 @@ import { get, has } from 'lodash';
 
 const NGramForm = ({ formState, updateFormField }: FormProps) => {
   const updateMinLength = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFormField('properties.min', event.target.value);
+    updateFormField('properties.min', parseInt(event.target.value));
   };
 
   const updateMaxLength = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFormField('properties.max', event.target.value);
+    updateFormField('properties.max', parseInt(event.target.value));
   };
 
   const togglePreserve = () => {
