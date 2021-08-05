@@ -30,6 +30,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
+#include "Basics/error.h"
+#include "Basics/Exceptions.h"
 
 #include "Geo/ShapeContainer.h"
 
@@ -471,6 +473,8 @@ class ShapeContainerTest2 : public ::testing::Test {
   ShapeContainer multiline;
   ShapeContainer poly;
   ShapeContainer multipoly;
+  ShapeContainer rect;
+  ShapeContainer line2;
 
   ShapeContainerTest2() {
     auto builder = VPackParser::fromJson(R"=(
@@ -496,9 +500,11 @@ class ShapeContainerTest2 : public ::testing::Test {
     geojson::parseRegion(builder->slice(), multiline);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
-        "coordinates": [ [ [6,50], [7.5,50], [7.5,51], [6,51], [6,50] ] ]
+        "coordinates": [ [ [6,50], [7.5,50], [7.5,52], [6,51], [6,50] ] ]
       })=");
     geojson::parseRegion(builder->slice(), poly);
+    // Note that internally, a multipolygon is just a special polygon with
+    // holes, which could have been initialized as polygon, too!
     builder = VPackParser::fromJson(R"=(
       { "type": "MultiPolygon",
         "coordinates": [ [ [ [6.501,50], [7.5,50], [7.5,51],
@@ -506,13 +512,39 @@ class ShapeContainerTest2 : public ::testing::Test {
                          [ [ [6,50], [6.5,50], [6.5,51], [6,51], [6,50] ] ] ]
       })=");
     geojson::parseRegion(builder->slice(), multipoly);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [6,50], [7.5,50], [7.5,51], [6,51], [6,50] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), rect);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "LineString",
+        "coordinates": [ [ 5.437, 50.332 ], [ 7.537, 50.376 ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), line2);
   }
 
 
 };
 
+#define NOT_IMPL_EXC(expr) \
+  try { \
+    expr; \
+    ASSERT_TRUE(false); \
+  } catch(arangodb::basics::Exception const& exc) { \
+    ASSERT_EQ(exc.code(), TRI_ERROR_NOT_IMPLEMENTED); \
+  } 
+
+// point      TTTTTTT
+// multipoint TT----T
+// line       FFTTTT-
+// multiline  FF-----
+// poly       TTTTTTT
+// multipoly  TTTTTTT
+// rect       TT--TTT
+
 TEST_F(ShapeContainerTest2, intersections_point) {
-  // All 6 with each other:
+  // All 7 with each other:
   // The ones which are commented out run into assertion failures right now:
   ASSERT_TRUE(point.intersects(&point));
   ASSERT_TRUE(point.intersects(&multipoint));
@@ -520,34 +552,42 @@ TEST_F(ShapeContainerTest2, intersections_point) {
   ASSERT_TRUE(point.intersects(&multiline));
   ASSERT_TRUE(point.intersects(&poly));
   ASSERT_TRUE(point.intersects(&multipoly));
+  ASSERT_TRUE(point.intersects(&rect));
 }
 
 TEST_F(ShapeContainerTest2, intersections_multipoint) {
   ASSERT_TRUE(multipoint.intersects(&point));
   ASSERT_TRUE(multipoint.intersects(&multipoint));
-  //ASSERT_TRUE(multipoint.intersects(&line));
-  //ASSERT_TRUE(multipoint.intersects(&multiline));
-  ASSERT_TRUE(multipoint.intersects(&poly));
-  //ASSERT_TRUE(multipoint.intersects(&multipoly));
+  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&line)));
+  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&multiline)));
+  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&poly)));
+  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&multipoly)));
+  ASSERT_TRUE(multipoint.intersects(&rect));
 }
 
 TEST_F(ShapeContainerTest2, intersections_line) {
-  ASSERT_TRUE(line.intersects(&point));
-  ASSERT_TRUE(line.intersects(&multipoint));
+  // Note that in the S2 geo library intersections of points and lines
+  // will always return false, since they are not well-defined numerically!
+  ASSERT_FALSE(line.intersects(&point));
+  ASSERT_FALSE(line.intersects(&multipoint));
   ASSERT_TRUE(line.intersects(&line));
   ASSERT_TRUE(line.intersects(&multiline));
   ASSERT_TRUE(line.intersects(&poly));
   ASSERT_TRUE(line.intersects(&multipoly));
+  NOT_IMPL_EXC(ASSERT_TRUE(line.intersects(&rect)));
 }
 
 
 TEST_F(ShapeContainerTest2, intersections_multiline) {
-  ASSERT_TRUE(multiline.intersects(&point));
-  ASSERT_TRUE(multiline.intersects(&multipoint));
-  //ASSERT_TRUE(multiline.intersects(&line));
-  //ASSERT_TRUE(multiline.intersects(&multiline));
-  ASSERT_TRUE(multiline.intersects(&poly));
-  //ASSERT_TRUE(multiline.intersects(&multipoly));
+  // Note that in the S2 geo library intersections of points and lines
+  // will always return false, since they are not well-defined numerically!
+  ASSERT_FALSE(multiline.intersects(&point));
+  ASSERT_FALSE(multiline.intersects(&multipoint));
+  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(&line)));
+  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(&multiline)));
+  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(&poly)));
+  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(&multipoly)));
+  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(&rect)));
 }
 
 TEST_F(ShapeContainerTest2, intersections_poly) {
@@ -557,6 +597,7 @@ TEST_F(ShapeContainerTest2, intersections_poly) {
   ASSERT_TRUE(poly.intersects(&multiline));
   ASSERT_TRUE(poly.intersects(&poly));
   ASSERT_TRUE(poly.intersects(&multipoly));
+  ASSERT_TRUE(poly.intersects(&rect));
 }
 
 TEST_F(ShapeContainerTest2, intersections_multipoly) {
@@ -566,6 +607,22 @@ TEST_F(ShapeContainerTest2, intersections_multipoly) {
   ASSERT_TRUE(multipoly.intersects(&multiline));
   ASSERT_TRUE(multipoly.intersects(&poly));
   ASSERT_TRUE(multipoly.intersects(&multipoly));
+  ASSERT_TRUE(multipoly.intersects(&rect));
+}
+
+TEST_F(ShapeContainerTest2, intersections_rect) {
+  ASSERT_TRUE(rect.intersects(&point));
+  ASSERT_TRUE(rect.intersects(&multipoint));
+  NOT_IMPL_EXC(ASSERT_TRUE(rect.intersects(&line)));
+  NOT_IMPL_EXC(ASSERT_TRUE(rect.intersects(&multiline)));
+  ASSERT_TRUE(rect.intersects(&poly));
+  ASSERT_TRUE(rect.intersects(&multipoly));
+  ASSERT_TRUE(rect.intersects(&rect));
+}
+
+TEST_F(ShapeContainerTest2, intersections_special) {
+  NOT_IMPL_EXC(ASSERT_TRUE(rect.intersects(&line2)));
+  NOT_IMPL_EXC(ASSERT_TRUE(line2.intersects(&rect)));
 }
 
 }}

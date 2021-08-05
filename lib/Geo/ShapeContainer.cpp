@@ -571,13 +571,16 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
       return ll->Intersects(other);
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
-      S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
-      for (int k = 0; k < other->num_vertices(); k++) {
-        if (rect->Contains(other->vertex(k))) {
-          return true;
-        }
-      }
-      return false;
+      // This is the intersection polyline/latlngrect, which does not
+      // seem to be implemented in S2. It could be implemented in the
+      // following way: the two intersect, if one of the two following
+      // is the case:
+      //  - the polyline is contained in the rectangle
+      //  - the polyline intersects one of the four boundary edges
+      //    of the rectangle
+      // But this is something for later. For now, we report not implemented:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+          "The case GEO_INTERSECTS(<latlntrect>, <polyline>) is not yet implemented.");
     }
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
@@ -585,7 +588,10 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
       return !cuts.empty();
     }
     case ShapeContainer::Type::S2_MULTIPOINT:
-    case ShapeContainer::Type::S2_MULTIPOLYLINE:
+    case ShapeContainer::Type::S2_MULTIPOLYLINE: {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+          "The case GEO_INTERSECTS(<multipoint or multipolyline>, <polyline>) is not yet implemented.");
+    }
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
   }
@@ -600,7 +606,16 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
     }
 
     case ShapeContainer::Type::S2_POLYLINE: {
-      return contains(other);
+      // This is the intersection polyline/latlngrect, which does not
+      // seem to be implemented in S2. It could be implemented in the
+      // following way: the two intersect, if one of the two following
+      // is the case:
+      //  - the polyline is contained in the rectangle
+      //  - the polyline intersects one of the four boundary edges
+      //    of the rectangle
+      // But this is something for later. For now, we report not implemented:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+          "The case GEO_INTERSECTS(<polyline>, <latlntrect>) is not yet implemented.");
     }
 
     case ShapeContainer::Type::S2_LATLNGRECT: {
@@ -623,9 +638,19 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
       return self->Intersects(rectBound);
     }
 
-    case ShapeContainer::Type::S2_MULTIPOINT:
+    case ShapeContainer::Type::S2_MULTIPOINT: {
+      S2MultiPointRegion* self = static_cast<S2MultiPointRegion*>(_data);
+      for (int i = 0; i < self->num_points(); ++i) {
+        if (other->Contains(self->point(i))) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
-      return contains(other);  // same
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+          "The case GEO_INTERSECTS(<multiline>, <latlngrect>) is not yet implemented.");
     }
 
     case ShapeContainer::Type::EMPTY:
@@ -641,9 +666,9 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
       return other->Contains(p);
     }
     case ShapeContainer::Type::S2_POLYLINE: {
-      LOG_TOPIC("2cb3c", ERR, Logger::FIXME)
-          << "intersection with polyline is not well defined";
-      return false;  // numerically not well defined
+      S2Polyline* line = static_cast<S2Polyline*>(_data);
+      auto cuts = other->IntersectWithPolyline(*line);
+      return !cuts.empty();
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
       S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
@@ -663,9 +688,12 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
       S2Polygon const* self = static_cast<S2Polygon const*>(_data);
       return self->Intersects(other);
     }
-    case ShapeContainer::Type::EMPTY:
     case ShapeContainer::Type::S2_MULTIPOINT:
-    case ShapeContainer::Type::S2_MULTIPOLYLINE:
+    case ShapeContainer::Type::S2_MULTIPOLYLINE: {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+          "The case GEO_INTERSECTS(<multipoint or multipolyline>, <polygon>) is not yet implemented.");
+    }
+    case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
   }
   return false;
