@@ -1,6 +1,9 @@
 v3.8.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed ES-867 and ES-922: removed eslint from NPM packages descriptions and
+  updated netmask package to non-vulnerable version.
+
 * Updated arangosync to 2.3.0.
 
 * Fix BTS-456, BTS-457: Make geo intersection between point and rectangle
