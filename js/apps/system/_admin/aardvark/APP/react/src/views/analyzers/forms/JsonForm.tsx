@@ -10,8 +10,7 @@ interface JsonFromProps {
 
 const JsonForm = ({ formState, setFormState }: JsonFromProps) =>
   <div style={{ overflow: 'auto' }} className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-    <Editor value={formState} onChange={setFormState} ace={ace} mode={'tree'} history={true}
-            allowedModes={['code', 'tree']} navigationBar={false}/>
+    <Editor value={formState} onChange={setFormState} ace={ace} mode={'code'} history={true}/>
   </div>;
 
 export default JsonForm;
