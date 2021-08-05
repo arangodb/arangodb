@@ -1433,10 +1433,10 @@ function_call:
 
 operator_unary:
     T_PLUS expression %prec UPLUS {
-      $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_PLUS, $2);
+      $$ = parser->ast()->optimizeUnaryOperatorArithmetic(parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_PLUS, $2));
     }
   | T_MINUS expression %prec UMINUS {
-      $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, $2);
+      $$ = parser->ast()->optimizeUnaryOperatorArithmetic(parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, $2));
     }
   | T_NOT expression %prec UNEGATION {
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, $2);

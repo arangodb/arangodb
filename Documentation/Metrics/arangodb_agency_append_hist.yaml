@@ -1,4 +1,4 @@
-name: arangodb_agency_append_hist_total
+name: arangodb_agency_append_hist
 introducedIn: "3.7.1"
 help: |
   Agency RAFT follower append time histogram.

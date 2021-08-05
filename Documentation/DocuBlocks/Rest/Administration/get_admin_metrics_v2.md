@@ -17,8 +17,8 @@ at any given time and exposes them for collection by Prometheus.
 
 The document contains different metrics and metrics groups dependent
 on the role of the queried instance. All exported metrics are
-published with the prefix `arangodb_` to distinguish them from other
-collected data.
+published with the prefix `arangodb_` or `rocksdb_` to distinguish them from
+other collected data.
 
 The API then needs to be added to the Prometheus configuration file
 for collection.

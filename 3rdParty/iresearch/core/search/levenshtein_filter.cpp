@@ -58,7 +58,9 @@ template<typename Invalid, typename Term, typename Levenshtein>
 inline auto executeLevenshtein(byte_type max_distance,
                                by_edit_distance_options::pdp_f provider,
                                bool with_transpositions,
-                               Invalid inv, Term t, Levenshtein lev) {
+                               const bytes_ref prefix, const bytes_ref target,
+                               Invalid&& inv, Term&& t, Levenshtein&& lev) {
+
   if (!provider) {
     provider = &default_pdp;
   }
@@ -74,7 +76,7 @@ inline auto executeLevenshtein(byte_type max_distance,
     return inv();
   }
 
-  return lev(d);
+  return lev(d, prefix, target);
 }
 
 template<typename StatesType>
@@ -186,17 +188,19 @@ template<typename Collector>
 bool collect_terms(
     const index_reader& index,
     const string_ref& field,
+    const bytes_ref& prefix,
     const bytes_ref& term,
     const parametric_description& d,
     Collector& collector) {
-  const auto acceptor = make_levenshtein_automaton(d, term);
+  const auto acceptor = make_levenshtein_automaton(d, prefix, term);
 
   if (!validate(acceptor)) {
     return false;
   }
 
   auto matcher = make_automaton_matcher(acceptor);
-  const uint32_t utf8_term_size = std::max(1U, uint32_t(utf8_utils::utf8_length(term)));
+  const uint32_t utf8_term_size = std::max(1U, uint32_t(utf8_utils::utf8_length(prefix)) +
+                                               uint32_t(utf8_utils::utf8_length(term)));
   const byte_type max_distance = d.max_distance() + 1;
 
   for (auto& segment : index) {
@@ -217,6 +221,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
     const order::prepared& order,
     boost_t boost,
     const string_ref& field,
+    const bytes_ref& prefix,
     const bytes_ref& term,
     size_t terms_limit,
     const parametric_description& d) {
@@ -228,13 +233,13 @@ filter::prepared::ptr prepare_levenshtein_filter(
     all_terms_collector<decltype(states)> term_collector(states, field_stats, term_stats);
     term_collector.stat_index(0); // aggregate stats from different terms
 
-    if (!collect_terms(index, field, term, d, term_collector)) {
+    if (!collect_terms(index, field, prefix, term, d, term_collector)) {
       return filter::prepared::empty();
     }
   } else {
     top_terms_collector term_collector(terms_limit, field_stats);
 
-    if (!collect_terms(index, field, term, d, term_collector)) {
+    if (!collect_terms(index, field, prefix, term, d, term_collector)) {
       return filter::prepared::empty();
     }
 
@@ -267,23 +272,27 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
 
 /*static*/ field_visitor by_edit_distance::visitor(const options_type::filter_options& opts) {
   return executeLevenshtein(
-    opts.max_distance, opts.provider, opts.with_transpositions,
+    opts.max_distance, opts.provider, opts.with_transpositions, opts.prefix, opts.term, 
     []() -> field_visitor {
       return [](const sub_reader&, const term_reader&, filter_visitor&){};
     },
     [&opts]() -> field_visitor {
       // must copy term as it may point to temporary string
-      return [term = opts.term](
+      return [target = opts.prefix + opts.term](
           const sub_reader& segment,
           const term_reader& field,
           filter_visitor& visitor){
-        return by_term::visit(segment, field, term, visitor);
+        return by_term::visit(segment, field, target, visitor);
       };
     },
-    [&opts](const parametric_description& d) -> field_visitor {
+    [](const parametric_description& d,
+            const bytes_ref prefix,
+            const bytes_ref term) -> field_visitor {
       struct automaton_context : util::noncopyable {
-        automaton_context(const parametric_description& d, const bytes_ref& term)
-          : acceptor(make_levenshtein_automaton(d, term)),
+        automaton_context(const parametric_description& d,
+                          const bytes_ref& prefix,
+                          const bytes_ref& term)
+          : acceptor(make_levenshtein_automaton(d, prefix, term)),
             matcher(make_automaton_matcher(acceptor)) {
         }
 
@@ -292,13 +301,14 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
       };
 
       // FIXME
-      auto ctx = memory::make_shared<automaton_context>(d, opts.term);
+      auto ctx = memory::make_shared<automaton_context>(d, prefix, term);
 
       if (!validate(ctx->acceptor)) {
         return [](const sub_reader&, const term_reader&, filter_visitor&){};
       }
 
-      const uint32_t utf8_term_size = std::max(1U, uint32_t(utf8_utils::utf8_length(opts.term)));
+      const uint32_t utf8_term_size = std::max(1U, uint32_t(utf8_utils::utf8_length(prefix) +
+                                                            utf8_utils::utf8_length(term)));
       const byte_type max_distance = d.max_distance() + 1;
 
       return [ctx, utf8_term_size, max_distance](
@@ -321,18 +331,30 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
     size_t scored_terms_limit,
     byte_type max_distance,
     options_type::pdp_f provider,
-    bool with_transpositions) {
+    bool with_transpositions,
+    const bytes_ref& prefix) {
+
   return executeLevenshtein(
-    max_distance, provider, with_transpositions,
+    max_distance, provider, with_transpositions, prefix, term,
     []() -> filter::prepared::ptr {
       return prepared::empty();
     },
-    [&index, &order, boost, &field, &term]() -> filter::prepared::ptr {
-      return by_term::prepare(index, order, boost, field, term);
+    [&index, &order, boost, &field, &prefix, &term]() -> filter::prepared::ptr {
+      if (!prefix.empty() && !term.empty()) {
+        bstring target;
+        target.reserve(prefix.size() + term.size());
+        target += prefix;
+        target += term;
+        return by_term::prepare(index, order, boost, field, target);
+      }
+
+      return by_term::prepare(index, order, boost, field, prefix.empty() ? term : prefix);
     },
-    [&field, &term, scored_terms_limit, &index, &order, boost](
-        const parametric_description& d) -> filter::prepared::ptr {
-      return prepare_levenshtein_filter(index, order, boost, field, term, scored_terms_limit, d);
+    [&field, scored_terms_limit, &index, &order, boost](
+        const parametric_description& d,
+        const bytes_ref prefix,
+        const bytes_ref term) -> filter::prepared::ptr {
+      return prepare_levenshtein_filter(index, order, boost, field, prefix, term, scored_terms_limit, d);
     }
   );
 }
