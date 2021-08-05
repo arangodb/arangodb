@@ -50,12 +50,6 @@ class GraphManager {
   std::shared_ptr<transaction::Context> ctx() const;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief find or create vertex collection by name
-  ////////////////////////////////////////////////////////////////////////////////
-  Result findOrCreateVertexCollectionByName(const std::string& name,
-                                            bool waitForSync, VPackSlice options);
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collection by name and type
   ////////////////////////////////////////////////////////////////////////////////
   Result createCollection(std::string const& name, TRI_col_type_e colType,
@@ -91,6 +85,9 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult createGraph(VPackSlice document, bool waitForSync) const;
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief find or create collections by EdgeDefinitions
+  ////////////////////////////////////////////////////////////////////////////////
   Result findOrCreateCollectionsByEdgeDefinition(Graph const& graph,
                                                  EdgeDefinition const& edgeDefinition,
                                                  bool waitForSync, VPackSlice options);

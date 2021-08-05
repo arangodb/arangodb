@@ -136,18 +136,6 @@ Result GraphManager::createCollection(std::string const& name, TRI_col_type_e co
   return res;
 }
 
-Result GraphManager::findOrCreateVertexCollectionByName(const std::string& name, bool waitForSync,
-                                                        VPackSlice options) {
-  std::shared_ptr<LogicalCollection> def;
-
-  def = getCollectionByName(ctx()->vocbase(), name);
-  if (def == nullptr) {
-    return createVertexCollection(name, waitForSync, options);
-  }
-
-  return Result(TRI_ERROR_NO_ERROR);
-}
-
 bool GraphManager::renameGraphCollection(std::string const& oldName,
                                          std::string const& newName) {
   // todo: return a result, by now just used in the graph modules
