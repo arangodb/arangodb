@@ -192,8 +192,6 @@ class ModificationExecutor {
       -> std::tuple<ExecutionState, Stats, size_t, AqlCall>;
 
  protected:
-  void doOutput(OutputAqlItemRow& output);
-
   struct IProduceOrSkipData {
     virtual ~IProduceOrSkipData() = default;
     virtual void doOutput() = 0;
@@ -209,6 +207,8 @@ class ModificationExecutor {
 
   ModificationExecutorInfos& _infos;
   std::shared_ptr<ModifierType> _modifier;
+  std::size_t _skipCount{};
+  Stats _stats{};
 };
 
 }  // namespace arangodb::aql

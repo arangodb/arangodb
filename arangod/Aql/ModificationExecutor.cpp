@@ -29,16 +29,9 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Logger/LogMacros.h"
 #include "StorageEngine/TransactionState.h"
-#include "VocBase/LogicalCollection.h"
 
-#include "Aql/InsertModifier.h"
-#include "Aql/RemoveModifier.h"
 #include "Aql/SimpleModifier.h"
-#include "Aql/UpdateReplaceModifier.h"
 #include "Aql/UpsertModifier.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -101,41 +94,6 @@ ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& f
     : _trx(infos._query.newTrxContext()),
       _infos(infos),
       _modifier(std::make_shared<ModifierType>(infos)) {}
-
-// Outputs accumulated results, and counts the statistics
-template <typename FetcherType, typename ModifierType>
-void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output) {
-  typename ModifierType::OutputIterator modifierOutputIterator(*_modifier);
-  // We only accumulated as many items as we can output, so this
-  // should be correct
-  for (auto const& modifierOutput : modifierOutputIterator) {
-    TRI_ASSERT(!output.isFull());
-    bool written = false;
-    switch (modifierOutput.getType()) {
-      case ModifierOutput::Type::ReturnIfRequired:
-        if (_infos._options.returnOld) {
-          output.cloneValueInto(_infos._outputOldRegisterId, modifierOutput.getInputRow(),
-                                modifierOutput.getOldValue());
-          written = true;
-        }
-        if (_infos._options.returnNew) {
-          output.cloneValueInto(_infos._outputNewRegisterId, modifierOutput.getInputRow(),
-                                modifierOutput.getNewValue());
-          written = true;
-        }
-        [[fallthrough]];
-      case ModifierOutput::Type::CopyRow:
-        if (!written) {
-          output.copyRow(modifierOutput.getInputRow());
-        }
-        output.advanceRow();
-        break;
-      case ModifierOutput::Type::SkipRow:
-        // nothing.
-        break;
-    }
-  }
-}
 
 template <typename FetcherType, typename ModifierType>
 [[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceOrSkip(
@@ -276,6 +234,16 @@ template <typename FetcherType, typename ModifierType>
   auto produceData = ProduceData(output, _infos, *_modifier);
   auto&& [state, stats, upstreamCall] = produceOrSkip(input, produceData);
 
+  if (state == ExecutionState::WAITING) {
+    return {state, ModificationStats{}, upstreamCall};
+  }
+
+  auto skipCount = std::size_t{0};
+  auto returnedStats = ModificationStats{};
+
+  std::swap(skipCount, _skipCount);
+  std::swap(returnedStats, _stats);
+
   return {state, stats, upstreamCall};
 }
 
@@ -286,27 +254,29 @@ template <typename FetcherType, typename ModifierType>
   struct SkipData final : public IProduceOrSkipData {
     AqlCall& _call;
     ModifierType& _modifier;
-    std::size_t _skipCount{};
 
     SkipData(AqlCall& call, ModifierType& modifier)
         : _call(call), _modifier(modifier) {}
     ~SkipData() final = default;
 
     void doOutput() final {
-      if (_call.needsFullCount()) {
-        // If we need to do full count the nr of writes we did
-        // in this batch is always correct.
-        // If we are in offset phase and need to produce data
-        // after the toSkip is limited to offset().
-        // otherwise we need to report everything we write
-        _skipCount += _modifier.nrOfWritesExecuted();
-      } else {
-        // If we do not need to report fullcount.
-        // we cannot report more than offset
-        // but also not more than the operations we
-        // have successfully executed
-        _skipCount += (std::min)(_call.getOffset(), _modifier.nrOfWritesExecuted());
-      }
+      auto const skipped = std::invoke([&] {
+        if (_call.needsFullCount()) {
+          // If we need to do full count the nr of writes we did
+          // in this batch is always correct.
+          // If we are in offset phase and need to produce data
+          // after the toSkip is limited to offset().
+          // otherwise we need to report everything we write
+          return _modifier.nrOfWritesExecuted();
+        } else {
+          // If we do not need to report fullcount.
+          // we cannot report more than offset
+          // but also not more than the operations we
+          // have successfully executed
+          return (std::min)(_call.getOffset(), _modifier.nrOfWritesExecuted());
+        }
+      });
+      _call.didSkip(skipped);
     }
     auto getRemainingRows() -> std::size_t final {
       if (_call.getLimit() == 0 && _call.hasHardLimit()) {
@@ -321,12 +291,26 @@ template <typename FetcherType, typename ModifierType>
     auto getSkipCount() -> std::size_t final { return _call.getSkipCount(); }
   };
 
+  TRI_ASSERT(call.getSkipCount() == 0);
+  // "move" the saved skip count into the call
+  call.didSkip(_skipCount);
+  _skipCount = 0;
+
   auto skipData = SkipData(call, *_modifier);
-  auto&& [state, stats, upstreamCall] = produceOrSkip(input, skipData);
+  auto&& [state, localStats, upstreamCall] = produceOrSkip(input, skipData);
 
-  call.didSkip(skipData._skipCount);
+  _stats += localStats;
 
-  return {state, stats, skipData._skipCount, upstreamCall};
+  if (state == ExecutionState::WAITING) {
+    // save the skip count until the next call
+    _skipCount = call.getSkipCount();
+    return {state, ModificationStats{}, 0, upstreamCall};
+  }
+
+  auto stats = ModificationStats{};
+  std::swap(stats, _stats);
+
+  return {state, stats, call.getSkipCount(), upstreamCall};
 }
 
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;
