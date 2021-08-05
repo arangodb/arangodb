@@ -4,6 +4,10 @@ devel
 * Fixed ES-867 and ES-922: removed eslint from NPM packages descriptions and
   updated netmask package to non-vulnerable version.
 
+* Web UI: Fixes a logical error which occured after re-visiting the logs view
+  which lead to not displaying the logs view and its entries correctly
+  (BTS-507).
+
 * Fixed a bug, where Coordinators handled plan changes for databases
   in heartbeat thread in wrong order. Databases could be listed, but
   not used.
