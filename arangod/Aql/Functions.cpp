@@ -9009,6 +9009,189 @@ AqlValue Functions::DecayLinear(arangodb::aql::ExpressionContext* expressionCont
   return decayFuncImpl(expressionContext, node, parameters, linearDecayFactory);
 }
 
+template <typename F>
+AqlValue DistanceImpl(arangodb::aql::ExpressionContext* expressionContext,
+                       AstNode const& node,
+                       VPackFunctionParameters const& parameters,
+                       F&& distanceFunc) {
+
+  auto calculateDistance = [distanceFunc = std::forward<F>(distanceFunc), expressionContext, &node]
+      (const VPackSlice lhs, const VPackSlice rhs) {
+    TRI_ASSERT(lhs.isArray());
+    TRI_ASSERT(rhs.isArray());
+    auto lhsLength = lhs.length();
+    auto rhsLength = rhs.length();
+
+    if (lhsLength != rhsLength) {
+      registerWarning(expressionContext,
+                      getFunctionName(node).c_str(),
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    return distanceFunc(lhs, rhs, lhsLength);
+  };
+
+  // extract arguments
+  AqlValue const& argLhs = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& argRhs = extractFunctionParameterValue(parameters, 1);
+
+  // check type of arguments
+  if (!argLhs.isArray() || !argRhs.isArray() || argLhs.length() == 0 || argRhs.length() == 0) {
+    registerInvalidArgumentWarning(expressionContext,
+                                   getFunctionName(node).c_str());
+    return AqlValue(AqlValueHintNull());
+  }
+
+  auto lhsFirstElem = argLhs.slice().at(0);
+  auto rhsFirstElem = argRhs.slice().at(0);
+
+  // one of the args is matrix
+  if (lhsFirstElem.isArray() || rhsFirstElem.isArray()) {
+    decltype (lhsFirstElem) matrix;
+    decltype (lhsFirstElem) array;
+
+    if (lhsFirstElem.isArray()) {
+      matrix = argLhs.slice();
+      array = argRhs.slice();
+    } else {
+      matrix = argRhs.slice();
+      array = argLhs.slice();
+    }
+
+    VPackBuilder builder;
+    {
+      VPackArrayBuilder arrayBuilder(&builder);
+      for (VPackSlice currRow : VPackArrayIterator(matrix)) {
+        if (!currRow.isArray()) {
+          registerWarning(expressionContext,
+                          getFunctionName(node).c_str(),
+                          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+          return AqlValue(AqlValueHintNull());
+        }
+
+        AqlValue dist = calculateDistance(currRow, array);
+        if (!dist.isNumber()) {
+          return AqlValue(AqlValueHintNull());
+        }
+
+        builder.add(dist.slice());
+      }
+    }
+    // return array with values
+    return AqlValue(std::move(*builder.steal()));
+
+  } else {
+    // calculate dist between 2 vectors and return number
+    return calculateDistance(argLhs.slice(), argRhs.slice());
+  }
+}
+
+AqlValue Functions::CosineSimilarity(
+    arangodb::aql::ExpressionContext* expressionContext,
+    AstNode const& node,
+    VPackFunctionParameters const& parameters) {
+
+  auto cosineSimilarityFunc = [expressionContext, &node]
+        (const VPackSlice lhs, const VPackSlice rhs, const VPackValueLength& length) {
+
+    double numerator{};
+    double lhsSum{};
+    double rhsSum{};
+
+    for (VPackValueLength i = 0; i < length; ++i) {
+      auto lhsSlice = lhs.at(i);
+      auto rhsSlice = rhs.at(i);
+      if (!lhsSlice.isNumber() || !rhsSlice.isNumber()) {
+        registerWarning(expressionContext,
+                        getFunctionName(node).c_str(),
+                        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return AqlValue(AqlValueHintNull());
+      }
+
+      double lhsVal = lhsSlice.getNumber<double>();
+      double rhsVal = rhsSlice.getNumber<double>();
+
+      numerator += lhsVal * rhsVal;
+      lhsSum += lhsVal * lhsVal;
+      rhsSum += rhsVal * rhsVal;
+    }
+
+    double denominator = std::sqrt(lhsSum) * std::sqrt(rhsSum);
+    if (denominator == 0.0) {
+      registerWarning(expressionContext,
+                      getFunctionName(node).c_str(),
+                      TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    return ::numberValue(numerator / denominator, true);
+  };
+
+  return DistanceImpl(expressionContext, node, parameters, cosineSimilarityFunc);
+}
+
+AqlValue Functions::L1Distance(
+    arangodb::aql::ExpressionContext* expressionContext,
+    AstNode const& node,
+    VPackFunctionParameters const& parameters) {
+
+  auto L1DistFunc = [expressionContext, &node]
+        (const VPackSlice lhs, const VPackSlice rhs, const VPackValueLength& length) {
+
+    double dist{};
+
+    for (VPackValueLength i = 0; i < length; ++i) {
+      auto lhsSlice = lhs.at(i);
+      auto rhsSlice = rhs.at(i);
+      if (!lhsSlice.isNumber() || !rhsSlice.isNumber()) {
+        registerWarning(expressionContext,
+                        getFunctionName(node).c_str(),
+                        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return AqlValue(AqlValueHintNull());
+      }
+
+      dist += std::abs(lhsSlice.getNumber<double>() -
+                       rhsSlice.getNumber<double>());
+    }
+
+    return ::numberValue(dist, true);
+  };
+
+  return DistanceImpl(expressionContext, node, parameters, L1DistFunc);
+}
+
+AqlValue Functions::L2Distance(
+    arangodb::aql::ExpressionContext* expressionContext,
+    AstNode const& node,
+    VPackFunctionParameters const& parameters) {
+
+  auto L2DistFunc = [expressionContext, &node]
+        (const VPackSlice lhs, const VPackSlice rhs, const VPackValueLength& length) {
+
+    double dist{};
+
+    for (VPackValueLength i = 0; i < length; ++i) {
+      auto lhsSlice = lhs.at(i);
+      auto rhsSlice = rhs.at(i);
+      if (!lhsSlice.isNumber() || !rhsSlice.isNumber()) {
+        registerWarning(expressionContext,
+                        getFunctionName(node).c_str(),
+                        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return AqlValue(AqlValueHintNull());
+      }
+
+      double diff = lhsSlice.getNumber<double>() - rhsSlice.getNumber<double>();
+
+      dist += std::pow(diff, 2);
+    }
+
+    return ::numberValue(std::sqrt(dist), true);
+  };
+
+  return DistanceImpl(expressionContext, node, parameters, L2DistFunc);
+}
+
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext, AstNode const&,
                                    VPackFunctionParameters const& params) {
   registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);

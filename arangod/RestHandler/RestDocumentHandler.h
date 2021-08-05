@@ -25,7 +25,6 @@
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "Utils/SingleCollectionTransaction.h"
 
 namespace arangodb {
 namespace transaction {
