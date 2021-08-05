@@ -1348,6 +1348,24 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     stack = _stackBeforeWaiting;
   }
 
+  if constexpr (executorCanReturnWaiting<Executor>) {
+    // If state is SKIP, PRODUCE or FASTFORWARD, we were WAITING.
+    // The call stack must be restored in all cases, but only SKIP needs to
+    // restore the clientCall.
+    switch (_execState) {
+      default:
+        break;
+      case ExecState::SKIP:
+        TRI_ASSERT(_clientRequest.requestLessDataThan(clientCall));
+        clientCall = _clientRequest;
+        [[fallthrough]];
+      case ExecState::PRODUCE:
+      case ExecState::FASTFORWARD:
+        TRI_ASSERT(_stackBeforeWaiting.requestLessDataThan(stack));
+        stack = _stackBeforeWaiting;
+    }
+  }
+
   auto returnToState = ExecState::CHECKCALL;
 
   LOG_QUERY("007ac", DEBUG) << "starting statemachine of executor " << printBlockInfo();
@@ -1407,6 +1425,12 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
               _executor.skipRowsRange(_lastRange, clientCall);
 
           if (executorState == ExecutionState::WAITING) {
+            // We need to persist the old call before we return.
+            // We might have some local accounting to this call.
+            _clientRequest = clientCall;
+            // We might also have some local accounting in this stack.
+            _stackBeforeWaiting = stack;
+            // We do not return anything in WAITING state, also NOT skipped.
             TRI_ASSERT(skippedLocal == 0);
             return {executorState, SkipResult{}, nullptr};
           } else if (executorState == ExecutionState::DONE) {
@@ -1501,7 +1525,12 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           ExecutionState executorState = ExecutionState::HASMORE;
           std::tie(executorState, stats, call) =
               _executor.produceRows(_lastRange, *_outputItemRow);
+
           if (executorState == ExecutionState::WAITING) {
+            // We need to persist the old stack before we return.
+            // We might have some local accounting in this stack.
+            _stackBeforeWaiting = stack;
+            // We do not return anything in WAITING state, also NOT skipped.
             return {executorState, SkipResult{}, nullptr};
           } else if (executorState == ExecutionState::DONE) {
             state = ExecutorState::DONE;
@@ -1593,6 +1622,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           std::tie(executorState, stats, skippedLocal, call) =
               _executor.skipRowsRange(_lastRange, dummy);
           if (executorState == ExecutionState::WAITING) {
+            // We need to persist the old stack before we return.
+            // We might have some local accounting in this stack.
+            _stackBeforeWaiting = stack;
+            // We do not return anything in WAITING state, also NOT skipped.
             TRI_ASSERT(skippedLocal == 0);
             return {executorState, SkipResult{}, nullptr};
           } else if (executorState == ExecutionState::DONE) {
