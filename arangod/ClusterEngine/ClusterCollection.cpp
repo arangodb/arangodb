@@ -186,21 +186,8 @@ ErrorCode ClusterCollection::close() {
   for (auto it : _indexes) {
     it->unload();
   }
+
   return TRI_ERROR_NO_ERROR;
-}
-
-void ClusterCollection::load() {
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto it : _indexes) {
-    it->load();
-  }
-}
-
-void ClusterCollection::unload() {
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto it : _indexes) {
-    it->unload();
-  }
 }
 
 RevisionId ClusterCollection::revision(transaction::Methods* trx) const {

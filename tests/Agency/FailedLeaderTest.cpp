@@ -573,7 +573,7 @@ TEST_F(FailedLeaderTest, if_collection_is_missing_job_should_just_finish) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -628,7 +628,7 @@ TEST_F(FailedLeaderTest, distributeshardslike_should_immediately_fail) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -684,7 +684,7 @@ TEST_F(FailedLeaderTest, if_leader_is_healthy_we_fail_the_job) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedLeader.start(aborts));
   Verify(Method(mockAgent, transact));
   Verify(Method(mockAgent, write)).Exactly(Once);
@@ -726,7 +726,7 @@ TEST_F(FailedLeaderTest, job_must_not_be_started_if_no_server_is_in_sync) {
   // nothing should happen
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedLeader.start(aborts));
 }
 
@@ -778,7 +778,7 @@ TEST_F(FailedLeaderTest, job_must_not_be_started_if_distributeshardslike_shard_i
     return trans_ret_t();
   });
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -801,7 +801,7 @@ TEST_F(FailedLeaderTest, abort_any_moveshard_job_blocking) {
   When(Method(moveShardMockAgent, waitFor)).Return();
   AgentInterface& moveShardAgent = moveShardMockAgent.get();
   auto moveShard =
-      MoveShard(baseStructure("arango"), &moveShardAgent, "2", "strunz", DATABASE,
+      MoveShard(baseStructure.getOrCreate("arango"), &moveShardAgent, "2", "strunz", DATABASE,
                 COLLECTION, SHARD, SHARD_LEADER, FREE_SERVER, true, true);
   moveShard.create();
 
@@ -855,7 +855,7 @@ TEST_F(FailedLeaderTest, abort_any_moveshard_job_blocking) {
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedLeader.start(aborts));
   Verify(Method(mockAgent, write));
 }
@@ -1031,7 +1031,7 @@ TEST_F(FailedLeaderTest, job_should_be_written_to_pending) {
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1101,7 +1101,7 @@ TEST_F(FailedLeaderTest, if_collection_is_missing_job_should_just_finish_2) {
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::PENDING, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
 }
 
@@ -1160,7 +1160,7 @@ TEST_F(FailedLeaderTest, if_new_leader_doesnt_catch_up_we_wait) {
 
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::PENDING, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
 }
 
@@ -1254,7 +1254,7 @@ TEST_F(FailedLeaderTest, if_timeout_job_should_be_aborted) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::PENDING, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1334,7 +1334,7 @@ TEST_F(FailedLeaderTest, when_everything_is_finished_there_should_be_cleanup) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::PENDING, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1362,7 +1362,7 @@ TEST_F(FailedLeaderTest, failedleader_must_not_take_follower_into_account_if_it_
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1389,7 +1389,7 @@ TEST_F(FailedLeaderTest, failedleader_must_not_take_follower_into_account_that_i
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1418,7 +1418,7 @@ TEST_F(FailedLeaderTest, failedleader_must_not_take_a_candidate_into_account_tha
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1448,7 +1448,7 @@ TEST_F(FailedLeaderTest, failedleader_must_not_take_a_candidate_and_follower_int
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1480,7 +1480,7 @@ TEST_F(FailedLeaderTest, failedleader_must_not_readd_servers_not_in_plan) {
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1514,7 +1514,7 @@ TEST_F(FailedLeaderTest, failedleader_must_not_add_a_follower_if_none_exists) {
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1564,7 +1564,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case) {
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1616,7 +1616,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_pick_common_candidat
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1669,7 +1669,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_pick_common_candidat
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1717,7 +1717,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_no_common_candidate_
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1765,7 +1765,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_no_common_candidate_
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1814,7 +1814,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case_no_candida
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1858,7 +1858,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_no_common_candidate_
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1902,7 +1902,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_no_common_candidate_
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1953,7 +1953,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case_one_has_no
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2004,7 +2004,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_pick_common_candidat
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2055,7 +2055,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_pick_common_candidat
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2102,7 +2102,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_no_common_candidate_
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2149,7 +2149,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_no_common_candidate_
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2203,7 +2203,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shards_like_resigned_leader_no_
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2254,7 +2254,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shards_like_resigned_leader_all
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2307,7 +2307,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shards_like_resigned_leader_lea
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2359,7 +2359,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shards_like_resigned_leader_fol
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 

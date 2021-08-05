@@ -92,7 +92,6 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
 
 LoggerFeature::~LoggerFeature() {
   Logger::shutdown();
-  Logger::shutdownLogThread();
 }
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

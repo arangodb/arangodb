@@ -123,8 +123,6 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                                   arangodb::ManagedDocumentResult& result,
                                   arangodb::OperationOptions& options,
                                   arangodb::ManagedDocumentResult& previous) override;
-  virtual void load() override {}
-  virtual void unload() override {}
   virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice,
                                             bool doSync) override;
 
