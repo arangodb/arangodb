@@ -77,6 +77,8 @@ class SynchronizeShard : public ActionBase {
 
   /// @brief Short, informative description of the replication client, passed to the server
   std::string _clientInfoString;
+
+  uint64_t _followingTermId;
 };
 
 }  // namespace maintenance

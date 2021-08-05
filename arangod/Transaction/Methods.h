@@ -81,6 +81,7 @@ struct Options;
 /// @brief forward declarations
 class ClusterFeature;
 class CollectionNameResolver;
+class FollowerInfo;
 class Index;
 class LocalDocumentId;
 class ManagedDocumentResult;
@@ -117,6 +118,11 @@ class Methods {
           std::vector<std::string> const& writeCollections,
           std::vector<std::string> const& exclusiveCollections,
           transaction::Options const& options);
+  
+  /// @brief create the transaction, and add a collection to it.
+  /// use on followers only!
+  Methods(std::shared_ptr<transaction::Context> transactionContext,
+          std::string const& collectionName, AccessMode::Type type); 
 
   /// @brief destroy the transaction
   virtual ~Methods();
@@ -374,7 +380,7 @@ class Methods {
   
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
-    
+  
 #ifndef USE_ENTERPRISE
   bool skipInaccessible() const {
     return false;
@@ -492,7 +498,9 @@ class Methods {
       LogicalCollection* collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options, VPackSlice value, TRI_voc_document_operation_e operation,
-      std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops);
+      std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops,
+      std::unordered_set<size_t> const& excludePositions,
+      FollowerInfo& followerInfo);
 
  private:
   /// @brief transaction hints
