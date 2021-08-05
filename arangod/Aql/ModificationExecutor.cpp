@@ -96,8 +96,9 @@ ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& f
       _modifier(std::make_shared<ModifierType>(infos)) {}
 
 template <typename FetcherType, typename ModifierType>
+template <typename ProduceOrSkipData>
 [[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceOrSkip(
-    typename FetcherType::DataRange& input, IProduceOrSkipData& produceOrSkipData)
+    typename FetcherType::DataRange& input, ProduceOrSkipData& produceOrSkipData)
     -> std::tuple<ExecutionState, Stats, AqlCall> {
   TRI_IF_FAILURE("ModificationBlock::getSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -122,8 +123,6 @@ template <typename FetcherType, typename ModifierType>
       std::is_same<typename FetcherType::DataRange, AqlItemBlockInputMatrix>;
 
   auto upstreamState = input.upstreamState();
-  // TODO We need to save both stats and skip count in member variables that
-  //      survive WAITING, and only return them on DONE.
   auto stats = ModificationStats{};
 
   while (input.hasDataRow() && produceOrSkipData.needMoreOutput()) {
@@ -134,7 +133,7 @@ template <typename FetcherType, typename ModifierType>
         return input;
       }
     });
-    auto const maxRows = produceOrSkipData.getRemainingRows();
+    auto const maxRows = produceOrSkipData.maxOutputRows();
     while (_modifier->nrOfOperations() < maxRows && range.hasDataRow()) {
       auto [state, row] = range.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
@@ -224,11 +223,8 @@ template <typename FetcherType, typename ModifierType>
         }
       }
     }
-    auto getRemainingRows() -> std::size_t final {
-      return _output.numRowsLeft();
-    }
+    auto maxOutputRows() -> std::size_t final { return _output.numRowsLeft(); }
     auto needMoreOutput() -> bool final { return !_output.isFull(); }
-    auto getSkipCount() -> std::size_t override { return 0; }
   };
 
   auto produceData = ProduceData(output, _infos, *_modifier);
@@ -278,7 +274,7 @@ template <typename FetcherType, typename ModifierType>
       });
       _call.didSkip(skipped);
     }
-    auto getRemainingRows() -> std::size_t final {
+    auto maxOutputRows() -> std::size_t final {
       if (_call.getLimit() == 0 && _call.hasHardLimit()) {
         // We need to produce all modification operations.
         // If we are bound by limits or not!
@@ -288,11 +284,10 @@ template <typename FetcherType, typename ModifierType>
       }
     }
     auto needMoreOutput() -> bool final { return _call.needSkipMore(); }
-    auto getSkipCount() -> std::size_t final { return _call.getSkipCount(); }
   };
 
   TRI_ASSERT(call.getSkipCount() == 0);
-  // "move" the saved skip count into the call
+  // "move" the previously saved skip count into the call
   call.didSkip(_skipCount);
   _skipCount = 0;
 

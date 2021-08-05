@@ -192,16 +192,20 @@ class ModificationExecutor {
       -> std::tuple<ExecutionState, Stats, size_t, AqlCall>;
 
  protected:
+  // Interface of the data structure that is passed by produceRows() and
+  // skipRowsRange() to produceOrSkip(), which does the actual work.
+  // The interface isn't technically necessary (as produceOrSkip is a template),
+  // but I kept it for the overview it provides.
   struct IProduceOrSkipData {
     virtual ~IProduceOrSkipData() = default;
     virtual void doOutput() = 0;
-    virtual auto getRemainingRows() -> std::size_t = 0;
+    virtual auto maxOutputRows() -> std::size_t = 0;
     virtual auto needMoreOutput() -> bool = 0;
-    virtual auto getSkipCount() -> std::size_t = 0; // TODO remove
   };
 
+  template <typename ProduceOrSkipData>
   std::tuple<ExecutionState, Stats, AqlCall> produceOrSkip(typename FetcherType::DataRange& input,
-                                                           IProduceOrSkipData& produceOrSkipData);
+                                                           ProduceOrSkipData& produceOrSkipData);
 
   transaction::Methods _trx;
 
