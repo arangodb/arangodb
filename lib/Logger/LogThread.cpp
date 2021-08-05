@@ -33,7 +33,6 @@ LogThread::LogThread(application_features::ApplicationServer& server, std::strin
     : Thread(server, name), _messages(64) {}
 
 LogThread::~LogThread() {
-  Logger::_threaded = false;
   Logger::_active = false;
 
   shutdown();

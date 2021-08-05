@@ -2456,7 +2456,7 @@ static void JS_MTime(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    std::string("not allowed to read files in this path: ") + filename);
   }
 
-  int64_t mtime;
+  int64_t mtime = 0;
   auto res = TRI_MTimeFile(filename.c_str(), &mtime);
 
   if (res != TRI_ERROR_NO_ERROR) {

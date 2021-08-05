@@ -306,6 +306,8 @@ void RestAqlHandler::setupClusterQuery() {
     // coordinators
     answerBuilder.add("queryId", VPackValue(q->id()));
   }
+  // send back our own reboot id
+  answerBuilder.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId().value()));
 
   QueryAnalyzerRevisions analyzersRevision;
   auto revisionRes = analyzersRevision.fromVelocyPack(querySlice);
@@ -402,6 +404,12 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
 
 // executes the handler
 RestStatus RestAqlHandler::execute() {
+  if (ServerState::instance()->isSingleServer()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_HTTP_NOT_IMPLEMENTED,
+                  "this endpoint is only available in clusters");
+    return RestStatus::DONE;
+  }
+
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   // extract the sub-request type

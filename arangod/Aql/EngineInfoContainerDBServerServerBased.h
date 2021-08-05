@@ -29,6 +29,7 @@
 #include "Aql/ShardLocking.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterTypes.h"
 #include "VocBase/AccessMode.h"
 
 #include <map>
@@ -210,9 +211,9 @@ class EngineInfoContainerDBServerServerBased {
 
   // Parse the response of a DBServer to a setup request
   Result parseResponse(VPackSlice response, MapRemoteToSnippet& queryIds,
-                       ServerID const& server, std::string const& serverDest,
+                       ServerID const& server,
                        std::vector<bool> const& didCreateEngine,
-                       QueryId& globalQueryId) const;
+                       QueryId& globalQueryId, RebootId& rebootId) const;
 
   void injectVertexCollections(GraphNode* node);
 

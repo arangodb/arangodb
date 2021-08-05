@@ -512,14 +512,6 @@ FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
   exprFilter.boost(filterCtx.boost);
 }
 
-FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
-                                   std::shared_ptr<aql::AstNode>&& node,
-                                   QueryContext const& ctx, FilterContext const& filterCtx) {
-  auto& exprFilter = filter.add<arangodb::iresearch::ByExpression>();
-  exprFilter.init(*ctx.plan, *ctx.ast, std::move(node));
-  exprFilter.boost(filterCtx.boost);
-}
-
 Result byTerm(irs::by_term* filter, std::string&& name,
               ScopedAqlValue const& value, QueryContext const& /*ctx*/,
               FilterContext const& filterCtx) {
@@ -892,44 +884,6 @@ Result byRange(irs::boolean_filter* filter,
 }
 
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
-                    FilterContext const& filterCtx,
-                    std::shared_ptr<aql::AstNode>&& node) {
-  if (!filter) {
-    return {};
-  }
-
-  // non-deterministic condition or self-referenced variable
-  if (!node->isDeterministic() || arangodb::iresearch::findReference(*node, *ctx.ref)) {
-    // not supported by IResearch, but could be handled by ArangoDB
-    appendExpression(*filter, std::move(node), ctx, filterCtx);
-    return {};
-  }
-
-  bool result;
-
-  if (node->isConstant()) {
-    result = node->isTrue();
-  } else {  // deterministic expression
-    ScopedAqlValue value(*node);
-
-    if (!value.execute(ctx)) {
-      // can't execute expression
-      return {TRI_ERROR_BAD_PARAMETER, "can not execute expression"};
-    }
-
-    result = value.getBoolean();
-  }
-
-  if (result) {
-    filter->add<irs::all>().boost(filterCtx.boost);
-  } else {
-    filter->add<irs::empty>();
-  }
-
-  return {};
-}
-
-Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                       FilterContext const& filterCtx, aql::AstNode const& node) {
   if (!filter) {
     return {};
@@ -965,6 +919,15 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
 
   return {};
 }
+
+Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
+                    FilterContext const& filterCtx,
+                    std::shared_ptr<aql::AstNode>&& node) {
+  // redirect to existing function for AstNode const& nodes to
+  // avoid coding the logic twice
+  return fromExpression(filter, ctx, filterCtx, *node);
+}
+
 
 // GEO_IN_RANGE(attribute, shape, lower, upper[, includeLower = true, includeUpper = true])
 Result fromFuncGeoInRange(

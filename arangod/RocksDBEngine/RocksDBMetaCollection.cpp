@@ -184,12 +184,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   // makes sure collection doesn't get unloaded
   CollectionGuard collGuard(&vocbase, _logicalCollection.id());
 
-  TransactionId trxId{0};
-  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
-    if (trxId.isSet()) {
-      _meta.removeBlocker(trxId);
-    }
-  });
+  RocksDBBlockerGuard blocker(&_logicalCollection);
 
   uint64_t snapNumberOfDocuments = 0;
   {
@@ -202,12 +197,8 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
       THROW_ARANGO_EXCEPTION(res);
     }
  
-    // generate a unique transaction id for a blocker
-    trxId = TransactionId(transaction::Context::makeTransactionId());
-
     // place a blocker. will be removed by blockerGuard automatically
-    rocksdb::SequenceNumber seqNo = engine.db()->GetLatestSequenceNumber();
-    _meta.placeBlocker(trxId, seqNo);
+    blocker.placeBlocker();
 
     snapshot = engine.db()->GetSnapshot();
     snapNumberOfDocuments = _meta.numberDocuments();
@@ -1378,7 +1369,7 @@ std::uint64_t RocksDBMetaCollection::RevisionTreeAccessor::compressedSize() cons
     return _compressed.size();
   }
   std::string output;
-  _tree->serializeBinary(output, true);
+  _tree->serializeBinary(output, arangodb::containers::MerkleTreeBase::BinaryFormat::Optimal);
   return output.size();
 }
 
@@ -1441,7 +1432,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
   double start = TRI_microtime();
   
   _compressed.clear();
-  _tree->serializeBinary(_compressed, true);
+  _tree->serializeBinary(_compressed, arangodb::containers::MerkleTreeBase::BinaryFormat::Optimal);
 
   TRI_ASSERT(!_compressed.empty());
  
@@ -1470,7 +1461,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
 void RocksDBMetaCollection::RevisionTreeAccessor::serializeBinary(std::string& output) const {
   if (_tree != nullptr) {
     // compress tree into output
-    _tree->serializeBinary(output, true);
+    _tree->serializeBinary(output, arangodb::containers::MerkleTreeBase::BinaryFormat::Optimal);
   } else {
     // append our already compressed state
     output.append(_compressed);

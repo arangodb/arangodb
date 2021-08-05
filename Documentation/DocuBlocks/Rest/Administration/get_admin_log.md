@@ -261,6 +261,9 @@ One of the possible log levels.
 @RESTBODYPARAM{backup,string,optional,string}
 One of the possible log levels.
 
+@RESTBODYPARAM{bench,string,optional,string}
+One of the possible log levels.
+
 @RESTBODYPARAM{cache,string,optional,string}
 One of the possible log levels.
 

@@ -58,6 +58,16 @@ function ensureServers(options, numServers) {
   return options;
 }
 
+/// ensure that we have enough coordinators in cluster tests
+function ensureCoordinators(options, numServers) {
+  if (options.cluster && options.coordinators < numServers) {
+    let localOptions = _.clone(options);
+    localOptions.coordinators = numServers;
+    return localOptions;
+  }
+  return options;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_client
 // //////////////////////////////////////////////////////////////////////////////
@@ -67,7 +77,8 @@ function shellClient (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  let opts = ensureServers(options, 3);
+  var opts = ensureServers(options, 3);
+  opts = ensureCoordinators(opts, 2);
   let rc = tu.performTests(opts, testCases, 'shell_client', tu.runInLocalArangosh);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
