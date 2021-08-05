@@ -213,8 +213,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
             << "increment commit index: " << self->_commitIndex;
 
         static_assert(std::is_nothrow_move_assignable_v<WaitForQueueResolve>);
-        static_assert(
-            std::is_nothrow_assignable_v<std::optional<WaitForQueueResolve>, std::add_rvalue_reference_t<WaitForQueueResolve>>);
+        //static_assert(
+        //    std::is_nothrow_assignable_v<std::optional<WaitForQueueResolve>, std::add_rvalue_reference_t<WaitForQueueResolve>>);
         *toBeResolvedPtr =
             WaitForQueueResolve{self->_waitForQueue.getLockedGuard(), self->_commitIndex};
         return DeferredAction([toBeResolved = std::move(toBeResolvedPtr)]() noexcept {

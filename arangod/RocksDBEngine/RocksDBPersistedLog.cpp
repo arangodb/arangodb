@@ -114,7 +114,7 @@ auto RocksDBPersistedLog::drop() -> Result {
 
 auto RocksDBPersistedLog::removeFront(replication2::LogIndex stop) -> Result {
   auto last = RocksDBKey();
-  last.constructLogEntry(_objectId, LogIndex{stop.value});
+  last.constructLogEntry(_objectId, stop);
 
   rocksdb::WriteOptions opts;
   auto s = _persistor->_db->DeleteRange(opts, _persistor->_cf,
@@ -124,7 +124,7 @@ auto RocksDBPersistedLog::removeFront(replication2::LogIndex stop) -> Result {
 
 auto RocksDBPersistedLog::removeBack(replication2::LogIndex start) -> Result {
   auto first = RocksDBKey();
-  first.constructLogEntry(_objectId, LogIndex{start.value});
+  first.constructLogEntry(_objectId, start);
 
   rocksdb::WriteOptions opts;
   auto s = _persistor->_db->DeleteRange(opts, _persistor->_cf, first.string(),
