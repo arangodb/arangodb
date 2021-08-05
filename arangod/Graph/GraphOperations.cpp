@@ -349,7 +349,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   if (def == nullptr) {
     if (createCollection) {
       // ensure that all collections are available
-      res = gmngr.ensureCollections(&_graph, waitForSync);
+      res = gmngr.ensureAllCollections(&_graph, waitForSync);
 
       if (res.fail()) {
         return OperationResult{std::move(res), options};
@@ -362,7 +362,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
     }
   } else {
     // Hint: Now needed because of the initial property
-    res = gmngr.ensureCollections(&_graph, waitForSync);
+    res = gmngr.ensureAllCollections(&_graph, waitForSync);
     if (res.fail()) {
       return OperationResult{std::move(res), options};
     }
@@ -525,7 +525,7 @@ OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinitionSlic
     _graph.adjustEdgeDefinitionTypes();
   }
 
-  res = gmngr.ensureCollections(&_graph, waitForSync);
+  res = gmngr.ensureAllCollections(&_graph, waitForSync);
 
   if (res.fail()) {
     return OperationResult{std::move(res), options};

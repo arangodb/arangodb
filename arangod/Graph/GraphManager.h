@@ -88,7 +88,7 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collections by EdgeDefinitions
   ////////////////////////////////////////////////////////////////////////////////
-  Result findOrCreateCollectionsByEdgeDefinition(Graph const& graph,
+  Result findOrCreateCollectionsByEdgeDefinition(Graph& graph,
                                                  EdgeDefinition const& edgeDefinition,
                                                  bool waitForSync, VPackSlice options);
 
@@ -133,7 +133,7 @@ class GraphManager {
    *
    * @return Either OK or an error.
    */
-  Result ensureCollections(Graph* graph, bool waitForSync) const;
+  Result ensureAllCollections(Graph* graph, bool waitForSync) const;
 
   /// @brief check if only SatelliteCollections are used
   bool onlySatellitesUsed(Graph const* graph) const;
@@ -172,6 +172,13 @@ class GraphManager {
   Result ensureSatelliteCollectionSharding(Graph const* graph, bool waitForSync,
                                            std::unordered_set<std::string>& documentCollections) const;
 #endif
+
+  Result ensureCollections(
+      Graph& graph, std::unordered_set<std::string>& documentCollectionsToCreate,
+      std::unordered_set<std::string> const& edgeCollectionsToCreate,
+      std::unordered_set<std::shared_ptr<LogicalCollection>> const& existentDocumentCollections,
+      std::unordered_set<std::shared_ptr<LogicalCollection>> const& existentEdgeCollections,
+      std::unordered_set<std::string> const& satellites, bool waitForSync) const;
 
   /**
    * @brief Create a new in memory graph object from the given input.
