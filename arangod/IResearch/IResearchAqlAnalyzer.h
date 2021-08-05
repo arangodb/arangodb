@@ -84,7 +84,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
     return "aql";
   }
 
-#ifdef TEST_F
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   bool isPreCalculated() const {
     return _preCalculated;
   }
@@ -127,7 +127,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   aql::ExecutionState _executionState{aql::ExecutionState::DONE};
 
   bool _preCalculated{false};
-  std::string _optimizedField;
+  aql::CalculationNode* _nodeToOptimize{nullptr};
 
   attributes _attrs;
   size_t _resultRowIdx{ 0 };

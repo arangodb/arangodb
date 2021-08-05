@@ -515,12 +515,12 @@ ExecutionNode* tryOptimize(ExecutionNode* node) {
     return nullptr;
   }
 
-  auto deps = node->getDependencies();
-  if(deps.size() == 1 && deps[0]->getType() == ExecutionNode::NodeType::CALCULATION) {
+  auto& deps = node->getDependencies();
+  if (deps.size() == 1 && deps[0]->getType() == ExecutionNode::NodeType::CALCULATION) {
     auto calcNode = deps[0];
 
-    auto deps2 = calcNode->getDependencies();
-    if(deps2.size() == 1 && deps2[0]->getType() == ExecutionNode::NodeType::SINGLETON) {
+    auto& deps2 = calcNode->getDependencies();
+    if (deps2.size() == 1 && deps2[0]->getType() == ExecutionNode::NodeType::SINGLETON) {
       return calcNode;
     }
   }
@@ -529,14 +529,15 @@ ExecutionNode* tryOptimize(ExecutionNode* node) {
 }
 
 bool AqlAnalyzer::optimize(irs::string_ref const& field) {
-
   // find here suitable situation
-  ExecutionNode* execNode = tryOptimize(_plan->root());
-  if(execNode != nullptr) {
-    CalculationNode* calcNode = dynamic_cast<CalculationNode*>(execNode);
+  if (!_nodeToOptimize) {
+    ExecutionNode* execNode = tryOptimize(_plan->root());
+    _nodeToOptimize = dynamic_cast<CalculationNode*>(execNode);
+  }
 
+  if (_nodeToOptimize != nullptr) {
     //get expression
-    auto e = calcNode->expression();
+    auto e = _nodeToOptimize->expression();
 
     auto& trx = _query->trxForOptimization();
 
@@ -560,7 +561,7 @@ bool AqlAnalyzer::optimize(irs::string_ref const& field) {
     _resultRowIdx = 0;
     _nextIncVal = 1;  // first increment always 1 to move from -1 to 0
 
-    if(calculatedValue.isNull(true) && !_options.keepNull) {
+    if (calculatedValue.isNull(true) && !_options.keepNull) {
       // result is null and we should't store it
       _queryResults = nullptr;
     } else {
@@ -724,8 +725,7 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
       _plan = optimizer.stealBest();
 
       // try to optimize
-      if(optimize(field)) {
-        _optimizedField.assign(field.c_str(), field.size());
+      if (optimize(field)) {
         return true;
       }
 
@@ -737,12 +737,9 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
       }
       _engine.reset();
 
-      if(_optimizedField != field) {
-        // try to optimize
-        if(optimize(field)) {
-          _optimizedField.assign(field.c_str(), field.size());
-          return true;
-        }
+      // try to optimize
+      if (optimize(field)) {
+        return true;
       }
     }
     _queryResults = nullptr;
