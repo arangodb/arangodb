@@ -165,7 +165,7 @@ class GraphOperations {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult editEdgeDefinition(VPackSlice edgeDefinitionSlice, bool waitForSync,
+  OperationResult editEdgeDefinition(VPackSlice edgeDefinitionSlice, VPackSlice options, bool waitForSync,
                                      std::string const& edgeDefinitionName);
 
   ////////////////////////////////////////////////////////////////////////////////

@@ -688,7 +688,7 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph, EdgeDefinitio
   if (action == EdgeDefinitionAction::CREATE) {
     result = gops.addEdgeDefinition(body, editOptions, waitForSync);
   } else if (action == EdgeDefinitionAction::EDIT) {
-    result = gops.editEdgeDefinition(body, waitForSync, edgeDefinitionName);
+    result = gops.editEdgeDefinition(body, editOptions, waitForSync, edgeDefinitionName);
   } else if (action == EdgeDefinitionAction::REMOVE) {
     // TODO Does this get waitForSync? Not according to the documentation.
     // if not, remove the parameter from eraseEdgeDefinition. What about

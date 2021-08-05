@@ -344,7 +344,7 @@ static void JS_EditEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& ar
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("_editEdgeDefinitions(edgeDefinition)");
+    TRI_V8_THROW_EXCEPTION_USAGE("_editEdgeDefinitions(<edgeDefinition>, [<options>])");
   }
   if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
@@ -357,6 +357,17 @@ static void JS_EditEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& ar
   VPackBuilder edgeDefinition;
   TRI_V8ToVPack(isolate, edgeDefinition, args[1], false);
 
+  VPackBuilder options;
+  if (args.Length() == 3) {
+    // We have options
+    TRI_V8ToVPack(isolate, options, args[2], false);
+  } else {
+    // Empty Options.
+    options.openObject();
+    options.close();
+  }
+
+
   auto& vocbase = GetContextVocBase(isolate);
   GraphManager gmngr{vocbase};
   auto graph = gmngr.lookupGraphByName(graphName);
@@ -368,7 +379,7 @@ static void JS_EditEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& ar
   auto ctx = transaction::V8Context::Create(vocbase, true);
   GraphOperations gops{*graph.get(), vocbase, ctx};
   OperationResult r =
-      gops.editEdgeDefinition(edgeDefinition.slice(), false,
+      gops.editEdgeDefinition(edgeDefinition.slice(), options.slice(), false,
                               edgeDefinition.slice().get("collection").copyString());
 
   if (r.fail()) {

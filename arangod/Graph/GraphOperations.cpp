@@ -223,8 +223,10 @@ Result GraphOperations::checkVertexCollectionAvailability(std::string const& ver
 }
 
 OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSlice,
+                                                    VPackSlice definitionOptions,
                                                     bool waitForSync,
                                                     std::string const& edgeDefinitionName) {
+  TRI_ASSERT(definitionOptions.isObject());
   OperationOptions options(ExecContext::current());
   auto maybeEdgeDef = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
   if (!maybeEdgeDef) {
@@ -244,6 +246,16 @@ OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSli
         permRes,
         options,
     };
+  }
+
+  auto satData = definitionOptions.get(StaticStrings::GraphSatellites);
+  if (satData.isArray()) {
+    auto res = _graph.addSatellites(satData);
+    if (res.fail()) {
+      // Handles invalid Slice Content
+      return OperationResult{std::move(res), options};
+    }
+    _graph.adjustEdgeDefinitionTypes();
   }
 
   GraphManager gmngr{_vocbase};
