@@ -1905,7 +1905,7 @@ function ahuacatlGeneratedSuite() {
       assertEqual(10, res.toArray().length);
     }
   };
-};
+}
 
 jsunity.run(ahuacatlModifySuite);
 jsunity.run(ahuacatlModifySkipSuite);

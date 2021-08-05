@@ -194,6 +194,19 @@ class ModificationExecutor {
  protected:
   void doOutput(OutputAqlItemRow& output);
 
+  struct IProduceOrSkipData {
+    virtual ~IProduceOrSkipData() = default;
+    virtual void doOutput() = 0;
+    virtual auto getRemainingRows() -> std::size_t = 0;
+    virtual auto needMoreOutput() -> bool = 0;
+    virtual auto getSkipCount() -> std::size_t = 0;
+  };
+
+  // template <typename DoOutput, typename GetRemainingRows, typename NeedMoreOutput>
+  std::tuple<ExecutionState, Stats, size_t, AqlCall> produceOrSkip(
+      typename FetcherType::DataRange& input,
+      IProduceOrSkipData& produceOrSkipData);
+
   transaction::Methods _trx;
 
   ModificationExecutorInfos& _infos;
