@@ -75,7 +75,7 @@ class LogContext {
 
   /// @brief iterates through the local LogContext's key/value pairs and calls
   /// the callback function for each of them.
-  void each(std::function<void(std::string const&, std::string const&)>);
+  void each(std::function<void(std::string const&, std::string const&)> const&) const;
   
   /// @brief returns the local LogContext
   static LogContext& current();
@@ -96,15 +96,10 @@ class LogContext {
 };
 
 template <typename Func>
-auto withLogContext(Func func) {
-  return [func = std::move(func), ctx = LogContext::current()](auto&&... args) mutable {
-    LogContext::ScopedContext ctxGuard(std::move(ctx));
-    using result_t = std::invoke_result_t<Func, decltype(args)...>;
-    if constexpr (std::is_same_v<result_t, void>) {
-      func(std::forward<decltype(args)>(args)...);
-    } else {
-      return func(std::forward<decltype(args)>(args)...);
-    }
+auto withLogContext(Func&& func) {
+  return [func = std::forward<Func>(func), ctx = LogContext::current()](auto&&... args) mutable {
+    LogContext::ScopedContext ctxGuard(ctx);   
+    return std::forward<Func>(func)(std::forward<decltype(args)>(args)...);
   };
 }
 

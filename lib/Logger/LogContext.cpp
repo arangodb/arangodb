@@ -109,7 +109,7 @@ void LogContext::ensureUniqueOwner() {
   }
 }
 
-void LogContext::each(std::function<void(std::string const&, std::string const&)> cb) {
+void LogContext::each(std::function<void(std::string const&, std::string const&)> const& cb) const {
   for (auto& v : _impl->values) {
     cb(v.first, v.second);
   }
