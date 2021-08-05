@@ -129,6 +129,14 @@ template <typename ProduceOrSkipData>
   auto upstreamState = input.upstreamState();
   auto stats = ModificationStats{};
 
+  // TODO Change the following logic as follows.
+  // First, read input and fill the modifier as much as possible. Only if either
+  // the output is satisfied (offset/output block aka maxOutputRows()), or the
+  // input is completely consumed (i.e. upstream DONE, not just the current
+  // range empty).
+  // Only after that, call transact(), i.e. execute the
+  // `if (_modifier->nrOfOperations() > 0) {` - block.
+
   while (hasInputOrPreviousResult() && produceOrSkipData.needMoreOutput()) {
     auto& range = std::invoke([&]() -> AqlItemBlockInputRange& {
       if constexpr (inputIsMatrix::value) {
@@ -146,14 +154,6 @@ template <typename ProduceOrSkipData>
     }
 
     upstreamState = range.upstreamState();
-
-    if constexpr (inputIsMatrix::value) {
-      if (upstreamState == ExecutorState::DONE) {
-        // We are done with this input.
-        // We need to forward it to the last ShadowRow.
-        input.skipAllRemainingDataRows();
-      }
-    }
 
     if (_modifier->nrOfOperations() > 0) {
       ExecutionState modifierState = _modifier->transact(_trx);
@@ -173,6 +173,14 @@ template <typename ProduceOrSkipData>
 
       produceOrSkipData.doOutput();
       _modifier->reset();
+    }
+  }
+
+  if constexpr (inputIsMatrix::value) {
+    if (upstreamState == ExecutorState::DONE) {
+      // We are done with this input.
+      // We need to forward it to the last ShadowRow.
+      input.skipAllRemainingDataRows();
     }
   }
 
