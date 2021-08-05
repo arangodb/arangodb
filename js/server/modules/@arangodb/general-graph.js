@@ -50,12 +50,12 @@ CommonGraph.prototype._deleteEdgeDefinition = function (edgeDefinition, dropColl
   this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
-CommonGraph.prototype._extendEdgeDefinitions = function (edgeDefinitions, options) {
+CommonGraph.prototype._extendEdgeDefinitions = function (edgeDefinitions, options = {}) {
   let result = ArangoGraph._extendEdgeDefinitions(this.__name, edgeDefinitions, options);
   this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };
 
-CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinitions, options) {
+CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinitions, options = {}) {
   let result = ArangoGraph._editEdgeDefinitions(this.__name, edgeDefinitions, options);
   this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
 };

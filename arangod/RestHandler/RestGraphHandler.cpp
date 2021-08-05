@@ -680,14 +680,18 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph, EdgeDefinitio
   GraphOperations gops{graph, _vocbase, ctx};
   OperationOptions options(_context);
   OperationResult result(Result(), options);
-  VPackSlice editOptions = body.get(StaticStrings::GraphOptions);
-  if (!editOptions.isObject()) {
-    editOptions = VPackSlice::emptyObjectSlice();
-  }
 
   if (action == EdgeDefinitionAction::CREATE) {
+    VPackSlice editOptions = body.get(StaticStrings::GraphOptions);
+    if (!editOptions.isObject()) {
+      editOptions = VPackSlice::emptyObjectSlice();
+    }
     result = gops.addEdgeDefinition(body, editOptions, waitForSync);
   } else if (action == EdgeDefinitionAction::EDIT) {
+    VPackSlice editOptions = body.get(StaticStrings::GraphOptions);
+    if (!editOptions.isObject()) {
+      editOptions = VPackSlice::emptyObjectSlice();
+    }
     result = gops.editEdgeDefinition(body, editOptions, waitForSync, edgeDefinitionName);
   } else if (action == EdgeDefinitionAction::REMOVE) {
     // TODO Does this get waitForSync? Not according to the documentation.

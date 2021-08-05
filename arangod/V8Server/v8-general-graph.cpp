@@ -275,7 +275,10 @@ static void JS_AddEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& arg
   if (args.Length() == 3) {
     // We have options
     TRI_V8ToVPack(isolate, options, args[2], false);
-  } else {
+  }
+  if (!options.slice().isObject()) {
+    options.clear();
+    // Fake empty options, silently ignore errors for now.
     // Empty Options.
     options.openObject();
     options.close();
@@ -334,12 +337,14 @@ static void JS_EditEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& ar
   if (args.Length() == 3) {
     // We have options
     TRI_V8ToVPack(isolate, options, args[2], false);
-  } else {
+  }
+  if (!options.slice().isObject()) {
+    options.clear();
+    // Fake empty options, silently ignore errors for now.
     // Empty Options.
     options.openObject();
     options.close();
   }
-
 
   auto& vocbase = GetContextVocBase(isolate);
   GraphManager gmngr{vocbase};

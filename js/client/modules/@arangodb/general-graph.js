@@ -71,7 +71,7 @@ CommonGraph.prototype.__updateDefinitions = function (edgeDefs, orphans) {
 };
 
 CommonGraph.prototype._extendEdgeDefinitions = function (edgeDefinition, options) {
-  const data = edgeDefinition || {};
+  const data = _.clone(edgeDefinition) || {};
   data.options = options || {};
   const uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge";
   const requestResult = arangosh.checkRequestResult(db._connection.POST(uri, data));
@@ -83,7 +83,7 @@ CommonGraph.prototype._extendEdgeDefinitions = function (edgeDefinition, options
 };
 
 CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinition, options) {
-  const data = edgeDefinition || {};
+  const data = _.clone(edgeDefinition) || {};
   data.options = options || {};
   const uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge/" + edgeDefinition.collection;
   const requestResult = arangosh.checkRequestResult(db._connection.PUT(uri, data));
