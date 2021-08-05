@@ -11,7 +11,7 @@ fi
 installDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 if [[ ! -e $installDir/../js/node/package.json || ! -e $installDir/../js/node/package-lock.json ]]; then
-  ferr "No $installDir/../js/node/package.json or $installDir/../js/node/package-lock.json present!"
+  ferr "No $installDir/../js/node/package.json or $installDir/../js/node/package-lock.json is present!"
 fi
 
 if [[ $(type npm >/dev/null 2>&1) ]]; then
@@ -23,7 +23,7 @@ fi
 test -d $installDir/../tmp/node && rm -rf $installDir/../tmp/node ; mkdir -p $installDir/../tmp/node
 pushd $installDir/../tmp/node
 cp $installDir/../js/node/package{,-lock}.json .
-npm un --save $package && $(for i in ( package.json package-lock.json ); do cp ./$i $installDir/../js/node/$i-no-$package; done)
+npm un --save $package && $(for i in package{,-lock}.json; do cp $i $installDir/../js/node/$i-no-$package; done)
 popd
 
 rm -rf $installDir/../tmp/node
