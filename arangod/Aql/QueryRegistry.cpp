@@ -37,6 +37,8 @@
 #include "Transaction/Methods.h"
 #include "Transaction/Status.h"
 
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -47,6 +49,8 @@ QueryRegistry::~QueryRegistry() {
 
 /// @brief insert
 void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard) {
+  TRI_ASSERT(!ServerState::instance()->isSingleServer());
+
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->state() != QueryExecutionState::ValueType::INITIALIZATION);
   LOG_TOPIC("77778", DEBUG, arangodb::Logger::AQL)
@@ -96,6 +100,15 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl,
 
     auto result = _queries[vocbase.name()].try_emplace(qId, std::move(p));
     if (!result.second) {
+      if (result.first->second->_isTombstone) {
+        // found a tombstone entry for the query id!
+        // that means a concurrent thread has overtaken us and already aborted the query!
+        LOG_TOPIC("580c1", DEBUG, arangodb::Logger::AQL) 
+          << "unable to insert query " << qId << " into query registry because of existing tombstone";
+
+        THROW_ARANGO_EXCEPTION_MESSAGE(result.first->second->_errorCode,
+            "query was already aborted before");
+      }
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "query with given vocbase and id already there");
     }
@@ -208,17 +221,39 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
     if (m == _queries.end()) {
       // database not found. this can happen as a consequence of a race between garbage collection
       // and query shutdown
-      return nullptr;
+      if (errorCode == TRI_ERROR_NO_ERROR || errorCode == TRI_ERROR_SHUTTING_DOWN) {
+        return nullptr;
+      }
+
+      // we are about to insert a tombstone now.
+      // first, insert a dummy entry for this database
+      m = _queries.emplace(vocbase, std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>()).first;
     }
     
     auto q = m->second.find(id);
 
     if (q == m->second.end()) {
+      if (errorCode != TRI_ERROR_NO_ERROR && errorCode != TRI_ERROR_SHUTTING_DOWN) {
+        // insert a tombstone with a higher-than-query timeout
+        LOG_TOPIC("779f5", DEBUG, arangodb::Logger::AQL) 
+          << "inserting tombstone for query " << id << " into query registry";
+        auto inserted = m->second.emplace(id, std::make_unique<QueryInfo>(errorCode, std::max(_defaultTTL, 600.0) + 300.0)).second;
+        TRI_ASSERT(inserted);
+        return nullptr;
+      }
+
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER, "query with given id not found in query registry");
     }
 
+    if (q->second->_isTombstone) {
+      m->second.erase(q);
+      return nullptr;
+    }
+      
     if (q->second->_numOpen > 0) {
+      TRI_ASSERT(!q->second->_isTombstone);
+
       // query in use by another thread/request
       if (errorCode == TRI_ERROR_QUERY_KILLED) {
         q->second->_query->kill();
@@ -327,6 +362,8 @@ void QueryRegistry::destroy(std::string const& vocbase) {
     for (auto& it : (*m).second) {
       it.second->_expires = 0.0;
       if (it.second->_numOpen > 0) {
+        TRI_ASSERT(!it.second->_isTombstone);
+
         // query in use by another thread/request
         it.second->_query->kill();
       }
@@ -380,12 +417,16 @@ void QueryRegistry::expireQueries() {
   }
 }
 
-/// @brief return number of registered queries
+/// @brief return number of registered queries, excluding tombstones
 size_t QueryRegistry::numberRegisteredQueries() {
   READ_LOCKER(readLocker, _lock);
   size_t sum = 0;
   for (auto const& m : _queries) {
-    sum += m.second.size();
+    for (auto const& it : m.second) {
+      if (!it.second->_isTombstone) {
+        ++sum;
+      }
+    }
   }
   return sum;
 }
@@ -444,6 +485,7 @@ void QueryRegistry::registerSnippets(SnippetList const& snippets) {
 
 void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
+  int iterations = 0;
 
   while (true) {
     WRITE_LOCKER(guard, _lock);
@@ -455,8 +497,6 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
         continue;
       }
       if (it->second._isOpen) { // engine still in use
-        LOG_TOPIC("33cfb", WARN, arangodb::Logger::AQL)
-          << "engine snippet '" << it->first << "' is still in use";
         continue;
       }
       _engines.erase(it);
@@ -466,18 +506,39 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
     if (remain == 0) {
       break;
     }
+    if (iterations == 0) {
+      LOG_TOPIC("33cfb", DEBUG, arangodb::Logger::AQL)
+          << remain << " engine snippet(s) still in use on query shutdown";
+    } else if (iterations == 100) {
+      LOG_TOPIC("df7c7", WARN, arangodb::Logger::AQL)
+          << remain << " engine snippet(s) still in use on query shutdown";
+    }
+    ++iterations;
+
     std::this_thread::yield();
   }
 }
 
+/// @brief constructor for a regular query
 QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard)
     : _query(std::move(query)),
       _timeToLive(ttl),
       _expires(TRI_microtime() + ttl),
       _numEngines(0),
       _numOpen(0),
-      _rebootTrackerCallbackGuard(std::move(guard))
-{}
+      _errorCode(TRI_ERROR_NO_ERROR),
+      _isTombstone(false),
+      _rebootTrackerCallbackGuard(std::move(guard)) {}
+
+/// @brief constructor for a tombstone
+QueryRegistry::QueryInfo::QueryInfo(ErrorCode errorCode, double ttl)
+    : _query(nullptr),
+      _timeToLive(ttl),
+      _expires(TRI_microtime() + ttl),
+      _numEngines(0),
+      _numOpen(0),
+      _errorCode(errorCode),
+      _isTombstone(true) {}
 
 QueryRegistry::QueryInfo::~QueryInfo() = default;
 

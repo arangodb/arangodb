@@ -89,10 +89,38 @@ std::string const TTL("ttl");
 
 using namespace std::chrono;
 
+// Overview over the code in this file:
+// The main method being called is "first", it does:
+// first:
+//  - wait until leader has created shard
+//  - lookup local shard
+//  - call `replicationSynchronize`
+//  - call `catchupWithReadLock`
+//  - call `catchupWithExclusiveLock`
+// replicationSynchronize:
+//  - set local shard to follow leader (without a following term id)
+//  - use a `DatabaseInitialSyncer` to synchronize to a certain state,
+//    (configure leaderId for it to go through)
+// catchupWithReadLock:
+//  - start a read lock on leader
+//  - keep configuration for shard to follow the leader without term id
+//  - call `replicationSynchronizeCatchup` (WAL tailing, configure leaderId
+//    for it to go through)
+//  - cancel read lock on leader
+// catchupWithExclusiveLock:
+//  - start an exclusive lock on leader, acquire unique following term id
+//  - set local shard to follower leader (with new following term id)
+//  - call `replicationSynchronizeFinalize` (WAL tailing)
+//  - do a final check by comparing counts on leader and follower
+//  - add us as official follower on the leader
+//  - release exclusive lock on leader
+//
+
 SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescription const& desc)
   : ActionBase(feature, desc),
     ShardDefinition(desc.get(DATABASE), desc.get(SHARD)),
-    _leaderInfo(arangodb::replutils::LeaderInfo::createEmpty()) {
+    _leaderInfo(arangodb::replutils::LeaderInfo::createEmpty()),
+    _followingTermId(0) {
   std::stringstream error;
 
   if (!desc.has(COLLECTION)) {
@@ -416,7 +444,7 @@ arangodb::Result SynchronizeShard::getReadLock(
   // nullptr only happens during controlled shutdown
   if (pool == nullptr) {
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
-                            "cancelReadLockOnLeader: Shutting down");
+                            "getReadLock: Shutting down");
   }
 
   VPackBuilder body;
@@ -445,6 +473,16 @@ arangodb::Result SynchronizeShard::getReadLock(
 
   if (res.ok()) {
     // Habemus clausum, we have a lock
+    if (!soft) {
+      // Now store the random followingTermId:
+      VPackSlice body = response.response().slice();
+      if (body.isObject()) {
+        VPackSlice followingTermIdSlice = body.get(StaticStrings::FollowingTermId);
+        if (followingTermIdSlice.isNumber()) {
+          _followingTermId = followingTermIdSlice.getNumber<uint64_t>();
+        }
+      }
+    }
     return arangodb::Result();
   }
 
@@ -524,6 +562,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   auto syncer = DatabaseInitialSyncer::create(vocbase, configuration);
 
   if (!leaderId.empty()) {
+    // In this phase we use the normal leader ID without following term id:
     syncer->setLeaderId(leaderId);
   }
 
@@ -599,6 +638,8 @@ static arangodb::Result replicationSynchronizeCatchup(
   auto syncer = DatabaseTailingSyncer::create(guard.database(), configuration, fromTick, /*useTick*/true);
 
   if (!leaderId.empty()) {
+    // In this phase we still use the normal leaderId without a following
+    // term id:
     syncer->setLeaderId(leaderId);
   }
 
@@ -624,10 +665,10 @@ static arangodb::Result replicationSynchronizeCatchup(
 
 static arangodb::Result replicationSynchronizeFinalize(SynchronizeShard const& job,
                                                        application_features::ApplicationServer& server,
-                                                       VPackSlice const& conf) {
+                                                       VPackSlice const& conf,
+                                                       std::string const& leaderId) {
   auto const database = conf.get(DATABASE).copyString();
   auto const collection = conf.get(COLLECTION).copyString();
-  auto const leaderId = conf.get(LEADER_ID).copyString();
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
     
   ReplicationApplierConfiguration configuration =
@@ -913,10 +954,6 @@ bool SynchronizeShard::first() {
         return false;
       }
 
-      // This is necessary to accept replications from the leader which can
-      // happen as soon as we are in sync.
-      collection->followers()->setTheLeader(leader);
-
       startTime = system_clock::now();
 
       VPackBuilder config;
@@ -938,6 +975,10 @@ bool SynchronizeShard::first() {
       }
 
       auto details = std::make_shared<VPackBuilder>();
+
+      // Configure the shard to follow the leader without any following
+      // term id:
+      collection->followers()->setTheLeader(leader);
 
       ResultT<SyncerId> syncRes =
           replicationSynchronize(*this, collection, config.slice(), details);
@@ -1067,7 +1108,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     if (!res.ok()) {
       auto errorMessage = StringUtils::concatT(
           "SynchronizeShard: error in startReadLockOnLeader (soft):", res.errorMessage());
-      return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
+      return ResultT<TRI_voc_tick_t>::error(res.errorNumber(), std::move(errorMessage));
     }
 
     auto readLockGuard = arangodb::scopeGuard([&, this]() {
@@ -1155,7 +1196,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   if (!res.ok()) {
     auto errorMessage = StringUtils::concatT(
         "SynchronizeShard: error in startReadLockOnLeader (hard):", res.errorMessage());
-    return {TRI_ERROR_INTERNAL, std::move(errorMessage)};
+    return {res.errorNumber(), std::move(errorMessage)};
   }
   auto readLockGuard = arangodb::scopeGuard([&, this]() {
     // Always cancel the read lock.
@@ -1169,6 +1210,19 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       }
     });
 
+  // Now we have got a unique id for this following term and have stored it
+  // in _followingTermId, so we can use it to set the leader:
+
+  // This is necessary to accept replications from the leader which can
+  // happen as soon as we are in sync.
+  std::string leaderIdWithTerm{leader};
+  if (_followingTermId != 0) {
+    leaderIdWithTerm += "_";
+    leaderIdWithTerm += basics::StringUtils::itoa(_followingTermId);
+  }
+  // If _followingTermid is 0, then this is a leader before the update, 
+  // we tolerate this and simply use its ID without a term in this case.
+  collection.followers()->setTheLeader(leaderIdWithTerm);
   LOG_TOPIC("d76cb", DEBUG, Logger::MAINTENANCE) << "lockJobId: " << lockJobId;
 
   builder.clear();
@@ -1177,13 +1231,13 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     builder.add(ENDPOINT, VPackValue(ep));
     builder.add(DATABASE, VPackValue(getDatabase()));
     builder.add(COLLECTION, VPackValue(getShard()));
-    builder.add(LEADER_ID, VPackValue(leader));
+    builder.add(LEADER_ID, VPackValue(leaderIdWithTerm));
     builder.add("from", VPackValue(lastLogTick));
     builder.add("requestTimeout", VPackValue(600.0));
     builder.add("connectTimeout", VPackValue(60.0));
   }
 
-  res = replicationSynchronizeFinalize(*this, feature().server(), builder.slice());
+  res = replicationSynchronizeFinalize(*this, feature().server(), builder.slice(), leaderIdWithTerm);
 
   if (!res.ok()) {
     std::string errorMessage(
@@ -1336,12 +1390,18 @@ void SynchronizeShard::setState(ActionState state) {
     while (!_feature.server().isStopping() && clock::now() < stoppage) {
       cluster::fetchCurrentVersion(0.1 * timeout)
         .thenValue(
-          [&v] (auto&& res) { v = res.get(); })
+          [&v] (auto&& res) {
+            // we need to check if res is ok() in order to not trigger a 
+            // bad_optional_access exception here
+            if (res.ok()) {
+              v = res.get(); 
+            }
+          })
         .thenError<std::exception>(
           [this] (std::exception const& e) {
             LOG_TOPIC("3ae99", ERR, Logger::CLUSTER)
               << "Failed to acquire current version from agency while increasing shard version"
-              << " for shard "  << getDatabase() << "/" << getShard() << e.what();
+              << " for shard "  << getDatabase() << "/" << getShard() << ": " << e.what();
           })
         .wait();
       if (v > 0) {

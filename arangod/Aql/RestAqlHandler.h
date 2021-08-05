@@ -33,7 +33,6 @@ namespace arangodb {
 namespace aql {
 class Query;
 class QueryRegistry;
-enum class SerializationFormat;
 
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {
@@ -138,9 +137,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   QueryRegistry* _queryRegistry;
 
   aql::ExecutionEngine* _engine;
-
-  // id of current query
-  QueryId _qId;
 };
 }  // namespace aql
 }  // namespace arangodb

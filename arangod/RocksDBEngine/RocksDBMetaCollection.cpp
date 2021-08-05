@@ -184,12 +184,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   // makes sure collection doesn't get unloaded
   CollectionGuard collGuard(&vocbase, _logicalCollection.id());
 
-  TransactionId trxId{0};
-  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
-    if (trxId.isSet()) {
-      _meta.removeBlocker(trxId);
-    }
-  });
+  RocksDBBlockerGuard blocker(&_logicalCollection);
 
   uint64_t snapNumberOfDocuments = 0;
   {
@@ -202,11 +197,8 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
       THROW_ARANGO_EXCEPTION(res);
     }
  
-    // generate a unique transaction id for a blocker
-    trxId = TransactionId(transaction::Context::makeTransactionId());
-
     // place a blocker. will be removed by blockerGuard automatically
-    _meta.placeBlocker(trxId, engine.db()->GetLatestSequenceNumber());
+    blocker.placeBlocker();
 
     snapshot = engine.db()->GetSnapshot();
     snapNumberOfDocuments = _meta.numberDocuments();
@@ -347,6 +339,7 @@ void RocksDBMetaCollection::setRevisionTree(std::unique_ptr<containers::Revision
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
+    rocksdb::SequenceNumber notAfter,
     std::function<std::unique_ptr<containers::RevisionTree>(std::unique_ptr<containers::RevisionTree>)> const& callback) {
   if (!_logicalCollection.useSyncByRevision()) {
     return nullptr;
@@ -360,13 +353,22 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
   
   // first apply any updates that can be safely applied
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
+  if (notAfter < safeSeq) {
+    safeSeq = notAfter;
+  }
 
   if (!_revisionTree && !haveBufferedOperations()) {
     // we only need to return an empty tree here.
     return allocateEmptyRevisionTree(revisionTreeDepth); 
   }
- 
-  applyUpdates(safeSeq);
+
+  // If the tree has already moved past `notAfter`, then all is lost and we can
+  // only give up:
+  if (_revisionTreeApplied > notAfter) {
+    return nullptr;
+  }
+
+  applyUpdates(safeSeq);  // will not go beyond `notAfter` because code above!
   TRI_ASSERT(_revisionTree != nullptr);
   TRI_ASSERT(_revisionTree->depth() == revisionTreeDepth);
   
@@ -378,10 +380,11 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(transaction::Methods& trx) {
-  return revisionTree([this, &trx](std::unique_ptr<containers::RevisionTree> tree) -> std::unique_ptr<containers::RevisionTree> {
+  rocksdb::SequenceNumber trxSeq = RocksDBTransactionState::toState(&trx)->beginSeq();
+  TRI_ASSERT(trxSeq != 0);
+
+  return revisionTree(trxSeq, [this, &trx, trxSeq](std::unique_ptr<containers::RevisionTree> tree) -> std::unique_ptr<containers::RevisionTree> {
     // apply any which are buffered and older than our ongoing transaction start
-    rocksdb::SequenceNumber trxSeq = RocksDBTransactionState::toState(&trx)->beginSeq();
-    TRI_ASSERT(trxSeq != 0);
     Result res = applyUpdatesForTransaction(*tree, trxSeq);
     if (res.fail()) {
       return nullptr;
@@ -399,19 +402,19 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(uint64_t batchId) {
-  return revisionTree([this, batchId](std::unique_ptr<containers::RevisionTree> tree) -> std::unique_ptr<containers::RevisionTree> {
-    RocksDBEngine& engine =
-        _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  RocksDBEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  RocksDBReplicationManager* manager = engine.replicationManager();
+  RocksDBReplicationContext* ctx = batchId == 0 ? nullptr : manager->find(batchId);
+  if (!ctx) {
+    return nullptr;
+  }
+  auto guard = scopeGuard([manager, ctx]() -> void { manager->release(ctx); });
+  rocksdb::SequenceNumber trxSeq = ctx->snapshotTick();
+  TRI_ASSERT(trxSeq != 0);
 
+  return revisionTree(trxSeq, [this, trxSeq](std::unique_ptr<containers::RevisionTree> tree) -> std::unique_ptr<containers::RevisionTree> {
     // apply any which are buffered and older than our ongoing transaction start
-    RocksDBReplicationManager* manager = engine.replicationManager();
-    RocksDBReplicationContext* ctx = batchId == 0 ? nullptr : manager->find(batchId);
-    if (!ctx) {
-      return nullptr;
-    }
-    auto guard = scopeGuard([manager, ctx]() -> void { manager->release(ctx); });
-    rocksdb::SequenceNumber trxSeq = ctx->snapshotTick();
-    TRI_ASSERT(trxSeq != 0);
     Result res = applyUpdatesForTransaction(*tree, trxSeq);
     if (res.fail()) {
       return nullptr;
@@ -804,12 +807,19 @@ void RocksDBMetaCollection::revisionTreePendingUpdates(VPackBuilder& builder) {
 }
   
 void RocksDBMetaCollection::placeRevisionTreeBlocker(TransactionId transactionId) {
+  // make sure that the global revision tree in _revisionTree does not move beyond
+  // the sequence number we get here from RocksDB:
+  std::unique_lock<std::mutex> guard(_revisionTreeLock);
   auto& selector =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
+  // Since we have the lock above, the revision tree cannot move beyond
+  // this sequence number before we have actually placed the blocker.
+  TRI_ASSERT(preSeq >= _revisionTreeApplied);
   _meta.placeBlocker(transactionId, preSeq);
+  // This remains true, even if `placeBlocker` has advanced the sequence number
 }
 
 void RocksDBMetaCollection::removeRevisionTreeBlocker(TransactionId transactionId) {
@@ -831,13 +841,17 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
                    .inRecovery());
     return;
   }
-
+        
+  TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+    std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
+  }
 
   TRI_ASSERT(!inserts.empty() || !removals.empty());
 
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
   if (!inserts.empty()) {
     // will default-construct an empty entry if it does not yet exist
+    TRI_ASSERT(_revisionInsertBuffers.find(seq) == _revisionInsertBuffers.end());
     auto& elem = _revisionInsertBuffers[seq];
     if (elem.empty()) {
       elem = std::move(inserts);
@@ -853,6 +867,7 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
   }
   if (!removals.empty()) {
     // will default-construct an empty entry if it does not yet exist
+    TRI_ASSERT(_revisionRemovalBuffers.find(seq) == _revisionRemovalBuffers.end());
     auto& elem = _revisionRemovalBuffers[seq];
     if (elem.empty()) {
       elem = std::move(removals);
@@ -918,11 +933,22 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         }
       }
     };
+  
+    TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
+    }
 
     std::unique_lock<std::mutex> guard(_revisionBufferLock);
 
     auto insertIt = _revisionInsertBuffers.begin();
     auto removeIt = _revisionRemovalBuffers.begin();
+
+    auto checkIterators = [&]() {
+      TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || 
+                 _revisionInsertBuffers.empty() || _revisionInsertBuffers.begin()->first > commitSeq);
+      TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || 
+                 _revisionRemovalBuffers.empty() || _revisionRemovalBuffers.begin()->first > commitSeq);
+    };
 
     auto it = _revisionTruncateBuffer.begin();  // sorted ASC
     
@@ -933,6 +959,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
 
       while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
         ignoreSeq = *it;
+        TRI_ASSERT(ignoreSeq > _revisionTreeApplied.load());
         TRI_ASSERT(ignoreSeq != 0);
         foundTruncate = true;
         it = _revisionTruncateBuffer.erase(it);
@@ -946,9 +973,8 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         while (removeIt != _revisionRemovalBuffers.end() && removeIt->first <= ignoreSeq) {
           removeIt = _revisionRemovalBuffers.erase(removeIt);
         }
-      
-        TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || insertIt == _revisionInsertBuffers.end());
-        TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || removeIt == _revisionRemovalBuffers.end());
+ 
+        checkIterators();
 
         // we can clear the revision tree without holding the mutex here
         guard.unlock();
@@ -956,6 +982,8 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         _revisionTree->clear();
 
         guard.lock();
+
+        checkIterators();
 
         // we have applied all changes up to here
         bumpSequence(ignoreSeq);
@@ -965,10 +993,9 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
     // still holding the mutex here
 
     while (true) {
-      // find out if we still have buffers to apply
-      TRI_ASSERT(insertIt == _revisionInsertBuffers.begin() || insertIt == _revisionInsertBuffers.end());
-      TRI_ASSERT(removeIt == _revisionRemovalBuffers.begin() || removeIt == _revisionRemovalBuffers.end());
+      checkIterators();
 
+      // find out if we still have buffers to apply
       bool haveInserts = insertIt != _revisionInsertBuffers.end() &&
                          insertIt->first <= commitSeq;
       bool haveRemovals = removeIt != _revisionRemovalBuffers.end() &&
@@ -981,6 +1008,9 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
       // no inserts or removals left to apply, drop out of loop
       if (!applyInserts && !applyRemovals) {
         // we have applied all changes up to including commitSeq
+        TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+          std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
+        }
         bumpSequence(commitSeq);
         return;
       }
@@ -1003,6 +1033,8 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         TRI_IF_FAILURE("RevisionTree::applyInserts") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
+        
+        TRI_ASSERT(insertIt->first > _revisionTreeApplied.load());
 
         // apply inserts, without holding the lock
         // if this throws we will not have modified _revisionInsertBuffers
@@ -1021,6 +1053,10 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
           // it is safe to retry it next time.
           throw;
         }
+    
+        TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+          std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
+        }
 
         // move iterator forward, we need the mutex for this
         guard.lock();
@@ -1036,6 +1072,8 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         
         // release the mutex while we modify the tree. this is safe (see above)
         guard.unlock();
+        
+        TRI_ASSERT(removeIt->first > _revisionTreeApplied.load());
         
         TRI_IF_FAILURE("RevisionTree::applyRemoves") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -1057,6 +1095,10 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
           
           // if an exception escapes from here, the same remove will be retried next time.
           throw;
+        }
+    
+        TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+          std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
         }
 
         // move iterator forward, we need the mutex for this
@@ -1121,6 +1163,7 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
     while (true) {
       std::vector<std::uint64_t> const* inserts = nullptr;
       std::vector<std::uint64_t> const* removals = nullptr;
+
       // find out if we have buffers to apply
       {
         bool haveInserts = insertIt != _revisionInsertBuffers.end() &&
@@ -1148,6 +1191,8 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
       if (!inserts && !removals) {
         break;
       }
+
+      TRI_ASSERT(inserts == nullptr || removals == nullptr);
 
       // apply inserts
       if (inserts) {
@@ -1324,7 +1369,7 @@ std::uint64_t RocksDBMetaCollection::RevisionTreeAccessor::compressedSize() cons
     return _compressed.size();
   }
   std::string output;
-  _tree->serializeBinary(output, true);
+  _tree->serializeBinary(output, arangodb::containers::MerkleTreeBase::BinaryFormat::Optimal);
   return output.size();
 }
 
@@ -1387,7 +1432,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
   double start = TRI_microtime();
   
   _compressed.clear();
-  _tree->serializeBinary(_compressed, true);
+  _tree->serializeBinary(_compressed, arangodb::containers::MerkleTreeBase::BinaryFormat::Optimal);
 
   TRI_ASSERT(!_compressed.empty());
  
@@ -1416,7 +1461,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
 void RocksDBMetaCollection::RevisionTreeAccessor::serializeBinary(std::string& output) const {
   if (_tree != nullptr) {
     // compress tree into output
-    _tree->serializeBinary(output, true);
+    _tree->serializeBinary(output, arangodb::containers::MerkleTreeBase::BinaryFormat::Optimal);
   } else {
     // append our already compressed state
     output.append(_compressed);

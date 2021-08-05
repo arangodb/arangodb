@@ -39,12 +39,7 @@ std::string const& TransactionCollection::collectionName() const {
   TRI_ASSERT(_collection != nullptr);
   return _collection->name();
 }
-
-static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
-                  AccessMode::Type::READ < AccessMode::Type::WRITE &&
-                  AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
-              "AccessMode::Type total order fail");
-
+  
 /// @brief check if a collection is locked in a specific mode in a transaction
 bool TransactionCollection::isLocked(AccessMode::Type accessType) const {
   if (accessType > _accessType) {

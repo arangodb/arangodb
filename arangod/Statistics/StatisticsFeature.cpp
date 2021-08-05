@@ -614,7 +614,7 @@ void StatisticsFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  _statisticsThread.reset(new StatisticsThread(server()));
+  _statisticsThread = std::make_unique<StatisticsThread>(server());
 
   if (!_statisticsThread->start()) {
     LOG_TOPIC("46b0c", FATAL, arangodb::Logger::STATISTICS)
@@ -633,17 +633,15 @@ void StatisticsFeature::start() {
     _statisticsHistory = false;
   }
 
+  _statisticsWorker = std::make_unique<StatisticsWorker>(*vocbase);
+
   if (_statisticsHistory) {
-    TRI_ASSERT(!ServerState::instance()->isDBServer());
-
-    _statisticsWorker.reset(new StatisticsWorker(*vocbase));
-
     if (!_statisticsWorker->start()) {
       LOG_TOPIC("6ecdc", FATAL, arangodb::Logger::STATISTICS)
         << "could not start statistics worker";
       FATAL_ERROR_EXIT();
     }
-  } // if
+  } 
 }
 
 void StatisticsFeature::stop() {
@@ -655,7 +653,7 @@ void StatisticsFeature::stop() {
     }
   }
 
-  if (_statisticsWorker != nullptr) {
+  if (_statisticsHistory && _statisticsWorker != nullptr) {
     _statisticsWorker->beginShutdown();
 
     while (_statisticsWorker->isRunning()) {

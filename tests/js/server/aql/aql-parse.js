@@ -248,33 +248,33 @@ function ahuacatlParseTestSuite () {
       
       returnNode = getRoot("return -1").subNodes[0];
       assertEqual("return", returnNode.type);
-      assertEqual("unary minus", returnNode.subNodes[0].type);
-      assertEqual("value", returnNode.subNodes[0].subNodes[0].type);
-      assertEqual(1, returnNode.subNodes[0].subNodes[0].value);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual(-1, returnNode.subNodes[0].value);
       
       returnNode = getRoot("return -193817872892").subNodes[0];
       assertEqual("return", returnNode.type);
-      assertEqual("unary minus", returnNode.subNodes[0].type);
-      assertEqual("value", returnNode.subNodes[0].subNodes[0].type);
-      assertEqual(193817872892, returnNode.subNodes[0].subNodes[0].value);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual(-193817872892, returnNode.subNodes[0].value);
       
       returnNode = getRoot("return -.95264").subNodes[0];
       assertEqual("return", returnNode.type);
-      assertEqual("unary minus", returnNode.subNodes[0].type);
-      assertEqual("value", returnNode.subNodes[0].subNodes[0].type);
-      assertEqual(0.95264, returnNode.subNodes[0].subNodes[0].value);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual(-0.95264, returnNode.subNodes[0].value);
       
       returnNode = getRoot("return -12345").subNodes[0];
       assertEqual("return", returnNode.type);
-      assertEqual("unary minus", returnNode.subNodes[0].type);
-      assertEqual("value", returnNode.subNodes[0].subNodes[0].type);
-      assertEqual(12345, returnNode.subNodes[0].subNodes[0].value);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual(-12345, returnNode.subNodes[0].value);
       
       returnNode = getRoot("return -92.4987521").subNodes[0];
       assertEqual("return", returnNode.type);
-      assertEqual("unary minus", returnNode.subNodes[0].type);
-      assertEqual("value", returnNode.subNodes[0].subNodes[0].type);
-      assertEqual(92.4987521, returnNode.subNodes[0].subNodes[0].value);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual(-92.4987521, returnNode.subNodes[0].value);
+      
+      returnNode = getRoot("return +1234.56").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("value", returnNode.subNodes[0].type);
+      assertEqual(1234.56, returnNode.subNodes[0].value);
     },      
 
 ////////////////////////////////////////////////////////////////////////////////

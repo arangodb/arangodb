@@ -528,7 +528,16 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
   if (jobId != nullptr) {
     auto& jobManager = _server.server().getFeature<GeneralServerFeature>().jobManager();
-    jobManager.initAsyncJob(handler);
+    try {
+      // This will throw if a soft shutdown is already going on on a
+      // coordinator. But this can also throw if we have an
+      // out of memory situation, so we better handle this anyway.
+      jobManager.initAsyncJob(handler);
+    } catch(std::exception const& exc) {
+      LOG_TOPIC("fee34", INFO, Logger::STARTUP)
+        << "Async job rejected, exception: " << exc.what();
+      return false;
+    }
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
@@ -728,13 +737,13 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
     return auth::TokenCache::Entry::Superuser();
   }
 
-  std::string::size_type methodPos = authStr.find_first_of(' ');
+  std::string::size_type methodPos = authStr.find(' ');
   if (methodPos == std::string::npos) {
     events::UnknownAuthenticationMethod(req);
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
-  // skip over authentication method
+  // skip over authentication method and following whitespace
   char const* auth = authStr.c_str() + methodPos;
   while (*auth == ' ') {
     ++auth;
@@ -761,6 +770,7 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
 
   auto authToken = this->_auth->tokenCache().checkAuthentication(authMethod, auth);
   req.setAuthenticated(authToken.authenticated());
+  req.setTokenExpiry(authToken.expiry());
   req.setUser(authToken.username());  // do copy here, so that we do not invalidate the member
   if (authToken.authenticated()) {
     events::Authenticated(req, authMethod);

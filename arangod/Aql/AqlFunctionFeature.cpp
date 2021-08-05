@@ -195,7 +195,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"ENCODE_URI_COMPONENT", ".", flags, &Functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &Functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &Functions::LevenshteinDistance});
-  add({"LEVENSHTEIN_MATCH", ".,.,.|.,.", flags, &Functions::LevenshteinMatch});  // (attribute, target, max distance, [include transpositions, max terms])
+  add({"LEVENSHTEIN_MATCH", ".,.,.|.,.,.", flags, &Functions::LevenshteinMatch});  // (attribute, target, max distance, [include transpositions, max terms, prefix])
   add({"NGRAM_MATCH", ".,.|.,.", flags, &Functions::NgramMatch}); // (attribute, target, [threshold, analyzer]) OR (attribute, target, [analyzer])
   add({"NGRAM_SIMILARITY", ".,.,.", flags, &Functions::NgramSimilarity}); // (attribute, target, ngram size)
   add({"NGRAM_POSITIONAL_SIMILARITY", ".,.,.", flags, &Functions::NgramPositionalSimilarity}); // (attribute, target, ngram size)
@@ -314,6 +314,13 @@ void AqlFunctionFeature::addListFunctions() {
   add({"REPLACE_NTH", ".,.,.|.", flags, &Functions::ReplaceNth});
   add({"INTERLEAVE", ".,.|+", flags, &Functions::Interleave});
 
+  add({"DECAY_GAUSS", ".,.,.,.,.,", flags, &Functions::DecayGauss});
+  add({"DECAY_EXP", ".,.,.,.,.,", flags, &Functions::DecayExp});
+  add({"DECAY_LINEAR", ".,.,.,.,.,", flags, &Functions::DecayLinear});
+
+  add({"COSINE_SIMILARITY", ".,.", flags, &Functions::CosineSimilarity});
+  add({"L1_DISTANCE", ".,.", flags, &Functions::L1Distance});
+  add({"L2_DISTANCE", ".,.", flags, &Functions::L2Distance});
   // special flags:
   // CALL and APPLY will always run on the coordinator and are not deterministic
   // and not cacheable, as we don't know what function is actually gonna be

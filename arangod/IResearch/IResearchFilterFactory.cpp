@@ -512,14 +512,6 @@ FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
   exprFilter.boost(filterCtx.boost);
 }
 
-FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
-                                   std::shared_ptr<aql::AstNode>&& node,
-                                   QueryContext const& ctx, FilterContext const& filterCtx) {
-  auto& exprFilter = filter.add<arangodb::iresearch::ByExpression>();
-  exprFilter.init(*ctx.plan, *ctx.ast, std::move(node));
-  exprFilter.boost(filterCtx.boost);
-}
-
 Result byTerm(irs::by_term* filter, std::string&& name,
               ScopedAqlValue const& value, QueryContext const& /*ctx*/,
               FilterContext const& filterCtx) {
@@ -892,44 +884,6 @@ Result byRange(irs::boolean_filter* filter,
 }
 
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
-                    FilterContext const& filterCtx,
-                    std::shared_ptr<aql::AstNode>&& node) {
-  if (!filter) {
-    return {};
-  }
-
-  // non-deterministic condition or self-referenced variable
-  if (!node->isDeterministic() || arangodb::iresearch::findReference(*node, *ctx.ref)) {
-    // not supported by IResearch, but could be handled by ArangoDB
-    appendExpression(*filter, std::move(node), ctx, filterCtx);
-    return {};
-  }
-
-  bool result;
-
-  if (node->isConstant()) {
-    result = node->isTrue();
-  } else {  // deterministic expression
-    ScopedAqlValue value(*node);
-
-    if (!value.execute(ctx)) {
-      // can't execute expression
-      return {TRI_ERROR_BAD_PARAMETER, "can not execute expression"};
-    }
-
-    result = value.getBoolean();
-  }
-
-  if (result) {
-    filter->add<irs::all>().boost(filterCtx.boost);
-  } else {
-    filter->add<irs::empty>();
-  }
-
-  return {};
-}
-
-Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                       FilterContext const& filterCtx, aql::AstNode const& node) {
   if (!filter) {
     return {};
@@ -965,6 +919,15 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
 
   return {};
 }
+
+Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
+                    FilterContext const& filterCtx,
+                    std::shared_ptr<aql::AstNode>&& node) {
+  // redirect to existing function for AstNode const& nodes to
+  // avoid coding the logic twice
+  return fromExpression(filter, ctx, filterCtx, *node);
+}
+
 
 // GEO_IN_RANGE(attribute, shape, lower, upper[, includeLower = true, includeUpper = true])
 Result fromFuncGeoInRange(
@@ -2706,7 +2669,7 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter, QueryContext
   }
   auto const argc = ElementTraits::numMembers(args);
   constexpr size_t min = 3 - First;
-  constexpr size_t max = 5 - First;
+  constexpr size_t max = 6 - First;
   if (argc < min || argc > max) {
     return error::invalidArgsCount<error::Range<min, max>>(funcName).withError(
         [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
@@ -2795,16 +2758,29 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter, QueryContext
     }
   }
 
+  // optional (5 - First) argument defines prefix for target
+  irs::string_ref prefix = irs::string_ref::EMPTY;
+  if (5 - First < argc) {
+    res = ElementTraits::evaluateArg(prefix, tmpValue, funcName,
+                                     args, 5 - First, isFilter, ctx);
+
+    if (res.fail()) {
+      return res.withError(
+          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+    }
+  }
+
   irs::assign(opts.term, irs::ref_cast<irs::byte_type>(target));
   opts.with_transpositions = withTranspositions;
   opts.max_distance = static_cast<irs::byte_type>(maxDistance);
   opts.max_terms = static_cast<size_t>(maxTerms);
   opts.provider = &arangodb::iresearch::getParametricDescription;
+  irs::assign(opts.prefix, irs::ref_cast<irs::byte_type>(prefix));
 
   return {};
 }
 
-// {<LEVENSHTEIN_MATCH>: '[' <term>, <max_distance> [, <with_transpositions> ] ']'}
+// {<LEVENSHTEIN_MATCH>: '[' <term>, <max_distance> [, <with_transpositions>, <prefix> ] ']'}
 Result fromFuncPhraseLevenshteinMatch(char const* funcName,
                                       size_t const funcArgumentPosition,
                                       char const* subFuncName,

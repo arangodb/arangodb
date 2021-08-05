@@ -129,14 +129,14 @@ Node createNode(char const* c) {
 
 Node createRootNode() { return createNode(agency); }
 
-Node createAgency() { return createNode(agency)("arango"); }
+Node createAgency() { return createNode(agency).getOrCreate("arango"); }
 
 Node createAgency(TestStructureType const& createTestStructure) {
   auto node = createNode(agency);
   auto finalAgency = createTestStructure(node.toBuilder().slice(), "");
 
   auto finalAgencyNode = createNodeFromBuilder(*finalAgency);
-  return finalAgencyNode("arango");
+  return finalAgencyNode.getOrCreate("arango");
 }
 
 VPackBuilder createJob(std::string const& server) {

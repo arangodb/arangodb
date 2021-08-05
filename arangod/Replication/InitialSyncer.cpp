@@ -36,7 +36,10 @@ InitialSyncer::InitialSyncer(ReplicationApplierConfiguration const& configuratio
     : Syncer(configuration), _progress{setter} {}
 
 InitialSyncer::~InitialSyncer() {
-  _batchPingTimer.reset();
+  {
+    std::lock_guard<std::mutex> guard(_batchPingMutex);
+    _batchPingTimer.reset();
+  }
 
   try {
     if (!_state.isChildSyncer) {
@@ -49,6 +52,9 @@ InitialSyncer::~InitialSyncer() {
 /// @brief start a recurring task to extend the batch
 void InitialSyncer::startRecurringBatchExtension() {
   TRI_ASSERT(!_state.isChildSyncer);
+  
+  std::lock_guard<std::mutex> guard(_batchPingMutex);
+
   if (isAborted()) {
     _batchPingTimer.reset();
     return;

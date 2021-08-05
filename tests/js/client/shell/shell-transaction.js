@@ -4309,47 +4309,47 @@ function transactionTTLStreamSuite () {
   let c;
 
   return {
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
-
     setUp: function () {
       db._drop(cn);
       c = db._create(cn, {numberOfShards: 2, replicationFactor: 2});
     },
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
-
     tearDown: function () {
       db._drop(cn);
     },
-
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: abort idle transactions
     // //////////////////////////////////////////////////////////////////////////////
 
     testAbortIdleTrx: function () {
-      let trx = db._createTransaction({
-        collections: { write: cn }
-      });
+      try {
+        internal.debugSetFailAt("lowStreamingIdleTimeout");
+      } catch (err) {}
 
-      trx.collection(cn).save({value:'val'});
+      try {
+        let trx = db._createTransaction({
+          collections: { write: cn }
+        });
 
-      let x = 60;
-      do {
-        internal.sleep(1);
+        trx.collection(cn).save({value:'val'});
 
-        if (trx.status().status === "aborted") {
-          return;
+        let x = 60;
+        do {
+          internal.sleep(1);
+
+          if (trx.status().status === "aborted") {
+            return;
+          }
+
+        } while(--x > 0);
+        if (x <= 0) {
+          fail(); // should not be reached
         }
-
-      } while(--x > 0);
-      if (x <= 0) {
-        fail(); // should not be reached
+      } finally {
+        try {
+          internal.debugRemoveFailAt("lowStreamingIdleTimeout");
+        } catch (err) {}
       }
     }
   };
@@ -4357,8 +4357,8 @@ function transactionTTLStreamSuite () {
 
 function transactionIteratorSuite() {
   'use strict';
-  var cn = 'UnitTestsTransaction';
-  var c = null;
+  let cn = 'UnitTestsTransaction';
+  let c;
 
   return {
 

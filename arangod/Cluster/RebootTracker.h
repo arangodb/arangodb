@@ -25,6 +25,7 @@
 
 #include "Basics/Mutex.h"
 #include "Cluster/CallbackGuard.h"
+#include "Cluster/ClusterTypes.h"
 
 #include <map>
 #include <memory>
@@ -96,9 +97,9 @@ class RebootTracker {
 
   void queueCallbacks(std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
   void queueCallback(DescriptedCallback callback);
-
+ 
  private:
-  Mutex _mutex;
+  mutable Mutex _mutex;
 
   CallbackId _nextCallbackId{1};
 

@@ -85,7 +85,9 @@ static bool inline IsRole(std::string const& name) {
 
 #ifndef USE_ENTERPRISE
 auth::UserManager::UserManager(application_features::ApplicationServer& server)
-    : _server(server), _globalVersion(1), _internalVersion(0) {}
+    : _server(server), 
+      _globalVersion(1), 
+      _internalVersion(0) {}
 #else
 auth::UserManager::UserManager(application_features::ApplicationServer& server)
     : _server(server),
@@ -207,6 +209,13 @@ void auth::UserManager::loadFromDB() {
   uint64_t tmp = globalVersion();
   if (_internalVersion.load(std::memory_order_acquire) == tmp) {
     return;
+  }
+
+  TRI_IF_FAILURE("UserManager::performDBLookup") {
+    // Used in GTest. It is used to identify
+    // if the UserManager would have updated it's
+    // cache in a specific situation.
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
   try {

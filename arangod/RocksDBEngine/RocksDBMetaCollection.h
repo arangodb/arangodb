@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_META_COLLECTION_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_META_COLLECTION_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -145,6 +143,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   // helper function to build revision trees
   std::unique_ptr<containers::RevisionTree> revisionTree(
+    rocksdb::SequenceNumber notAfter,
     std::function<std::unique_ptr<containers::RevisionTree>(std::unique_ptr<containers::RevisionTree>)> const& callback);
 
  protected:
@@ -243,5 +242,3 @@ class RocksDBMetaCollection : public PhysicalCollection {
 };
 
 } // namespace arangodb
-  
-#endif

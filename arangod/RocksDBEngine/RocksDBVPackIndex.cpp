@@ -35,10 +35,10 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
@@ -184,24 +184,22 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
         _bounds(std::move(bounds)),
+        _rangeBound(reverse ? _bounds.start() : _bounds.end()),
         _mustSeek(true) {
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex));
 
-    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-    rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-    // we need to have a pointer to a slice for the upper bound
-    // so we need to assign the slice to an instance variable here
-    if constexpr (reverse) {
-      _rangeBound = _bounds.start();
-      options.iterate_lower_bound = &_rangeBound;
-    } else {
-      _rangeBound = _bounds.end();
-      options.iterate_upper_bound = &_rangeBound;
-    }
-
-    TRI_ASSERT(options.prefix_same_as_start);
-    _iterator = mthds->NewIterator(options, index->columnFamily());
+    RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(trx);
+    _iterator = mthds->NewIterator(index->columnFamily(), [&](rocksdb::ReadOptions& options) {
+      TRI_ASSERT(options.prefix_same_as_start);
+      // we need to have a pointer to a slice for the upper bound
+      // so we need to assign the slice to an instance variable here
+      if constexpr (reverse) {
+        options.iterate_lower_bound = &_rangeBound;
+      } else {
+        options.iterate_upper_bound = &_rangeBound;
+      }
+    });
   }
 
  public:
@@ -685,75 +683,12 @@ void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
 
 /// @brief returns whether the document can be inserted into the index
 /// (or if there will be a conflict)
-Result RocksDBVPackIndex::checkInsert(transaction::Methods& trx, RocksDBMethods* mthds,
+Result RocksDBVPackIndex::checkInsert(transaction::Methods& trx,
+                                      RocksDBMethods* mthds,
                                       LocalDocumentId const& documentId,
-                                      velocypack::Slice doc, OperationOptions const& options) {
-  Result res;
-    
-  // non-unique indexes will not cause any constraint violation
-  if (_unique) {
-    // unique indexes...
-
-    IndexOperationMode mode = options.indexOperationMode;
-    rocksdb::Status s;
-    ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
-    ::arangodb::containers::SmallVector<RocksDBKey> elements{elementsArena};
-    ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
-    ::arangodb::containers::SmallVector<uint64_t> hashes{hashesArena};
-
-    {
-      // rethrow all types of exceptions from here...
-      transaction::BuilderLeaser leased(&trx);
-      auto r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
-
-      if (r != TRI_ERROR_NO_ERROR) {
-        return addErrorMsg(res, r);
-      }
-    }
-    
-    bool const lock = !RocksDBTransactionState::toState(&trx)->isOnlyExclusiveTransaction();
-
-    transaction::StringLeaser leased(&trx);
-    rocksdb::PinnableSlice existing(leased.get());
-
-    for (RocksDBKey const& key : elements) {
-      if (lock) {
-        s = mthds->GetForUpdate(_cf, key.string(), &existing);
-      } else {
-        s = mthds->Get(_cf, key.string(), &existing);
-      }
-
-      if (s.ok()) {  // detected conflicting index entry
-        res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-        // find conflicting document's key
-        LocalDocumentId docId = RocksDBValue::documentId(existing);
-        auto readResult = _collection.getPhysical()->read(&trx, docId,
-           [&](LocalDocumentId const&, VPackSlice doc) {
-             VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
-             if (mode == IndexOperationMode::internal) {
-               // in this error mode, we return the conflicting document's key
-               // inside the error message string (and nothing else)!
-               res = Result{res.errorNumber(), key.copyString()};
-             } else {
-               // normal mode: build a proper error message
-               addErrorMsg(res, key.copyString());
-             }
-             return true; // return value does not matter here
-           });
-        if (readResult.fail()) {
-          addErrorMsg(readResult);
-          THROW_ARANGO_EXCEPTION(readResult);
-        }
-        TRI_ASSERT(res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED));
-        break;
-      } else if (!s.IsNotFound()) {
-        res.reset(rocksutils::convertStatus(s));
-        addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
-      }
-    }
-  }
-
-  return res;
+                                      velocypack::Slice doc,
+                                      OperationOptions const& options) {
+  return checkOperation(trx, mthds, documentId, doc, options, false);
 }
 
 /// @brief returns whether the document can be replaced into the index
@@ -763,6 +698,15 @@ Result RocksDBVPackIndex::checkReplace(transaction::Methods& trx,
                                        LocalDocumentId const& documentId,
                                        velocypack::Slice doc, 
                                        OperationOptions const& options) {
+  return checkOperation(trx, mthds, documentId, doc, options, true);
+}
+
+Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx, 
+                                         RocksDBMethods* mthds,
+                                         LocalDocumentId const& documentId,
+                                         velocypack::Slice doc, 
+                                         OperationOptions const& options,
+                                         bool ignoreExisting) {
   Result res;
     
   // non-unique indexes will not cause any constraint violation
@@ -800,7 +744,7 @@ Result RocksDBVPackIndex::checkReplace(transaction::Methods& trx,
 
       if (s.ok()) {  // detected conflicting index entry
         LocalDocumentId docId = RocksDBValue::documentId(existing);
-        if (docId == documentId) {
+        if (docId == documentId && ignoreExisting) {
           // same document, this is ok!
           continue;
         }

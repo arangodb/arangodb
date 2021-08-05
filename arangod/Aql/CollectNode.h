@@ -87,10 +87,6 @@ class CollectNode : public ExecutionNode {
   /// @brief getOptions
   CollectOptions& getOptions();
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief calculate the expression register
   void calcExpressionRegister(RegisterId& expressionRegister,
                               RegIdSet& writeableOutputRegisters) const;
@@ -186,6 +182,10 @@ class CollectNode : public ExecutionNode {
 
   static void calculateAccessibleUserVariables(ExecutionNode const& node,
                                                std::vector<Variable const*>& userVariables);
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
   /// @brief options for the aggregation

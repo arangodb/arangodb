@@ -14,8 +14,11 @@ struct elsa<ErrorCode> {
 
 #include <frozen/unordered_map.h>
 
+// for format macro constants, e.g. PRId64
+#include <cinttypes>
+
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 344> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 346> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -380,6 +383,10 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 344> ErrorMessage
       "unable to read-lock collection %s"},
     {TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS,  // 1522
       "too many collections/shards"},
+    {TRI_ERROR_QUERY_TOO_MUCH_NESTING,  // 1524
+      "too much nesting or too many objects"},
+    {TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE,  // 1539
+      "unknown OPTIONS attribute used"},
     {TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN,  // 1540
       "usage of unknown function '%s()'"},
     {TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,  // 1541
