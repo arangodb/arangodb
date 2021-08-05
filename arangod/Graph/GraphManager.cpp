@@ -227,22 +227,6 @@ Result GraphManager::checkForEdgeDefinitionConflicts(std::map<std::string, EdgeD
   return applyOnAllGraphs(callback);
 }
 
-Result GraphManager::findOrCreateCollectionsByEdgeDefinitions(
-    Graph const& graph, std::map<std::string, EdgeDefinition> const& edgeDefinitions,
-    bool waitForSync, VPackSlice options) {
-  for (auto const& it : edgeDefinitions) {
-    EdgeDefinition const& edgeDefinition = it.second;
-    Result res = findOrCreateCollectionsByEdgeDefinition(graph, edgeDefinition,
-                                                         waitForSync, options);
-
-    if (res.fail()) {
-      return res;
-    }
-  }
-
-  return Result{TRI_ERROR_NO_ERROR};
-}
-
 Result GraphManager::findOrCreateCollectionsByEdgeDefinition(Graph const& graph,
                                                              EdgeDefinition const& edgeDefinition,
                                                              bool waitForSync,

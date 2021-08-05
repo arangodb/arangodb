@@ -91,13 +91,6 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult createGraph(VPackSlice document, bool waitForSync) const;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief find or create collections by EdgeDefinitions
-  ////////////////////////////////////////////////////////////////////////////////
-  Result findOrCreateCollectionsByEdgeDefinitions(Graph const& graph,
-                                                  std::map<std::string, EdgeDefinition> const& edgeDefinitions,
-                                                  bool waitForSync, VPackSlice options);
-
   Result findOrCreateCollectionsByEdgeDefinition(Graph const& graph,
                                                  EdgeDefinition const& edgeDefinition,
                                                  bool waitForSync, VPackSlice options);
