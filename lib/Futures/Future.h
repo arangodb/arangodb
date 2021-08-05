@@ -57,9 +57,6 @@ using Future = ::mellon::future<Try<T>, arangodb_tag>;
 template<typename T>
 using Promise = ::mellon::promise<Try<T>, arangodb_tag>;
 
-template<typename T, template<typename> typename Fut, typename Tag>
-struct scheduler_addition {};
-
 }  // namespace arangodb::futures
 
 template <>
@@ -143,15 +140,14 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
     }
   };
 
-  static constexpr auto finally_prealloc_size = 0;
-  static constexpr auto small_value_size = 0;
+  static constexpr auto finally_prealloc_size = 64;
+  static constexpr auto small_value_size = 32;
   static constexpr bool disable_temporaries = true;
 
   template<typename T, template<typename> typename Fut>
   struct user_defined_additions;
   template <typename T, template <typename> typename Fut>
-  struct user_defined_additions<arangodb::futures::Try<T>, Fut>
-      : arangodb::futures::scheduler_addition<T, Fut, arangodb::futures::arangodb_tag> {
+  struct user_defined_additions<arangodb::futures::Try<T>, Fut> {
     template <typename F>
     [[nodiscard]] auto thenValue(F&& f) && noexcept {
       static_assert(std::is_nothrow_constructible_v<std::decay_t<F>, F>);
