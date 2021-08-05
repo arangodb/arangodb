@@ -28,8 +28,6 @@
 
 const _ = require('lodash');
 const fs = require('fs');
-const Chalk = require('chalk').constructor;
-const chalk = new Chalk({enabled: true});
 const dedent = require('dedent');
 const internal = require('internal');
 const codeFrame = require('babel-code-frame');
@@ -111,7 +109,11 @@ exports.codeFrame = function (e, basePath, withColor = internal.COLOR_OUTPUT) {
       const location = `@ ${
         basePath ? ctx.fileName.slice(basePath.length + 1) : ctx.fileName
       }:${ctx.lineNumber}:${ctx.columnNumber}\n`;
-      return (withColor ? chalk.grey(location) : location) + frame;
+      return (
+        withColor
+        ? `${internal.COLORS.COLOR_BRIGHT}${location}${internal.COLORS.COLOR_RESET}`
+        : location
+      ) + frame;
     }
   } catch (e) {}
   return null;
