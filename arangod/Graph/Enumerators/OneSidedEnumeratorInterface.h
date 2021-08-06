@@ -63,7 +63,6 @@ class TraversalEnumerator {
   // NOTE: keepPathStore is only required for 3.8 compatibility and
   // can be removed in the version after 3.9
   virtual void clear(bool keepPathStore) = 0;
-  virtual void clearProvider() = 0;
   [[nodiscard]] virtual bool isDone() const = 0;
 
   // NOTE: keepPathStore is only required for 3.8 compatibility and

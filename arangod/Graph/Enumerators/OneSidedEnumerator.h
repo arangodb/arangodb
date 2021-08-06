@@ -73,7 +73,6 @@ class OneSidedEnumerator : public TraversalEnumerator {
   ~OneSidedEnumerator();
 
   void clear(bool keepPathStore) override;
-  void clearProvider() override;
 
   /**
    * @brief Quick test if the finder can prove there is no more data available.
@@ -145,6 +144,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
   // Ensure that we have more valid paths in the _result stock.
   // May be a noop if _result is not empty.
   auto searchMoreResults() -> void;
+  void clearProvider();
 
  private:
   GraphOptions _options;

@@ -73,7 +73,6 @@ class TwoSidedEnumerator {
          PathValidatorOptions validatorOptions, arangodb::ResourceMonitor& resourceMonitor);
     ~Ball();
     auto clear() -> void;
-    auto clearProvider() -> void;
     auto reset(VertexRef center, size_t depth = 0) -> void;
     auto startNextDepth() -> void;
     [[nodiscard]] auto noPathLeft() const -> bool;
@@ -95,6 +94,9 @@ class TwoSidedEnumerator {
     auto fetchResults(ResultList& results) -> void;
 
     auto provider() -> ProviderType&;
+
+   private:
+    auto clearProvider() -> void;
 
    private:
     // Fast path, to test if we find a connecting vertex between left and right.
@@ -209,4 +211,3 @@ class TwoSidedEnumerator {
 };
 }  // namespace graph
 }  // namespace arangodb
-
