@@ -5,7 +5,10 @@ interface ModalBodyProps {
 }
 
 const ModalBody = ({ children }: ModalBodyProps) =>
-  <div className="modal-body" style={{ maxHeight: '90vh' }}>
+  <div className="modal-body" style={{
+    maxHeight: '90vh',
+    overflowX: 'hidden'
+  }}>
     {children}
   </div>;
 

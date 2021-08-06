@@ -30,16 +30,16 @@ const NormForm = ({ formState, updateFormField }: FormProps) => {
     </div>
 
     <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-      <div className={'pure-g'}>
-        <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <label htmlFor={'accent'} className="pure-checkbox">
-            <input id={'accent'} type={'checkbox'} checked={get(formState, ['properties', 'accent'], false)}
-                   onChange={toggleAccent} style={{ width: 'auto' }}/> Accent
-          </label>
-        </div>
-        <CaseInput formState={formState} updateFormField={updateFormField}/>
-      </div>
+      <CaseInput formState={formState} updateFormField={updateFormField}/>
     </div>
+
+    <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
+      <label htmlFor={'accent'} className="pure-checkbox">
+        <input id={'accent'} type={'checkbox'} checked={get(formState, ['properties', 'accent'], false)}
+               onChange={toggleAccent} style={{ width: 'auto' }}/> Accent
+      </label>
+    </div>
+
   </div>;
 };
 

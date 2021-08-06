@@ -40,8 +40,7 @@ const JsonForm = ({ formState, setFormState, setLockJsonForm }: JsonFromProps) =
     }
   };
 
-  return <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-    <div className={'pure-g'}>
+  return <div className={'pure-g'}>
       <div style={{ overflow: 'auto' }} className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
         <Editor value={formState} onChange={changeHandler} ace={ace} mode={'code'} history={true}
                 onError={console.log}/>
@@ -55,8 +54,7 @@ const JsonForm = ({ formState, setFormState, setLockJsonForm }: JsonFromProps) =
             : null
         }
       </div>
-    </div>
-  </div>;
+    </div>;
 };
 
 export default JsonForm;

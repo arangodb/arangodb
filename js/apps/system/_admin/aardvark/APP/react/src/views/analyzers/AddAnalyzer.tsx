@@ -96,10 +96,14 @@ const AddAnalyzer = () => {
         <div className={'pure-g'} style={{ minWidth: '50vw' }}>
           {
             showJsonForm
-              ? <JsonForm formState={formState} setFormState={setFormState}
+              ? <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+                <JsonForm formState={formState} setFormState={setFormState}
                           setLockJsonForm={setLockJsonForm}/>
+              </div>
               : <>
-                <BaseForm formState={formState} updateFormField={updateFormField}/>
+                <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+                  <BaseForm formState={formState} updateFormField={updateFormField}/>
+                </div>
                 <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
                   <fieldset>
                     <legend style={{ fontSize: '12pt' }}>Features</legend>

@@ -9,7 +9,16 @@ const CaseInput = ({ formState, updateFormField }: FormProps) => {
 
   const caseProperty = get(formState, ['properties', 'case'], 'none');
 
-  return <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+  return <fieldset>
+    <legend style={{
+      fontSize: '14px',
+      marginBottom: 12,
+      borderBottom: 'none',
+      lineHeight: 'normal',
+      color: 'inherit'
+    }}>
+      Case
+    </legend>
     <div className={'pure-g'}>
       <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
         <label htmlFor="case-lower" className="pure-radio">
@@ -42,7 +51,7 @@ const CaseInput = ({ formState, updateFormField }: FormProps) => {
         </label>
       </div>
     </div>
-  </div>;
+  </fieldset>;
 };
 
 export default CaseInput;

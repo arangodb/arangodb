@@ -14,19 +14,28 @@ export interface FormProps {
 
 type AnalyzerType = 'identity' | 'delimiter' | 'stem' | 'norm' | 'ngram' | 'text';
 type AnalyzerNormCase = 'lower' | 'upper' | 'none';
+type AnalyzerStreamType = 'binary' | 'utf8';
 type AnalyzerFeature = 'frequency' | 'norm' | 'position';
 type AnalyzerFeatures = AnalyzerFeature[];
 type Int = number & { __int__: void };
-
-interface AnalyzerProperties {
+type AnalyzerEdgeNgram = {
+  max?: Int;
+  min?: Int;
+  preserveOriginal?: boolean;
+}
+type AnalyzerProperties = {
   delimiter?: string;
   locale?: string;
   case?: AnalyzerNormCase;
   max?: Int;
   min?: Int;
   preserveOriginal?: boolean;
+  startMarker?: string;
+  endMarker?: string;
+  streamType?: AnalyzerStreamType;
   accent?: boolean;
   stemming?: boolean;
+  edgeNgram?: AnalyzerEdgeNgram;
   stopwords?: string[];
   stopwordsPath?: string;
 }
@@ -92,6 +101,19 @@ export const formSchema = {
           type: 'boolean',
           nullable: false
         },
+        startMarker: {
+          type: 'string',
+          nullable: false
+        },
+        endMarker: {
+          type: 'string',
+          nullable: false
+        },
+        streamType: {
+          type: 'string',
+          nullable: false,
+          enum: ['binary', 'utf8']
+        },
         accent: {
           type: 'boolean',
           nullable: false
@@ -99,6 +121,26 @@ export const formSchema = {
         stemming: {
           type: 'boolean',
           nullable: false
+        },
+        edgeNgram: {
+          type: 'object',
+          nullable: false,
+          properties: {
+            min: {
+              type: 'integer',
+              nullable: false,
+              minimum: 1
+            },
+            max: {
+              type: 'integer',
+              nullable: false,
+              minimum: 1
+            },
+            preserveOriginal: {
+              type: 'boolean',
+              nullable: false
+            }
+          }
         },
         stopwords: {
           type: 'array',

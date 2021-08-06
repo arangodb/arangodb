@@ -11,7 +11,7 @@ const BaseForm = ({ formState, updateFormField }: FormProps) => {
     updateFormField('type', event.target.value);
   };
 
-  return <>
+  return <div className={'pure-g'}>
     <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
       <label htmlFor={'analyzer-name'}>Analyzer Name:</label>
       <input id="analyzer-name" type="text" placeholder="Analyzer Name" value={formState.name}
@@ -31,7 +31,7 @@ const BaseForm = ({ formState, updateFormField }: FormProps) => {
         }
       </select>
     </div>
-  </>;
+  </div>;
 };
 
 export default BaseForm;

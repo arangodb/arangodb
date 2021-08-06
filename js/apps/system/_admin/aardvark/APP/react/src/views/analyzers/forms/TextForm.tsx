@@ -3,6 +3,60 @@ import { FormProps } from "../constants";
 import CaseInput from "./CaseInput";
 import { filter, get, has, isEmpty, negate } from 'lodash';
 
+const EdgeNGramInput = ({ formState, updateFormField }: FormProps) => {
+  const updateMinLength = (event: ChangeEvent<HTMLInputElement>) => {
+    updateFormField('properties.edgeNgram.min', parseInt(event.target.value));
+  };
+
+  const updateMaxLength = (event: ChangeEvent<HTMLInputElement>) => {
+    updateFormField('properties.edgeNgram.max', parseInt(event.target.value));
+  };
+
+  const togglePreserve = () => {
+    updateFormField('properties.edgeNgram.preserveOriginal', !get(formState, ['properties', 'edgeNgram', 'preserveOriginal']));
+  };
+
+  return <fieldset>
+    <legend style={{
+      fontSize: '14px',
+      marginBottom: 12,
+      borderBottom: 'none',
+      lineHeight: 'normal',
+      color: 'inherit'
+    }}>
+      Edge N-Gram
+    </legend>
+    <div className={'pure-g'}>
+      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
+        <label htmlFor={'min'}>Minimum N-Gram Length</label>
+        <input id="min" type="number" min={1} placeholder="2" required={true}
+               value={get(formState, ['properties', 'edgeNgram', 'min'], '')} onChange={updateMinLength}
+               style={{
+                 height: 'auto',
+                 width: '90%'
+               }}/>
+      </div>
+
+      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
+        <label htmlFor={'max'}>Maximum N-Gram Length</label>
+        <input id="max" type="number" min={1} placeholder="3" required={true}
+               value={get(formState, ['properties', 'edgeNgram', 'max'], '')} onChange={updateMaxLength}
+               style={{
+                 height: 'auto',
+                 width: '90%'
+               }}/>
+      </div>
+
+      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
+        <label htmlFor={'preserve'} className="pure-checkbox">Preserve Original</label>
+        <input id={'preserve'} type={'checkbox'}
+               checked={get(formState, ['properties', 'edgeNgram', 'preserveOriginal'], false)}
+               onChange={togglePreserve} style={{ width: 'auto' }}/>
+      </div>
+    </div>
+  </fieldset>;
+};
+
 interface TextFormProps extends FormProps {
   unsetFormField: (field: string) => void;
 }
@@ -68,7 +122,7 @@ const TextForm = ({ formState, updateFormField, unsetFormField }: TextFormProps)
                  }}/>
         </div>
 
-        <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+        <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
           <label htmlFor={'stemming'} className="pure-checkbox">
             <input id={'stemming'} type={'checkbox'}
                    checked={get(formState, ['properties', 'stemming'], false)}
@@ -76,14 +130,16 @@ const TextForm = ({ formState, updateFormField, unsetFormField }: TextFormProps)
           </label>
         </div>
 
-        <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+        <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
           <label htmlFor={'accent'} className="pure-checkbox">
             <input id={'accent'} type={'checkbox'} checked={get(formState, ['properties', 'accent'], false)}
                    onChange={toggleAccent} style={{ width: 'auto' }}/> Accent
           </label>
         </div>
 
-        <CaseInput formState={formState} updateFormField={updateFormField}/>
+        <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+          <CaseInput formState={formState} updateFormField={updateFormField}/>
+        </div>
       </div>
     </div>
 
@@ -102,14 +158,16 @@ const TextForm = ({ formState, updateFormField, unsetFormField }: TextFormProps)
 
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
           <label htmlFor={'stopwords'}>Stopwords (One per line)</label>
-          <textarea id="stopwords" value={getStopwords()}
-                    onChange={updateStopwords}
-                    style={{
-                      height: '80%',
-                      width: '90%'
-                    }}/>
+          <textarea id="stopwords" value={getStopwords()} style={{ width: '90%' }}
+                    onChange={updateStopwords}/>
         </div>
       </div>
+    </div>
+
+    <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}><hr/></div>
+
+    <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+      <EdgeNGramInput formState={formState} updateFormField={updateFormField}/>
     </div>
   </div>;
 };
