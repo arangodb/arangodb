@@ -620,7 +620,15 @@ bool intersectRectPolygon(S2LatLngRect const* rect, S2Polygon const* poly) {
   std::unique_ptr<S2Polygon> rectPoly;
   rectPoly = std::make_unique<S2Polygon>(std::move(loop), S2Debug::DISABLE);
   return poly->Intersects(rectPoly.get());
+}
 
+bool insersectMultiPointsRegion(S2MultiPointRegion const* points, S2Region const* region) {
+  for (int i = 0; i < points->num_points(); ++i) {
+    if (region->Contains(points->point(i))) {
+      return true;
+    }
+  }
+  return false;
 }
 }
 
@@ -656,12 +664,7 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
 
     case ShapeContainer::Type::S2_MULTIPOINT: {
       S2MultiPointRegion* self = static_cast<S2MultiPointRegion*>(_data);
-      for (int i = 0; i < self->num_points(); ++i) {
-        if (other->Contains(self->point(i))) {
-          return true;
-        }
-      }
-      return false;
+      return insersectMultiPointsRegion(self, other);
     }
 
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
@@ -722,12 +725,7 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
     }
     case ShapeContainer::Type::S2_MULTIPOINT: {
       auto pts = static_cast<S2MultiPointRegion const*>(cc->_data);
-      for (int k = 0; k < pts->num_points(); k++) {
-        if (_data->Contains(pts->point(k))) {
-          return true;
-        }
-      }
-      return false;
+      return insersectMultiPointsRegion(pts, _data);
     }
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       auto lines = static_cast<S2MultiPolyline const*>(cc->_data);
