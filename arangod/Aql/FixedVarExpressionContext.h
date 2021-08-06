@@ -60,5 +60,26 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
   /// @brief temporary storage for expression data context
   std::unordered_map<Variable const*, AqlValue> _vars;
 };
+
+class SingleVarExpressionContext final : public QueryExpressionContext {
+ public:
+  explicit SingleVarExpressionContext(transaction::Methods& trx,
+                                      QueryContext& query,
+                                      AqlFunctionsInternalCache& cache);
+
+  ~SingleVarExpressionContext() override = default;
+
+  bool isDataFromCollection(Variable const* variable) const override;
+
+  AqlValue getVariableValue(Variable const* variable, bool doCopy,
+                            bool& mustDestroy) const override;
+
+  void setVariableValue(Variable const*, AqlValue const&);
+
+ private:
+  Variable* _variable;
+  AqlValue _value;
+};
+
 }  // namespace aql
 }  // namespace arangodb

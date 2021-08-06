@@ -46,6 +46,8 @@ namespace arangodb {
 namespace iresearch {
 
 class AqlAnalyzer final : public irs::analysis::analyzer{
+
+  //friend class QueryOptimizer;
  public:
   struct Options {
     Options() = default;
@@ -86,7 +88,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   bool isPreCalculated() const {
-    return _preCalculated;
+    return _optimizer._preCalculated;
   }
 #endif
 
@@ -105,13 +107,27 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   virtual bool reset(irs::string_ref const& field) noexcept override;
 
  private:
+
+  class QueryOptimizer {
+   public:
+    QueryOptimizer(AqlAnalyzer* analyzer);
+
+    bool optimize(irs::string_ref const& field);
+
+    bool _preCalculated{false};
+
+   private:
+
+    aql::CalculationNode* _nodeToOptimize{nullptr};
+    aql::SharedAqlItemBlockPtr _result;
+    AqlAnalyzer* _analyzer;
+  };
+
   using attributes = std::tuple<
     irs::increment,
     AnalyzerValueTypeAttribute,
     irs::term_attribute,
     VPackTermAttribute>;
-
-  bool optimize(irs::string_ref const& field);
 
   Options _options;
   aql::AqlValue _valueBuffer;
@@ -125,9 +141,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   aql::SharedAqlItemBlockPtr _queryResults;
   std::vector<aql::AstNode*> _bindedNodes;
   aql::ExecutionState _executionState{aql::ExecutionState::DONE};
-
-  bool _preCalculated{false};
-  aql::CalculationNode* _nodeToOptimize{nullptr};
+  QueryOptimizer _optimizer;
 
   attributes _attrs;
   size_t _resultRowIdx{ 0 };

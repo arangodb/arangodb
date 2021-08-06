@@ -528,10 +528,13 @@ ExecutionNode* tryOptimize(ExecutionNode* node) {
   return nullptr;
 }
 
-bool AqlAnalyzer::optimize(irs::string_ref const& field) {
-  // find here suitable situation
+AqlAnalyzer::QueryOptimizer::QueryOptimizer(AqlAnalyzer* analyzer) : _analyzer(analyzer) {
+  _result = _analyzer->_itemBlockManager.requestBlock(1,1);
+}
+
+bool AqlAnalyzer::QueryOptimizer::optimize(irs::string_ref const& field) {
   if (!_nodeToOptimize) {
-    ExecutionNode* execNode = tryOptimize(_plan->root());
+    ExecutionNode* execNode = tryOptimize(_analyzer->_plan->root());
     _nodeToOptimize = dynamic_cast<CalculationNode*>(execNode);
   }
 
@@ -539,13 +542,15 @@ bool AqlAnalyzer::optimize(irs::string_ref const& field) {
     //get expression
     auto e = _nodeToOptimize->expression();
 
-    auto& trx = _query->trxForOptimization();
+    auto& trx = _analyzer->_query->trxForOptimization();
 
     // get variable ptr
     auto v = static_cast<Variable const*>(e->node()->getData());
     AqlFunctionsInternalCache cache;
     // create context
-    FixedVarExpressionContext ctx(trx, _query->ast()->query(), cache);
+
+    auto& query = _analyzer->_query->ast()->query();
+    SingleVarExpressionContext ctx(trx, query, cache);
 
     AqlValue value(field.c_str());
 
@@ -557,17 +562,21 @@ bool AqlAnalyzer::optimize(irs::string_ref const& field) {
     bool mustDestroy = false;
     AqlValue calculatedValue = e->execute(&ctx, mustDestroy);
 
-    _executionState = ExecutionState::DONE; // already calculated
-    _resultRowIdx = 0;
-    _nextIncVal = 1;  // first increment always 1 to move from -1 to 0
+    _analyzer->_executionState = ExecutionState::DONE; // already calculated
+    _analyzer->_resultRowIdx = 0;
+    _analyzer->_nextIncVal = 1;  // first increment always 1 to move from -1 to 0
 
-    if (calculatedValue.isNull(true) && !_options.keepNull) {
+    if (calculatedValue.isNull(true) && !_analyzer->_options.keepNull) {
       // result is null and we should't store it
-      _queryResults = nullptr;
+      _analyzer->_queryResults = nullptr;
     } else {
       // put calculated value in _queryResults
-      _queryResults = _itemBlockManager.requestBlock(1,1);
-      _queryResults->setValue(0,0, calculatedValue);
+      _result->destroyValue(0,0);
+      AqlValue& out = const_cast<AqlValue&>(_result->getValueReference(0,0));
+      out = std::move(calculatedValue);
+
+      _analyzer->_engine.resultRegister(0); // set the value of resultRegister to 0
+      _analyzer->_queryResults = _result;
     }
 
     _preCalculated = true;
@@ -583,7 +592,8 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
     _query(new CalculationQueryContext(arangodb::DatabaseFeature::getCalculationVocbase())),
     _itemBlockManager(_query->resourceMonitor(), SerializationFormat::SHADOWROWS),
     _engine(0, *_query, _itemBlockManager,
-            SerializationFormat::SHADOWROWS, nullptr) {
+            SerializationFormat::SHADOWROWS, nullptr),
+    _optimizer(this) {
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   std::get<AnalyzerValueTypeAttribute>(_attrs).value = _options.returnType;
   TRI_ASSERT(validateQuery(_options.queryString,
@@ -595,9 +605,7 @@ bool AqlAnalyzer::next() {
   do {
     if (_queryResults != nullptr) {
       while (_queryResults->numRows() > _resultRowIdx) {
-        AqlValue const& value =  _preCalculated ?
-            _queryResults->getValueReference(_resultRowIdx++, 0) :
-            _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister()) ;
+        AqlValue const& value =  _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister()) ;
         if (_options.keepNull || !value.isNull(true)) {
           switch (_options.returnType) {
             case AnalyzerValueType::String:
@@ -606,7 +614,7 @@ bool AqlAnalyzer::next() {
               } else {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
-                aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+                aql::SingleVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
                 _valueBuffer = aql::Functions::ToString(&ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isString());
                 std::get<2>(_attrs).value = irs::ref_cast<irs::byte_type>(_valueBuffer.slice().stringView());
@@ -618,7 +626,7 @@ bool AqlAnalyzer::next() {
               } else {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
-                aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+                aql::SingleVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
                 _valueBuffer = aql::Functions::ToNumber(&ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isNumber());
                 std::get<3>(_attrs).value = _valueBuffer.slice();
@@ -630,7 +638,7 @@ bool AqlAnalyzer::next() {
               } else {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
-                aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+                aql::SingleVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
                 _valueBuffer = aql::Functions::ToBool(&ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isBoolean());
                 std::get<3>(_attrs).value = _valueBuffer.slice();
@@ -678,7 +686,7 @@ bool AqlAnalyzer::next() {
 
 bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
   try {
-    _preCalculated = false; // reset this value
+    _optimizer._preCalculated = false; // reset this value
     if (!_plan) {  // lazy initialization
       // important to hold a copy here as parser accepts reference!
       auto queryString = arangodb::aql::QueryString(_options.queryString);
@@ -725,7 +733,7 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
       _plan = optimizer.stealBest();
 
       // try to optimize
-      if (optimize(field)) {
+      if (_optimizer.optimize(field)) {
         return true;
       }
 
@@ -738,7 +746,7 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
       _engine.reset();
 
       // try to optimize
-      if (optimize(field)) {
+      if (_optimizer.optimize(field)) {
         return true;
       }
     }

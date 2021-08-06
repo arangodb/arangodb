@@ -72,3 +72,24 @@ FixedVarExpressionContext::FixedVarExpressionContext(transaction::Methods& trx,
                                                      QueryContext& context,
                                                      AqlFunctionsInternalCache& cache)
     : QueryExpressionContext(trx, context, cache) {}
+
+SingleVarExpressionContext::SingleVarExpressionContext(transaction::Methods& trx,
+                                                       QueryContext& context,
+                                                       AqlFunctionsInternalCache& cache)
+    : QueryExpressionContext(trx, context, cache) {}
+
+bool SingleVarExpressionContext::isDataFromCollection(Variable const*) const {
+  return false;
+}
+
+AqlValue SingleVarExpressionContext::getVariableValue(Variable const*, bool,
+                                                     bool&) const {
+  return _value;
+}
+
+
+void SingleVarExpressionContext::setVariableValue(Variable const* variable,
+                                                  AqlValue const& value) {
+  _variable = const_cast<Variable*>(variable);
+  _value = value;
+}
