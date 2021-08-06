@@ -206,6 +206,11 @@ class GraphManager {
       std::unordered_set<std::string> const& edgeCollectionNames,
       std::unordered_set<std::string> const& satellites,
       std::vector<std::shared_ptr<VPackBuffer<uint8_t>>>& vpackLake) const;
+
+  Result ensureVertexShardingMatches(Graph const& graph, LogicalCollection& edgeColl,
+                                     std::unordered_set<std::string> const& satellites,
+                                     std::string const& vertexCollection,
+                                     bool fromSide) const;
 };
 }  // namespace graph
 }  // namespace arangodb

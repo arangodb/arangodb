@@ -232,13 +232,9 @@ Result GraphManager::findOrCreateCollectionsByEdgeDefinition(Graph& graph,
       return res;
     } else {
       if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
-        // We can make this EE Code
-        if (edgeColl) {
-          if (edgeColl->isSatToSmartEdgeCollection()) {
-            if (satellites.find(vertexColl) == satellites.end()) {
-              LOG_DEVEL << "From has to be sattelite";
-            }
-          }
+        auto res = ensureVertexShardingMatches(graph, *edgeColl, satellites, vertexColl, true);
+        if (res.fail()) {
+          return res;
         }
         documentCollectionsToCreate.emplace(vertexColl);
       }
@@ -260,10 +256,9 @@ Result GraphManager::findOrCreateCollectionsByEdgeDefinition(Graph& graph,
       if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
         // We can make this EE Code
         if (edgeColl) {
-          if (edgeColl->isSmartToSatEdgeCollection()) {
-            if (satellites.find(vertexColl) == satellites.end()) {
-              LOG_DEVEL << "To has to be sattelite";
-            }
+          auto res = ensureVertexShardingMatches(graph, *edgeColl, satellites, vertexColl, false);
+          if (res.fail()) {
+            return res;
           }
         }
  
@@ -1086,3 +1081,14 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
     return {TRI_ERROR_INTERNAL};
   }
 }
+
+#ifndef USE_ENTERPRISE
+Result GraphManager::ensureVertexShardingMatches(Graph const&,
+                                                 LogicalCollection&,
+                                                 std::unordered_set<std::string> const&,
+                                                 std::string const&,
+                                                 bool) const {
+  // Only relevant for Enterprise graphs.
+  return TRI_ERROR_NO_ERROR;
+}
+#endif
