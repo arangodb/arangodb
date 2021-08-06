@@ -87,7 +87,7 @@ const AnalyzersReactView = () => {
         <div className={'pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1'}>
           <div className={'sectionHeader pure-g'}>
             <div className={'pure-u-2-5'}>
-              <div className={'title'}><AddAnalyzer/></div>
+              <div className={'title'}><AddAnalyzer analyzers={analyzers}/></div>
             </div>
           </div>
         </div>
@@ -98,12 +98,12 @@ const AnalyzersReactView = () => {
             </div>
 
             <div className={'pure-u-3-5'}>
-              <label htmlFor={'filterInput'} style={{
+              <label htmlFor={'filter-input'} style={{
                 color: '#fff',
                 marginRight: 10,
                 float: 'right'
               }}>
-                Filter: <input type={'text'} id={'filterInput'} className={'search-input'}
+                Filter: <input type={'text'} id={'filter-input'} className={'search-input'}
                                value={filterExpr} onChange={getChangeHandler(setFilterExpr)}
                                placeholder={'<glob> | (<db|name|type>:<glob> )+'}
                                style={{

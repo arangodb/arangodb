@@ -16,9 +16,10 @@ interface JsonFromProps {
   formState: { [key: string]: any };
   setFormState: (state: FormState) => void;
   setLockJsonForm: (lock: boolean) => void;
+  renderKey: string;
 }
 
-const JsonForm = ({ formState, setFormState, setLockJsonForm }: JsonFromProps) => {
+const JsonForm = ({ formState, setFormState, setLockJsonForm, renderKey }: JsonFromProps) => {
   const [formErrors, setFormErrors] = useState<string[]>([]);
 
   const changeHandler = (json: FormState) => {
@@ -41,20 +42,20 @@ const JsonForm = ({ formState, setFormState, setLockJsonForm }: JsonFromProps) =
   };
 
   return <div className={'pure-g'}>
-      <div style={{ overflow: 'auto' }} className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-        <Editor value={formState} onChange={changeHandler} ace={ace} mode={'code'} history={true}
-                onError={console.log}/>
-      </div>
-      <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-        {
-          formErrors.length
-            ? <ul style={{ color: 'red' }}>
-              {formErrors.map((error, idx) => <li key={idx} style={{ marginBottom: 5 }}>{error}</li>)}
-            </ul>
-            : null
-        }
-      </div>
-    </div>;
+    <div style={{ overflow: 'auto' }} className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+      <Editor value={formState} onChange={changeHandler} ace={ace} mode={'code'} history={true}
+              key={renderKey}/>
+    </div>
+    <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+      {
+        formErrors.length
+          ? <ul style={{ color: 'red' }}>
+            {formErrors.map((error, idx) => <li key={idx} style={{ marginBottom: 5 }}>{error}</li>)}
+          </ul>
+          : null
+      }
+    </div>
+  </div>;
 };
 
 export default JsonForm;

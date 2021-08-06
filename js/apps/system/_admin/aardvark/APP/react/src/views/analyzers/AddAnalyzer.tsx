@@ -1,6 +1,6 @@
 import React, { ReactFragment, useState } from 'react';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
-import { cloneDeep, set, unset } from 'lodash';
+import { cloneDeep, set, uniqueId, unset } from 'lodash';
 import JsonForm from "./forms/JsonForm";
 import FeatureForm from "./forms/FeatureForm";
 import DelimiterForm from "./forms/DelimiterForm";
@@ -12,6 +12,7 @@ import TextForm from "./forms/TextForm";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { FormState } from "./constants";
+import CopyFromInput from "./forms/CopyFromInput";
 
 declare var arangoHelper: { [key: string]: any };
 
@@ -22,11 +23,16 @@ const initialFormState: FormState = {
   properties: {}
 };
 
-const AddAnalyzer = () => {
+interface AddAnalyzerProps {
+  analyzers: FormState[];
+}
+
+const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
   const [show, setShow] = useState(false);
   const [showJsonForm, setShowJsonForm] = useState(false);
   const [lockJsonForm, setLockJsonForm] = useState(false);
   const [formState, setFormState] = useState(initialFormState);
+  const [renderKey, setRenderKey] = useState(uniqueId('force_re-render_'));
 
   const handleAdd = async () => {
     try {
@@ -83,14 +89,20 @@ const AddAnalyzer = () => {
     </button>
     <Modal show={show} setShow={setShow}>
       <ModalHeader title={'Create Analyzer'}>
-        <span style={{ float: 'right' }}>
-          <button className={'pure-button'} onClick={toggleJsonForm} disabled={lockJsonForm}
-                  style={{
-                    fontSize: '70%'
-                  }}>
-          {showJsonForm ? 'Switch to form view' : 'Switch to code view'}
-        </button>
-        </span>
+        <div className={'pure-g'}>
+          <div className={'pure-u-16-24 pure-u-md-16-24 pure-u-lg-16-24 pure-u-xl-16-24'}>
+            <CopyFromInput analyzers={analyzers} setFormState={setFormState} setRenderKey={setRenderKey}/>
+          </div>
+          <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
+            <button className={'pure-button'} onClick={toggleJsonForm} disabled={lockJsonForm}
+                    style={{
+                      fontSize: '70%',
+                      float: 'right'
+                    }}>
+              {showJsonForm ? 'Switch to form view' : 'Switch to code view'}
+            </button>
+          </div>
+        </div>
       </ModalHeader>
       <ModalBody>
         <div className={'pure-g'} style={{ minWidth: '50vw' }}>
@@ -98,7 +110,7 @@ const AddAnalyzer = () => {
             showJsonForm
               ? <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
                 <JsonForm formState={formState} setFormState={setFormState}
-                          setLockJsonForm={setLockJsonForm}/>
+                          setLockJsonForm={setLockJsonForm} renderKey={renderKey}/>
               </div>
               : <>
                 <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
