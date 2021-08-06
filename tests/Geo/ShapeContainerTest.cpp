@@ -575,10 +575,10 @@ class ShapeContainerTest2 : public ::testing::Test {
     ASSERT_EQ(exc.code(), TRI_ERROR_NOT_IMPLEMENTED); \
   } 
 
-// point      TTTTTTT
+// point      TT--TTT
 // multipoint TT----T
-// line       FFTTTTT
-// multiline  FF-----
+// line       --TTTTT
+// multiline  -------
 // poly       TTTTTTT
 // multipoly  TTTTTTT
 // rect       TTTTTTT
@@ -588,8 +588,8 @@ TEST_F(ShapeContainerTest2, intersections_point) {
   // The ones which are commented out run into assertion failures right now:
   ASSERT_TRUE(point.intersects(&point));
   ASSERT_TRUE(point.intersects(&multipoint));
-  ASSERT_TRUE(point.intersects(&line));
-  ASSERT_TRUE(point.intersects(&multiline));
+  NOT_IMPL_EXC(point.intersects(&line));
+  NOT_IMPL_EXC(point.intersects(&multiline));
   ASSERT_TRUE(point.intersects(&poly));
   ASSERT_TRUE(point.intersects(&multipoly));
   ASSERT_TRUE(point.intersects(&rect));
@@ -608,8 +608,8 @@ TEST_F(ShapeContainerTest2, intersections_multipoint) {
 TEST_F(ShapeContainerTest2, intersections_line) {
   // Note that in the S2 geo library intersections of points and lines
   // will always return false, since they are not well-defined numerically!
-  ASSERT_FALSE(line.intersects(&point));
-  ASSERT_FALSE(line.intersects(&multipoint));
+  NOT_IMPL_EXC(line.intersects(&point));
+  NOT_IMPL_EXC(line.intersects(&multipoint));
   ASSERT_TRUE(line.intersects(&line));
   ASSERT_TRUE(line.intersects(&multiline));
   ASSERT_TRUE(line.intersects(&poly));
@@ -621,8 +621,8 @@ TEST_F(ShapeContainerTest2, intersections_line) {
 TEST_F(ShapeContainerTest2, intersections_multiline) {
   // Note that in the S2 geo library intersections of points and lines
   // will always return false, since they are not well-defined numerically!
-  ASSERT_FALSE(multiline.intersects(&point));
-  ASSERT_FALSE(multiline.intersects(&multipoint));
+  NOT_IMPL_EXC(multiline.intersects(&point));
+  NOT_IMPL_EXC(multiline.intersects(&multipoint));
   NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(&line)));
   NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(&multiline)));
   NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(&poly)));

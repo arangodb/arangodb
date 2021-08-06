@@ -575,14 +575,8 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
 bool ShapeContainer::intersects(S2Polyline const* other) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT: {
-      S2Point const& p = static_cast<S2PointRegion*>(_data)->point();
-      // containment is only numerically defined on the endpoints
-      for (int k = 0; k < other->num_vertices(); k++) {
-        if (other->vertex(k) == p) {
-          return true;
-        }
-      }
-      return false;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+          "The case GEO_INTERSECTS(<point>, <polyline>) is numerically instable and thus not supported.");
     }
     case ShapeContainer::Type::S2_POLYLINE: {
       S2Polyline const* ll = static_cast<S2Polyline const*>(_data);
@@ -716,6 +710,11 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
 bool ShapeContainer::intersects(ShapeContainer const* cc) const {
   switch (cc->_type) {
     case ShapeContainer::Type::S2_POINT: {
+      if (_type == ShapeContainer::Type::S2_POLYLINE ||
+          _type == ShapeContainer::Type::S2_MULTIPOLYLINE) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+            "The case GEO_INTERSECTS(<polyline>, <point>) is numerically instable and thus not supported.");
+      }
       S2Point const& p = static_cast<S2PointRegion*>(cc->_data)->point();
       return _data->Contains(p);  // same
     }
@@ -729,6 +728,11 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
       return intersects(static_cast<S2LatLngRect const*>(cc->_data));
     }
     case ShapeContainer::Type::S2_MULTIPOINT: {
+      if (_type == ShapeContainer::Type::S2_POLYLINE ||
+          _type == ShapeContainer::Type::S2_MULTIPOLYLINE) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+            "The case GEO_INTERSECTS(<polyline>, <multipoint>) is numerically instable and thus not supported.");
+      }
       auto pts = static_cast<S2MultiPointRegion const*>(cc->_data);
       return insersectMultiPointsRegion(pts, _data);
     }
