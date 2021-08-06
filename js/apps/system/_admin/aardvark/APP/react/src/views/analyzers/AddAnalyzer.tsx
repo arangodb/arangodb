@@ -11,10 +11,11 @@ import BaseForm from "./forms/BaseForm";
 import TextForm from "./forms/TextForm";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
+import { FormState } from "./constants";
 
 declare var arangoHelper: { [key: string]: any };
 
-const initialFormState = {
+const initialFormState: FormState = {
   name: '',
   type: 'delimiter',
   features: [],
@@ -24,6 +25,7 @@ const initialFormState = {
 const AddAnalyzer = () => {
   const [show, setShow] = useState(false);
   const [showJsonForm, setShowJsonForm] = useState(false);
+  const [lockJsonForm, setLockJsonForm] = useState(false);
   const [formState, setFormState] = useState(initialFormState);
 
   const handleAdd = async () => {
@@ -82,9 +84,10 @@ const AddAnalyzer = () => {
     <Modal show={show} setShow={setShow}>
       <ModalHeader title={'Create Analyzer'}>
         <span style={{ float: 'right' }}>
-          <button className={'pure-button'} onClick={toggleJsonForm} style={{
-            fontSize: '70%'
-          }}>
+          <button className={'pure-button'} onClick={toggleJsonForm} disabled={lockJsonForm}
+                  style={{
+                    fontSize: '70%'
+                  }}>
           {showJsonForm ? 'Switch to form view' : 'Switch to code view'}
         </button>
         </span>
@@ -93,7 +96,8 @@ const AddAnalyzer = () => {
         <div className={'pure-g'} style={{ minWidth: '50vw' }}>
           {
             showJsonForm
-              ? <JsonForm formState={formState} setFormState={setFormState}/>
+              ? <JsonForm formState={formState} setFormState={setFormState}
+                          setLockJsonForm={setLockJsonForm}/>
               : <>
                 <BaseForm formState={formState} updateFormField={updateFormField}/>
                 <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>

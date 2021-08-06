@@ -83,7 +83,7 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
       <i className={'fa fa-eye'}/>
     </button>
     <Modal show={show} setShow={setShow}>
-      <span>Are you sure?! {analyzer.name}</span>
+      <span>{JSON.stringify(analyzer)}</span>
     </Modal>
   </>;
 };
