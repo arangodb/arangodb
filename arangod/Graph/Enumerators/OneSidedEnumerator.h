@@ -73,6 +73,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
   ~OneSidedEnumerator();
 
   void clear(bool keepPathStore) override;
+  void clearProvider() override;
 
   /**
    * @brief Quick test if the finder can prove there is no more data available.

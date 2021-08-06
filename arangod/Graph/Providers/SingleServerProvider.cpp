@@ -166,6 +166,13 @@ auto SingleServerProvider<Step>::expand(Step const& step, size_t previous,
 }
 
 template <class Step>
+auto SingleServerProvider<Step>::clear() -> void {
+  // Clear the cache - this cache does contain StringRefs
+  // We need to make sure that no one holds references to the cache (!)
+  _cache.clear();
+}
+
+template <class Step>
 void SingleServerProvider<Step>::addVertexToBuilder(typename Step::Vertex const& vertex,
                                                     arangodb::velocypack::Builder& builder,
                                                     bool writeIdIfNotFound) {

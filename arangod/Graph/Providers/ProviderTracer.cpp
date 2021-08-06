@@ -77,6 +77,13 @@ auto ProviderTracer<ProviderImpl>::expand(Step const& from, size_t previous,
 }
 
 template <class ProviderImpl>
+auto ProviderTracer<ProviderImpl>::clear() -> void {
+  double start = TRI_microtime();
+  TRI_DEFER(_stats["clear"].addTiming(TRI_microtime() - start));
+  _impl.clear();
+}
+
+template <class ProviderImpl>
 void ProviderTracer<ProviderImpl>::addVertexToBuilder(typename Step::Vertex const& vertex,
                                                       arangodb::velocypack::Builder& builder) {
   double start = TRI_microtime();

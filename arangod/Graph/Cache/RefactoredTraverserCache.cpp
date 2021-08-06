@@ -91,6 +91,7 @@ void RefactoredTraverserCache::clear() {
       _persistedStrings.size() * sizeof(arangodb::velocypack::HashedStringRef));
   _persistedStrings.clear();
   _stringHeap.clear();
+  // TODO: Asserts that _stringHeap got cleared successfully?
 }
 
 template <typename ResultType>

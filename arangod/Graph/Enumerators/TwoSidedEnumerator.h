@@ -129,7 +129,8 @@ class TwoSidedEnumerator {
 
   ~TwoSidedEnumerator();
 
-  void clear();
+  auto clear() -> void;
+  auto clearProvider() -> void;
 
   /**
    * @brief Quick test if the finder can prove there is no more data available.
