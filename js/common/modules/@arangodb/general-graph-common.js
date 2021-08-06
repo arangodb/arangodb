@@ -28,8 +28,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const arangodb = require('@arangodb');
+const ArangoCollection = arangodb.ArangoCollection;
 const ArangoError = arangodb.ArangoError;
 const db = arangodb.db;
+const users = require('@arangodb/users');
 const _ = require('lodash');
 
 let fixWeight = function (options) {
@@ -65,6 +67,82 @@ var isValidCollectionsParameter = function (x) {
     return false;
   }
   return true;
+};
+
+var checkROPermission = function(c) {
+  if (!users.isAuthActive()) {
+    return;
+  }
+
+  let user = users.currentUser();
+  if (user) {
+    let p = users.permission(user, db._name(), c);
+    var err = new ArangoError();
+    if (p === 'none') {
+      err.errorNum = arangodb.errors.ERROR_FORBIDDEN.code;
+      err.errorMessage = arangodb.errors.ERROR_FORBIDDEN.message;
+      throw err;
+    }
+  }
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief find or create a collection by name
+// //////////////////////////////////////////////////////////////////////////////
+
+var findCollectionByName = function (name, type) {
+  let col = db._collection(name);
+  let res = false;
+  if (!(col instanceof ArangoCollection)) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code;
+    err.errorMessage = name + arangodb.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.message;
+    throw err;
+  } else if (type === ArangoCollection.TYPE_EDGE && col.type() !== type) {
+    var err2 = new ArangoError();
+    err2.errorNum = arangodb.errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code;
+    err2.errorMessage = name + ' cannot be used as relation. It is not an edge collection';
+    throw err2;
+  }
+  checkROPermission(name);
+  return res;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief find or create a collection by name
+// //////////////////////////////////////////////////////////////////////////////
+
+var findCollectionsByEdgeDefinitions = function (edgeDefinitions) {
+  let vertexCollections = {};
+  let edgeCollections = {};
+  edgeDefinitions.forEach(function (e) {
+    if (!e.hasOwnProperty('collection') ||
+      !e.hasOwnProperty('from') ||
+      !e.hasOwnProperty('to') ||
+      !Array.isArray(e.from) ||
+      !Array.isArray(e.to)) {
+      var err = new ArangoError();
+      err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.code;
+      err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.message;
+      throw err;
+    }
+
+    e.from.forEach(function (v) {
+      findCollectionByName(v, ArangoCollection.TYPE_DOCUMENT);
+      vertexCollections[v] = db[v];
+    });
+    e.to.forEach(function (v) {
+      findCollectionByName(v, ArangoCollection.TYPE_DOCUMENT);
+      vertexCollections[v] = db[v];
+    });
+
+    findCollectionByName(e.collection, ArangoCollection.TYPE_EDGE);
+    edgeCollections[e.collection] = db[e.collection];
+  });
+  return [
+    vertexCollections,
+    edgeCollections
+  ];
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1432,6 +1510,38 @@ exports._relation = function (relationName, fromVertexCollections, toVertexColle
     from: stringToArray(fromVertexCollections),
     to: stringToArray(toVertexCollections)
   };
+};
+
+exports._graph = function (graphName) {
+  let gdb = getGraphCollection();
+  let g;
+
+  try {
+    g = gdb.document(graphName);
+  } catch (e) {
+    if (e.errorNum !== arangodb.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+      throw e;
+    }
+    let err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message;
+    throw err;
+  }
+  if (g.isSmart) {
+    let err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
+    err.errorMessage = 'The graph you requested is a SmartGraph (Enterprise Edition only)';
+    throw err;
+  }
+  if (g.isSatellite) {
+    let err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
+    err.errorMessage = 'The graph you requested is a SatelliteGraph (Enterprise Edition only)';
+    throw err;
+  }
+
+  findCollectionsByEdgeDefinitions(g.edgeDefinitions);
+  return new Graph(g);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
