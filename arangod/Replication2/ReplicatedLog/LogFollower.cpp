@@ -244,7 +244,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       .then([measureTime = std::move(measureTimeGuard)](auto&& res) mutable {
         measureTime.fire();
         auto&& [result, toBeResolved] = res.get();
-        // Is is okay to fire here, because commitToMemoryAndResolve has release
+        // It is okay to fire here, because commitToMemoryAndResolve has released
         // the guard already.
         toBeResolved.fire();
         return std::move(result);
@@ -330,9 +330,9 @@ auto replicated_log::LogFollower::waitFor(LogIndex idx)
   // so either you inserted it and or nothing happens
   auto it = self->_waitForQueue.getLockedGuard()->emplace(idx, WaitForPromise{});
   auto& promise = it->second;
-  auto&& future = promise.getFuture();
+  auto future = promise.getFuture();
   TRI_ASSERT(future.valid());
-  return std::move(future);
+  return future;
 }
 
 auto replicated_log::LogFollower::waitForIterator(LogIndex index)
