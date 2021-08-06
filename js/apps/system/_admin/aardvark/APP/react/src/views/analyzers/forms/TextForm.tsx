@@ -12,8 +12,8 @@ const TextForm = ({ formState, updateFormField, unsetFormField }: TextFormProps)
     updateFormField('properties.locale', event.target.value);
   };
 
-  const updateStopwords = (event: ChangeEvent<HTMLInputElement>) => {
-    const stopwords = event.target.value.split(/[, ]+/);
+  const updateStopwords = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    const stopwords = event.target.value.split('\n');
 
     if (filter(stopwords, negate(isEmpty)).length) {
       updateFormField('properties.stopwords', stopwords);
@@ -23,10 +23,10 @@ const TextForm = ({ formState, updateFormField, unsetFormField }: TextFormProps)
   };
 
   const getStopwords = () => {
-    return get(formState, ['properties', 'stopwords'], []).join(',');
+    return get(formState, ['properties', 'stopwords'], []).join('\n');
   };
 
-  const updateStopwordsPath = (event: ChangeEvent<HTMLTextAreaElement>) => {
+  const updateStopwordsPath = (event: ChangeEvent<HTMLInputElement>) => {
     const stopwordsPath = event.target.value;
 
     if (stopwordsPath) {
@@ -90,10 +90,10 @@ const TextForm = ({ formState, updateFormField, unsetFormField }: TextFormProps)
     <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
       <div className={'pure-g'}>
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <label htmlFor={'stopwords'}>Stopwords</label>
-          <input id="stopwords" type="text"
-                 value={getStopwords()}
-                 onChange={updateStopwords}
+          <label htmlFor={'stopwordsPath'}>Stopwords Path</label>
+          <input id="stopwordsPath" type="text"
+                 value={get(formState, ['properties', 'stopwordsPath'], '')}
+                 onChange={updateStopwordsPath}
                  style={{
                    height: 'auto',
                    width: '90%'
@@ -101,9 +101,9 @@ const TextForm = ({ formState, updateFormField, unsetFormField }: TextFormProps)
         </div>
 
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <label htmlFor={'stopwordsPath'}>Stopwords Path</label>
-          <textarea id="stopwordsPath" value={get(formState, ['properties', 'stopwordsPath'], '')}
-                    onChange={updateStopwordsPath}
+          <label htmlFor={'stopwords'}>Stopwords (One per line)</label>
+          <textarea id="stopwords" value={getStopwords()}
+                    onChange={updateStopwords}
                     style={{
                       height: '80%',
                       width: '90%'
