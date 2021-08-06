@@ -19,37 +19,17 @@ window.Users = Backbone.Model.extend({
   },
 
   url: function () {
-    if (this.isNew()) {
-      return arangoHelper.databaseUrl('/_api/user');
-    }
-    if (this.get('user') !== '') {
-      return arangoHelper.databaseUrl('/_api/user/' + this.get('user'));
+    if (!this.isNew() && this.get('user') !== '') {
+      return arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(this.get('user')));
     }
     return arangoHelper.databaseUrl('/_api/user');
   },
-
-  checkPassword: function (passwd, callback) {
-    $.ajax({
-      cache: false,
-      type: 'POST',
-      url: arangoHelper.databaseUrl('/_api/user/' + this.get('user')),
-      data: JSON.stringify({ passwd: passwd }),
-      contentType: 'application/json',
-      processData: false,
-      success: function (data) {
-        callback(false, data);
-      },
-      error: function (data) {
-        callback(true, data);
-      }
-    });
-  },
-
+  
   setPassword: function (passwd) {
     $.ajax({
       cache: false,
       type: 'PATCH',
-      url: arangoHelper.databaseUrl('/_api/user/' + this.get('user')),
+      url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(this.get('user'))),
       data: JSON.stringify({ passwd: passwd }),
       contentType: 'application/json',
       processData: false
@@ -60,7 +40,7 @@ window.Users = Backbone.Model.extend({
     $.ajax({
       cache: false,
       type: 'PATCH',
-      url: arangoHelper.databaseUrl('/_api/user/' + this.get('user')),
+      url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(this.get('user'))),
       data: JSON.stringify({'extra': {'name': name, 'img': img}}),
       contentType: 'application/json',
       processData: false,

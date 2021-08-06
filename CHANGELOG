@@ -1,6 +1,41 @@
 devel
 -----
 
+* Web UI: Fixes a logical error which occured after re-visiting the logs view
+  which lead to not displaying the logs view and its entries correctly
+  (BTS-507).
+
+* Fixed a bug, where Coordinators handled plan changes for databases
+  in heartbeat thread in wrong order. Databases could be listed, but
+  not used.
+
+* Automatically extend web UI sessions while they are still active. 
+  The web UI can now call a backend route to renew its JWT, so there will not
+  be any rude logouts in the middle of an active session.
+
+  Active web UI sessions (here: sessions with user activity within the last
+  90 minutes) will automatically renew their JWT if they get close to the
+  JWT expiry date.
+
+* Reduce memory usage for in-memory revision trees. Previously, a revision
+  tree instance for a non-empty collection/shard was using 4 MB of memory
+  when uncompressed. Trees that were unused for a while were compressed on
+  the fly to use less memory, and later uncompressed again when needed.
+  Now the uncompressed in-memory version of the revision tree will 
+  dynamically allocate memory as needed. This allows the initial version
+  of the trees to get away with just 64 KB of memory. Memory usage will
+  grow lazily when more parts of the trees get populated. The compression
+  of unused in-memory tree data is still in place.
+
+* Refactored arangobench:
+  - Updated testcases to show description of them when beginning execution
+  - Fixed testcase histogram with time measures when batch size > 0
+  - Integrated testcases with Velocypack for simplification 
+  - Deprecated some testcases
+  - Internal changes for performance optimization
+
+* Timely update of database server list on health check fixes BTS-505.
+
 * Add 3 AQL functions: COSINE_SIMILARITY, L1_DISTANCE and L2_DISTANCE.
 
 * Updated ArangoDB Starter to 0.15.1.
@@ -13,28 +48,28 @@ devel
   Previously, the value was ignored and WAL syncing on Windows was using a
   different code paths than on the other supported platforms. Now syncing is
   unified across all platforms, and they all call RocksDB's `SyncWAL()`.
-
+  
 * Updated ArangoDB Starter to 0.15.1-preview-4.
 
 * APM-132: Clean up collection statuses
   Removes collection statuses "new born", "loading", "unloading" and "unloaded".
   These statuses were last relevant with the MMFiles storage engine, when it
   was important to differentiate which collections are present in main memory
-  memory and which aren't. With the RocksDB storage engine, all that was 
+  memory and which aren't. With the RocksDB storage engine, all that was
   automatically handled anyway, and the statuses were not important anymore.
 
   The change removes the "Load" and "Unload" buttons for collections from the
   web interface. All collections in the web interface will be marked as
   "loaded" permanently.
-  
+
   This change also obsoletes the `load()` and `unload()` calls for collections
   as well as their HTTP API equivalents. The APIs will remain in place for now
   but are changed to no-ops. They will removed eventually in a future version
   of ArangoDB. This will be announced separately.
 
-* Include K_SHORTEST_PATHS and SHORTEST_PATH execution nodes in AQL query memory
-  usage accounting. The memory used by these execution node types was previously
-  not tracked against the configured query memory limit (BTS-411).
+* Include K_SHORTEST_PATHS and SHORTEST_PATH execution nodes in AQL query
+  memory usage accounting. The memory used by these execution node types was
+  previously not tracked against the configured query memory limit.
 
 * Reduce default value for max-nodes-per-callstack to 200 for OSX, because on
   OSX worker threads have a stack size of only 512kb.
@@ -43,10 +78,10 @@ devel
   directory. This is required so we have a full copy of the JavaScript
   dependencies and not one that excludes some infrequently changed modules.
   In addition, file copying now intentionally excludes .map files as they
-  are not needed. 
+  are not needed.
 
-* Fixed BTS-408: treat positive or negative signed numbers as constants 
-  immediately during AQL query parsing. 
+* Fixed BTS-408: treat positive or negative signed numbers as constants
+  immediately during AQL query parsing.
   Previously, a value of `-1` was parsed initially as `unary minus(value(1))`,
   which was not treated in the same way as a constant value `value(-1)`. 
   The value was later optimized to just `value(-1)`, but this only happened 
