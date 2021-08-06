@@ -1,6 +1,11 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed various problems in GEO_INTERSECTS: wrong results, not implemented cases
+  and numerically unstable behaviour. In particular, the case of the
+  intersection of two polygons in which one is an S2LngLatRect is fixed
+  (BTS-475).
+
 * Fixed ES-867 and ES-922: removed eslint from NPM packages descriptions and
   updated netmask package to non-vulnerable version.
 
