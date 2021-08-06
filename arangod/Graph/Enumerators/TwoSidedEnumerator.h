@@ -73,6 +73,7 @@ class TwoSidedEnumerator {
          PathValidatorOptions validatorOptions, arangodb::ResourceMonitor& resourceMonitor);
     ~Ball();
     auto clear() -> void;
+    auto clearProvider() -> void;
     auto reset(VertexRef center, size_t depth = 0) -> void;
     auto startNextDepth() -> void;
     [[nodiscard]] auto noPathLeft() const -> bool;
@@ -130,7 +131,6 @@ class TwoSidedEnumerator {
   ~TwoSidedEnumerator();
 
   auto clear() -> void;
-  auto clearProvider() -> void;
 
   /**
    * @brief Quick test if the finder can prove there is no more data available.
