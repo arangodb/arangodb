@@ -88,8 +88,7 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collections by EdgeDefinitions
   ////////////////////////////////////////////////////////////////////////////////
-  Result findOrCreateCollectionsByEdgeDefinition(Graph& graph,
-                                                 EdgeDefinition const& edgeDefinition,
+  Result findOrCreateCollectionsByEdgeDefinition(Graph& graph, EdgeDefinition const& edgeDefinition,
                                                  bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -165,12 +164,15 @@ class GraphManager {
 
  private:
 #ifdef USE_ENTERPRISE
-  Result ensureEnterpriseCollectionSharding(Graph const* graph, bool waitForSync,
-                                            std::unordered_set<std::string>& documentCollections) const;
-  Result ensureSmartCollectionSharding(Graph const* graph, bool waitForSync,
-                                       std::unordered_set<std::string>& documentCollections) const;
-  Result ensureSatelliteCollectionSharding(Graph const* graph, bool waitForSync,
-                                           std::unordered_set<std::string>& documentCollections) const;
+  std::pair<Result, std::string> ensureEnterpriseCollectionSharding(
+      Graph const* graph, bool waitForSync,
+      std::unordered_set<std::string>& documentCollections) const;
+  std::pair<Result, std::string> ensureSmartCollectionSharding(
+      Graph const* graph, bool waitForSync,
+      std::unordered_set<std::string>& documentCollections) const;
+  std::pair<Result, std::string> ensureSatelliteCollectionSharding(
+      Graph const* graph, bool waitForSync,
+      std::unordered_set<std::string>& documentCollections) const;
 #endif
 
   Result ensureCollections(
@@ -214,4 +216,3 @@ class GraphManager {
 };
 }  // namespace graph
 }  // namespace arangodb
-
