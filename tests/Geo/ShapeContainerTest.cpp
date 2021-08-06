@@ -475,6 +475,8 @@ class ShapeContainerTest2 : public ::testing::Test {
   ShapeContainer multipoly;
   ShapeContainer rect;
   ShapeContainer line2;
+  ShapeContainer rects[4];
+  ShapeContainer nearly[4];   // nearly rects, but not quite
 
   ShapeContainerTest2() {
     auto builder = VPackParser::fromJson(R"=(
@@ -522,9 +524,47 @@ class ShapeContainerTest2 : public ::testing::Test {
         "coordinates": [ [ 5.437, 50.332 ], [ 7.537, 50.376 ] ]
       })=");
     geojson::parseRegion(builder->slice(), line2);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [1.0,1.0], [4.0,1.0], [4.0,4.0], [1.0,4.0], [1.0,1.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), rects[0]);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [2.0,2.0], [3.0,2.0], [3.0,3.0], [2.0,3.0], [2.0,2.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), rects[1]);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [2.0,2.0], [5.0,2.0], [5.0,5.0], [2.0,5.0], [2.0,2.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), rects[2]);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [7.0,7.0], [8.0,7.0], [8.0,8.0], [7.0,8.0], [7.0,7.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), rects[3]);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [1.0,1.0], [4.0,1.0], [4.1,4.1], [1.0,4.0], [1.0,1.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), nearly[0]);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [2.0,2.0], [3.0,2.0], [3.1,3.1], [2.0,3.0], [2.0,2.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), nearly[1]);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [2.0,2.0], [5.0,2.0], [5.1,5.1], [2.0,5.0], [2.0,2.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), nearly[2]);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [7.0,7.0], [8.0,7.0], [8.1,8.1], [7.0,8.0], [7.0,7.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), nearly[3]);
   }
-
-
 };
 
 #define NOT_IMPL_EXC(expr) \
@@ -623,6 +663,42 @@ TEST_F(ShapeContainerTest2, intersections_rect) {
 TEST_F(ShapeContainerTest2, intersections_special) {
   ASSERT_TRUE(rect.intersects(&line2));
   ASSERT_TRUE(line2.intersects(&rect));
+}
+
+TEST_F(ShapeContainerTest2, intersections_latlntrects) {
+  ASSERT_TRUE(rects[0].intersects(&rects[0]));
+  ASSERT_TRUE(rects[0].intersects(&rects[1]));
+  ASSERT_TRUE(rects[1].intersects(&rects[0]));
+  ASSERT_TRUE(rects[0].intersects(&rects[2]));
+  ASSERT_TRUE(rects[2].intersects(&rects[0]));
+  ASSERT_TRUE(rects[1].intersects(&rects[2]));
+  ASSERT_TRUE(rects[2].intersects(&rects[1]));
+  ASSERT_FALSE(rects[0].intersects(&rects[3]));
+  ASSERT_FALSE(rects[3].intersects(&rects[0]));
+}
+
+TEST_F(ShapeContainerTest2, intersections_latlntrects_nearly) {
+  ASSERT_TRUE(rects[0].intersects(&nearly[0]));
+  ASSERT_TRUE(rects[0].intersects(&nearly[1]));
+  ASSERT_TRUE(rects[1].intersects(&nearly[0]));
+  ASSERT_TRUE(rects[0].intersects(&nearly[2]));
+  ASSERT_TRUE(rects[2].intersects(&nearly[0]));
+  ASSERT_TRUE(rects[1].intersects(&nearly[2]));
+  ASSERT_TRUE(rects[2].intersects(&nearly[1]));
+  ASSERT_FALSE(rects[0].intersects(&nearly[3]));
+  ASSERT_FALSE(rects[3].intersects(&nearly[0]));
+}
+
+TEST_F(ShapeContainerTest2, intersections_nearly_latlntrects) {
+  ASSERT_TRUE(nearly[0].intersects(&rects[0]));
+  ASSERT_TRUE(nearly[0].intersects(&rects[1]));
+  ASSERT_TRUE(nearly[1].intersects(&rects[0]));
+  ASSERT_TRUE(nearly[0].intersects(&rects[2]));
+  ASSERT_TRUE(nearly[2].intersects(&rects[0]));
+  ASSERT_TRUE(nearly[1].intersects(&rects[2]));
+  ASSERT_TRUE(nearly[2].intersects(&rects[1]));
+  ASSERT_FALSE(nearly[0].intersects(&rects[3]));
+  ASSERT_FALSE(nearly[3].intersects(&rects[0]));
 }
 
 }}
