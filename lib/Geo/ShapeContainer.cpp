@@ -598,6 +598,32 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
   return false;
 }
 
+namespace {
+bool intersectRectPolygon(S2LatLngRect const* rect, S2Polygon const* poly) {
+  if (rect->is_full()) {
+    return true;  // rectangle spans entire sphere
+  } else if (rect->is_point()) {
+    return poly->Contains(rect->lo().ToPoint());  // easy case
+  } else if (!rect->Intersects(poly->GetRectBound())) {
+    return false;  // cheap rejection
+  }
+  // Construct polygon from rect:
+  std::vector<S2Point> v;
+  v.reserve(5);
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(0)).toPoint());
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(1)).toPoint());
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(2)).toPoint());
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(3)).toPoint());
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(0)).toPoint());
+  std::unique_ptr<S2Loop> loop;
+  loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
+  std::unique_ptr<S2Polygon> rectPoly;
+  rectPoly = std::make_unique<S2Polygon>(std::move(loop), S2Debug::DISABLE);
+  return poly->Intersects(rectPoly.get());
+
+}
+}
+
 bool ShapeContainer::intersects(S2LatLngRect const* other) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT: {
@@ -625,26 +651,7 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
 
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* self = static_cast<S2Polygon const*>(_data);
-      if (other->is_full()) {
-        return true;  // rectangle spans entire sphere
-      } else if (other->is_point()) {
-        return self->Contains(other->lo().ToPoint());  // easy case
-      } else if (!other->Intersects(self->GetRectBound())) {
-        return false;  // cheap rejection
-      }
-      // Construct polygon from rect:
-      std::vector<S2Point> v;
-      v.reserve(5);
-      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(0)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(1)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(2)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(3)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(0)).toPoint());
-      std::unique_ptr<S2Loop> loop;
-      loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
-      std::unique_ptr<S2Polygon> rectPoly;
-      rectPoly = std::make_unique<S2Polygon>(std::move(loop), S2Debug::DISABLE);
-      return self->Intersects(rectPoly.get());
+      return intersectRectPolygon(other, self);
     }
 
     case ShapeContainer::Type::S2_MULTIPOINT: {
@@ -681,26 +688,7 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
       S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
-      if (self->is_full()) {
-        return true;  // rectangle spans entire sphere
-      } else if (self->is_point()) {
-        return other->Contains(self->lo().ToPoint());  // easy case
-      } else if (!self->Intersects(other->GetRectBound())) {
-        return false;  // cheap rejection
-      }
-      // construct bounding polygon of rect:
-      std::vector<S2Point> v;
-      v.reserve(5);
-      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(0)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(1)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(2)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(3)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(0)).toPoint());
-      std::unique_ptr<S2Loop> loop;
-      loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
-      std::unique_ptr<S2Polygon> rectPoly;
-      rectPoly = std::make_unique<S2Polygon>(std::move(loop), S2Debug::DISABLE);
-      return other->Intersects(rectPoly.get());
+      return intersectRectPolygon(self, other);
     }
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* self = static_cast<S2Polygon const*>(_data);
