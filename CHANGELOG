@@ -1,6 +1,9 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed ES-867 and ES-922: removed eslint from NPM packages descriptions and
+  updated netmask package to non-vulnerable version.
+
 * Web UI: Fixes the loading of map tiles which are being used to display the
   query output based on a world map when using SSL encryption. This lead to not
   displaying some world map tiles correctly (OASIS-590).
