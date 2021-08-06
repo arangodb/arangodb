@@ -246,10 +246,6 @@ std::set<std::string> const& Graph::edgeCollections() const {
   return _edgeColls;
 }
 
-EdgeDefinition::EdgeDefinitionType Graph::getEdgeDefinitionType(std::string const& edge) const {
-  return EdgeDefinition::EdgeDefinitionType::DEFAULT;
-}
-
 std::map<std::string, EdgeDefinition> const& Graph::edgeDefinitions() const {
   return _edgeDefs;
 }
@@ -518,19 +514,6 @@ bool EdgeDefinition::renameCollection(std::string const& oldName, std::string co
   }
 
   return renamed;
-}
-
-auto EdgeDefinition::getType() const -> EdgeDefinitionType {
-  return _type;
-}
-
-auto EdgeDefinition::setType(EdgeDefinitionType type) -> bool {
-  TRI_ASSERT(type != EdgeDefinitionType::DEFAULT);
-  if (_type == EdgeDefinitionType::DEFAULT) {
-    _type = type;
-    return true;
-  }
-  return false;
 }
 
 bool EdgeDefinition::isFromVertexCollectionUsed(std::string const& collectionName) const {
@@ -811,8 +794,4 @@ std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefini
 auto Graph::addSatellites(VPackSlice const&) -> Result {
   // Enterprise only
   return TRI_ERROR_NO_ERROR;
-}
-
-auto Graph::adjustEdgeDefinitionTypes() -> void {
-  // Enterprise only
 }

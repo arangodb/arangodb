@@ -56,12 +56,10 @@ class EdgeDefinition {
 
  public:
   EdgeDefinition(std::string edgeCollection_, std::set<std::string>&& from_,
-                 std::set<std::string>&& to_,
-                 EdgeDefinitionType type = EdgeDefinitionType::DEFAULT)
+                 std::set<std::string>&& to_) 
       : _edgeCollection(std::move(edgeCollection_)),
         _from(std::move(from_)),
-        _to(std::move(to_)),
-        _type(type) {}
+        _to(std::move(to_)) {}
 
   std::string const& getName() const { return _edgeCollection; }
   void setName(std::string const& newName) { _edgeCollection = newName; }
@@ -92,8 +90,6 @@ class EdgeDefinition {
 
   bool renameCollection(std::string const& oldName, std::string const& newName);
 
-  auto getType() const -> EdgeDefinitionType;
-
   /* @brief
    * Set type of the EdgeDefinition. Only allowed to be called once and only if
    * type is DEFAULT. If type has been set, it is not changeable anymore.
@@ -108,7 +104,6 @@ class EdgeDefinition {
   std::string _edgeCollection;
   std::set<std::string> _from;
   std::set<std::string> _to;
-  EdgeDefinitionType _type;
 };
 
 class Graph {
@@ -206,7 +201,6 @@ class Graph {
   virtual bool isSmart() const;
   virtual bool isDisjoint() const;
   virtual bool isSatellite() const;
-  virtual EdgeDefinition::EdgeDefinitionType getEdgeDefinitionType(std::string const& edge) const;
 
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;
@@ -281,7 +275,6 @@ class Graph {
   Result addOrphanCollection(std::string&&);
 
   virtual auto addSatellites(VPackSlice const& satellites) -> Result;
-  virtual auto adjustEdgeDefinitionTypes() -> void;
 
   std::ostream& operator<<(std::ostream& ostream);
 

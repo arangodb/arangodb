@@ -255,7 +255,6 @@ OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSli
       // Handles invalid Slice Content
       return OperationResult{std::move(res), options};
     }
-    _graph.adjustEdgeDefinitionTypes();
   }
 
   GraphManager gmngr{_vocbase};
@@ -517,7 +516,6 @@ OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinitionSlic
       // Handles invalid Slice Content
       return OperationResult{std::move(res), options};
     }
-    _graph.adjustEdgeDefinitionTypes();
   }
 
   res = gmngr.ensureAllCollections(&_graph, waitForSync);
