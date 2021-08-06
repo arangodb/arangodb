@@ -29,6 +29,7 @@
 #include <Transaction/Helpers.h>
 #include "RocksDBColumnFamilyManager.h"
 #include "RocksDBMethods.h"
+#include "RocksDBTransactionMethods.h"
 #include "RocksDBZkdIndex.h"
 #include "Transaction/Methods.h"
 
@@ -69,11 +70,11 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
     _cur = _min;
     _upperBound = _bound.end();
 
-    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-    rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-    options.iterate_upper_bound = &_upperBound;
-    TRI_ASSERT(options.prefix_same_as_start);
-    _iter = mthds->NewIterator(options, index->columnFamily());
+    RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(trx);
+    _iter = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
+      TRI_ASSERT(opts.prefix_same_as_start);
+      opts.iterate_upper_bound = &_upperBound;
+    });
     TRI_ASSERT(_iter != nullptr);
     _iter->SeekToFirst();
     _compareResult.resize(_dim);
