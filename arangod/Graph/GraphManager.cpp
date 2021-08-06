@@ -555,7 +555,6 @@ Result GraphManager::ensureCollections(
     std::unordered_set<std::shared_ptr<LogicalCollection>> const& existentDocumentCollections,
     std::unordered_set<std::shared_ptr<LogicalCollection>> const& existentEdgeCollections,
     std::unordered_set<std::string> const& satellites, bool waitForSync) const {
-  std::string createdInitialName;
   // II. Validate graph
   // a) Initial Validation
   if (!existentDocumentCollections.empty()) {
@@ -566,6 +565,7 @@ Result GraphManager::ensureCollections(
 
   // b) Enterprise Sharding
 #ifdef USE_ENTERPRISE
+  std::string createdInitialName;
   {
     auto [res, createdCollectionName] =
         ensureEnterpriseCollectionSharding(&graph, waitForSync, documentCollectionsToCreate);
@@ -574,7 +574,6 @@ Result GraphManager::ensureCollections(
     }
     createdInitialName = createdCollectionName;
   }
-#endif
 
   ScopeGuard guard([&]() {
     // rollback initial collection, in case it got created
@@ -594,6 +593,7 @@ Result GraphManager::ensureCollections(
       }
     }
   });
+#endif
 
   // III. Validate collections
   // document collections
@@ -632,9 +632,12 @@ Result GraphManager::ensureCollections(
   Result finalResult = methods::Collections::create(ctx()->vocbase(), opOptions,
                                                     collectionsToCreate.get(), waitForSync,
                                                     true, false, nullptr, created);
-  if (finalResult.fail() && !createdInitialName.empty()) {
+#ifdef USE_ENTERPRISE
+  if (finalResult.ok()) {
     guard.cancel();
   }
+#endif
+
   return finalResult;
 }
 
