@@ -576,6 +576,25 @@ Result GraphManager::ensureCollections(
   }
 #endif
 
+  ScopeGuard guard([&]() {
+    // rollback initial collection, in case it got created
+    if (!createdInitialName.empty()) {
+      std::shared_ptr<LogicalCollection> coll;
+      Result found =
+          methods::Collections::lookup(ctx()->vocbase(), createdInitialName, coll);
+      if (found.ok()) {
+        TRI_ASSERT(coll);
+        Result dropResult = arangodb::methods::Collections::drop(*coll, false, -1.0);
+        if (dropResult.fail()) {
+          LOG_TOPIC("04c89", WARN, Logger::GRAPHS)
+              << "While cleaning up graph `" << graph.name() << "`: "
+              << "Dropping collection `" << createdInitialName << "` failed with error "
+              << dropResult.errorNumber() << ": " << dropResult.errorMessage();
+        }
+      }
+    }
+  });
+
   // III. Validate collections
   // document collections
   for (auto const& col : existentDocumentCollections) {
@@ -614,20 +633,7 @@ Result GraphManager::ensureCollections(
                                                     collectionsToCreate.get(), waitForSync,
                                                     true, false, nullptr, created);
   if (finalResult.fail() && !createdInitialName.empty()) {
-    // rollback initial collection
-    std::shared_ptr<LogicalCollection> coll;
-    Result found =
-        methods::Collections::lookup(ctx()->vocbase(), createdInitialName, coll);
-    if (found.ok()) {
-      TRI_ASSERT(coll);
-      Result dropResult = arangodb::methods::Collections::drop(*coll, false, -1.0);
-      if (dropResult.fail()) {
-        LOG_TOPIC("04c89", WARN, Logger::GRAPHS)
-            << "While cleaning up graph `" << graph.name() << "`: "
-            << "Dropping collection `" << createdInitialName << "` failed with error "
-            << dropResult.errorNumber() << ": " << dropResult.errorMessage();
-      }
-    }
+    guard.cancel();
   }
   return finalResult;
 }
