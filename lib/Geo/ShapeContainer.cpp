@@ -61,11 +61,11 @@ S2Polygon latLngRectToPolygon(S2LatLngRect const* rect) {
   // Construct polygon from rect:
   std::vector<S2Point> v;
   v.reserve(5);
-  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(0)).toPoint());
-  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(1)).toPoint());
-  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(2)).toPoint());
-  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(3)).toPoint());
-  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(0)).toPoint());
+  v.emplace_back(rect->GetVertex(0).ToPoint());
+  v.emplace_back(rect->GetVertex(1).ToPoint());
+  v.emplace_back(rect->GetVertex(2).ToPoint());
+  v.emplace_back(rect->GetVertex(3).ToPoint());
+  v.emplace_back(rect->GetVertex(0).ToPoint());
   std::unique_ptr<S2Loop> loop;
   loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
   return S2Polygon{std::move(loop), S2Debug::DISABLE};
@@ -595,17 +595,7 @@ bool intersectRectPolygon(S2LatLngRect const* rect, S2Polygon const* poly) {
   } else if (!rect->Intersects(poly->GetRectBound())) {
     return false;  // cheap rejection
   }
-  // Construct polygon from rect:
-  std::vector<S2Point> v;
-  v.reserve(5);
-  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(0)).toPoint());
-  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(1)).toPoint());
-  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(2)).toPoint());
-  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(3)).toPoint());
-  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(0)).toPoint());
-  std::unique_ptr<S2Loop> loop;
-  loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
-  S2Polygon rectPoly{std::move(loop), S2Debug::DISABLE};
+  auto rectPoly = ::latLngRectToPolygon(rect);
   return poly->Intersects(&rectPoly);
 }
 
