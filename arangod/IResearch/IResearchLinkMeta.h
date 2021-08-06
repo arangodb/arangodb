@@ -320,6 +320,10 @@ struct InvertedIndexFieldMeta {
             TRI_vocbase_t const* defaultVocbase = nullptr) const;
 
 
+  bool hasExtra() const noexcept;
+
+  size_t extraFieldsIdx() const noexcept;
+
   using FieldRecord = std::pair<std::vector<basics::AttributeName>, FieldMeta::Analyzer>;
   using Fields = std::vector<FieldRecord>;
 

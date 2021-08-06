@@ -95,12 +95,27 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
  public:
   IResearchInvertedIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                                  aql::AstNode const& condition, IResearchInvertedIndex* index,
-                                 aql::Variable const* variable)
+                                 aql::Variable const* variable, int64_t mutableConditionIdx,
+                                 bool withExtra)
     : IndexIterator(collection, trx), _index(index), _condition(condition),
-      _variable(variable) {}
+      _variable(variable), _mutableConditionIdx(mutableConditionIdx), _withExtra(withExtra) {}
   char const* typeName() const override { return "inverted-index-iterator"; }
 
+  /// @brief The default index has no extra information
+  bool hasExtra() const override { return _withExtra; }
+
  protected:
+  bool nextExtraImpl(ExtraCallback const& callback, size_t limit) override {
+    if (limit == 0) {
+      TRI_ASSERT(false);  // Someone called with limit == 0. Api broken
+                          // validate that Iterator is in a good shape and hasn't failed
+      return false;
+    }
+    return nextImpl([&callback](LocalDocumentId const& token) {
+      return false;
+    },limit);
+  }
+
   bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override {
     if (limit == 0) {
       TRI_ASSERT(false);  // Someone called with limit == 0. Api broken
@@ -143,13 +158,12 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   }
 
   bool canRearm() const override { 
-    return true;
+    return _mutableConditionIdx != -1;
   }
 
-  bool rearmImpl(arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* variable,
-    IndexIteratorOptions const& opts) override {
-    TRI_ASSERT(node == &_condition);
+  bool rearmImpl(arangodb::aql::AstNode const*,
+    arangodb::aql::Variable const*,
+    IndexIteratorOptions const&) override {
     reset();
     return true;
   }
@@ -191,38 +205,66 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
                                     nullptr, _reader, _variable};
 
     irs::Or root;
-    //auto rv = FilterFactory::filter(&root, queryCtx, _condition, false);
-    
-    auto& partsConjunction = root.add<irs::And>();
-    auto& mutable_root = partsConjunction.add<irs::Or>();
-    auto rv = FilterFactory::filter(&mutable_root, queryCtx, *_condition.getMember(1), false);
-
-    if (rv.fail()) {
-      arangodb::velocypack::Builder builder;
-      _condition.toVelocyPack(builder, true);
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          rv.errorNumber(),
-          basics::StringUtils::concatT("failed to build filter while querying "
-                               "inverted index, query '",
-                               builder.toJson(), "': ", rv.errorMessage()));
+    if (_mutableConditionIdx == -1 ||
+          (_condition.type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND && 
+           _condition.type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR)) {
+      auto rv = FilterFactory::filter(&root, queryCtx, _condition, false);
+      if (rv.fail()) {
+        arangodb::velocypack::Builder builder;
+        _condition.toVelocyPack(builder, true);
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            rv.errorNumber(),
+            basics::StringUtils::concatT("failed to build filter while querying "
+                                 "inverted index, query '",
+                                 builder.toJson(), "': ", rv.errorMessage()));
+      }
+    } else {
+      TRI_ASSERT(_condition.numMembers() > _mutableConditionIdx);
+      irs::boolean_filter* conditionJoiner{nullptr};
+      std::unique_ptr<irs::boolean_filter> immutableRoot;
+      if (_condition.type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
+        conditionJoiner = &root.add<irs::And>();
+        immutableRoot = std::make_unique<irs::And>();
+        
+      } else {
+        TRI_ASSERT((_condition.type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR));
+        conditionJoiner = &root.add<irs::Or>();
+        immutableRoot = std::make_unique<irs::Or>();
+      }
+      auto& mutable_root = conditionJoiner->add<irs::Or>();
+      auto rv = FilterFactory::filter(&mutable_root, queryCtx,
+                                      *_condition.getMember(_mutableConditionIdx), false);
+      if (rv.fail()) {
+        arangodb::velocypack::Builder builder;
+        _condition.toVelocyPack(builder, true);
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            rv.errorNumber(),
+            basics::StringUtils::concatT(
+                "failed to build mutable filter part while querying "
+                "inverted index, query '",
+                builder.toJson(), "': ", rv.errorMessage()));
+      }
+      auto const conditionSize = static_cast<int64_t>(_condition.numMembers());
+      for (int64_t i = 0; i < conditionSize; ++i) {
+        if (i != _mutableConditionIdx) {
+          auto& tmp_root = immutableRoot->add<irs::Or>();
+          auto rv = FilterFactory::filter(&tmp_root, queryCtx,
+                                          *_condition.getMember(i), false);
+          if (rv.fail()) {
+            arangodb::velocypack::Builder builder;
+            _condition.toVelocyPack(builder, true);
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                rv.errorNumber(),
+                basics::StringUtils::concatT(
+                    "failed to build immutable filter part while querying "
+                    "inverted index, query '",
+                    builder.toJson(), "': ", rv.errorMessage()));
+          }
+        }
+      }
+      conditionJoiner->add<proxy_filter>().add(std::move(immutableRoot))
+                       .set_cache(&(ctx->_immutablePartCache[&_condition]));
     }
-    
-    auto immutable_root = std::make_unique<irs::Or>();
-    //auto& immutable_root = partsConjunction.add<irs::Or>();
-    TRI_ASSERT(immutable_root.get() != nullptr);
-    rv = FilterFactory::filter(immutable_root.get(), queryCtx, *_condition.getMember(0), false);
-
-    if (rv.fail()) {
-      arangodb::velocypack::Builder builder;
-      _condition.toVelocyPack(builder, true);
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          rv.errorNumber(),
-          basics::StringUtils::concatT("failed to build filter while querying "
-                               "inverted index, query '",
-                               builder.toJson(), "': ", rv.errorMessage()));
-    }
-    partsConjunction.add<proxy_filter>().add(std::move(immutable_root))
-                    .set_cache(&(ctx->_immutablePartCache[&_condition]));
     _filter = root.prepare(*_reader, _order, irs::no_boost(), nullptr);
   }
 
@@ -246,6 +288,8 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   IResearchInvertedIndex* _index;
   aql::AstNode const& _condition;
   aql::Variable const* _variable;
+  int64_t _mutableConditionIdx;
+  bool _withExtra;
 };
 
 } // namespace
@@ -375,7 +419,7 @@ std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iter
     LogicalCollection* collection, transaction::Methods* trx, aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
   if (node) {
-    return std::make_unique<IResearchInvertedIndexIterator>(collection, trx, *node, this, reference);
+    return std::make_unique<IResearchInvertedIndexIterator>(collection, trx, *node, this, reference, opts.mutableConditionIdx);
   } else {
     TRI_ASSERT(false);
     //sorting  case
@@ -432,7 +476,7 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
   if (rv.ok()) {
     filterCosts.supportsCondition = true;
     filterCosts.coveredAttributes = 0; // FIXME: we may use stored values!
-    filterCosts.estimatedCosts = itemsInIndex;
+    filterCosts.estimatedCosts = 1;
   }
   return filterCosts;
 }

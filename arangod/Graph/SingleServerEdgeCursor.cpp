@@ -339,7 +339,9 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
   }
 
   IndexIteratorOptions defaultIndexIteratorOptions;
-  
+  if (info.conditionNeedUpdate) {
+    defaultIndexIteratorOptions.mutableConditionIdx = info.conditionMemberToUpdate;
+  }
   _cursors.emplace_back();
   auto& csrs = _cursors.back();
   csrs.reserve(info.idxHandles.size());

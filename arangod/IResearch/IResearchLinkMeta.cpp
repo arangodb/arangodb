@@ -850,7 +850,7 @@ bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationSer
     static VPackStringRef const fieldName("storedValues");
 
     auto const field = slice.get(fieldName);
-    if (readAnalyzerDefinition && !_storedValues.fromVelocyPack(field, errorField)) {
+    if (!field.isNone() && !_storedValues.fromVelocyPack(field, errorField)) {
       return false;
     }
   }
@@ -859,8 +859,7 @@ bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationSer
     static VPackStringRef const fieldName("primarySortCompression");
     auto const field = slice.get(fieldName);
 
-    if (readAnalyzerDefinition &&
-        (_sortCompression = columnCompressionFromString(getStringRef(field))) == nullptr) {
+    if (!field.isNone() && ((_sortCompression = columnCompressionFromString(getStringRef(field))) == nullptr)) {
       return false;
     }
   }
@@ -1195,6 +1194,29 @@ bool  InvertedIndexFieldMeta::json(arangodb::application_features::ApplicationSe
   }
   builder.add(arangodb::StaticStrings::IndexFields, fieldsBuilder.slice());
   return true;
+}
+
+bool InvertedIndexFieldMeta::hasExtra() const noexcept {
+  return std::numeric_limits<size_t>::max() != extraFieldsIdx();
+}
+
+size_t InvertedIndexFieldMeta::extraFieldsIdx() const noexcept {
+  if (!_storedValues.empty()) {
+    size_t idx{0};
+    for (auto const& f : _storedValues.columns()) {
+      bool haveFrom{false};
+      bool haveTo{false};
+      for (auto const& s : f.fields) {
+        haveFrom |= s.first == "_from";
+        haveTo |= s.first == "_to";
+        if (haveFrom && haveTo) {
+          return idx;
+        }
+      }
+      ++idx;
+    }
+  }
+  return std::numeric_limits<size_t>::max();
 }
 
 }  // namespace iresearch
