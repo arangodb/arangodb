@@ -55,6 +55,24 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
+namespace {
+
+std::unique_ptr<S2Polygon> latLngRectToPolygon(S2LatLngRect const* rect) {
+  // Construct polygon from rect:
+  std::vector<S2Point> v;
+  v.reserve(5);
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(0)).toPoint());
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(1)).toPoint());
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(2)).toPoint());
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(3)).toPoint());
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(0)).toPoint());
+  std::unique_ptr<S2Loop> loop;
+  loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
+  return std::make_unique<S2Polygon>(std::move(loop), S2Debug::DISABLE);
+}
+
+}
+
 Result ShapeContainer::parseCoordinates(VPackSlice const& json, bool geoJson) {
   if (!json.isArray() || json.length() < 2) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
@@ -571,16 +589,9 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
       return ll->Intersects(other);
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
-      // This is the intersection polyline/latlngrect, which does not
-      // seem to be implemented in S2. It could be implemented in the
-      // following way: the two intersect, if one of the two following
-      // is the case:
-      //  - the polyline is contained in the rectangle
-      //  - the polyline intersects one of the four boundary edges
-      //    of the rectangle
-      // But this is something for later. For now, we report not implemented:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-          "The case GEO_INTERSECTS(<latlntrect>, <polyline>) is not yet implemented.");
+      auto rectPoly = ::latLngRectToPolygon(static_cast<S2LatLngRect const*>(_data));
+      auto cuts = rectPoly->IntersectWithPolyline(*other);
+      return !cuts.empty();
     }
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
@@ -606,16 +617,10 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
     }
 
     case ShapeContainer::Type::S2_POLYLINE: {
-      // This is the intersection polyline/latlngrect, which does not
-      // seem to be implemented in S2. It could be implemented in the
-      // following way: the two intersect, if one of the two following
-      // is the case:
-      //  - the polyline is contained in the rectangle
-      //  - the polyline intersects one of the four boundary edges
-      //    of the rectangle
-      // But this is something for later. For now, we report not implemented:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-          "The case GEO_INTERSECTS(<polyline>, <latlntrect>) is not yet implemented.");
+      auto rectPoly = ::latLngRectToPolygon(static_cast<S2LatLngRect const*>(other));
+      S2Polyline const* self = static_cast<S2Polyline const*>(_data);
+      auto cuts = rectPoly->IntersectWithPolyline(*self);
+      return !cuts.empty();
     }
 
     case ShapeContainer::Type::S2_LATLNGRECT: {
@@ -633,17 +638,7 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
         return false;  // cheap rejection
       }
       // Construct polygon from rect:
-      std::vector<S2Point> v;
-      v.reserve(5);
-      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(0)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(1)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(2)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(3)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(other->GetVertex(0)).toPoint());
-      std::unique_ptr<S2Loop> loop;
-      loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
-      std::unique_ptr<S2Polygon> rectPoly;
-      rectPoly = std::make_unique<S2Polygon>(std::move(loop), S2Debug::DISABLE);
+      auto rectPoly = ::latLngRectToPolygon(other);
       return self->Intersects(rectPoly.get());
     }
 
@@ -688,18 +683,7 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
       } else if (!self->Intersects(other->GetRectBound())) {
         return false;  // cheap rejection
       }
-      // construct bounding polygon of rect:
-      std::vector<S2Point> v;
-      v.reserve(5);
-      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(0)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(1)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(2)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(3)).toPoint());
-      v.emplace_back(Coordinate::fromLatLng(self->GetVertex(0)).toPoint());
-      std::unique_ptr<S2Loop> loop;
-      loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
-      std::unique_ptr<S2Polygon> rectPoly;
-      rectPoly = std::make_unique<S2Polygon>(std::move(loop), S2Debug::DISABLE);
+      auto rectPoly = ::latLngRectToPolygon(self);
       return other->Intersects(rectPoly.get());
     }
     case ShapeContainer::Type::S2_POLYGON: {

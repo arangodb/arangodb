@@ -537,11 +537,11 @@ class ShapeContainerTest2 : public ::testing::Test {
 
 // point      TTTTTTT
 // multipoint TT----T
-// line       FFTTTT-
+// line       FFTTTTT
 // multiline  FF-----
 // poly       TTTTTTT
 // multipoly  TTTTTTT
-// rect       TT--TTT
+// rect       TTTTTTT
 
 TEST_F(ShapeContainerTest2, intersections_point) {
   // All 7 with each other:
@@ -574,7 +574,7 @@ TEST_F(ShapeContainerTest2, intersections_line) {
   ASSERT_TRUE(line.intersects(&multiline));
   ASSERT_TRUE(line.intersects(&poly));
   ASSERT_TRUE(line.intersects(&multipoly));
-  NOT_IMPL_EXC(ASSERT_TRUE(line.intersects(&rect)));
+  ASSERT_TRUE(line.intersects(&rect));
 }
 
 
@@ -613,16 +613,16 @@ TEST_F(ShapeContainerTest2, intersections_multipoly) {
 TEST_F(ShapeContainerTest2, intersections_rect) {
   ASSERT_TRUE(rect.intersects(&point));
   ASSERT_TRUE(rect.intersects(&multipoint));
-  NOT_IMPL_EXC(ASSERT_TRUE(rect.intersects(&line)));
-  NOT_IMPL_EXC(ASSERT_TRUE(rect.intersects(&multiline)));
+  ASSERT_TRUE(rect.intersects(&line));
+  ASSERT_TRUE(rect.intersects(&multiline));
   ASSERT_TRUE(rect.intersects(&poly));
   ASSERT_TRUE(rect.intersects(&multipoly));
   ASSERT_TRUE(rect.intersects(&rect));
 }
 
 TEST_F(ShapeContainerTest2, intersections_special) {
-  NOT_IMPL_EXC(ASSERT_TRUE(rect.intersects(&line2)));
-  NOT_IMPL_EXC(ASSERT_TRUE(line2.intersects(&rect)));
+  ASSERT_TRUE(rect.intersects(&line2));
+  ASSERT_TRUE(line2.intersects(&rect));
 }
 
 }}
