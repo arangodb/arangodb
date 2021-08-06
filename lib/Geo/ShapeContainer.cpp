@@ -609,6 +609,40 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
   return false;
 }
 
+namespace {
+bool intersectRectPolygon(S2LatLngRect const* rect, S2Polygon const* poly) {
+  if (rect->is_full()) {
+    return true;  // rectangle spans entire sphere
+  } else if (rect->is_point()) {
+    return poly->Contains(rect->lo().ToPoint());  // easy case
+  } else if (!rect->Intersects(poly->GetRectBound())) {
+    return false;  // cheap rejection
+  }
+  // Construct polygon from rect:
+  std::vector<S2Point> v;
+  v.reserve(5);
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(0)).toPoint());
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(1)).toPoint());
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(2)).toPoint());
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(3)).toPoint());
+  v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(0)).toPoint());
+  std::unique_ptr<S2Loop> loop;
+  loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
+  std::unique_ptr<S2Polygon> rectPoly;
+  rectPoly = std::make_unique<S2Polygon>(std::move(loop), S2Debug::DISABLE);
+  return poly->Intersects(rectPoly.get());
+}
+
+bool insersectMultiPointsRegion(S2MultiPointRegion const* points, S2Region const* region) {
+  for (int i = 0; i < points->num_points(); ++i) {
+    if (region->Contains(points->point(i))) {
+      return true;
+    }
+  }
+  return false;
+}
+}
+
 bool ShapeContainer::intersects(S2LatLngRect const* other) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT: {
@@ -630,26 +664,12 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
 
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* self = static_cast<S2Polygon const*>(_data);
-      if (other->is_full()) {
-        return true;  // rectangle spans entire sphere
-      } else if (other->is_point()) {
-        return self->Contains(other->lo().ToPoint());  // easy case
-      } else if (!other->Intersects(self->GetRectBound())) {
-        return false;  // cheap rejection
-      }
-      // Construct polygon from rect:
-      auto rectPoly = ::latLngRectToPolygon(other);
-      return self->Intersects(rectPoly.get());
+      return intersectRectPolygon(other, self);
     }
 
     case ShapeContainer::Type::S2_MULTIPOINT: {
       S2MultiPointRegion* self = static_cast<S2MultiPointRegion*>(_data);
-      for (int i = 0; i < self->num_points(); ++i) {
-        if (other->Contains(self->point(i))) {
-          return true;
-        }
-      }
-      return false;
+      return insersectMultiPointsRegion(self, other);
     }
 
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
@@ -676,15 +696,7 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
       S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
-      if (self->is_full()) {
-        return true;  // rectangle spans entire sphere
-      } else if (self->is_point()) {
-        return other->Contains(self->lo().ToPoint());  // easy case
-      } else if (!self->Intersects(other->GetRectBound())) {
-        return false;  // cheap rejection
-      }
-      auto rectPoly = ::latLngRectToPolygon(self);
-      return other->Intersects(rectPoly.get());
+      return intersectRectPolygon(self, other);
     }
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* self = static_cast<S2Polygon const*>(_data);
@@ -718,12 +730,7 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
     }
     case ShapeContainer::Type::S2_MULTIPOINT: {
       auto pts = static_cast<S2MultiPointRegion const*>(cc->_data);
-      for (int k = 0; k < pts->num_points(); k++) {
-        if (_data->Contains(pts->point(k))) {
-          return true;
-        }
-      }
-      return false;
+      return insersectMultiPointsRegion(pts, _data);
     }
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       auto lines = static_cast<S2MultiPolyline const*>(cc->_data);
