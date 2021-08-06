@@ -1228,8 +1228,15 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  bool result = contains ? outer.contains(&inner) : outer.intersects(&inner);
-  return AqlValue(AqlValueHintBool(result));
+  bool result;
+  try {
+    result = contains ? outer.contains(&inner) : outer.intersects(&inner);
+    return AqlValue(AqlValueHintBool(result));
+  } catch (arangodb::basics::Exception const& ex) {
+    res.reset(ex.code(), ex.what());
+    registerWarning(expressionContext, func, res);
+    return AqlValue(AqlValueHintBool(false));
+  }
 }
 
 static Result parseGeoPolygon(VPackSlice polygon, VPackBuilder& b) {
