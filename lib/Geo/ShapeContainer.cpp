@@ -57,7 +57,7 @@ using namespace arangodb::geo;
 
 namespace {
 
-std::unique_ptr<S2Polygon> latLngRectToPolygon(S2LatLngRect const* rect) {
+S2Polygon latLngRectToPolygon(S2LatLngRect const* rect) {
   // Construct polygon from rect:
   std::vector<S2Point> v;
   v.reserve(5);
@@ -68,7 +68,7 @@ std::unique_ptr<S2Polygon> latLngRectToPolygon(S2LatLngRect const* rect) {
   v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(0)).toPoint());
   std::unique_ptr<S2Loop> loop;
   loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
-  return std::make_unique<S2Polygon>(std::move(loop), S2Debug::DISABLE);
+  return S2Polygon{std::move(loop), S2Debug::DISABLE};
 }
 
 }
@@ -584,7 +584,7 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
       auto rectPoly = ::latLngRectToPolygon(static_cast<S2LatLngRect const*>(_data));
-      auto cuts = rectPoly->IntersectWithPolyline(*other);
+      auto cuts = rectPoly.IntersectWithPolyline(*other);
       return !cuts.empty();
     }
     case ShapeContainer::Type::S2_POLYGON: {
@@ -622,9 +622,8 @@ bool intersectRectPolygon(S2LatLngRect const* rect, S2Polygon const* poly) {
   v.emplace_back(Coordinate::fromLatLng(rect->GetVertex(0)).toPoint());
   std::unique_ptr<S2Loop> loop;
   loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
-  std::unique_ptr<S2Polygon> rectPoly;
-  rectPoly = std::make_unique<S2Polygon>(std::move(loop), S2Debug::DISABLE);
-  return poly->Intersects(rectPoly.get());
+  S2Polygon rectPoly{std::move(loop), S2Debug::DISABLE};
+  return poly->Intersects(&rectPoly);
 }
 
 bool insersectMultiPointsRegion(S2MultiPointRegion const* points, S2Region const* region) {
@@ -647,7 +646,7 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
     case ShapeContainer::Type::S2_POLYLINE: {
       auto rectPoly = ::latLngRectToPolygon(static_cast<S2LatLngRect const*>(other));
       S2Polyline const* self = static_cast<S2Polyline const*>(_data);
-      auto cuts = rectPoly->IntersectWithPolyline(*self);
+      auto cuts = rectPoly.IntersectWithPolyline(*self);
       return !cuts.empty();
     }
 
