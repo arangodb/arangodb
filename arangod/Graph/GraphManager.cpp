@@ -254,7 +254,6 @@ Result GraphManager::findOrCreateCollectionsByEdgeDefinition(Graph& graph,
       return res;
     } else {
       if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
-        // We can make this EE Code
         if (edgeColl) {
           auto res = ensureVertexShardingMatches(graph, *edgeColl, satellites,
                                                  vertexColl, false);
