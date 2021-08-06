@@ -2,6 +2,7 @@ import React, { MouseEvent, useState } from 'react';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { mutate } from "swr";
+import { JsonEditor as Editor } from "jsoneditor-react";
 
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };
@@ -83,7 +84,13 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
       <i className={'fa fa-eye'}/>
     </button>
     <Modal show={show} setShow={setShow}>
-      <span>{JSON.stringify(analyzer)}</span>
+      <ModalHeader title={`Analyzer Details: ${analyzer.name}`}/>
+      <ModalBody>
+        <Editor value={analyzer} mode={'view'}/>
+      </ModalBody>
+      <ModalFooter>
+        <button className="button-close" onClick={() => setShow(false)}>Close</button>
+      </ModalFooter>
     </Modal>
   </>;
 };

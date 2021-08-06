@@ -4,8 +4,6 @@ import Ajv from 'ajv';
 import { formSchema, FormState } from "../constants";
 import { isArray } from "lodash";
 
-declare var ace: any;
-
 const ajv = new Ajv({
   allErrors: true,
   verbose: true
@@ -42,19 +40,18 @@ const JsonForm = ({ formState, setFormState, setLockJsonForm, renderKey }: JsonF
   };
 
   return <div className={'pure-g'}>
-    <div style={{ overflow: 'auto' }} className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-      <Editor value={formState} onChange={changeHandler} ace={ace} mode={'code'} history={true}
-              key={renderKey}/>
-    </div>
     <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-      {
-        formErrors.length
-          ? <ul style={{ color: 'red' }}>
+      <Editor value={formState} onChange={changeHandler} mode={'code'} history={true} key={renderKey}/>
+    </div>
+    {
+      formErrors.length
+        ? <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+          <ul style={{ color: 'red' }}>
             {formErrors.map((error, idx) => <li key={idx} style={{ marginBottom: 5 }}>{error}</li>)}
           </ul>
-          : null
-      }
-    </div>
+        </div>
+        : null
+    }
   </div>;
 };
 

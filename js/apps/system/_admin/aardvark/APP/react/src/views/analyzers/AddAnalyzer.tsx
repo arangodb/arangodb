@@ -105,7 +105,7 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
         </div>
       </ModalHeader>
       <ModalBody>
-        <div className={'pure-g'} style={{ minWidth: '50vw' }}>
+        <div className={'pure-g'}>
           {
             showJsonForm
               ? <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
