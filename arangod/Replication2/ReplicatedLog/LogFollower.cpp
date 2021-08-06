@@ -170,8 +170,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   auto* core = self->_logCore.get();
   static_assert(std::is_nothrow_move_constructible_v<decltype(newInMemoryLog)>);
   auto commitToMemoryAndResolve =
-      [maybeSelf = std::optional<decltype(self)>(std::move(self)),
-       req = std::move(req), newInMemoryLog = std::move(newInMemoryLog),
+      [selfGuard = std::move(self), req = std::move(req),
+       newInMemoryLog = std::move(newInMemoryLog),
        toBeResolvedPtr = std::move(toBeResolvedPtr)](
           futures::Try<Result>&& tryRes) mutable -> std::pair<AppendEntriesResult, DeferredAction> {
     // We have to release the guard after this lambda is finished.
@@ -179,9 +179,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     // happens *after* the following thenValue calls have been executed. In
     // particular the lock is held until the end of the future chain is reached.
     // This will cause deadlocks.
-    TRI_DEFER({ maybeSelf.reset(); });
-    TRI_ASSERT(maybeSelf.has_value());
-    auto& self = maybeSelf.value();
+    decltype(selfGuard) self = std::move(selfGuard);
 
     auto const& res = tryRes.get();
     {
@@ -212,11 +210,12 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         LOG_CTX("1641d", TRACE, self->_follower._loggerContext)
             << "increment commit index: " << self->_commitIndex;
 
-        static_assert(std::is_nothrow_move_assignable_v<WaitForQueueResolve>);
-        //static_assert(
-        //    std::is_nothrow_assignable_v<std::optional<WaitForQueueResolve>, std::add_rvalue_reference_t<WaitForQueueResolve>>);
-        *toBeResolvedPtr =
-            WaitForQueueResolve{self->_waitForQueue.getLockedGuard(), self->_commitIndex};
+        static_assert(
+            std::is_nothrow_constructible_v<std::optional<WaitForQueueResolve>, std::in_place_t,
+                                            std::add_rvalue_reference_t<WaitForQueueResolve::QueueGuard>, LogIndex>);
+        auto toBeResolved = std::optional<WaitForQueueResolve>{std::in_place, self->_waitForQueue.getLockedGuard(), self->_commitIndex};
+        static_assert(std::is_nothrow_move_assignable_v<std::optional<WaitForQueueResolve>>);
+        *toBeResolvedPtr = std::move(toBeResolved);
         return DeferredAction([toBeResolved = std::move(toBeResolvedPtr)]() noexcept {
           auto& resolve = toBeResolved->value();
           for (auto it = resolve.begin; it != resolve.end; it = resolve._guard->erase(it)) {
