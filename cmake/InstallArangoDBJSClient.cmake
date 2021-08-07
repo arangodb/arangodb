@@ -37,6 +37,7 @@ install(
   REGEX "^.*/.npmignore"                                   EXCLUDE
   REGEX "^.*/.bin"                                         EXCLUDE
   REGEX "^.*/.*-no-eslint"                                 EXCLUDE
+  REGEX "^.*js/node/package.*.json"                        EXCLUDE
 )
 
 install(
