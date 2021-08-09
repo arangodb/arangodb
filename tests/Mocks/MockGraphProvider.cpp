@@ -125,10 +125,7 @@ auto MockGraphProvider::expand(Step const& step, size_t previous,
   }
 }
 
-auto MockGraphProvider::clear() -> void {
-  _fromIndex.clear();
-  _toIndex.clear();
-}
+auto MockGraphProvider::clear() -> void {}
 
 auto MockGraphProvider::addVertexToBuilder(const Step::Vertex& vertex,
                                            arangodb::velocypack::Builder& builder) -> void {
