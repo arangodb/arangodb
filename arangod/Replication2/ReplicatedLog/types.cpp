@@ -53,7 +53,7 @@ replicated_log::QuorumData::QuorumData(LogIndex index, LogTerm term)
 
 replicated_log::QuorumData::QuorumData(VPackSlice slice) {
   index = slice.get(StaticStrings::Index).extract<LogIndex>();
-  term = slice.get("term").extract<LogTerm>();
+  term = slice.get(StaticStrings::Term).extract<LogTerm>();
   for (auto part : VPackArrayIterator(slice.get("quorum"))) {
     quorum.push_back(part.copyString());
   }
@@ -62,7 +62,7 @@ replicated_log::QuorumData::QuorumData(VPackSlice slice) {
 void replicated_log::QuorumData::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Index, VPackValue(index.value));
-  builder.add("term", VPackValue(term.value));
+  builder.add(StaticStrings::Term, VPackValue(term.value));
   {
     VPackArrayBuilder ab(&builder, "quorum");
     for (auto const& part : quorum) {

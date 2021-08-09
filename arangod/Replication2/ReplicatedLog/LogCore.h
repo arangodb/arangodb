@@ -38,7 +38,7 @@ struct PersistedLogIterator;
 /**
  * @brief The persistent core of a replicated log. There must only ever by one
  * instance of LogCore for a particular physical log. It is always held by the
- * single active LogParticipantI instance, which in turn lives in the
+ * single active ILogParticipant instance, which in turn lives in the
  * ReplicatedLog instance for this particular log. That is, usually by either a
  * LogLeader, or a LogFollower. If the term changes (and with that
  * leader/followers and/or configuration like writeConcern), a new participant

@@ -91,12 +91,10 @@ struct LogIndex : implement_compare<LogIndex> {
 
   [[nodiscard]] auto operator+(std::uint64_t delta) const -> LogIndex;
 
-  friend auto operator<<(std::ostream& os, LogIndex const& idx) -> std::ostream&;
+  friend auto operator<<(std::ostream&, LogIndex) -> std::ostream&;
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
-
-auto operator<<(std::ostream& os, LogIndex const& idx) -> std::ostream&;
 
 struct LogTerm : implement_compare<LogTerm> {
   constexpr LogTerm() noexcept : value{0} {}
@@ -104,12 +102,10 @@ struct LogTerm : implement_compare<LogTerm> {
   std::uint64_t value;
   [[nodiscard]] auto operator<=(LogTerm) const -> bool;
 
-  friend auto operator<<(std::ostream& os, LogTerm const& term) -> std::ostream&;
+  friend auto operator<<(std::ostream&, LogTerm) -> std::ostream&;
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
-
-auto operator<<(std::ostream& os, LogTerm const& term) -> std::ostream&;
 
 [[nodiscard]] auto to_string(LogTerm term) -> std::string;
 [[nodiscard]] auto to_string(LogIndex index) -> std::string;
@@ -118,8 +114,7 @@ struct TermIndexPair : implement_compare<TermIndexPair> {
   LogTerm term{};
   LogIndex index{};
 
-  friend auto operator<=(TermIndexPair const& left, TermIndexPair const& right) noexcept
-      -> bool;
+  friend auto operator<=(TermIndexPair, TermIndexPair) noexcept -> bool;
 
   TermIndexPair(LogTerm term, LogIndex index) noexcept;
   TermIndexPair() = default;
@@ -127,14 +122,10 @@ struct TermIndexPair : implement_compare<TermIndexPair> {
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> TermIndexPair;
 
-  friend auto operator<<(std::ostream& os, TermIndexPair const& pair) -> std::ostream&;
+  friend auto operator<<(std::ostream&, TermIndexPair) -> std::ostream&;
 };
 
-[[nodiscard]] auto operator<=(TermIndexPair const& left, TermIndexPair const& right) noexcept -> bool;
-auto operator<<(std::ostream& os, TermIndexPair const& pair) -> std::ostream&;
-
 struct LogPayload {
-  LogPayload() = delete;
   explicit LogPayload(velocypack::UInt8Buffer dummy);
 
   // Named constructors, have to make copies.
@@ -154,7 +145,6 @@ struct LogPayload {
 [[nodiscard]] auto operator==(LogPayload const&, LogPayload const&) -> bool;
 [[nodiscard]] auto operator!=(LogPayload const&, LogPayload const&) -> bool;
 
-// just a placeholder for now, must have a hash<>
 using ParticipantId = std::string;
 
 class PersistingLogEntry {

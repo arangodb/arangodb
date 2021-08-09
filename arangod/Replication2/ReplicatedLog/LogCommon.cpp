@@ -47,7 +47,7 @@ LogIndex::operator velocypack::Value() const noexcept {
   return velocypack::Value(value);
 }
 
-auto replication2::operator<<(std::ostream& os, const LogIndex& idx) -> std::ostream& {
+auto replication2::operator<<(std::ostream& os, LogIndex idx) -> std::ostream& {
   return os << idx.value;
 }
 
@@ -183,7 +183,7 @@ LogTerm::operator velocypack::Value() const noexcept {
   return velocypack::Value(value);
 }
 
-auto replication2::operator<<(std::ostream& os, const LogTerm& term) -> std::ostream& {
+auto replication2::operator<<(std::ostream& os, LogTerm term) -> std::ostream& {
   return os << term.value;
 }
 
@@ -246,8 +246,8 @@ auto replication2::to_string(LogIndex index) -> std::string {
   return std::to_string(index.value);
 }
 
-auto replication2::operator<=(replication2::TermIndexPair const& left,
-                              replication2::TermIndexPair const& right) noexcept -> bool {
+auto replication2::operator<=(replication2::TermIndexPair left,
+                              replication2::TermIndexPair right) noexcept -> bool {
   if (left.term < right.term) {
     return true;
   } else if (left.term == right.term) {
@@ -277,7 +277,7 @@ replication2::TermIndexPair::TermIndexPair(LogTerm term, LogIndex index) noexcep
   TRI_ASSERT((index != LogIndex{0}) || (term == LogTerm{0}));
 }
 
-auto replication2::operator<<(std::ostream& os, const TermIndexPair& pair) -> std::ostream& {
+auto replication2::operator<<(std::ostream& os, TermIndexPair pair) -> std::ostream& {
   return os << '(' << pair.term << ':' << pair.index << ')';
 }
 
