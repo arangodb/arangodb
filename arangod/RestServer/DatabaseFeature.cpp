@@ -81,6 +81,11 @@ arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(arangodb::application_f
   return info;
 }
 
+/// @brief return either the name of the database to be used as a folder name, or its id if its name contains special characters and is not fully supported in every OS
+[[nodiscard]] std::string getDatabaseDirName(std::string const& databaseName, std::string const& id) { 
+  return TRI_vocbase_t::isAllowedName(true, false, arangodb::velocypack::StringRef(databaseName)) ? databaseName : id;
+}
+
 /// @brief sandbox vocbase for executing calculation queries
 std::unique_ptr<TRI_vocbase_t> calculationVocbase;
 }
@@ -175,11 +180,11 @@ void DatabaseManagerThread::run() {
               
               TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
               TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
-
               if (newInstance == nullptr) {
+                std::string const dirName = ::getDatabaseDirName(database->name(), std::to_string(database->id()));
                 std::string path = arangodb::basics::FileUtils::buildFilename(
                     arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
-                    database->name());
+                    dirName);
   
                 if (TRI_IsDirectory(path.c_str())) {
                   LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
@@ -710,7 +715,8 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
       auto appPath = dealer.appPath();
 
       // create app directory for database if it does not exist
-      auto res = createApplicationDirectory(name, appPath, true);
+      std::string const dirName = ::getDatabaseDirName(name, std::to_string(dbId));
+      auto res = createApplicationDirectory(dirName, appPath, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -1276,7 +1282,6 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   try {
     for (VPackSlice it : VPackArrayIterator(databases)) {
       TRI_ASSERT(it.isObject());
-
       LOG_TOPIC("95f68", TRACE, Logger::FIXME) << "processing database: " << it.toJson();
 
       VPackSlice deleted = it.get("deleted");
@@ -1286,9 +1291,11 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       }
 
       std::string const databaseName = it.get("name").copyString();
-
+      std::string const id = it.get("id").copyString();
+      std::string const dirName = ::getDatabaseDirName(databaseName, id);
+      
       // create app directory for database if it does not exist
-      res = createApplicationDirectory(databaseName, appPath, false);
+      res = createApplicationDirectory(dirName, appPath, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         break;
@@ -1314,7 +1321,6 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
           FATAL_ERROR_EXIT();
         }
       }
-
       newLists->_databases.insert(std::make_pair(database->name(), database.get()));
       database.release();
     }
