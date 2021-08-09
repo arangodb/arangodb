@@ -106,137 +106,137 @@ TEST_F(VocbaseTest, test_isAllowedName) {
   std::string const ratherLong(256, 'x');
   std::string const tooLong(257, 'x');
   {
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(nullptr, 0)));
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("")));
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("abc123")));
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("123abc")));
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("123")));
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("_123")));
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("_abc")));
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))); 
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(ratherLong)));  
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(tooLong)));  // longer than TRI_COL_NAME_LENGTH
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, arangodb::velocypack::StringRef(nullptr, 0)));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, arangodb::velocypack::StringRef("")));
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(false, false, arangodb::velocypack::StringRef("abc123")));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, arangodb::velocypack::StringRef("123abc")));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, arangodb::velocypack::StringRef("123")));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, arangodb::velocypack::StringRef("_123")));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, arangodb::velocypack::StringRef("_abc")));
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(false, false, arangodb::velocypack::StringRef("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))); 
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(false, false, arangodb::velocypack::StringRef(ratherLong)));  
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, arangodb::velocypack::StringRef(tooLong)));  // longer than TRI_COL_NAME_LENGTH
   }
 
   // direct (system)
   {
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(nullptr, 0)));
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("")));
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("abc123")));
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("123abc")));
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("123")));
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("_123")));
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("_abc")));
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))); 
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(ratherLong)));  
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(tooLong)));  // longer than TRI_COL_NAME_LENGTH
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, arangodb::velocypack::StringRef(nullptr, 0)));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, arangodb::velocypack::StringRef("")));
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(true, false, arangodb::velocypack::StringRef("abc123")));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, arangodb::velocypack::StringRef("123abc")));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, arangodb::velocypack::StringRef("123")));
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(true, false, arangodb::velocypack::StringRef("_123")));
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(true, false, arangodb::velocypack::StringRef("_abc")));
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(true, false, arangodb::velocypack::StringRef("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))); 
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(true, false, arangodb::velocypack::StringRef(ratherLong)));  
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, arangodb::velocypack::StringRef(tooLong)));  // longer than TRI_COL_NAME_LENGTH
   }
 
   // slice (default)
   {
     auto json0 = arangodb::velocypack::Parser::fromJson("{ }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json0->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, json0->slice().stringRef()));
     auto json1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"\" }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json1->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, json1->slice().stringRef()));
     auto json2 =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"abc123\" }");
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json2->slice()));
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(true, false, json2->slice().stringRef()));
     auto json3 =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"123abc\" }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json3->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, json3->slice().stringRef()));
     auto json4 =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"123\" }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json4->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, json4->slice().stringRef()));
     auto json5 =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"_123\" }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json5->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, json5->slice().stringRef()));
     auto json6 =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"_abc\" }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json6->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, json6->slice().stringRef()));
     auto json7 = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": "
         "\"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
         "6789\" }");
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json7->slice())); 
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(true, false, json7->slice().stringRef())); 
     auto json8 = arangodb::velocypack::Parser::fromJson("{\"name\":\"" + tooLong + "\"}");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json8->slice())); 
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, json8->slice().stringRef())); 
   }
 
   // slice (non-system)
   {
     auto json0 =
         arangodb::velocypack::Parser::fromJson("{ \"isSystem\": false }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json0->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, json0->slice().stringRef()));
     auto json1 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": false, \"name\": \"\" }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json1->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, json1->slice().stringRef()));
     auto json2 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": false, \"name\": \"abc123\" }");
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json2->slice()));
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(false, false, json2->slice().stringRef()));
     auto json3 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": false, \"name\": \"123abc\" }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json3->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, json3->slice().stringRef()));
     auto json4 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": false, \"name\": \"123\" }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json4->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, json4->slice().stringRef()));
     auto json5 = arangodb::velocypack::Parser::fromJson(
         "{\"isSystem\": false, \"name\": \"_123\" }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json5->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, json5->slice().stringRef()));
     auto json6 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": false, \"name\": \"_abc\" }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json6->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, json6->slice().stringRef()));
     auto json7 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": false, \"name\": 123 }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json7->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, json7->slice().stringRef()));
     auto json8 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": 123, \"name\": \"abc\" }");
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json8->slice()));
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(false, false, json8->slice().stringRef()));
     auto json9 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": false, \"name\": "
         "\"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
         "6789\" }");
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json9->slice())); 
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(false, false, json9->slice().stringRef())); 
     auto json10 = arangodb::velocypack::Parser::fromJson("{\"isSystem\":false, \"name\":\"" + tooLong + "\"}");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json10->slice())); 
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(false, false, json10->slice().stringRef())); 
   }
 
   // slice (system)
   {
     auto json0 =
         arangodb::velocypack::Parser::fromJson("{ \"isSystem\": true }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json0->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, json0->slice().stringRef()));
     auto json1 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": \"\" }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json1->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, json1->slice().stringRef()));
     auto json2 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": \"abc123\" }");
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json2->slice()));
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(true, false, json2->slice().stringRef()));
     auto json3 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": \"123abc\" }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json3->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, json3->slice().stringRef()));
     auto json4 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": \"123\" }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json4->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, json4->slice().stringRef()));
     auto json5 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": \"_123\" }");
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json5->slice()));
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(true, false, json5->slice().stringRef()));
     auto json6 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": \"_abc\" }");
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json6->slice()));
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(true, false, json6->slice().stringRef()));
     auto json7 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": 123 }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json7->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, json7->slice().stringRef()));
     auto json8 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": 123, \"name\": \"_abc\" }");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json8->slice()));
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, json8->slice().stringRef()));
     auto json9 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": "
         "\"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
         "6789\" }");
-    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json9->slice())); 
+    EXPECT_TRUE(TRI_vocbase_t::isAllowedName(true, false, json9->slice().stringRef())); 
     auto json10 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": \"" + tooLong + "\"}");
-    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json10->slice())); 
+    EXPECT_FALSE(TRI_vocbase_t::isAllowedName(true, false, json10->slice().stringRef())); 
   }
 }
 
