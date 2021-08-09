@@ -13,7 +13,7 @@ it is used with exactly the same definition. It is not possible to
 store a definition "e" from "v1" to "v2" in the one graph, and "e"
 from "v2" to "v1" in the other graph.
 
-Additionally, optional options can be set (Enterprise-Only).
+Additionally, collection creation options can be set.
 
 @RESTURLPARAMETERS
 
