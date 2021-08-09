@@ -12,7 +12,7 @@ Adds a vertex to the given collection.
 The name of the graph.
 
 @RESTBODYPARAM{options,object,optional,vertex_options}
-Additional options for the vertex to add.
+Additional options for the vertex collection to add.
 
 @RESTSTRUCT{satellites,vertex_options,array,optional,}
 Only has effect in Enterprise Edition and it is required if isSmart is true.
