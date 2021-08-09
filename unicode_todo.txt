@@ -1,0 +1,22 @@
+To do:
+- [x] check arangobench
+- [ ] check web interface
+- [ ] check arangodump -- Julia
+- [ ] usage of database names as directory names in arangodump when invoked with `--all-databases` option. potentially affects arangorestore - Julia
+- [ ] check arangorestore
+- [ ] check arangoimport -- Jan
+- [x] check arangoexport
+- [ ] check arangosh
+- [ ] check location headers / http redirects
+- [ ] check cluster and agency
+- [ ] check cluster-internal requests (using fuerte)
+- [ ] check request forwarding in load-balancer
+- [ ] check arangosync
+- [ ] check arangojs compatibility
+- [ ] check arangodb-java-driver compatibility
+- [ ] check golang driver compatibility
+- [ ] check python driver compatibility
+- [ ] check arangodb-php compatibility
+- [ ] usage of database names as directory names for storing Foxx apps - Julia
+- [ ] Swagger API not displayed correctly in web interface - Julia
+- [ ] add tests for arangodump with unicode database names - Julia
