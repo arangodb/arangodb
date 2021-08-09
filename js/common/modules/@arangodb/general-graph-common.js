@@ -587,14 +587,14 @@ class Graph {
 
     info.edgeDefinitions.forEach((e) => {
       // Link the edge collection
-      edgeCollections[e.collection] = db[e.collection];
+      edgeCollections[e.collection] = db._collection(e.collection);
       // Link from collections
       e.from.forEach((v) => {
-        vertexCollections[v] = db[v];
+        vertexCollections[v] = db._collection(v);
       });
       // Link to collections
       e.to.forEach((v) => {
-        vertexCollections[v] = db[v];
+        vertexCollections[v] = db._collection(v);
       });
     });
 
