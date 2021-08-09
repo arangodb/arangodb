@@ -292,7 +292,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::clear() {
   // Order is important here, please do not change.
-  // 1.) Remove curernt results
+  // 1.) Remove current results
   _results.clear();
 
   // 2.) Remove both Balls (order here is not important)
