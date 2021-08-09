@@ -1,6 +1,14 @@
 devel
 -----
 
+* Fixed various problems in GEO_INTERSECTS: wrong results, not implemented
+  cases and numerically unstable behaviour. In particular, the case of
+  the intersection of two polygons in which one is an S2LngLatRect
+  is fixed (BTS-475).
+
+* Fixed ES-867 and ES-922: removed eslint from NPM packages descriptions and
+  updated netmask package to non-vulnerable version.
+
 * Web UI: Fixes a logical error which occured after re-visiting the logs view
   which lead to not displaying the logs view and its entries correctly
   (BTS-507).

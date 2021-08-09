@@ -76,9 +76,9 @@ bool WeightedEnumerator::expandEdge(NextEdge nextEdge) {
   // However, for global unique vertexes, we need the vertex getter.
   if (_traverser->getVertex(toVertex, nextEdge.depth)) {
 #ifdef USE_ENTERPRISE
-      if (!validDisjointPath(nextEdge.fromIndex, toVertex)) {
-        return false;
-      }
+    if (!validDisjointPath(nextEdge.fromIndex, toVertex)) {
+      return false;
+    }
 #endif
     if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
       if (pathContainsVertex(nextEdge.fromIndex, toVertex)) {
@@ -103,12 +103,12 @@ bool WeightedEnumerator::expandEdge(NextEdge nextEdge) {
 void WeightedEnumerator::expandVertex(size_t vertexIndex, size_t depth) {
   PathStep const& currentStep = _schreier[vertexIndex];
   VPackStringRef vertex = currentStep.currentVertexId;
-  EdgeCursor* cursor = getCursor(vertex, depth);
 
   if (depth >= _opts->maxDepth) {
     return;
   }
 
+  EdgeCursor* cursor = getCursor(vertex, depth);
   cursor->readAll([&](graph::EdgeDocumentToken&& eid, VPackSlice e, size_t cursorIdx) -> void {
     // transform edge if required
     if (e.isString()) {
@@ -241,7 +241,8 @@ arangodb::aql::AqlValue WeightedEnumerator::edgeToAqlValue(size_t index) {
   return _opts->cache()->fetchEdgeAqlResult(_schreier[index].fromEdgeToken);
 }
 
-VPackSlice WeightedEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t index, bool fromPrune) {
+VPackSlice WeightedEnumerator::pathToIndexToSlice(VPackBuilder& result,
+                                                  size_t index, bool fromPrune) {
   for (_tempPathHelper.clear(); index != 0; index = _schreier[index].fromIndex) {
     _tempPathHelper.emplace_back(index);
   }
@@ -361,7 +362,8 @@ velocypack::StringRef WeightedEnumerator::getToVertex(velocypack::Slice edge,
 }
 
 #ifndef USE_ENTERPRISE
-bool WeightedEnumerator::validDisjointPath(size_t index, arangodb::velocypack::StringRef vertex) const {
+bool WeightedEnumerator::validDisjointPath(size_t index,
+                                           arangodb::velocypack::StringRef vertex) const {
   return true;
 }
 #endif
