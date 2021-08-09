@@ -39,6 +39,7 @@ using namespace arangodb::replication2;
 auto LogIndex::operator<=(LogIndex other) const -> bool {
   return value <= other.value;
 }
+
 auto LogIndex::operator+(std::uint64_t delta) const -> LogIndex {
   return LogIndex(this->value + delta);
 }

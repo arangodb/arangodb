@@ -96,6 +96,8 @@ struct LogIndex : implement_compare<LogIndex> {
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
 
+auto operator<<(std::ostream&, LogIndex) -> std::ostream&;
+
 struct LogTerm : implement_compare<LogTerm> {
   constexpr LogTerm() noexcept : value{0} {}
   constexpr explicit LogTerm(std::uint64_t value) noexcept : value{value} {}
@@ -106,6 +108,8 @@ struct LogTerm : implement_compare<LogTerm> {
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
+
+auto operator<<(std::ostream&, LogTerm) -> std::ostream&;
 
 [[nodiscard]] auto to_string(LogTerm term) -> std::string;
 [[nodiscard]] auto to_string(LogIndex index) -> std::string;
@@ -124,6 +128,9 @@ struct TermIndexPair : implement_compare<TermIndexPair> {
 
   friend auto operator<<(std::ostream&, TermIndexPair) -> std::ostream&;
 };
+
+auto operator<=(TermIndexPair, TermIndexPair) noexcept -> bool;
+auto operator<<(std::ostream&, TermIndexPair) -> std::ostream&;
 
 struct LogPayload {
   explicit LogPayload(velocypack::UInt8Buffer dummy);
