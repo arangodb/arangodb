@@ -30,6 +30,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
+#include "Basics/error.h"
+#include "Basics/Exceptions.h"
 
 #include "Geo/ShapeContainer.h"
 
@@ -461,6 +463,243 @@ TEST_F(ShapeContainerTest, polygon_area_test) {
   ASSERT_NEAR(shape.area(geo::WGS84_ELLIPSOID), 7800367402432, 50000000000);
 }
   
-  
-  
+class ShapeContainerTest2 : public ::testing::Test {
+ protected:
+  using ShapeType = arangodb::geo::ShapeContainer::Type;
+
+  ShapeContainer point;
+  ShapeContainer multipoint;
+  ShapeContainer line;
+  ShapeContainer multiline;
+  ShapeContainer poly;
+  ShapeContainer multipoly;
+  ShapeContainer rect;
+  ShapeContainer line2;
+  ShapeContainer rects[4];
+  ShapeContainer nearly[4];   // nearly rects, but not quite
+
+  ShapeContainerTest2() {
+    auto builder = VPackParser::fromJson(R"=(
+      { "type": "Point",
+      "coordinates": [ 6.537, 50.332 ]
+      })=");
+    geojson::parseRegion(builder->slice(), point);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "MultiPoint",
+        "coordinates": [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), multipoint);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "LineString",
+        "coordinates": [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), line);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "MultiLineString",
+        "coordinates": [ [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ],
+                         [ [ 6.621, 50.332 ], [ 6.621, 50.376 ] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), multiline);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [6,50], [7.5,50], [7.5,52], [6,51], [6,50] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), poly);
+    // Note that internally, a multipolygon is just a special polygon with
+    // holes, which could have been initialized as polygon, too!
+    builder = VPackParser::fromJson(R"=(
+      { "type": "MultiPolygon",
+        "coordinates": [ [ [ [6.501,50], [7.5,50], [7.5,51],
+                             [6.501,51], [6.501,50] ] ],
+                         [ [ [6,50], [6.5,50], [6.5,51], [6,51], [6,50] ] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), multipoly);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [6,50], [7.5,50], [7.5,51], [6,51], [6,50] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), rect);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "LineString",
+        "coordinates": [ [ 5.437, 50.332 ], [ 7.537, 50.376 ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), line2);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [1.0,1.0], [4.0,1.0], [4.0,4.0], [1.0,4.0], [1.0,1.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), rects[0]);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [2.0,2.0], [3.0,2.0], [3.0,3.0], [2.0,3.0], [2.0,2.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), rects[1]);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [2.0,2.0], [5.0,2.0], [5.0,5.0], [2.0,5.0], [2.0,2.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), rects[2]);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [7.0,7.0], [8.0,7.0], [8.0,8.0], [7.0,8.0], [7.0,7.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), rects[3]);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [1.0,1.0], [4.0,1.0], [4.1,4.1], [1.0,4.0], [1.0,1.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), nearly[0]);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [2.0,2.0], [3.0,2.0], [3.1,3.1], [2.0,3.0], [2.0,2.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), nearly[1]);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [2.0,2.0], [5.0,2.0], [5.1,5.1], [2.0,5.0], [2.0,2.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), nearly[2]);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [7.0,7.0], [8.0,7.0], [8.1,8.1], [7.0,8.0], [7.0,7.0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), nearly[3]);
+  }
+};
+
+#define NOT_IMPL_EXC(expr) \
+  try { \
+    expr; \
+    ASSERT_TRUE(false); \
+  } catch(arangodb::basics::Exception const& exc) { \
+    ASSERT_EQ(exc.code(), TRI_ERROR_NOT_IMPLEMENTED); \
+  } 
+
+// point      TT--TTT
+// multipoint TT----T
+// line       --TTTTT
+// multiline  -------
+// poly       TTTTTTT
+// multipoly  TTTTTTT
+// rect       TTTTTTT
+
+TEST_F(ShapeContainerTest2, intersections_point) {
+  // All 7 with each other:
+  // The ones which are commented out run into assertion failures right now:
+  ASSERT_TRUE(point.intersects(&point));
+  ASSERT_TRUE(point.intersects(&multipoint));
+  NOT_IMPL_EXC(point.intersects(&line));
+  NOT_IMPL_EXC(point.intersects(&multiline));
+  ASSERT_TRUE(point.intersects(&poly));
+  ASSERT_TRUE(point.intersects(&multipoly));
+  ASSERT_TRUE(point.intersects(&rect));
+}
+
+TEST_F(ShapeContainerTest2, intersections_multipoint) {
+  ASSERT_TRUE(multipoint.intersects(&point));
+  ASSERT_TRUE(multipoint.intersects(&multipoint));
+  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&line)));
+  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&multiline)));
+  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&poly)));
+  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&multipoly)));
+  ASSERT_TRUE(multipoint.intersects(&rect));
+}
+
+TEST_F(ShapeContainerTest2, intersections_line) {
+  // Note that in the S2 geo library intersections of points and lines
+  // will always return false, since they are not well-defined numerically!
+  NOT_IMPL_EXC(line.intersects(&point));
+  NOT_IMPL_EXC(line.intersects(&multipoint));
+  ASSERT_TRUE(line.intersects(&line));
+  ASSERT_TRUE(line.intersects(&multiline));
+  ASSERT_TRUE(line.intersects(&poly));
+  ASSERT_TRUE(line.intersects(&multipoly));
+  ASSERT_TRUE(line.intersects(&rect));
+}
+
+
+TEST_F(ShapeContainerTest2, intersections_multiline) {
+  // Note that in the S2 geo library intersections of points and lines
+  // will always return false, since they are not well-defined numerically!
+  NOT_IMPL_EXC(multiline.intersects(&point));
+  NOT_IMPL_EXC(multiline.intersects(&multipoint));
+  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(&line)));
+  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(&multiline)));
+  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(&poly)));
+  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(&multipoly)));
+  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(&rect)));
+}
+
+TEST_F(ShapeContainerTest2, intersections_poly) {
+  ASSERT_TRUE(poly.intersects(&point));
+  ASSERT_TRUE(poly.intersects(&multipoint));
+  ASSERT_TRUE(poly.intersects(&line));
+  ASSERT_TRUE(poly.intersects(&multiline));
+  ASSERT_TRUE(poly.intersects(&poly));
+  ASSERT_TRUE(poly.intersects(&multipoly));
+  ASSERT_TRUE(poly.intersects(&rect));
+}
+
+TEST_F(ShapeContainerTest2, intersections_multipoly) {
+  ASSERT_TRUE(multipoly.intersects(&point));
+  ASSERT_TRUE(multipoly.intersects(&multipoint));
+  ASSERT_TRUE(multipoly.intersects(&line));
+  ASSERT_TRUE(multipoly.intersects(&multiline));
+  ASSERT_TRUE(multipoly.intersects(&poly));
+  ASSERT_TRUE(multipoly.intersects(&multipoly));
+  ASSERT_TRUE(multipoly.intersects(&rect));
+}
+
+TEST_F(ShapeContainerTest2, intersections_rect) {
+  ASSERT_TRUE(rect.intersects(&point));
+  ASSERT_TRUE(rect.intersects(&multipoint));
+  ASSERT_TRUE(rect.intersects(&line));
+  ASSERT_TRUE(rect.intersects(&multiline));
+  ASSERT_TRUE(rect.intersects(&poly));
+  ASSERT_TRUE(rect.intersects(&multipoly));
+  ASSERT_TRUE(rect.intersects(&rect));
+}
+
+TEST_F(ShapeContainerTest2, intersections_special) {
+  ASSERT_TRUE(rect.intersects(&line2));
+  ASSERT_TRUE(line2.intersects(&rect));
+}
+
+TEST_F(ShapeContainerTest2, intersections_latlntrects) {
+  ASSERT_TRUE(rects[0].intersects(&rects[0]));
+  ASSERT_TRUE(rects[0].intersects(&rects[1]));
+  ASSERT_TRUE(rects[1].intersects(&rects[0]));
+  ASSERT_TRUE(rects[0].intersects(&rects[2]));
+  ASSERT_TRUE(rects[2].intersects(&rects[0]));
+  ASSERT_TRUE(rects[1].intersects(&rects[2]));
+  ASSERT_TRUE(rects[2].intersects(&rects[1]));
+  ASSERT_FALSE(rects[0].intersects(&rects[3]));
+  ASSERT_FALSE(rects[3].intersects(&rects[0]));
+}
+
+TEST_F(ShapeContainerTest2, intersections_latlntrects_nearly) {
+  ASSERT_TRUE(rects[0].intersects(&nearly[0]));
+  ASSERT_TRUE(rects[0].intersects(&nearly[1]));
+  ASSERT_TRUE(rects[1].intersects(&nearly[0]));
+  ASSERT_TRUE(rects[0].intersects(&nearly[2]));
+  ASSERT_TRUE(rects[2].intersects(&nearly[0]));
+  ASSERT_TRUE(rects[1].intersects(&nearly[2]));
+  ASSERT_TRUE(rects[2].intersects(&nearly[1]));
+  ASSERT_FALSE(rects[0].intersects(&nearly[3]));
+  ASSERT_FALSE(rects[3].intersects(&nearly[0]));
+}
+
+TEST_F(ShapeContainerTest2, intersections_nearly_latlntrects) {
+  ASSERT_TRUE(nearly[0].intersects(&rects[0]));
+  ASSERT_TRUE(nearly[0].intersects(&rects[1]));
+  ASSERT_TRUE(nearly[1].intersects(&rects[0]));
+  ASSERT_TRUE(nearly[0].intersects(&rects[2]));
+  ASSERT_TRUE(nearly[2].intersects(&rects[0]));
+  ASSERT_TRUE(nearly[1].intersects(&rects[2]));
+  ASSERT_TRUE(nearly[2].intersects(&rects[1]));
+  ASSERT_FALSE(nearly[0].intersects(&rects[3]));
+  ASSERT_FALSE(nearly[3].intersects(&rects[0]));
+}
+
 }}
+

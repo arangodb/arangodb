@@ -1,7 +1,7 @@
 name: rocksdb_live_sst_files_size
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-live-sst-files-size" - sum over all column families
+  Size of live RocksDB SST files.
 unit: bytes
 type: gauge
 category: RocksDB
