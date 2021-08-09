@@ -6,6 +6,10 @@ v3.8.1 (XXXX-XX-XX)
   intersection of two polygons in which one is an S2LngLatRect is fixed
   (BTS-475).
 
+* Fixed issue BTS-536 "Upgrading without rest-server is aborted by error".
+  Now stating `--server.rest-server false` does not require the additional
+  `--console` argument for upgrading a server.
+
 * Fixed ES-867 and ES-922: removed eslint from NPM packages descriptions and
   updated netmask package to non-vulnerable version.
 
