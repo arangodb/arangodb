@@ -28,6 +28,7 @@
 #include "Aql/ModificationExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "AqlItemMatrix.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationResult.h"
 
@@ -43,6 +44,7 @@ namespace arangodb::aql {
 
 struct AqlCall;
 class AqlItemBlockInputRange;
+class AqlItemBlockInputMatrix;
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class RegisterInfos;
@@ -162,7 +164,7 @@ enum class ModificationExecutorResultState {
   NoResult,
   // State that is used when the Executor's modifier has been asked
   // to produce a result, but it returned a WAITING status, i.e. the
-  // result is not yet ready to consume. 
+  // result is not yet ready to consume.
   // This state cannot happen in single servers!
   WaitingForResult,
   // State that is used when the Executor's modifier has produced
@@ -211,6 +213,33 @@ class ModificationExecutor {
 
   ModificationExecutorInfos& _infos;
   std::shared_ptr<ModifierType> _modifier;
+
+  // Used to unify input consumption of both AqlItemBlockInputRange and
+  // AqlItemBlockInputMatrix.
+  struct RangeHandler {
+    constexpr static bool inputIsMatrix =
+        std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>;
+
+    // init must be called at least once with any input. It's a no-op for
+    // AqlItemBlockInputRange, and initializes an iterator for a
+    // AqlItemBlockInputMatrix.
+    // Returns false if the input isn't yet in a state in which it can be used
+    // for initialization (i.e. the matrix isn't there yet).
+    bool init(typename FetcherType::DataRange& input);
+
+    // Returns true iff we may currently call nextDataRow() on this input;
+    // might return true on the next input.
+    [[nodiscard]] auto hasDataRow(typename FetcherType::DataRange& input) const noexcept
+        -> bool;
+    // Returns the next data row and moves the internal iterator
+    [[nodiscard]] auto nextDataRow(typename FetcherType::DataRange& input)
+        -> arangodb::aql::InputAqlItemRow;
+
+    auto upstreamState(typename FetcherType::DataRange& input) const noexcept -> ExecutorState;
+
+    AqlItemMatrix::RowIterator _iterator{};
+  } _rangeHandler{};
+
   std::size_t _skipCount{};
   Stats _stats{};
 };

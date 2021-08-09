@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -138,6 +139,10 @@ bool SimpleModifier<ModifierCompletion, Enable>::operationPending() const noexce
     case ModificationExecutorResultState::HaveResult:
       return true;
   }
+  LOG_TOPIC("710c4", FATAL, Logger::AQL)
+      << "Invalid or unhandled value for ModificationExecutorResultState: "
+      << static_cast<std::underlying_type_t<ModificationExecutorResultState>>(resultState());
+  FATAL_ERROR_ABORT();
 }
 
 template <typename ModifierCompletion, typename Enable>

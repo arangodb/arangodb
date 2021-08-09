@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -40,8 +41,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Logger/LogMacros.h"
-
-class CollectionNameResolver;
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -143,6 +142,10 @@ bool UpsertModifier::operationPending() const noexcept {
     case ModificationExecutorResultState::HaveResult:
       return true;
   }
+  LOG_TOPIC("ef67c", FATAL, Logger::AQL)
+      << "Invalid or unhandled value for ModificationExecutorResultState: "
+      << static_cast<std::underlying_type_t<ModificationExecutorResultState>>(resultState());
+  FATAL_ERROR_ABORT();
 }
 
 void UpsertModifier::reset() {

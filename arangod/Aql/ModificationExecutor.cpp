@@ -110,81 +110,70 @@ template <typename ProduceOrSkipData>
     upstreamCall.softLimit = _modifier->getBatchSize();
   }
 
-  auto const hasInputOrPreviousResult = [&] {
-    return input.hasDataRow() || _modifier->operationPending();
-  };
-
-  // Make AqlItemBlockInputMatrix happy, which dislikes being asked for its
-  // input range when empty.
-  if (!hasInputOrPreviousResult()) {
-    // Input is empty
-    return {translateReturnType(input.upstreamState()), ModificationStats{}, upstreamCall};
+  // Try to initialize the RangeHandler
+  if (!_rangeHandler.init(input)) {
+    return {translateReturnType(_rangeHandler.upstreamState(input)),
+            ModificationStats{}, upstreamCall};
   }
 
-  // MSVC doesn't see constexpr variables inside a lambda as constexpr, thus
-  // we can't just assign is_same_t to a variable.
-  using inputIsMatrix =
-      std::is_same<typename FetcherType::DataRange, AqlItemBlockInputMatrix>;
-
-  auto upstreamState = input.upstreamState();
   auto stats = ModificationStats{};
 
-  // TODO Change the following logic as follows.
-  // First, read input and fill the modifier as much as possible. Only if either
-  // the output is satisfied (offset/output block aka maxOutputRows()), or the
-  // input is completely consumed (i.e. upstream DONE, not just the current
-  // range empty).
-  // Only after that, call transact(), i.e. execute the
-  // `if (_modifier->nrOfOperations() > 0) {` - block.
-
-  while (hasInputOrPreviousResult() && produceOrSkipData.needMoreOutput()) {
-    auto& range = std::invoke([&]() -> AqlItemBlockInputRange& {
-      if constexpr (inputIsMatrix::value) {
-        return input.getInputRange();
-      } else {
-        return input;
-      }
-    });
-    auto const maxRows = produceOrSkipData.maxOutputRows();
-    while (_modifier->nrOfOperations() < maxRows && range.hasDataRow()) {
-      auto [state, row] = range.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-
-      TRI_ASSERT(row.isInitialized());
-      _modifier->accumulate(row);
+  auto const maxRows = std::invoke([&] {
+    if constexpr (std::is_same_v<ModifierType, UpsertModifier> &&
+                  !std::is_same_v<FetcherType, AllRowsFetcher>) {
+      return std::min(produceOrSkipData.maxOutputRows(), _modifier->getBatchSize());
+    } else {
+      return produceOrSkipData.maxOutputRows();
     }
+  });
 
-    upstreamState = range.upstreamState();
+  // Read as much input as possible
+  while (_rangeHandler.hasDataRow(input) && _modifier->nrOfOperations() < maxRows) {
+    auto row = _rangeHandler.nextDataRow(input);
 
-    if (_modifier->nrOfOperations() > 0) {
-      ExecutionState modifierState = _modifier->transact(_trx);
-
-      if (modifierState == ExecutionState::WAITING) {
-        TRI_ASSERT(!ServerState::instance()->isSingleServer());
-        return {ExecutionState::WAITING, stats, upstreamCall};
-      }
-
-      TRI_ASSERT(_modifier->resultState() == ModificationExecutorResultState::HaveResult);
-
-      _modifier->checkException();
-      if (_infos._doCount) {
-        stats.addWritesExecuted(_modifier->nrOfWritesExecuted());
-        stats.addWritesIgnored(_modifier->nrOfWritesIgnored());
-      }
-
-      produceOrSkipData.doOutput();
-      _modifier->reset();
-    }
+    TRI_ASSERT(row.isInitialized());
+    _modifier->accumulate(row);
   }
 
-  if constexpr (inputIsMatrix::value) {
-    if (upstreamState == ExecutorState::DONE) {
-      // We are done with this input.
-      // We need to forward it to the last ShadowRow.
-      input.skipAllRemainingDataRows();
-    }
+  bool const inputDone = _rangeHandler.upstreamState(input) == ExecutorState::DONE;
+  bool const enoughOutputAvailable = maxRows == _modifier->nrOfOperations();
+  bool const hasAtLeastOneModification = _modifier->nrOfOperations() > 0;
+
+  // outputFull => enoughOutputAvailable
+  TRI_ASSERT(produceOrSkipData.needMoreOutput() || enoughOutputAvailable);
+
+  if (!inputDone && !enoughOutputAvailable) {
+    // This case handles when there's still work to do, but no input in the
+    // current range.
+    TRI_ASSERT(!_rangeHandler.hasDataRow(input));
+
+    return {ExecutionState::HASMORE, stats, upstreamCall};
   }
 
-  return {translateReturnType(upstreamState), stats, upstreamCall};
+  if (hasAtLeastOneModification) {
+    TRI_ASSERT(inputDone || enoughOutputAvailable);
+    ExecutionState modifierState = _modifier->transact(_trx);
+
+    if (modifierState == ExecutionState::WAITING) {
+      TRI_ASSERT(!ServerState::instance()->isSingleServer());
+      return {ExecutionState::WAITING, stats, upstreamCall};
+    }
+
+    TRI_ASSERT(_modifier->resultState() == ModificationExecutorResultState::HaveResult);
+
+    _modifier->checkException();
+    if (_infos._doCount) {
+      stats.addWritesExecuted(_modifier->nrOfWritesExecuted());
+      stats.addWritesIgnored(_modifier->nrOfWritesIgnored());
+    }
+
+    produceOrSkipData.doOutput();
+    _modifier->reset();
+  }
+
+  TRI_ASSERT(_modifier->resultState() == ModificationExecutorResultState::NoResult);
+
+  return {translateReturnType(_rangeHandler.upstreamState(input)), stats, upstreamCall};
 }
 
 template <typename FetcherType, typename ModifierType>
@@ -317,6 +306,91 @@ template <typename FetcherType, typename ModifierType>
   std::swap(stats, _stats);
 
   return {state, stats, call.getSkipCount(), upstreamCall};
+}
+
+template <typename FetcherType, typename ModifierType>
+auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::nextDataRow(
+    typename FetcherType::DataRange& input) -> arangodb::aql::InputAqlItemRow {
+  if constexpr (inputIsMatrix) {
+    // Assume init() was called at least once
+    TRI_ASSERT(_iterator.isInitialized());
+    // Assume hasDataRow() is true (caller has to make sure)
+    TRI_ASSERT(hasDataRow(input));
+
+    auto ret = _iterator.next();
+
+    if (!_iterator) {
+      // We are done with this input.
+      // We need to forward it to the last ShadowRow.
+      // RangeHandler::hasDataRow() will continue to return false, even if
+      // the AqlItemBlockInputMatrix is now already in the next range.
+      input.skipAllRemainingDataRows();
+    }
+
+    return ret;
+  } else {
+    return input.nextDataRow(AqlItemBlockInputRange::HasDataRow{}).second;
+  }
+}
+
+template <typename FetcherType, typename ModifierType>
+auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::hasDataRow(
+    typename FetcherType::DataRange& input) const noexcept -> bool {
+  if constexpr (inputIsMatrix) {
+    // Assume init() was called at least once
+    TRI_ASSERT(_iterator.isInitialized());
+
+    return _iterator.hasMore();
+  } else {
+    return input.hasDataRow();
+  }
+}
+
+template <typename FetcherType, typename ModifierType>
+bool ModificationExecutor<FetcherType, ModifierType>::RangeHandler::init(
+    typename FetcherType::DataRange& input) {
+  if constexpr (inputIsMatrix) {
+    if (!_iterator.isInitialized()) {
+      if (input.hasValidRow()) {
+        auto&& [state, matrix] = input.getMatrix();
+        TRI_ASSERT(state == ExecutorState::DONE);
+        _iterator = matrix->begin();
+        if (!_iterator) {
+          input.skipAllRemainingDataRows();
+        }
+        // initialized successfully
+        return true;
+      } else {
+        // can't initialize yet, no matrix
+        return false;
+      }
+    } else {
+      // already initialized
+      return true;
+    }
+  } else {
+    // no-op
+    return true;
+  }
+}
+
+template <typename FetcherType, typename ModifierType>
+auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::upstreamState(
+    typename FetcherType::DataRange& input) const noexcept -> ExecutorState {
+  if constexpr (inputIsMatrix) {
+    if (ADB_UNLIKELY(!_iterator.isInitialized())) {
+      // As long as the iterator isn't initialized, we need to pass the upstream
+      // state. In particular if the input is completely empty, we need to
+      // return DONE.
+      return input.upstreamState();
+    } else if (hasDataRow(input)) {
+      return ExecutorState::HASMORE;
+    } else {
+      return ExecutorState::DONE;
+    }
+  } else {
+    return input.upstreamState();
+  }
 }
 
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;

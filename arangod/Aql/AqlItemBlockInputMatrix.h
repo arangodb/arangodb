@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLITEMBLOCKMATRIXITERATOR_H
-#define ARANGOD_AQL_AQLITEMBLOCKMATRIXITERATOR_H
+#pragma once
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlItemMatrix.h"
@@ -38,7 +37,7 @@ class AqlItemBlockInputMatrix {
  public:
   explicit AqlItemBlockInputMatrix(ExecutorState state);
 
-  AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlockPtr);
+  explicit AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlockPtr);
 
   AqlItemBlockInputMatrix(ExecutorState state, AqlItemMatrix* aqlItemMatrix);
 
@@ -62,7 +61,6 @@ class AqlItemBlockInputMatrix {
   size_t skipAllRemainingDataRows();
 
   size_t skipAllShadowRowsOfDepth(size_t depth);
-
 
   // Will return HASMORE if we were able to increase the row index.
   // Otherwise will return DONE.
@@ -101,5 +99,3 @@ class AqlItemBlockInputMatrix {
 };
 
 }  // namespace arangodb::aql
-
-#endif  // ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H
