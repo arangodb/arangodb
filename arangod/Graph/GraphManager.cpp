@@ -622,7 +622,9 @@ Result GraphManager::ensureCollections(
 
   if (collectionsToCreate.get().empty()) {
     // NOTE: Empty graph is allowed.
+#ifdef USE_ENTERPRISE
     guard.cancel();
+#endif
     return TRI_ERROR_NO_ERROR;
   }
 
