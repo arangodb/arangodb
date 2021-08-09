@@ -42,8 +42,8 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -305,9 +305,6 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     // Bad (slow) case: read from RocksDB
     
     auto* mthds = RocksDBTransactionState::toMethods(_trx);
-    // intentional copy of the options
-    rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
-    ro.fill_cache = EdgeIndexFillBlockCache;
     
     // create iterator only on demand, so we save the allocation in case
     // the reads can be satisfied from the cache
@@ -331,7 +328,10 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     // iterator every time we look for an edge. the performance hit is mitigated by that
     // edge lookups are normally using the in-memory edge cache, so we only hit this
     // method when connections are not yet in the cache.
-    std::unique_ptr<rocksdb::Iterator> iterator = mthds->NewIterator(ro, _index->columnFamily());
+    std::unique_ptr<rocksdb::Iterator> iterator =
+        mthds->NewIterator(_index->columnFamily(), [](rocksdb::ReadOptions& ro) {
+          ro.fill_cache = EdgeIndexFillBlockCache;
+        });
 
     TRI_ASSERT(iterator != nullptr);
 
