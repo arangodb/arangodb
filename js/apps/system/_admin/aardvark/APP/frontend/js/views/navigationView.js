@@ -296,18 +296,6 @@
       }
     },
 
-    /*
-    breadcrumb: function (name) {
-
-      if (window.location.hash.split('/')[0] !== '#collection') {
-        $('#subNavigationBar .breadcrumb').html(
-          '<a class="activeBread" href="#' + name + '">' + name + '</a>'
-        )
-      }
-
-    },
-    */
-
     selectMenuItem: function (menuItem, noMenuEntry) {
       if (menuItem === undefined) {
         menuItem = window.location.hash.split('/')[0];
