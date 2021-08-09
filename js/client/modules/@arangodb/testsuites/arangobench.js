@@ -168,6 +168,14 @@ const benchTodos = [{
   'keep-alive': 'true',
   'server.database': 'arangobench_testdb',
   'create-database': true
+},{
+  'requests': '100',
+  'concurrency': '1',
+  'test-case': 'version',
+  'keep-alive': 'true',
+  // test with Unicode database name
+  'server.database': ' 이것은 테스트입니까 ! @abc " mötör ',
+  'create-database': true
 }];
 
 function arangobench (options) {
