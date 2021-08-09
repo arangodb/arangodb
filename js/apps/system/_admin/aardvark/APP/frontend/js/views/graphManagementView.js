@@ -70,6 +70,7 @@
       'row_new-numberOfShards',
       'row_new-replicationFactor',
       'row_new-writeConcern',
+      'row_hybridSatelliteCollections',
       'row_new-isDisjoint'
     ],
 
@@ -77,6 +78,7 @@
     notNeededSatelliteGraphRows: [
       'row_general-numberOfShards',
       'row_general-replicationFactor',
+      'row_hybridSatelliteCollections',
       'row_general-writeConcern'
     ],
 
@@ -638,15 +640,24 @@
         }
       );
 
+      let edgeDefOptions = {};
+      let satellites = $('#s2id_new-hybridSatelliteCollections').select2('data');
+      if (satellites.length > 0) {
+        edgeDefOptions.satellites = [];
+        _.forEach(satellites, function(sat) {
+          edgeDefOptions.satellites.push(sat.id);
+        });
+      }
+
       newEDs.forEach(
         function (eD) {
-          graph.addEdgeDefinition(newEdgeDefinitions[eD]);
+          graph.addEdgeDefinition(newEdgeDefinitions[eD], edgeDefOptions);
         }
       );
 
       editedEDs.forEach(
         function (eD) {
-          graph.modifyEdgeDefinition(newEdgeDefinitions[eD]);
+          graph.modifyEdgeDefinition(newEdgeDefinitions[eD], edgeDefOptions);
         }
       );
 
@@ -783,6 +794,15 @@
             minReplicationFactor: parseInt($('#new-writeConcern').val()),
             isDisjoint: $('#new-isDisjoint').is(':checked')
           };
+
+          let satellites = $('#s2id_hybridSatelliteCollections').select2('data');
+          if (satellites.length > 0) {
+            let satelliteOptions = [];
+            _.forEach(satellites, function(sat) {
+              satelliteOptions.push(sat.id);
+            });
+            newCollectionObject.options.satellites = satelliteOptions;
+          }
         }
       } else if ($('#tab-satelliteGraph').parent().hasClass('active')) {
         newCollectionObject.options = {
@@ -840,6 +860,7 @@
       var self = this;
       var name = '';
       var edgeDefinitions = [{collection: '', from: '', to: ''}];
+      var hybridSatelliteCollections = '';
       var orphanCollections = '';
       var title;
       var sorter = function (l, r) {
@@ -941,6 +962,21 @@
         }
 
         if (isSmart) {
+          tableContent.push(
+            window.modalView.createSelect2Entry(
+              'new-hybridSatelliteCollections',
+              'Satellite collections',
+              hybridSatelliteCollections,
+              'Collections that are part of a graph used in an edge definition and should be created as satellite collections.',
+              'Satellite Collections',
+              false,
+              false,
+              false,
+              null,
+              collList.sort(sorter)
+            )
+          );
+
           let isDisjoint = 'No';
           if (graph.get('isDisjoint')) {
             isDisjoint = 'Yes';
@@ -1112,6 +1148,20 @@
                 msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
               }
             ]
+          )
+        );
+        tableContent.push(
+          window.modalView.createSelect2Entry(
+            'hybridSatelliteCollections',
+            'Satellite collections',
+            hybridSatelliteCollections,
+            'Collections that are part of a graph used in an edge definition and should be created as satellite collections.',
+            'Satellite Collections',
+            false,
+            false,
+            false,
+            null,
+            collList.sort(sorter)
           )
         );
       }

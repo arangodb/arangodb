@@ -15,7 +15,11 @@
       return raw.graph || raw;
     },
 
-    addEdgeDefinition: function (edgeDefinition) {
+    addEdgeDefinition: function (edgeDefinition, options) {
+      if (options) {
+        edgeDefinition.options = options;
+      }
+
       $.ajax(
         {
           async: false,
@@ -42,7 +46,11 @@
       );
     },
 
-    modifyEdgeDefinition: function (edgeDefinition) {
+    modifyEdgeDefinition: function (edgeDefinition, options) {
+      if (options) {
+        edgeDefinition.options = options;
+      }
+
       $.ajax(
         {
           async: false,
