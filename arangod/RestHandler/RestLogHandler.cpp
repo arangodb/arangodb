@@ -50,7 +50,7 @@ struct arangodb::ReplicatedLogMethods {
   virtual ~ReplicatedLogMethods() = default;
   virtual auto createReplicatedLog(replication2::agency::LogPlanSpecification const& spec) const
       -> futures::Future<Result> {
-    return Result(TRI_ERROR_BAD_PARAMETER);
+    return Result(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   virtual auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> {
