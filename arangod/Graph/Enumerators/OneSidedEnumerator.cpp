@@ -83,7 +83,7 @@ template <class Configuration>
   // Info: Steps do contain VertexRefs which are hold in PathStore.
   TRI_ASSERT(_queue.isEmpty());
 
-  // Guarantee that _results is empty. Steps are contained in _results those do
+  // Guarantee that _results is empty. Steps are contained in _results those
   // do contain VertexRefs which are hold in PathStore.
   TRI_ASSERT(_results.empty());
 
