@@ -2870,7 +2870,7 @@ Result ClusterInfo::createCollectionsCoordinator(
              "Plan...";
 
       TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding") {
-        res.set(rest::ResponseCode::PRECONDITION_FAILED, "Failed to mark collection ready");
+        res.set(TRI_ERROR_HTTP_PRECONDITION_FAILED, "Failed to mark collection ready");
       }
 
       if (res.successful()) {
