@@ -38,4 +38,18 @@ install(
   REGEX "^.*/eslint"                                       EXCLUDE
   REGEX "^.*/.npmignore"                                   EXCLUDE
   REGEX "^.*/.bin"                                         EXCLUDE
+  REGEX "^.*/.*-no-eslint"                                 EXCLUDE
+  REGEX "^.*js/node/package.*.json"                        EXCLUDE
+)
+
+install(
+  FILES ${ARANGODB_SOURCE_DIR}/js/node/package.json-no-eslint
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/node
+  RENAME package.json
+)
+
+install(
+  FILES ${ARANGODB_SOURCE_DIR}/js/node/package-lock.json-no-eslint
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/node
+  RENAME package-lock.json
 )

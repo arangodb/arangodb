@@ -2970,6 +2970,10 @@ void RestReplicationHandler::handleCommandRevisionTree() {
   // shall we do a verification?
   bool withVerification = _request->parsedValue("verification", false);
 
+  // return only populated nodes in the tree (can make the result a lot
+  // smaller and thus improve efficiency)
+  bool onlyPopulated = _request->parsedValue("onlyPopulated", false);
+
   auto tree = ctx.collection->getPhysical()->revisionTree(ctx.batchId);
   if (!tree) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
@@ -2990,13 +2994,13 @@ void RestReplicationHandler::handleCommandRevisionTree() {
 
     VPackObjectBuilder guard(&result);
     result.add(VPackValue("computed"));
-    tree2->serialize(result);
+    tree2->serialize(result, onlyPopulated);
     result.add(VPackValue("stored"));
-    tree->serialize(result);
+    tree->serialize(result, onlyPopulated);
     auto diff = tree->diff(*tree2);
     result.add("equal", VPackValue(diff.empty()));
   } else {
-    tree->serialize(result);
+    tree->serialize(result, onlyPopulated);
   }
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));

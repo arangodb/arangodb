@@ -47,6 +47,7 @@
 #include "Logger/LogMacros.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
+#include "Benchmark/BenchmarkStats.h"
 #include "Benchmark/BenchmarkThread.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -72,31 +73,31 @@ using namespace arangodb::rest;
 
 BenchFeature::BenchFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "Bench"),
-      _async(false),
       _concurrency(1),
       _operations(1000),
       _realOperations(0),
       _batchSize(0),
       _duration(0),
-      _keepAlive(true),
       _collection("ArangoBenchmark"),
       _testCase("version"),
       _complexity(1),
+      _async(false),
+      _keepAlive(true),
       _createDatabase(false),
       _delay(false),
       _progress(true),
       _verbose(false),
       _quiet(false),
+      _waitForSync(false),
       _runs(1),
       _junitReportFile(""),
       _jsonReportFile(""),
       _replicationFactor(1),
       _numberOfShards(1),
-      _waitForSync(false),
       _result(result),
       _histogramNumIntervals(1000),
       _histogramIntervalSize(0.0),
-      _percentiles({50.0, 80.0, 85.0, 90.0, 95.0, 99.0}) {
+      _percentiles({50.0, 80.0, 85.0, 90.0, 95.0, 99.0, 99.99}) {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
@@ -230,7 +231,7 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void BenchFeature::status(std::string const& value) {
   if (!_quiet) {
-    std::cout << value << std::endl;
+    LOG_TOPIC("a6905", INFO, arangodb::Logger::BENCH) << value;
   }
 }
 
@@ -241,15 +242,10 @@ void BenchFeature::updateStartCounter() { ++_started; }
 int BenchFeature::getStartCounter() { return _started; }
 
 void BenchFeature::start() {
-  double minTime = std::numeric_limits<double>::infinity();
-  double maxTime = 0.0;
-  double avgTime = 0.0;
-  uint64_t counter = 0;
-
   sort(_percentiles.begin(), _percentiles.end());
   
   if (!_jsonReportFile.empty() && FileUtils::exists(_jsonReportFile)) {
-    LOG_TOPIC("ee2a4", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("ee2a4", FATAL, arangodb::Logger::BENCH)
         << "file already exists: '" << _jsonReportFile << "' - won't overwrite it.";
     FATAL_ERROR_EXIT();
   }
@@ -275,7 +271,7 @@ void BenchFeature::start() {
         delete result;
       }
 
-      LOG_TOPIC("5cda8", FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("5cda8", FATAL, arangodb::Logger::BENCH)
         << "failed to create the specified database: " << msg;
       FATAL_ERROR_EXIT();
     }
@@ -290,9 +286,16 @@ void BenchFeature::start() {
   std::unique_ptr<BenchmarkOperation> benchmark = BenchmarkOperation::createBenchmark(_testCase, *this);
 
   if (benchmark == nullptr) {
-    LOG_TOPIC("ee2a5", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("ee2a5", FATAL, arangodb::Logger::BENCH)
         << "invalid test case name '" << _testCase << "'";
     FATAL_ERROR_EXIT();
+  }
+
+  LOG_TOPIC("69091", INFO, arangodb::Logger::BENCH)
+      << "Running test case '" <<  _testCase << "': " << benchmark->getDescription();
+  if (benchmark->isDeprecated()) {
+    LOG_TOPIC("caf8a", WARN, arangodb::Logger::BENCH)
+        << "Please note: this test case is deprecated and will be removed in a future version.";
   }
 
   if (_duration != 0) {
@@ -301,9 +304,9 @@ void BenchFeature::start() {
     _realOperations = _operations;
   }
   double const stepSize = (double)_operations / (double)_concurrency;
-  int64_t realStep = (int64_t)stepSize;
+  uint64_t realStep = static_cast<uint64_t>(stepSize);
 
-  if (stepSize - (double)((int64_t)stepSize) > 0.0) {
+  if (stepSize - static_cast<double>(static_cast<uint64_t>(stepSize)) > 0.0) {
     realStep++;
   }
 
@@ -314,7 +317,10 @@ void BenchFeature::start() {
   // add some more offset so we don't get into trouble with threads of different
   // speed
   realStep += 10000;
-
+  
+  // aggregated stats for all runs
+  BenchmarkStats totalStats;
+  
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
   builder->add("histogram", VPackValue(VPackValueType::Object));
@@ -388,18 +394,19 @@ void BenchFeature::start() {
       }
 
       if (_progress && numOperations >= nextReportValue) {
-        LOG_TOPIC("c3604", INFO, arangodb::Logger::FIXME) << "number of operations: " << nextReportValue;
+        LOG_TOPIC("c3604", INFO, arangodb::Logger::BENCH) << "number of operations: " << nextReportValue;
         nextReportValue += stepValue;
       }
       
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
     double time = TRI_microtime() - start;
-    double requestTime = 0.0;
 
+    // sum up times of all threads
+    double requestTime = 0.0;
     for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
-      requestTime += threads[i]->getTime();
+      requestTime += threads[i]->stats().total;
     }
 
     if (operationsCounter.failures() > 0) {
@@ -418,7 +425,7 @@ void BenchFeature::start() {
         _realOperations += threads[i]->_counter;
       }
 
-      threads[i]->aggregateValues(minTime, maxTime, avgTime, counter);
+      totalStats.add(threads[i]->stats());
 
       double scope;
       auto res = threads[i]->getPercentiles(_percentiles, scope);
@@ -427,15 +434,15 @@ void BenchFeature::start() {
       size_t j = 0;
 
       pp << " " << std::left << std::setfill('0') << std::fixed << std::setw(10)
-	 << std::setprecision(6) << (threads[i]->_histogramIntervalSize * 1000)
-	 << std::setw(0) << "ms       ";
+         << std::setprecision(6) << (threads[i]->_histogramIntervalSize * 1000)
+         << std::setw(0) << "ms       ";
 
       builder->add("IntervalSize", VPackValue(threads[i]->_histogramIntervalSize));
 
       for (auto time : res) {
         builder->add(std::to_string(_percentiles[j]), VPackValue(time));
         pp << "   " << std::left << std::setfill('0') << std::fixed << std::setw(10)
-	   << std::setprecision(4) << (time * 1000) << std::setw(0) << "ms";
+           << std::setprecision(4) << (time * 1000) << std::setw(0) << "ms";
         j++;
       }
 
@@ -449,7 +456,7 @@ void BenchFeature::start() {
   std::cout << std::endl;
   builder->close();
 
-  report(client, results, minTime, maxTime, avgTime, pp.str(), *builder);
+  report(client, results, totalStats, pp.str(), *builder);
 
   if (!ok) {
     std::cout << "At least one of the runs produced failures!" << std::endl;
@@ -464,7 +471,7 @@ void BenchFeature::start() {
   *_result = ret;
 }
 
-bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results, double minTime, double maxTime, double avgTime, std::string const& histogram, VPackBuilder& builder) {
+bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results, BenchmarkStats const& stats, std::string const& histogram, VPackBuilder& builder) {
   std::cout << std::endl;
 
   std::cout << "Total number of operations: " << _realOperations << ", runs: " << _runs
@@ -538,15 +545,15 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
   builder.close();
 
   std::cout <<
-    "Min Request time: " << (minTime * 1000) << "ms" << std::endl <<
-    "Avg Request time: " << (avgTime * 1000) << "ms" << std::endl <<
-    "Max Request time: " << (maxTime * 1000) << "ms" << std::endl << std::endl;
+    "Min Request time: " << (stats.min * 1000) << "ms" << std::endl <<
+    "Avg Request time: " << (stats.avg() * 1000) << "ms" << std::endl <<
+    "Max Request time: " << (stats.max * 1000) << "ms" << std::endl << std::endl;
 
   std::cout << histogram;
 
-  builder.add("min", VPackValue(minTime));
-  builder.add("avg", VPackValue(avgTime));
-  builder.add("max", VPackValue(maxTime)); 
+  builder.add("min", VPackValue(stats.min));
+  builder.add("avg", VPackValue(stats.avg()));
+  builder.add("max", VPackValue(stats.max)); 
   builder.close();
 
   if (!_jsonReportFile.empty()) {
@@ -629,12 +636,12 @@ void BenchFeature::printResult(BenchRunResult const& result, VPackBuilder& build
 
   builder.add("failures", VPackValue(result._failures));
   if (result._failures > 0) {
-    LOG_TOPIC("a826b", WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("a826b", WARN, arangodb::Logger::BENCH)
         << result._failures << " arangobench request(s) failed!";
   }
   builder.add("incompleteResults", VPackValue(result._incomplete));
   if (result._incomplete > 0) {
-    LOG_TOPIC("41006", WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("41006", WARN, arangodb::Logger::BENCH)
         << result._incomplete << " arangobench requests with incomplete results!";
   }
 }
