@@ -86,10 +86,9 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
     return "aql";
   }
 
+ public:
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  bool isPreCalculated() const {
-    return _isOptimizable;
-  }
+  bool isOptimized() const;
 #endif
 
   static bool normalize_vpack(const irs::string_ref& args, std::string& out);
@@ -108,14 +107,15 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
 
  private:
 
+  friend bool TryOptimize(AqlAnalyzer* analyzer);
+  friend bool OptimizedQuery(AqlAnalyzer* analyzer);
+  friend bool NotOptimizedQuery(AqlAnalyzer* analyzer);
+
   using attributes = std::tuple<
     irs::increment,
     AnalyzerValueTypeAttribute,
     irs::term_attribute,
     VPackTermAttribute>;
-
-  friend bool TryOptimize(AqlAnalyzer* analyzer);
-  friend void OptimizeQuery(irs::string_ref const& field, AqlAnalyzer* analyzer);
 
   Options _options;
   aql::AqlValue _valueBuffer;
@@ -126,12 +126,11 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   aql::AqlItemBlockManager _itemBlockManager;
   aql::ExecutionEngine _engine;
   std::unique_ptr<aql::ExecutionPlan> _plan;
+  bool (*resetImpl)(AqlAnalyzer* analyzer);
+  aql::CalculationNode* _nodeToOptimize{nullptr};
   aql::SharedAqlItemBlockPtr _queryResults;
   std::vector<aql::AstNode*> _bindedNodes;
   aql::ExecutionState _executionState{aql::ExecutionState::DONE};
-
-  bool _isOptimizable{false};
-  aql::CalculationNode* _nodeToOptimize{nullptr};
 
   attributes _attrs;
   size_t _resultRowIdx{ 0 };

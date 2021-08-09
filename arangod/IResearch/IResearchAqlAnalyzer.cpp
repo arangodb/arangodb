@@ -536,46 +536,51 @@ bool TryOptimize(AqlAnalyzer* analyzer) {
     analyzer->_nodeToOptimize = static_cast<CalculationNode*>(execNode);
     // allocate memory for result
     analyzer->_queryResults = analyzer->_itemBlockManager.requestBlock(1,1);
-    analyzer->_isOptimizable = true;
     return true;
   }
 
   return false;
 }
 
-void OptimizeQuery(irs::string_ref const& field, AqlAnalyzer* analyzer) {
+bool OptimizedQuery(AqlAnalyzer* analyzer) {
   //get expression
   auto e = analyzer->_nodeToOptimize->expression();
 
   auto& trx = analyzer->_query->trxForOptimization();
 
-  // get variable ptr
-  auto variable = static_cast<Variable*>(e->node()->getData());
   // get query
   auto& query = analyzer->_query->ast()->query();
 
-  AqlValue value(field.c_str(), field.size());
-
   // create context
-  SingleVarExpressionContext ctx(trx, query, analyzer->_aqlFunctionsInternalCache, variable, value);
-
-  // set the value in expression
-  e->setVariable(variable, value.slice());
-  // calculate expression
-  bool mustDestroy = false;
-  AqlValue calculatedValue = e->execute(&ctx, mustDestroy);
+  // value not needed since getting it from _bindedNodes
+  SingleVarExpressionContext ctx(trx, query, analyzer->_aqlFunctionsInternalCache);
 
   analyzer->_executionState = ExecutionState::DONE; // already calculated
-  analyzer->_resultRowIdx = 0;
-  analyzer->_nextIncVal = 1;  // first increment always 1 to move from -1 to 0
 
   // put calculated value in _queryResults
   analyzer->_queryResults->destroyValue(0,0);
+  bool mustDestroy = false;
   AqlValue& out = const_cast<AqlValue&>(analyzer->_queryResults->getValueReference(0,0));
-  out = std::move(calculatedValue);
+  out = std::move(e->execute(&ctx, mustDestroy));
 
   analyzer->_engine.resultRegister(0); // set the value of resultRegister to 0
+  return true;
 }
+
+bool NotOptimizedQuery(AqlAnalyzer* analyzer) {
+  analyzer->_queryResults = nullptr;
+  analyzer->_plan->clearVarUsageComputed();
+  analyzer->_aqlFunctionsInternalCache.clear();
+  analyzer->_engine.initFromPlanForCalculation(*analyzer->_plan);
+  analyzer->_executionState = ExecutionState::HASMORE;
+  return true;
+}
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+bool AqlAnalyzer::isOptimized() const {
+  return resetImpl == &OptimizedQuery;
+}
+#endif
 
 AqlAnalyzer::AqlAnalyzer(Options const& options)
   : irs::analysis::analyzer(irs::type<AqlAnalyzer>::get()),
@@ -583,7 +588,8 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
     _query(new CalculationQueryContext(arangodb::DatabaseFeature::getCalculationVocbase())),
     _itemBlockManager(_query->resourceMonitor(), SerializationFormat::SHADOWROWS),
     _engine(0, *_query, _itemBlockManager,
-            SerializationFormat::SHADOWROWS, nullptr) {
+            SerializationFormat::SHADOWROWS, nullptr),
+    resetImpl(&NotOptimizedQuery) {
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   std::get<AnalyzerValueTypeAttribute>(_attrs).value = _options.returnType;
   TRI_ASSERT(validateQuery(_options.queryString,
@@ -723,33 +729,20 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
 
       // try to optimize
       if (TryOptimize(this)) {
-        OptimizeQuery(field, this);
-        return true;
+        resetImpl = &OptimizedQuery;
       }
-
-    } else {
-      // plan exists
-
-      for (auto node : _bindedNodes) {
-        node->setStringValue(field.c_str(), field.size());
-      }
-
-      // calculate value if optimization is possible
-      if (_isOptimizable) {
-        OptimizeQuery(field, this);
-        return true;
-      }
-
-      _engine.reset();
     }
-    _queryResults = nullptr;
-    _plan->clearVarUsageComputed();
-    _aqlFunctionsInternalCache.clear();
-    _engine.initFromPlanForCalculation(*_plan);
-    _executionState = ExecutionState::HASMORE;
+
+    for (auto node : _bindedNodes) {
+      node->setStringValue(field.c_str(), field.size());
+    }
+
     _resultRowIdx = 0;
     _nextIncVal = 1;  // first increment always 1 to move from -1 to 0
-    return true;
+    _engine.reset();
+
+    return resetImpl(this);
+
   } catch (std::exception const& e) {
     LOG_TOPIC("d2223", WARN, iresearch::TOPIC)
         << "error creating calculation query: " << e.what()
