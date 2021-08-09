@@ -1,6 +1,8 @@
 v3.7.14 (XXXX-XX-XX)
 --------------------
 
+* Fixed issue #14592:  IS_NULL(@x) isn't recognized as a constant expression.
+
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented cases
   and numerically unstable behaviour. In particular, the case of the
   intersection of two polygons in which one is an S2LngLatRect is fixed
