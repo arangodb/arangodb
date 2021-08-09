@@ -67,6 +67,11 @@ class SingleVarExpressionContext final : public QueryExpressionContext {
                                       QueryContext& query,
                                       AqlFunctionsInternalCache& cache);
 
+  explicit SingleVarExpressionContext(transaction::Methods& trx,
+                                      QueryContext& query,
+                                      AqlFunctionsInternalCache& cache,
+                                      Variable* var, AqlValue val);
+
   ~SingleVarExpressionContext() override = default;
 
   bool isDataFromCollection(Variable const* variable) const override;
@@ -74,7 +79,7 @@ class SingleVarExpressionContext final : public QueryExpressionContext {
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
 
-  void setVariableValue(Variable const*, AqlValue const&);
+  void setVariableValue(Variable* var, AqlValue& val);
 
  private:
   Variable* _variable;

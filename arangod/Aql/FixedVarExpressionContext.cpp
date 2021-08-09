@@ -75,21 +75,32 @@ FixedVarExpressionContext::FixedVarExpressionContext(transaction::Methods& trx,
 
 SingleVarExpressionContext::SingleVarExpressionContext(transaction::Methods& trx,
                                                        QueryContext& context,
+                                                       AqlFunctionsInternalCache& cache,
+                                                       Variable* var, AqlValue val)
+    : QueryExpressionContext(trx, context, cache), _variable(var), _value(val) {}
+
+SingleVarExpressionContext::SingleVarExpressionContext(transaction::Methods& trx,
+                                                       QueryContext& context,
                                                        AqlFunctionsInternalCache& cache)
-    : QueryExpressionContext(trx, context, cache) {}
+    : SingleVarExpressionContext(trx, context, cache, nullptr, AqlValue(AqlValueHintNull())) {}
+
 
 bool SingleVarExpressionContext::isDataFromCollection(Variable const*) const {
   return false;
 }
 
-AqlValue SingleVarExpressionContext::getVariableValue(Variable const*, bool,
+AqlValue SingleVarExpressionContext::getVariableValue(Variable const* var, bool,
                                                      bool&) const {
-  return _value;
+  if (var == _variable) {
+    return _value;
+  } else {
+    return AqlValue(AqlValueHintNull());
+  }
 }
 
 
-void SingleVarExpressionContext::setVariableValue(Variable const* variable,
-                                                  AqlValue const& value) {
-  _variable = const_cast<Variable*>(variable);
+void SingleVarExpressionContext::setVariableValue(Variable* variable,
+                                                  AqlValue& value) {
+  _variable = variable;
   _value = value;
 }
