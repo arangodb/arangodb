@@ -2543,7 +2543,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
   int fd = TRI_CREATE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME,
                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
-  TRI_IF_FAILURE("CreateDatafile1") {
+  ARANGODB_IF_FAILURE("CreateDatafile1") {
     // intentionally fail
     TRI_CLOSE(fd);
     fd = -1;
@@ -2594,7 +2594,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
 
       ssize_t writeResult = TRI_WRITE(fd, &nullBuffer[0], static_cast<TRI_write_t>(writeSize));
 
-      TRI_IF_FAILURE("CreateDatafile2") {
+      ARANGODB_IF_FAILURE("CreateDatafile2") {
         // intentionally fail
         writeResult = -1;
         errno = ENOSPC;

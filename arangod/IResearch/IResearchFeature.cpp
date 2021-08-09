@@ -366,7 +366,7 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
                     << clusterCollectionName << "' for link " << indexPtr->id().id()
                     << ": " << res.errorMessage();;
                 }
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
               } else if (selector.engineName() != "Mock") { // for unit tests just ignore write to storage
 #else
               } else {
@@ -768,11 +768,11 @@ class IResearchAsync{
   }
 
   ThreadPool& get(ThreadGroup id)
-#ifndef ARANGODB_ENABLE_FAILURE_TESTS
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
   noexcept
 #endif
   {
-    TRI_IF_FAILURE("IResearchFeature::testGroupAccess") {
+    ARANGODB_IF_FAILURE("IResearchFeature::testGroupAccess") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -1018,19 +1018,19 @@ bool IResearchFeature::queue(
     std::chrono::steady_clock::duration delay,
     std::function<void()>&& fn) {
   try {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    TRI_IF_FAILURE("IResearchFeature::queue") {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    ARANGODB_IF_FAILURE("IResearchFeature::queue") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
     switch (id) {
       case ThreadGroup::_0:
-        TRI_IF_FAILURE("IResearchFeature::queueGroup0") {
+        ARANGODB_IF_FAILURE("IResearchFeature::queueGroup0") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         break;
       case ThreadGroup::_1:
-        TRI_IF_FAILURE("IResearchFeature::queueGroup1") {
+        ARANGODB_IF_FAILURE("IResearchFeature::queueGroup1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         break;

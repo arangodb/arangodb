@@ -101,7 +101,7 @@ const DistinctCollectExecutor::Infos& DistinctCollectExecutor::infos() const noe
 auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                           OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  TRI_IF_FAILURE("DistinctCollectExecutor::produceRows") {
+  ARANGODB_IF_FAILURE("DistinctCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -148,7 +148,7 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
 auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  TRI_IF_FAILURE("DistinctCollectExecutor::skipRowsRange") {
+  ARANGODB_IF_FAILURE("DistinctCollectExecutor::skipRowsRange") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

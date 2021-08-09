@@ -255,7 +255,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
   bool const _isClusterRole;
   uint64_t _quickKeysNumDocsLimit;
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void adjustQuickKeysNumDocsLimit();
 #endif
 };

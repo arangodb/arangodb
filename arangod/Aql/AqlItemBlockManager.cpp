@@ -152,13 +152,13 @@ arangodb::ResourceMonitor& AqlItemBlockManager::resourceMonitor() const noexcept
   return _resourceMonitor;
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void AqlItemBlockManager::deleteBlock(AqlItemBlock* block) {
   delete block;
 }
 #endif
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 uint32_t AqlItemBlockManager::getBucketId(size_t targetSize) noexcept {
   return Bucket::getId(targetSize);
 }

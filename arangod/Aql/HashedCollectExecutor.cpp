@@ -230,7 +230,7 @@ auto HashedCollectExecutor::returnState() const -> ExecutorState {
 auto HashedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                         OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, NoStats, AqlCall> {
-  TRI_IF_FAILURE("HashedCollectExecutor::produceRows") {
+  ARANGODB_IF_FAILURE("HashedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   if (!_isInitialized) {

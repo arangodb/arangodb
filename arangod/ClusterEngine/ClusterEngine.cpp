@@ -54,7 +54,7 @@ using namespace arangodb::application_features;
 std::string const ClusterEngine::EngineName("Cluster");
 std::string const ClusterEngine::FeatureName("ClusterEngine");
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // fall back to the using the mock storage engine
 bool ClusterEngine::Mocking = false;
 #endif
@@ -79,7 +79,7 @@ bool ClusterEngine::isRocksDB() const {
 }
 
 bool ClusterEngine::isMock() const {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   return ClusterEngine::Mocking ||
          (_actualEngine && _actualEngine->name() == "Mock");
 #else
@@ -92,7 +92,7 @@ HealthData ClusterEngine::healthCheck() {
 }
 
 ClusterEngineType ClusterEngine::engineType() const {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (isMock()) {
     return ClusterEngineType::MockEngine;
   }
@@ -277,7 +277,7 @@ Result ClusterEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) 
 void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
   if (engineType() == ClusterEngineType::RocksDBEngine) {
     RocksDBOptimizerRules::registerResources(feature);
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   } else if (engineType() == ClusterEngineType::MockEngine) {
     // do nothing
 #endif

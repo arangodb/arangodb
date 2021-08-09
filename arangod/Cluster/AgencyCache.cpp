@@ -49,7 +49,7 @@ AgencyCache::AgencyCache(application_features::ApplicationServer& server,
     _callbacksCount(
       _server.getFeature<MetricsFeature>().add(arangodb_agency_cache_callback_number{})) {
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(_shutdownCode == TRI_ERROR_NO_ERROR || _shutdownCode == TRI_ERROR_SHUTTING_DOWN);
 #else
   TRI_ASSERT(_shutdownCode == TRI_ERROR_SHUTTING_DOWN);

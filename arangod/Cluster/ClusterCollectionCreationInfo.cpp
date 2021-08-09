@@ -55,7 +55,7 @@ ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
 // tries to get away without other servers by initially adding only 0
 // shard collections (non-smart). We do not want to loose these test.
 // So we will loose this assertion for now.
-#ifndef ARANGODB_USE_GOOGLE_TESTS
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(basics::VelocyPackHelper::getBooleanValue(json, StaticStrings::IsSmart,
                                                                    false));
 #endif

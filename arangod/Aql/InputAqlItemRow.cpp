@@ -172,7 +172,7 @@ bool InputAqlItemRow::isSameBlockAndIndex(InputAqlItemRow const& other) const no
   return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 bool InputAqlItemRow::equates(InputAqlItemRow const& other,
                               velocypack::Options const* const options) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {

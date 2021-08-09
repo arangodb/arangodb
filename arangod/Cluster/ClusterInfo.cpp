@@ -402,7 +402,7 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
   _uniqid._backgroundJobIsRunning = false;
   // Actual loading into caches is postponed until necessary
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(_syncerShutdownCode == TRI_ERROR_NO_ERROR || _syncerShutdownCode == TRI_ERROR_SHUTTING_DOWN);
 #else
   TRI_ASSERT(_syncerShutdownCode == TRI_ERROR_SHUTTING_DOWN);
@@ -1160,7 +1160,7 @@ void ClusterInfo::loadPlan() {
         << analyzerSlice.toJson();
     }
   }
-  TRI_IF_FAILURE("AlwaysSwapAnalyzersRevision") {
+  ARANGODB_IF_FAILURE("AlwaysSwapAnalyzersRevision") {
     swapAnalyzers = true;
   }
 
@@ -3062,7 +3062,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     }
   }
 
-  TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
+  ARANGODB_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -3124,7 +3124,7 @@ Result ClusterInfo::createCollectionsCoordinator(
           << "createCollectionCoordinator, isBuilding removed, waiting for new "
              "Plan...";
 
-      TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding") {
+      ARANGODB_IF_FAILURE("ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding") {
         res.set(rest::ResponseCode::PRECONDITION_FAILED, "Failed to mark collection ready");
       }
 
@@ -3822,7 +3822,7 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
 /// is a timeout.
 ////////////////////////////////////////////////////////////////////////////////
 Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databaseID, bool restore) {
-  TRI_IF_FAILURE("FinishModifyingAnalyzerCoordinator") {
+  ARANGODB_IF_FAILURE("FinishModifyingAnalyzerCoordinator") {
     return Result(TRI_ERROR_DEBUG);
   }
 
@@ -4854,7 +4854,7 @@ std::unordered_map<ServerID, RebootId> ClusterInfo::rebootIds() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (serverID == "debug-follower") {
     return "tcp://127.0.0.1:3000";
   }
@@ -4905,7 +4905,7 @@ std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerAdvertisedEndpoint(ServerID const& serverID) {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (serverID == "debug-follower") {
     return "tcp://127.0.0.1:3000";
   }
@@ -5358,7 +5358,7 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(CollectionID const& collectionID) {
-  TRI_IF_FAILURE("ClusterInfo::failedToGetShardList") {
+  ARANGODB_IF_FAILURE("ClusterInfo::failedToGetShardList") {
     // Simulate no results
     return std::make_shared<std::vector<ShardID>>();
   }
@@ -5503,7 +5503,7 @@ void ClusterInfo::setFailedServers(std::vector<std::string> const& failedServers
   _failedServers = failedServers;
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void ClusterInfo::setServers(std::unordered_map<ServerID, std::string> servers) {
   WRITE_LOCKER(readLocker, _serversProt.lock);
   _servers = std::move(servers);

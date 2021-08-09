@@ -51,7 +51,7 @@ void GreetingsFeature::prepare() {
   constexpr bool warn = true;
 #else
   // catch-tests on (enables TEST_VIRTUAL)
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   constexpr bool warn = true;
 #else
   // neither maintainer mode nor catch tests

@@ -422,7 +422,7 @@ class MerkleTree : public MerkleTreeBase {
   
   std::uint64_t numberOfShards() const noexcept;
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // intentionally corrupts the tree. used for testing only
   void corrupt(std::uint64_t count, std::uint64_t hash);
 #endif

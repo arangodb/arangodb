@@ -325,7 +325,7 @@ class AnalyzerModificationTransaction {
   static std::atomic<int32_t> _pendingAnalyzerOperationsCount;
 };
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 class ClusterInfo {
 #else
 class ClusterInfo final {
@@ -907,7 +907,7 @@ class ClusterInfo final {
 
   void setFailedServers(std::vector<std::string> const& failedServers);
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void setServers(std::unordered_map<ServerID, std::string> servers);
 
   void setServerAliases(std::unordered_map<ServerID, std::string> aliases);

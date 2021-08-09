@@ -129,7 +129,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
 }
 
 static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::ApplicationServer& server) {
-  TRI_IF_FAILURE("QueryAllUsers") {
+  ARANGODB_IF_FAILURE("QueryAllUsers") {
     // simulates the case that the _users collection is not yet available
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
@@ -211,7 +211,7 @@ void auth::UserManager::loadFromDB() {
     return;
   }
 
-  TRI_IF_FAILURE("UserManager::performDBLookup") {
+  ARANGODB_IF_FAILURE("UserManager::performDBLookup") {
     // Used in GTest. It is used to identify
     // if the UserManager would have updated it's
     // cache in a specific situation.
@@ -818,7 +818,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   return level;
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// Only used for testing
 void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first

@@ -276,7 +276,7 @@ void IndexNode::initializeOnce(bool& hasV8Expression, std::vector<Variable const
     // all new AstNodes are registered with the Ast in the Query
     auto e = std::make_unique<Expression>(_plan->getAst(), a);
 
-    TRI_IF_FAILURE("IndexBlock::initialize") {
+    ARANGODB_IF_FAILURE("IndexBlock::initialize") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -323,7 +323,7 @@ void IndexNode::initializeOnce(bool& hasV8Expression, std::vector<Variable const
           idx.emplace_back(k);
           instantiateExpression(child, std::move(idx));
 
-          TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
+          ARANGODB_IF_FAILURE("IndexBlock::initializeExpressions") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
         }
@@ -359,7 +359,7 @@ void IndexNode::initializeOnce(bool& hasV8Expression, std::vector<Variable const
               rhs = makeUnique(rhs);
             }
             instantiateExpression(rhs, {i, j, 1});
-            TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
+            ARANGODB_IF_FAILURE("IndexBlock::initializeExpressions") {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
             }
           }
@@ -372,7 +372,7 @@ void IndexNode::initializeOnce(bool& hasV8Expression, std::vector<Variable const
             instFCallArgExpressions(lhs, {i, j, 0});
           } else if (!lhs->isConstant()) {
             instantiateExpression(lhs, {i, j, 0});
-            TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
+            ARANGODB_IF_FAILURE("IndexBlock::initializeExpressions") {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
             }
           }

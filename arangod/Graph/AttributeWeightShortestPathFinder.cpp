@@ -223,7 +223,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
     backwardSearcher = std::make_unique<Searcher>(this, backward, forward, target, true);
   }
 
-  TRI_IF_FAILURE("TraversalOOMInitialize") {
+  ARANGODB_IF_FAILURE("TraversalOOMInitialize") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -297,7 +297,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
     s = backward._pq.find(s->_predecessor);
   }
 
-  TRI_IF_FAILURE("TraversalOOMPath") {
+  ARANGODB_IF_FAILURE("TraversalOOMPath") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

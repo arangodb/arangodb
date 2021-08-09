@@ -2097,7 +2097,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
   EXPECT_TRUE(100ms < diff);
 }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 TEST_F(IResearchFeatureTest, test_fail_to_submit_task) {
   {
     auto cleanup = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);

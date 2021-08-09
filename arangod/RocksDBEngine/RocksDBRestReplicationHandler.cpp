@@ -64,7 +64,7 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
       _manager(
           server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>().replicationManager()),
       _quickKeysNumDocsLimit(server.getFeature<ReplicationFeature>().quickKeysLimit())  {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   adjustQuickKeysNumDocsLimit();
 #endif
 
@@ -838,10 +838,10 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   }
 }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief patch quickKeysNumDocsLimit for testing
 void RocksDBRestReplicationHandler::adjustQuickKeysNumDocsLimit() {
-  TRI_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
+  ARANGODB_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
     _quickKeysNumDocsLimit = 100;
   }
 }

@@ -80,7 +80,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void prepare() override final;
 
   // used by catch tests
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   inline ErrorCode loadDatabases(velocypack::Slice const& databases) {
     return iterateDatabases(databases);
   }

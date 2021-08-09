@@ -104,7 +104,7 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
     _trx->state()->acceptAnalyzersRevision(analyzersRevision);
   }
   
-  TRI_IF_FAILURE("Query::setupLockTimeout") {
+  ARANGODB_IF_FAILURE("Query::setupLockTimeout") {
     if (RandomGenerator::interval(uint32_t(100)) >= 95) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
     }

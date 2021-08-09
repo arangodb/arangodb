@@ -850,7 +850,7 @@ void RocksDBEdgeIndex::fillLookupValue(VPackBuilder& keys,
   TRI_ASSERT(keys.isEmpty());
   keys.openArray(/*unindexed*/true);
   handleValNode(&keys, value);
-  TRI_IF_FAILURE("EdgeIndex::noIterator") {
+  ARANGODB_IF_FAILURE("EdgeIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys.close();
@@ -866,12 +866,12 @@ void RocksDBEdgeIndex::fillInLookupValues(transaction::Methods* trx, VPackBuilde
   size_t const n = values->numMembers();
   for (size_t i = 0; i < n; ++i) {
     handleValNode(&keys, values->getMemberUnchecked(i));
-    TRI_IF_FAILURE("EdgeIndex::iteratorValNodes") {
+    ARANGODB_IF_FAILURE("EdgeIndex::iteratorValNodes") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
 
-  TRI_IF_FAILURE("EdgeIndex::noIterator") {
+  ARANGODB_IF_FAILURE("EdgeIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys.close();
@@ -887,7 +887,7 @@ void RocksDBEdgeIndex::handleValNode(VPackBuilder* keys,
   keys->add(VPackValuePair(valNode->getStringValue(),
                            valNode->getStringLength(), VPackValueType::String));
 
-  TRI_IF_FAILURE("EdgeIndex::collectKeys") {
+  ARANGODB_IF_FAILURE("EdgeIndex::collectKeys") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 }

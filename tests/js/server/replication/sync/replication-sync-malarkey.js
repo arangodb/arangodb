@@ -1139,7 +1139,7 @@ function ReplicationIncrementalMalarkeyNewFormatIntermediateCommits() {
 
 let res = arango.GET("/_admin/debug/failat");
 if (res === true) {
-  // tests only work when compiled with -DUSE_FAILURE_TESTS
+  // tests only work when compiled with -DUSE_MAINTAINER_MODE
   jsunity.run(ReplicationIncrementalMalarkeyOldFormat);
   jsunity.run(ReplicationIncrementalMalarkeyNewFormat);
   jsunity.run(ReplicationIncrementalMalarkeyNewFormatIntermediateCommits);

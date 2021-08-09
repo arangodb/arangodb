@@ -368,7 +368,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
       _quickKeysNumDocsLimit(vocbase.server().getFeature<ReplicationFeature>().quickKeysLimit()) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   adjustQuickKeysNumDocsLimit();
 #endif
   if (configuration._database.empty()) {
@@ -1155,7 +1155,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
     
   uint64_t ndocs = c.getNumber<uint64_t>();
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (ndocs > _quickKeysNumDocsLimit && slice.hasKey("id")) {
     LOG_TOPIC("6e1b3", ERR, Logger::REPLICATION)
         << "client: DatabaseInitialSyncer::run - expected only document count for quick call";
@@ -1382,7 +1382,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   });
   std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
   transaction::Options options;
-  TRI_IF_FAILURE("IncrementalReplicationFrequentIntermediateCommit") {
+  ARANGODB_IF_FAILURE("IncrementalReplicationFrequentIntermediateCommit") {
     options.intermediateCommitCount = 1000;
   }
   try {
@@ -2199,10 +2199,10 @@ Result DatabaseInitialSyncer::batchFinish() {
   return _config.batch.finish(_config.connection, _config.progress, _config.state.syncerId);
 }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief patch quickKeysNumDocsLimit for testing
 void DatabaseInitialSyncer::adjustQuickKeysNumDocsLimit() {
-  TRI_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
+  ARANGODB_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
     _quickKeysNumDocsLimit = 100;
   }
 }

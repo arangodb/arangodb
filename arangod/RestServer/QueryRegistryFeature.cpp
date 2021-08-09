@@ -401,7 +401,7 @@ void QueryRegistryFeature::prepare() {
   // prepare gauge value
   _globalQueryMemoryLimit = _queryGlobalMemoryLimit;
   
-#ifndef ARANGODB_USE_GOOGLE_TESTS
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
   // we are now intentionally not printing this message during testing,
   // because otherwise it would be printed a *lot* of times
   // note that options() can be a nullptr during unit testing

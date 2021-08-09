@@ -306,7 +306,7 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
           continue;
         }
 
-        TRI_IF_FAILURE("Optimizer::createPlansOom") {
+        ARANGODB_IF_FAILURE("Optimizer::createPlansOom") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 

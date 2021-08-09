@@ -98,7 +98,7 @@ bool ConstantWeightShortestPathFinder::shortestPath(
   _leftClosure.emplace_back(start);
   _rightClosure.emplace_back(end);
 
-  TRI_IF_FAILURE("TraversalOOMInitialize") {
+  ARANGODB_IF_FAILURE("TraversalOOMInitialize") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -180,7 +180,7 @@ void ConstantWeightShortestPathFinder::fillResult(arangodb::velocypack::StringRe
     it = _rightFound.find(next);
   }
 
-  TRI_IF_FAILURE("TraversalOOMPath") {
+  ARANGODB_IF_FAILURE("TraversalOOMPath") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   _options.fetchVerticesCoordinator(result._vertices);

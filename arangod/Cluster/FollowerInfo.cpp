@@ -119,7 +119,7 @@ VPackSlice planShardEntry(arangodb::LogicalCollection const& col, VPackSlice pla
 ////////////////////////////////////////////////////////////////////////////////
 
 Result FollowerInfo::add(ServerID const& sid) {
-  TRI_IF_FAILURE("FollowerInfo::add") {
+  ARANGODB_IF_FAILURE("FollowerInfo::add") {
     return {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
             "unable to add follower"};
   }
@@ -183,7 +183,7 @@ Result FollowerInfo::add(ServerID const& sid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Result FollowerInfo::remove(ServerID const& sid) {
-  TRI_IF_FAILURE("FollowerInfo::remove") {
+  ARANGODB_IF_FAILURE("FollowerInfo::remove") {
     return {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
             "unable to remove follower"};
   }

@@ -188,7 +188,7 @@ static arangodb::Result fillIndex(rocksdb::DB* rootDB, RocksDBIndex& ridx, Rocks
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
+  ARANGODB_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
 
   uint64_t numDocsWritten = 0;
   RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();

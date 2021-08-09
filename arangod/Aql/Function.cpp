@@ -60,7 +60,7 @@ Function::Function(std::string const& name, char const* arguments,
   TRI_ASSERT(!hasFlag(Flags::CanRunOnDBServerCluster) || hasFlag(Flags::CanRunOnDBServerOneShard));
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // constructor to create a function stub. only used from tests
 Function::Function(std::string const& name, FunctionImplementation implementation) 
     : name(name), 

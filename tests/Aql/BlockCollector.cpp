@@ -71,7 +71,7 @@ SharedAqlItemBlockPtr BlockCollector::steal() {
   TRI_ASSERT(_totalSize > 0);
   SharedAqlItemBlockPtr result{nullptr};
 
-  TRI_IF_FAILURE("BlockCollector::getOrSkipSomeConcatenate") {
+  ARANGODB_IF_FAILURE("BlockCollector::getOrSkipSomeConcatenate") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

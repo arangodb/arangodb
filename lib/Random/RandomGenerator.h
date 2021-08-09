@@ -90,7 +90,7 @@ class RandomGenerator {
   static uint64_t interval(uint64_t);
   
   // exposed only for testing
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   static int32_t random(int32_t left, int32_t right);
 #endif
 

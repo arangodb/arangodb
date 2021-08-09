@@ -689,7 +689,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     // no savepoint needed here
     TRI_ASSERT(!state->hasOperations());  // not allowed
 
-    TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") {
+    ARANGODB_IF_FAILURE("RocksDBRemoveLargeRangeOn") {
       return Result(TRI_ERROR_DEBUG);
     }
 
@@ -699,7 +699,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
                                 .engine<RocksDBEngine>();
     rocksdb::DB* db = engine.db()->GetRootDB();
 
-    TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
+    ARANGODB_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
       engine.settingsManager()->sync(false);
     }
 
@@ -765,7 +765,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     return {};
   }
 
-  TRI_IF_FAILURE("RocksDBRemoveLargeRangeOff") {
+  ARANGODB_IF_FAILURE("RocksDBRemoveLargeRangeOff") {
     return {TRI_ERROR_DEBUG};
   }
 
@@ -840,8 +840,8 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   }
 #endif
 
-  TRI_IF_FAILURE("FailAfterAllCommits") { return Result(TRI_ERROR_DEBUG); }
-  TRI_IF_FAILURE("SegfaultAfterAllCommits") {
+  ARANGODB_IF_FAILURE("FailAfterAllCommits") { return Result(TRI_ERROR_DEBUG); }
+  ARANGODB_IF_FAILURE("SegfaultAfterAllCommits") {
     TRI_TerminateDebugging("SegfaultAfterAllCommits");
   }
   return {};
@@ -889,7 +889,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
 Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
                                IndexIterator::DocumentCallback const& cb) const {
-  TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
+  ARANGODB_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
 
   ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
 
@@ -1425,13 +1425,13 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   }
 #endif
 
-  TRI_IF_FAILURE("RocksDBCollection::insertFail1") {
+  ARANGODB_IF_FAILURE("RocksDBCollection::insertFail1") {
     if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
       return res.reset(TRI_ERROR_DEBUG);
     }
   }
   
-  TRI_IF_FAILURE("RocksDBCollection::insertFail1Always") {
+  ARANGODB_IF_FAILURE("RocksDBCollection::insertFail1Always") {
     return res.reset(TRI_ERROR_DEBUG);
   }
   
@@ -1458,13 +1458,13 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
 
     for (auto it = _indexes.begin(); it != _indexes.end(); ++it) {
-      TRI_IF_FAILURE("RocksDBCollection::insertFail2") {
+      ARANGODB_IF_FAILURE("RocksDBCollection::insertFail2") {
         if (it == _indexes.begin() && RandomGenerator::interval(uint32_t(1000)) >= 995) {
           return res.reset(TRI_ERROR_DEBUG);
         }
       }
       
-      TRI_IF_FAILURE("RocksDBCollection::insertFail2Always") {
+      ARANGODB_IF_FAILURE("RocksDBCollection::insertFail2Always") {
         return res.reset(TRI_ERROR_DEBUG);
       }
 
@@ -1527,13 +1527,13 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   }
 #endif
   
-  TRI_IF_FAILURE("RocksDBCollection::removeFail1") {
+  ARANGODB_IF_FAILURE("RocksDBCollection::removeFail1") {
     if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
       return res.reset(TRI_ERROR_DEBUG);
     }
   }
   
-  TRI_IF_FAILURE("RocksDBCollection::removeFail1Always") {
+  ARANGODB_IF_FAILURE("RocksDBCollection::removeFail1Always") {
     return res.reset(TRI_ERROR_DEBUG);
   }
 
@@ -1560,12 +1560,12 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
 
     for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
-      TRI_IF_FAILURE("RocksDBCollection::removeFail2") {
+      ARANGODB_IF_FAILURE("RocksDBCollection::removeFail2") {
         if (it == _indexes.begin() && RandomGenerator::interval(uint32_t(1000)) >= 995) {
           return res.reset(TRI_ERROR_DEBUG);
         }
       }
-      TRI_IF_FAILURE("RocksDBCollection::removeFail2Always") {
+      ARANGODB_IF_FAILURE("RocksDBCollection::removeFail2Always") {
         return res.reset(TRI_ERROR_DEBUG);
       }
 
@@ -1645,13 +1645,13 @@ Result RocksDBCollection::modifyDocument(transaction::Methods* trx,
   TRI_ASSERT(key->containsLocalDocumentId(oldDocumentId));
   invalidateCacheEntry(key.ref());
   
-  TRI_IF_FAILURE("RocksDBCollection::modifyFail1") {
+  ARANGODB_IF_FAILURE("RocksDBCollection::modifyFail1") {
     if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
       return res.reset(TRI_ERROR_DEBUG);
     }
   }
   
-  TRI_IF_FAILURE("RocksDBCollection::modifyFail1Always") {
+  ARANGODB_IF_FAILURE("RocksDBCollection::modifyFail1Always") {
     return res.reset(TRI_ERROR_DEBUG);
   }
 
@@ -1673,13 +1673,13 @@ Result RocksDBCollection::modifyDocument(transaction::Methods* trx,
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
   
-  TRI_IF_FAILURE("RocksDBCollection::modifyFail2") {
+  ARANGODB_IF_FAILURE("RocksDBCollection::modifyFail2") {
     if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
       return res.reset(TRI_ERROR_DEBUG);
     }
   }
   
-  TRI_IF_FAILURE("RocksDBCollection::modifyFail2Always") {
+  ARANGODB_IF_FAILURE("RocksDBCollection::modifyFail2Always") {
     return res.reset(TRI_ERROR_DEBUG);
   }
 
@@ -1704,13 +1704,13 @@ Result RocksDBCollection::modifyDocument(transaction::Methods* trx,
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
 
     for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
-      TRI_IF_FAILURE("RocksDBCollection::modifyFail3") {
+      ARANGODB_IF_FAILURE("RocksDBCollection::modifyFail3") {
         if (it == _indexes.begin() && RandomGenerator::interval(uint32_t(1000)) >= 995) {
           return res.reset(TRI_ERROR_DEBUG);
         }
       }
 
-      TRI_IF_FAILURE("RocksDBCollection::modifyFail3Always") {
+      ARANGODB_IF_FAILURE("RocksDBCollection::modifyFail3Always") {
         return res.reset(TRI_ERROR_DEBUG);
       }
 

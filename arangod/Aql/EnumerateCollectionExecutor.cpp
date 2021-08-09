@@ -230,7 +230,7 @@ void EnumerateCollectionExecutor::initializeNewRow(AqlItemBlockInputRange& input
 
 std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollectionExecutor::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
+  ARANGODB_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -282,7 +282,7 @@ std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollection
       stats.incrFiltered(_documentProducingFunctionContext.getAndResetNumFiltered());
     }
 
-    TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
+    ARANGODB_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }

@@ -64,7 +64,7 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl,
 
   QueryId qId = query->id();
 
-  TRI_IF_FAILURE("QueryRegistryInsertException1") { 
+  ARANGODB_IF_FAILURE("QueryRegistryInsertException1") { 
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -72,7 +72,7 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl,
   auto p = std::make_unique<QueryInfo>(std::move(query), ttl, std::move(guard));
   TRI_ASSERT(p->_expires != 0);
 
-  TRI_IF_FAILURE("QueryRegistryInsertException2") { 
+  ARANGODB_IF_FAILURE("QueryRegistryInsertException2") { 
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -542,7 +542,7 @@ QueryRegistry::QueryInfo::QueryInfo(ErrorCode errorCode, double ttl)
 
 QueryRegistry::QueryInfo::~QueryInfo() = default;
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 bool QueryRegistry::queryIsRegistered(std::string const& dbName, QueryId id) {
   READ_LOCKER(readLocker, _lock);
 

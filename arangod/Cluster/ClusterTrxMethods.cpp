@@ -64,7 +64,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
         return true;
       }
       if (!state.isCoordinator()) {
-        TRI_IF_FAILURE("buildTransactionBodyEmpty") {
+        ARANGODB_IF_FAILURE("buildTransactionBodyEmpty") {
           return true;  // continue
         }
 

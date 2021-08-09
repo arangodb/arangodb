@@ -703,7 +703,7 @@ void Logger::append(LogGroup& group,
     if (!handled) {
       TRI_ASSERT(msg != nullptr);
 
-      TRI_IF_FAILURE("Logger::append") {
+      ARANGODB_IF_FAILURE("Logger::append") {
         // cut off all logging
         return;
       }

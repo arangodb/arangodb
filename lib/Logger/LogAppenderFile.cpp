@@ -292,7 +292,7 @@ void LogAppenderFile::closeAll() {
   _openAppenders.clear();
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 std::vector<std::tuple<int, std::string, LogAppenderFile*>> LogAppenderFile::getAppenders() {
   std::vector<std::tuple<int, std::string, LogAppenderFile*>> result;
 

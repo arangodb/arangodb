@@ -92,7 +92,7 @@ class InputAqlItemRow {
   // the _same_ index.
   [[nodiscard]] bool isSameBlockAndIndex(InputAqlItemRow const& other) const noexcept;
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // This checks whether the rows are equivalent, in the sense that they hold
   // the same number of registers and their entry-AqlValues compare equal.
   // In maintainer mode, it also asserts that the number of registers of the

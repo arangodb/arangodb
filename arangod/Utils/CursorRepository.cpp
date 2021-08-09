@@ -130,7 +130,7 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
     _cursors.emplace(id, std::make_pair(cursor.get(), std::move(user)));
   }
 
-  TRI_IF_FAILURE(
+  ARANGODB_IF_FAILURE(
       "CursorRepository::directKillStreamQueryAfterCursorIsBeingCreated") {
     cursor->debugKillQuery();
   }

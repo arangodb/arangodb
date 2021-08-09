@@ -549,7 +549,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                      } else {
                        LOG_TOPIC("edfc7", WARN, Logger::SUPERVISION)
                          << "missing current entry for " << _shard << " or a clone, we'll be back";
-#ifndef ARANGODB_USE_GOOGLE_TESTS
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
                        TRI_ASSERT(false);
 #endif
                      }

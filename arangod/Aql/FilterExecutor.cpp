@@ -73,7 +73,7 @@ auto FilterExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
 
 auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  TRI_IF_FAILURE("FilterExecutor::produceRows") {
+  ARANGODB_IF_FAILURE("FilterExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   FilterStats stats{};

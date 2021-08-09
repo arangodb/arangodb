@@ -165,7 +165,7 @@ template <typename FetcherType, typename ModifierType>
     return {input.upstreamState(), stats, upstreamCall};
   }
 
-  TRI_IF_FAILURE("ModificationBlock::getSome") {
+  ARANGODB_IF_FAILURE("ModificationBlock::getSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -210,7 +210,7 @@ template <typename FetcherType, typename ModifierType>
 
   auto stats = ModificationStats{};
 
-  TRI_IF_FAILURE("ModificationBlock::getSome") {
+  ARANGODB_IF_FAILURE("ModificationBlock::getSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

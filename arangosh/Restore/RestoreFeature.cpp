@@ -1044,7 +1044,7 @@ Result RestoreFeature::RestoreJob::sendRestoreData(arangodb::httpclient::SimpleH
       MUTEX_LOCKER(locker, sharedState->mutex);
       TRI_ASSERT(!sharedState->readOffsets.empty());
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       if (options.failOnUpdateContinueFile) {
         auto it = sharedState->readOffsets.find(readOffset);
         TRI_ASSERT(it != sharedState->readOffsets.end());
@@ -1599,7 +1599,7 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      new BooleanParameter(&_options.useEnvelope))
                      .setIntroducedIn(30800);
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   options->addOption("--fail-after-update-continue-file", "",
                      new BooleanParameter(&_options.failOnUpdateContinueFile),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));

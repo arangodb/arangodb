@@ -227,7 +227,7 @@ void Version::initialize() {
   Values["maintainer-mode"] = "false";
 #endif
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Values["failure-tests"] = "true";
 #else
   Values["failure-tests"] = "false";

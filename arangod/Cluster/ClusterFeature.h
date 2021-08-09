@@ -136,7 +136,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   /// note: this may be called multiple times during shutdown
   void waitForSyncersToStop();
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void setSyncerShutdownCode(ErrorCode code) { _syncerShutdownCode = code; }
 #endif
 

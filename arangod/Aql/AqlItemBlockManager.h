@@ -70,7 +70,7 @@ class AqlItemBlockManager {
     return _constValueBlock;
   }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // Only used for the mocks in the catch tests. Other code should always use
   // SharedAqlItemBlockPtr which in turn call returnBlock()!
   static void deleteBlock(AqlItemBlock* block);
@@ -78,7 +78,7 @@ class AqlItemBlockManager {
   static uint32_t getBucketId(size_t targetSize) noexcept;
 #endif
 
-#ifndef ARANGODB_USE_GOOGLE_TESTS
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
  protected:
 #else
   // make returnBlock public for tests so it can be mocked

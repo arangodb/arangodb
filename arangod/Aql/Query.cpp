@@ -686,7 +686,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         }
 
         if (!_queryOptions.silent && resultRegister.isValid()) {
-          TRI_IF_FAILURE("Query::executeV8directKillBeforeQueryResultIsGettingHandled") {
+          ARANGODB_IF_FAILURE("Query::executeV8directKillBeforeQueryResultIsGettingHandled") {
             debugKillQuery();
           }
           size_t memoryUsage = 0;
@@ -719,7 +719,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
           _resourceMonitor.increaseMemoryUsage(memoryUsage);
           _resultMemoryUsage += memoryUsage;
 
-          TRI_IF_FAILURE("Query::executeV8directKillAfterQueryResultIsGettingHandled") {
+          ARANGODB_IF_FAILURE("Query::executeV8directKillAfterQueryResultIsGettingHandled") {
             debugKillQuery();
           }
         }
@@ -1219,7 +1219,7 @@ transaction::Methods& Query::trxForOptimization() {
   return *_trx;
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void Query::initForTests() {
   this->init(/*createProfile*/ false);
   initTrxForTests();
@@ -1356,7 +1356,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
 
   enterState(QueryExecutionState::ValueType::FINALIZATION);
 
-  TRI_IF_FAILURE("Query::directKillBeforeQueryWillBeFinalized") {
+  ARANGODB_IF_FAILURE("Query::directKillBeforeQueryWillBeFinalized") {
     debugKillQuery();
   }
 
@@ -1384,7 +1384,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     if (commitResult.get().fail()) {
       THROW_ARANGO_EXCEPTION(std::move(commitResult).get());
     }
-    TRI_IF_FAILURE("Query::finalize_before_done") {
+    ARANGODB_IF_FAILURE("Query::finalize_before_done") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     // We succeeded with commit. Let us cancel the guard
@@ -1392,7 +1392,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     guard.cancel();
   }
 
-  TRI_IF_FAILURE("Query::directKillAfterQueryWillBeFinalized") {
+  ARANGODB_IF_FAILURE("Query::directKillAfterQueryWillBeFinalized") {
     debugKillQuery();
   }
 
@@ -1409,7 +1409,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   TRI_ASSERT(_sharedState);
   try {
-    TRI_IF_FAILURE("Query::finalize_error_on_finish_db_servers") {
+    ARANGODB_IF_FAILURE("Query::finalize_error_on_finish_db_servers") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     }
     ::finishDBServerParts(*this, errorCode).thenValue([ss = _sharedState, this](Result r) {
@@ -1421,7 +1421,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       });
     });
 
-    TRI_IF_FAILURE("Query::directKillAfterDBServerFinishRequests") {
+    ARANGODB_IF_FAILURE("Query::directKillAfterDBServerFinishRequests") {
       debugKillQuery();
     }
 
@@ -1474,7 +1474,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
 }
 
   void Query::debugKillQuery() {
-#ifndef ARANGODB_ENABLE_FAILURE_TESTS
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(false);
     return;
 #else

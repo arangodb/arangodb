@@ -75,7 +75,7 @@ class UserManagerClusterTest : public ::testing::Test {
   }
 };
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 TEST_F(UserManagerClusterTest, regression_forgotten_update) {
   /* The following order of events did lead to a missing update:
    * 1. um->triggerLocalReload();

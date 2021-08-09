@@ -62,7 +62,7 @@ void FlushThread::run() {
 
   while (!isStopping()) {
     try {
-      TRI_IF_FAILURE("FlushThreadDisableAll") {
+      ARANGODB_IF_FAILURE("FlushThreadDisableAll") {
         CONDITION_LOCKER(guard, _condition);
         guard.wait(_flushInterval);
 

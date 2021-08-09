@@ -256,7 +256,7 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOutpu
     output.moveValueInto(_info._outputNewRegisterId, input, guard);
   }
 
-  TRI_IF_FAILURE("SingleRemoteModificationOperationBlock::moreDocuments") {
+  ARANGODB_IF_FAILURE("SingleRemoteModificationOperationBlock::moreDocuments") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 }

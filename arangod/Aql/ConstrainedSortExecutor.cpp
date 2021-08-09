@@ -95,7 +95,7 @@ void ConstrainedSortExecutor::pushRow(InputAqlItemRow const& input) {
   }
 
   TRI_ASSERT(dRow < _infos.limit());
-  TRI_IF_FAILURE("SortBlock::doSortingInner") {
+  ARANGODB_IF_FAILURE("SortBlock::doSortingInner") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -184,7 +184,7 @@ bool ConstrainedSortExecutor::doneSkipping() const noexcept {
 
 ExecutorState ConstrainedSortExecutor::consumeInput(AqlItemBlockInputRange& inputRange) {
   while (inputRange.hasDataRow()) {
-    TRI_IF_FAILURE("SortBlock::doSorting") {
+    ARANGODB_IF_FAILURE("SortBlock::doSorting") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 

@@ -379,7 +379,7 @@ void CommitTask::operator()() {
 
   // reload RuntimeState
   {
-    TRI_IF_FAILURE("IResearchCommitTask::lockDataStore") {
+    ARANGODB_IF_FAILURE("IResearchCommitTask::lockDataStore") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -401,7 +401,7 @@ void CommitTask::operator()() {
     return;
   }
 
-  TRI_IF_FAILURE("IResearchCommitTask::commitUnsafe") {
+  ARANGODB_IF_FAILURE("IResearchCommitTask::commitUnsafe") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -419,7 +419,7 @@ void CommitTask::operator()() {
       if (cleanupIntervalStep && cleanupIntervalCount++ > cleanupIntervalStep) { // if enabled
         cleanupIntervalCount = 0;
 
-        TRI_IF_FAILURE("IResearchCommitTask::cleanupUnsafe") {
+        ARANGODB_IF_FAILURE("IResearchCommitTask::cleanupUnsafe") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
@@ -519,7 +519,7 @@ void ConsolidationTask::operator()() {
 
   // reload RuntimeState
   {
-    TRI_IF_FAILURE("IResearchConsolidationTask::lockDataStore") {
+    ARANGODB_IF_FAILURE("IResearchConsolidationTask::lockDataStore") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -550,7 +550,7 @@ void ConsolidationTask::operator()() {
     schedule(consolidationIntervalMsec);
   }
 
-  TRI_IF_FAILURE("IResearchConsolidationTask::consolidateUnsafe") {
+  ARANGODB_IF_FAILURE("IResearchConsolidationTask::consolidateUnsafe") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -668,7 +668,7 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
                                   transaction::Methods* trx) {
   auto lock = _asyncSelf->lock();  // '_dataStore' can be asynchronously modified
 
-  TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
+  ARANGODB_IF_FAILURE("ArangoSearchTruncateFailure") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -1566,7 +1566,7 @@ Result IResearchLink::insert(
     }
   };
 
-  TRI_IF_FAILURE("ArangoSearch::BlockInsertsWithoutIndexCreationHint") {
+  ARANGODB_IF_FAILURE("ArangoSearch::BlockInsertsWithoutIndexCreationHint") {
     if (!state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
       return Result(TRI_ERROR_DEBUG);
     }
@@ -1576,7 +1576,7 @@ Result IResearchLink::insert(
     auto lock = _asyncSelf->lock();
     auto ctx = _dataStore._writer->documents();
 
-    TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
+    ARANGODB_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
       auto res = insertImpl(ctx); // we need insert to succeed, so  we have things to cleanup in storage
       if (res.fail()) {
         return res;

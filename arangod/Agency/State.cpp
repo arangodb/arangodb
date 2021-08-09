@@ -104,7 +104,7 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
                     arangodb::velocypack::Slice const& entry,
                     std::string const& clientId) const {
 
-  TRI_IF_FAILURE("State::persist") {
+  ARANGODB_IF_FAILURE("State::persist") {
     return true;
   }
 
@@ -155,7 +155,7 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
 bool State::persistConf(index_t index, term_t term, uint64_t millis,
                         arangodb::velocypack::Slice const& entry,
                         std::string const& clientId) const {
-  TRI_IF_FAILURE("State::persistConf") {
+  ARANGODB_IF_FAILURE("State::persistConf") {
     return true;
   }
 
@@ -1223,7 +1223,7 @@ index_t State::lastCompactionAt() const { return _lastCompactionAt; }
 
 /// Log compaction
 bool State::compact(index_t cind, index_t keep) {
-  TRI_IF_FAILURE("State::compact") {
+  ARANGODB_IF_FAILURE("State::compact") {
     return true;
   }
 
@@ -1373,7 +1373,7 @@ bool State::removeObsolete(index_t cind) {
 /// Persist a compaction snapshot
 bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t term,
                                       arangodb::consensus::Store& snapshot) {
-  TRI_IF_FAILURE("State::persistCompactionSnapshot") {
+  ARANGODB_IF_FAILURE("State::persistCompactionSnapshot") {
     return true;
   }
 

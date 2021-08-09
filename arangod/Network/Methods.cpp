@@ -81,7 +81,7 @@ arangodb::fuerte::Response& Response::response() const {
   return *_response;
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief inject a different response - only use this from tests!
 void Response::setResponse(std::unique_ptr<arangodb::fuerte::Response> response) {
   _response = std::move(response);

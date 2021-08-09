@@ -126,7 +126,7 @@ bool QueryList::insert(Query* query) {
   try {
     WRITE_LOCKER(writeLocker, _lock);
 
-    TRI_IF_FAILURE("QueryList::insert") {
+    ARANGODB_IF_FAILURE("QueryList::insert") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -183,7 +183,7 @@ void QueryList::remove(Query* query) {
   if (elapsed >= threshold && threshold >= 0.0) {
     // yes.
     try {
-      TRI_IF_FAILURE("QueryList::remove") {
+      ARANGODB_IF_FAILURE("QueryList::remove") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
   

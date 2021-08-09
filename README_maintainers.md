@@ -717,7 +717,7 @@ Controlling the place where the test-data is stored:
 (Linux/Mac case. On Windows `TMP` or `TEMP` - as returned by `GetTempPathW` are the way to go)
 
 Note that the `arangodbtests` executable is not compiled and shipped for
-production releases (`-DUSE_GOOGLE_TESTS=off`).
+production releases (`-DUSE_MAINTAINER_MODE=off`).
 
 Run all tests:
 

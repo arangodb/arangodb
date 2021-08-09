@@ -117,7 +117,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     _key->clear();
     _index->handleValNode(_trx, _key.get(), aap.value, !_allowCoveringIndexOptimization);
 
-    TRI_IF_FAILURE("PrimaryIndex::noIterator") {
+    ARANGODB_IF_FAILURE("PrimaryIndex::noIterator") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -1000,7 +1000,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createEqIterator(
   // handle the sole element
   handleValNode(trx, key.get(), valNode, isId);
 
-  TRI_IF_FAILURE("PrimaryIndex::noIterator") {
+  ARANGODB_IF_FAILURE("PrimaryIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -1027,7 +1027,7 @@ void RocksDBPrimaryIndex::fillInLookupValues(transaction::Methods* trx, VPackBui
   if (ascending) {
     for (size_t i = 0; i < n; ++i) {
       handleValNode(trx, &keys, values->getMemberUnchecked(i), isId);
-      TRI_IF_FAILURE("PrimaryIndex::iteratorValNodes") {
+      ARANGODB_IF_FAILURE("PrimaryIndex::iteratorValNodes") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     }
@@ -1036,13 +1036,13 @@ void RocksDBPrimaryIndex::fillInLookupValues(transaction::Methods* trx, VPackBui
     while (i > 0) {
       --i;
       handleValNode(trx, &keys, values->getMemberUnchecked(i), isId);
-      TRI_IF_FAILURE("PrimaryIndex::iteratorValNodes") {
+      ARANGODB_IF_FAILURE("PrimaryIndex::iteratorValNodes") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     }
   }
 
-  TRI_IF_FAILURE("PrimaryIndex::noIterator") {
+  ARANGODB_IF_FAILURE("PrimaryIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

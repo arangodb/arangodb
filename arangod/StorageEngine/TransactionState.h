@@ -260,7 +260,7 @@ class TransactionState {
   /// the transaction
   void clearQueryCache();
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // reset the internal Transaction ID to none.
   // Only used in the Transaction Mock for internal reasons.
   void resetTransactionId();

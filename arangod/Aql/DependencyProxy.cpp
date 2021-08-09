@@ -78,7 +78,7 @@ DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
     std::tie(state, skipped, block) =
         upstreamBlockForDependency(dependency).execute(stack);
   }
-  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+  ARANGODB_IF_FAILURE("ExecutionBlock::getBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

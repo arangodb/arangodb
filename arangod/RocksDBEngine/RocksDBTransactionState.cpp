@@ -255,7 +255,7 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   TRI_ASSERT(activeTrx->isMainTransaction());
-  TRI_IF_FAILURE("TransactionWriteCommitMarker") {
+  ARANGODB_IF_FAILURE("TransactionWriteCommitMarker") {
     return Result(TRI_ERROR_DEBUG);
   }
 

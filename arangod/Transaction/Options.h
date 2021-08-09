@@ -52,7 +52,7 @@ struct Options {
   /// @brief add the options to an opened vpack builder
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// @brief patch intermediateCommitCount for testing
   static void adjustIntermediateCommitCount(Options& options);
 #endif

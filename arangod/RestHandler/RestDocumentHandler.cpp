@@ -174,7 +174,7 @@ RestStatus RestDocumentHandler::insertDocument() {
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
-  TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
+  ARANGODB_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
@@ -450,7 +450,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
-  TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
+  ARANGODB_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
@@ -601,7 +601,7 @@ RestStatus RestDocumentHandler::removeDocument() {
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
-  TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
+  ARANGODB_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }

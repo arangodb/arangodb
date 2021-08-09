@@ -429,7 +429,7 @@ void RestCursorHandler::registerQuery(std::unique_ptr<arangodb::aql::Query> quer
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestCursorHandler::unregisterQuery() {
-  TRI_IF_FAILURE("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled") {
+  ARANGODB_IF_FAILURE("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled") {
     _query->debugKillQuery();
   }
   MUTEX_LOCKER(mutexLocker, _queryLock);

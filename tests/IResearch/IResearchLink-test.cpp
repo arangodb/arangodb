@@ -1620,7 +1620,7 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
                 feature.stats(ThreadGroup::_1));
     }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // ensure consolidation is rescheduled after exception
     {
       auto clearFailurePoints = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);
@@ -1808,7 +1808,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
                 feature.stats(ThreadGroup::_0));
     }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // ensure commit is rescheduled after exception
     {
       auto clearFailurePoints = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);

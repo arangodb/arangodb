@@ -5352,7 +5352,7 @@ AqlValue Functions::Union(ExpressionContext* expressionContext, AstNode const&,
       return AqlValue(AqlValueHintNull());
     }
 
-    TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
+    ARANGODB_IF_FAILURE("AqlFunctions::OutOfMemory1") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -5362,13 +5362,13 @@ AqlValue Functions::Union(ExpressionContext* expressionContext, AstNode const&,
     // this passes ownership for the JSON contents into result
     for (VPackSlice it : VPackArrayIterator(slice)) {
       builder->add(it);
-      TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+      ARANGODB_IF_FAILURE("AqlFunctions::OutOfMemory2") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     }
   }
   builder->close();
-  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+  ARANGODB_IF_FAILURE("AqlFunctions::OutOfMemory3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -5406,7 +5406,7 @@ AqlValue Functions::UnionDistinct(ExpressionContext* expressionContext,
     for (VPackSlice v : VPackArrayIterator(slice)) {
       v = v.resolveExternal();
       if (values.find(v) == values.end()) {
-        TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
+        ARANGODB_IF_FAILURE("AqlFunctions::OutOfMemory1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
@@ -5415,7 +5415,7 @@ AqlValue Functions::UnionDistinct(ExpressionContext* expressionContext,
     }
   }
 
-  TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+  ARANGODB_IF_FAILURE("AqlFunctions::OutOfMemory2") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -5426,7 +5426,7 @@ AqlValue Functions::UnionDistinct(ExpressionContext* expressionContext,
   }
   builder->close();
 
-  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+  ARANGODB_IF_FAILURE("AqlFunctions::OutOfMemory3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -5465,7 +5465,7 @@ AqlValue Functions::Intersection(ExpressionContext* expressionContext,
       if (i == 0) {
         // round one
 
-        TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
+        ARANGODB_IF_FAILURE("AqlFunctions::OutOfMemory1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
@@ -5485,7 +5485,7 @@ AqlValue Functions::Intersection(ExpressionContext* expressionContext,
     }
   }
 
-  TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+  ARANGODB_IF_FAILURE("AqlFunctions::OutOfMemory2") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -5498,7 +5498,7 @@ AqlValue Functions::Intersection(ExpressionContext* expressionContext,
   }
   builder->close();
 
-  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+  ARANGODB_IF_FAILURE("AqlFunctions::OutOfMemory3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   return AqlValue(builder->slice(), builder->size());
@@ -5594,7 +5594,7 @@ AqlValue Functions::Outersection(ExpressionContext* expressionContext,
     }
   }
 
-  TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+  ARANGODB_IF_FAILURE("AqlFunctions::OutOfMemory2") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -5607,7 +5607,7 @@ AqlValue Functions::Outersection(ExpressionContext* expressionContext,
   }
   builder->close();
 
-  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+  ARANGODB_IF_FAILURE("AqlFunctions::OutOfMemory3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   return AqlValue(builder->slice(), builder->size());

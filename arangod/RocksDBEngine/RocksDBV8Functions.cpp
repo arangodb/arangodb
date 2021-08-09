@@ -198,7 +198,7 @@ static void JS_WaitForEstimatorSync(v8::FunctionCallbackInfo<v8::Value> const& a
   TRI_V8_TRY_CATCH_END
 }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 static void JS_CollectionRevisionTreeCorrupt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -338,7 +338,7 @@ static void JS_CollectionRevisionTreeSummary(v8::FunctionCallbackInfo<v8::Value>
   TRI_V8_TRY_CATCH_END
 }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 static void JS_CollectionRevisionTreePendingUpdates(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -380,7 +380,7 @@ void RocksDBV8Functions::registerResources() {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "_revisionTreeSummary"),
                        JS_CollectionRevisionTreeSummary);
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "_revisionTreePendingUpdates"),
                        JS_CollectionRevisionTreePendingUpdates);

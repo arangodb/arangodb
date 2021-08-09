@@ -114,7 +114,7 @@ rocksdb::SequenceNumber RocksDBTrxBaseMethods::GetSequenceNumber() const noexcep
 /// @brief add an operation for a transaction collection
 Result RocksDBTrxBaseMethods::addOperation(DataSourceId cid, RevisionId revisionId,
                                            TRI_voc_document_operation_e operationType) {
-  TRI_IF_FAILURE("addOperationSizeError") {
+  ARANGODB_IF_FAILURE("addOperationSizeError") {
     return Result(TRI_ERROR_RESOURCE_LIMIT);
   }
 
@@ -334,7 +334,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
 
   _state->prepareCollections();
 
-  TRI_IF_FAILURE("TransactionChaos::randomSync") {
+  ARANGODB_IF_FAILURE("TransactionChaos::randomSync") {
     if (RandomGenerator::interval(uint32_t(1000)) > 950) {
       auto& selector = _state->vocbase().server().getFeature<EngineSelectorFeature>();
       auto& engine = selector.engine<RocksDBEngine>();

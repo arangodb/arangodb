@@ -133,7 +133,7 @@ class UserManager {
   auth::Level collectionAuthLevel(std::string const& username, std::string const& dbname,
                                   std::string const& coll, bool configured = false);
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// Overwrite internally cached permissions, only use
   /// for testing purposes
   void setAuthInfo(auth::UserMap const& userEntryMap);

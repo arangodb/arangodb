@@ -139,10 +139,10 @@ void RocksDBTrxMethods::createTransaction() {
 Result RocksDBTrxMethods::triggerIntermediateCommit(bool& hasPerformedIntermediateCommit) {
   TRI_ASSERT(!hasPerformedIntermediateCommit);
 
-  TRI_IF_FAILURE("FailBeforeIntermediateCommit") {
+  ARANGODB_IF_FAILURE("FailBeforeIntermediateCommit") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  TRI_IF_FAILURE("SegfaultBeforeIntermediateCommit") {
+  ARANGODB_IF_FAILURE("SegfaultBeforeIntermediateCommit") {
     TRI_TerminateDebugging("SegfaultBeforeIntermediateCommit");
   }
 
@@ -167,10 +167,10 @@ Result RocksDBTrxMethods::triggerIntermediateCommit(bool& hasPerformedIntermedia
   _numRemoves = 0;
   _numLogdata = 0;
 
-  TRI_IF_FAILURE("FailAfterIntermediateCommit") {
+  ARANGODB_IF_FAILURE("FailAfterIntermediateCommit") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  TRI_IF_FAILURE("SegfaultAfterIntermediateCommit") {
+  ARANGODB_IF_FAILURE("SegfaultAfterIntermediateCommit") {
     TRI_TerminateDebugging("SegfaultAfterIntermediateCommit");
   }
 
@@ -184,7 +184,7 @@ Result RocksDBTrxMethods::triggerIntermediateCommit(bool& hasPerformedIntermedia
 Result RocksDBTrxMethods::checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit) {
   hasPerformedIntermediateCommit = false;
     
-  TRI_IF_FAILURE("noIntermediateCommits") {
+  ARANGODB_IF_FAILURE("noIntermediateCommits") {
     return TRI_ERROR_NO_ERROR;
   }
 

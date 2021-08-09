@@ -250,7 +250,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
       do {
         size_t datasize = end - data;
 
-        TRI_IF_FAILURE("HttpCommTask<T>::readCallback_in_small_chunks") {
+        ARANGODB_IF_FAILURE("HttpCommTask<T>::readCallback_in_small_chunks") {
           // we had an issue that URLs were cut off because the url data was handed
           // in in multiple buffers.
           // To cover this case, we simulate that data fed to the parser in small chunks.

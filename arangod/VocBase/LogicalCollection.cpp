@@ -172,7 +172,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _physical(vocbase.server().getFeature<EngineSelectorFeature>().engine().createPhysicalCollection(
           *this, info)) {
 
-  TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
+  ARANGODB_IF_FAILURE("disableRevisionsAsDocumentIds") {
     _usesRevisionsAsDocumentIds.store(false);
     _syncByRevision.store(false);
   }
@@ -1097,7 +1097,7 @@ void LogicalCollection::deferDropCollection(std::function<bool(LogicalCollection
 ////////////////////////////////////////////////////////////////////////////////
 
 Result LogicalCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
-  TRI_IF_FAILURE("LogicalCollection::truncate") {
+  ARANGODB_IF_FAILURE("LogicalCollection::truncate") {
     return Result(TRI_ERROR_DEBUG);
   }
 
@@ -1113,7 +1113,7 @@ void LogicalCollection::compact() { getPhysical()->compact(); }
 
 Result LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
                                  ManagedDocumentResult& result, OperationOptions& options) {
-  TRI_IF_FAILURE("LogicalCollection::insert") {
+  ARANGODB_IF_FAILURE("LogicalCollection::insert") {
     return Result(TRI_ERROR_DEBUG);
   }
   return getPhysical()->insert(trx, slice, result, options);
@@ -1123,7 +1123,7 @@ Result LogicalCollection::insert(transaction::Methods* trx, VPackSlice const sli
 Result LogicalCollection::update(transaction::Methods* trx, VPackSlice newSlice,
                                  ManagedDocumentResult& result, OperationOptions& options,
                                  ManagedDocumentResult& previous) {
-  TRI_IF_FAILURE("LogicalCollection::update") {
+  ARANGODB_IF_FAILURE("LogicalCollection::update") {
     return Result(TRI_ERROR_DEBUG);
   }
 
@@ -1138,7 +1138,7 @@ Result LogicalCollection::update(transaction::Methods* trx, VPackSlice newSlice,
 Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice newSlice,
                                   ManagedDocumentResult& result, OperationOptions& options,
                                   ManagedDocumentResult& previous) {
-  TRI_IF_FAILURE("LogicalCollection::replace") {
+  ARANGODB_IF_FAILURE("LogicalCollection::replace") {
     return Result(TRI_ERROR_DEBUG);
   }
   if (!newSlice.isObject()) {
@@ -1152,7 +1152,7 @@ Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice newSlice
 Result LogicalCollection::remove(transaction::Methods& trx,
                                  velocypack::Slice const slice, OperationOptions& options,
                                  ManagedDocumentResult& previous) {
-  TRI_IF_FAILURE("LogicalCollection::remove") {
+  ARANGODB_IF_FAILURE("LogicalCollection::remove") {
     return Result(TRI_ERROR_DEBUG);
   }
   return getPhysical()->remove(trx, slice, previous, options);

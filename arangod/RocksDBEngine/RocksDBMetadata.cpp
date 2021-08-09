@@ -300,12 +300,12 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
 
   const rocksdb::SequenceNumber maxCommitSeq = committableSeq(appliedSeq);
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // simulate another transaction coming along and trying to commit while
   // we are serializing
   RocksDBBlockerGuard blocker(&coll);
   
-  TRI_IF_FAILURE("TransactionChaos::blockerOnSync") {
+  ARANGODB_IF_FAILURE("TransactionChaos::blockerOnSync") {
     blocker.placeBlocker();
   }
 #endif
@@ -314,7 +314,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   TRI_ASSERT(maxCommitSeq != UINT64_MAX);
   TRI_ASSERT(maxCommitSeq > 0);
   
-  TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+  ARANGODB_IF_FAILURE("TransactionChaos::randomSleep") {
     std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
   }
     

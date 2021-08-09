@@ -122,7 +122,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   std::unique_ptr<containers::RevisionTree> buildTreeFromIterator(RevisionReplicationIterator& it) const;
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void corruptRevisionTree(std::uint64_t count, std::uint64_t hash);
 #endif
   
@@ -192,7 +192,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
     // compressed representation
     void hibernate(bool force);
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     void corrupt(std::uint64_t count, std::uint64_t hash);
 #endif
 

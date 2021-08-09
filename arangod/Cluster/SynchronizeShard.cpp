@@ -758,7 +758,7 @@ bool SynchronizeShard::first() {
         << failuresInRow << " failures in a row. delaying next sync by " 
         << sleepTime << " s";
   
-    TRI_IF_FAILURE("SynchronizeShard::noSleepOnSyncError") {
+    ARANGODB_IF_FAILURE("SynchronizeShard::noSleepOnSyncError") {
       sleepTime = 0.0;
     }
 
@@ -1251,7 +1251,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   res = addShardFollower(pool, ep, getDatabase(), getShard(), lockJobId, clientId,
                          syncerId, _clientInfoString, 60.0);
 
-  TRI_IF_FAILURE("SynchronizeShard::wrongChecksum") {
+  ARANGODB_IF_FAILURE("SynchronizeShard::wrongChecksum") {
     res.reset(TRI_ERROR_REPLICATION_WRONG_CHECKSUM);
   }
 

@@ -510,7 +510,7 @@ Result transaction::Methods::begin() {
 
 /// @brief commit / finish the transaction
 Future<Result> transaction::Methods::commitAsync() {
-  TRI_IF_FAILURE("TransactionCommitFail") { return Result(TRI_ERROR_DEBUG); }
+  ARANGODB_IF_FAILURE("TransactionCommitFail") { return Result(TRI_ERROR_DEBUG); }
 
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
@@ -1051,7 +1051,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     // resigned in the meantime but still gets an insert request from
     // a coordinator who does not know this yet. That is, the test sets
     // the failure point on all servers, including the current leader.
-    TRI_IF_FAILURE("documents::insertLeaderRefusal") {
+    ARANGODB_IF_FAILURE("documents::insertLeaderRefusal") {
       if (value.isObject() && value.hasKey("ThisIsTheRetryOnLeaderRefusalTest")) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
@@ -2477,11 +2477,11 @@ Future<Result> Methods::replicateOperations(
   }
 
   reqOpts.timeout = network::Timeout(chooseTimeoutForReplication(count, payload->size()));
-  TRI_IF_FAILURE("replicateOperations_randomize_timeout") {
+  ARANGODB_IF_FAILURE("replicateOperations_randomize_timeout") {
     reqOpts.timeout = network::Timeout((double) RandomGenerator::interval(uint32_t(60)));
   }
     
-  TRI_IF_FAILURE("replicateOperationsDropFollowerBeforeSending") {
+  ARANGODB_IF_FAILURE("replicateOperationsDropFollowerBeforeSending") {
     // drop all our followers, intentionally
     for (auto const& f : *followerList) {
       Result res = collection->followers()->remove(f);
@@ -2575,7 +2575,7 @@ Future<Result> Methods::replicateOperations(
         replicationFailureReason = "no response from follower";
       }
 
-      TRI_IF_FAILURE("replicateOperationsDropFollower") {
+      ARANGODB_IF_FAILURE("replicateOperationsDropFollower") {
         replicationFailureReason = "intentional debug error";
       }
 

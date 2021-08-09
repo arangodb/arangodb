@@ -253,7 +253,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   }
   
   int64_t adjustment = count - snapNumberOfDocuments;
-  TRI_IF_FAILURE("disableCountAdjustment") {
+  ARANGODB_IF_FAILURE("disableCountAdjustment") {
     adjustment = 0;
   }
   if (adjustment != 0) {
@@ -529,11 +529,11 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     bool beenTooLong = 30 < std::chrono::duration_cast<std::chrono::seconds>(
                                 std::chrono::steady_clock::now() - _revisionTreeSerializedTime)
                                 .count();
-    TRI_IF_FAILURE("RocksDBMetaCollection::forceSerialization") {
+    ARANGODB_IF_FAILURE("RocksDBMetaCollection::forceSerialization") {
       coinFlip = true;
     }
 
-    TRI_IF_FAILURE("RocksDBMetaCollection::serializeRevisionTree") {
+    ARANGODB_IF_FAILURE("RocksDBMetaCollection::serializeRevisionTree") {
       return _revisionTreeSerializedSeq;
     }
     if (force || neverDone || coinFlip || beenTooLong) {  // ...but only write the tree out sometimes
@@ -614,7 +614,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::buildTreeFromIt
   return newTree;
 }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void RocksDBMetaCollection::corruptRevisionTree(uint64_t count, uint64_t hash) {
   if (!_logicalCollection.useSyncByRevision()) {
     return;
@@ -842,7 +842,7 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
     return;
   }
         
-  TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+  ARANGODB_IF_FAILURE("TransactionChaos::randomSleep") {
     std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
   }
 
@@ -912,7 +912,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
   TRI_ASSERT(_logicalCollection.useSyncByRevision());
   TRI_ASSERT(_revisionTree || haveBufferedOperations());
 
-  TRI_IF_FAILURE("applyUpdates::forceHibernation1") {
+  ARANGODB_IF_FAILURE("applyUpdates::forceHibernation1") {
     if (_revisionTree != nullptr) {
       _revisionTree->hibernate(/*force*/ true);
     }
@@ -934,7 +934,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
       }
     };
   
-    TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+    ARANGODB_IF_FAILURE("TransactionChaos::randomSleep") {
       std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
     }
 
@@ -1008,7 +1008,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
       // no inserts or removals left to apply, drop out of loop
       if (!applyInserts && !applyRemovals) {
         // we have applied all changes up to including commitSeq
-        TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+        ARANGODB_IF_FAILURE("TransactionChaos::randomSleep") {
           std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
         }
         bumpSequence(commitSeq);
@@ -1030,7 +1030,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         // release the mutex while we modify the tree. this is safe (see above)
         guard.unlock();
 
-        TRI_IF_FAILURE("RevisionTree::applyInserts") {
+        ARANGODB_IF_FAILURE("RevisionTree::applyInserts") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         
@@ -1054,7 +1054,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
           throw;
         }
     
-        TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+        ARANGODB_IF_FAILURE("TransactionChaos::randomSleep") {
           std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
         }
 
@@ -1075,7 +1075,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
         
         TRI_ASSERT(removeIt->first > _revisionTreeApplied.load());
         
-        TRI_IF_FAILURE("RevisionTree::applyRemoves") {
+        ARANGODB_IF_FAILURE("RevisionTree::applyRemoves") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
@@ -1097,7 +1097,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
           throw;
         }
     
-        TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+        ARANGODB_IF_FAILURE("TransactionChaos::randomSleep") {
           std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
         }
 
@@ -1119,7 +1119,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
     THROW_ARANGO_EXCEPTION(res);
   }
   
-  TRI_IF_FAILURE("applyUpdates::forceHibernation2") {
+  ARANGODB_IF_FAILURE("applyUpdates::forceHibernation2") {
     if (_revisionTree != nullptr) {
       _revisionTree->hibernate(/*force*/ true);
     }
@@ -1392,7 +1392,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::checkConsistency() const {
   return _tree->checkConsistency();
 }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void RocksDBMetaCollection::RevisionTreeAccessor::corrupt(uint64_t count, uint64_t hash) {
   ensureTree();
   _tree->corrupt(count, hash);

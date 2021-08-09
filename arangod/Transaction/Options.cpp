@@ -66,7 +66,7 @@ Options::Options()
     );
   }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // patch intermediateCommitCount for testing
   adjustIntermediateCommitCount(*this);
 #endif
@@ -143,7 +143,7 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   // we are intentionally *not* reading allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
   
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // patch intermediateCommitCount for testing
   adjustIntermediateCommitCount(*this);
 #endif
@@ -179,16 +179,16 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   }
 }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief patch intermediateCommitCount for testing
 /*static*/ void Options::adjustIntermediateCommitCount(Options& options) {
-  TRI_IF_FAILURE("TransactionState::intermediateCommitCount100") {
+  ARANGODB_IF_FAILURE("TransactionState::intermediateCommitCount100") {
     options.intermediateCommitCount = 100;
   }
-  TRI_IF_FAILURE("TransactionState::intermediateCommitCount1000") {
+  ARANGODB_IF_FAILURE("TransactionState::intermediateCommitCount1000") {
     options.intermediateCommitCount = 1000;
   }
-  TRI_IF_FAILURE("TransactionState::intermediateCommitCount10000") {
+  ARANGODB_IF_FAILURE("TransactionState::intermediateCommitCount10000") {
     options.intermediateCommitCount = 10000;
   }
 }

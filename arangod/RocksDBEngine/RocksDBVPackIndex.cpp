@@ -442,7 +442,7 @@ ErrorCode RocksDBVPackIndex::fillElement(
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_IF_FAILURE("FillElementIllegalSlice") { return TRI_ERROR_INTERNAL; }
+  ARANGODB_IF_FAILURE("FillElementIllegalSlice") { return TRI_ERROR_INTERNAL; }
 
   TRI_ASSERT(leased.isEmpty());
   if (!_useExpansion) {
@@ -469,8 +469,8 @@ ErrorCode RocksDBVPackIndex::fillElement(
     }
     leased.close();
 
-    TRI_IF_FAILURE("FillElementOOM") { return TRI_ERROR_OUT_OF_MEMORY; }
-    TRI_IF_FAILURE("FillElementOOM2") {
+    ARANGODB_IF_FAILURE("FillElementOOM") { return TRI_ERROR_OUT_OF_MEMORY; }
+    ARANGODB_IF_FAILURE("FillElementOOM2") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
@@ -991,7 +991,7 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
 Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
                                  LocalDocumentId const& documentId,
                                  velocypack::Slice doc) {
-  TRI_IF_FAILURE("BreakHashIndexRemove") {
+  ARANGODB_IF_FAILURE("BreakHashIndexRemove") {
     if (type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
       // intentionally  break index removal
       return Result(TRI_ERROR_INTERNAL, "BreakHashIndexRemove failure point triggered");
@@ -1219,13 +1219,13 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     // We only use this index for sort. Empty searchValue
     VPackArrayBuilder guard(&searchValues);
 
-    TRI_IF_FAILURE("PersistentIndex::noSortIterator") {
+    ARANGODB_IF_FAILURE("PersistentIndex::noSortIterator") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {
+    ARANGODB_IF_FAILURE("SkiplistIndex::noSortIterator") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    TRI_IF_FAILURE("HashIndex::noSortIterator") {
+    ARANGODB_IF_FAILURE("HashIndex::noSortIterator") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   } else {
@@ -1284,26 +1284,26 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
       if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
         searchValues.openObject();
         searchValues.add(VPackValue(StaticStrings::IndexEq));
-        TRI_IF_FAILURE("PersistentIndex::permutationEQ") {
+        ARANGODB_IF_FAILURE("PersistentIndex::permutationEQ") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
+        ARANGODB_IF_FAILURE("SkiplistIndex::permutationEQ") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        TRI_IF_FAILURE("HashIndex::permutationEQ") {
+        ARANGODB_IF_FAILURE("HashIndex::permutationEQ") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
       } else if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
         if (isAttributeExpanded(usedFields)) {
           searchValues.openObject();
           searchValues.add(VPackValue(StaticStrings::IndexEq));
-          TRI_IF_FAILURE("PersistentIndex::permutationArrayIN") {
+          ARANGODB_IF_FAILURE("PersistentIndex::permutationArrayIN") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
-          TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
+          ARANGODB_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
-          TRI_IF_FAILURE("HashIndex::permutationArrayIN") {
+          ARANGODB_IF_FAILURE("HashIndex::permutationArrayIN") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
         } else {
@@ -1380,13 +1380,13 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
   }
   searchValues.close();
 
-  TRI_IF_FAILURE("PersistentIndex::noIterator") {
+  ARANGODB_IF_FAILURE("PersistentIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  TRI_IF_FAILURE("SkiplistIndex::noIterator") {
+  ARANGODB_IF_FAILURE("SkiplistIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  TRI_IF_FAILURE("HashIndex::noIterator") {
+  ARANGODB_IF_FAILURE("HashIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

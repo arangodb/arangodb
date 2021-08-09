@@ -408,7 +408,7 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
   // Then initIndexes is read again and so on. This is to avoid reading the
   // entire index when we only want a small number of documents.
   TRI_ASSERT(_cursor->hasMore());
-  TRI_IF_FAILURE("IndexBlock::readIndex") {
+  ARANGODB_IF_FAILURE("IndexBlock::readIndex") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   switch (_type) {
@@ -568,13 +568,13 @@ void IndexExecutor::initIndexes(InputAqlItemRow& input) {
       v8::HandleScope scope(isolate);  // do not delete this!
 
       executeExpressions(input);
-      TRI_IF_FAILURE("IndexBlock::executeV8") {
+      ARANGODB_IF_FAILURE("IndexBlock::executeV8") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     } else {
       // no V8 context required!
       executeExpressions(input);
-      TRI_IF_FAILURE("IndexBlock::executeExpression") {
+      ARANGODB_IF_FAILURE("IndexBlock::executeExpression") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     }
@@ -709,7 +709,7 @@ bool IndexExecutor::needsUniquenessCheck() const noexcept {
 
 auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  TRI_IF_FAILURE("IndexExecutor::produceRows") {
+  ARANGODB_IF_FAILURE("IndexExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   IndexStats stats{};
@@ -802,7 +802,7 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
   // happen, because with multiple indexes, the FILTER is not removed and thus
   // skipSome is not called on the IndexExecutor.
   TRI_ASSERT(_infos.getIndexes().size() <= 1);
-  TRI_IF_FAILURE("IndexExecutor::skipRows") {
+  ARANGODB_IF_FAILURE("IndexExecutor::skipRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

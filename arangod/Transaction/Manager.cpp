@@ -144,7 +144,7 @@ uint64_t Manager::getActiveTransactionCount() {
 
   auto role = ServerState::instance()->getRole();
   if ((ServerState::isSingleServer(role) || ServerState::isCoordinator(role))) {
-    TRI_IF_FAILURE("lowStreamingIdleTimeout") { return 5.0; }
+    ARANGODB_IF_FAILURE("lowStreamingIdleTimeout") { return 5.0; }
 
     return feature.streamingIdleTimeout();
   }
@@ -712,7 +712,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TransactionId tid
     return nullptr;
   }
 
-  TRI_IF_FAILURE("leaseManagedTrxFail") { return nullptr; }
+  ARANGODB_IF_FAILURE("leaseManagedTrxFail") { return nullptr; }
 
   auto const role = ServerState::instance()->getRole();
   std::chrono::steady_clock::time_point endTime;
@@ -859,7 +859,7 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
   // call updateTransaction, which then will try to acquire the same
   // write lock
 
-  TRI_IF_FAILURE("returnManagedTrxForceSoftAbort") { isSoftAborted = true; }
+  ARANGODB_IF_FAILURE("returnManagedTrxForceSoftAbort") { isSoftAborted = true; }
 
   if (isSoftAborted) {
     TRI_ASSERT(!isSideUser);

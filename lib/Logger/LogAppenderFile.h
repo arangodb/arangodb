@@ -96,7 +96,7 @@ class LogAppenderFile : public LogAppenderStream {
   static void reopenAll();
   static void closeAll();
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   static std::vector<std::tuple<int, std::string, LogAppenderFile*>> getAppenders();
 
   static void setAppenders(std::vector<std::tuple<int, std::string, LogAppenderFile*>> const& fds);

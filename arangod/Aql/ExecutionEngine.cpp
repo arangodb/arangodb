@@ -566,13 +566,13 @@ auto ExecutionEngine::execute(AqlCallStack const& stack)
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 
-  TRI_IF_FAILURE("ExecutionEngine::directKillBeforeAQLQueryExecute") {
+  ARANGODB_IF_FAILURE("ExecutionEngine::directKillBeforeAQLQueryExecute") {
     _query.debugKillQuery();
   }
 
   auto const res = _root->execute(stack);
 
-  TRI_IF_FAILURE("ExecutionEngine::directKillAfterAQLQueryExecute") {
+  ARANGODB_IF_FAILURE("ExecutionEngine::directKillAfterAQLQueryExecute") {
     _query.debugKillQuery();
   }
 

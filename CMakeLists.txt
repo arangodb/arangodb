@@ -758,12 +758,14 @@ endif (ASM_OPTIMIZATIONS)
 ################################################################################
 
 option(USE_MAINTAINER_MODE
-  "whether we want to have assertions and other development features"
+  "whether we want to have assertions, unit tests, failure tests and other development features"
   OFF
 )
 
 if (USE_MAINTAINER_MODE)
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
+
+  # use fortified string and memory functions
   if (CMAKE_COMPILER_IS_GNUCC AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions("-D_FORTIFY_SOURCE=2")
   endif()
@@ -776,27 +778,9 @@ if (USE_MAINTAINER_MODE)
   find_program(AWK_EXECUTABLE awk)
 endif ()
 
-option(USE_GOOGLE_TESTS "Compile C++ unit tests" ON)
-if (USE_GOOGLE_TESTS)
-  add_definitions("-DARANGODB_USE_GOOGLE_TESTS=1")
-endif()
-
 include(debugInformation)
 find_program(READELF_EXECUTABLE readelf)
 detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
-
-################################################################################
-## FAILURE TESTS
-################################################################################
-
-option(USE_FAILURE_TESTS
-  "whether we want to have failure tests compiled in"
-  OFF
-)
-
-if (USE_FAILURE_TESTS)
-  add_definitions("-DARANGODB_ENABLE_FAILURE_TESTS=1")
-endif ()
 
 ################################################################################
 ## INTERPROCEDURAL OPTIMIZATION (LINK TIME OPTIMIZATION)
@@ -817,18 +801,14 @@ if (USE_IPO STREQUAL "AUTO")
   # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91375.
   # So this check may be removed later as soon as we use fixed gcc versions.
   # - Tobias, 2019-08-08
-  if (NOT USE_GOOGLE_TESTS AND
+  if (NOT USE_MAINTAINER_MODE AND
     (CMAKE_BUILD_TYPE STREQUAL "Release"
     OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
     OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"))
     set(IPO_ENABLED True)
-  else()
-    set(IPO_ENABLED False)
   endif ()
 elseif (USE_IPO)
   set(IPO_ENABLED True)
-else()
-  set(IPO_ENABLED False)
 endif()
 
 message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
@@ -1380,7 +1360,7 @@ add_subdirectory(arangosh)
 add_subdirectory(arangod)
 
 
-if (USE_GOOGLE_TESTS)
+if (USE_MAINTAINER_MODE)
   add_subdirectory(tests)
 endif ()
 
@@ -1421,7 +1401,7 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangoimport  v8_build)
   add_dependencies(arangorestore v8_build)
   add_dependencies(arangosh      v8_build)
-  if (USE_GOOGLE_TESTS)
+  if (USE_MAINTAINER_MODE)
     add_dependencies(arangodbtests v8_build)
   endif ()
 endif ()

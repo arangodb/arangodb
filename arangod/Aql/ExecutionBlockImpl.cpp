@@ -140,7 +140,7 @@ CREATE_HAS_MEMBER_CHECK(expectedNumberOfRows, hasExpectedNumberOfRows);
 CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
 CREATE_HAS_MEMBER_CHECK(expectedNumberOfRowsNew, hasExpectedNumberOfRowsNew);
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // Forward declaration of Test Executors.
 // only used as long as isNewStyleExecutor is required.
 namespace arangodb::aql {
@@ -333,13 +333,13 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   }
   traceExecuteBegin(stack);
   // silence tests -- we need to introduce new failure tests for fetchers
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
+  ARANGODB_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
+  ARANGODB_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
+  ARANGODB_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   
@@ -608,7 +608,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>, HashedCollectExecutor,
               AccuWindowExecutor, WindowExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
               ConstrainedSortExecutor, CountCollectExecutor,
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
               TestLambdaSkipExecutor,
 #endif
               ModificationExecutor<AllRowsFetcher, InsertModifier>,
@@ -1866,7 +1866,7 @@ auto ExecutionBlockImpl<Executor>::countShadowRowProduced(AqlCallStack& stack, s
   }
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // This is a helper method to inject a prepared
 // input range in the tests. It should simulate
 // an ongoing query in a specific state.

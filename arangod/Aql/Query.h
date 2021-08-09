@@ -188,7 +188,7 @@ class Query : public QueryContext {
   
   virtual transaction::Methods& trxForOptimization() override;
   
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   ExecutionPlan* plan() const {
     if (_plans.size() == 1) {
       return _plans[0].get();
@@ -341,7 +341,7 @@ class Query : public QueryContext {
   /// @brief user that started the query
   std::string _user;
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // Intentionally initialized here to not
   // be present in production constructors
   // Indicator if a query was already killed

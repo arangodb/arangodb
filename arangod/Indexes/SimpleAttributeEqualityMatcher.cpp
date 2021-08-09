@@ -267,7 +267,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
                           reference, nonNullAttributes, false) ||
           accessFitsIndex(index, op->getMember(1), op->getMember(0), op,
                           reference, nonNullAttributes, false)) {
-        TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {
+        ARANGODB_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         if (_found.size() == _attributes.size()) {
@@ -279,7 +279,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
       TRI_ASSERT(op->numMembers() == 2);
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
                           reference, nonNullAttributes, false)) {
-        TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenIN") {
+        ARANGODB_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenIN") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         if (_found.size() == _attributes.size()) {
@@ -479,7 +479,7 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
     if (match) {
       // mark ith attribute as being covered
       _found.try_emplace(i, op);
-      TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
+      ARANGODB_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
       return true;

@@ -145,7 +145,7 @@ class ExecutionEngine {
                                     std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>& aliases);
 #endif
   
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::vector<std::unique_ptr<ExecutionBlock>> const& blocksForTesting() const {
     return _blocks;
   }

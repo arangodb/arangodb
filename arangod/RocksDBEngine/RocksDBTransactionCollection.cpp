@@ -169,7 +169,7 @@ void RocksDBTransactionCollection::prepareTransaction(TransactionId trxId, uint6
   TRI_ASSERT(_collection != nullptr);
   if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
   
-    TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+    ARANGODB_IF_FAILURE("TransactionChaos::randomSleep") {
       std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
     }
 
@@ -188,7 +188,7 @@ void RocksDBTransactionCollection::abortCommit(TransactionId trxId) {
 }
 
 void RocksDBTransactionCollection::commitCounts(TransactionId trxId, uint64_t commitSeq) {
-  TRI_IF_FAILURE("DisableCommitCounts") {
+  ARANGODB_IF_FAILURE("DisableCommitCounts") {
     return;
   }
   TRI_ASSERT(_collection != nullptr);
@@ -199,10 +199,10 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId, uint64_t co
   if (hasOperations()) {
     TRI_ASSERT(_revision.isSet() && commitSeq != 0);
       
-    TRI_IF_FAILURE("RocksDBCommitCounts") {
+    ARANGODB_IF_FAILURE("RocksDBCommitCounts") {
       adj = 0;
     }
-    TRI_IF_FAILURE("RocksDBCommitCountsRandom") {
+    ARANGODB_IF_FAILURE("RocksDBCommitCountsRandom") {
       if (RandomGenerator::interval(uint16_t(100)) >= 50) {
         adj = 0;
       }

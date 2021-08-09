@@ -250,7 +250,7 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
   // we cannot get it back.
   TRI_ASSERT(skipped.getSkipCount() == 0);
 
-  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+  ARANGODB_IF_FAILURE("ExecutionBlock::getBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

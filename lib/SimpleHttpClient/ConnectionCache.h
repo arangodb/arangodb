@@ -87,7 +87,7 @@ class ConnectionCache {
   /// this is currently used only for testing
   void release(std::unique_ptr<GeneralClientConnection> connection, bool force = false);
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::unordered_map<std::string, std::vector<std::unique_ptr<GeneralClientConnection>>> const& connections() const { 
     return  _connections;
   }

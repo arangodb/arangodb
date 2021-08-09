@@ -590,7 +590,7 @@ uint64_t RandomGenerator::interval(uint64_t right) {
   return value;
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 int32_t RandomGenerator::random(int32_t left, int32_t right) {
   ensureDeviceIsInitialized();
   return _device->random(left, right);

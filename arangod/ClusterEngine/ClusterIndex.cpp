@@ -141,7 +141,7 @@ bool ClusterIndex::hasSelectivityEstimate() const {
             (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
              _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
              _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX));
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
 #endif
@@ -179,7 +179,7 @@ bool ClusterIndex::isSorted() const {
            _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
 #endif
@@ -364,7 +364,7 @@ aql::AstNode* ClusterIndex::specializeCondition(aql::AstNode* node,
       break;
   }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_engineType == ClusterEngineType::MockEngine) {
     return node;
   }

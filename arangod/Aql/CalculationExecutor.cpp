@@ -87,7 +87,7 @@ template <CalculationType calculationType>
 std::tuple<ExecutorState, typename CalculationExecutor<calculationType>::Stats, AqlCall>
 CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputRange,
                                                   OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("CalculationExecutor::produceRows") {
+  ARANGODB_IF_FAILURE("CalculationExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutorState state = ExecutorState::HASMORE;
@@ -153,10 +153,10 @@ void CalculationExecutor<CalculationType::Reference>::doEvaluation(InputAqlItemR
   auto const& inRegs = _infos.getExpInRegs();
   TRI_ASSERT(inRegs.size() == 1);
 
-  TRI_IF_FAILURE("CalculationBlock::executeExpression") {
+  ARANGODB_IF_FAILURE("CalculationBlock::executeExpression") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  TRI_IF_FAILURE("CalculationBlock::fillBlockWithReference") {
+  ARANGODB_IF_FAILURE("CalculationBlock::fillBlockWithReference") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -177,7 +177,7 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(InputAqlItemR
   AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
-  TRI_IF_FAILURE("CalculationBlock::executeExpression") {
+  ARANGODB_IF_FAILURE("CalculationBlock::executeExpression") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -210,7 +210,7 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
   AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
-  TRI_IF_FAILURE("CalculationBlock::executeExpression") {
+  ARANGODB_IF_FAILURE("CalculationBlock::executeExpression") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

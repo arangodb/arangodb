@@ -460,13 +460,13 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   options.timeout = network::Timeout(SETUP_TIMEOUT);
   options.skipScheduler = true;  // hack to speed up future.get()
   
-  TRI_IF_FAILURE("Query::setupTimeout") {
+  ARANGODB_IF_FAILURE("Query::setupTimeout") {
     options.timeout = network::Timeout(0.01 + (double) RandomGenerator::interval(uint32_t(10)));
   }
   
-  TRI_IF_FAILURE("Query::setupTimeoutFailSequence") {
+  ARANGODB_IF_FAILURE("Query::setupTimeoutFailSequence") {
     double t = 0.5;
-    TRI_IF_FAILURE("Query::setupTimeoutFailSequenceRandom") {
+    ARANGODB_IF_FAILURE("Query::setupTimeoutFailSequenceRandom") {
       if (RandomGenerator::interval(uint32_t(100)) >= 95) {
         t = 3.0;
       }

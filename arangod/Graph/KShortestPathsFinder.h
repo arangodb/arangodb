@@ -258,7 +258,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // get the next available path as a ShortestPathResult
   // TODO: this is only here to not break catch-tests and needs a cleaner solution.
   //       probably by making ShortestPathResult versatile enough and using that
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool getNextPathShortestPathResult(ShortestPathResult& path);
 #endif
   // get the next available path as a Path

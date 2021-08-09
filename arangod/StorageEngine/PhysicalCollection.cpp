@@ -423,7 +423,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
 
   // _rev
   bool handled = false;
-  TRI_IF_FAILURE("Insert::useRev") {
+  ARANGODB_IF_FAILURE("Insert::useRev") {
     isRestore = true;
   }
   if (isRestore) {
@@ -673,7 +673,7 @@ bool PhysicalCollection::IndexOrder::operator()(const std::shared_ptr<Index>& le
   // of index operations. Hash index placed always AFTER reversable indexes
   // could be broken by unique constraint violation or by intentional failpoint.
   // And this will make possible to deterministically trigger index reversals
-  TRI_IF_FAILURE("HashIndexAlwaysLast") {
+  ARANGODB_IF_FAILURE("HashIndexAlwaysLast") {
     if (left->type() != right->type()) {
       if (right->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
         return true;

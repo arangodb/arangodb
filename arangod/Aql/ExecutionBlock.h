@@ -59,7 +59,7 @@ class ExecutionBlock {
   /// @brief batch size value
   static constexpr size_t ProductionDefaultBatchSize = 1000;
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // when we compile the tests, we want to make the batch size adjustable
   static size_t DefaultBatchSize;
   static void setDefaultBatchSize(size_t value) { DefaultBatchSize = value; }

@@ -44,7 +44,7 @@
 #undef DEBUG
 #endif
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #define TEST_VIRTUAL virtual
 #else
 #define TEST_VIRTUAL
@@ -53,5 +53,7 @@
 #ifdef sleep
 #undef sleep
 #endif
+/// @brief sleep should not be used directly. 
+/// one should use std::this_thread::sleep_for() instead.
 #define sleep ERROR_USE_std_this_thread_sleep_for
 

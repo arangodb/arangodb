@@ -50,7 +50,7 @@ namespace network {
 class ConnectionPtr;
 
 /// @brief simple connection pool managing fuerte connections
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 class ConnectionPool {
 #else
 class ConnectionPool final {

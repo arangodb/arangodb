@@ -972,7 +972,7 @@ TEST(MerkleTreeTest, test_check_consistency) {
   // must not throw
   tree.checkConsistency();
  
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   tree.corrupt(42, 23);
 
   // must throw

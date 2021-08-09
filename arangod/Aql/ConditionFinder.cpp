@@ -87,7 +87,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
       if (_sorts.empty()) {
         for (auto& it : ExecutionNode::castTo<SortNode const*>(en)->elements()) {
           _sorts.emplace_back(it.var, it.ascending);
-          TRI_IF_FAILURE("ConditionFinder::sortNode") {
+          ARANGODB_IF_FAILURE("ConditionFinder::sortNode") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
         }
@@ -99,7 +99,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
       _variableDefinitions.try_emplace(
           ExecutionNode::castTo<CalculationNode const*>(en)->outVariable()->id,
           ExecutionNode::castTo<CalculationNode const*>(en)->expression()->node());
-      TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
+      ARANGODB_IF_FAILURE("ConditionFinder::variableDefinition") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
       break;
@@ -149,7 +149,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
         // will clear out usedIndexes
         IndexIteratorOptions opts;
         opts.ascending = !descending;
-        TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
+        ARANGODB_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
@@ -227,7 +227,7 @@ bool ConditionFinder::handleFilterCondition(ExecutionNode* en,
 
   // normalize the condition
   condition->normalize(_plan);
-  TRI_IF_FAILURE("ConditionFinder::normalizePlan") {
+  ARANGODB_IF_FAILURE("ConditionFinder::normalizePlan") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

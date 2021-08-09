@@ -47,7 +47,7 @@
 
 using namespace arangodb;
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 namespace {
 /// @brief custom comparer for failure points. this allows an implicit

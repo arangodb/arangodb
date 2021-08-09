@@ -62,7 +62,7 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
       _registeredTransaction(false) {
 
   // patch intermediateCommitCount for testing
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   transaction::Options::adjustIntermediateCommitCount(_options);
 #endif
 }
@@ -130,8 +130,8 @@ TransactionState::Cookie::ptr TransactionState::cookie(void const* key,
 /// @brief add a collection to a transaction
 Result TransactionState::addCollection(DataSourceId cid, std::string const& cname,
                                        AccessMode::Type accessType, bool lockUsage) {
-#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(ARANGODB_ENABLE_FAILURE_TESTS)
-  TRI_IF_FAILURE(("WaitOnLock::" + cname).c_str()) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  ARANGODB_IF_FAILURE(("WaitOnLock::" + cname).c_str()) {
     auto& raceController = basics::DebugRaceController::sharedInstance();
     if (!raceController.didTrigger()) {
       raceController.waitForOthers(2, _id, vocbase().server());
@@ -424,7 +424,7 @@ void TransactionState::clearQueryCache() {
   }
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // reset the internal Transaction ID to none.
 // Only used in the Transaction Mock for internal reasons.
 void TransactionState::resetTransactionId() {

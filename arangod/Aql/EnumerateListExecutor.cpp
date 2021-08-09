@@ -95,7 +95,7 @@ void EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
   AqlValue innerValue = getAqlValue(inputList, _inputArrayPosition, mustDestroy);
   AqlValueGuard guard(innerValue, mustDestroy);
 
-  TRI_IF_FAILURE("EnumerateListBlock::getSome") {
+  ARANGODB_IF_FAILURE("EnumerateListBlock::getSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -192,7 +192,7 @@ void EnumerateListExecutor::initialize() {
 /// @brief create an AqlValue from the inVariable using the current _index
 AqlValue EnumerateListExecutor::getAqlValue(AqlValue const& inVarReg,
                                             size_t const& pos, bool& mustDestroy) {
-  TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {
+  ARANGODB_IF_FAILURE("EnumerateListBlock::getAqlValue") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

@@ -192,7 +192,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
 }
 
 void SortExecutor::doSorting() {
-  TRI_IF_FAILURE("SortBlock::doSorting") {
+  ARANGODB_IF_FAILURE("SortBlock::doSorting") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   

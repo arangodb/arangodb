@@ -24,7 +24,7 @@
 #include "IResearchCompression.h"
 #include "Basics/debugging.h"
 #include <utils/lz4compression.hpp>
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "../tests/IResearch/IResearchTestCompressor.h"
 #endif
 
@@ -47,7 +47,7 @@ irs::string_ref columnCompressionToString(irs::type_info::type_id type) noexcept
 
 irs::type_info::type_id columnCompressionFromString(irs::string_ref const& c) noexcept {
   TRI_ASSERT(!c.null());
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (c == "test") {
     return irs::type<irs::compression::mock::test_compressor>::id();
   }

@@ -130,7 +130,7 @@ class MultiDependencySingleRowFetcher {
   void reportSubqueryFullCounts(size_t subqueryDepth,
                                 std::vector<size_t> const& skippedInDependency);
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto initialize(size_t subqueryDepth) -> void;
 #endif
 

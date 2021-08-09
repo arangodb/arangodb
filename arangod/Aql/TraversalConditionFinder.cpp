@@ -560,7 +560,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       if (_filterVariables.find(outVar->id) != _filterVariables.end()) {
         // This calculationNode is directly part of a filter condition
         // So we have to iterate through it.
-        TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
+        ARANGODB_IF_FAILURE("ConditionFinder::variableDefinition") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         _condition->andCombine(calcNode->expression()->node());
@@ -584,7 +584,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
       _condition->normalize();
 
-      TRI_IF_FAILURE("ConditionFinder::normalizePlan") {
+      ARANGODB_IF_FAILURE("ConditionFinder::normalizePlan") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 

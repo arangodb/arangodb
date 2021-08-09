@@ -195,7 +195,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
   systemCollections.push_back(StaticStrings::FrontendCollection);
 
-  TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
+  ARANGODB_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
     VPackBuilder testOptions;
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> testBuffers;
     std::vector<CollectionCreationInfo> testSystemCollectionsToCreate;
@@ -416,14 +416,14 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
     return false;
   }
 
-  TRI_IF_FAILURE("UpgradeTasks::HideDatabaseUntilCreationIsFinished") {
+  ARANGODB_IF_FAILURE("UpgradeTasks::HideDatabaseUntilCreationIsFinished") {
     // just trigger a sleep here. The client test will create the db async
     // and directly fetch the state of creation. The DB is not allowed to be
     // visible to the outside world.
     std::this_thread::sleep_for(std::chrono::milliseconds(5000));
   }
 
-  TRI_IF_FAILURE("UpgradeTasks::FatalExitDuringDatabaseCreation") {
+  ARANGODB_IF_FAILURE("UpgradeTasks::FatalExitDuringDatabaseCreation") {
     FATAL_ERROR_EXIT();
   }
 

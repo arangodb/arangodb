@@ -82,7 +82,7 @@ void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 }
 
 void EngineSelectorFeature::prepare() {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_selected.load()) {
     // already set in the test code
     return;
@@ -280,7 +280,7 @@ bool EngineSelectorFeature::isRocksDB() {
   return engineName() == RocksDBEngine::EngineName;
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void EngineSelectorFeature::setEngineTesting(StorageEngine* input) {
   TRI_ASSERT((input == nullptr) != (_engine == nullptr));
   _selected.store(input != nullptr);

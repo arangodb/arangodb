@@ -218,7 +218,7 @@ class ClusterEngine final : public StorageEngine {
   static std::string const FeatureName;
 
   // mock mode
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   static bool Mocking;
 #else
   static constexpr bool Mocking = false;

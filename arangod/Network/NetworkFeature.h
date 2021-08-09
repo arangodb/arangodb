@@ -60,7 +60,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   /// @brief global connection pool
   arangodb::network::ConnectionPool* pool() const;
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void setPoolTesting(arangodb::network::ConnectionPool* pool);
 #endif
 

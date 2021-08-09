@@ -2774,7 +2774,7 @@ HealthData RocksDBEngine::healthCheck() {
   // capacity at the same time, which could be expensive.
   MUTEX_LOCKER(guard, _healthMutex);
   
-  TRI_IF_FAILURE("RocksDBEngine::healthCheck") {
+  ARANGODB_IF_FAILURE("RocksDBEngine::healthCheck") {
     _healthData.res.reset(TRI_ERROR_DEBUG, "peng! 💥");
     return _healthData;
   }

@@ -574,7 +574,7 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler("/_admin/supervisionState",
                               RestHandlerCreator<arangodb::RestSupervisionStateHandler>::createNoData);
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers
   _handlerFactory->addPrefixHandler("/_admin/debug",
                                     RestHandlerCreator<arangodb::RestDebugHandler>::createNoData);

@@ -87,7 +87,7 @@ bool KShortestPathsFinder::startKShortestPathsTraversal(
   clear();
   _traversalDone = false;
 
-  TRI_IF_FAILURE("Travefalse") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
+  ARANGODB_IF_FAILURE("Travefalse") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
 
   return true;
 }
@@ -305,7 +305,7 @@ void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
     result._weights.emplace_back(startToJoin + (joinToEnd - it->_weight));
   }
 
-  TRI_IF_FAILURE("TraversalOOMPath") {
+  ARANGODB_IF_FAILURE("TraversalOOMPath") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -421,7 +421,7 @@ bool KShortestPathsFinder::getNextPath(Path& result) {
     _shortestPaths.emplace_back(result);
     _options.fetchVerticesCoordinator(result._vertices);
 
-    TRI_IF_FAILURE("TraversalOOMPath") {
+    ARANGODB_IF_FAILURE("TraversalOOMPath") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   } else {
@@ -431,7 +431,7 @@ bool KShortestPathsFinder::getNextPath(Path& result) {
   return !_traversalDone;
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 bool KShortestPathsFinder::getNextPathShortestPathResult(ShortestPathResult& result) {
   _tempPath.clear();
 

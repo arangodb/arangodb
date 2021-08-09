@@ -38,57 +38,61 @@
 #endif
 #endif
 
-/// @brief macro TRI_IF_FAILURE
+/// @brief macro ARANGODB_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at
 /// certain locations in the C code. The points at which a failure is actually
 /// triggered can be defined at runtime using TRI_AddFailurePointDebugging().
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define TRI_IF_FAILURE(what) if (TRI_ShouldFailDebugging(what))
+#define ARANGODB_IF_FAILURE(what) if (TRI_ShouldFailDebugging(what))
 
 #else
 
-#define TRI_IF_FAILURE(what) if (false)
+#define ARANGODB_IF_FAILURE(what) if (false)
 
 #endif
 
+/// @brief TRI_IF_FAILURE should not be used anymore. 
+/// one should use ARANGODB_IF_FAILURE instead.
+#define TRI_IF_FAILURE(what) ERROR_USE_ARANGODB_IF_FAILURE_INSTEAD
+
 /// @brief intentionally cause a segmentation violation or other failures
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void TRI_TerminateDebugging(char const* value);
 #else
 inline void TRI_TerminateDebugging(char const*) {}
 #endif
 
 /// @brief check whether we should fail at a failure point
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 bool TRI_ShouldFailDebugging(char const* value);
 #else
 inline constexpr bool TRI_ShouldFailDebugging(char const*) { return false; }
 #endif
 
 /// @brief add a failure point
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void TRI_AddFailurePointDebugging(char const* value);
 #else
 inline void TRI_AddFailurePointDebugging(char const*) {}
 #endif
 
 /// @brief remove a failure point
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void TRI_RemoveFailurePointDebugging(char const* value);
 #else
 inline void TRI_RemoveFailurePointDebugging(char const*) {}
 #endif
 
 /// @brief clear all failure points
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void TRI_ClearFailurePointsDebugging();
 #else
 inline void TRI_ClearFailurePointsDebugging() {}
 #endif
 
 /// @brief returns whether failure point debugging can be used
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 inline constexpr bool TRI_CanUseFailurePointsDebugging() { return true; }
 #else
 inline constexpr bool TRI_CanUseFailurePointsDebugging() { return false; }
@@ -226,4 +230,3 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #endif  // #ifndef TRI_ASSERT
-

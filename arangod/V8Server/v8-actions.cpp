@@ -1508,7 +1508,7 @@ void TRI_InitV8Actions(v8::Isolate* isolate) {
 /// Below Debugging Functions. Only compiled in maintainer mode.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 static ErrorCode clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbname,
                                          std::string const& path,  // Note: Has to be properly encoded!
                                          arangodb::rest::RequestType const& method,
@@ -1563,7 +1563,7 @@ static ErrorCode clusterSendToAllServers(v8::Isolate* isolate, std::string const
 /// intentionally cause a segmentation violation
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 static void JS_DebugTerminate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1592,7 +1592,7 @@ static void JS_DebugTerminate(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// Set a point for an intentional system failure
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1635,7 +1635,7 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// Checks if a specific intentional failure point is set
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 static void JS_DebugShouldFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1667,7 +1667,7 @@ static void JS_DebugShouldFailAt(v8::FunctionCallbackInfo<v8::Value> const& args
 /// Remove a point for an intentional system failure
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 static void JS_DebugRemoveFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1721,7 +1721,7 @@ static void JS_DebugClearFailAt(v8::FunctionCallbackInfo<v8::Value> const& args)
   }
 
 // if failure testing is not enabled, this is a no-op
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ClearFailurePointsDebugging();
 
   if (ServerState::instance()->isCoordinator()) {
@@ -1872,7 +1872,7 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                                    "SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_DEBUG_TERMINATE"), JS_DebugTerminate);
   TRI_AddGlobalFunctionVocbase(isolate,

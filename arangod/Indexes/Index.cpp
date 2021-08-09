@@ -917,7 +917,7 @@ void Index::expandInSearchValues(VPackSlice const base, VPackBuilder& result) co
     std::vector<size_t> positions(n, 0);
     bool done = false;
     while (!done) {
-      TRI_IF_FAILURE("Index::permutationIN") {
+      ARANGODB_IF_FAILURE("Index::permutationIN") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
       VPackArrayBuilder guard(&result);

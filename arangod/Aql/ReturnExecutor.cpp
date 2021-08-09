@@ -49,7 +49,7 @@ ReturnExecutor::~ReturnExecutor() = default;
 
 auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  TRI_IF_FAILURE("ReturnExecutor::produceRows") {
+  ARANGODB_IF_FAILURE("ReturnExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -71,7 +71,7 @@ auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
 
 auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  TRI_IF_FAILURE("ReturnExecutor::produceRows") {
+  ARANGODB_IF_FAILURE("ReturnExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -83,7 +83,7 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
     // REMARK: it is called `getInputRegisterId` here but FilterExecutor calls it `getInputRegister`.
     AqlValue val = input.stealValue(_infos.getInputRegisterId());
     AqlValueGuard guard(val, true);
-    TRI_IF_FAILURE("ReturnBlock::getSome") {
+    ARANGODB_IF_FAILURE("ReturnBlock::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     output.moveValueInto(_infos.getOutputRegisterId(), input, guard);

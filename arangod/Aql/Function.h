@@ -101,7 +101,7 @@ struct Function {
            std::underlying_type<Flags>::type flags,
            FunctionImplementation implementation);
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Function(std::string const& name,
            FunctionImplementation implementation);
 #endif

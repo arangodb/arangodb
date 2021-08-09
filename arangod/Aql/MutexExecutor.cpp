@@ -55,7 +55,7 @@ auto MutexExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, SkipResu
                                     std::unordered_map<std::string, ClientBlockData>& blockMap)
     -> void {
 
-  TRI_IF_FAILURE("MutexExecutor::distributeBlock") {
+  ARANGODB_IF_FAILURE("MutexExecutor::distributeBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

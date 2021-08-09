@@ -158,7 +158,7 @@ class GeneralRequest {
 
   void addSuffix(std::string part);
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void clearSuffixes() {
     _suffixes.clear();
   }

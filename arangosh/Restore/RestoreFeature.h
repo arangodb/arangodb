@@ -105,7 +105,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool overwrite{true};
     bool useEnvelope{true};
     bool continueRestore{false};
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     bool failOnUpdateContinueFile{false};
 #endif
     bool cleanupDuplicateAttributes{false};

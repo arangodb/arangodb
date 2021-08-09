@@ -68,7 +68,7 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection, ClusterEngin
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     return;
   }
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_engineType == ClusterEngineType::MockEngine) {
     return;
   }
@@ -115,7 +115,7 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
     if (!validators.isNone()) {
       merge.add(StaticStrings::Schema, validators);
     }
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   } else if (_engineType == ClusterEngineType::MockEngine) {
     // do nothing
 #endif
@@ -157,7 +157,7 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     result.add(StaticStrings::CacheEnabled,
                VPackValue(Helper::getBooleanValue(_info.slice(), StaticStrings::CacheEnabled, false)));
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   } else if (_engineType == ClusterEngineType::MockEngine) {
     // do nothing
 #endif

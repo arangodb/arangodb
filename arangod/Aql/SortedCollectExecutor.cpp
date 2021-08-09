@@ -162,7 +162,7 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
     }
     ++j;
   }
-  TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
+  ARANGODB_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
@@ -184,7 +184,7 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
       _builder.close();
     }
   }
-  TRI_IF_FAILURE("CollectGroup::addValues") {
+  ARANGODB_IF_FAILURE("CollectGroup::addValues") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 }
@@ -303,7 +303,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
 auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                         OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  TRI_IF_FAILURE("SortedCollectExecutor::produceRows") {
+  ARANGODB_IF_FAILURE("SortedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -335,11 +335,11 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       break;
     }
 
-    TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuter") {
+    ARANGODB_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuter") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    TRI_IF_FAILURE("SortedCollectBlock::hasMore") {
+    ARANGODB_IF_FAILURE("SortedCollectBlock::hasMore") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -395,7 +395,7 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
 auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  TRI_IF_FAILURE("SortedCollectExecutor::skipRowsRange") {
+  ARANGODB_IF_FAILURE("SortedCollectExecutor::skipRowsRange") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

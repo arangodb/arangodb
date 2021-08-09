@@ -57,7 +57,7 @@
 
 #include "Logger/LogMacros.h"
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Random/RandomGenerator.h"
 #endif
 
@@ -712,7 +712,7 @@ void MerkleTree<Hasher, BranchingBits>::checkConsistency() const {
   checkInternalConsistency();
 }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // intentionally corrupts the tree. used for testing only
 template <typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::corrupt(std::uint64_t count, std::uint64_t hash) {
@@ -939,16 +939,16 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
   }
 
   // the following format modifiers are only used for testing via JavaScript
-  TRI_IF_FAILURE("MerkleTree::serializeUncompressed") {
+  ARANGODB_IF_FAILURE("MerkleTree::serializeUncompressed") {
     format = BinaryFormat::Uncompressed;
   }
-  TRI_IF_FAILURE("MerkleTree::serializeOnlyPopulated") {
+  ARANGODB_IF_FAILURE("MerkleTree::serializeOnlyPopulated") {
     format = BinaryFormat::OnlyPopulated;
   }
-  TRI_IF_FAILURE("MerkleTree::serializeSnappy") {
+  ARANGODB_IF_FAILURE("MerkleTree::serializeSnappy") {
     format = BinaryFormat::CompressedSnappyFull;
   }
-  TRI_IF_FAILURE("MerkleTree::serializeSnappyLazy") {
+  ARANGODB_IF_FAILURE("MerkleTree::serializeSnappyLazy") {
     format = BinaryFormat::CompressedSnappyLazy;
   }
 
@@ -1606,7 +1606,7 @@ std::pair<std::uint64_t, std::uint64_t> MerkleTree<Hasher, BranchingBits>::chunk
 
 template <typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::checkInternalConsistency() const {
-  TRI_IF_FAILURE("MerkleTree::skipConsistencyCheck") {
+  ARANGODB_IF_FAILURE("MerkleTree::skipConsistencyCheck") {
     return;
   }
 

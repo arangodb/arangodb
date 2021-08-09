@@ -1162,7 +1162,7 @@ getAnalyzerMeta(irs::analysis::analyzer const* analyzer) noexcept {
              &GeoPointAnalyzer::store };
   }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if ("iresearch-vpack-analyzer" == type().name()) {
     return { AnalyzerValueType::Array | AnalyzerValueType::Object,
              AnalyzerValueType::String,
@@ -2781,7 +2781,7 @@ Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref const& nam
 }
 
 Result IResearchAnalyzerFeature::finalizeRemove(irs::string_ref const& name, irs::string_ref const& vocbase) {
-  TRI_IF_FAILURE("FinalizeAnalyzerRemove") {
+  ARANGODB_IF_FAILURE("FinalizeAnalyzerRemove") {
     return Result(TRI_ERROR_DEBUG);
   }
 
@@ -2946,7 +2946,7 @@ Result IResearchAnalyzerFeature::remove(
         return result.result;
       }
 
-      TRI_IF_FAILURE("UpdateAnalyzerForRemove") {
+      ARANGODB_IF_FAILURE("UpdateAnalyzerForRemove") {
         return Result(TRI_ERROR_DEBUG);
       }
 
@@ -3045,7 +3045,7 @@ void IResearchAnalyzerFeature::stop() {
 }
 
 Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
-  TRI_IF_FAILURE("FailStoreAnalyzer") {
+  ARANGODB_IF_FAILURE("FailStoreAnalyzer") {
     return Result(TRI_ERROR_DEBUG);
   }
 

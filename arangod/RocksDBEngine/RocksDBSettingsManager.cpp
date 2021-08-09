@@ -136,7 +136,7 @@ bool RocksDBSettingsManager::lockForSync(bool force) {
 
 /// Thread-Safe force sync
 Result RocksDBSettingsManager::sync(bool force) {
-  TRI_IF_FAILURE("RocksDBSettingsManagerSync") { return Result(); }
+  ARANGODB_IF_FAILURE("RocksDBSettingsManagerSync") { return Result(); }
   if (!_db) {
     return Result();
   }

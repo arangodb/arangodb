@@ -263,7 +263,7 @@ arangodb::network::ConnectionPool* NetworkFeature::pool() const {
   return _poolPtr.load(std::memory_order_relaxed);
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void NetworkFeature::setPoolTesting(arangodb::network::ConnectionPool* pool) {
   _poolPtr.store(pool, std::memory_order_release);
 }

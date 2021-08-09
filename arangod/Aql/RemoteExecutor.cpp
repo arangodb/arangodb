@@ -84,13 +84,13 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
   // silence tests -- we need to introduce new failure tests for fetchers
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
+  ARANGODB_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
+  ARANGODB_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
+  ARANGODB_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -329,13 +329,13 @@ auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack const& stack)
 auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   // silence tests -- we need to introduce new failure tests for fetchers
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
+  ARANGODB_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
+  ARANGODB_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
+  ARANGODB_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

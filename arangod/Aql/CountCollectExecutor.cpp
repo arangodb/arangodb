@@ -50,7 +50,7 @@ CountCollectExecutor::CountCollectExecutor(Fetcher&, Infos& infos)
 auto CountCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                        OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  TRI_IF_FAILURE("CountCollectExecutor::produceRows") {
+  ARANGODB_IF_FAILURE("CountCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   // skipped > 0 -> done
@@ -76,7 +76,7 @@ auto CountCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
 auto CountCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  TRI_IF_FAILURE("CountCollectExecutor::produceRows") {
+  ARANGODB_IF_FAILURE("CountCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   // skipped > 0 -> done

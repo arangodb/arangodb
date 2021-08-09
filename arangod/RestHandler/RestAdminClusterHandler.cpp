@@ -441,7 +441,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
                     resetResponse(rest::ResponseCode::OK);
                     return futures::makeFuture();
                   } else if (result.statusCode() == fuerte::StatusPreconditionFailed) {
-                    TRI_IF_FAILURE("removeServer::noRetry") {
+                    ARANGODB_IF_FAILURE("removeServer::noRetry") {
                       generateError(result.asResult());
                       return futures::makeFuture();
                     }
@@ -453,7 +453,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
               });
         }
                     
-        TRI_IF_FAILURE("removeServer::noRetry") {
+        ARANGODB_IF_FAILURE("removeServer::noRetry") {
           generateError(Result(TRI_ERROR_HTTP_PRECONDITION_FAILED));
           return futures::makeFuture();
         }

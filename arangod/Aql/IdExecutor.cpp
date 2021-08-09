@@ -82,7 +82,7 @@ auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
   CountStats stats;
   if (inputRange.hasDataRow()) {
     TRI_ASSERT(!output.isFull());
-    TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
+    ARANGODB_IF_FAILURE("SingletonBlock::getOrSkipSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     auto const& [state, inputRow] = inputRange.peekDataRow();
@@ -91,7 +91,7 @@ auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
 
     output.fastForwardAllRows(inputRow, rows);
 
-    TRI_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
+    ARANGODB_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }

@@ -91,7 +91,7 @@ bool ShadowAqlItemRow::isSameBlockAndIndex(ShadowAqlItemRow const& other) const 
     return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other,
                                velocypack::Options const* options) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {

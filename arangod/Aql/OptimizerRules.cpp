@@ -5558,7 +5558,7 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt, std::unique_ptr<Executio
     if (newRoot != root) {
       auto expr = std::make_unique<Expression>(plan->getAst(), newRoot);
 
-      TRI_IF_FAILURE("OptimizerRules::replaceOrWithInRuleOom") {
+      ARANGODB_IF_FAILURE("OptimizerRules::replaceOrWithInRuleOom") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 

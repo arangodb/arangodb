@@ -2293,7 +2293,7 @@ void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
   }
 
   auto dep = node->getDependencies();  // Intentionally copy the vector!
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   for (auto const& it : dep) {
     TRI_ASSERT(it != nullptr);
   }

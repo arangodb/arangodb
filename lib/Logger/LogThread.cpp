@@ -41,7 +41,7 @@ LogThread::~LogThread() {
 bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
   TRI_ASSERT(message != nullptr);
 
-  TRI_IF_FAILURE("LogThread::log") {
+  ARANGODB_IF_FAILURE("LogThread::log") {
     // simulate a successful logging, but actually don't log anything
     return true;
   }

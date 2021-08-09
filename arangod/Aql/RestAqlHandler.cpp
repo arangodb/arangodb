@@ -110,15 +110,15 @@ void RestAqlHandler::setupClusterQuery() {
     return;
   }
   
-  TRI_IF_FAILURE("Query::setupTimeout") {
+  ARANGODB_IF_FAILURE("Query::setupTimeout") {
     // intentionally delay the request
     std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
   }
   
-  TRI_IF_FAILURE("Query::setupTimeoutFailSequence") {
+  ARANGODB_IF_FAILURE("Query::setupTimeoutFailSequence") {
     // simulate lock timeout during query setup
     uint32_t r = 100;
-    TRI_IF_FAILURE("Query::setupTimeoutFailSequenceRandom") {
+    ARANGODB_IF_FAILURE("Query::setupTimeoutFailSequenceRandom") {
       r = RandomGenerator::interval(uint32_t(100));
     }
     if (r >= 96) {
@@ -661,7 +661,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
   // this is because the request may contain additional data
   if ((operation == "getSome" || operation == "skipSome") &&
       !_engine->initializeCursorCalled()) {
-    TRI_IF_FAILURE("RestAqlHandler::getSome") {
+    ARANGODB_IF_FAILURE("RestAqlHandler::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     auto res = _engine->initializeCursor(nullptr, 0);
@@ -688,7 +688,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
       generateError(std::move(maybeExecuteCall).result());
       return RestStatus::DONE;
     }
-    TRI_IF_FAILURE("RestAqlHandler::getSome") {
+    ARANGODB_IF_FAILURE("RestAqlHandler::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     auto& executeCall = maybeExecuteCall.get();
@@ -717,7 +717,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     result.toVelocyPack(answerBuilder, &_engine->getQuery().vpackOptions());
     answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
   } else if (operation == "getSome") {
-    TRI_IF_FAILURE("RestAqlHandler::getSome") {
+    ARANGODB_IF_FAILURE("RestAqlHandler::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     auto atMost = VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",

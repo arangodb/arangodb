@@ -71,7 +71,7 @@ struct Response {
   /// there is no valid response!
   arangodb::fuerte::Response& response() const;
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// @brief inject a different response - only use this from tests!
   void setResponse(std::unique_ptr<arangodb::fuerte::Response> response);
 #endif

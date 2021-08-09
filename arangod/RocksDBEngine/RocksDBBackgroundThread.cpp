@@ -61,7 +61,7 @@ void RocksDBBackgroundThread::run() {
       continue;
     }
 
-    TRI_IF_FAILURE("RocksDBBackgroundThread::run") { continue; }
+    ARANGODB_IF_FAILURE("RocksDBBackgroundThread::run") { continue; }
 
     try {
       if (!isStopping()) {

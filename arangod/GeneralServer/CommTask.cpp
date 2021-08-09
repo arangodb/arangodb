@@ -380,7 +380,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
       ok = handleRequestAsync(std::move(handler));
     }
 
-    TRI_IF_FAILURE("queueFull") {
+    ARANGODB_IF_FAILURE("queueFull") {
       ok = false;
       jobId = 0;
     }

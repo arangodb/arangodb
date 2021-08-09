@@ -58,7 +58,7 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   /// the underlying engine is the RocksDB engine.
   bool isRocksDB();
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void setEngineTesting(StorageEngine*);
 #endif
 

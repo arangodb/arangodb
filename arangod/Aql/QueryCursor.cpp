@@ -152,7 +152,7 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
       _queryResultPos(0),
       _finalization(false) {
   _query->prepareQuery(SerializationFormat::SHADOWROWS);
-  TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
+  ARANGODB_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
     debugKillQuery();
   }
   // In all the following ASSERTs it is valid (though unlikely) that the query is already killed
@@ -162,7 +162,7 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
   _ctx = _query->newTrxContext();
   
   transaction::Methods trx(_ctx);
-  TRI_IF_FAILURE("QueryStreamCursor::directKillAfterTrxSetup") {
+  ARANGODB_IF_FAILURE("QueryStreamCursor::directKillAfterTrxSetup") {
     debugKillQuery();
   }
   TRI_ASSERT(trx.status() == transaction::Status::RUNNING || _query->killed());
@@ -204,7 +204,7 @@ void QueryStreamCursor::kill() {
 }
 
 void QueryStreamCursor::debugKillQuery() {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_query) {
     _query->debugKillQuery();
   }
@@ -212,13 +212,13 @@ void QueryStreamCursor::debugKillQuery() {
 }
 
 std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder) {
-  TRI_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumped") {
+  ARANGODB_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumped") {
     debugKillQuery();
   }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_DEFER(
-    TRI_IF_FAILURE("QueryCursor::directKillAfterQueryIsGettingDumped") {
+    ARANGODB_IF_FAILURE("QueryCursor::directKillAfterQueryIsGettingDumped") {
       debugKillQuery();
     }
   )
@@ -270,12 +270,12 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder)
 }
 
 Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
-  TRI_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumpedSynced") {
+  ARANGODB_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumpedSynced") {
     debugKillQuery();
   }
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_DEFER(
-    TRI_IF_FAILURE("QueryCursor::directKillAfterQueryIsGettingDumpedSynced") {
+    ARANGODB_IF_FAILURE("QueryCursor::directKillAfterQueryIsGettingDumpedSynced") {
       debugKillQuery();
     }
   )

@@ -70,7 +70,7 @@ bool CreateDatabase::first() {
 
   LOG_TOPIC("953b1", INFO, Logger::MAINTENANCE) << "CreateDatabase: creating database " << database;
 
-  TRI_IF_FAILURE("CreateDatabase::first") {
+  ARANGODB_IF_FAILURE("CreateDatabase::first") {
     // simulate DB creation failure
     result(TRI_ERROR_DEBUG);
     _feature.storeDBError(database, result());

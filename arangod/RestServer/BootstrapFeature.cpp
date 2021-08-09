@@ -88,7 +88,7 @@ BootstrapFeature::BootstrapFeature(application_features::ApplicationServer& serv
 }
 
 bool BootstrapFeature::isReady() const {
-  TRI_IF_FAILURE("BootstrapFeature_not_ready") {
+  ARANGODB_IF_FAILURE("BootstrapFeature_not_ready") {
     return false;
   }
   return _isReady;

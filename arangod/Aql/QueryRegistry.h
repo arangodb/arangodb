@@ -124,7 +124,7 @@ class QueryRegistry {
   /// @brief return the default TTL value
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool queryIsRegistered(std::string const& dbName, QueryId id);
 #endif
 

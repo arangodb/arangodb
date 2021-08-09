@@ -476,10 +476,10 @@ void OutputAqlItemRow::doCopyOrMoveValue(ItemRowType& sourceRow, RegisterId item
       AqlValue clonedValue = value.clone();
       AqlValueGuard guard(clonedValue, true);
 
-      TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
+      ARANGODB_IF_FAILURE("OutputAqlItemRow::copyRow") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-      TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
+      ARANGODB_IF_FAILURE("ExecutionBlock::inheritRegisters") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
@@ -492,10 +492,10 @@ void OutputAqlItemRow::doCopyOrMoveValue(ItemRowType& sourceRow, RegisterId item
     if (!stolenValue.isEmpty()) {
       AqlValueGuard guard(stolenValue, true);
 
-      TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
+      ARANGODB_IF_FAILURE("OutputAqlItemRow::copyRow") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-      TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
+      ARANGODB_IF_FAILURE("ExecutionBlock::inheritRegisters") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 

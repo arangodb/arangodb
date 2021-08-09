@@ -185,13 +185,13 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     if (match) {
       // mark ith attribute as being covered
       found[i].emplace_back(op);
-      TRI_IF_FAILURE("PersistentIndex::accessFitsIndex") {
+      ARANGODB_IF_FAILURE("PersistentIndex::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-      TRI_IF_FAILURE("SkiplistIndex::accessFitsIndex") {
+      ARANGODB_IF_FAILURE("SkiplistIndex::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-      TRI_IF_FAILURE("HashIndex::accessFitsIndex") {
+      ARANGODB_IF_FAILURE("HashIndex::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
@@ -259,7 +259,7 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     arangodb::aql::Variable const* reference, size_t itemsInIndex) {
   // mmfiles failure point compat
   if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
-    TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
+    ARANGODB_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
@@ -470,10 +470,10 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
     arangodb::aql::Variable const* reference) {
   // mmfiles failure compat
   if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
-    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {
+    ARANGODB_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenIN") {
+    ARANGODB_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenIN") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }

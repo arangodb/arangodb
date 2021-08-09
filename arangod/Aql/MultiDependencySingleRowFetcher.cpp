@@ -294,7 +294,7 @@ auto MultiDependencySingleRowFetcher::resetDidReturnSubquerySkips(size_t shadowR
   }
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 auto MultiDependencySingleRowFetcher::initialize(size_t subqueryDepth) -> void {
   initializeReports(subqueryDepth);
 }
