@@ -1,11 +1,11 @@
 To do:
-- [x] check arangobench
+- [x] check arangobench, add tests
 - [ ] check web interface
-- [ ] check arangodump -- Julia
-- [ ] usage of database names as directory names in arangodump when invoked with `--all-databases` option. potentially affects arangorestore - Julia
-- [ ] check arangorestore
-- [ ] check arangoimport -- Jan
-- [x] check arangoexport
+- [ ] check arangodump, add tests -- Julia
+- [x] usage of database names as directory names in arangodump when invoked with `--all-databases` option. potentially affects arangorestore - Julia
+- [ ] check arangorestore, add tests
+- [ ] check arangoimport, add tests -- Jan
+- [x] check arangoexport, add tests
 - [ ] check arangosh
 - [ ] check location headers / http redirects
 - [ ] check cluster and agency
