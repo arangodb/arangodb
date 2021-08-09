@@ -4,6 +4,15 @@ v3.7.16 (XXXX-XX-XX)
 * Fix race in RocksDB throttle listener, when it was getting started lazily
   during server shutdown.
 
+* Fixed issue BTS-536 "Upgrading without rest-server is aborted by error".
+  Now stating `--server.rest-server false` does not require the additional
+  `--console` argument for upgrading a server.
+
+* Fixed various problems in GEO_INTERSECTS: wrong results, not implemented
+  cases and numerically unstable behaviour. In particular, the case of
+  the intersection of two polygons in which one is an S2LngLatRect
+  is fixed (BTS-475).
+
 * Fixed BTS-582: ArangoDB client EXE package for Windows has incorrect metadata.
 
 * Fixed BTS-575: Windows EXE installer doesn't replace service during upgrade in
