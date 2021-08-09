@@ -33,6 +33,7 @@ let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 let isCluster = require("internal").isCluster();
+let dbs = ["_system", "maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "testName"];
 
 function dumpIntegrationSuite () {
   'use strict';
@@ -46,8 +47,10 @@ function dumpIntegrationSuite () {
     let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
     args.push('--server.endpoint');
     args.push(endpoint);
-    args.push('--server.database');
-    args.push(arango.getDatabaseName());
+    if(args.indexOf("--all-databases") === -1) {
+      args.push('--server.database');
+      args.push(arango.getDatabaseName());
+    }
     args.push('--server.username');
     args.push(arango.connectedUser());
   };
@@ -154,42 +157,59 @@ function dumpIntegrationSuite () {
   return {
 
     setUpAll: function () {
-      db._drop(cn);
-      let c = db._create(cn, { numberOfShards: 3 });
-      let docs = [];
-      for (let i = 0; i < 1000; ++i) {
-        docs.push({ _key: "test" + i });
-      }
-      c.insert(docs);
       
-      db._drop(cn + "Other");
-      c = db._create(cn + "Other", { numberOfShards: 3 });
-      c.insert(docs);
       
-      db._drop(cn + "Padded");
-      c = db._create(cn + "Padded", { keyOptions: { type: "padded" }, numberOfShards: 3 });
-      docs = [];
-      for (let i = 0; i < 1000; ++i) {
-        docs.push({});
-      }
-      c.insert(docs);
-      
-      db._drop(cn + "AutoIncrement");
-      if (!isCluster) {
-        c = db._create(cn + "AutoIncrement", { keyOptions: { type: "autoincrement" }, numberOfShards: 3 });
+      dbs.forEach((name) => {
+        if(name !== "_system") {
+          db._useDatabase("_system");
+          db._createDatabase(name);
+        }
+        db._useDatabase(name);
+        db._drop(cn);
+        let c = db._create(cn, { numberOfShards: 3 });
+        let docs = [];
+        for (let i = 0; i < 1000; ++i) {
+          docs.push({ _key: "test" + i });
+        }
+        c.insert(docs);
+        
+        db._drop(cn + "Other");
+        c = db._create(cn + "Other", { numberOfShards: 3 });
+        c.insert(docs);
+        
+        db._drop(cn + "Padded");
+        c = db._create(cn + "Padded", { keyOptions: { type: "padded" }, numberOfShards: 3 });
         docs = [];
         for (let i = 0; i < 1000; ++i) {
           docs.push({});
         }
         c.insert(docs);
-      }
+        
+        db._drop(cn + "AutoIncrement");
+        if (!isCluster) {
+          c = db._create(cn + "AutoIncrement", { keyOptions: { type: "autoincrement" }, numberOfShards: 3 });
+          docs = [];
+          for (let i = 0; i < 1000; ++i) {
+            docs.push({});
+          }
+          c.insert(docs);
+        }
+
+      });
     },
 
     tearDownAll: function () {
-      db._drop(cn);
-      db._drop(cn + "Other");
-      db._drop(cn + "Padded");
-      db._drop(cn + "AutoIncrement");
+      db._useDatabase("_system");
+      dbs.forEach((name) => {
+        if(name === "_system") {
+          db._drop(cn);
+          db._drop(cn + "Other");
+          db._drop(cn + "Padded");
+          db._drop(cn + "AutoIncrement");
+        } else {
+          db._dropDatabase(name);
+        }
+      });
     },
     
     testDumpOnlyOneShard: function () {
@@ -297,6 +317,36 @@ function dumpIntegrationSuite () {
       }
     },
     
+
+    testDumpAllDatabases: function () {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--all-databases', 'true'];
+        let tree = runDump(path, args, 0);
+        let idString = (name) => {
+          let prevDatabase = db._name();
+          try {
+            db._useDatabase(name);
+            return db._id();
+          } finally { 
+            db._useDatabase(prevDatabase);
+          }
+        }; 
+        assertEqual(-1, tree.indexOf("maçã"));
+        assertNotEqual(-1, tree.indexOf(idString("maçã")));
+        assertNotEqual(-1, tree.indexOf("_system"));
+        assertNotEqual(-1, tree.indexOf("testName"));
+        assertEqual(-1, tree.indexOf("😀")); 
+        assertNotEqual(-1, tree.indexOf(idString("😀")));
+        assertEqual(-1, tree.indexOf("ﻚﻠﺑ ﻞﻄﻴﻓ"));
+        assertNotEqual(-1, tree.indexOf(idString("ﻚﻠﺑ ﻞﻄﻴﻓ")));
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+
     testDumpCompressedEncryptedWithEnvelope: function () {
       if (!require("internal").isEnterprise()) {
         return;
