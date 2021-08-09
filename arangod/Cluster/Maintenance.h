@@ -64,12 +64,11 @@ using ReplicatedLogSpecMap =
     std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::agency::LogPlanSpecification>;
 using ReplicatedLogSpecByDatabase = std::unordered_map<DatabaseID, ReplicatedLogStatusMap>;
 
-auto diffReplicatedLogs(DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
+void diffReplicatedLogs(DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
                         ReplicatedLogSpecMap const& planLogs, std::string const& serverId,
                         MaintenanceFeature::errors_t& errors,
                         std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
-                        std::vector<std::shared_ptr<ActionDescription>>& actions)
-    -> arangodb::Result;
+                        std::vector<std::shared_ptr<ActionDescription>>& actions);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run

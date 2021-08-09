@@ -82,7 +82,7 @@ struct InMemoryLog {
   [[nodiscard]] auto getNextIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getEntryByIndex(LogIndex idx) const noexcept
       -> std::optional<InMemoryLogEntry>;
-  [[nodiscard]] auto splice(LogIndex from, LogIndex to) const -> log_type;
+  [[nodiscard]] auto slice(LogIndex from, LogIndex to) const -> log_type;
 
   [[nodiscard]] auto getFirstIndexOfTerm(LogTerm term) const noexcept
       -> std::optional<LogIndex>;

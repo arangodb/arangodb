@@ -114,7 +114,7 @@ auto RocksDBPersistedLog::drop() -> Result {
 
 auto RocksDBPersistedLog::removeFront(replication2::LogIndex stop) -> Result {
   auto last = RocksDBKey();
-  last.constructLogEntry(_objectId, LogIndex{stop.value});
+  last.constructLogEntry(_objectId, stop);
 
   rocksdb::WriteOptions opts;
   auto s = _persistor->_db->DeleteRange(opts, _persistor->_cf,
@@ -124,7 +124,7 @@ auto RocksDBPersistedLog::removeFront(replication2::LogIndex stop) -> Result {
 
 auto RocksDBPersistedLog::removeBack(replication2::LogIndex start) -> Result {
   auto first = RocksDBKey();
-  first.constructLogEntry(_objectId, LogIndex{start.value});
+  first.constructLogEntry(_objectId, start);
 
   rocksdb::WriteOptions opts;
   auto s = _persistor->_db->DeleteRange(opts, _persistor->_cf, first.string(),
@@ -252,42 +252,43 @@ auto RocksDBLogPersistor::persist(std::shared_ptr<PersistedLog> log,
     std::unique_lock guard(lane._persistorMutex);
     lane._pendingPersistRequests.emplace_back(std::move(log), std::move(iter),
                                               std::move(p));
-    // TODO this code limits the total amount of threads working in the persistor
-    //      maybe we want to limit it for each lane as well?
+    bool const wantNewThread = lane._activePersistorThreads == 0 ||
+                               (lane._pendingPersistRequests.size() > 100 &&
+                                lane._activePersistorThreads < 2);
 
-    // TODO add options for max number of persistor threads for replicated logs
-    size_t num_retries = 0;
-    while (true) {
-      auto lambda = fu2::unique_function<void() noexcept>{
-          [self = shared_from_this(), &lane]() noexcept {
-            self->runPersistorWorker(lane);
-          }};
-
-      if (lane._activePersistorThreads == 0 ||
-          (lane._pendingPersistRequests.size() > 100 && lane._activePersistorThreads < 2)) {
-        // start a new worker thread
-        lane._activePersistorThreads += 1;
-        guard.unlock();
-        try {
-          _executor->operator()(std::move(lambda));  // may throw a QUEUE_FULL exception
-          break;
-        } catch (std::exception const& e) {
-          LOG_TOPIC("213cb", WARN, Logger::REPLICATION2)
-              << "Could not post persistence request onto the scheduler: " << e.what();
-        } catch (...) {
-          LOG_TOPIC("8553d", WARN, Logger::REPLICATION2)
-              << "Could not post persistence request onto the scheduler.";
-        }
-        guard.lock();
-        lane._activePersistorThreads -= 1;
-        guard.unlock();
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(
-            100us * (1 << std::min(num_retries, static_cast<size_t>(15))));
-        num_retries += 1;
-        guard.lock();
-      }
+    if (!wantNewThread) {
+      return f;
+    } else {
+      lane._activePersistorThreads += 1;
     }
   }
+
+  // We committed ourselves to start a thread
+  size_t num_retries = 0;
+  while (true) {
+    auto lambda =
+        fu2::unique_function<void() noexcept>{[self = shared_from_this(), &lane]() noexcept {
+          self->runPersistorWorker(lane);
+        }};
+
+    try {
+      _executor->operator()(std::move(lambda));  // may throw a QUEUE_FULL exception
+      break;
+    } catch (std::exception const& e) {
+      LOG_TOPIC("213cb", WARN, Logger::REPLICATION2)
+          << "Could not post persistence request onto the scheduler: " << e.what()
+          << " Retries: " << num_retries;
+    } catch (...) {
+      LOG_TOPIC("8553d", WARN, Logger::REPLICATION2)
+          << "Could not post persistence request onto the scheduler."
+          << " Retries: " << num_retries;
+    }
+
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(
+        100us * (1 << std::min(num_retries, static_cast<size_t>(15))));
+    num_retries += 1;
+  }
+
   return f;
 }

@@ -109,7 +109,6 @@ struct arangodb::VocBaseLogManager {
     if (auto iter = guard->logs.find(id); iter != guard->logs.end()) {
       return iter->second;
     }
-    // THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id.id());
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
                                   "replicated log %" PRIu64 " not found", id.id());
   }
@@ -120,7 +119,6 @@ struct arangodb::VocBaseLogManager {
     if (auto iter = guard->logs.find(id); iter != guard->logs.end()) {
       return iter->second;
     }
-    // THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id.id());
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
                                   "replicated log %" PRIu64 " not found", id.id());
   }

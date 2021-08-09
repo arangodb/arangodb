@@ -150,12 +150,14 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   }
 
   struct WaitForQueueResolve {
-    WaitForQueueResolve(Guarded<WaitForQueue>::mutex_guard_type guard, LogIndex commitIndex) noexcept
+    using QueueGuard = Guarded<WaitForQueue, basics::UnshackledMutex>::mutex_guard_type;
+
+    WaitForQueueResolve(QueueGuard guard, LogIndex commitIndex) noexcept
         : _guard(std::move(guard)),
           begin(_guard->begin()),
           end(_guard->upper_bound(commitIndex)) {}
 
-    Guarded<WaitForQueue>::mutex_guard_type _guard;
+    QueueGuard _guard;
     WaitForQueue::iterator begin;
     WaitForQueue::iterator end;
   };
@@ -163,24 +165,23 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   // Allocations
   auto newInMemoryLog = self->_inMemoryLog.append(_loggerContext, req.entries);
   auto iter = std::make_unique<InMemoryPersistedLogIterator>(req.entries);
-  auto toBeResolved = std::make_unique<std::optional<WaitForQueueResolve>>();
+  auto toBeResolvedPtr = std::make_unique<std::optional<WaitForQueueResolve>>();
 
   auto* core = self->_logCore.get();
   static_assert(std::is_nothrow_move_constructible_v<decltype(newInMemoryLog)>);
-  auto commitToMemoryAndResolve = [maybeSelf = std::optional<decltype(self)>(std::move(self)),
-                                   req = std::move(req),
-                                   newInMemoryLog = std::move(newInMemoryLog),
-                                   toBeResolved = std::move(toBeResolved)](
-                                      Result&& res) mutable noexcept {
+  auto commitToMemoryAndResolve =
+      [selfGuard = std::move(self), req = std::move(req),
+       newInMemoryLog = std::move(newInMemoryLog),
+       toBeResolvedPtr = std::move(toBeResolvedPtr)](
+          futures::Try<Result>&& tryRes) mutable -> std::pair<AppendEntriesResult, DeferredAction> {
     // We have to release the guard after this lambda is finished.
     // Otherwise it would be released when the lambda is destroyed, which
     // happens *after* the following thenValue calls have been executed. In
     // particular the lock is held until the end of the future chain is reached.
     // This will cause deadlocks.
-    TRI_DEFER({ maybeSelf.reset(); });
-    TRI_ASSERT(maybeSelf.has_value());
-    auto& self = maybeSelf.value();
+    decltype(selfGuard) self = std::move(selfGuard);
 
+    auto const& res = tryRes.get();
     {
       // This code block does not throw any exceptions. This is executed after
       // we wrote to the on-disk-log.
@@ -209,9 +210,13 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         LOG_CTX("1641d", TRACE, self->_follower._loggerContext)
             << "increment commit index: " << self->_commitIndex;
 
-        *toBeResolved = WaitForQueueResolve{self->_waitForQueue.getLockedGuard(),
-                                            self->_commitIndex};
-        return DeferredAction([toBeResolved = std::move(toBeResolved)]() noexcept {
+        static_assert(
+            std::is_nothrow_constructible_v<std::optional<WaitForQueueResolve>, std::in_place_t,
+                                            std::add_rvalue_reference_t<WaitForQueueResolve::QueueGuard>, LogIndex>);
+        auto toBeResolved = std::optional<WaitForQueueResolve>{std::in_place, self->_waitForQueue.getLockedGuard(), self->_commitIndex};
+        static_assert(std::is_nothrow_move_assignable_v<std::optional<WaitForQueueResolve>>);
+        *toBeResolvedPtr = std::move(toBeResolved);
+        return DeferredAction([toBeResolved = std::move(toBeResolvedPtr)]() noexcept {
           auto& resolve = toBeResolved->value();
           for (auto it = resolve.begin; it != resolve.end; it = resolve._guard->erase(it)) {
             if (!it->second.isFulfilled()) {
@@ -225,19 +230,21 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       return {};
     });
 
-    static_assert(noexcept(AppendEntriesResult::withOk(self->_follower._currentTerm, req.messageId)));
+    static_assert(noexcept(
+        AppendEntriesResult::withOk(self->_follower._currentTerm, req.messageId)));
     static_assert(std::is_nothrow_move_constructible_v<DeferredAction>);
-    return std::make_pair(AppendEntriesResult::withOk(self->_follower._currentTerm, req.messageId), std::move(action));
+    return std::make_pair(AppendEntriesResult::withOk(self->_follower._currentTerm, req.messageId),
+                          std::move(action));
   };
   static_assert(std::is_nothrow_move_constructible_v<decltype(commitToMemoryAndResolve)>);
 
   // Action
   return core->insertAsync(std::move(iter), req.waitForSync)
-      .thenValue(std::move(commitToMemoryAndResolve))
+      .then(std::move(commitToMemoryAndResolve))
       .then([measureTime = std::move(measureTimeGuard)](auto&& res) mutable {
         measureTime.fire();
         auto&& [result, toBeResolved] = res.get();
-        // Is is okay to fire here, because commitToMemoryAndResolve has release
+        // It is okay to fire here, because commitToMemoryAndResolve has released
         // the guard already.
         toBeResolved.fire();
         return std::move(result);
@@ -278,7 +285,7 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<std::unique_ptr<LogC
     auto queue = std::make_unique<WaitForQueue>(
         std::move(followerData._waitForQueue.getLockedGuard().get()));
 
-    auto action = [queue = std::move(queue)]() mutable noexcept {
+    auto action = [queue = std::move(queue)]() noexcept {
       std::for_each(queue->begin(), queue->end(), [](auto& pair) {
         pair.second.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
                                                    __FILE__, __LINE__));
@@ -323,9 +330,9 @@ auto replicated_log::LogFollower::waitFor(LogIndex idx)
   // so either you inserted it and or nothing happens
   auto it = self->_waitForQueue.getLockedGuard()->emplace(idx, WaitForPromise{});
   auto& promise = it->second;
-  auto&& future = promise.getFuture();
+  auto future = promise.getFuture();
   TRI_ASSERT(future.valid());
-  return std::move(future);
+  return future;
 }
 
 auto replicated_log::LogFollower::waitForIterator(LogIndex index)
@@ -334,7 +341,7 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid parameter; log index 0 is invalid");
   }
   return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) -> WaitForIteratorFuture {
-    auto [actualIndex, iter] = _guardedFollowerData.doUnderLock(
+    auto [fromIndex, iter] = _guardedFollowerData.doUnderLock(
         [&](GuardedFollowerData& followerData) -> std::pair<LogIndex, std::unique_ptr<LogIterator>> {
           TRI_ASSERT(index <= followerData._commitIndex);
 
@@ -365,7 +372,7 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
 
     // call here, otherwise we deadlock with waitFor
     if (iter == nullptr) {
-      return waitForIterator(actualIndex);
+      return waitForIterator(fromIndex);
     }
 
     return std::move(iter);

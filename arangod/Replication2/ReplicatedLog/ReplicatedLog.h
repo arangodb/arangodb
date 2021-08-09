@@ -48,7 +48,7 @@ namespace arangodb::replication2::replicated_log {
  * vocbase. Exactly one instance exists for each replicated log this server is a
  * participant of.
  *
- * It holds a single LogParticipantI; starting with a LogUnconfiguredParticipant,
+ * It holds a single ILogParticipant; starting with a LogUnconfiguredParticipant,
  * this will usually be either a LogLeader or a LogFollower.
  *
  * The active participant is also responsible for the singular LogCore of this

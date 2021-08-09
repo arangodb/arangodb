@@ -168,11 +168,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
    private:
     LogLeader& _leader;
     LoggerContext const _logContext;
-    // struct GuardedLocalFollowerData {
-    //   std::unique_ptr<LogCore> _logCore;
-    //   TermIndexPair _lastLogIndex;
-    // };
-    // Guarded<GuardedLocalFollowerData> _guardedLocalFollowerData;
     Guarded<std::unique_ptr<LogCore>> _guardedLogCore;
   };
 

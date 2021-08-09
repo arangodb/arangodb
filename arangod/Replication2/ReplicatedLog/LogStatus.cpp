@@ -94,7 +94,7 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
 
 void LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
-  builder.add("commitIndex", VPackValue(commitIndex.value));
+  builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex.value));
   builder.add(VPackValue(StaticStrings::Spearhead));
   spearHead.toVelocyPack(builder);
   builder.add("lastErrorReason", VPackValue(int(lastErrorReason)));
@@ -104,7 +104,7 @@ void LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::Builder& builder
 
 auto LeaderStatus::FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics {
   FollowerStatistics stats;
-  stats.commitIndex = slice.get("commitIndex").extract<LogIndex>();
+  stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
   stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
   stats.lastErrorReason = AppendEntriesErrorReason{slice.get("lastErrorReason").getNumericValue<int>()};
   stats.lastRequestLatencyMS = slice.get("lastRequestLatencyMS").getDouble();

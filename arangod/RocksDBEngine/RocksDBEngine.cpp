@@ -1144,12 +1144,12 @@ ErrorCode RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-ErrorCode RocksDBEngine::getReplicatedLogs(TRI_vocbase_t& vocbase,
-                                           arangodb::velocypack::Builder& result) {
+void RocksDBEngine::getReplicatedLogs(TRI_vocbase_t& vocbase,
+                                      arangodb::velocypack::Builder& result) {
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(
       _db->NewIterator(readOptions, RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Definitions)));
+                                        RocksDBColumnFamilyManager::Family::Definitions)));
 
   result.openArray();
 
@@ -1171,8 +1171,6 @@ ErrorCode RocksDBEngine::getReplicatedLogs(TRI_vocbase_t& vocbase,
   }
 
   result.close();
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ErrorCode RocksDBEngine::getViews(TRI_vocbase_t& vocbase,
@@ -2351,10 +2349,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   // scan the database path for replicated logs
   try {
     VPackBuilder builder;
-    auto res = getReplicatedLogs(*vocbase, builder);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
+    getReplicatedLogs(*vocbase, builder);
 
     VPackSlice const slice = builder.slice();
     TRI_ASSERT(slice.isArray());

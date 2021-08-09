@@ -50,7 +50,7 @@ struct arangodb::ReplicatedLogMethods {
   virtual ~ReplicatedLogMethods() = default;
   virtual auto createReplicatedLog(replication2::agency::LogPlanSpecification const& spec) const
       -> futures::Future<Result> {
-    return Result(TRI_ERROR_BAD_PARAMETER);
+    return Result(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   virtual auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> {
@@ -83,7 +83,7 @@ struct arangodb::ReplicatedLogMethods {
   }
 
   virtual auto insert(LogId, LogPayload) const
-  -> futures::Future<std::shared_ptr<replicated_log::QuorumData const>> {
+  -> futures::Future<std::pair<LogIndex, std::shared_ptr<replicated_log::QuorumData const>>> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -97,7 +97,7 @@ namespace {
 
 auto sendInsertRequest(network::ConnectionPool *pool, std::string const& server, std::string const& database,
                        LogId id, LogPayload payload)
-    -> futures::Future<std::shared_ptr<replicated_log::QuorumData const>> {
+                       -> futures::Future<std::pair<LogIndex, std::shared_ptr<replicated_log::QuorumData const>>> {
 
   auto path = basics::StringUtils::joinT("/", "_api/log", id, "insert");
 
@@ -109,7 +109,10 @@ auto sendInsertRequest(network::ConnectionPool *pool, std::string const& server,
         if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
           THROW_ARANGO_EXCEPTION(resp.combinedResult());
         }
-        return std::make_shared<replication2::replicated_log::QuorumData const>(resp.slice().get("result"));
+        auto result = resp.slice().get("result");
+        auto quorum = std::make_shared<replication2::replicated_log::QuorumData const>(result.get("quorum"));
+        auto index = result.get("index").extract<LogIndex>();
+        return std::make_pair(index, std::move(quorum));
       });
 }
 
@@ -191,9 +194,7 @@ auto sendTailRequest(network::ConnectionPool* pool, std::string const& server,
 
 struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
   auto getLogLeader(LogId id) const {
-    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-
-    auto leader = ci.getReplicatedLogLeader(vocbase.name(), id);
+    auto leader = clusterInfo.getReplicatedLogLeader(vocbase.name(), id);
     if (!leader) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
@@ -202,25 +203,22 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
   }
 
   auto insert(LogId id, LogPayload payload) const
-      -> futures::Future<std::shared_ptr<replicated_log::QuorumData const>> override {
-    auto pool = server.getFeature<NetworkFeature>().pool();
+      -> futures::Future<std::pair<LogIndex, std::shared_ptr<replicated_log::QuorumData const>>> override {
     return sendInsertRequest(pool, getLogLeader(id), vocbase.name(), id, std::move(payload));
   }
 
   auto getLogEntryByIndex(LogId id, LogIndex index) const
       -> futures::Future<std::optional<PersistingLogEntry>> override {
-    auto pool = server.getFeature<NetworkFeature>().pool();
     return sendReadEntryRequest(pool, getLogLeader(id), vocbase.name(), id, index);
   }
 
-  auto getLogStatus(LogId id) const -> futures::Future<replication2::replicated_log::LogStatus> override {
-    auto pool = server.getFeature<NetworkFeature>().pool();
+  auto getLogStatus(LogId id) const
+      -> futures::Future<replication2::replicated_log::LogStatus> override {
     return sendLogStatusRequest(pool, getLogLeader(id), vocbase.name(), id);
   }
 
   auto tailEntries(LogId id, LogIndex first, std::size_t limit) const
       -> futures::Future<std::unique_ptr<LogIterator>> override {
-    auto pool = server.getFeature<NetworkFeature>().pool();
     return sendTailRequest(pool, getLogLeader(id), vocbase.name(), id, first, limit);
   }
 
@@ -233,18 +231,20 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
     return replication2::agency::methods::deleteReplicatedLog(vocbase.name(), id);
   }
 
-  auto updateTermSpecification(LogId id, replication2::agency::LogPlanTermSpecification const& term) const
+  auto updateTermSpecification(LogId id,
+                               replication2::agency::LogPlanTermSpecification const& term) const
       -> futures::Future<Result> override {
     return replication2::agency::methods::updateTermSpecification(vocbase.name(), id, term);
   }
 
-  explicit ReplicatedLogMethodsCoord(TRI_vocbase_t& vocbase,
-                                     application_features::ApplicationServer& server)
-      : vocbase(vocbase), server(server) {}
+  explicit ReplicatedLogMethodsCoord(TRI_vocbase_t& vocbase, ClusterInfo& clusterInfo,
+                                     network::ConnectionPool* pool)
+      : vocbase(vocbase), clusterInfo(clusterInfo), pool(pool) {}
 
  private:
   TRI_vocbase_t& vocbase;
-  application_features::ApplicationServer& server;
+  ClusterInfo& clusterInfo;
+  network::ConnectionPool* pool;
 };
 
 struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
@@ -301,11 +301,11 @@ struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
   }
 
   auto insert(LogId logId, LogPayload payload) const
-      -> futures::Future<std::shared_ptr<replicated_log::QuorumData const>> override {
+      -> futures::Future<std::pair<LogIndex, std::shared_ptr<replicated_log::QuorumData const>>> override {
     auto log = vocbase.getReplicatedLogLeaderById(logId);
     auto idx = log->insert(std::move(payload));
-    auto f = log->waitFor(idx);
-    return f;
+    return log->waitFor(idx).thenValue(
+        [idx](auto&& quorum) { return std::make_pair(idx, std::move(quorum)); });
   }
 
   explicit ReplicatedLogMethodsDBServ(TRI_vocbase_t& vocbase)
@@ -326,8 +326,11 @@ RestStatus RestLogHandler::execute() {
   switch (ServerState::instance()->getRole()) {
     case ServerState::ROLE_DBSERVER:
       return executeByMethod(ReplicatedLogMethodsDBServ(_vocbase));
-    case ServerState::ROLE_COORDINATOR:
-      return executeByMethod(ReplicatedLogMethodsCoord(_vocbase, server()));
+    case ServerState::ROLE_COORDINATOR: {
+      auto pool = server().getFeature<NetworkFeature>().pool();
+      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      return executeByMethod(ReplicatedLogMethodsCoord(_vocbase, ci, pool));
+    }
     case ServerState::ROLE_SINGLE:
     case ServerState::ROLE_UNDEFINED:
     case ServerState::ROLE_AGENT:
@@ -392,7 +395,12 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
     return waitForFuture(
         methods.insert(logId, LogPayload::createFromSlice(body)).thenValue([this](auto&& quorum) {
           VPackBuilder response;
-          quorum->toVelocyPack(response);
+          {
+            VPackObjectBuilder result(&response);
+            response.add("index", VPackValue(quorum.first));
+            response.add(VPackValue("quorum"));
+            quorum.second->toVelocyPack(response);
+          }
           generateOk(rest::ResponseCode::ACCEPTED, response.slice());
         }));
   } else if(verb == "updateTermSpecification") {
