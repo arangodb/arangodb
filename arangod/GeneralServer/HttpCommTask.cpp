@@ -403,7 +403,7 @@ static void DTraceHttpCommTaskProcessRequest(size_t) {}
 template <SocketType T>
 std::string HttpCommTask<T>::url() const {
   if (_request != nullptr) {
-    return std::string((_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())) +
+    return std::string((_request->databaseName().empty() ? "" : "/_db/" + StringUtils::urlEncode(_request->databaseName()))) +
       (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath());
   }
   return "";
