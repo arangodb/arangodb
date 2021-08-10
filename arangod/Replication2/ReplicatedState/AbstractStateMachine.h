@@ -40,6 +40,8 @@ namespace replicated_state {
 
 template <typename T>
 struct AbstractStateMachine : std::enable_shared_from_this<AbstractStateMachine<T>> {
+  // TODO Maybe we can create a non-templated base class for functions that do not
+  //      require the template parameter. (waitFor, pollEntries, ...)
   using LogIterator = TypedLogIterator<T>;
   using LogRangeIterator = TypedLogRangeIterator<T>;
 

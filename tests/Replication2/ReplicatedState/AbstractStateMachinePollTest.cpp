@@ -39,8 +39,14 @@ struct MyTestStateMachine : replicated_state::AbstractStateMachine<TestLogEntry>
   explicit MyTestStateMachine(std::shared_ptr<replicated_log::ReplicatedLog> log)
       : replicated_state::AbstractStateMachine<TestLogEntry>(std::move(log)) {}
 
-  auto add(std::string_view value) -> LogIndex {
-    return insert(TestLogEntry(std::string{value}));
+  auto add(std::string_view value) -> futures::Future<Result> {
+    auto idx = insert(TestLogEntry(std::string{value}));
+    return waitFor(idx).thenValue([this, weak = weak_from_this(), value = std::string{value}](auto&& res) mutable {
+      if (auto self = weak.lock()) {
+        _entries.insert(std::move(value));
+      }
+      return Result{TRI_ERROR_NO_ERROR};
+    });
   }
 
   auto get() -> std::unordered_set<std::string> {
@@ -100,9 +106,21 @@ TEST_F(StateMachineTest, check_apply_entries) {
       A, LogConfig{2, false}, "A", LogTerm{1},
       std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{follower->log});
 
-  leader->state->add("first");
-  follower->state->pollEntries();
+  auto f1 = leader->state->add("first");
+  ASSERT_TRUE(f1.isReady());
+  auto f = follower->state->pollEntries();
+  ASSERT_TRUE(f.isReady());
 
-  auto set = follower->state->get();
-  EXPECT_EQ(set.size(), 1);
+  using namespace std::string_literals;
+
+  {
+    auto set = follower->state->get();
+    EXPECT_EQ(set.size(), 1);
+    EXPECT_EQ(set, std::unordered_set{"first"s});
+  }
+  {
+    auto set = leader->state->get();
+    EXPECT_EQ(set.size(), 1);
+    EXPECT_EQ(set, std::unordered_set{"first"s});
+  }
 }
