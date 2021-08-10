@@ -218,7 +218,7 @@ auto replicated_log::InMemoryLog::getInternalIteratorFrom(LogIndex fromIdx) cons
 }
 
 auto replicated_log::InMemoryLog::getIteratorRange(LogIndex fromIdx, LogIndex toIdx) const
-    -> std::unique_ptr<LogIterator> {
+    -> std::unique_ptr<LogRangeIterator> {
   auto log = _log.take(toIdx.saturatedDecrement().value)
                  .drop(fromIdx.saturatedDecrement().value);
   return std::make_unique<ReplicatedLogIterator>(std::move(log));

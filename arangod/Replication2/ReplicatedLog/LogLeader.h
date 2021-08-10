@@ -222,7 +222,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
         -> std::unique_ptr<PersistedLogIterator>;
 
     [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
-        -> std::unique_ptr<LogIterator>;
+        -> std::unique_ptr<LogRangeIterator>;
 
     [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
 

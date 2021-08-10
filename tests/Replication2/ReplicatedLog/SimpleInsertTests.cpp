@@ -32,6 +32,7 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
+using namespace arangodb::replication2::test;
 
 TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
   auto coreA = makeLogCore(LogId{1});

@@ -24,7 +24,7 @@
 
 #include "Basics/voc-errors.h"
 
-#include "ReplicatedLogMetricsMock.h"
+#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
@@ -33,6 +33,7 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
+using namespace arangodb::replication2::test;
 
 struct FollowerAppendEntriesTest : ReplicatedLogTest {
   auto makeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId) -> std::shared_ptr<LogFollower> {

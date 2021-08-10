@@ -20,10 +20,11 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Replication2/TestHelper.h"
+#include "TestHelper.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::test;
 
 
 TEST(LogIndexTest, compareOperators) {

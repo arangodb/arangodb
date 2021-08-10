@@ -339,7 +339,7 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
   }
   return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) -> WaitForIteratorFuture {
     auto [fromIndex, iter] = _guardedFollowerData.doUnderLock(
-        [&](GuardedFollowerData& followerData) -> std::pair<LogIndex, std::unique_ptr<LogIterator>> {
+        [&](GuardedFollowerData& followerData) -> std::pair<LogIndex, std::unique_ptr<LogRangeIterator>> {
           TRI_ASSERT(index <= followerData._commitIndex);
 
           /*
@@ -395,7 +395,7 @@ auto replicated_log::LogFollower::getCommittedLogIterator(LogIndex firstIndex) c
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getCommittedLogIterator(LogIndex firstIndex) const
--> std::unique_ptr<LogIterator> {
+-> std::unique_ptr<LogRangeIterator> {
   auto const endIdx = _inMemoryLog.getNextIndex();
   TRI_ASSERT(firstIndex < endIdx);
   // return an iterator for the range [firstIndex, _commitIndex + 1)

@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/ReplicatedLog/types.h"
-#include "Replication2/TestHelper.h"
+#include "TestHelper.h"
 
 #include <Basics/Exceptions.h>
 
@@ -30,6 +30,7 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
+using namespace arangodb::replication2::test;
 
 TEST_F(ReplicatedLogTest, reclaim_leader_after_term_change) {
 

@@ -28,6 +28,7 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
+using namespace arangodb::replication2::test;
 
 struct AppendEntriesBatchTest : ReplicatedLogTest {};
 

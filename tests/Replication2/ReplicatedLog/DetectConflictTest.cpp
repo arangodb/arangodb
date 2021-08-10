@@ -27,6 +27,7 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::algorithms;
+using namespace arangodb::replication2::test;
 
 struct DetectConflictTest : ::testing::Test {
 

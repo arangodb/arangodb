@@ -240,12 +240,25 @@ class LogId : public arangodb::basics::Identifier {
 
 auto to_string(LogId logId) -> std::string;
 
-struct LogIterator {
-  virtual ~LogIterator() = default;
+template<typename T>
+struct TypedLogIterator {
+  virtual ~TypedLogIterator() = default;
   // The returned view is guaranteed to stay valid until a successive next()
   // call (only).
-  virtual auto next() -> std::optional<LogEntryView> = 0;
+  virtual auto next() -> std::optional<T> = 0;
 };
+
+template<typename T>
+struct TypedLogRangeIterator : TypedLogIterator<T> {
+  // returns the index interval [from, to)
+  // Note that this does not imply that all indexes in the range [from, to)
+  // are returned. Hence (to - from) is only an upper bound on the number of
+  // entries returned.
+  virtual auto range() const noexcept -> std::pair<LogIndex, LogIndex> = 0;
+};
+
+using LogIterator = TypedLogIterator<LogEntryView>;
+using LogRangeIterator = TypedLogRangeIterator<LogEntryView>;
 
 struct LogConfig {
   std::size_t writeConcern = 1;

@@ -478,7 +478,7 @@ auto replicated_log::LogLeader::triggerAsyncReplication() -> void {
 auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     LogIndex newIndex, std::shared_ptr<QuorumData> quorum) -> ResolvedPromiseSet {
   LOG_CTX("a9a7e", TRACE, _self._logContext)
-      << "updating commit index to " << newIndex << "with quorum " << quorum->quorum;
+      << "updating commit index to " << newIndex << " with quorum " << quorum->quorum;
   auto oldIndex = _commitIndex;
 
   TRI_ASSERT(_commitIndex < newIndex);
@@ -703,7 +703,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getInternalLogIterator(LogInd
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::getCommittedLogIterator(LogIndex firstIndex) const
-    -> std::unique_ptr<LogIterator> {
+    -> std::unique_ptr<LogRangeIterator> {
   auto const endIdx = _inMemoryLog.getNextIndex();
   TRI_ASSERT(firstIndex < endIdx);
   // return an iterator for the range [firstIndex, _commitIndex + 1)
@@ -809,7 +809,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
 
   return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) -> WaitForIteratorFuture {
     auto [actualIndex, iter] = _guardedLeaderData.doUnderLock(
-        [&](GuardedLeaderData& leaderData) -> std::pair<LogIndex, std::unique_ptr<LogIterator>> {
+        [&](GuardedLeaderData& leaderData) -> std::pair<LogIndex, std::unique_ptr<LogRangeIterator>> {
           TRI_ASSERT(index <= leaderData._commitIndex);
 
           /*

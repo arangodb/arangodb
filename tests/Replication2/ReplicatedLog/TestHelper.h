@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "ReplicatedLogMetricsMock.h"
+#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 
 #include "Replication2/ReplicatedLog/ILogParticipant.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
@@ -40,73 +40,13 @@
 #include <memory>
 #include <utility>
 
-namespace arangodb::replication2 {
+#include "../Mocks/PersistedLog.h"
+
+namespace arangodb::replication2::test {
 
 using namespace replicated_log;
 
-struct MockLog : replication2::replicated_log::PersistedLog {
-  using storeType = std::map<replication2::LogIndex, replication2::PersistingLogEntry>;
 
-  explicit MockLog(replication2::LogId id);
-  MockLog(replication2::LogId id, storeType storage);
-
-  auto insert(replication2::replicated_log::PersistedLogIterator& iter, WriteOptions const&) -> Result override;
-  auto insertAsync(std::unique_ptr<replication2::replicated_log::PersistedLogIterator> iter,
-                   WriteOptions const&) -> futures::Future<Result> override;
-  auto read(replication2::LogIndex start)
-      -> std::unique_ptr<replication2::replicated_log::PersistedLogIterator> override;
-  auto removeFront(replication2::LogIndex stop) -> Result override;
-  auto removeBack(replication2::LogIndex start) -> Result override;
-  auto drop() -> Result override;
-
-  void setEntry(replication2::LogIndex idx, replication2::LogTerm term,
-                replication2::LogPayload payload);
-  void setEntry(replication2::PersistingLogEntry);
-
-  [[nodiscard]] storeType getStorage() const { return _storage; }
- private:
-  using iteratorType = storeType::iterator;
-  storeType _storage;
-};
-
-struct AsyncMockLog : MockLog {
-
-  explicit AsyncMockLog(replication2::LogId id);
-
-  ~AsyncMockLog() noexcept;
-
-  auto insertAsync(std::unique_ptr<replication2::replicated_log::PersistedLogIterator> iter,
-                   WriteOptions const&) -> futures::Future<Result> override;
-
-  auto stop() noexcept -> void {
-    if (!_stopping) {
-      {
-        std::unique_lock guard(_mutex);
-        _stopping = true;
-        _cv.notify_all();
-      }
-      _asyncWorker.join();
-    }
-  }
-
- private:
-  struct QueueEntry {
-    WriteOptions opts;
-    std::unique_ptr<replication2::replicated_log::PersistedLogIterator> iter;
-    futures::Promise<Result> promise;
-  };
-
-  void runWorker();
-
-  std::mutex _mutex;
-  std::vector<std::shared_ptr<QueueEntry>> _queue;
-  std::condition_variable _cv;
-  std::atomic<bool> _stopping = false;
-  bool _stopped = false;
-  // _asyncWorker *must* be initialized last, otherwise starting the thread
-  // races with initializing the coordination variables.
-  std::thread _asyncWorker;
-};
 
 struct DelayedFollowerLog : AbstractFollower {
   explicit DelayedFollowerLog(std::shared_ptr<LogFollower> follower)

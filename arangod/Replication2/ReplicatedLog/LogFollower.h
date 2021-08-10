@@ -72,7 +72,7 @@ class LogFollower : public ILogParticipant,
 
     [[nodiscard]] auto getLocalStatistics() const noexcept -> LogStatistics;
     [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
-        -> std::unique_ptr<LogIterator>;
+        -> std::unique_ptr<LogRangeIterator>;
 
     LogFollower const& _follower;
     InMemoryLog _inMemoryLog;
