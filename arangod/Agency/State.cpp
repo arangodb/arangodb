@@ -1367,7 +1367,8 @@ bool State::compactPersisted(index_t cind, index_t keep) {
       col->compact();
     }
   } catch (const std::exception& e) {
-    LOG_TOPIC("d13f1", WARN, Logger::AGENCY) << "Failed to compact agent's physical log collection.";
+    LOG_TOPIC("d13f1", WARN, Logger::AGENCY)
+      << "Failed to compact agent's physical log collection:" << e.what();
   }
 
   return true;
