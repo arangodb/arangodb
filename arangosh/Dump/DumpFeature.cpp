@@ -822,7 +822,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   if (_options.allDatabases) {
     std::string const dbId = body.get("properties").get("id").copyString();
     // inject current database
-    LOG_TOPIC("4af42", INFO, Logger::DUMP) << "Dumping database '" << dbName << "(" << dbId << ")" << "'";
+    LOG_TOPIC("4af42", INFO, Logger::DUMP) << "Dumping database '" << dbName << "' (" << dbId << ")";
     _directory = std::make_unique<ManagedDirectory>(
         server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, ::getDatabaseDirName(dbName, dbId)),
         true, true, _options.useGzip);
