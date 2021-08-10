@@ -1,6 +1,10 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue BTS-539 "Unsynchronized query kill while it's being finalized in
+  another thread was uncovered through `test-kill.js` of `communication_ssl` suite"
+  Fixed possible (but unlikely) crash when killing an AQL query.
+
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented cases
   and numerically unstable behaviour. In particular, the case of the
   intersection of two polygons in which one is an S2LngLatRect is fixed
