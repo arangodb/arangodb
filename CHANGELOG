@@ -3,7 +3,7 @@ devel
 
 * Fixed issue BTS-539 "Unsynchronized query kill while it's being finalized in
   another thread was uncovered through `test-kill.js` of `communication_ssl` suite"
-  Fixed sync of query profiler  releasing with shutdown state changing in Query dtor
+  Fixed possible (but unlikely) crash when killing an AQL query.
 
 * Change optimization level for debug builds back to `-O0` (from `-Og`)
   because `-Og` seems to cause debuggability issues in some environments.
