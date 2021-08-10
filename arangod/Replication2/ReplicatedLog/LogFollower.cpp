@@ -210,9 +210,6 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         LOG_CTX("1641d", TRACE, self->_follower._loggerContext)
             << "increment commit index: " << self->_commitIndex;
 
-        static_assert(
-            std::is_nothrow_constructible_v<std::optional<WaitForQueueResolve>, std::in_place_t,
-                                            std::add_rvalue_reference_t<WaitForQueueResolve::QueueGuard>, LogIndex>);
         auto toBeResolved = std::optional<WaitForQueueResolve>{std::in_place, self->_waitForQueue.getLockedGuard(), self->_commitIndex};
         static_assert(std::is_nothrow_move_assignable_v<std::optional<WaitForQueueResolve>>);
         *toBeResolvedPtr = std::move(toBeResolved);
