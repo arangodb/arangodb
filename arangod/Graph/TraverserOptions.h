@@ -219,6 +219,8 @@ struct TraverserOptions : public graph::BaseOptions {
   auto setDisjoint() -> void;
   auto isDisjoint() const -> bool;
 
+  auto isSatelliteLeader() const -> bool;
+
  private:
   void readProduceInfo(VPackSlice obj);
 };
