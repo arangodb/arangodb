@@ -1347,7 +1347,7 @@ bool State::compactPersisted(index_t cind, index_t keep) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
   }
 
-  LOG_TOPIC("a8123", DEBUG, Logger::AGENCY) << "Compacting log collection";
+  LOG_TOPIC("a8132", DEBUG, Logger::AGENCY) << "Compacting log collection";
   try {
     auto col = _vocbase->lookupCollection("log");
     if (col == nullptr) {
