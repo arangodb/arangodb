@@ -529,7 +529,7 @@ ExecutionNode* getCalcNode(ExecutionNode* node) {
   return nullptr;
 }
 
-bool TryOptimize(AqlAnalyzer* analyzer) {
+bool tryOptimize(AqlAnalyzer* analyzer) {
   ExecutionNode* execNode = getCalcNode(analyzer->_plan->root());
   if (execNode != nullptr) {
     TRI_ASSERT(execNode->getType() == ExecutionNode::NodeType::CALCULATION);
@@ -542,7 +542,7 @@ bool TryOptimize(AqlAnalyzer* analyzer) {
   return false;
 }
 
-bool OptimizedQuery(AqlAnalyzer* analyzer) {
+void resetFromExpression(AqlAnalyzer* analyzer) {
   //get expression
   auto e = analyzer->_nodeToOptimize->expression();
 
@@ -552,7 +552,7 @@ bool OptimizedQuery(AqlAnalyzer* analyzer) {
   auto& query = analyzer->_query->ast()->query();
 
   // create context
-  // value not needed since getting it from _bindedNodes
+  // value is not needed since getting it from _bindedNodes
   SingleVarExpressionContext ctx(trx, query, analyzer->_aqlFunctionsInternalCache);
 
   analyzer->_executionState = ExecutionState::DONE; // already calculated
@@ -561,24 +561,23 @@ bool OptimizedQuery(AqlAnalyzer* analyzer) {
   analyzer->_queryResults->destroyValue(0,0);
   bool mustDestroy = false;
   AqlValue& out = const_cast<AqlValue&>(analyzer->_queryResults->getValueReference(0,0));
-  out = std::move(e->execute(&ctx, mustDestroy));
+  out = e->execute(&ctx, mustDestroy);
 
-  analyzer->_engine.resultRegister(0); // set the value of resultRegister to 0
-  return true;
+  analyzer->_engineResultRegister = 0; // set the value of resultRegister to 0
 }
 
-bool NotOptimizedQuery(AqlAnalyzer* analyzer) {
+void resetFromQuery(AqlAnalyzer* analyzer) {
   analyzer->_queryResults = nullptr;
   analyzer->_plan->clearVarUsageComputed();
   analyzer->_aqlFunctionsInternalCache.clear();
   analyzer->_engine.initFromPlanForCalculation(*analyzer->_plan);
   analyzer->_executionState = ExecutionState::HASMORE;
-  return true;
+  analyzer->_engineResultRegister = analyzer->_engine.resultRegister();
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 bool AqlAnalyzer::isOptimized() const {
-  return resetImpl == &OptimizedQuery;
+  return resetImpl == &resetFromExpression;
 }
 #endif
 
@@ -589,7 +588,7 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
     _itemBlockManager(_query->resourceMonitor(), SerializationFormat::SHADOWROWS),
     _engine(0, *_query, _itemBlockManager,
             SerializationFormat::SHADOWROWS, nullptr),
-    resetImpl(&NotOptimizedQuery) {
+    resetImpl(&resetFromQuery) {
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   std::get<AnalyzerValueTypeAttribute>(_attrs).value = _options.returnType;
   TRI_ASSERT(validateQuery(_options.queryString,
@@ -601,7 +600,7 @@ bool AqlAnalyzer::next() {
   do {
     if (_queryResults != nullptr) {
       while (_queryResults->numRows() > _resultRowIdx) {
-        AqlValue const& value =  _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister()) ;
+        AqlValue const& value =  _queryResults->getValueReference(_resultRowIdx++, _engineResultRegister) ;
         if (_options.keepNull || !value.isNull(true)) {
           switch (_options.returnType) {
             case AnalyzerValueType::String:
@@ -728,8 +727,8 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
       _plan = optimizer.stealBest();
 
       // try to optimize
-      if (TryOptimize(this)) {
-        resetImpl = &OptimizedQuery;
+      if (tryOptimize(this)) {
+        resetImpl = &resetFromExpression;
       }
     }
 
@@ -741,7 +740,8 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
     _nextIncVal = 1;  // first increment always 1 to move from -1 to 0
     _engine.reset();
 
-    return resetImpl(this);
+    resetImpl(this);
+    return true;
 
   } catch (std::exception const& e) {
     LOG_TOPIC("d2223", WARN, iresearch::TOPIC)

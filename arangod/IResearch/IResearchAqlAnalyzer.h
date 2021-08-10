@@ -47,7 +47,6 @@ namespace iresearch {
 
 class AqlAnalyzer final : public irs::analysis::analyzer{
 
-  //friend class QueryOptimizer;
  public:
   struct Options {
     Options() = default;
@@ -107,9 +106,9 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
 
  private:
 
-  friend bool TryOptimize(AqlAnalyzer* analyzer);
-  friend bool OptimizedQuery(AqlAnalyzer* analyzer);
-  friend bool NotOptimizedQuery(AqlAnalyzer* analyzer);
+  friend bool tryOptimize(AqlAnalyzer* analyzer);
+  friend void resetFromExpression(AqlAnalyzer* analyzer);
+  friend void resetFromQuery(AqlAnalyzer* analyzer);
 
   using attributes = std::tuple<
     irs::increment,
@@ -126,12 +125,13 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   aql::AqlItemBlockManager _itemBlockManager;
   aql::ExecutionEngine _engine;
   std::unique_ptr<aql::ExecutionPlan> _plan;
-  bool (*resetImpl)(AqlAnalyzer* analyzer);
+  void (*resetImpl)(AqlAnalyzer* analyzer);
   aql::CalculationNode* _nodeToOptimize{nullptr};
   aql::SharedAqlItemBlockPtr _queryResults;
   std::vector<aql::AstNode*> _bindedNodes;
   aql::ExecutionState _executionState{aql::ExecutionState::DONE};
 
+  aql::RegisterId _engineResultRegister;
   attributes _attrs;
   size_t _resultRowIdx{ 0 };
   uint32_t _nextIncVal{0};
