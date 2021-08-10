@@ -4,6 +4,9 @@ devel
 * Append physical compaction of log collection to every Raft log
   compaction (BTS-542).
 
+* Change optimization level for debug builds back to `-O0` (from `-Og`)
+  because `-Og` seems to cause debuggability issues in some environments.
+
 * Fixed issue BTS-536 "Upgrading without rest-server is aborted by error".
   Now stating `--server.rest-server false` does not require the additional
   `--console` argument for upgrading a server.
