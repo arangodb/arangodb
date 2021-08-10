@@ -18,7 +18,7 @@ struct elsa<ErrorCode> {
 #include <cinttypes>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 346> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 355> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -277,6 +277,24 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 346> ErrorMessage
       "wrong checksum"},
     {TRI_ERROR_REPLICATION_SHARD_NONEMPTY,  // 1417
       "shard not empty"},
+    {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,  // 1418
+      "replicated log % PRIu64 \" not found\""},
+    {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,  // 1419
+      "not the log leader"},
+    {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER,  // 1420
+      "not a log follower"},
+    {TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,  // 1421
+      "follower rejected append entries request"},
+    {TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,  // 1422
+      "a resigned leader instance rejected a request"},
+    {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,  // 1423
+      "a resigned follower instance rejected a request"},
+    {TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,  // 1424
+      "the replicated log of the participant is gone"},
+    {TRI_ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM,  // 1425
+      "an invalid term was given"},
+    {TRI_ERROR_CLUSTER_NOT_FOLLOWER,  // 1446
+      "not a follower"},
     {TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED,  // 1447
       "follower transaction intermediate commit already performed"},
     {TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,  // 1448
