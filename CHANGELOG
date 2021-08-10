@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add ReplicatedLogs column family.
+
 * Add optimization rule for AqlAnalyzer 
 
 * Append physical compaction of log collection to every Raft log
