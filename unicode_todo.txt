@@ -1,6 +1,5 @@
 To do:
 - [ ] add test for Foxx directory names -- Jan
-- [ ] check arangodump, add tests -- Julia
 - [ ] check arangorestore, add tests -- Julia
 - [ ] check location headers / http redirects -- Jan
 - [ ] check web interface
@@ -19,3 +18,4 @@ To do:
 - [x] check arangoimport, add tests -- Jan
 - [x] check arangoexport, add tests -- Jan
 - [x] Swagger API not displayed correctly in web interface -- Julia
+- [x] check arangodump, add tests -- Julia
