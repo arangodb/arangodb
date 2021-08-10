@@ -85,6 +85,10 @@ SingleVarExpressionContext::SingleVarExpressionContext(transaction::Methods& trx
     : SingleVarExpressionContext(trx, context, cache, nullptr, AqlValue(AqlValueHintNull())) {}
 
 
+SingleVarExpressionContext::~SingleVarExpressionContext() {
+  _value.destroy();
+}
+
 bool SingleVarExpressionContext::isDataFromCollection(Variable const*) const {
   return false;
 }

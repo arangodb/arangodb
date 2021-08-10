@@ -72,7 +72,7 @@ class SingleVarExpressionContext final : public QueryExpressionContext {
                                       AqlFunctionsInternalCache& cache,
                                       Variable* var, AqlValue val);
 
-  ~SingleVarExpressionContext() override = default;
+  ~SingleVarExpressionContext() override;
 
   bool isDataFromCollection(Variable const* variable) const override;
 
@@ -82,7 +82,7 @@ class SingleVarExpressionContext final : public QueryExpressionContext {
   void setVariableValue(Variable* var, AqlValue& val);
 
  private:
-  Variable* _variable;
+  const Variable* _variable;
   AqlValue _value;
 };
 

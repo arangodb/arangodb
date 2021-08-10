@@ -471,6 +471,25 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
   }
   return nullptr;
 }
+
+ExecutionNode* getCalcNode(ExecutionNode* node) {
+  // get calculation node which satisfy the requirements
+  if (node == nullptr || node->getType() != ExecutionNode::RETURN) {
+    return nullptr;
+  }
+
+  auto& deps = node->getDependencies();
+  if (deps.size() == 1 && deps[0]->getType() == ExecutionNode::NodeType::CALCULATION) {
+    auto calcNode = deps[0];
+
+    auto& deps2 = calcNode->getDependencies();
+    if (deps2.size() == 1 && deps2[0]->getType() == ExecutionNode::NodeType::SINGLETON) {
+      return calcNode;
+    }
+  }
+
+  return nullptr;
+}
 }  // namespace
 
 namespace arangodb {
@@ -509,26 +528,6 @@ namespace iresearch {
   return make_slice(builder->slice());
 }
 
-// return the calculation node
-ExecutionNode* getCalcNode(ExecutionNode* node) {
-  // get calculation node which satisfy the requirements
-  if (node == nullptr || node->getType() != ExecutionNode::RETURN) {
-    return nullptr;
-  }
-
-  auto& deps = node->getDependencies();
-  if (deps.size() == 1 && deps[0]->getType() == ExecutionNode::NodeType::CALCULATION) {
-    auto calcNode = deps[0];
-
-    auto& deps2 = calcNode->getDependencies();
-    if (deps2.size() == 1 && deps2[0]->getType() == ExecutionNode::NodeType::SINGLETON) {
-      return calcNode;
-    }
-  }
-
-  return nullptr;
-}
-
 bool tryOptimize(AqlAnalyzer* analyzer) {
   ExecutionNode* execNode = getCalcNode(analyzer->_plan->root());
   if (execNode != nullptr) {
@@ -543,12 +542,10 @@ bool tryOptimize(AqlAnalyzer* analyzer) {
 }
 
 void resetFromExpression(AqlAnalyzer* analyzer) {
-  //get expression
   auto e = analyzer->_nodeToOptimize->expression();
 
   auto& trx = analyzer->_query->trxForOptimization();
 
-  // get query
   auto& query = analyzer->_query->ast()->query();
 
   // create context
@@ -563,7 +560,7 @@ void resetFromExpression(AqlAnalyzer* analyzer) {
   AqlValue& out = const_cast<AqlValue&>(analyzer->_queryResults->getValueReference(0,0));
   out = e->execute(&ctx, mustDestroy);
 
-  analyzer->_engineResultRegister = 0; // set the value of resultRegister to 0
+  analyzer->_engineResultRegister = 0;
 }
 
 void resetFromQuery(AqlAnalyzer* analyzer) {
@@ -577,7 +574,7 @@ void resetFromQuery(AqlAnalyzer* analyzer) {
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 bool AqlAnalyzer::isOptimized() const {
-  return resetImpl == &resetFromExpression;
+  return _resetImpl == &resetFromExpression;
 }
 #endif
 
@@ -588,7 +585,7 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
     _itemBlockManager(_query->resourceMonitor(), SerializationFormat::SHADOWROWS),
     _engine(0, *_query, _itemBlockManager,
             SerializationFormat::SHADOWROWS, nullptr),
-    resetImpl(&resetFromQuery) {
+    _resetImpl(&resetFromQuery) {
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   std::get<AnalyzerValueTypeAttribute>(_attrs).value = _options.returnType;
   TRI_ASSERT(validateQuery(_options.queryString,
@@ -728,7 +725,7 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
 
       // try to optimize
       if (tryOptimize(this)) {
-        resetImpl = &resetFromExpression;
+        _resetImpl = &resetFromExpression;
       }
     }
 
@@ -740,7 +737,7 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
     _nextIncVal = 1;  // first increment always 1 to move from -1 to 0
     _engine.reset();
 
-    resetImpl(this);
+    _resetImpl(this);
     return true;
 
   } catch (std::exception const& e) {

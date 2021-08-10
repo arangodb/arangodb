@@ -106,6 +106,8 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
 
  private:
 
+  using ResetImplFunctor = void (*)(AqlAnalyzer* analyzer);
+
   friend bool tryOptimize(AqlAnalyzer* analyzer);
   friend void resetFromExpression(AqlAnalyzer* analyzer);
   friend void resetFromQuery(AqlAnalyzer* analyzer);
@@ -125,8 +127,9 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   aql::AqlItemBlockManager _itemBlockManager;
   aql::ExecutionEngine _engine;
   std::unique_ptr<aql::ExecutionPlan> _plan;
-  void (*resetImpl)(AqlAnalyzer* analyzer);
+
   aql::CalculationNode* _nodeToOptimize{nullptr};
+  ResetImplFunctor _resetImpl;
   aql::SharedAqlItemBlockPtr _queryResults;
   std::vector<aql::AstNode*> _bindedNodes;
   aql::ExecutionState _executionState{aql::ExecutionState::DONE};
