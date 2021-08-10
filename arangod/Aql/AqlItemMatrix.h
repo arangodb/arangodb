@@ -120,11 +120,7 @@ class AqlItemMatrix {
 
   class RowIterator {
    public:
-    //using iterator_category = std::forward_iterator_tag;
-    // using difference_type   = std::ptrdiff_t;
     using value_type        = InputAqlItemRow;
-    //using pointer           = value_type*;
-    //using reference         = value_type&;
 
     RowIterator() = default;
     RowIterator(AqlItemMatrix const* matrix, size_t blockIndex, size_t rowIndex);
