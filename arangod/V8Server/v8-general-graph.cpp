@@ -89,33 +89,6 @@ static void JS_DropGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_RenameGraphCollection(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() < 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("_renameCollection(oldName, newName)");
-  } else if (!args[0]->IsString()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
-  } else if (!args[1]->IsString()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
-  }
-  std::string oldName = TRI_ObjectToString(isolate, args[0]);
-  std::string newName = TRI_ObjectToString(isolate, args[1]);
-  if (oldName.empty() || newName.empty()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
-  }
-
-  auto& vocbase = GetContextVocBase(isolate);
-  GraphManager gmngr{vocbase};
-  bool r = gmngr.renameGraphCollection(oldName, newName);
-
-  TRI_V8_RETURN(r);
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
 static void JS_GraphExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -284,8 +257,8 @@ static void JS_AddEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& arg
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (args.Length() < 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("_extendEdgeDefinitions(edgeDefinition)");
+  if (args.Length() < 2 || args.Length() > 3) {
+    TRI_V8_THROW_EXCEPTION_USAGE("_extendEdgeDefinitions(<edgeDefinition>[, <options>])");
   }
   if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
@@ -298,6 +271,19 @@ static void JS_AddEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& arg
   VPackBuilder edgeDefinition;
   TRI_V8ToVPack(isolate, edgeDefinition, args[1], false);
 
+  VPackBuilder options;
+  if (args.Length() == 3) {
+    // We have options
+    TRI_V8ToVPack(isolate, options, args[2], false);
+  }
+  if (!options.slice().isObject()) {
+    options.clear();
+    // Fake empty options, silently ignore errors for now.
+    // Empty Options.
+    options.openObject();
+    options.close();
+  }
+
   auto& vocbase = GetContextVocBase(isolate);
   GraphManager gmngr{vocbase};
   auto graph = gmngr.lookupGraphByName(graphName);
@@ -308,7 +294,7 @@ static void JS_AddEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& arg
 
   auto ctx = transaction::V8Context::Create(vocbase, true);
   GraphOperations gops{*graph.get(), vocbase, ctx};
-  OperationResult r = gops.addEdgeDefinition(edgeDefinition.slice(), false);
+  OperationResult r = gops.addEdgeDefinition(edgeDefinition.slice(), options.slice(), false);
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -334,7 +320,7 @@ static void JS_EditEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& ar
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("_editEdgeDefinitions(edgeDefinition)");
+    TRI_V8_THROW_EXCEPTION_USAGE("_editEdgeDefinitions(<edgeDefinition>, [<options>])");
   }
   if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
@@ -347,6 +333,19 @@ static void JS_EditEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& ar
   VPackBuilder edgeDefinition;
   TRI_V8ToVPack(isolate, edgeDefinition, args[1], false);
 
+  VPackBuilder options;
+  if (args.Length() == 3) {
+    // We have options
+    TRI_V8ToVPack(isolate, options, args[2], false);
+  }
+  if (!options.slice().isObject()) {
+    options.clear();
+    // Fake empty options, silently ignore errors for now.
+    // Empty Options.
+    options.openObject();
+    options.close();
+  }
+
   auto& vocbase = GetContextVocBase(isolate);
   GraphManager gmngr{vocbase};
   auto graph = gmngr.lookupGraphByName(graphName);
@@ -358,7 +357,7 @@ static void JS_EditEdgeDefinitions(v8::FunctionCallbackInfo<v8::Value> const& ar
   auto ctx = transaction::V8Context::Create(vocbase, true);
   GraphOperations gops{*graph.get(), vocbase, ctx};
   OperationResult r =
-      gops.editEdgeDefinition(edgeDefinition.slice(), false,
+      gops.editEdgeDefinition(edgeDefinition.slice(), options.slice(), false,
                               edgeDefinition.slice().get("collection").copyString());
 
   if (r.fail()) {
@@ -489,6 +488,14 @@ static void JS_AddVertexCollection(v8::FunctionCallbackInfo<v8::Value> const& ar
   VPackBuilder builder;
   builder.openObject();
   builder.add("collection", VPackValue(vertexName));
+  {
+    if (args.Length() >= 4) {
+      // We have options
+      builder.add(VPackValue("options"));
+      // Merge them into the builder, as Options entry
+      TRI_V8ToVPack(isolate, builder, args[3], false);
+    }
+  }
   builder.close();
 
   OperationResult r = gops.addOrphanCollection(builder.slice(), false, createCollection);
@@ -725,9 +732,6 @@ static void InitV8GeneralGraphModule(v8::Handle<v8::Context> context, TRI_vocbas
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_graph"), JS_GetGraph);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_list"), JS_GetGraphKeys);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_listObjects"), JS_GetGraphs);
-  TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate, "_renameCollection"),
-                       JS_RenameGraphCollection);
 
   v8g->GeneralGraphModuleTempl.Reset(isolate, rt);
   ft->SetClassName(

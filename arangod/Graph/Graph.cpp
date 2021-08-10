@@ -238,16 +238,12 @@ std::set<std::string> const& Graph::orphanCollections() const {
   return _orphanColls;
 }
 
-std::set<std::string> const& Graph::satelliteCollections() const {
+std::unordered_set<std::string> const& Graph::satelliteCollections() const {
   return _satelliteColls;
 }
 
 std::set<std::string> const& Graph::edgeCollections() const {
   return _edgeColls;
-}
-
-EdgeDefinition::EdgeDefinitionType Graph::getEdgeDefinitionType(std::string const& edge) const {
-  return EdgeDefinition::EdgeDefinitionType::DEFAULT;
 }
 
 std::map<std::string, EdgeDefinition> const& Graph::edgeDefinitions() const {
@@ -453,7 +449,7 @@ void EdgeDefinition::toVelocyPack(VPackBuilder& builder) const {
   builder.close();  // array
 }
 
-ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefinition, std::set<std::string> const& satCollections) {
+ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefinition) {
   Result res = EdgeDefinition::validateEdgeDefinition(edgeDefinition);
   if (res.fail()) {
     return res;
@@ -518,19 +514,6 @@ bool EdgeDefinition::renameCollection(std::string const& oldName, std::string co
   }
 
   return renamed;
-}
-
-auto EdgeDefinition::getType() const -> EdgeDefinitionType {
-  return _type;
-}
-
-auto EdgeDefinition::setType(EdgeDefinitionType type) -> bool {
-  TRI_ASSERT(type != EdgeDefinitionType::DEFAULT);
-  if (_type == EdgeDefinitionType::DEFAULT) {
-    _type = type;
-    return true;
-  }
-  return false;
 }
 
 bool EdgeDefinition::isFromVertexCollectionUsed(std::string const& collectionName) const {
@@ -639,7 +622,7 @@ ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(EdgeDefinition const& ed
 }
 
 ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
-  auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice, satelliteCollections());
+  auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
 
   if (res.fail()) {
     return std::move(res).result();
@@ -806,4 +789,9 @@ std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefini
 
   TRI_ASSERT(hasEdgeCollection(collectionName));
   return {it->second};
+}
+
+auto Graph::addSatellites(VPackSlice const&) -> Result {
+  // Enterprise only
+  return TRI_ERROR_NO_ERROR;
 }

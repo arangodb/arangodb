@@ -56,12 +56,10 @@ class EdgeDefinition {
 
  public:
   EdgeDefinition(std::string edgeCollection_, std::set<std::string>&& from_,
-                 std::set<std::string>&& to_,
-                 EdgeDefinitionType type = EdgeDefinitionType::DEFAULT)
+                 std::set<std::string>&& to_) 
       : _edgeCollection(std::move(edgeCollection_)),
         _from(std::move(from_)),
-        _to(std::move(to_)),
-        _type(type) {}
+        _to(std::move(to_)) {}
 
   std::string const& getName() const { return _edgeCollection; }
   void setName(std::string const& newName) { _edgeCollection = newName; }
@@ -80,8 +78,7 @@ class EdgeDefinition {
   /// types of values.
   static Result validateEdgeDefinition(const velocypack::Slice& edgeDefinition);
 
-  static ResultT<EdgeDefinition> createFromVelocypack(velocypack::Slice edgeDefinition,
-                                                      std::set<std::string> const& satCollections);
+  static ResultT<EdgeDefinition> createFromVelocypack(velocypack::Slice edgeDefinition);
 
   void toVelocyPack(velocypack::Builder&) const;
 
@@ -92,8 +89,6 @@ class EdgeDefinition {
   bool isToVertexCollectionUsed(std::string const& collectionName) const;
 
   bool renameCollection(std::string const& oldName, std::string const& newName);
-
-  auto getType() const -> EdgeDefinitionType;
 
   /* @brief
    * Set type of the EdgeDefinition. Only allowed to be called once and only if
@@ -109,7 +104,6 @@ class EdgeDefinition {
   std::string _edgeCollection;
   std::set<std::string> _from;
   std::set<std::string> _to;
-  EdgeDefinitionType _type;
 };
 
 class Graph {
@@ -185,7 +179,7 @@ class Graph {
   std::set<std::string> const& orphanCollections() const;
 
   /// @brief get the cids of all satelliteCollections
-  std::set<std::string> const& satelliteCollections() const;
+  std::unordered_set<std::string> const& satelliteCollections() const;
 
   /// @brief get the cids of all edgeCollections
   std::set<std::string> const& edgeCollections() const;
@@ -207,7 +201,6 @@ class Graph {
   virtual bool isSmart() const;
   virtual bool isDisjoint() const;
   virtual bool isSatellite() const;
-  virtual EdgeDefinition::EdgeDefinitionType getEdgeDefinitionType(std::string const& edge) const;
 
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;
@@ -281,6 +274,8 @@ class Graph {
   /// @brief Add an orphan vertex collection to this graphs definition
   Result addOrphanCollection(std::string&&);
 
+  virtual auto addSatellites(VPackSlice const& satellites) -> Result;
+
   std::ostream& operator<<(std::ostream& ostream);
 
  private:
@@ -322,7 +317,7 @@ class Graph {
   std::set<std::string> _orphanColls;
 
   /// @brief the names of all satelliteCollections
-  std::set<std::string> _satelliteColls;
+  std::unordered_set<std::string> _satelliteColls;
 
   /// @brief the names of all edgeCollections
   std::set<std::string> _edgeColls;
