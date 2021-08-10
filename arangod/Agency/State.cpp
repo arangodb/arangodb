@@ -308,7 +308,7 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
                               term_t term, uint64_t millis, std::string const& clientId,
                               bool leading, bool reconfiguration) {
   _logLock.assertLockedByCurrentThread();
-  
+
   // verbose logging for all agency operations
   // there are two different log levels in use here for the AGENCYSTORE topic
   // - DEBUG: will log writes only on the leader
@@ -332,7 +332,7 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
       << "RAFT member fails to persist log entries!";
     FATAL_ERROR_EXIT();
   }
-  
+
   auto byteSize = slice.byteSize();
   auto buf = std::make_shared<Buffer<uint8_t>>(byteSize);
   buf->append(slice.begin(), byteSize);
@@ -355,7 +355,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
       FATAL_ERROR_EXIT();
     }
   }
-  
+
   try {
     _log_size += l.entry->byteSize();
     _log.emplace_back(std::forward<log_t>(l));  // log to RAM or die
@@ -380,7 +380,7 @@ index_t State::logFollower(query_t const& transactions) {
   // Check whether we have got a snapshot in the first position:
   bool gotSnapshot = slices.length() > 0 && slices[0].isObject() &&
                      !slices[0].get("readDB").isNone();
-  
+
   MUTEX_LOCKER(logLock, _logLock);
 
   // In case of a snapshot, there are three possibilities:
@@ -586,7 +586,7 @@ void State::logEraseNoLock(
       }
     }
   }
-  
+
   _clientIdLookupCount -= numRemoved;
 
   _log.erase(rbegin, rend);
@@ -870,7 +870,7 @@ bool State::loadPersisted() {
   loadOrPersistConfiguration();
 
   ensureCollection("election", false);
-  
+
   if (checkCollection("log") && checkCollection("compact")) {
     index_t lastCompactionIndex = loadCompacted();
     if (loadRemaining(lastCompactionIndex)) {
@@ -905,7 +905,7 @@ bool State::loadPersisted() {
 bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term) {
   std::string const aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
 
-  TRI_ASSERT(nullptr != _vocbase);  
+  TRI_ASSERT(nullptr != _vocbase);
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
                              aql::QueryString(aql), nullptr);
 
@@ -918,7 +918,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
   VPackSlice result = queryResult.data->slice();
   // AQL results are guaranteed to be arrays
   TRI_ASSERT(result.isArray());
-    
+
   // Default: No compaction snapshot yet
   index = 0;
   term = 0;
@@ -962,7 +962,7 @@ index_t State::loadCompacted() {
   if (result.length()) {
     // Result can only have length 0 or 1.
     VPackSlice ii = result[0];
-    
+
     MUTEX_LOCKER(logLock, _logLock);
     _agent->setPersistedState(ii);
     try {
@@ -1197,7 +1197,7 @@ bool State::loadRemaining(index_t cind) {
       }
     }
   }
-  
+
   return !_log.empty() && match;
 }
 
@@ -1318,13 +1318,17 @@ bool State::compactPersisted(index_t cind, index_t keep) {
   index_t cut = cind - keep;
 
   auto bindVars = std::make_shared<VPackBuilder>();
+  auto cutStr = stringify(cut);
   bindVars->openObject();
-  bindVars->add("key", VPackValue(stringify(cut)));
+  bindVars->add("key", VPackValue(cutStr));
   bindVars->close();
 
   std::string const aql("FOR l IN log FILTER l._key < @key REMOVE l IN log");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
+
+  LOG_TOPIC("a8123", DEBUG, Logger::AGENCY) << "Removing log entries with keys lower than " << cutStr;
+
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
                              aql::QueryString(aql), bindVars);
 
@@ -1332,6 +1336,19 @@ bool State::compactPersisted(index_t cind, index_t keep) {
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
+  }
+
+  LOG_TOPIC("a8132", DEBUG, Logger::AGENCY) << "Compacting log collection";
+  try {
+    auto col = _vocbase->lookupCollection("log");
+    if (col == nullptr) {
+      LOG_TOPIC("d131f", FATAL, Logger::AGENCY) << "Failed to find log collection in agency.";
+      FATAL_ERROR_EXIT();
+    } else {
+      col->compact();
+    }
+  } catch (const std::exception& e) {
+    LOG_TOPIC("d13f1", WARN, Logger::AGENCY) << "Failed to compact agent's physical log collection: " << e.what();
   }
 
   return true;
@@ -1385,7 +1402,7 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
     TRI_ASSERT(_vocbase != nullptr);
     auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
     SingleCollectionTransaction trx(ctx, "compact", AccessMode::Type::WRITE);
-  
+
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -1460,7 +1477,7 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
   _clientIdLookupTable.clear();
   _clientIdLookupCount = 0;
   _cur = index;
-  
+
   // This empty log should soon be rectified!
   return true;
 }
@@ -1510,8 +1527,8 @@ query_t State::allLogs() const {
   std::string const comp("FOR c IN compact SORT c._key RETURN c");
   std::string const logs("FOR l IN log SORT l._key RETURN l");
 
-  TRI_ASSERT(nullptr != _vocbase); 
-  
+  TRI_ASSERT(nullptr != _vocbase);
+
   MUTEX_LOCKER(mutexLocker, _logLock);
 
   arangodb::aql::Query compq(transaction::StandaloneContext::Create(*_vocbase),
@@ -1722,7 +1739,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
   auto copyWithoutId = [&](VPackSlice slice, VPackBuilder& builder) {
     // Need to remove custom attribute in _id:
-    { 
+    {
       VPackObjectBuilder guard(&builder);
       for (auto const& p : VPackObjectIterator(slice)) {
         if (!p.key.isEqualString(StaticStrings::IdString)) {
@@ -1786,7 +1803,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 /// @brief dump the entire in-memory state to velocypack.
 /// should be used for testing only
 void State::toVelocyPack(velocypack::Builder& builder) const {
-  MUTEX_LOCKER(mutexLocker, _logLock); 
+  MUTEX_LOCKER(mutexLocker, _logLock);
 
   builder.openObject();
   builder.add("current", VPackValue(_cur));
