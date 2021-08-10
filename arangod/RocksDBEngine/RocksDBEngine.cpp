@@ -708,8 +708,8 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
   addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
 
-  std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
-  size_t const numberOfColumnFamilies = RocksDBColumnFamilyManager::minNumberOfColumnFamilies;
+
+  size_t const minNumberOfColumnFamilies = RocksDBColumnFamilyManager::minNumberOfColumnFamilies;
   bool dbExisted = false;
   {
     rocksdb::Options testOptions;
@@ -744,12 +744,21 @@ void RocksDBEngine::start() {
 
       LOG_TOPIC("528b8", DEBUG, arangodb::Logger::STARTUP)
           << "found existing column families: " << names;
+      auto const replicatedLogsName = RocksDBColumnFamilyManager::name(
+          RocksDBColumnFamilyManager::Family::ReplicatedLogs);
 
       for (auto const& it : cfFamilies) {
         auto it2 = std::find(existingColumnFamilies.begin(),
                              existingColumnFamilies.end(), it.name);
-
         if (it2 == existingColumnFamilies.end()) {
+
+          if (it.name == replicatedLogsName) {
+            LOG_TOPIC("293c3", INFO, Logger::STARTUP)
+                << "column family " << replicatedLogsName
+                << " is missing and will be created.";
+            continue;
+          }
+
           LOG_TOPIC("d9df8", FATAL, arangodb::Logger::STARTUP)
               << "column family '" << it.name << "' is missing in database"
               << ". if you are upgrading from an earlier alpha or beta version "
@@ -760,11 +769,11 @@ void RocksDBEngine::start() {
         }
       }
 
-      if (existingColumnFamilies.size() < numberOfColumnFamilies) {
+      if (existingColumnFamilies.size() < minNumberOfColumnFamilies) {
         LOG_TOPIC("e99ec", FATAL, arangodb::Logger::STARTUP)
             << "unexpected number of column families found in database ("
-            << cfHandles.size() << "). "
-            << "expecting at least " << numberOfColumnFamilies
+            << existingColumnFamilies.size() << "). "
+            << "expecting at least " << minNumberOfColumnFamilies
             << ". if you are upgrading from an earlier alpha or beta version "
                "of ArangoDB 3.2, "
             << "it is required to restart with a new database directory and "
@@ -774,6 +783,7 @@ void RocksDBEngine::start() {
     }
   }
 
+  std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
   rocksdb::Status status =
       rocksdb::TransactionDB::Open(_options, transactionOptions, _path,
                                    cfFamilies, &cfHandles, &_db);
@@ -795,10 +805,10 @@ void RocksDBEngine::start() {
         << "unable to initialize RocksDB column families";
     FATAL_ERROR_EXIT();
   }
-  if (cfHandles.size() < numberOfColumnFamilies) {
+  if (cfHandles.size() < minNumberOfColumnFamilies) {
     LOG_TOPIC("e572e", FATAL, arangodb::Logger::STARTUP)
         << "unexpected number of column families found in database. "
-        << "got " << cfHandles.size() << ", expecting at least " << numberOfColumnFamilies;
+        << "got " << cfHandles.size() << ", expecting at least " << minNumberOfColumnFamilies;
     FATAL_ERROR_EXIT();
   }
 
