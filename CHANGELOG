@@ -3,7 +3,11 @@ devel
 
 * Add ReplicatedLogs column family.
 
-* Add optimization rule for AqlAnalyzer 
+* Add optimization rule for AqlAnalyzer.
+
+* Fixed issue BTS-539 "Unsynchronized query kill while it's being finalized in
+  another thread was uncovered through `test-kill.js` of `communication_ssl`
+  suite". Fixed possible (but unlikely) crash when killing an AQL query.
 
 * Append physical compaction of log collection to every Raft log
   compaction (BTS-542).
