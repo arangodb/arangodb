@@ -1,11 +1,13 @@
 devel
 -----
 
+* Fixed issue #14592:  IS_NULL(@x) isn't recognized as a constant expression.
+
 * Fixed issue BTS-539 "Unsynchronized query kill while it's being finalized in
   another thread was uncovered through `test-kill.js` of `communication_ssl`
   suite". Fixed possible (but unlikely) crash when killing an AQL query.
 
-* Add optimization rule for AqlAnalyzer/
+* Add optimization rule for AqlAnalyzer.
 
 * Append physical compaction of log collection to every Raft log
   compaction (BTS-542).
