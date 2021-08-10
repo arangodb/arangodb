@@ -2031,7 +2031,7 @@
             });
           }
 
-          // add active class to choosen display method
+          // add active class to chosen display method
           if (success !== false) {
             if (result.defaultType === 'geotable' || result.defaultType === 'geo') {
               $('#outputTable' + counter).hide();
@@ -2749,9 +2749,10 @@
       var pos = 0;
       _.each(data.original, function (obj) {
         if (first === true && obj) {
-          tableDescription.titles = Object.keys(obj);
-          tableDescription.titles.forEach(function (t) {
+          var titles = Object.keys(obj);
+          titles.forEach(function (t) {
             headers[String(t)] = pos++;
+            tableDescription.titles.push(_.escape(String(t)));
           });
           first = false;
         }
