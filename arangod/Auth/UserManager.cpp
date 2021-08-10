@@ -85,7 +85,9 @@ static bool inline IsRole(std::string const& name) {
 
 #ifndef USE_ENTERPRISE
 auth::UserManager::UserManager(application_features::ApplicationServer& server)
-    : _server(server), _globalVersion(1), _internalVersion(0) {}
+    : _server(server), 
+      _globalVersion(1), 
+      _internalVersion(0) {}
 #else
 auth::UserManager::UserManager(application_features::ApplicationServer& server)
     : _server(server),

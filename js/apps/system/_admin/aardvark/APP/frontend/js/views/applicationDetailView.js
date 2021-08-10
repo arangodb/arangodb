@@ -84,7 +84,7 @@
         
         // load swagger iframe
         var path = window.location.pathname.split('/');
-        var urlswag = window.location.protocol + '//' + window.location.hostname + ':' + window.location.port + '/' + path[1] + '/' + path[2] + '/_admin/aardvark/foxxes/docs/index.html?mount=' + this.model.get('mount');
+        var urlswag = window.location.protocol + '//' + window.location.hostname + ':' + window.location.port + '/' + encodeURIComponent(path[1]) + '/' + encodeURIComponent(path[2]) + '/_admin/aardvark/foxxes/docs/index.html?mount=' + encodeURIComponent(this.model.get('mount'));
 
         $('<iframe/>', {
           id: 'swaggerIframe',

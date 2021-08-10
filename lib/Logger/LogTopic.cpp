@@ -27,6 +27,7 @@
 
 #include "LogTopic.h"
 
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -115,6 +116,7 @@ LogTopic Logger::AQL("aql", LogLevel::INFO);
 LogTopic Logger::AUTHENTICATION("authentication", LogLevel::WARN);
 LogTopic Logger::AUTHORIZATION("authorization");
 LogTopic Logger::BACKUP("backup");
+LogTopic Logger::BENCH("bench");
 LogTopic Logger::CACHE("cache", LogLevel::INFO);
 LogTopic Logger::CLUSTER("cluster", LogLevel::INFO);
 LogTopic Logger::CLUSTERCOMM("clustercomm", LogLevel::INFO);

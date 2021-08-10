@@ -156,34 +156,74 @@ std::vector<std::string> wrap(std::string const& sourceStr, size_t size,
 std::string replace(std::string const& sourceStr, std::string const& fromString,
                     std::string const& toString);
 
-static inline char tolower(char c) {
+static inline char tolower(char c) noexcept {
   return c + ((static_cast<unsigned char>(c - 65) < 26U) << 5);
 }
 
-static inline unsigned char tolower(unsigned char c) {
+static inline unsigned char tolower(unsigned char c) noexcept {
   return static_cast<unsigned char>(c + ((c - 65U < 26U) << 5));
 }
 
-static inline char toupper(char c) {
+static inline char toupper(char c) noexcept {
   return c - ((static_cast<unsigned char>(c - 97) < 26U) << 5);
 }
 
-static inline unsigned char toupper(unsigned char c) {
+static inline unsigned char toupper(unsigned char c) noexcept {
   return c - ((c - 97U < 26U) << 5);
 }
 
-/// @brief converts string to lower case in place - locale-independent, ASCII only!
+/// @brief converts string to lower case in place - locale-independent, ASCII inputs only!
 void tolowerInPlace(std::string& str);
 
-/// @brief converts string to lower case - locale-independent, ASCII only!
+/// @brief converts string to lower case - locale-independent, ASCII inputs only!
 std::string tolower(std::string&& str);
 std::string tolower(std::string const& str);
 
-/// @brief converts string to upper case in place - locale-independent, ASCII only!
+/// @brief converts string to upper case in place - locale-independent, ASCII inputs only!
 void toupperInPlace(std::string& str);
 
-/// @brief converts string to upper case - locale-independent, ASCII only!
+/// @brief converts string to upper case - locale-independent, ASCII inputs only!
 std::string toupper(std::string const& str);
+
+/// @brief case insensitive string comparison. locale-independent, ASCII inputs only!
+template<typename T1, typename T2>
+[[nodiscard]] bool equalStringsCaseInsensitive(T1 const& lhs, T2 const& rhs) noexcept {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+
+  size_t remain = lhs.size();
+  typename T1::value_type const* l = lhs.data();
+  typename T2::value_type const* r = rhs.data();
+  int result = 0;
+
+  while (remain > 0) {
+    // hand-unrolled version, comparing 4 bytes in each loop iteration
+    size_t len = std::min(remain, size_t(4));
+    switch (len) {
+      case 4:
+        result += (tolower(l + 3) != tolower(r + 3));
+        [[fallthrough]];
+      case 3:
+        result += (tolower(l + 2) != tolower(r + 2));
+        [[fallthrough]];
+      case 2:
+        result += (tolower(l + 1) != tolower(r + 1));
+        [[fallthrough]];
+      case 1:
+        result += (tolower(l + 0) != tolower(r + 0));
+    }
+
+    l += len;
+    r += len;
+    remain -= len;
+
+    if (result != 0) {
+      break;
+    }
+  }
+  return (result == 0);
+}
 
 /// @brief checks for a prefix
 bool isPrefix(std::string const& str, std::string const& prefix);

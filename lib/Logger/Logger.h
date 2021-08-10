@@ -63,7 +63,6 @@
 #include <vector>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/threads.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogTimeFormat.h"
@@ -161,6 +160,7 @@ class Logger {
   static LogTopic AUTHENTICATION;
   static LogTopic AUTHORIZATION;
   static LogTopic BACKUP;
+  static LogTopic BENCH;
   static LogTopic CACHE;
   static LogTopic CLUSTER;
   static LogTopic CLUSTERCOMM;
@@ -314,12 +314,9 @@ class Logger {
  public:
   static void initialize(application_features::ApplicationServer&, bool);
   static void shutdown();
-  static void shutdownLogThread();
   static void flush() noexcept;
 
  private:
-  static Mutex _initializeMutex;
-
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;
   static std::atomic<LogLevel> _level;
@@ -332,7 +329,6 @@ class Logger {
   static bool _showThreadIdentifier;
   static bool _showThreadName;
   static bool _showRole;
-  static bool _threaded;
   static bool _useColor;
   static bool _useEscaped;
   static bool _keepLogRotate;
@@ -344,6 +340,25 @@ class Logger {
   static std::string _outputPrefix;
   static std::string _hostname;
 
-  static std::unique_ptr<LogThread> _loggingThread;
+  struct ThreadRef {
+    ThreadRef();
+    ~ThreadRef();
+    
+    ThreadRef(const ThreadRef&) = delete;
+    ThreadRef(ThreadRef&&) = delete;
+    ThreadRef& operator=(const ThreadRef&) = delete;
+    ThreadRef& operator=(ThreadRef&&) = delete;
+    
+    LogThread* operator->() const noexcept { return _thread; }
+    operator bool() const noexcept { return _thread != nullptr; }
+   private:
+    LogThread* _thread;
+  };
+  
+  // logger thread. only populated when threaded logging is selected.
+  // the pointer must only be used with atomic accessors after the ref counter
+  // has been increased. Best to usethe ThreadRef class for this!
+  static std::atomic<std::size_t> _loggingThreadRefs;
+  static std::atomic<LogThread*> _loggingThread;
 };
 }  // namespace arangodb
