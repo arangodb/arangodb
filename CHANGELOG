@@ -1,6 +1,9 @@
 devel
 -----
 
+* Append physical compaction of log collection to every Raft log
+  compaction (BTS-542).
+
 * Fixed issue BTS-536 "Upgrading without rest-server is aborted by error".
   Now stating `--server.rest-server false` does not require the additional
   `--console` argument for upgrading a server.
