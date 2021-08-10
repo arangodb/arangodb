@@ -317,6 +317,10 @@ void AqlFunctionFeature::addListFunctions() {
   add({"DECAY_GAUSS", ".,.,.,.,.,", flags, &Functions::DecayGauss});
   add({"DECAY_EXP", ".,.,.,.,.,", flags, &Functions::DecayExp});
   add({"DECAY_LINEAR", ".,.,.,.,.,", flags, &Functions::DecayLinear});
+
+  add({"COSINE_SIMILARITY", ".,.", flags, &Functions::CosineSimilarity});
+  add({"L1_DISTANCE", ".,.", flags, &Functions::L1Distance});
+  add({"L2_DISTANCE", ".,.", flags, &Functions::L2Distance});
   // special flags:
   // CALL and APPLY will always run on the coordinator and are not deterministic
   // and not cacheable, as we don't know what function is actually gonna be

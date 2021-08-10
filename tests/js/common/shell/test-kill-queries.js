@@ -277,7 +277,8 @@ function QueryKillSuite() {
   return GenericQueryKillSuite();
 }
 
-jsunity.run(QueryKillSuite);
+if (internal.debugCanUseFailAt()) {
+  jsunity.run(QueryKillSuite);
+}
 
 return jsunity.done();
-

@@ -64,7 +64,7 @@
   << ::arangodb::Logger::LOGID((id))
 
 /// @brief logs a message for a topic given that a condition is true
-#if ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // in maintainer mode, we *intentionally and always build all log messages* if
 // the condition is true.
 // we do this to find any errors when building log messages in low log levels

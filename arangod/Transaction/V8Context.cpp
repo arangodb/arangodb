@@ -59,16 +59,6 @@ VPackCustomTypeHandler* transaction::V8Context::orderCustomTypeHandler() {
   return _customTypeHandler.get();
 }
 
-/// @brief return the resolver
-CollectionNameResolver const& transaction::V8Context::resolver() {
-  if (_resolver == nullptr) {
-    createResolver();  // sets _resolver
-  }
-
-  TRI_ASSERT(_resolver != nullptr);
-  return *_resolver;
-}
-
 /// @brief get transaction state, determine commit responsibility
 /*virtual*/ std::shared_ptr<TransactionState> transaction::V8Context::acquireState(transaction::Options const& options,
                                                                                    bool& responsibleForCommit) {

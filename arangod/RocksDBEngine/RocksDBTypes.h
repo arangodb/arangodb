@@ -52,9 +52,11 @@ enum class RocksDBEntryType : char {
   KeyGeneratorValue = '=',
   View = '>',
   GeoIndexValue = '?',
+  LogEntry = 'L',
   // RevisionTreeValue = '@', // pre-3.8 GA revision trees. do not use or reuse!
   // RevisionTreeValue = '/', // pre-3.8 GA revision trees. do not use or reuse!
-  RevisionTreeValue = '*'
+  RevisionTreeValue = '*',
+  ReplicatedLog = 'l'
 };
 
 char const* rocksDBEntryTypeName(RocksDBEntryType);

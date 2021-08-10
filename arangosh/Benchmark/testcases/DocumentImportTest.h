@@ -25,62 +25,50 @@
 
 #include "Benchmark.h"
 #include "helpers.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct DocumentImportTest : public Benchmark<DocumentImportTest> {
-  static std::string name() { return "import-document"; }
+  struct DocumentImportTest : public Benchmark<DocumentImportTest> {
+    static std::string name() { return "import-document"; }
 
-  DocumentImportTest(BenchFeature& arangobench)
-      : Benchmark<DocumentImportTest>(arangobench),
-        _url("/_api/import?collection=" + _arangobench.collection() +
-             "&type=documents"),
-        _buffer(nullptr) {
-    uint64_t const n = _arangobench.complexity();
+    DocumentImportTest(BenchFeature& arangobench)
+      : Benchmark<DocumentImportTest>(arangobench) {}
 
-    _buffer = TRI_CreateSizedStringBuffer(16384);
-    for (uint64_t i = 0; i < n; ++i) {
-      TRI_AppendStringStringBuffer(_buffer, "{\"key1\":\"");
-      TRI_AppendUInt64StringBuffer(_buffer, i);
-      TRI_AppendStringStringBuffer(_buffer, "\",\"key2\":");
-      TRI_AppendUInt64StringBuffer(_buffer, i);
-      TRI_AppendStringStringBuffer(_buffer, "}\n");
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      return DeleteCollection(client, _arangobench.collection()) &&
+        CreateCollection(client, _arangobench.collection(), 2, _arangobench);
     }
 
-    _length = TRI_LengthStringBuffer(_buffer);
-  }
+    void tearDown() override {}
 
-  ~DocumentImportTest() { TRI_FreeStringBuffer(_buffer); }
+    void buildRequest(int threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.type = rest::RequestType::POST;
+      requestData.url = std::string("/_api/import?collection=" + _arangobench.collection() +
+          "&type=documents");
+      uint64_t const n = _arangobench.complexity();
+      using namespace arangodb::velocypack;
+      requestData.payload.openArray();
+      for (uint64_t i = 0; i < n; ++i) {
+        requestData.payload.openObject();
+        requestData.payload.add("key1", Value(i));
+        requestData.payload.add("key2", Value(i));
+        requestData.payload.close();
+      }
+      requestData.payload.close();
+    }
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return DeleteCollection(client, _arangobench.collection()) &&
-           CreateCollection(client, _arangobench.collection(), 2, _arangobench);
-  }
+    char const* getDescription() const noexcept override {
+      return "performs multi-document imports using the specialized import API (in contrast to performing inserts via generic AQL). Each inserted document will have two attributes. The --complexity parameter controls the number of documents per import request. The total number of documents to be inserted is equal to the value of --requests times the value of --complexity.";
+    }
 
-  void tearDown() override {}
+    bool isDeprecated() const noexcept override {
+      return false;
+    }
 
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return _url;
-  }
-
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
-  }
-
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    *mustFree = false;
-    *length = _length;
-    return (char const*)_buffer->_buffer;
-  }
-
-  std::string _url;
-
-  TRI_string_buffer_t* _buffer;
-
-  size_t _length;
-};
+  };
 
 }  // namespace arangodb::arangobench

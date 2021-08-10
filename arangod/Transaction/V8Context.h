@@ -53,9 +53,6 @@ class V8Context final : public Context {
   void enterV8Context();
   void exitV8Context();
 
-  /// @brief return the resolver
-  CollectionNameResolver const& resolver() override final;
-
   /// @brief unregister the transaction from the context
   void unregisterTransaction() noexcept override;
   
