@@ -32,6 +32,7 @@
 #include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
@@ -209,15 +210,23 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction:
 
   auto self = this->shared_from_this();
   std::move(result).thenValue([self, sqs = _infos.engine()->sharedState()](OperationResult&& opRes) {
-    {
+    sqs->executeAndWakeup([&] {
       std::lock_guard<std::mutex> guard(self->_resultStateMutex);
-      // TODO add corresponding a check in non-maintainer mode, and handle it somehow
       TRI_ASSERT(self->_resultState == ModificationExecutorResultState::WaitingForResult);
-      self->_results = std::move(opRes);
-      self->_resultState = ModificationExecutorResultState::HaveResult;
-    }
-    // TODO: do we need a callback here?
-    sqs->executeAndWakeup([] {
+      if (self->_resultState == ModificationExecutorResultState::WaitingForResult) {
+        self->_results = std::move(opRes);
+        self->_resultState = ModificationExecutorResultState::HaveResult;
+      } else {
+        auto message = StringUtils::concatT(
+            "Unexpected state ", to_string(self->_resultState),
+            " when reporting modification result: expected ",
+            to_string(ModificationExecutorResultState::WaitingForResult));
+        LOG_TOPIC("1f48d", ERR, Logger::AQL) << message;
+        // This can never happen. However, if it does anyway: we can't clean up
+        // the query from here, so we do not wake it up and let it run into a
+        // timeout instead. This should be good enough for an impossible case.
+        return false;
+      }
       return true;
     });
   });

@@ -172,6 +172,8 @@ enum class ModificationExecutorResultState {
   HaveResult,
 };
 
+auto to_string(ModificationExecutorResultState resultState) -> std::string;
+
 template <typename FetcherType, typename ModifierType>
 class ModificationExecutor {
  public:

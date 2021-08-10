@@ -29,6 +29,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/application-exit.h"
 #include "StorageEngine/TransactionState.h"
 
 #include "Aql/SimpleModifier.h"
@@ -86,6 +87,22 @@ bool ModifierOutput::hasNewValue() const { return _newValue.has_value(); }
 AqlValue const& ModifierOutput::getNewValue() const {
   TRI_ASSERT(_newValue.has_value());
   return _newValue.value();
+}
+
+auto to_string(ModificationExecutorResultState resultState) -> std::string {
+  switch (resultState) {
+    case ModificationExecutorResultState::NoResult:
+      return "NoResult";
+    case ModificationExecutorResultState::WaitingForResult:
+      return "WaitingForResult";
+    case ModificationExecutorResultState::HaveResult:
+      return "HaveResult";
+  }
+
+  LOG_TOPIC("4bdea", FATAL, Logger::AQL)
+      << "Unhandled state "
+      << static_cast<std::underlying_type_t<decltype(resultState)>>(resultState);
+  FATAL_ERROR_ABORT();
 }
 
 template <typename FetcherType, typename ModifierType>
