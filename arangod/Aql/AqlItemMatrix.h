@@ -175,4 +175,7 @@ class AqlItemMatrix {
   size_t _stopIndexInLastBlock;
 };
 
+bool operator==(AqlItemMatrix::RowIterator const& a, AqlItemMatrix::RowIterator const& b);
+bool operator!=(AqlItemMatrix::RowIterator const& a, AqlItemMatrix::RowIterator const& b);
+
 }  // namespace arangodb::aql
