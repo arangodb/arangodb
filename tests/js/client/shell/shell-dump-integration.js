@@ -36,17 +36,11 @@ let isCluster = require("internal").isCluster();
 let dbs = ["_system", "maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "testName"];
 
 
-function checkDumpJsonFile (dbName, path) {
-  let prevDatabase = db._name();
-  try {
-    db._useDatabase(dbName);
-    let data = JSON.parse(fs.readFileSync(fs.join(path, "/dump.json")).toString());
-    assertEqual(dbName, data.properties.name);
-    assertEqual(db._id(), data.properties.id);
-    return db._id();
-  } finally { 
-    db._useDatabase(prevDatabase);
-  }
+
+function checkDumpJsonFile (dbName, path, id) {
+  let data = JSON.parse(fs.readFileSync(fs.join(path, "dump.json")).toString());
+  assertEqual(dbName, data.properties.name);
+  assertEqual(id, data.properties.id);
 }
 
 function dumpIntegrationSuite () {
@@ -99,9 +93,16 @@ function dumpIntegrationSuite () {
     }
     return structure;
   };
-
-  let checkStructureFile = function(tree, path, readable, cn) {
-    let structure = structureFile(path, cn);
+  
+  let checkStructureFile = function(tree, path, readable, cn, subdir="") {
+    let structurePath = path;
+    if(subdir !== "") {
+      structurePath = fs.join(path, subdir);
+    }
+    let structure = structureFile(structurePath, cn);
+    if(subdir !== "") {
+      structure = fs.join(subdir, structure);
+    }
     assertTrue(fs.isFile(fs.join(path, structure)), structure);
     assertNotEqual(-1, tree.indexOf(structure));
 
@@ -118,6 +119,15 @@ function dumpIntegrationSuite () {
         assertTrue(err instanceof SyntaxError, err);
       }
     }
+  };
+
+  let checkCollections = function (tree, path, subdir="") {
+    db._collections().forEach((collectionObj) => {
+      const collectionName = collectionObj.name();
+      if(!collectionName.startsWith("_")) {
+        checkStructureFile(tree, path, true, collectionName, subdir);
+      }
+    });
   };
 
   let checkDataFile = function(tree, path, compressed, envelopes, readable, cn) {
@@ -338,7 +348,8 @@ function dumpIntegrationSuite () {
         try {
           let args = ['--overwrite', 'true'];
           let tree = runDump(path, args, 0);
-          checkDumpJsonFile(name, path);
+          checkDumpJsonFile(name, path, db._id());
+          checkCollections(tree, path);
         } finally {
           try {
             fs.removeDirectory(path);
@@ -355,20 +366,28 @@ function dumpIntegrationSuite () {
         db._useDatabase("maçã");
         assertEqual(-1, tree.indexOf("maçã"));
         assertNotEqual(-1, tree.indexOf(db._id())); 
-        checkDumpJsonFile("maçã", path + "/" + db._id());
+        checkDumpJsonFile("maçã", fs.join(path, db._id()), db._id());
+        checkCollections(tree, path, db._id());
         db._useDatabase("_system");
         assertNotEqual(-1, tree.indexOf("_system"));
+        assertEqual(-1, tree.indexOf(db._id())); 
+        checkDumpJsonFile("_system", fs.join(path, db._name()), db._id());
+        checkCollections(tree, path, db._name());
         db._useDatabase("testName");
         assertNotEqual(-1, tree.indexOf("testName"));
-        checkDumpJsonFile("testName", path + "/testName");
+        assertEqual(-1, tree.indexOf(db._id())); 
+        checkDumpJsonFile("testName", fs.join(path, db._name()), db._id());
+        checkCollections(tree, path, db._name());
         db._useDatabase("😀");
         assertEqual(-1, tree.indexOf("😀")); 
         assertNotEqual(-1, tree.indexOf(db._id()));
-        checkDumpJsonFile("😀", path + "/" + db._id());
+        checkDumpJsonFile("😀", fs.join(path, db._id()), db._id());
+        checkCollections(tree, path, db._id());
         db._useDatabase("ﻚﻠﺑ ﻞﻄﻴﻓ");
         assertEqual(-1, tree.indexOf("ﻚﻠﺑ ﻞﻄﻴﻓ"));
         assertNotEqual(-1, tree.indexOf(db._id()));
-        checkDumpJsonFile("ﻚﻠﺑ ﻞﻄﻴﻓ", path + "/" + db._id()); 
+        checkDumpJsonFile("ﻚﻠﺑ ﻞﻄﻴﻓ", fs.join(path, db._id()), db._id()); 
+        checkCollections(tree, path, db._id());
       } finally {
         try {
           fs.removeDirectory(path);
