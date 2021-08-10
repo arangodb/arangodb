@@ -1,3 +1,9 @@
+v3.7.15 (XXXX-XX-XX)
+--------------------
+
+* Append physical compaction of log collection to every Raft log
+  compaction (BTS-542).
+
 v3.7.14 (XXXX-XX-XX)
 --------------------
 
