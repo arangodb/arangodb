@@ -35,6 +35,20 @@ let db = arangodb.db;
 let isCluster = require("internal").isCluster();
 let dbs = ["_system", "maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "testName"];
 
+
+function checkDumpJsonFile (dbName, path) {
+  let prevDatabase = db._name();
+  try {
+    db._useDatabase(dbName);
+    let data = JSON.parse(fs.readFileSync(fs.join(path, "/dump.json")).toString());
+    assertEqual(dbName, data.properties.name);
+    assertEqual(db._id(), data.properties.id);
+    return db._id();
+  } finally { 
+    db._useDatabase(prevDatabase);
+  }
+}
+
 function dumpIntegrationSuite () {
   'use strict';
   const cn = 'UnitTestsDump';
@@ -324,7 +338,7 @@ function dumpIntegrationSuite () {
         try {
           let args = ['--overwrite', 'true'];
           let tree = runDump(path, args, 0);
-          print(tree);
+          checkDumpJsonFile(name, path);
         } finally {
           try {
             fs.removeDirectory(path);
@@ -338,26 +352,27 @@ function dumpIntegrationSuite () {
       try {
         let args = ['--all-databases', 'true'];
         let tree = runDump(path, args, 0);
-        let idString = (name) => {
-          let prevDatabase = db._name();
-          try {
-            db._useDatabase(name);
-            return db._id();
-          } finally { 
-            db._useDatabase(prevDatabase);
-          }
-        }; 
+        db._useDatabase("maçã");
         assertEqual(-1, tree.indexOf("maçã"));
-        assertNotEqual(-1, tree.indexOf(idString("maçã")));
+        assertNotEqual(-1, tree.indexOf(db._id())); 
+        checkDumpJsonFile("maçã", path + "/" + db._id());
+        db._useDatabase("_system");
         assertNotEqual(-1, tree.indexOf("_system"));
+        db._useDatabase("testName");
         assertNotEqual(-1, tree.indexOf("testName"));
+        checkDumpJsonFile("testName", path + "/testName");
+        db._useDatabase("😀");
         assertEqual(-1, tree.indexOf("😀")); 
-        assertNotEqual(-1, tree.indexOf(idString("😀")));
+        assertNotEqual(-1, tree.indexOf(db._id()));
+        checkDumpJsonFile("😀", path + "/" + db._id());
+        db._useDatabase("ﻚﻠﺑ ﻞﻄﻴﻓ");
         assertEqual(-1, tree.indexOf("ﻚﻠﺑ ﻞﻄﻴﻓ"));
-        assertNotEqual(-1, tree.indexOf(idString("ﻚﻠﺑ ﻞﻄﻴﻓ")));
+        assertNotEqual(-1, tree.indexOf(db._id()));
+        checkDumpJsonFile("ﻚﻠﺑ ﻞﻄﻴﻓ", path + "/" + db._id()); 
       } finally {
         try {
           fs.removeDirectory(path);
+          db._useDatabase("_system");
         } catch (err) {}
       }
     },
