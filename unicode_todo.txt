@@ -3,7 +3,6 @@ To do:
 - [ ] check arangodump, add tests -- Julia
 - [ ] check arangorestore, add tests -- Julia
 - [ ] check location headers / http redirects -- Jan
-- [ ] Swagger API not displayed correctly in web interface -- Julia
 - [ ] check web interface
 - [ ] check arangosh
 - [ ] check cluster and agency
@@ -19,3 +18,4 @@ To do:
 - [x] check arangobench, add tests -- Julia, Jan
 - [x] check arangoimport, add tests -- Jan
 - [x] check arangoexport, add tests -- Jan
+- [x] Swagger API not displayed correctly in web interface -- Julia
