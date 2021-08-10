@@ -48,7 +48,7 @@ struct AbstractStateMachine : std::enable_shared_from_this<AbstractStateMachine<
   virtual ~AbstractStateMachine() = default;
 
   explicit AbstractStateMachine(std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog> log);
-  auto pollEntries() -> futures::Future<Result>;
+  auto triggerPollEntries() -> futures::Future<Result>;
 
  protected:
   virtual auto installSnapshot(ParticipantId const&) -> futures::Future<Result> = 0;

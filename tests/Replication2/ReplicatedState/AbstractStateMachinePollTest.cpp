@@ -35,18 +35,20 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
+namespace {
 struct MyTestStateMachine : replicated_state::AbstractStateMachine<TestLogEntry> {
   explicit MyTestStateMachine(std::shared_ptr<replicated_log::ReplicatedLog> log)
       : replicated_state::AbstractStateMachine<TestLogEntry>(std::move(log)) {}
 
-  auto add(std::string_view value) -> futures::Future<Result> {
+  auto add(std::string_view value) -> LogIndex {
     auto idx = insert(TestLogEntry(std::string{value}));
-    return waitFor(idx).thenValue([this, weak = weak_from_this(), value = std::string{value}](auto&& res) mutable {
+    waitFor(idx).thenValue([weak = weak_from_this()](auto&& res) mutable {
       if (auto self = weak.lock()) {
-        _entries.insert(std::move(value));
+        self->triggerPollEntries();
       }
       return Result{TRI_ERROR_NO_ERROR};
     });
+    return idx;
   }
 
   auto get() -> std::unordered_set<std::string> {
@@ -67,7 +69,6 @@ struct MyTestStateMachine : replicated_state::AbstractStateMachine<TestLogEntry>
 
     return futures::Future<Result>{std::in_place, TRI_ERROR_NO_ERROR};
   }
-
 
   std::mutex mutex;
   std::unordered_set<std::string> _entries;
@@ -97,30 +98,109 @@ struct Leader : ParticipantBase {
   std::shared_ptr<replicated_log::LogLeader> log;
 };
 
-TEST_F(StateMachineTest, check_apply_entries) {
+}
+
+struct PollStateMachineTest : StateMachineTest {};
+
+TEST_F(PollStateMachineTest, check_apply_entries) {
   auto A = createReplicatedLog();
   auto B = createReplicatedLog();
 
-  auto follower = std::make_shared<Follower>(B, "B", LogTerm{1}, "A");
-  auto leader = std::make_shared<Leader>(
-      A, LogConfig{2, false}, "A", LogTerm{1},
-      std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{follower->log});
-
-  auto f1 = leader->state->add("first");
-  ASSERT_TRUE(f1.isReady());
-  auto f = follower->state->pollEntries();
-  ASSERT_TRUE(f.isReady());
-
-  using namespace std::string_literals;
-
   {
-    auto set = follower->state->get();
-    EXPECT_EQ(set.size(), 1);
-    EXPECT_EQ(set, std::unordered_set{"first"s});
+    auto follower = std::make_shared<Follower>(B, "B", LogTerm{1}, "A");
+    auto leader = std::make_shared<Leader>(
+        A, LogConfig{2, false}, "A", LogTerm{1},
+        std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{follower->log});
+
+    leader->state->add("first");
+    auto f = follower->state->triggerPollEntries();
+    ASSERT_TRUE(f.isReady());
+
+    using namespace std::string_literals;
+
+    {
+      auto set = follower->state->get();
+      EXPECT_EQ(set.size(), 1);
+      EXPECT_EQ(set, std::unordered_set{"first"s});
+    }
+    {
+      auto set = leader->state->get();
+      EXPECT_EQ(set.size(), 1);
+      EXPECT_EQ(set, std::unordered_set{"first"s});
+    }
   }
+
   {
-    auto set = leader->state->get();
-    EXPECT_EQ(set.size(), 1);
-    EXPECT_EQ(set, std::unordered_set{"first"s});
+    auto follower = std::make_shared<Follower>(B, "B", LogTerm{2}, "A");
+    auto leader = std::make_shared<Leader>(
+        A, LogConfig{2, false}, "A", LogTerm{2},
+        std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{follower->log});
+
+    auto f1 = leader->state->triggerPollEntries();
+    ASSERT_FALSE(f1.isReady());
+    auto f2 = follower->state->triggerPollEntries();
+    ASSERT_FALSE(f2.isReady());
+
+    leader->log->triggerAsyncReplication();
+    ASSERT_TRUE(f1.isReady());
+    ASSERT_TRUE(f2.isReady());
+
+    using namespace std::string_literals;
+
+    {
+      auto set = follower->state->get();
+      EXPECT_EQ(set.size(), 1);
+      EXPECT_EQ(set, std::unordered_set{"first"s});
+    }
+    {
+      auto set = leader->state->get();
+      EXPECT_EQ(set.size(), 1);
+      EXPECT_EQ(set, std::unordered_set{"first"s});
+    }
+  }
+}
+
+TEST_F(PollStateMachineTest, insert_multiple) {
+  auto A = createReplicatedLog();
+  auto B = createReplicatedLog();
+
+  {
+    auto follower = std::make_shared<Follower>(B, "B", LogTerm{1}, "A");
+    auto leader = std::make_shared<Leader>(
+        A, LogConfig{2, false}, "A", LogTerm{1},
+        std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{follower->log});
+
+    leader->state->add("first");
+    leader->state->add("second");
+    leader->state->add("third");
+    auto f = follower->state->triggerPollEntries();
+    ASSERT_TRUE(f.isReady());
+
+    using namespace std::string_literals;
+
+    {
+      auto set = follower->state->get();
+      EXPECT_EQ(set, std::unordered_set({"first"s, "second"s, "third"s}));
+    }
+  }
+
+  {
+    auto follower = std::make_shared<Follower>(B, "B", LogTerm{2}, "A");
+    auto leader = std::make_shared<Leader>(
+        A, LogConfig{2, false}, "A", LogTerm{2},
+        std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{follower->log});
+
+    auto f2 = follower->state->triggerPollEntries();
+    ASSERT_FALSE(f2.isReady());
+
+    leader->log->triggerAsyncReplication();
+    ASSERT_TRUE(f2.isReady());
+
+    using namespace std::string_literals;
+
+    {
+      auto set = follower->state->get();
+      EXPECT_EQ(set, std::unordered_set({"first"s, "second"s, "third"s}));
+    }
   }
 }

@@ -87,7 +87,7 @@ struct DeserializeLogIterator : TypedLogRangeIterator<T> {
 }  // namespace
 
 template <typename T>
-auto replicated_state::AbstractStateMachine<T>::pollEntries()
+auto replicated_state::AbstractStateMachine<T>::triggerPollEntries()
     -> futures::Future<Result> {
   auto nextIndex =
       _guardedData.template doUnderLock([&](GuardedData& guard) -> std::optional<LogIndex> {
