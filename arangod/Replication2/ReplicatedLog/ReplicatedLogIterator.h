@@ -67,7 +67,7 @@ class ReplicatedLogIterator : public LogRangeIterator {
     if (_container.empty()) {
       return {LogIndex{0}, LogIndex{0}};
     } else {
-      return {_container.front().entry().logIndex(), _container.back().entry().logIndex()};
+      return {_container.front().entry().logIndex(), _container.back().entry().logIndex() + 1};
     }
   }
 
