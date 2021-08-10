@@ -1115,7 +1115,7 @@ Result fromGeoDistanceInterval(
     }
   }
 
-  double_t distance;
+  double_t distance{};
   ScopedAqlValue distanceValue(*node.value);
   if (filter || distanceValue.isConstant()) {
     if (!distanceValue.execute(ctx)) {

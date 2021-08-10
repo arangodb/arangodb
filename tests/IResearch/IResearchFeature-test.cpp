@@ -1706,7 +1706,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
   auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView1);
-  EXPECT_FALSE(!link1);                 // ensure link present after upgrade
+  ASSERT_NE(nullptr, link1); // ensure link present after upgrade
   EXPECT_NE(link0->id(), link1->id());  // ensure new link
   linkDataPath = getPersistedPath1(*link1);
   EXPECT_TRUE(linkDataPath.exists(result) && result);  // ensure link directory created after upgrade

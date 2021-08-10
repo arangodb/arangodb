@@ -109,7 +109,9 @@ irs::unbounded_object_pool<AnyFactory<irs::string_token_stream>> StringStreamPoo
 irs::unbounded_object_pool<AnyFactory<irs::null_token_stream>> NullStreamPool(DEFAULT_POOL_SIZE);
 irs::unbounded_object_pool<AnyFactory<irs::boolean_token_stream>> BoolStreamPool(DEFAULT_POOL_SIZE);
 irs::unbounded_object_pool<AnyFactory<irs::numeric_token_stream>> NumericStreamPool(DEFAULT_POOL_SIZE);
-arangodb::iresearch::AnalyzerPool::AnalyzerFeatures NumericStreamFeatures({irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
+arangodb::iresearch::AnalyzerPool::AnalyzerFeatures NumericStreamFeatures(
+  {irs::type<irs::granularity_prefix>::id()},
+  irs::IndexFeatures::NONE );
 
 // appends the specified 'value' to 'out'
 inline void append(std::string& out, size_t value) {

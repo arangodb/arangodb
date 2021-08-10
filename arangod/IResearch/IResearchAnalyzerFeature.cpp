@@ -2852,6 +2852,15 @@ void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
   }
 }
 
+AnalyzerPool::AnalyzerFeatures::AnalyzerFeatures() noexcept
+  : AnalyzerPool::AnalyzerFeatures{static_cast<uint32_t>(LinkVersion::MAX)} {
+}
+
+AnalyzerPool::AnalyzerFeatures::AnalyzerFeatures(
+    std::initializer_list<irs::type_info::type_id> ff, irs::IndexFeatures ii) noexcept
+  : AnalyzerPool::AnalyzerFeatures(ff, ii, static_cast<uint32_t>(LinkVersion::MAX)) {
+}
+
 std::vector<std::string> AnalyzerPool::AnalyzerFeatures::getNames() const {
   std::vector<std::string> res;
   if (irs::IndexFeatures::FREQ == (_indexFeatures & irs::IndexFeatures::FREQ)) {
@@ -2864,10 +2873,10 @@ std::vector<std::string> AnalyzerPool::AnalyzerFeatures::getNames() const {
   // add typed features
   for (auto& feature : _fieldFeatures) {
     TRI_ASSERT(feature); // has to be non-nullptr
-    // never show norm2 for the user - it is internal impl details
-    auto name = feature().id() == irs::type<irs::norm2>::id()?
-                                    irs::type<irs::norm>::name():
-                                    feature().name();
+    // never show norm2 to the user - it is internal impl details
+    const auto name = feature().id() == irs::type<irs::norm2>::id()
+      ? irs::type<irs::norm>::name()
+      : feature().name();
     res.emplace_back(name);
   }
   return res;
@@ -2887,7 +2896,8 @@ bool AnalyzerPool::AnalyzerFeatures::add(irs::string_ref featureName) {
     return false;
   }
 
-  if (irs::type<irs::norm>::name() == featureName && _storeVersion > 0) {// FIXME: add proper constants to the LinkMeta
+  if (irs::type<irs::norm>::name() == featureName &&
+      _storeVersion > static_cast<uint32_t>(LinkVersion::MIN)) {
     featureName = irs::type<irs::norm2>::name();
   }
 

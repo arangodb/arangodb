@@ -140,8 +140,6 @@ class IResearchLinkTest
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
-TEST_F(IResearchLinkTest, test1) {
-}
 
 TEST_F(IResearchLinkTest, test_defaults) {
   // no view specified

@@ -81,10 +81,22 @@ class AnalyzerPool : private irs::util::noncopyable {
 
   class AnalyzerFeatures {
    public:
-    AnalyzerFeatures(uint32_t storeVersion = 0): _storeVersion(storeVersion) {}
+    AnalyzerFeatures() noexcept;
 
-    AnalyzerFeatures(std::initializer_list<irs::type_info::type_id>&& ff, irs::IndexFeatures ii, uint32_t storeVersion = 0)
-      : _fieldFeatures(std::move(ff)), _indexFeatures(ii), _storeVersion(storeVersion) {}
+    explicit AnalyzerFeatures(uint32_t storeVersion) noexcept
+      : AnalyzerFeatures{{}, irs::IndexFeatures::NONE, storeVersion} {
+    }
+
+    AnalyzerFeatures(
+      std::initializer_list<irs::type_info::type_id> ff,
+      irs::IndexFeatures ii) noexcept;
+
+    AnalyzerFeatures(
+        std::initializer_list<irs::type_info::type_id> ff,
+        irs::IndexFeatures ii, uint32_t storeVersion) noexcept
+      : _fieldFeatures{ff}, _indexFeatures{ii}, _storeVersion{storeVersion} {
+    }
+
     /// @brief build features names
     /// @return vector of feature names (index and field combined)
     std::vector<std::string> getNames() const;
@@ -127,8 +139,8 @@ class AnalyzerPool : private irs::util::noncopyable {
    private:
     // we need plain layout to meet iresearch library expectations
     std::vector<irs::type_info::type_id> _fieldFeatures;
-    irs::IndexFeatures _indexFeatures {irs::IndexFeatures::NONE};
-    uint32_t _storeVersion{0}; // the version of the iresearch datastore if pool is created for the datastore
+    irs::IndexFeatures _indexFeatures;
+    uint32_t _storeVersion; // the version of the iresearch datastore if pool is created for the datastore
   };
 
   explicit AnalyzerPool(irs::string_ref const& name);

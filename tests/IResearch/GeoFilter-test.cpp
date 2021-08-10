@@ -355,7 +355,8 @@ TEST(GeoFilterTest, query) {
 
   // index data
   {
-    auto codec = irs::formats::get(arangodb::iresearch::LATEST_FORMAT);
+    constexpr auto formatId = arangodb::iresearch::getFormat(LinkVersion::MAX);
+    auto codec = irs::formats::get(formatId);
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -704,7 +705,8 @@ TEST(GeoFilterTest, checkScorer) {
 
   // index data
   {
-    auto codec = irs::formats::get(arangodb::iresearch::LATEST_FORMAT);
+    constexpr auto formatId = arangodb::iresearch::getFormat(LinkVersion::MAX);
+    auto codec = irs::formats::get(formatId);
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);

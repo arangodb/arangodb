@@ -97,7 +97,8 @@ class IResearchQueryTest
             "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
             ->slice(),
         arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
-          {irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS));  // cache analyzer
+         {irs::type<irs::norm>::get().id()},
+         irs::IndexFeatures::FREQ | irs::IndexFeatures::POS));  // cache analyzer
     EXPECT_TRUE(res.ok());
 
     auto sysVocbase = server.getFeature<arangodb::SystemDatabaseFeature>().use();

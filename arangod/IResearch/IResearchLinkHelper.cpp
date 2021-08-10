@@ -661,7 +661,7 @@ namespace iresearch {
   return nullptr;
 }
 
-/*static*/ arangodb::Result IResearchLinkHelper::normalize( // normalize definition
+/*static*/ arangodb::Result IResearchLinkHelper::normalize(
     arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
     arangodb::velocypack::Slice definition, // source definition
     bool isCreation, // definition for index creation
@@ -670,13 +670,11 @@ namespace iresearch {
     irs::type_info::type_id const* primarySortCompression /*= nullptr*/,
     IResearchViewStoredValues const* storedValues, /* = nullptr */
     arangodb::velocypack::Slice idSlice, /* = arangodb::velocypack::Slice()*/ // id for normalized
-    irs::string_ref collectionName /*= irs::string_ref::NIL*/
-) {
+    irs::string_ref collectionName /*= irs::string_ref::NIL*/ ) {
   if (!normalized.isOpenObject()) {
-    return arangodb::Result(
+    return {
       TRI_ERROR_BAD_PARAMETER,
-      std::string("invalid output buffer provided for arangosearch link normalized definition generation")
-    );
+      "invalid output buffer provided for arangosearch link normalized definition generation" };
   }
 
   std::string error;
@@ -687,10 +685,9 @@ namespace iresearch {
   //        ::modifyLinks(...) (via call to normalize(...) prior to getting
   //        superuser) if creating via IResearchLinkHelper API
   if (!meta.init(vocbase.server(), definition, true, error, vocbase.name())) {
-    return arangodb::Result(
+    return {
       TRI_ERROR_BAD_PARAMETER,
-      std::string("error parsing arangosearch link parameters from json: ") + error
-    );
+      "error parsing arangosearch link parameters from json: " + error };
   }
 
   auto res = canUseAnalyzers(meta, vocbase); // same validation as in modifyLinks(...) for Views API
@@ -699,15 +696,13 @@ namespace iresearch {
     return res;
   }
 
-  normalized.add(
-    arangodb::StaticStrings::IndexType, arangodb::velocypack::Value(LINK_TYPE)
-  );
+  normalized.add(arangodb::StaticStrings::IndexType, VPackValue(LINK_TYPE));
 
   if (ServerState::instance()->isClusterRole() && 
       isCreation &&
       !collectionName.empty() &&
       meta._collectionName.empty()) {
-    meta._collectionName  = collectionName;
+    meta._collectionName = collectionName;
 #ifdef USE_ENTERPRISE
     arangodb::ClusterMethods::realNameFromSmartName(meta._collectionName);
 #endif
@@ -716,30 +711,22 @@ namespace iresearch {
   // copy over IResearch Link identifier
   if (!idSlice.isNone()) {
     if (idSlice.isNumber()) {
-      normalized.add(
-        arangodb::StaticStrings::IndexId,
-        arangodb::velocypack::Value(std::to_string(idSlice.getNumericValue<uint64_t>()))
-      );
+      normalized.add(arangodb::StaticStrings::IndexId,
+                     VPackValue(std::to_string(idSlice.getNumericValue<uint64_t>())));
     } else {
-      normalized.add(
-        arangodb::StaticStrings::IndexId,
-        idSlice
-      );
+      normalized.add(arangodb::StaticStrings::IndexId, idSlice);
     }
   }
 
   // copy over IResearch View identifier
   if (definition.hasKey(StaticStrings::ViewIdField)) {
-    normalized.add(
-      StaticStrings::ViewIdField, definition.get(StaticStrings::ViewIdField)
-    );
+    normalized.add(StaticStrings::ViewIdField, definition.get(StaticStrings::ViewIdField));
   }
 
   if (definition.hasKey(arangodb::StaticStrings::IndexInBackground)) {
-    normalized.add( // preserve field
-      arangodb::StaticStrings::IndexInBackground, // key
-      definition.get(arangodb::StaticStrings::IndexInBackground) // value
-    );
+    normalized.add(
+      arangodb::StaticStrings::IndexInBackground,
+      definition.get(arangodb::StaticStrings::IndexInBackground));
   }
 
   if (primarySort) {
@@ -757,13 +744,12 @@ namespace iresearch {
   }
 
   if (!meta.json(vocbase.server(), normalized, isCreation, nullptr, &vocbase)) { // 'isCreation' is set when forPersistence
-    return arangodb::Result( // result
-      TRI_ERROR_BAD_PARAMETER, // code
-      "error generating arangosearch link normalized definition" // message
-    );
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "error generating arangosearch link normalized definition" };
   }
 
-  return arangodb::Result();
+  return {};
 }
 
 /*static*/ std::string const& IResearchLinkHelper::type() noexcept {

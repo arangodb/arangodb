@@ -38,15 +38,34 @@ ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
 ADB_IGNORE_UNUSED extern arangodb::LogTopic TOPIC;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the current implementation version of the iresearch interface
+/// @brief defines the implementation version of the iresearch view interface
 ///        e.g. which how data is stored in iresearch
 ////////////////////////////////////////////////////////////////////////////////
-size_t const LATEST_VERSION = 1;
+enum class ViewVersion : uint32_t {
+  MIN = 1,
+  MAX = 1 // the latest
+};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the storage format used with IResearch index
+/// @brief defines the implementation version of the iresearch link interface
+///        e.g. which how data is stored in iresearch
 ////////////////////////////////////////////////////////////////////////////////
-constexpr std::string_view LATEST_FORMAT = "1_4simd";
+enum class LinkVersion : uint32_t {
+  MIN = 0,
+  MAX = 1 // the latest
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @return format identifier according to a specified link version
+////////////////////////////////////////////////////////////////////////////////
+constexpr std::string_view getFormat(LinkVersion version) noexcept {
+  constexpr std::array<std::string_view, 2> IRESEARCH_FORMATS {
+    "1_3simd", // the old storage format used with IResearch index
+    "1_4simd"  // the current storage format used with IResearch index
+  };
+
+  return IRESEARCH_FORMATS[static_cast<uint32_t>(version)];
+}
 
 struct StaticStrings {
   ////////////////////////////////////////////////////////////////////////////////

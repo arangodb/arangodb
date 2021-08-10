@@ -1118,7 +1118,8 @@ Result IResearchLink::init(
       if (!clusterWideLink) {
         // prepare data-store which can then update options
         // via the IResearchView::link(...) call
-        auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
+        auto const res = initDataStore(initCallback, meta._version,
+                                       sorted, storedValuesColumns, primarySortCompression);
 
         if (!res.ok()) {
           return res;
@@ -1190,7 +1191,8 @@ Result IResearchLink::init(
   } else if (ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options
     // via the IResearchView::link(...) call
-    auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
+    auto const res = initDataStore(initCallback, meta._version,
+                                   sorted, storedValuesColumns, primarySortCompression);
 
     if (!res.ok()) {
       return res;
@@ -1238,7 +1240,9 @@ Result IResearchLink::init(
 }
 
 Result IResearchLink::initDataStore(
-    InitCallback const& initCallback, bool sorted,
+    InitCallback const& initCallback,
+    uint32_t version,
+    bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
     irs::type_info::type_id primarySortCompression) {
   std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
@@ -1259,12 +1263,13 @@ Result IResearchLink::initDataStore(
   auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
   auto& flushFeature = server.getFeature<FlushFeature>();
 
-  auto format = irs::formats::get(LATEST_FORMAT);
+  const auto formatId = getFormat(LinkVersion{version});
+  auto format = irs::formats::get(formatId);
 
   if (!format) {
     return {TRI_ERROR_INTERNAL,
-            "failed to get data store codec '"s + LATEST_FORMAT.data() +
-                "' while initializing link '" + std::to_string(_id.id()) + "'"};
+            "failed to get data store codec '"s + formatId.data() +
+             "' while initializing link '" + std::to_string(_id.id()) + "'"};
   }
 
   _engine = &server.getFeature<EngineSelectorFeature>().engine();
