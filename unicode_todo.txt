@@ -4,7 +4,7 @@ To do:
 - [ ] check arangodump, add tests -- Julia
 - [x] usage of database names as directory names in arangodump when invoked with `--all-databases` option. potentially affects arangorestore - Julia OBS.: APPARENTLY ok, will see more
 - [ ] check arangorestore, add tests
-- [ ] check arangoimport, add tests -- Jan
+- [x] check arangoimport, add tests -- Jan
 - [x] check arangoexport, add tests
 - [ ] check arangosh
 - [ ] check location headers / http redirects

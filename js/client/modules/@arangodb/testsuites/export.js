@@ -125,9 +125,7 @@ function exportTest (options) {
   databases.forEach((name, idx) => {
     try {
       fs.removeDirectory(tmpPath);
-    } catch (err) {
-      print(err);
-    }
+    } catch (err) {}
     
     const args = {
       'configuration': fs.join(pu.CONFIG_DIR, 'arangoexport.conf'),
