@@ -2,7 +2,8 @@ v3.7.15 (XXXX-XX-XX)
 --------------------
 
 * Append physical compaction of log collection to every Raft log
-  compaction. Restrict agent rocksdb block and write cache sizes (BTS-542).
+  compaction. Restrict agent RocksDB block cache and write buffer sizes 
+  (BTS-542).
 
 v3.7.14 (XXXX-XX-XX)
 --------------------
