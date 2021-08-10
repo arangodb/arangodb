@@ -317,6 +317,21 @@ function dumpIntegrationSuite () {
       }
     },
     
+    testDumpSingleDatabase: function () {
+      dbs.forEach((name) => {
+        let path = fs.getTempFile();
+        db._useDatabase(name);
+        try {
+          let args = ['--overwrite', 'true'];
+          let tree = runDump(path, args, 0);
+          print(tree);
+        } finally {
+          try {
+            fs.removeDirectory(path);
+          } catch (err) {}
+        }
+      });
+    },
 
     testDumpAllDatabases: function () {
       let path = fs.getTempFile();
