@@ -990,14 +990,16 @@ Result IResearchLink::drop() {
   std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
-  // is stats initialized?
-  if (_linkStats != &_dummyStats) {
-    // remove statistic from MetricsFeature
-    _collection.vocbase().server()
-      .getFeature<arangodb::MetricsFeature>().remove(getLinkStatMetric(*this));
-  }
+  if (_dataStore) {
+    // is stats initialized?
+    if (_linkStats != &_dummyStats) {
+      // remove statistic from MetricsFeature
+      _collection.vocbase().server()
+        .getFeature<arangodb::MetricsFeature>().remove(getLinkStatMetric(*this));
+    }
 
-  _linkStats = &_dummyStats;
+    _linkStats = &_dummyStats;
+  }
 
   try {
     if (_dataStore) {
@@ -1264,10 +1266,6 @@ Result IResearchLink::init(
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
   _comparer.reset(_meta._sort);
 
-  // init _linkStats with AtomicMetric
-  _linkStats = &_collection.vocbase().server()
-            .getFeature<arangodb::MetricsFeature>().add(getLinkStatMetric(*this));
-
   return {};
 }
 
@@ -1466,6 +1464,10 @@ Result IResearchLink::initDataStore(
   // create a new 'self' (previous was reset during unload() above)
   _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
 
+  // init _linkStats with AtomicMetric
+  _linkStats = &_collection.vocbase().server()
+          .getFeature<arangodb::MetricsFeature>().add(getLinkStatMetric(*this));
+
   // ...........................................................................
   // set up in-recovery insertion hooks
   // ...........................................................................
@@ -1575,6 +1577,8 @@ std::string IResearchLink::getCollectionName() const {
     return _meta._collectionName;
   } else if (ServerState::instance()->isSingleServer()) {
     return std::to_string(_collection.id().id());
+  } else {
+    TRI_ASSERT(false);
   }
 }
 
@@ -1928,14 +1932,16 @@ Result IResearchLink::unload() {
   std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
-  // is stats initialized?
-  if (_linkStats != &_dummyStats) {
-    // remove statistic from MetricsFeature
-    _collection.vocbase().server()
-      .getFeature<arangodb::MetricsFeature>().remove(getLinkStatMetric(*this));
-  }
+  if (_dataStore) {
+    // is stats initialized?
+    if (_linkStats != &_dummyStats) {
+      // remove statistic from MetricsFeature
+      _collection.vocbase().server()
+        .getFeature<arangodb::MetricsFeature>().remove(getLinkStatMetric(*this));
+    }
 
-  _linkStats = &_dummyStats;
+    _linkStats = &_dummyStats;
+  }
 
   try {
     if (_dataStore) {
