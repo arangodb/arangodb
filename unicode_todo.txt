@@ -2,11 +2,13 @@ To do:
 - [ ] add test for Foxx directory names -- Jan
 - [ ] check arangorestore, add tests -- Julia
 - [ ] check location headers / http redirects -- Jan
+- [ ] add tests for KeyGenerator::validateId -- Jan
+- [ [ add tests for NameValidator(s) -- Jan
+- [ ] check request forwarding in load-balancer, add tests -- Jan
 - [ ] check web interface
 - [ ] check arangosh
 - [ ] check cluster and agency
 - [ ] check cluster-internal requests (using fuerte)
-- [ ] check request forwarding in load-balancer
 - [ ] check arangosync
 - [ ] check arangojs compatibility
 - [ ] check arangodb-java-driver compatibility
