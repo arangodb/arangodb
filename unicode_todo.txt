@@ -1,8 +1,8 @@
 To do:
-- [ ] add test for Foxx directory names -- Jan
-- [ ] check arangorestore, add tests -- Julia
+- [ ] add test for Foxx directory names -- Julia
+- [ ] check arangorestore, add tests -- Julia OBS.: changed the tool, but still need to add tests
 - [ ] check location headers / http redirects -- Jan
-- [ ] add tests for KeyGenerator::validateId -- Jan
+- [ ] add tests for KeyGenerator::validateId -- Jan 
 - [ [ add tests for NameValidator(s) -- Jan
 - [ ] check request forwarding in load-balancer, add tests -- Jan
 - [ ] check web interface
