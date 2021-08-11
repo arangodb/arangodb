@@ -1,14 +1,69 @@
 /* global arangoHelper, frontendConfig */
 
-import { compact, get, isEqual } from 'lodash';
+import { compact, get, isEqual, sortBy } from 'lodash';
 import minimatch from 'minimatch';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
+import Modal, { ModalBody, ModalFooter, ModalHeader } from '../../components/modal/Modal';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { getChangeHandler } from '../../utils/helpers';
 import Actions from './Actions';
 import AddAnalyzer from './AddAnalyzer';
 import { typeNameMap } from './constants';
+
+const FilterHelpModal = () => {
+  const [show, setShow] = useState(false);
+
+  const showFilterHelp = (event) => {
+    event.preventDefault();
+    setShow(true);
+  };
+
+  return <>
+    <a href={'#analyzers'} onClick={showFilterHelp}>
+      <i className={'fa fa-question-circle'} style={{
+        float: 'right',
+        marginRight: 10,
+        marginTop: 3,
+        color: '#fff',
+        fontSize: '16pt'
+      }}/>
+    </a>
+    <Modal show={show} setShow={setShow}>
+      <ModalHeader title={'Filter Help'}/>
+      <ModalBody>
+        <dl>
+          <dt>Simple Usage</dt>
+          <dd>
+            Just type a few characters and the filter will show all analyzers which include the
+            search string in their database, name or type.
+          </dd>
+          <dt>Pattern Search</dt>
+          <dd>
+            Enter a&nbsp;<b>
+            <a target={'_blank'} rel={'noreferrer'}
+               href={'https://www.gnu.org/software/bash/manual/html_node/Pattern-Matching.html'}>
+              glob
+            </a>
+          </b>&nbsp;pattern and the filter will show all analyzers which match the pattern in their
+            database, name or type. Note that the pattern is not anchored, and can match anywhere in
+            a string.
+          </dd>
+          <dt>Faceted Pattern Search</dt>
+          <dd>
+            Prefix the search pattern
+            with <code>db:</code>, <code>name:</code> or <code>type:</code> to restrict the pattern
+            to that respective field. Multiple field-pattern combos can be entered, separated by a
+            space.
+          </dd>
+        </dl>
+      </ModalBody>
+      <ModalFooter>
+        <button className="button-close" onClick={() => setShow(false)}>Close</button>
+      </ModalFooter>
+    </Modal>
+  </>;
+};
 
 
 const AnalyzersReactView = () => {
@@ -26,14 +81,23 @@ const AnalyzersReactView = () => {
   const [filterExpr, setFilterExpr] = useState('');
   const [filteredAnalyzers, setFilteredAnalyzers] = useState([]);
   const [analyzers, setAnalyzers] = useState([]);
+  const [showInbuiltAnalyzers, setShowInbuiltAnalyzers] = useState(false);
 
-  function processAndSetFilteredAnalyzers (analyzers) {
+  const processAndSetFilteredAnalyzers = useCallback(analyzers => {
     analyzers.forEach(analyzer => {
       analyzer.db = analyzer.name.includes('::') ? analyzer.name.split('::')[0] : '_system';
     });
 
-    setFilteredAnalyzers(analyzers);
-  }
+    if (!showInbuiltAnalyzers) {
+      analyzers = analyzers.filter(analyzer => analyzer.name.includes('::'));
+    }
+
+    setFilteredAnalyzers(sortBy(analyzers, ['db', 'type', 'name']));
+  }, [showInbuiltAnalyzers]);
+
+  const toggleInbuiltAnalyzers = () => {
+    setShowInbuiltAnalyzers(!showInbuiltAnalyzers);
+  };
 
   useEffect(() => {
     let tempFilteredAnalyzers = analyzers;
@@ -61,7 +125,7 @@ const AnalyzersReactView = () => {
     }
 
     processAndSetFilteredAnalyzers(tempFilteredAnalyzers);
-  }, [analyzers, filterExpr]);
+  }, [analyzers, filterExpr, processAndSetFilteredAnalyzers]);
 
   const errMsgs = compact([
     get(error, 'message'),
@@ -98,6 +162,7 @@ const AnalyzersReactView = () => {
             </div>
 
             <div className={'pure-u-3-5'}>
+              <FilterHelpModal/>
               <label htmlFor={'filter-input'} style={{
                 color: '#fff',
                 marginRight: 10,
@@ -105,7 +170,7 @@ const AnalyzersReactView = () => {
               }}>
                 Filter: <input type={'text'} id={'filter-input'} className={'search-input'}
                                value={filterExpr} onChange={getChangeHandler(setFilterExpr)}
-                               placeholder={'<glob> | (<db|name|type>:<glob> )+'}
+                               placeholder={'<glob>|(<db|name|type>:<glob> )+'}
                                style={{
                                  margin: 0,
                                  width: 300,
@@ -114,10 +179,22 @@ const AnalyzersReactView = () => {
                 <i className={'fa fa-search'} style={{
                   position: 'relative',
                   float: 'left',
-                  top: 10,
-                  left: 65,
-                  cursor: 'default'
+                  top: 9,
+                  left: 60,
+                  cursor: 'default',
+                  color: 'rgb(85, 85, 85)'
                 }}/>
+              </label>
+              <label htmlFor={'inbuilt-analyzers'} className="pure-checkbox" style={{
+                float: 'right',
+                color: '#fff',
+                marginTop: 3
+              }}>
+                <input id={'inbuilt-analyzers'} type={'checkbox'} checked={showInbuiltAnalyzers}
+                       onChange={toggleInbuiltAnalyzers} style={{
+                  width: 'auto',
+                  marginBottom: 7
+                }}/> Show In-built Analyzers
               </label>
             </div>
           </div>
@@ -132,16 +209,22 @@ const AnalyzersReactView = () => {
             </thead>
             <tbody>
             {
-              filteredAnalyzers.map(analyzer => (
-                <tr key={analyzer.name}>
-                  <td className={'arango-table-td table-cell0'}>{analyzer.db}</td>
-                  <td className={'arango-table-td table-cell1'}>{analyzer.name}</td>
-                  <td className={'arango-table-td table-cell2'}>{typeNameMap[analyzer.type]}</td>
-                  <td className={'arango-table-td table-cell3'}>
-                    <Actions analyzer={analyzer} permission={permission}/>
+              filteredAnalyzers.length
+                ? filteredAnalyzers.map(analyzer => (
+                  <tr key={analyzer.name}>
+                    <td className={'arango-table-td table-cell0'}>{analyzer.db}</td>
+                    <td className={'arango-table-td table-cell1'}>{analyzer.name}</td>
+                    <td className={'arango-table-td table-cell2'}>{typeNameMap[analyzer.type]}</td>
+                    <td className={'arango-table-td table-cell3'}>
+                      <Actions analyzer={analyzer} permission={permission}/>
+                    </td>
+                  </tr>
+                ))
+                : <tr>
+                  <td className={'arango-table-td table-cell0'} colSpan={4}>
+                    No analyzers found.
                   </td>
                 </tr>
-              ))
             }
             </tbody>
           </table>

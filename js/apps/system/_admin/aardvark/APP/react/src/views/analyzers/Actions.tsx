@@ -74,8 +74,6 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
 
   const handleClick = (event: MouseEvent<HTMLElement>) => {
     event.preventDefault();
-
-    // console.log(analyzer);
     setShow(true);
   };
 
@@ -84,7 +82,7 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
       <i className={'fa fa-eye'}/>
     </button>
     <Modal show={show} setShow={setShow}>
-      <ModalHeader title={`Analyzer Details: ${analyzer.name}`}/>
+      <ModalHeader title={analyzer.name}/>
       <ModalBody>
         <Editor value={analyzer} mode={'view'}/>
       </ModalBody>

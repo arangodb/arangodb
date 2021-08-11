@@ -1,6 +1,6 @@
 import { FormState } from "../constants";
 import React, { useState } from "react";
-import { chain, uniqueId } from "lodash";
+import { chain, sortBy, uniqueId } from "lodash";
 
 interface CopyFromInputProps {
   analyzers: FormState[];
@@ -34,8 +34,8 @@ const CopyFromInput = ({ analyzers, setFormState, setRenderKey }: CopyFromInputP
                 setSelectedAnalyzer(parseInt(event.target.value));
               }}>
         {
-          analyzers.map((analyzer, idx) => <option key={idx}
-                                                   value={idx}>{analyzer.name} ({analyzer.type})</option>)
+          sortBy(analyzers, 'name').map((analyzer, idx) =>
+            <option key={idx} value={idx}>{analyzer.name} ({analyzer.type})</option>)
         }
       </select>
     </div>
