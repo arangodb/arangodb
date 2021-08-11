@@ -56,8 +56,10 @@ struct PersistedLogIterator;
  */
 struct InMemoryLog {
  public:
-  using log_type =
-      ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy>;
+  template<typename T>
+  using log_type_t = ::immer::flex_vector<T, arangodb::immer::arango_memory_policy>;
+  using log_type = log_type_t<InMemoryLogEntry>;
+  using log_type_persisted = log_type_t<PersistingLogEntry>;
 
  private:
   log_type _log{};
@@ -98,8 +100,7 @@ struct InMemoryLog {
   [[nodiscard]] auto append(LoggerContext const& logContext, log_type entries) const
       -> InMemoryLog;
   [[nodiscard]] auto append(LoggerContext const& logContext,
-                            ::immer::flex_vector<PersistingLogEntry, arangodb::immer::arango_memory_policy> const& entries) const
-      -> InMemoryLog;
+                            log_type_persisted const& entries) const -> InMemoryLog;
 
   [[nodiscard]] auto getIteratorFrom(LogIndex fromIdx) const -> std::unique_ptr<LogIterator>;
   [[nodiscard]] auto getInternalIteratorFrom(LogIndex fromIdx) const -> std::unique_ptr<PersistedLogIterator>;

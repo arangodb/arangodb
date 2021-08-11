@@ -244,10 +244,8 @@ auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
   return InMemoryLog{std::move(transient).persistent()};
 }
 
-auto replicated_log::InMemoryLog::append(
-    LoggerContext const& logContext,
-    ::immer::flex_vector<PersistingLogEntry, arangodb::immer::arango_memory_policy> const& entries) const
-    -> InMemoryLog {
+auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
+                                         log_type_persisted const& entries) const -> InMemoryLog {
   auto transient = _log.transient();
   for (auto const& entry : entries) {
     transient.push_back(InMemoryLogEntry(entry));

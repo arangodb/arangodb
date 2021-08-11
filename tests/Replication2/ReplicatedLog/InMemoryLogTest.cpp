@@ -161,11 +161,61 @@ TEST_P(InMemoryLogTest, empty) {
   EXPECT_EQ(range.empty(), log.empty());
 }
 
+TEST_P(InMemoryLogTest, append_in_place) {
+  auto const range = GetParam();
+  auto log = createLogForRangeSingleTerm(range);
+
+  auto memtry =
+      InMemoryLogEntry({LogTerm{1}, range.to, LogPayload::createFromString("foo")});
+  log.appendInPlace(LoggerContext(Logger::FIXME), std::move(memtry));
+  {
+    auto result = log.getEntryByIndex(range.to);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->entry().logIndex(), range.to);
+  }
+  {
+    auto result = log.getLastEntry();
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->entry().logIndex(), range.to);
+  }
+}
+
 auto const LogRanges = ::testing::Values(LogRange(LogIndex{1}, LogIndex{15}),
                                          LogRange(LogIndex{1}, LogIndex{1234}),
                                          LogRange(LogIndex{1}, LogIndex{1}));
 
 INSTANTIATE_TEST_CASE_P(InMemoryLogTestInstance, InMemoryLogTest, LogRanges);
+
+struct InMemoryLogAppendTest
+    : testing::TestWithParam<std::tuple<std::size_t, LogRange>>,
+      InMemoryLogTestBase {
+  static auto getPersistedEntriesVector(LogIndex first, std::size_t length,
+                                        LogTerm term = LogTerm{1}) {
+    auto result = InMemoryLog::log_type_persisted::transient_type{};
+    for (auto idx : LogRange(first, first + length)) {
+      result.push_back(PersistingLogEntry{term, idx, LogPayload::createFromString("foo")});
+    }
+    return result.persistent();
+  }
+};
+
+TEST_P(InMemoryLogAppendTest, append_peristed_entries) {
+  auto const [length, range] = GetParam();
+  auto const log = createLogForRangeSingleTerm(range, LogTerm{1});
+  auto const toAppend = getPersistedEntriesVector(range.to, length, LogTerm{2});
+
+  auto const newLog = log.append(LoggerContext(Logger::FIXME), toAppend);
+  for (auto idx : LogRange(range.from, range.to + length)) {
+    auto memtry = newLog.getEntryByIndex(idx);
+    ASSERT_TRUE(memtry.has_value()) << "idx = " << idx;
+    auto const expectedTerm = range.contains(idx) ? LogTerm{1} : LogTerm{2};
+    EXPECT_EQ(memtry->entry().logIndex(), idx);
+    EXPECT_EQ(memtry->entry().logTerm(), expectedTerm);
+  }
+}
+
+INSTANTIATE_TEST_CASE_P(InMemoryLogAppendTest, InMemoryLogAppendTest,
+                        ::testing::Combine(::testing::Range<std::size_t>(0, 10), LogRanges));
 
 struct InMemoryLogSliceTest : ::testing::TestWithParam<std::tuple<LogRange, LogRange>>,
                               InMemoryLogTestBase {};
@@ -251,7 +301,7 @@ struct IndexOfTermTest : ::testing::TestWithParam<TermTestData>, InMemoryLogTest
     return TestInMemoryLog(transient.persistent());
   }
 
-  auto getTermBounds(LogIndex first, TermDistribution const& dist, LogTerm wanted)
+  static auto getTermBounds(LogIndex first, TermDistribution const& dist, LogTerm wanted)
       -> std::optional<LogRange> {
     auto next = first;
     for (auto [term, length] : dist) {
