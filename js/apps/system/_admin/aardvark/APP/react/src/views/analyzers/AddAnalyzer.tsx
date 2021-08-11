@@ -15,6 +15,7 @@ import { FormState } from "./constants";
 import CopyFromInput from "./forms/CopyFromInput";
 import AqlForm from "./forms/AqlForm";
 import GeoJsonForm from "./forms/GeoJsonForm";
+import GeoPointForm from "./forms/GeoPointForm";
 
 declare var arangoHelper: { [key: string]: any };
 
@@ -80,7 +81,8 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
     text: <TextForm formState={formState} updateFormField={updateFormField} unsetFormField={unsetFormField}/>,
     aql: <AqlForm formState={formState} updateFormField={updateFormField}/>,
     geojson: <GeoJsonForm formState={formState} updateFormField={updateFormField}/>,
-    geopoint: 'GeoPoint',
+    geopoint: <GeoPointForm formState={formState} updateFormField={updateFormField}
+                            unsetFormField={unsetFormField}/>,
     pipeline: 'Pipeline'
   };
 

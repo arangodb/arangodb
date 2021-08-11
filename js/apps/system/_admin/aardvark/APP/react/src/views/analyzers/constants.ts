@@ -67,6 +67,8 @@ type AnalyzerProperties = {
   returnType?: AnalyzerReturnType;
   type?: AnalyzerGeoJsonType;
   options?: AnalyzerGeoJsonOptions;
+  latitude?: string[];
+  longitude?: string[];
 }
 
 export interface FormState {
@@ -231,6 +233,20 @@ export const formSchema = {
               type: 'integer',
               nullable: false
             }
+          }
+        },
+        latitude: {
+          type: 'array',
+          nullable: false,
+          items: {
+            type: 'string'
+          }
+        },
+        longitude: {
+          type: 'array',
+          nullable: false,
+          items: {
+            type: 'string'
           }
         }
       }
