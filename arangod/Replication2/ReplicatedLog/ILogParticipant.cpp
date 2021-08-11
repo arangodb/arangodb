@@ -64,3 +64,7 @@ auto replicated_log::ILogParticipant::waitForIterator(LogIndex index)
 auto replicated_log::ILogParticipant::getTerm() const noexcept -> std::optional<LogTerm> {
   return getStatus().getCurrentTerm();
 }
+
+auto replicated_log::LogUnconfiguredParticipant::release(LogIndex doneWithIdx) -> Result {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}

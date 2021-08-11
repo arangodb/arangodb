@@ -33,6 +33,10 @@
 #include <map>
 #include <memory>
 
+namespace arangodb {
+class Result;
+}
+
 namespace arangodb::replication2::replicated_log {
 
 struct LogCore;
@@ -59,13 +63,15 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;
   [[nodiscard]] virtual auto waitForIterator(LogIndex index) -> WaitForIteratorFuture;
   [[nodiscard]] virtual auto getTerm() const noexcept -> std::optional<LogTerm>;
+
+  [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
 };
 
 /**
 * @brief Unconfigured log participant, i.e. currently neither a leader nor
 * follower. Holds a LogCore, does nothing else.
 */
-struct LogUnconfiguredParticipant
+struct LogUnconfiguredParticipant final
     : std::enable_shared_from_this<LogUnconfiguredParticipant>,
       ILogParticipant {
   ~LogUnconfiguredParticipant() override;
@@ -76,6 +82,7 @@ struct LogUnconfiguredParticipant
   auto resign() &&
       -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
+  [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
  private:
   std::unique_ptr<LogCore> _logCore;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;

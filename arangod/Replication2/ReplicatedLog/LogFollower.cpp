@@ -406,6 +406,9 @@ replicated_log::LogFollower::~LogFollower() {
   _logMetrics->replicatedLogFollowerNumber->fetch_sub(1);
 }
 
+auto LogFollower::release(LogIndex doneWithIdx) -> Result {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() const noexcept
     -> LogStatistics {

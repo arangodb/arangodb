@@ -62,7 +62,7 @@ class Try;
 namespace arangodb::replication2::replicated_log {
 struct LogCore;
 struct ReplicatedLogMetrics;
-}
+}  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb::replication2::replicated_log {
 
@@ -108,7 +108,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
 
   [[nodiscard]] auto getReplicatedLogSnapshot() const -> InMemoryLog::log_type;
 
-  [[nodiscard]] auto readReplicatedEntryByIndex(LogIndex idx) const -> std::optional<PersistingLogEntry>;
+  [[nodiscard]] auto readReplicatedEntryByIndex(LogIndex idx) const
+      -> std::optional<PersistingLogEntry>;
 
   // Triggers sending of appendEntries requests to all followers. This continues
   // until all participants are perfectly in sync, and will then stop.
@@ -121,6 +122,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   [[nodiscard]] auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
 
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const&;
+
+  [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
 
  protected:
   // Use the named constructor construct() to create a leader!
@@ -140,6 +143,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     std::shared_ptr<AbstractFollower> _impl;
     TermIndexPair lastAckedEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     LogIndex lastAckedCommitIndex = LogIndex{0};
+    LogIndex lastAckedLCI = LogIndex{0};
     MessageId lastSentMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason = AppendEntriesErrorReason::NONE;
@@ -208,7 +212,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
 
     [[nodiscard]] auto handleAppendEntriesResponse(
         FollowerInfo& follower, TermIndexPair lastIndex, LogIndex currentCommitIndex,
-        LogTerm currentTerm, futures::Try<AppendEntriesResult>&& res,
+        LogIndex currentLCI, LogTerm currentTerm, futures::Try<AppendEntriesResult>&& res,
         std::chrono::steady_clock::duration latency, MessageId messageId)
         -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet>;
 
@@ -236,6 +240,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     WaitForQueue _waitForQueue{};
     std::shared_ptr<QuorumData> _lastQuorum{};
     LogIndex _commitIndex{0};
+    LogIndex _largestCommonIndex{0};
     bool _didResign{false};
   };
 
@@ -262,7 +267,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
       std::vector<std::optional<PreparedAppendEntryRequest>> requests,
       std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
   static void handleResolvedPromiseSet(ResolvedPromiseSet set,
-      std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
+                                       std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
 
   auto tryHardToClearQueue() noexcept -> void;
 };

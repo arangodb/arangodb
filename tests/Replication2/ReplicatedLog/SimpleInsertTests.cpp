@@ -188,19 +188,23 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
       EXPECT_EQ(status.local.spearHead.index, LogIndex{2});
     }
 
+    // LCI update
+    EXPECT_TRUE(follower->hasPendingAppendEntries());
+    follower->runAsyncAppendEntries();
     EXPECT_FALSE(follower->hasPendingAppendEntries());
   }
   {
-    // Metric should have registered four appendEntries.
+    // Metric should have registered six appendEntries.
     // There was one insert, resulting in one appendEntries each to the follower
     // and the local follower. After the followers responded, the commit index
     // is updated, and both followers get another appendEntries request.
+    // Finally, the LCI is updated with another round of requests.
     auto numAppendEntries =
         countHistogramEntries(_logMetricsMock->replicatedLogAppendEntriesRttUs);
-    EXPECT_EQ(numAppendEntries, 4);
+    EXPECT_EQ(numAppendEntries, 6);
     auto numFollowerAppendEntries =
         countHistogramEntries(_logMetricsMock->replicatedLogFollowerAppendEntriesRtUs);
-    EXPECT_EQ(numFollowerAppendEntries, 4);
+    EXPECT_EQ(numFollowerAppendEntries, 6);
   }
 }
 
@@ -263,7 +267,8 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
     // AppendEntries with prevLogIndex 2 -> success = false
     // AppendEntries with prevLogIndex 0 -> success = true
     // AppendEntries with new commitIndex
-    EXPECT_EQ(number_of_runs, 3);
+    // AppendEntries with new LCI
+    EXPECT_EQ(number_of_runs, 4);
   }
 
   {
@@ -402,6 +407,12 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
     EXPECT_EQ(status.local.spearHead.index, LogIndex{2});
   }
 
+  // LCI updates
+  follower_1->runAsyncAppendEntries();
+  EXPECT_FALSE(follower_1->hasPendingAppendEntries());  // no lci update yet
+  follower_2->runAsyncAppendEntries();
+  EXPECT_TRUE(follower_2->hasPendingAppendEntries());
+
   follower_1->runAsyncAppendEntries();
   EXPECT_FALSE(follower_1->hasPendingAppendEntries());
   follower_2->runAsyncAppendEntries();
@@ -484,7 +495,8 @@ TEST_F(ReplicatedLogTest, write_concern_one_immediate_leader_commit_on_startup) 
     }
     // AppendEntries with prevLogIndex 2 -> success = false, replicated log empty
     // AppendEntries with prevLogIndex 2 -> success = true, including commit index
-    EXPECT_EQ(number_of_runs, 2);
+    // AppendEntries with LCI
+    EXPECT_EQ(number_of_runs, 3);
   }
 
   {

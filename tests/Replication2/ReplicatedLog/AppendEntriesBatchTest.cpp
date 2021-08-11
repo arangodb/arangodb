@@ -73,7 +73,8 @@ TEST_F(AppendEntriesBatchTest, test_with_two_batches) {
     // 1. AppendEntries 1..1000
     // 2. AppendEntries 2..2000
     // 3. AppendEntries CommitIndex
-    EXPECT_EQ(num_requests, 3 + 1);
+    // 4. AppendEntries LCI
+    EXPECT_EQ(num_requests, 3 + 1 + 1);
   }
 
   {
