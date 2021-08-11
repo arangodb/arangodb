@@ -1,6 +1,6 @@
 import { FormState } from "../constants";
 import React, { useState } from "react";
-import { chain, sortBy, uniqueId } from "lodash";
+import { chain, findIndex, sortBy, uniqueId } from "lodash";
 
 interface CopyFromInputProps {
   analyzers: FormState[];
@@ -29,13 +29,15 @@ const CopyFromInput = ({ analyzers, setFormState, setRenderKey }: CopyFromInputP
       </button>
     </div>
     <div className={'pure-u-16-24 pure-u-md-16-24 pure-u-lg-16-24 pure-u-xl-16-24'}>
-      <select value={selectedAnalyzer} style={{ width: 'auto' }}
+      <select value={analyzers[selectedAnalyzer].name} style={{ width: 'auto' }}
               onChange={(event) => {
-                setSelectedAnalyzer(parseInt(event.target.value));
+                const selectedAnalyzerIdx = findIndex(analyzers, { name: event.target.value });
+
+                setSelectedAnalyzer(selectedAnalyzerIdx);
               }}>
         {
           sortBy(analyzers, 'name').map((analyzer, idx) =>
-            <option key={idx} value={idx}>{analyzer.name} ({analyzer.type})</option>)
+            <option key={idx} value={analyzer.name}>{analyzer.name} ({analyzer.type})</option>)
         }
       </select>
     </div>
