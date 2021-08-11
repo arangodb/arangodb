@@ -1785,7 +1785,8 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     Instance() {
       // register the identity analyzer
       {
-        AnalyzerPool::AnalyzerFeatures const extraFeatures({irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ);
+        AnalyzerPool::AnalyzerFeatures const extraFeatures{
+          {irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ};
 
         auto pool = std::make_shared<AnalyzerPool>(IdentityAnalyzer::type_name());
 
