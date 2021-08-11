@@ -13,6 +13,8 @@ import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { FormState } from "./constants";
 import CopyFromInput from "./forms/CopyFromInput";
+import AqlForm from "./forms/AqlForm";
+import GeoJsonForm from "./forms/GeoJsonForm";
 
 declare var arangoHelper: { [key: string]: any };
 
@@ -70,12 +72,16 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
   };
 
   const forms: { [key: string]: ReactFragment | null } = {
+    identity: null,
     delimiter: <DelimiterForm formState={formState} updateFormField={updateFormField}/>,
     stem: <StemForm formState={formState} updateFormField={updateFormField}/>,
     norm: <NormForm formState={formState} updateFormField={updateFormField}/>,
     ngram: <NGramForm formState={formState} updateFormField={updateFormField}/>,
     text: <TextForm formState={formState} updateFormField={updateFormField} unsetFormField={unsetFormField}/>,
-    identity: null
+    aql: <AqlForm formState={formState} updateFormField={updateFormField}/>,
+    geojson: <GeoJsonForm formState={formState} updateFormField={updateFormField}/>,
+    geopoint: 'GeoPoint',
+    pipeline: 'Pipeline'
   };
 
   return <>

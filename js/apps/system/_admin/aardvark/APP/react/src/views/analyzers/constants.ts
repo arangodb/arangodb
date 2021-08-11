@@ -4,7 +4,11 @@ export const typeNameMap = {
   stem: 'Stem',
   norm: 'Norm',
   ngram: 'N-Gram',
-  text: 'Text'
+  text: 'Text',
+  aql: 'AQL',
+  geojson: 'GeoJSON',
+  geopoint: 'GeoPoint',
+  pipeline: 'Pipeline'
 };
 
 export interface FormProps {
@@ -12,7 +16,17 @@ export interface FormProps {
   updateFormField: (field: string, value: any) => void;
 }
 
-type AnalyzerType = 'identity' | 'delimiter' | 'stem' | 'norm' | 'ngram' | 'text';
+type AnalyzerType =
+  'identity'
+  | 'delimiter'
+  | 'stem'
+  | 'norm'
+  | 'ngram'
+  | 'text'
+  | 'aql'
+  | 'geojson'
+  | 'geopoint'
+  | 'pipeline';
 type AnalyzerNormCase = 'lower' | 'upper' | 'none';
 type AnalyzerStreamType = 'binary' | 'utf8';
 type AnalyzerFeature = 'frequency' | 'norm' | 'position';
@@ -23,6 +37,13 @@ type AnalyzerEdgeNgram = {
   min?: Int;
   preserveOriginal?: boolean;
 }
+type AnalyzerReturnType = 'string' | 'number' | 'bool';
+type AnalyzerGeoJsonType = 'shape' | 'centroid' | 'point';
+type AnalyzerGeoJsonOptions = {
+  maxCells?: Int;
+  minLevel?: Int;
+  maxLevel?: Int;
+};
 type AnalyzerProperties = {
   delimiter?: string;
   locale?: string;
@@ -38,6 +59,14 @@ type AnalyzerProperties = {
   edgeNgram?: AnalyzerEdgeNgram;
   stopwords?: string[];
   stopwordsPath?: string;
+  queryString?: string;
+  collapsePositions?: boolean;
+  keepNull?: boolean;
+  batchSize?: Int;
+  memoryLimit?: Int;
+  returnType?: AnalyzerReturnType;
+  type?: AnalyzerGeoJsonType;
+  options?: AnalyzerGeoJsonOptions;
 }
 
 export interface FormState {
@@ -57,7 +86,7 @@ export const formSchema = {
     type: {
       nullable: false,
       type: 'string',
-      enum: ['identity', 'delimiter', 'stem', 'norm', 'ngram', 'text']
+      enum: ['identity', 'delimiter', 'stem', 'norm', 'ngram', 'text', 'aql', 'geojson', 'geopoint', 'pipeline']
     },
     features: {
       type: 'array',
@@ -152,6 +181,57 @@ export const formSchema = {
         stopwordsPath: {
           type: 'string',
           nullable: false
+        },
+        queryString: {
+          type: 'string',
+          nullable: false
+        },
+        collapsePositions: {
+          type: 'boolean',
+          nullable: false
+        },
+        keepNull: {
+          type: 'boolean',
+          nullable: false
+        },
+        batchSize: {
+          type: 'integer',
+          nullable: false,
+          minimum: 1,
+          maximum: 1000
+        },
+        memoryLimit: {
+          type: 'integer',
+          nullable: false,
+          maximum: 33554432
+        },
+        returnType: {
+          nullable: false,
+          type: 'string',
+          enum: ['string', 'number', 'bool']
+        },
+        type: {
+          nullable: false,
+          type: 'string',
+          enum: ['shape', 'centroid', 'point']
+        },
+        options: {
+          type: 'object',
+          nullable: false,
+          properties: {
+            maxCells: {
+              type: 'integer',
+              nullable: false
+            },
+            minLevel: {
+              type: 'integer',
+              nullable: false
+            },
+            maxLevel: {
+              type: 'integer',
+              nullable: false
+            }
+          }
         }
       }
     }
