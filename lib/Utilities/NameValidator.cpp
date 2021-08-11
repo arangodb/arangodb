@@ -100,9 +100,6 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
 /// returns true if the name is allowed and false otherwise
 bool CollectionNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
                                             arangodb::velocypack::StringRef const& name) noexcept {
-  // intentionally false for now - new naming convention not yet supported for collections
-  TRI_ASSERT(!extendedNames);
-
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
@@ -158,9 +155,6 @@ bool CollectionNameValidator::isAllowedName(bool allowSystem, bool extendedNames
 /// returns true if the name is allowed and false otherwise
 bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
                                       arangodb::velocypack::StringRef const& name) noexcept {
-  // intentionally false for now - new naming convention not yet supported for views
-  TRI_ASSERT(!extendedNames);
-
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
@@ -216,9 +210,6 @@ bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
 /// returns true if the name is allowed and false otherwise
 bool IndexNameValidator::isAllowedName(bool extendedNames,
                                        arangodb::velocypack::StringRef const& name) noexcept {
-  // intentionally false for now - new naming convention not yet supported for indexes
-  TRI_ASSERT(!extendedNames);
-
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
@@ -267,9 +258,6 @@ bool IndexNameValidator::isAllowedName(bool extendedNames,
 /// returns true if the name is allowed and false otherwise
 bool AnalyzerNameValidator::isAllowedName(bool extendedNames,
                                           arangodb::velocypack::StringRef const& name) noexcept {
-  // intentionally false for now - new naming convention not yet supported for analyzers
-  TRI_ASSERT(!extendedNames);
-
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
