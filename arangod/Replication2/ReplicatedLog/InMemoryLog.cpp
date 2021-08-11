@@ -51,15 +51,10 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 auto replicated_log::InMemoryLog::getLastIndex() const noexcept -> LogIndex {
-  auto const result = LogIndex{_log.size()};
-  // log empty => result == 0
-  TRI_ASSERT(!_log.empty() || result == LogIndex(0));
-  // !log empty => result index == last entry
-  TRI_ASSERT(_log.empty() || result == _log.back().entry().logIndex());
-  return result;
+  return getLastTermIndexPair().index;
 }
 
-auto replicated_log::InMemoryLog::getLastTermIndexPair() const noexcept -> TermIndexPair{
+auto replicated_log::InMemoryLog::getLastTermIndexPair() const noexcept -> TermIndexPair {
   if (_log.empty()) {
     return {};
   }
@@ -67,36 +62,35 @@ auto replicated_log::InMemoryLog::getLastTermIndexPair() const noexcept -> TermI
 }
 
 auto replicated_log::InMemoryLog::getLastTerm() const noexcept -> LogTerm {
-  if (_log.empty()) {
-    return LogTerm{0};
-  }
-  return _log.back().entry().logTerm();
+  return getLastTermIndexPair().term;
 }
 
 auto replicated_log::InMemoryLog::getNextIndex() const noexcept -> LogIndex {
-  return getLastIndex() + 1;
+  return _first + _log.size();
 }
 
 auto replicated_log::InMemoryLog::getEntryByIndex(LogIndex const idx) const noexcept
     -> std::optional<InMemoryLogEntry> {
-  if (_log.size() < idx.value || idx.value == 0) {
+  if (_first + _log.size() <= idx || idx < _first) {
     return std::nullopt;
   }
 
-  auto const& e = _log.at(idx.value - 1);
+  auto const& e = _log.at(idx.value - _first.value);
   TRI_ASSERT(e.entry().logIndex() == idx);
   return e;
 }
 
 auto replicated_log::InMemoryLog::slice(LogIndex from, LogIndex to) const -> log_type {
-  from = std::max(from, LogIndex{1});
+  from = std::max(from, _first);
+  to = std::max(to, _first);
   TRI_ASSERT(from <= to);
-  auto res = _log.take(to.value - 1).drop(from.value - 1);
+  auto res = _log.take(to.value - _first.value).drop(from.value - _first.value);
   TRI_ASSERT(res.size() <= to.value - from.value);
   return res;
 }
 
-auto replicated_log::InMemoryLog::getFirstIndexOfTerm(LogTerm term) const noexcept -> std::optional<LogIndex> {
+auto replicated_log::InMemoryLog::getFirstIndexOfTerm(LogTerm term) const noexcept
+    -> std::optional<LogIndex> {
   auto it = std::lower_bound(_log.begin(), _log.end(), term,
                              [](auto const& entry, auto const& term) {
                                return term > entry.entry().logTerm();
@@ -132,9 +126,17 @@ replicated_log::InMemoryLog::InMemoryLog(replicated_log::LogCore const& logCore)
     log.push_back(InMemoryLogEntry(std::move(entry).value()));
   }
   _log = std::move(log).persistent();
+  _first =_log.empty() ? LogIndex{1} : _log.front().entry().logIndex();
 }
 
-replicated_log::InMemoryLog::InMemoryLog(log_type log) : _log(std::move(log)) {}
+replicated_log::InMemoryLog::InMemoryLog(log_type log)
+    : _log(std::move(log)),
+      _first(_log.empty() ? LogIndex{1} : _log.front().entry().logIndex()) {}
+
+replicated_log::InMemoryLog::InMemoryLog(log_type log, LogIndex first)
+    : _log(std::move(log)), _first(first) {
+  TRI_ASSERT(_log.empty() || first == _log.front().entry().logIndex());
+}
 
 #if (_MSC_VER >= 1)
 // suppress false positive warning:
@@ -143,7 +145,8 @@ replicated_log::InMemoryLog::InMemoryLog(log_type log) : _log(std::move(log)) {}
 #pragma warning(disable : 4297)
 #endif
 replicated_log::InMemoryLog::InMemoryLog(replicated_log::InMemoryLog&& other) noexcept try
-    : _log(std::move(other._log)) {
+    : _log(std::move(other._log)), _first(other._first) {
+  other._first = LogIndex{1};
   // Note that immer::flex_vector is currently not nothrow move-assignable,
   // though it probably does not throw any exceptions. However, we *need* this
   // to be noexcept, otherwise we cannot keep the persistent and in-memory state
@@ -185,6 +188,8 @@ auto replicated_log::InMemoryLog::operator=(replicated_log::InMemoryLog&& other)
   // The try/catch is *only* for logging, but *must* terminate (e.g. by
   // rethrowing) the process if an exception is caught.
   _log = std::move(other._log);
+  _first = other._first;
+  other._first = LogIndex{1};
   return *this;
 } catch (std::exception const& ex) {
   LOG_TOPIC("bf5c5", FATAL, Logger::REPLICATION2)
@@ -205,21 +210,22 @@ auto replicated_log::InMemoryLog::getIteratorFrom(LogIndex fromIdx) const
     -> std::unique_ptr<LogIterator> {
   // if we want to have read from log entry 1 onwards, we have to drop
   // no entries, because log entry 0 does not exist.
-  auto log = _log.drop(fromIdx.saturatedDecrement().value);
+  auto log = _log.drop(fromIdx.saturatedDecrement(_first.value).value);
   return std::make_unique<ReplicatedLogIterator>(std::move(log));
 }
 
-auto replicated_log::InMemoryLog::getInternalIteratorFrom(LogIndex fromIdx) const -> std::unique_ptr<PersistedLogIterator> {
+auto replicated_log::InMemoryLog::getInternalIteratorFrom(LogIndex fromIdx) const
+    -> std::unique_ptr<PersistedLogIterator> {
   // if we want to have read from log entry 1 onwards, we have to drop
   // no entries, because log entry 0 does not exist.
-  auto log = _log.drop(fromIdx.saturatedDecrement().value);
+  auto log = _log.drop(fromIdx.saturatedDecrement(_first.value).value);
   return std::make_unique<InMemoryPersistedLogIterator>(std::move(log));
 }
 
 auto replicated_log::InMemoryLog::getIteratorRange(LogIndex fromIdx, LogIndex toIdx) const
     -> std::unique_ptr<LogRangeIterator> {
-  auto log = _log.take(toIdx.saturatedDecrement().value)
-                 .drop(fromIdx.saturatedDecrement().value);
+  auto log = _log.take(toIdx.saturatedDecrement(_first.value).value)
+                 .drop(fromIdx.saturatedDecrement(_first.value).value);
   return std::make_unique<ReplicatedLogIterator>(std::move(log));
 }
 
@@ -241,7 +247,7 @@ auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
                                          log_type entries) const -> InMemoryLog {
   auto transient = _log.transient();
   transient.append(std::move(entries).transient());
-  return InMemoryLog{std::move(transient).persistent()};
+  return InMemoryLog{std::move(transient).persistent(), _first};
 }
 
 auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
@@ -250,12 +256,12 @@ auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
   for (auto const& entry : entries) {
     transient.push_back(InMemoryLogEntry(entry));
   }
-  return InMemoryLog{std::move(transient).persistent()};
+  return InMemoryLog{std::move(transient).persistent(), _first};
 }
 
 auto replicated_log::InMemoryLog::takeSnapshotUpToAndIncluding(LogIndex until) const
     -> InMemoryLog {
-  return InMemoryLog(_log.take(until.value));
+  return InMemoryLog{_log.take(until.value), _first};
 }
 
 auto replicated_log::InMemoryLog::copyFlexVector() const -> log_type {
@@ -307,4 +313,10 @@ auto replicated_log::InMemoryLog::dump(replicated_log::InMemoryLog::log_type con
   return stream.str();
 }
 
-auto replicated_log::InMemoryLog::dump() const -> std::string { return dump(_log); }
+auto replicated_log::InMemoryLog::dump() const -> std::string {
+  return dump(_log);
+}
+
+auto replicated_log::InMemoryLog::getIndexRange() const noexcept -> LogRange {
+  return LogRange(_first, _first + _log.size());
+}

@@ -34,68 +34,9 @@ using namespace arangodb::replication2::replicated_log;
 
 struct TestInMemoryLog : InMemoryLog {
   explicit TestInMemoryLog(log_type log) : InMemoryLog(std::move(log)) {}
+  explicit TestInMemoryLog(log_type log, LogIndex first)
+      : InMemoryLog(std::move(log), first) {}
   TestInMemoryLog() : InMemoryLog(log_type{}) {}
-};
-
-struct LogRange {
-  LogIndex from;
-  LogIndex to;
-
-  LogRange(LogIndex from, LogIndex to) noexcept : from(from), to(to) {
-    TRI_ASSERT(from <= to);
-  }
-
-  [[nodiscard]] auto empty() const noexcept -> bool { return from == to; }
-  [[nodiscard]] auto count() const noexcept -> std::size_t {
-    return to.value - from.value;
-  }
-  [[nodiscard]] auto contains(LogIndex idx) const noexcept -> bool {
-    return from <= idx && idx < to;
-  }
-
-  friend auto operator<<(std::ostream& os, LogRange const& r) -> std::ostream& {
-    return os << "[" << r.from << ", " << r.to << ")";
-  }
-
-  friend auto intersect(LogRange a, LogRange b) noexcept -> LogRange {
-    auto max_from = std::max(a.from, b.from);
-    auto min_to = std::min(a.to, b.to);
-    if (max_from > min_to) {
-      return {LogIndex{0}, LogIndex{0}};
-    } else {
-      return {max_from, min_to};
-    }
-  }
-
-  struct Iterator {
-    auto operator++() noexcept -> Iterator& {
-      current = current + 1;
-      return *this;
-    }
-
-    auto operator++(int) noexcept -> Iterator {
-      auto idx = current;
-      current = current + 1;
-      return Iterator(idx);
-    }
-
-    auto operator*() const noexcept -> LogIndex { return current; }
-    auto operator->() const noexcept -> LogIndex const* { return &current; }
-    friend auto operator==(Iterator const& a, Iterator const& b) noexcept -> bool {
-      return a.current == b.current;
-    }
-    friend auto operator!=(Iterator const& a, Iterator const& b) noexcept -> bool {
-      return !(a == b);
-    }
-
-   private:
-    friend LogRange;
-    explicit Iterator(LogIndex idx) : current(idx) {}
-    LogIndex current;
-  };
-
-  [[nodiscard]] auto begin() const -> Iterator { return Iterator{from}; }
-  [[nodiscard]] auto end() const -> Iterator { return Iterator{to}; }
 };
 
 struct InMemoryLogTestBase {
@@ -106,7 +47,7 @@ struct InMemoryLogTestBase {
       transient.push_back(InMemoryLogEntry(
           {term, LogIndex{i}, LogPayload::createFromString("foo")}));
     }
-    return TestInMemoryLog(transient.persistent());
+    return TestInMemoryLog(transient.persistent(), range.from);
   }
 };
 
@@ -121,6 +62,8 @@ TEST_P(InMemoryLogTest, first_last_next) {
   EXPECT_EQ(!range.empty(), log.getFirstEntry().has_value());
   EXPECT_EQ(!range.empty(), log.getLastEntry().has_value());
   EXPECT_EQ(log.getNextIndex(), to);
+
+  EXPECT_EQ(log.getIndexRange(), range);
 
   if (!range.empty()) {
     {
@@ -182,7 +125,9 @@ TEST_P(InMemoryLogTest, append_in_place) {
 
 auto const LogRanges = ::testing::Values(LogRange(LogIndex{1}, LogIndex{15}),
                                          LogRange(LogIndex{1}, LogIndex{1234}),
-                                         LogRange(LogIndex{1}, LogIndex{1}));
+                                         LogRange(LogIndex{1}, LogIndex{1}),
+                                         LogRange(LogIndex{5}, LogIndex{18}),
+                                         LogRange(LogIndex{76}, LogIndex{76}));
 
 INSTANTIATE_TEST_CASE_P(InMemoryLogTestInstance, InMemoryLogTest, LogRanges);
 
@@ -332,35 +277,30 @@ TEST_P(IndexOfTermTest, first_index_of_term) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(IndexOfTermTest, IndexOfTermTest,
-                        ::testing::Values(TermTestData{LogTerm{1},
-                                                       LogIndex{1},
-                                                       {
-                                                           {LogTerm{1}, 5},
-                                                       }},
-                                          TermTestData{LogTerm{2},
-                                                       LogIndex{1},
-                                                       {
-                                                           {LogTerm{1}, 5},
-                                                           {LogTerm{2}, 18},
-                                                       }},
-                                          TermTestData{LogTerm{1},
-                                                       LogIndex{1},
-                                                       {
-                                                           {LogTerm{1}, 5},
-                                                           {LogTerm{2}, 18},
-                                                       }},
-                                          TermTestData{LogTerm{2},
-                                                       LogIndex{1},
-                                                       {
-                                                           {LogTerm{1}, 5},
-                                                           {LogTerm{2}, 18},
-                                                           {LogTerm{3}, 18},
-                                                       }},
-                                          TermTestData{LogTerm{3},
-                                                       LogIndex{1},
-                                                       {
-                                                           {LogTerm{1}, 5},
-                                                           {LogTerm{2}, 18},
-                                                           {LogTerm{3}, 18},
-                                                       }}));
+auto Distributions = ::testing::Values(
+    TermDistribution{
+        {LogTerm{1}, 5},
+    },
+    TermDistribution{
+        {LogTerm{1}, 5},
+        {LogTerm{2}, 18},
+    },
+    TermDistribution{
+        {LogTerm{1}, 5},
+        {LogTerm{2}, 18},
+    },
+    TermDistribution{
+        {LogTerm{1}, 5},
+        {LogTerm{2}, 18},
+        {LogTerm{3}, 18},
+    },
+    TermDistribution{
+        {LogTerm{1}, 5},
+        {LogTerm{2}, 18},
+        {LogTerm{3}, 18},
+    });
+
+INSTANTIATE_TEST_CASE_P(
+    IndexOfTermTest, IndexOfTermTest,
+    ::testing::Combine(::testing::Values(LogTerm{1}, LogTerm{2}, LogTerm{3}),
+                       ::testing::Values(LogIndex{1}, LogIndex{10}), Distributions));

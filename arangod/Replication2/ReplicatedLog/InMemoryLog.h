@@ -63,6 +63,7 @@ struct InMemoryLog {
 
  private:
   log_type _log{};
+  LogIndex _first{0};
 
  public:
   InMemoryLog() = delete;
@@ -91,6 +92,8 @@ struct InMemoryLog {
   [[nodiscard]] auto getLastIndexOfTerm(LogTerm term) const noexcept
       -> std::optional<LogIndex>;
 
+  [[nodiscard]] auto getIndexRange() const noexcept -> LogRange;
+
   // @brief Unconditionally accesses the last element
   [[nodiscard]] auto back() const noexcept -> decltype(_log)::const_reference;
   [[nodiscard]] auto empty() const noexcept -> bool;
@@ -118,6 +121,7 @@ struct InMemoryLog {
 
  protected:
   explicit InMemoryLog(log_type log);
+  explicit InMemoryLog(log_type log, LogIndex first);
 };
 
 }  // namespace arangodb::replication2::replicated_log

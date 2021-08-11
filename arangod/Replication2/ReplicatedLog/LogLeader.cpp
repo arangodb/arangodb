@@ -799,8 +799,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
 auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const -> LogStatistics {
   auto result = LogStatistics{};
   result.commitIndex = _commitIndex;
-  result.spearHead.index = _inMemoryLog.getLastIndex();
-  result.spearHead.term = _inMemoryLog.getLastTerm();
+  result.spearHead = _inMemoryLog.getLastTermIndexPair();
   return result;
 }
 
