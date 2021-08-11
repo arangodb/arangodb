@@ -306,7 +306,7 @@ auto replicated_log::LogLeader::construct(
                     std::move(id), term, std::move(inMemoryLog)) {}
   };
 
-  auto log = InMemoryLog{logContext, *logCore};
+  auto log = InMemoryLog{*logCore};
   auto const lastIndex = log.getLastTermIndexPair();
   if (lastIndex.term != term) {
     // Immediately append an empty log entry in the new term. This is necessary

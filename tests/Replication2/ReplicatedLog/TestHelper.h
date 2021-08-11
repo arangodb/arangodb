@@ -57,7 +57,7 @@ struct DelayedFollowerLog : AbstractFollower {
                      ParticipantId const& id, std::unique_ptr<LogCore> logCore,
                      LogTerm term, ParticipantId leaderId)
       : DelayedFollowerLog([&] {
-          auto inMemoryLog = InMemoryLog{logContext, *logCore};
+          auto inMemoryLog = InMemoryLog{*logCore};
           return std::make_shared<LogFollower>(logContext, std::move(logMetricsMock),
                                                id, std::move(logCore), term,
                                                std::move(leaderId),

@@ -89,10 +89,10 @@ auto replicated_log::InMemoryLog::getEntryByIndex(LogIndex const idx) const noex
 }
 
 auto replicated_log::InMemoryLog::slice(LogIndex from, LogIndex to) const -> log_type {
-  from = LogIndex{std::max<decltype(from.value)>(from.value, 1)};
+  from = std::max(from, LogIndex{1});
   TRI_ASSERT(from <= to);
   auto res = _log.take(to.value - 1).drop(from.value - 1);
-  TRI_ASSERT(res.size() == to.value - from.value);
+  TRI_ASSERT(res.size() <= to.value - from.value);
   return res;
 }
 
@@ -125,8 +125,7 @@ auto replicated_log::InMemoryLog::getLastIndexOfTerm(LogTerm term) const noexcep
   }
 }
 
-replicated_log::InMemoryLog::InMemoryLog(LoggerContext const& logContext,
-                                         replicated_log::LogCore const& logCore) {
+replicated_log::InMemoryLog::InMemoryLog(replicated_log::LogCore const& logCore) {
   auto iter = logCore.read(LogIndex{0});
   auto log = _log.transient();
   while (auto entry = iter->next()) {
@@ -289,7 +288,7 @@ auto replicated_log::InMemoryLog::getFirstEntry() const noexcept
   return _log.front();
 }
 
-auto replicated_log::InMemoryLog::dump(replicated_log::InMemoryLog::log_type log)
+auto replicated_log::InMemoryLog::dump(replicated_log::InMemoryLog::log_type const& log)
     -> std::string {
   auto builder = velocypack::Builder();
   auto stream = std::stringstream();
@@ -310,4 +309,4 @@ auto replicated_log::InMemoryLog::dump(replicated_log::InMemoryLog::log_type log
   return stream.str();
 }
 
-auto replicated_log::InMemoryLog::dump() -> std::string { return dump(_log); }
+auto replicated_log::InMemoryLog::dump() const -> std::string { return dump(_log); }

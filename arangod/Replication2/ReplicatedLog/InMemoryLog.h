@@ -64,7 +64,7 @@ struct InMemoryLog {
 
  public:
   InMemoryLog() = delete;
-  InMemoryLog(LoggerContext const& logContext, replicated_log::LogCore const& logCore);
+  InMemoryLog(replicated_log::LogCore const& logCore);
 
   InMemoryLog(InMemoryLog&& other) noexcept;
   InMemoryLog(InMemoryLog const&) = default;
@@ -112,8 +112,8 @@ struct InMemoryLog {
   [[nodiscard]] auto copyFlexVector() const -> log_type;
 
   // helpful for debugging
-  [[nodiscard]] static auto dump(log_type log) -> std::string;
-  [[nodiscard]] auto dump() -> std::string;
+  [[nodiscard]] static auto dump(log_type const& log) -> std::string;
+  [[nodiscard]] auto dump() const -> std::string;
 
  protected:
   explicit InMemoryLog(log_type log);
