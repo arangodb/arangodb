@@ -757,6 +757,13 @@ auto TraverserOptions::setDisjoint() -> void {
 auto TraverserOptions::isDisjoint() const -> bool {
   return false;
 }
+
+auto TraverserOptions::isSatelliteLeader() const -> bool {
+  // Can only be called in Enterprise code.
+  // Return false as security net.
+  TRI_ASSERT(false);
+  return false;
+}
 #endif
 
 bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vertex,
