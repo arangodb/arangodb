@@ -91,19 +91,24 @@ class IResearchSnapshotState final : public TransactionState::Cookie {
    std::map<aql::AstNode const*, proxy_query::proxy_cache> _immutablePartCache;
 };
 
+// FIXME: this is the duplicate of what is used for StoredValues in ArangoSearch View
+struct ColumnIterator {
+  irs::doc_iterator::ptr itr;
+  const irs::payload* value{};
+};
+
 class IResearchInvertedIndexIterator final : public IndexIterator  {
  public:
   IResearchInvertedIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                                  aql::AstNode const& condition, IResearchInvertedIndex* index,
                                  aql::Variable const* variable, int64_t mutableConditionIdx,
-                                 bool withExtra)
+                                 std::string_view extraName)
     : IndexIterator(collection, trx), _index(index), _condition(condition),
-      _variable(variable), _mutableConditionIdx(mutableConditionIdx), _withExtra(withExtra) {}
+      _variable(variable), _mutableConditionIdx(mutableConditionIdx), _extraName(extraName) {}
   char const* typeName() const override { return "inverted-index-iterator"; }
 
   /// @brief The default index has no extra information
-  bool hasExtra() const override { return _withExtra; }
-
+  bool hasExtra() const override { return _extraName.data() != nullptr; }
  protected:
   bool nextExtraImpl(ExtraCallback const& callback, size_t limit) override {
     if (limit == 0) {
@@ -111,7 +116,14 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
                           // validate that Iterator is in a good shape and hasn't failed
       return false;
     }
-    return nextImpl([&callback](LocalDocumentId const& token) {
+    return nextImpl([&callback, this](LocalDocumentId const& token) {
+      TRI_ASSERT(_extraValuesReader.itr);
+      VPackSlice extraSlice = VPackSlice::noneSlice();
+      if (_doc->value == _extraValuesReader.itr->seek(_doc->value)) {
+        extraSlice = VPackSlice(_extraValuesReader.value->value.c_str());
+        callback(token, extraSlice);
+        return true;
+      }
       return false;
     },limit);
   }
@@ -138,6 +150,15 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
         auto& segmentReader = (*_reader)[_readerOffset++];
         _pkDocItr = ::pkColumn(segmentReader);
         _pkValue = irs::get<irs::payload>(*_pkDocItr);
+        if (hasExtra()) { // FIXME: kludge. Use common handling for extra/covering
+          auto const* extraValuesReader =
+            segmentReader.column_reader(_extraName);
+          _extraValuesReader.itr = extraValuesReader->iterator();
+          _extraValuesReader.value = irs::get<irs::payload>(*_extraValuesReader.itr);
+          if (ADB_UNLIKELY(!_extraValuesReader.value)) {
+            _extraValuesReader.value = &NoPayload;
+          }
+        }
         if (ADB_UNLIKELY(!_pkValue)) {
           _pkValue = &NoPayload;
         }
@@ -289,7 +310,8 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   aql::AstNode const& _condition;
   aql::Variable const* _variable;
   int64_t _mutableConditionIdx;
-  bool _withExtra;
+  std::string_view _extraName;
+  ColumnIterator _extraValuesReader;
 };
 
 } // namespace
@@ -419,7 +441,9 @@ std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iter
     LogicalCollection* collection, transaction::Methods* trx, aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
   if (node) {
-    return std::make_unique<IResearchInvertedIndexIterator>(collection, trx, *node, this, reference, opts.mutableConditionIdx);
+    
+    return std::make_unique<IResearchInvertedIndexIterator>(collection, trx, *node, this, reference, opts.mutableConditionIdx,
+                                                            _meta._storedValues.columns().front().name);
   } else {
     TRI_ASSERT(false);
     //sorting  case
