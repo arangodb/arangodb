@@ -764,10 +764,17 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
   }
 
   if (newLargestCommonIndex != _largestCommonIndex) {
+    TRI_ASSERT(newLargestCommonIndex > _largestCommonIndex);
     LOG_CTX("851bb", TRACE, _self._logContext)
         << "largest common index went from " << _largestCommonIndex << " to "
         << newLargestCommonIndex;
     _largestCommonIndex = newLargestCommonIndex;
+    // TODO this not the right place to do a sync compaction on the log
+    //      when we want to update the commit index.
+    //      We can either ignore compactions that would be triggered by an lci
+    //      increment (because eventually the state machine will call release
+    //      again) or we put this in a deferred action.
+    std::ignore = checkCompaction();
   }
 
   auto nth = indexes.begin();
@@ -807,6 +814,40 @@ replicated_log::LogLeader::GuardedLeaderData::GuardedLeaderData(replicated_log::
                                                                 InMemoryLog inMemoryLog)
     : _self(self), _inMemoryLog(std::move(inMemoryLog)) {}
 
+auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
+  return _guardedLeaderData.doUnderLock([&](GuardedLeaderData& self) -> Result {
+    TRI_ASSERT(doneWithIdx <= self._inMemoryLog.getLastIndex());
+    if (doneWithIdx <= self._releaseIndex) {
+      return {};
+    }
+    self._releaseIndex = doneWithIdx;
+    LOG_CTX("a0c95", TRACE, _logContext) << "new release index set to " << self._releaseIndex;
+    return self.checkCompaction();
+  });
+}
+
+auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction() -> Result {
+  auto const compactionStop = std::min(_largestCommonIndex, _releaseIndex);
+  LOG_CTX("080d5", TRACE, _self._logContext)
+      << "compaction index calculated as " << compactionStop;
+  if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {
+    // only do a compaction every 1000 entries
+    LOG_CTX("ebb9f", TRACE, _self._logContext)
+    << "won't trigger a compaction, not enough entries (" << (compactionStop.value - _inMemoryLog.getFirstIndex().value);
+    return {};
+  }
+
+
+  auto newLog = _inMemoryLog.release(compactionStop);
+  auto res = _self._localFollower->release(compactionStop);
+  if (res.ok()) {
+    _inMemoryLog = std::move(newLog);
+  }
+  LOG_CTX("f1028", TRACE, _self._logContext)
+      << "compaction result = " << res.errorMessage();
+  return res;
+}
+
 auto replicated_log::LogLeader::getReplicatedLogSnapshot() const -> InMemoryLog::log_type {
   auto [log, commitIndex] = _guardedLeaderData.doUnderLock([](auto const& leaderData) {
     if (leaderData._didResign) {
@@ -826,15 +867,16 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
                                    "invalid parameter; log index 0 is invalid");
   }
 
-  return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) -> WaitForIteratorFuture {
+  return waitFor(index).thenValue([this, self = shared_from_this(),
+                                   index](auto&& quorum) -> WaitForIteratorFuture {
     auto [actualIndex, iter] = _guardedLeaderData.doUnderLock(
         [&](GuardedLeaderData& leaderData) -> std::pair<LogIndex, std::unique_ptr<LogRangeIterator>> {
           TRI_ASSERT(index <= leaderData._commitIndex);
 
           /*
            * This code here ensures that if only private log entries are present
-           * we do not reply with an empty iterator but instead wait for the next
-           * entry containing payload.
+           * we do not reply with an empty iterator but instead wait for the
+           * next entry containing payload.
            */
 
           auto actualIndex = index;
@@ -875,10 +917,6 @@ auto replicated_log::LogLeader::construct(
   config.waitForSync = false;
   return LogLeader::construct(config, std::move(logCore), followers, std::move(id),
                               term, logContext, std::move(logMetrics));
-}
-
-auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
-  return Result();
 }
 
 replicated_log::LogLeader::LocalFollower::LocalFollower(
@@ -962,6 +1000,17 @@ auto replicated_log::LogLeader::LocalFollower::resign() && noexcept
         << _leader._currentTerm;
     return logCore;
   });
+}
+
+auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const -> Result {
+  auto res = _guardedLogCore.doUnderLock([&](auto& core) {
+    LOG_CTX("23745", DEBUG, _logContext)
+        << "local follower releasing with stop at " << stop;
+    return core->removeFront(stop);
+  });
+  LOG_CTX_IF("2aba1", WARN, _logContext, res.fail())
+      << "local follower failed to release log entries: " << res.errorMessage();
+  return res;
 }
 
 replicated_log::LogLeader::PreparedAppendEntryRequest::PreparedAppendEntryRequest(

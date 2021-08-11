@@ -119,6 +119,12 @@ auto replicated_log::InMemoryLog::getLastIndexOfTerm(LogTerm term) const noexcep
   }
 }
 
+auto replicated_log::InMemoryLog::release(LogIndex stop) const -> replicated_log::InMemoryLog {
+  auto [from, to] = getIndexRange();
+  auto newLog = slice(stop, to);
+  return InMemoryLog(newLog);
+}
+
 replicated_log::InMemoryLog::InMemoryLog(replicated_log::LogCore const& logCore) {
   auto iter = logCore.read(LogIndex{0});
   auto log = _log.transient();
@@ -319,4 +325,8 @@ auto replicated_log::InMemoryLog::dump() const -> std::string {
 
 auto replicated_log::InMemoryLog::getIndexRange() const noexcept -> LogRange {
   return LogRange(_first, _first + _log.size());
+}
+
+auto replicated_log::InMemoryLog::getFirstIndex() const noexcept -> LogIndex {
+  return _first;
 }

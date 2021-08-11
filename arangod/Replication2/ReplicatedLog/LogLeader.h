@@ -168,6 +168,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
         -> arangodb::futures::Future<AppendEntriesResult> override;
 
     [[nodiscard]] auto resign() && noexcept -> std::unique_ptr<LogCore>;
+    [[nodiscard]] auto release(LogIndex stop) const -> Result;
 
    private:
     LogLeader& _leader;
@@ -217,6 +218,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
         -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>, ResolvedPromiseSet>;
 
     [[nodiscard]] auto checkCommitIndex() -> ResolvedPromiseSet;
+    [[nodiscard]] auto checkCompaction() -> Result;
 
     [[nodiscard]] auto updateCommitIndexLeader(LogIndex newIndex,
                                                std::shared_ptr<QuorumData> quorum)
@@ -241,6 +243,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     std::shared_ptr<QuorumData> _lastQuorum{};
     LogIndex _commitIndex{0};
     LogIndex _largestCommonIndex{0};
+    LogIndex _releaseIndex{0};
     bool _didResign{false};
   };
 

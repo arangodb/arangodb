@@ -219,6 +219,17 @@ TEST_P(InMemoryLogSliceTest, get_iterator_from) {
   EXPECT_EQ(iter->next(), std::nullopt);
 }
 
+TEST_P(InMemoryLogSliceTest, release) {
+  auto [range, testRange] = GetParam();
+  auto const log = createLogForRangeSingleTerm(range);
+  testRange.to = range.to;
+  auto const expectedRange = intersect(range, testRange);
+  if (!expectedRange.empty()) {
+    auto newLog = log.release(testRange.from);
+    EXPECT_EQ(newLog.getIndexRange(), expectedRange);
+  }
+}
+
 auto const SliceRanges = ::testing::Values(LogRange(LogIndex{4}, LogIndex{6}),
                                            LogRange(LogIndex{1}, LogIndex{8}),
                                            LogRange(LogIndex{100}, LogIndex{120}),
