@@ -207,9 +207,110 @@ TEST_P(InMemoryLogSliceTest, get_iterator_range) {
   EXPECT_EQ(iter->next(), std::nullopt);
 }
 
+TEST_P(InMemoryLogSliceTest, get_iterator_from) {
+  auto [range, testRange] = GetParam();
+  auto const log = createLogForRangeSingleTerm(range);
+  testRange.to = range.to;  // no bound on to
+
+  auto const expectedRange = intersect(range, testRange);
+  auto iter = log.getIteratorFrom(testRange.from);
+
+  for (auto idx : expectedRange) {
+    auto value = iter->next();
+    ASSERT_TRUE(value.has_value()) << "idx = " << idx << " range = " << expectedRange;
+    EXPECT_EQ(value->logIndex(), idx);
+  }
+
+  EXPECT_EQ(iter->next(), std::nullopt);
+}
+
 auto const SliceRanges = ::testing::Values(LogRange(LogIndex{4}, LogIndex{6}),
                                            LogRange(LogIndex{1}, LogIndex{8}),
-                                           LogRange(LogIndex{100}, LogIndex{120}));
+                                           LogRange(LogIndex{100}, LogIndex{120}),
+                                           LogRange(LogIndex{18}, LogIndex{18}));
 
 INSTANTIATE_TEST_CASE_P(InMemoryLogSliceTest, InMemoryLogSliceTest,
                         ::testing::Combine(LogRanges, SliceRanges));
+
+using TermDistribution = std::map<LogTerm, std::size_t>;
+
+using TermTestData = std::tuple<LogTerm, LogIndex, TermDistribution>;
+
+struct IndexOfTermTest : ::testing::TestWithParam<TermTestData>, InMemoryLogTestBase {
+  static auto createLogForDistribution(LogIndex first, TermDistribution const& dist)
+      -> TestInMemoryLog {
+    auto transient = InMemoryLog::log_type::transient_type{};
+    auto next = first;
+    for (auto [term, length] : dist) {
+      for (auto idx : LogRange(next, next + length)) {
+        transient.push_back(
+            InMemoryLogEntry({term, idx, LogPayload::createFromString("foo")}));
+      }
+      next = next + length;
+    }
+    return TestInMemoryLog(transient.persistent());
+  }
+
+  auto getTermBounds(LogIndex first, TermDistribution const& dist, LogTerm wanted)
+      -> std::optional<LogRange> {
+    auto next = first;
+    for (auto [term, length] : dist) {
+      if (term == wanted) {
+        return LogRange{next, next + length};
+      }
+      next = next + length;
+    }
+
+    return std::nullopt;
+  }
+};
+
+TEST_P(IndexOfTermTest, first_index_of_term) {
+  auto [term, first, dist] = GetParam();
+  auto log = createLogForDistribution(first, dist);
+
+  auto range = getTermBounds(first, dist, term);
+  auto firstInTerm = log.getFirstIndexOfTerm(term);
+  auto lastInTerm = log.getLastIndexOfTerm(term);
+
+  ASSERT_EQ(range.has_value(), firstInTerm.has_value());
+  ASSERT_EQ(range.has_value(), lastInTerm.has_value());
+
+  if (range.has_value()) {
+    EXPECT_EQ(range->from, *firstInTerm) << "term = " << term << " log = " << log.dump();
+    EXPECT_EQ(range->to, *lastInTerm + 1);
+  }
+}
+
+INSTANTIATE_TEST_CASE_P(IndexOfTermTest, IndexOfTermTest,
+                        ::testing::Values(TermTestData{LogTerm{1},
+                                                       LogIndex{1},
+                                                       {
+                                                           {LogTerm{1}, 5},
+                                                       }},
+                                          TermTestData{LogTerm{2},
+                                                       LogIndex{1},
+                                                       {
+                                                           {LogTerm{1}, 5},
+                                                           {LogTerm{2}, 18},
+                                                       }},
+                                          TermTestData{LogTerm{1},
+                                                       LogIndex{1},
+                                                       {
+                                                           {LogTerm{1}, 5},
+                                                           {LogTerm{2}, 18},
+                                                       }},
+                                          TermTestData{LogTerm{2},
+                                                       LogIndex{1},
+                                                       {
+                                                           {LogTerm{1}, 5},
+                                                           {LogTerm{2}, 18},
+                                                           {LogTerm{3}, 18},
+                                                       }},
+                                          TermTestData{LogTerm{3},
+                                                       LogIndex{1},
+                                                       {
+                                                           {LogTerm{1}, 5},
+                                                           {LogTerm{2}, 18},
+                                                           {LogTerm{3}, 18},
+                                                       }}));
