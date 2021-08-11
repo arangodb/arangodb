@@ -1068,6 +1068,8 @@ Result IResearchLink::init(
   auto const primarySortCompression = meta._sortCompression
       ? meta._sortCompression
       : getDefaultCompression();
+  bool clusterWideLink{true};
+
   if (ServerState::instance()->isCoordinator()) { // coordinator link
     if (!vocbase.server().hasFeature<ClusterFeature>()) {
       return {
@@ -1118,7 +1120,7 @@ Result IResearchLink::init(
       auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
       // cluster-wide link
-      auto clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub();
+      clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub();
 
       // upgrade step for old link definition without collection name
       // this could be received from  agency while shard of the collection was moved (or added)
@@ -1265,6 +1267,15 @@ Result IResearchLink::init(
   const_cast<std::string&>(_viewGuid) = std::move(viewId);
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
   _comparer.reset(_meta._sort);
+
+  // we should create stats for link only for Single Server or
+  // of for DB Server. But in case of DB Server we must check that
+  // link created for actual dataStore and not for ClusterInfo
+  if (ServerState::instance()->isSingleServer() || !clusterWideLink) {
+    // init _linkStats with AtomicMetric
+    _linkStats = &_collection.vocbase().server()
+            .getFeature<arangodb::MetricsFeature>().add(getLinkStatMetric(*this));
+  }
 
   return {};
 }
@@ -1463,10 +1474,6 @@ Result IResearchLink::initDataStore(
 
   // create a new 'self' (previous was reset during unload() above)
   _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
-
-  // init _linkStats with AtomicMetric
-  _linkStats = &_collection.vocbase().server()
-          .getFeature<arangodb::MetricsFeature>().add(getLinkStatMetric(*this));
 
   // ...........................................................................
   // set up in-recovery insertion hooks
