@@ -944,28 +944,26 @@ TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_valid) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
-  EXPECT_TRUE(feature
-                .bulkEmplace(*vocbase, VPackParser::fromJson(
-                                        "[{\"name\":\"b_abcd\", \"type\":\"identity\"},"
-                                           "{\"name\":\"b_abcd2\", \"type\":\"TestAnalyzer\"," 
-                                            "\"properties\":{\"args\":\"abc\"}," 
-                                            "\"features\":[\"frequency\", \"position\", \"norm\"]}"
-                                        "]")->slice())
-                .ok());
+  EXPECT_TRUE(feature.bulkEmplace(
+    *vocbase, VPackParser::fromJson(
+      R"([{"name":"b_abcd", "type":"identity"},
+          {"name":"b_abcd2", "type":"TestAnalyzer",
+                             "properties":{"args":"abc"},
+                             "features":["frequency", "position", "norm"]}])")->slice()).ok());
   {
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd",
-      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     ASSERT_NE(pool, nullptr);
     EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures::empty_instance(), pool->features());
     EXPECT_EQ("identity", pool->type());
   }
   {
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd2",
-      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     ASSERT_NE(pool, nullptr);
     EXPECT_EQ(arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
-                  {irs::type<irs::norm>::get().id()},
-                   irs::IndexFeatures::FREQ | irs::IndexFeatures::POS),
+              {irs::type<irs::norm2>::get().id()}, // norm2 due to LinkVersion::MAX by default
+              irs::IndexFeatures::FREQ | irs::IndexFeatures::POS),
               pool->features());
     EXPECT_EQ("TestAnalyzer", pool->type());
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(), pool->properties());

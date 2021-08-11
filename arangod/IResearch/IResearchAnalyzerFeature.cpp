@@ -1216,7 +1216,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate analyzer parameters and emplace into map
 ////////////////////////////////////////////////////////////////////////////////
-Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
+Result IResearchAnalyzerFeature::emplaceAnalyzer(
     EmplaceAnalyzerResult& result, // emplacement result on success (out-param)
     Analyzers& analyzers,
     irs::string_ref const name,
@@ -1255,7 +1255,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
       "' exceeds the maximum allowed limit of '" + std::to_string(ANALYZER_PROPERTIES_SIZE_MAX) + "'" };
   }
 
-  static const auto generator = []( // key + value generator
+  auto generator = [](
       irs::hashed_string_ref const& key,
       AnalyzerPool::ptr const& value)->irs::hashed_string_ref {
     auto pool = std::make_shared<AnalyzerPool>(key); // allocate pool
@@ -1561,7 +1561,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     TRI_ASSERT(!engine.inRecovery());
     bool erase = true;
     std::vector<irs::hashed_string_ref> inserted;
-    auto cleanup = irs::make_finally([&erase, &inserted, this]()->void {
+    auto cleanup = irs::make_finally([&erase, &inserted, this]() {
       if (erase) {
         for (auto const& s : inserted) {
           auto itr = _analyzers.find(s);
@@ -1569,8 +1569,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
             _analyzers.erase(itr); // ensure no broken analyzers are left behind
           }
         }
-      }
-      });
+    }});
     for (auto const& slice : VPackArrayIterator(dumpedAnalyzers)) {
       if (!slice.isObject()) {
         continue;
@@ -1589,7 +1588,8 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
 
       EmplaceAnalyzerResult itr;
       auto normalizedName = normalizedAnalyzerName(vocbase.name(), name);
-      auto res = emplaceAnalyzer(itr, _analyzers, normalizedName, type, properties, features,
+      auto res = emplaceAnalyzer(
+        itr, _analyzers, normalizedName, type, properties, features,
         transaction ? transaction->buildingRevision() : AnalyzersRevision::MIN);
 
       if (!res.ok()) {

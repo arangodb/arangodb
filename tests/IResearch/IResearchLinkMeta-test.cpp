@@ -615,7 +615,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(9, slice.length());
+    EXPECT_EQ(10, slice.length());
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 0 == tmpSlice.length());
     tmpSlice = slice.get("includeAllFields");
@@ -625,24 +625,26 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
     tmpSlice = slice.get("storeValues");
     EXPECT_TRUE(tmpSlice.isString() && std::string("none") == tmpSlice.copyString());
     tmpSlice = slice.get("analyzers");
-    EXPECT_TRUE((true == tmpSlice.isArray() && 1 == tmpSlice.length() &&
-                 tmpSlice.at(0).isString() &&
-                 std::string("identity") == tmpSlice.at(0).copyString()));
+    EXPECT_TRUE(true == tmpSlice.isArray() && 1 == tmpSlice.length() &&
+                tmpSlice.at(0).isString() &&
+                std::string("identity") == tmpSlice.at(0).copyString());
     tmpSlice = slice.get("analyzerDefinitions");
-    EXPECT_TRUE((true == tmpSlice.isArray() && 1 == tmpSlice.length() &&
-                 tmpSlice.at(0).isObject() && tmpSlice.at(0).get("name").isString() &&
-                 std::string("identity") == tmpSlice.at(0).get("name").copyString() &&
-                 tmpSlice.at(0).get("type").isString() &&
-                 std::string("identity") == tmpSlice.at(0).get("type").copyString() &&
-                 tmpSlice.at(0).get("properties").isObject() &&
-                 tmpSlice.at(0).get("features").isArray() &&
-                 2 == tmpSlice.at(0).get("features").length()  // frequency+norm
-                 ));
+    EXPECT_TRUE(true == tmpSlice.isArray() && 1 == tmpSlice.length() &&
+                tmpSlice.at(0).isObject() && tmpSlice.at(0).get("name").isString() &&
+                std::string("identity") == tmpSlice.at(0).get("name").copyString() &&
+                tmpSlice.at(0).get("type").isString() &&
+                std::string("identity") == tmpSlice.at(0).get("type").copyString() &&
+                tmpSlice.at(0).get("properties").isObject() &&
+                tmpSlice.at(0).get("features").isArray() &&
+                2 == tmpSlice.at(0).get("features").length()); // frequency+norm
     EXPECT_EQUAL_SLICES(tmpSlice.at(0).get("properties"), VPackSlice::emptyObjectSlice());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray() && 0 == tmpSlice.length());
     tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray() && 0 == tmpSlice.length());
+    tmpSlice = slice.get("version");
+    EXPECT_TRUE(tmpSlice.isNumber());
+    EXPECT_EQ(1, tmpSlice.getNumber<uint32_t>());
   }
 
   // with active vocbase (not fullAnalyzerDefinition)
@@ -686,7 +688,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(9, slice.length());
+    EXPECT_EQ(10, slice.length());
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 0 == tmpSlice.length());
     tmpSlice = slice.get("includeAllFields");
@@ -707,8 +709,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
                  std::string("identity") == tmpSlice.at(0).get("type").copyString() &&
                  tmpSlice.at(0).get("properties").isObject() &&
                  tmpSlice.at(0).get("features").isArray() &&
-                 2 == tmpSlice.at(0).get("features").length()  // frequency+norm
-                 ));
+                 2 == tmpSlice.at(0).get("features").length()));  // frequency+norm
     EXPECT_EQUAL_SLICES(tmpSlice.at(0).get("properties"), VPackSlice::emptyObjectSlice());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray() && 0 == tmpSlice.length());
@@ -716,6 +717,9 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
     EXPECT_TRUE(tmpSlice.isString() && tmpSlice.copyString() == "lz4");
     tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray() && 0 == tmpSlice.length());
+    tmpSlice = slice.get("version");
+    EXPECT_TRUE(tmpSlice.isNumber());
+    EXPECT_EQ(1, tmpSlice.getNumber<uint32_t>());
   }
 }
 
@@ -907,7 +911,12 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(9, slice.length());
+    EXPECT_EQ(10, slice.length());
+
+    tmpSlice = slice.get("version");
+    EXPECT_TRUE(tmpSlice.isNumber());
+    EXPECT_EQ(1, tmpSlice.getNumber<uint32_t>());
+
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 3 == tmpSlice.length());
 
@@ -1161,7 +1170,12 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(9, slice.length());
+    EXPECT_EQ(10, slice.length());
+
+    tmpSlice = slice.get("version");
+    EXPECT_TRUE(tmpSlice.isNumber());
+    EXPECT_EQ(1, tmpSlice.getNumber<uint32_t>());
+
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 3 == tmpSlice.length());
 
@@ -1369,7 +1383,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAll) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(9, slice.length());
+    EXPECT_EQ(10, slice.length());
     EXPECT_TRUE(slice.hasKey("fields"));
     EXPECT_TRUE(slice.hasKey("includeAllFields"));
     EXPECT_TRUE(slice.hasKey("trackListPositions"));
@@ -1379,6 +1393,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAll) {
     EXPECT_TRUE(slice.hasKey("primarySort"));
     EXPECT_TRUE(slice.hasKey("storedValues"));
     EXPECT_TRUE(slice.hasKey("primarySortCompression"));
+    EXPECT_TRUE(slice.hasKey("version"));
     EXPECT_FALSE(slice.hasKey("collectionName"));
   }
 }
@@ -1422,7 +1437,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(10, slice.length());
+    EXPECT_EQ(11, slice.length());
     EXPECT_TRUE(slice.hasKey("fields"));
     EXPECT_TRUE(slice.hasKey("includeAllFields"));
     EXPECT_TRUE(slice.hasKey("trackListPositions"));
@@ -1432,6 +1447,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
     EXPECT_TRUE(slice.hasKey("primarySort"));
     EXPECT_TRUE(slice.hasKey("storedValues"));
     EXPECT_TRUE(slice.hasKey("primarySortCompression"));
+    EXPECT_TRUE(slice.hasKey("version"));
     EXPECT_TRUE(slice.hasKey("collectionName"));
   }
 
@@ -1447,7 +1463,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(9, slice.length());
+    EXPECT_EQ(10, slice.length());
     EXPECT_TRUE(slice.hasKey("fields"));
     EXPECT_TRUE(slice.hasKey("includeAllFields"));
     EXPECT_TRUE(slice.hasKey("trackListPositions"));
@@ -1457,6 +1473,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
     EXPECT_TRUE(slice.hasKey("primarySort"));
     EXPECT_TRUE(slice.hasKey("storedValues"));
     EXPECT_TRUE(slice.hasKey("primarySortCompression"));
+    EXPECT_TRUE(slice.hasKey("version"));
     EXPECT_FALSE(slice.hasKey("collectionName"));
   }
 }
