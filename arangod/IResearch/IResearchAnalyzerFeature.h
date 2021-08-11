@@ -194,6 +194,7 @@ class IResearchAnalyzerFeature final
   /// @param properties the configuration for the underlying IResearch type
   /// @param revision the revision number for analyzer
   /// @param features the expected features the analyzer should produce
+  /// @param extendedNames whether or not extended analyzer names are allowed
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
   static Result createAnalyzerPool(AnalyzerPool::ptr& analyzer,
@@ -201,7 +202,8 @@ class IResearchAnalyzerFeature final
                                    irs::string_ref const& type,
                                    VPackSlice const properties,
                                    arangodb::AnalyzersRevision::Revision revision,
-                                   irs::flags const& features);
+                                   irs::flags const& features,
+                                   bool extendedNames);
 
   static AnalyzerPool::ptr identity() noexcept;  // the identity analyzer
   static std::string const& name() noexcept;

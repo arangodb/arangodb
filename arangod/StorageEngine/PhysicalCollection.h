@@ -256,6 +256,7 @@ class PhysicalCollection {
   LogicalCollection& _logicalCollection;
   ClusterInfo* _ci;
   bool const _isDBServer;
+  bool const _extendedNames; /* for collections */
 
   mutable basics::ReadWriteLock _indexesLock;
   mutable std::atomic<std::thread::id> _indexesLockWriteOwner;  // current thread owning '_indexesLock'

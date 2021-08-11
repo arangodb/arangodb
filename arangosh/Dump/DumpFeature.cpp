@@ -418,7 +418,10 @@ void processJob(arangodb::httpclient::SimpleHttpClient& client, arangodb::DumpFe
 
 /// @brief return either the name of the database to be used as a folder name, or its id if its name contains special characters and is not fully supported in every OS
 [[nodiscard]] std::string getDatabaseDirName(std::string const& databaseName, std::string const& id) {
-  return arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef(databaseName)) ? databaseName : id;
+  bool isOldStyleName = 
+      arangodb::DatabaseNameValidator::isAllowedName(/*allowSystem*/ true, /*extendedNames*/ false, 
+                                                     arangodb::velocypack::StringRef(databaseName));
+  return isOldStyleName ? databaseName : id;
 }
 
 }  // namespace

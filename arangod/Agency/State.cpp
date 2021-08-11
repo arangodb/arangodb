@@ -46,6 +46,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -817,9 +818,9 @@ bool State::ensureCollection(std::string const& name, bool drop) {
   Builder body;
   {
     VPackObjectBuilder b(&body);
-    body.add("type", VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
-    body.add("name", VPackValue(name));
-    body.add("isSystem", VPackValue(TRI_vocbase_t::IsSystemName(name)));
+    body.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
+    body.add(StaticStrings::DataSourceName, VPackValue(name));
+    body.add(StaticStrings::DataSourceSystem, VPackValue(NameValidator::isSystemName(name)));
   }
 
   if (drop && _vocbase->lookupCollection(name) != nullptr) {

@@ -34,8 +34,10 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Transaction/V8Context.h"
+#include "Utilities/NameValidator.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
@@ -288,9 +290,10 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  if (!TRI_vocbase_t::isAllowedName(/*allowSystem*/ false, /*allowUnicode*/ false,
-                                    arangodb::velocypack::StringRef(splittedAnalyzerName.second.c_str(),
-                                                                    splittedAnalyzerName.second.size()))) {
+  bool extendedNames = v8g->_server.getFeature<arangodb::DatabaseFeature>().extendedNamesForAnalyzers();
+  if (!arangodb::AnalyzerNameValidator::isAllowedName(extendedNames,
+                                                      arangodb::velocypack::StringRef(splittedAnalyzerName.second.c_str(),
+                                                                                      splittedAnalyzerName.second.size()))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_BAD_PARAMETER,
       std::string("invalid characters in analyzer name '").append(splittedAnalyzerName.second.c_str()).append("'")
@@ -578,9 +581,10 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  if (!TRI_vocbase_t::isAllowedName(/*allowSystem*/ false, /*allowUnicode*/ false,
-                                    arangodb::velocypack::StringRef(splittedAnalyzerName.second.c_str(),
-                                                                    splittedAnalyzerName.second.size()))) {
+  bool extendedNames = v8g->_server.getFeature<arangodb::DatabaseFeature>().extendedNamesForAnalyzers();
+  if (!arangodb::AnalyzerNameValidator::isAllowedName(extendedNames,
+                                                      arangodb::velocypack::StringRef(splittedAnalyzerName.second.c_str(),
+                                                                                      splittedAnalyzerName.second.size()))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_BAD_PARAMETER,
       std::string("Invalid characters in analyzer name '").append(splittedAnalyzerName.second)

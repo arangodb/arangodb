@@ -140,8 +140,10 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool forceSyncProperties() const { return _forceSyncProperties; }
   void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
-  bool allowUnicodeNamesForDatabases() const { return _allowUnicodeNamesForDatabases; }
-  bool allowUnicodeNamesForCollections() const { return _allowUnicodeNamesForCollections; }
+  bool extendedNamesForDatabases() const { return _extendedNamesForDatabases; }
+  bool extendedNamesForCollections() const { return _extendedNamesForCollections; }
+  bool extendedNamesForViews() const { return _extendedNamesForViews; }
+  bool extendedNamesForAnalyzers() const { return _extendedNamesForAnalyzers; }
 
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
@@ -154,7 +156,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   };
 
   static TRI_vocbase_t& getCalculationVocbase();
-  
 
  private:
   static void initCalculationVocbase(application_features::ApplicationServer& server);
@@ -186,9 +187,14 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
+  bool _isInitiallyEmpty;
+  bool _checkVersion;
+  bool _upgrade;
 
-  bool _allowUnicodeNamesForDatabases;
-  bool _allowUnicodeNamesForCollections;
+  bool _extendedNamesForDatabases;
+  bool _extendedNamesForCollections;
+  bool _extendedNamesForViews;
+  bool _extendedNamesForAnalyzers;
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 
@@ -197,10 +203,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   // arangodb::basics::DataProtector<64>
   mutable arangodb::basics::DataProtector _databasesProtector;
   mutable arangodb::Mutex _databasesMutex;
-
-  bool _isInitiallyEmpty;
-  bool _checkVersion;
-  bool _upgrade;
 
   std::atomic<bool> _started;
 

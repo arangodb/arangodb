@@ -217,13 +217,14 @@ static void getOperationOptionsFromObject(v8::Isolate* isolate,
 
 static ErrorCode ParseDocumentOrDocumentHandle(
     v8::Isolate* isolate, CollectionNameResolver const* resolver,
+    bool extendedNames,
     std::shared_ptr<arangodb::LogicalCollection>& collection, std::string& collectionName,
     VPackBuilder& builder, bool includeRev, v8::Handle<v8::Value> const val) {
   v8::HandleScope scope(isolate);
 
   // try to extract the collection name, key, and revision from the object
   // passed
-  if (!ExtractDocumentHandle(isolate, val, collectionName, builder, includeRev)) {
+  if (!ExtractDocumentHandle(isolate, val, extendedNames, collectionName, builder, includeRev)) {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
@@ -356,6 +357,8 @@ static void ExistsVocbaseVPack(bool useCollection,
     // called as db._exists()
     vocbase = &GetContextVocBase(isolate);
   }
+ 
+  bool extendedNames = vocbase->server().getFeature<DatabaseFeature>().extendedNamesForCollections();
 
   transaction::V8Context transactionContext (*vocbase, true);
   VPackBuilder builder;
@@ -367,7 +370,8 @@ static void ExistsVocbaseVPack(bool useCollection,
   {
     VPackObjectBuilder guard(&builder);
 
-    res = ParseDocumentOrDocumentHandle(isolate, &(transactionContext.resolver()), collection,
+    res = ParseDocumentOrDocumentHandle(isolate, &(transactionContext.resolver()), 
+                                        extendedNames, collection,
                                         collectionName, builder, true, args[0]);
   }
 
@@ -441,13 +445,15 @@ static void DocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) 
   if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
+  
+  bool extendedNames = col->vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections();
 
   auto& collectionName = col->name();
   VPackBuilder searchBuilder;
 
   auto workOnOneDocument = [&](v8::Local<v8::Value> const searchValue, bool isBabies) {
     std::string collName;
-    if (!ExtractDocumentHandle(isolate, searchValue, collName, searchBuilder, true)) {
+    if (!ExtractDocumentHandle(isolate, searchValue, extendedNames, collName, searchBuilder, true)) {
       if (!isBabies) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
@@ -522,6 +528,8 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (vocbase.isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+  
+  bool extendedNames = vocbase.server().getFeature<DatabaseFeature>().extendedNamesForCollections();
 
   transaction::V8Context transactionContext(vocbase, true);
   VPackBuilder builder;
@@ -531,8 +539,8 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   {
     VPackObjectBuilder guard(&builder);
     auto res =
-        ParseDocumentOrDocumentHandle(isolate, &(transactionContext.resolver()), collection,
-                                      collectionName, builder, true, args[0]);
+        ParseDocumentOrDocumentHandle(isolate, &(transactionContext.resolver()), extendedNames,
+                                      collection, collectionName, builder, true, args[0]);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -618,13 +626,15 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
+  
+  bool extendedNames = col->vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections();
 
   auto& collectionName = col->name();
   VPackBuilder searchBuilder;
 
   auto workOnOneDocument = [&](v8::Local<v8::Value> const searchValue, bool isBabies) {
     std::string collName;
-    if (!ExtractDocumentHandle(isolate, searchValue, collName, searchBuilder, true)) {
+    if (!ExtractDocumentHandle(isolate, searchValue, extendedNames, collName, searchBuilder, true)) {
       if (!isBabies) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
@@ -718,6 +728,8 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (vocbase.isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+  
+  bool extendedNames = vocbase.server().getFeature<DatabaseFeature>().extendedNamesForCollections();
 
   transaction::V8Context transactionContext(vocbase, true);
   VPackBuilder builder;
@@ -727,6 +739,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   {
     VPackObjectBuilder guard(&builder);
     auto res = ParseDocumentOrDocumentHandle(isolate, &(transactionContext.resolver()),
+                                             extendedNames,
                                              collection, collectionName, builder,
                                              !options.ignoreRevs, args[0]);
 
@@ -804,6 +817,8 @@ static void JS_BinaryDocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> cons
   if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
+  
+  bool extendedNames = col->vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections();
 
   VPackBuilder searchBuilder;
   v8::Local<v8::Value> const searchValue = args[0];
@@ -813,7 +828,7 @@ static void JS_BinaryDocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> cons
     VPackObjectBuilder guard(&searchBuilder);
 
     std::string collName;
-    if (!ExtractDocumentHandle(isolate, searchValue, collName, searchBuilder, true)) {
+    if (!ExtractDocumentHandle(isolate, searchValue, extendedNames, collName, searchBuilder, true)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     }
 
@@ -1345,13 +1360,15 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
+  
+  bool extendedNames = col->vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections();
 
   auto& collectionName = col->name();
   VPackBuilder updateBuilder;
   auto workOnOneSearchVal = [&](v8::Local<v8::Value> const searchVal, bool isBabies) {
     std::string collName;
 
-    if (!ExtractDocumentHandle(isolate, searchVal, collName, updateBuilder,
+    if (!ExtractDocumentHandle(isolate, searchVal, extendedNames, collName, updateBuilder,
                                !options.isRestore)) {
       // If this is no restore, then we must extract the _rev from the
       // search value. If options.isRestore is set, the _rev value must
@@ -1526,6 +1543,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
   auto& vocbase = GetContextVocBase(isolate);
+  bool extendedNames = vocbase.server().getFeature<DatabaseFeature>().extendedNamesForCollections();
   transaction::V8Context transactionContext(vocbase, true);
   VPackBuilder updateBuilder;
 
@@ -1538,6 +1556,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
     }
 
     res = ParseDocumentOrDocumentHandle(isolate, &(transactionContext.resolver()),
+                                        extendedNames,
                                         collection, collectionName, updateBuilder,
                                         !options.ignoreRevs, args[0]);
 

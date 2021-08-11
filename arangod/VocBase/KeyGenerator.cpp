@@ -35,6 +35,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -839,56 +840,23 @@ bool KeyGenerator::validateKey(char const* key, size_t len) {
 }
 
 /// @brief validate a document id (collection name + / + document key)
-bool KeyGenerator::validateId(char const* key, size_t len, size_t* split) {
-  if (len < 3) {
-    // 3 bytes is the minimum length for any document id
+bool KeyGenerator::validateId(char const* key, size_t len, bool extendedNames, size_t& split) {
+  // look for split character
+  char const* found = static_cast<char const*>(memchr(key, '/', len));
+  if (found == nullptr) {
     return false;
   }
 
-  char const* p = key;
-  char c = *p;
-  size_t pos = 0;
-
-  // extract collection name
-  if (!(c == '_' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
-        (c >= 'A' && c <= 'Z'))) {
+  split = found - key;
+  if (split == 0 || split + 1 == len) {
     return false;
   }
 
-  ++p;
-  ++pos;
-
-  while (true) {
-    if (pos >= len) {
-      return false;
-    }
-
-    c = *p;
-    if (c == '_' || c == '-' || (c >= '0' && c <= '9') ||
-        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
-      ++p;
-      ++pos;
-      continue;
-    }
-
-    if (c == '/') {
-      break;
-    }
-
+  if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames,
+                                              arangodb::velocypack::StringRef(key, split))) {
     return false;
   }
-
-  if (pos > LogicalCollection::maxNameLength) {
-    return false;
-  }
-
-  // store split position
-  if (split != nullptr) {
-    *split = pos;
-  }
-  ++p;
-  ++pos;
 
   // validate document key
-  return KeyGenerator::validateKey(p, len - pos);
+  return KeyGenerator::validateKey(key + split + 1, len - split - 1);
 }

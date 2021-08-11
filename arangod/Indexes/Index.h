@@ -142,10 +142,6 @@ class Index {
     static SortCosts defaultCosts(size_t itemsInIndex);
   };
 
- public:
-  /// @brief maximal index name length
-  static constexpr size_t maxNameLength = 64;
-
   /// @brief return the index id
   inline IndexId id() const { return _iid; }
 
@@ -160,11 +156,6 @@ class Index {
   /// @brief set the name, if it is currently unset
   void name(std::string const&);
   
-  /// @brief checks if an index name is valid
-  /// returns true if the name is allowed and false otherwise
-  static bool isAllowedName(bool allowUnicode,
-                            arangodb::velocypack::StringRef const& name) noexcept;
-
   /// @brief return the index fields
   inline std::vector<std::vector<arangodb::basics::AttributeName>> const& fields() const {
     return _fields;
@@ -275,10 +266,10 @@ class Index {
   static char const* oldtypeName(IndexType);
 
   /// @brief validate an index handle (collection name + / + index id)
-  static bool validateHandle(bool allowUnicode, arangodb::velocypack::StringRef handle) noexcept;
+  static bool validateHandle(bool extendedNames, arangodb::velocypack::StringRef handle) noexcept;
 
   /// @brief validate an index handle (by name) (collection name + / + index name)
-  static bool validateHandleName(bool allowUnicode, arangodb::velocypack::StringRef name) noexcept;
+  static bool validateHandleName(bool extendedNames, arangodb::velocypack::StringRef name) noexcept;
 
   /// @brief generate a new index id
   static IndexId generateId();

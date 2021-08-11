@@ -40,6 +40,7 @@
 #include "IResearchLinkMeta.h"
 #include "Misc.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VelocyPackHelper.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
@@ -752,8 +753,9 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
           }
         }
 
+        bool extendedNames = server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
         AnalyzerPool::ptr analyzer;
-        auto const res = IResearchAnalyzerFeature::createAnalyzerPool(analyzer, name, type, properties, revision, features);
+        auto const res = IResearchAnalyzerFeature::createAnalyzerPool(analyzer, name, type, properties, revision, features, extendedNames);
 
         if (res.fail() || !analyzer) {
           errorField = fieldName + "[" + std::to_string(itr.index()) + "]";

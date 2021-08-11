@@ -1065,12 +1065,8 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
     name = VelocyPackHelper::getStringValue(parameters,
                                             StaticStrings::DataSourceName, "");
     bool isSystem = VelocyPackHelper::getBooleanValue(parameters, StaticStrings::DataSourceSystem, false);
-
-    // intentionally false for now - Unicode collection names not yet supported
-    bool allowUnicode = server().getFeature<DatabaseFeature>().allowUnicodeNamesForCollections();
-    TRI_ASSERT(!allowUnicode);
-
-    valid &= LogicalCollection::isAllowedName(isSystem, allowUnicode, arangodb::velocypack::StringRef(name));
+    bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+    valid &= CollectionNameValidator::isAllowedName(isSystem, extendedNames, arangodb::velocypack::StringRef(name));
   }
 
   if (!valid) {
@@ -1205,11 +1201,8 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid, std::string const& 
     return TRI_ERROR_NO_ERROR;
   }
 
-  // intentionally false for now - Unicode collection/view names not yet supported
-  bool allowUnicode = databaseFeature.allowUnicodeNamesForCollections();
-  TRI_ASSERT(!allowUnicode);
-
-  if (!LogicalView::isAllowedName(/*allowSystem*/ false, allowUnicode, arangodb::velocypack::StringRef(newName))) {
+  bool extendedNames = databaseFeature.extendedNamesForViews();
+  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, arangodb::velocypack::StringRef(newName))) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1427,11 +1420,8 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
     name = VelocyPackHelper::getStringValue(parameters,
                                             StaticStrings::DataSourceName, "");
   
-    // intentionally false for now - Unicode collection/view names not yet supported
-    bool allowUnicode = server().getFeature<DatabaseFeature>().allowUnicodeNamesForCollections();
-    TRI_ASSERT(!allowUnicode);
-
-    valid &= LogicalView::isAllowedName(/*allowSystem*/ false, allowUnicode, arangodb::velocypack::StringRef(name));
+    bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+    valid &= ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, arangodb::velocypack::StringRef(name));
   }
 
   if (!valid) {
@@ -1634,17 +1624,6 @@ std::uint32_t TRI_vocbase_t::writeConcern() const {
 
 replication::Version TRI_vocbase_t::replicationVersion() const {
   return _info.replicationVersion();
-}
-
-/// returns true if the name is allowed and false otherwise
-bool TRI_vocbase_t::isAllowedName(bool allowSystem, bool allowUnicode,
-                                  arangodb::velocypack::StringRef const& name) noexcept {
-  return arangodb::DatabaseNameValidator::isAllowedName(allowSystem, allowUnicode, name);
-}
-
-/// @brief determine whether a collection name is a system collection name
-/*static*/ bool TRI_vocbase_t::IsSystemName(std::string const& name) noexcept {
-  return !name.empty() && name[0] == '_';
 }
 
 void TRI_vocbase_t::addReplicationApplier() {

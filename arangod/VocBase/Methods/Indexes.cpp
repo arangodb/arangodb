@@ -45,6 +45,7 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "V8Server/v8-collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -510,7 +511,7 @@ arangodb::Result Indexes::createIndex(LogicalCollection* coll, Index::IndexType 
 /// @brief checks if argument is an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ExtractIndexHandle(VPackSlice const& arg, bool allowUnicode,
+static bool ExtractIndexHandle(VPackSlice const& arg, bool extendedNames,
                                std::string& collectionName, IndexId& iid) {
   TRI_ASSERT(collectionName.empty());
   TRI_ASSERT(iid.empty());
@@ -526,7 +527,7 @@ static bool ExtractIndexHandle(VPackSlice const& arg, bool allowUnicode,
   }
 
   arangodb::velocypack::StringRef handle = arg.stringRef();
-  if (arangodb::Index::validateHandle(allowUnicode, handle)) {
+  if (arangodb::Index::validateHandle(extendedNames, handle)) {
     std::size_t split = handle.find('/');
     TRI_ASSERT(split != std::string::npos);
     collectionName = std::string(handle.data(), split);
@@ -547,7 +548,7 @@ static bool ExtractIndexHandle(VPackSlice const& arg, bool allowUnicode,
 /// @brief checks if argument is an index name
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ExtractIndexName(VPackSlice const& arg, bool allowUnicode,
+static bool ExtractIndexName(VPackSlice const& arg, bool extendedNames,
                              std::string& collectionName,
                              std::string& name) {
   TRI_ASSERT(collectionName.empty());
@@ -558,7 +559,7 @@ static bool ExtractIndexName(VPackSlice const& arg, bool allowUnicode,
   }
   
   arangodb::velocypack::StringRef handle = arg.stringRef();
-  if (arangodb::Index::validateHandleName(allowUnicode, handle)) {
+  if (arangodb::Index::validateHandleName(extendedNames, handle)) {
     std::size_t split = handle.find('/');
     TRI_ASSERT(split != std::string::npos);
     collectionName = std::string(handle.data(), split);
@@ -566,7 +567,7 @@ static bool ExtractIndexName(VPackSlice const& arg, bool allowUnicode,
     return true;
   }
 
-  if (arangodb::Index::isAllowedName(allowUnicode, handle)) {
+  if (IndexNameValidator::isAllowedName(extendedNames, handle)) {
     name = std::string(handle.data(), handle.size());
     return true;
   }
@@ -586,14 +587,12 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
   // assume we are already loaded
   TRI_ASSERT(collection != nullptr);
 
-  // intentionally false for now - Unicode collection/index names not yet supported
-  bool allowUnicode = collection->vocbase().server().getFeature<DatabaseFeature>().allowUnicodeNamesForCollections(); 
-  TRI_ASSERT(!allowUnicode);
+  bool extendedNames = collection->vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections(); 
 
   // extract the index identifier from a string
   if (val.isString() || val.isNumber()) {
-    if (!ExtractIndexHandle(val, allowUnicode, collectionName, iid) &&
-        !ExtractIndexName(val, allowUnicode, collectionName, name)) {
+    if (!ExtractIndexHandle(val, extendedNames, collectionName, iid) &&
+        !ExtractIndexName(val, extendedNames, collectionName, name)) {
       return Result(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
     }
   }
@@ -601,9 +600,9 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
   // extract the index identifier from an object
   else if (val.isObject()) {
     VPackSlice iidVal = val.get(StaticStrings::IndexId);
-    if (!ExtractIndexHandle(iidVal, allowUnicode, collectionName, iid)) {
+    if (!ExtractIndexHandle(iidVal, extendedNames, collectionName, iid)) {
       VPackSlice nameVal = val.get(StaticStrings::IndexName);
-      if (!ExtractIndexName(nameVal, allowUnicode, collectionName, name)) {
+      if (!ExtractIndexName(nameVal, extendedNames, collectionName, name)) {
         return Result(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
       }
     }

@@ -42,6 +42,7 @@
 #include "Sharding/ShardingInfo.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
+#include "Utilities/NameValidator.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -116,7 +117,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected type for 'id' attribute");
       }
-      result.add(StaticStrings::DataSourceSystem, VPackValue(TRI_vocbase_t::IsSystemName(name)));
+      result.add(StaticStrings::DataSourceSystem, VPackValue(NameValidator::isSystemName(name)));
       result.add("path", VPackValue("none"));
     }
   } else {
@@ -175,9 +176,9 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  bool allowUnicode = info.server().getFeature<DatabaseFeature>().allowUnicodeNamesForDatabases(); 
+  bool extendedNames = info.server().getFeature<DatabaseFeature>().extendedNamesForDatabases(); 
 
-  if (!TRI_vocbase_t::isAllowedName(/*allowSystem*/ false, allowUnicode, arangodb::velocypack::StringRef(info.getName()))) {
+  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, arangodb::velocypack::StringRef(info.getName()))) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 

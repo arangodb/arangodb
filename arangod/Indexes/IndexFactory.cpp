@@ -33,6 +33,7 @@
 #include "Indexes/Index.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -254,11 +255,8 @@ Result IndexFactory::enhanceIndexDefinition(  // normalizze deefinition
       }
     }
 
-    // intentionally false for now - Unicode collection/index names not yet supported
-    bool allowUnicode = _server.getFeature<DatabaseFeature>().allowUnicodeNamesForCollections(); 
-    TRI_ASSERT(!allowUnicode);
-
-    if (!Index::isAllowedName(allowUnicode, velocypack::StringRef(name))) {
+    bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNamesForCollections(); 
+    if (!IndexNameValidator::isAllowedName(extendedNames, velocypack::StringRef(name))) {
       return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
 

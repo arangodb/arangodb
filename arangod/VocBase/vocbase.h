@@ -200,15 +200,6 @@ struct TRI_vocbase_t {
   // structures for volatile cache data (used from JavaScript)
   std::unique_ptr<arangodb::DatabaseJavaScriptCache> _cacheData;
 
- public:
-  /// @brief checks if a database name is allowed
-  /// returns true if the name is allowed and false otherwise
-  static bool isAllowedName(bool allowSystem, bool allowUnicode,
-                            arangodb::velocypack::StringRef const& name) noexcept;
-
-  /// @brief determine whether a data-source name is a system data-source name
-  static bool IsSystemName(std::string const& name) noexcept;
-
   arangodb::application_features::ApplicationServer& server() const {
     return _server;
   }

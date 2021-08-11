@@ -34,6 +34,7 @@
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/Events.h"
+#include "Utilities/NameValidator.h"
 
 namespace arangodb {
 
@@ -288,16 +289,12 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
 }
 
 Result CreateDatabaseInfo::checkOptions() {
-  if (_id != 0) {
-    _validId = true;
-  } else {
-    _validId = false;
-  }
+  _validId = (_id != 0);
 
   bool isSystem = _name == StaticStrings::SystemDatabase;
-  bool allowUnicode = _server.getFeature<DatabaseFeature>().allowUnicodeNamesForDatabases();
+  bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
 
-  if (!TRI_vocbase_t::isAllowedName(isSystem, allowUnicode, arangodb::velocypack::StringRef(_name))) {
+  if (!DatabaseNameValidator::isAllowedName(isSystem, extendedNames, arangodb::velocypack::StringRef(_name))) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 

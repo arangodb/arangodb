@@ -47,6 +47,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -257,47 +258,6 @@ void Index::name(std::string const& newName) {
   }
 }
 
-/// @brief checks if an index name is valid
-/// returns true if the name is allowed and false otherwise
-bool Index::isAllowedName(bool allowUnicode,
-                          arangodb::velocypack::StringRef const& name) noexcept {
-  // intentionally false for now - Unicode collection/index names not yet supported
-  TRI_ASSERT(!allowUnicode);
-
-  size_t length = 0;
-
-  for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
-    bool ok = true;
-
-    if (allowUnicode) {
-      // forward slashes are disallowed inside collection names
-      ok &= (*ptr != '/');
-
-      if (length == 0) {
-        // a collection name must not start with a digit, because then it can be confused with
-        // collection ids
-        ok &= (*ptr < '0' || *ptr > '9');
-      }
-    } else {
-      if (length == 0) {
-        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z');
-      } else {
-        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || 
-              (*ptr == '_') || (*ptr == '-') || (*ptr >= '0' && *ptr <= '9');
-      }
-    }
-
-    if (!ok) {
-      return false;
-    }
-  }
-
-  // collection names must be within the expected length limits
-  return (length > 0 && 
-          length <= maxNameLength && 
-          (!allowUnicode || velocypack::Utf8Helper::isValidUtf8(reinterpret_cast<uint8_t const*>(name.data()), name.size())));
-}
-
 size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
   switch (node->type) {
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
@@ -424,14 +384,14 @@ char const* Index::oldtypeName(Index::IndexType type) {
 }
 
 /// @brief validate an index handle (collection name + / + index id)
-bool Index::validateHandle(bool allowUnicode, arangodb::velocypack::StringRef handle) noexcept {
+bool Index::validateHandle(bool extendedNames, arangodb::velocypack::StringRef handle) noexcept {
   std::size_t pos = handle.find('/');
   if (pos == std::string::npos) {
     // no prefix
     return false;
   }
   // check collection name part
-  if (!LogicalCollection::isAllowedName(/*allowSystem*/ true, allowUnicode, handle.substr(0, pos))) {
+  if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames, handle.substr(0, pos))) {
     return false;
   }
   // check remainder (index id)
@@ -448,18 +408,18 @@ bool Index::validateHandle(bool allowUnicode, arangodb::velocypack::StringRef ha
 }
 
 /// @brief validate an index handle (collection name + / + index name)
-bool Index::validateHandleName(bool allowUnicode, arangodb::velocypack::StringRef name) noexcept {
+bool Index::validateHandleName(bool extendedNames, arangodb::velocypack::StringRef name) noexcept {
   std::size_t pos = name.find('/');
   if (pos == std::string::npos) {
     // no prefix
     return false;
   }
   // check collection name part
-  if (!LogicalCollection::isAllowedName(/*allowSystem*/ true, allowUnicode, name.substr(0, pos))) {
+  if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames, name.substr(0, pos))) {
     return false;
   }
   // check remainder (index name)
-  return Index::isAllowedName(allowUnicode, name.substr(pos + 1));
+  return IndexNameValidator::isAllowedName(extendedNames, name.substr(pos + 1));
 }
 
 /// @brief generate a new index id

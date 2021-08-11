@@ -103,11 +103,6 @@ class LogicalView : public LogicalDataSource {
 #endif
   }
   
-  /// @brief checks if a view name is allowed
-  /// returns true if the name is allowed and false otherwise
-  static bool isAllowedName(bool allowSystem, bool allowUnicode,
-                            arangodb::velocypack::StringRef const& name) noexcept;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief queries properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
@@ -194,13 +189,6 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   virtual Result renameImpl(std::string const& oldName) = 0;
   
-  /// @brief maximal view name length, in bytes (old convention, used when
-  /// `--database.allow-unicode-names-collections=false`)
-  static constexpr size_t maxNameLength = 64;
-  /// @brief maximal view name length, in bytes (new convention, used when
-  /// `--database.allow-unicode-names-collections=true`)
-  static constexpr size_t maxNameLengthUnicode = 256;
-
  private:
   // FIXME seems to be ugly
   friend struct ::TRI_vocbase_t;

@@ -53,6 +53,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
@@ -4048,15 +4049,13 @@ AstNode* Ast::createNode(AstNodeType type) {
 /// in case validation fails, will throw an exception
 void Ast::validateDataSourceName(arangodb::velocypack::StringRef const& name,
                                  bool validateStrict) {
-  // intentionally false for now - Unicode collection names not yet supported
-  bool allowUnicode = _query.vocbase().server().getFeature<DatabaseFeature>().allowUnicodeNamesForCollections();
-  TRI_ASSERT(!allowUnicode);
+  bool extendedNames = _query.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections();
 
   // common validation
   if (name.empty() ||
       (validateStrict &&
-       !LogicalCollection::isAllowedName(
-           /*allowSystem*/ true, allowUnicode, name))) {
+       !CollectionNameValidator::isAllowedName(
+           /*allowSystem*/ true, extendedNames, name))) {
     // will throw    
     std::string errorMessage(TRI_errno_string(TRI_ERROR_ARANGO_ILLEGAL_NAME));
     errorMessage.append(": ");

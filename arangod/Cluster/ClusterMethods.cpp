@@ -62,6 +62,7 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -1233,7 +1234,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   reqOpts.database = dbname;
   reqOpts.retryNotFound = true;
 
-  if (TRI_vocbase_t::IsSystemName(cname)) {
+  if (NameValidator::isSystemName(cname)) {
     // system collection (e.g. _apps, _jobs, _graphs...
     // very likely this is an internal request that should not block other processing
     // in case we don't get a timely response
@@ -1316,7 +1317,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = true;
   
-  if (TRI_vocbase_t::IsSystemName(collname)) {
+  if (NameValidator::isSystemName(collname)) {
     // system collection (e.g. _apps, _jobs, _graphs...
     // very likely this is an internal request that should not block other processing
     // in case we don't get a timely response

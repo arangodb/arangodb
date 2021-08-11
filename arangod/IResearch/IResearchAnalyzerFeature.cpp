@@ -79,6 +79,7 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "VelocyPackHelper.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
@@ -1508,7 +1509,8 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
     irs::string_ref const& type,
     VPackSlice const properties,
     arangodb::AnalyzersRevision::Revision revision,
-    irs::flags const& features) {
+    irs::flags const& features,
+    bool extendedNames) {
   // check type available
   if (!irs::analysis::analyzers::exists(type, irs::type<irs::text_format::vpack>::get(), false)) {
     return {
@@ -1520,7 +1522,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
-  if (!TRI_vocbase_t::isAllowedName(/*allowSystem*/ false, /*allowUnicode*/ false, velocypack::StringRef(split.second.c_str(), split.second.size()))) {
+  if (!AnalyzerNameValidator::isAllowedName(extendedNames, velocypack::StringRef(split.second.c_str(), split.second.size()))) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       std::string("invalid characters in analyzer name '") + std::string(split.second) + "'"
@@ -1599,7 +1601,8 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
-  if (!TRI_vocbase_t::isAllowedName(/*allowSystem*/ false, /*allowUnicode*/ false, velocypack::StringRef(split.second.c_str(), split.second.size()))) {
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+  if (!AnalyzerNameValidator::isAllowedName(extendedNames, velocypack::StringRef(split.second.c_str(), split.second.size()))) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       std::string("invalid characters in analyzer name '") + std::string(split.second) + "'" };

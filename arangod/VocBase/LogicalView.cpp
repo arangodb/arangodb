@@ -35,6 +35,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -65,11 +66,8 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition)
         "got an invalid view definition while constructing LogicalView");
   }
 
-  // intentionally false for now - Unicode collection/view names not yet supported
-  bool allowUnicode = vocbase.server().getFeature<DatabaseFeature>().allowUnicodeNamesForCollections();
-  TRI_ASSERT(!allowUnicode);
-
-  if (!LogicalView::isAllowedName(/*allowSystem*/ false, allowUnicode, arangodb::velocypack::StringRef(name()))) {
+  bool extendedNames = vocbase.server().getFeature<DatabaseFeature>().extendedNamesForViews();
+  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, arangodb::velocypack::StringRef(name()))) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -81,55 +79,6 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition)
 
   // update server's tick value
   TRI_UpdateTickServer(id().id());
-}
-
-/// @brief checks if a view name is valid
-/// returns true if the name is allowed and false otherwise
-bool LogicalView::isAllowedName(bool allowSystem, bool allowUnicode,
-                                arangodb::velocypack::StringRef const& name) noexcept {
-  // intentionally false for now - Unicode collection/view names not yet supported
-  TRI_ASSERT(!allowUnicode);
-
-  size_t length = 0;
-
-  for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
-    bool ok = true;
-
-    if (allowUnicode) {
-      // forward slashes are disallowed inside view names
-      ok &= (*ptr != '/');
-
-      if (length == 0) {
-        // a view name must not start with a digit, because then it can be confused with
-        // view ids
-        ok &= (*ptr < '0' || *ptr > '9');
-        
-        // a view name must not start with an underscore unless
-        // (which is not created via any checked API)
-        ok &= (*ptr != '_' || allowSystem);
-
-        // finally, a view name must not start with a dot, because this is used for hidden
-        // agency entries
-        ok &= (*ptr != '.');
-      }
-    } else {
-      if (length == 0) {
-        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || (allowSystem && *ptr == '_');
-      } else {
-        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || 
-              (*ptr == '_') || (*ptr == '-') || (*ptr >= '0' && *ptr <= '9');
-      }
-    }
-
-    if (!ok) {
-      return false;
-    }
-  }
-
-  // view names must be within the expected length limits
-  return (length > 0 && 
-          ((!allowUnicode && length <= maxNameLength) || (allowUnicode && length <= maxNameLengthUnicode)) && 
-          (!allowUnicode || velocypack::Utf8Helper::isValidUtf8(reinterpret_cast<uint8_t const*>(name.data()), name.size())));
 }
 
 Result LogicalView::appendVelocyPack(velocypack::Builder& builder,

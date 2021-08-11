@@ -60,6 +60,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
+#include "Utilities/NameValidator.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -83,7 +84,10 @@ arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(arangodb::application_f
 
 /// @brief return either the name of the database to be used as a folder name, or its id if its name contains special characters and is not fully supported in every OS
 [[nodiscard]] std::string getDatabaseDirName(std::string const& databaseName, std::string const& id) { 
-  return TRI_vocbase_t::isAllowedName(true, false, arangodb::velocypack::StringRef(databaseName)) ? databaseName : id;
+  bool isOldStyleName =
+      DatabaseNameValidator::isAllowedName(/*allowSystem*/ true, /*extendedNames*/ false, 
+                                           arangodb::velocypack::StringRef(databaseName));
+  return (isOldStyleName || id.empty()) ? databaseName : id;
 }
 
 /// @brief sandbox vocbase for executing calculation queries
@@ -282,12 +286,14 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
-      _allowUnicodeNamesForDatabases(true),
-      _allowUnicodeNamesForCollections(false),
-      _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _checkVersion(false),
       _upgrade(false),
+      _extendedNamesForDatabases(true),
+      _extendedNamesForCollections(false),
+      _extendedNamesForViews(false),
+      _extendedNamesForAnalyzers(false),
+      _databasesLists(new DatabasesLists()),
       _started(false) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
@@ -326,18 +332,30 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_ignoreDatafileErrors),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   
-  options->addOption("--database.allow-unicode-names-databases",
-                     "allow Unicode characters in database names",
-                     new BooleanParameter(&_allowUnicodeNamesForDatabases),
+  options->addOption("--database.extended-names-databases",
+                     "allow extended characters in database names",
+                     new BooleanParameter(&_extendedNamesForDatabases),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30900);
   
-  options->addOption("--database.allow-unicode-names-collections",
-                     "allow Unicode characters in collection, view and index names",
-                     new BooleanParameter(&_allowUnicodeNamesForCollections),
+  options->addOption("--database.extended-names-collections",
+                     "allow extended characters in collection names",
+                     new BooleanParameter(&_extendedNamesForCollections),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30900);
-
+  
+  options->addOption("--database.extended-names-views",
+                     "allow extended characters in view names",
+                     new BooleanParameter(&_extendedNamesForViews),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30900);
+  
+  options->addOption("--database.extended-names-analyzers",
+                     "allow extended characters in analyzer names",
+                     new BooleanParameter(&_extendedNamesForAnalyzers),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30900);
+  
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
       "--database.old-system-collections",
@@ -382,9 +400,21 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
   
-  if (_allowUnicodeNamesForCollections) {
+  if (_extendedNamesForCollections) {
     LOG_TOPIC("b3703", FATAL, arangodb::Logger::FIXME)
-        << "unicode names for collections are currently unsupported";
+        << "extended names for collections are currently unsupported";
+    FATAL_ERROR_EXIT();
+  }
+  
+  if (_extendedNamesForViews) {
+    LOG_TOPIC("cdf24", FATAL, arangodb::Logger::FIXME)
+        << "extended names for views are currently unsupported";
+    FATAL_ERROR_EXIT();
+  }
+  
+  if (_extendedNamesForAnalyzers) {
+    LOG_TOPIC("29889", FATAL, arangodb::Logger::FIXME)
+        << "extended names for analyzers are currently unsupported";
     FATAL_ERROR_EXIT();
   }
 }
@@ -396,9 +426,9 @@ void DatabaseFeature::initCalculationVocbase(application_features::ApplicationSe
 }
 
 void DatabaseFeature::start() {
-  if (_allowUnicodeNamesForDatabases) {
+  if (_extendedNamesForDatabases) {
     LOG_TOPIC("2c0c6", WARN, arangodb::Logger::FIXME)
-        << "unicode names for databases are an experimental feature which can "
+        << "Extended name for databases are an experimental feature which can "
         << "cause incompatibility issues with client tools, drivers and applications - do not use in production!";
   }
 
@@ -660,8 +690,8 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   }
   result = nullptr;
 
-  bool allowUnicode = allowUnicodeNamesForDatabases();
-  if (!TRI_vocbase_t::isAllowedName(/*allowSystem*/ false, allowUnicode, arangodb::velocypack::StringRef(name))) {
+  bool extendedNames = extendedNamesForDatabases();
+  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, arangodb::velocypack::StringRef(name))) {
     return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};
   }
 
@@ -1291,7 +1321,10 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       }
 
       std::string const databaseName = it.get("name").copyString();
-      std::string const id = it.get("id").copyString();
+      std::string id;
+      if (it.hasKey("id")) {
+        id = it.get("id").copyString();
+      }
       std::string const dirName = ::getDatabaseDirName(databaseName, id);
       
       // create app directory for database if it does not exist
