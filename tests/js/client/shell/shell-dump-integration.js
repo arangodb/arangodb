@@ -35,8 +35,6 @@ let db = arangodb.db;
 let isCluster = require("internal").isCluster();
 let dbs = ["_system", "maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "testName"];
 
-
-
 function checkDumpJsonFile (dbName, path, id) {
   let data = JSON.parse(fs.readFileSync(fs.join(path, "dump.json")).toString());
   assertEqual(dbName, data.properties.name);
