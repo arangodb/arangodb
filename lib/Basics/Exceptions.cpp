@@ -21,7 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdio.h>
+#include <cstdio>
 #include <cstdarg>
 #include <type_traits>
 
@@ -32,7 +32,10 @@
 #include "Exceptions.h"
 
 #include "Basics/debugging.h"
+#include "Basics/application-exit.h"
 #include "Basics/error.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -160,4 +163,10 @@ std::string Exception::FillFormatExceptionString(char const* format, ...) {
   }
 
   return std::string(buffer, size_t(length));
+}
+
+[[noreturn]] void ::arangodb::basics::helper::dieWithLogMessage(char const* errorMessage) {
+  LOG_TOPIC("1d250", FATAL, Logger::FIXME)
+      << "Failed to create an error message, giving up. " << errorMessage;
+  FATAL_ERROR_EXIT();
 }

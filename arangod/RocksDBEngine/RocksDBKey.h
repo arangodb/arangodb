@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/debugging.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -38,6 +37,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+
+namespace replication2 {
+class LogId;
+struct LogIndex;
+};
 
 class RocksDBKey {
  public:
@@ -71,6 +75,11 @@ class RocksDBKey {
   /// @brief Create a fully-specified collection key
   //////////////////////////////////////////////////////////////////////////////
   void constructCollection(TRI_voc_tick_t databaseId, DataSourceId collectionId);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified replicated log key
+  //////////////////////////////////////////////////////////////////////////////
+  void constructReplicatedLog(TRI_voc_tick_t databaseId, arangodb::replication2::LogId logId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified document key
@@ -161,6 +170,11 @@ class RocksDBKey {
   /// @brief Create a fully-specified key for revision tree for a collection
   //////////////////////////////////////////////////////////////////////////////
   void constructRevisionTreeValue(uint64_t objectId);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for revision tree for a collection
+  //////////////////////////////////////////////////////////////////////////////
+  void constructLogEntry(uint64_t objectId, replication2::LogIndex idx);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -265,6 +279,13 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   static uint64_t geoValue(rocksdb::Slice const& slice);
 
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts log index from key
+  //////////////////////////////////////////////////////////////////////////////
+  static replication2::LogIndex logIndex(RocksDBKey const&);
+  static replication2::LogIndex logIndex(rocksdb::Slice const&);
+
   /// size of internal objectID
   static constexpr size_t objectIdSize() { return sizeof(uint64_t); }
 
@@ -306,6 +327,7 @@ class RocksDBKey {
       case RocksDBEntryType::IndexEstimateValue:
       case RocksDBEntryType::KeyGeneratorValue:
       case RocksDBEntryType::View:
+      case RocksDBEntryType::ReplicatedLog:
         return type;
       default:
         return RocksDBEntryType::Placeholder;
