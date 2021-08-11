@@ -44,6 +44,28 @@ std::unordered_set<ShardID> const ShardLocking::EmptyShardListUnordered{};
 void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
                            bool pushToSingleServer) {
   TRI_ASSERT(baseNode != nullptr);
+
+  std::string const& forceOneShardAttributeValue = _query.queryOptions().forceOneShardAttributeValue;
+
+  auto addRestrictedShard = [&](aql::Collection const* col, 
+                                std::unordered_set<std::string>& restrictedShards) {
+    TRI_ASSERT(!forceOneShardAttributeValue.empty());
+    std::string shardId;
+    auto errorCode = TRI_ERROR_NO_ERROR;
+    if (col->isDisjoint()) {
+      // if disjoint smart edge collection, we must insert an 
+      // artifical key with two colons, to pretend it is a real
+      // smart graph key
+      errorCode = col->getCollection()->getResponsibleShard(forceOneShardAttributeValue + ":test:" + forceOneShardAttributeValue, shardId);
+    } else {
+      errorCode = col->getCollection()->getResponsibleShard(forceOneShardAttributeValue, shardId);
+    }
+    if (errorCode != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(errorCode);
+    }
+    restrictedShards.emplace(shardId);
+  };
+
   // If we have ever accessed the server lists,
   // we cannot insert Nodes anymore.
   // If this needs to be modified in the future, this could
@@ -67,13 +89,21 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       };
       // Add all Edge Collections to the Transactions, Traversals do never write
       for (auto const& col : graphNode->edgeColls()) {
-        updateLocking(col, AccessMode::Type::READ, snippetId, {}, isUsedAsSatellite(col));
+        std::unordered_set<std::string> restrictedShards;
+        if (!forceOneShardAttributeValue.empty()) {
+          addRestrictedShard(col, restrictedShards);
+        }
+        updateLocking(col, AccessMode::Type::READ, snippetId, restrictedShards, isUsedAsSatellite(col));
       }
 
       // Add all Vertex Collections to the Transactions, Traversals do never
       // write, the collections have been adjusted already
       for (auto const& col : graphNode->vertexColls()) {
-        updateLocking(col, AccessMode::Type::READ, snippetId, {}, isUsedAsSatellite(col));
+        std::unordered_set<std::string> restrictedShards;
+        if (!forceOneShardAttributeValue.empty()) {
+          addRestrictedShard(col, restrictedShards);
+        }
+        updateLocking(col, AccessMode::Type::READ, snippetId, restrictedShards, isUsedAsSatellite(col));
       }
       break;
     }
@@ -85,13 +115,15 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
             TRI_ERROR_INTERNAL,
             "unable to cast node to CollectionAccessingNode");
       }
-      std::unordered_set<std::string> restrictedShard;
-      if (colNode->isRestricted()) {
-        restrictedShard.emplace(colNode->restrictedShard());
+      std::unordered_set<std::string> restrictedShards;
+      if (!forceOneShardAttributeValue.empty()) {
+        addRestrictedShard(colNode->collection(), restrictedShards);
+      } else if (colNode->isRestricted()) {
+        restrictedShards.emplace(colNode->restrictedShard());
       }
 
       auto* col = colNode->collection();
-      updateLocking(col, AccessMode::Type::READ, snippetId, restrictedShard,
+      updateLocking(col, AccessMode::Type::READ, snippetId, restrictedShards,
                     colNode->isUsedAsSatellite());
       break;
     }
@@ -102,7 +134,11 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
                                        "unable to cast node to ViewNode");
       }
       for (aql::Collection const& col : viewNode->collections()) {
-        updateLocking(&col, AccessMode::Type::READ, snippetId, {}, false);
+        std::unordered_set<std::string> restrictedShards;
+        if (!forceOneShardAttributeValue.empty()) {
+          addRestrictedShard(&col, restrictedShards);
+        }
+        updateLocking(&col, AccessMode::Type::READ, snippetId, restrictedShards, false);
       }
 
       break;
@@ -119,16 +155,18 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       }
       auto* col = modNode->collection();
 
-      std::unordered_set<std::string> restrictedShard;
-      if (modNode->isRestricted()) {
-        restrictedShard.emplace(modNode->restrictedShard());
+      std::unordered_set<std::string> restrictedShards;
+      if (!forceOneShardAttributeValue.empty()) {
+        addRestrictedShard(modNode->collection(), restrictedShards);
+      } else if (modNode->isRestricted()) {
+        restrictedShards.emplace(modNode->restrictedShard());
       }
       // Not supported yet
       TRI_ASSERT(!modNode->isUsedAsSatellite());
       updateLocking(col,
                     modNode->getOptions().exclusive ? AccessMode::Type::EXCLUSIVE
                                                     : AccessMode::Type::WRITE,
-                    snippetId, restrictedShard, modNode->isUsedAsSatellite());
+                    snippetId, restrictedShards, modNode->isUsedAsSatellite());
       break;
     }
     default:
