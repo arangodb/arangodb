@@ -180,7 +180,7 @@ void SimpleModifier<ModifierCompletion, Enable>::accumulate(InputAqlItemRow& row
 
 template <typename ModifierCompletion, typename Enable>
 ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction::Methods& trx) {
-  std::lock_guard<std::mutex> guard(_resultStateMutex);
+  std::unique_lock<std::mutex> guard(_resultStateMutex);
   switch (_resultState) {
     case ModificationExecutorResultState::WaitingForResult:
       return ExecutionState::WAITING;
@@ -208,10 +208,14 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction:
   TRI_ASSERT(_infos.engine() != nullptr);
   TRI_ASSERT(_infos.engine()->sharedState() != nullptr);
 
+  // The guard has to be unlocked before "thenValue" is called, otherwise locking
+  // the mutex there will cause a deadlock if the result is already available.
+  guard.unlock();
+
   auto self = this->shared_from_this();
   std::move(result).thenValue([self, sqs = _infos.engine()->sharedState()](OperationResult&& opRes) {
     sqs->executeAndWakeup([&] {
-      std::lock_guard<std::mutex> guard(self->_resultStateMutex);
+      std::unique_lock<std::mutex> guard(self->_resultStateMutex);
       TRI_ASSERT(self->_resultState == ModificationExecutorResultState::WaitingForResult);
       if (self->_resultState == ModificationExecutorResultState::WaitingForResult) {
         self->_results = std::move(opRes);
