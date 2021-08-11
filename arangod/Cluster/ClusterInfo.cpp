@@ -826,11 +826,13 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   return std::make_shared<LogicalCollection>(vocbase, data, true);
 }
 
-
 struct ClusterInfo::NewStuffByDatabase {
-  using ReplicatedLogsMap = std::unordered_map<replication2::LogId, std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
+  using ReplicatedLogsMap =
+      std::unordered_map<replication2::LogId, std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
   ReplicatedLogsMap replicatedLogs;
-  using CollectionGroupMap = std::unordered_map<replication2::agency::CollectionGroupId, std::shared_ptr<replication2::agency::CollectionGroup const>>;
+  using CollectionGroupMap =
+      std::unordered_map<replication2::agency::CollectionGroupId,
+                         std::shared_ptr<replication2::agency::CollectionGroup const>>;
   CollectionGroupMap collectionGroups;
 };
 
@@ -1486,7 +1488,6 @@ void ClusterInfo::loadPlan() {
 
     newStuffByDatabase[databaseName] = std::move(stuff);
   }
-
 
   if (isCoordinator) {
     auto systemDB = _server.getFeature<arangodb::SystemDatabaseFeature>().use();

@@ -34,6 +34,7 @@
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
+class CommunicationFeaturePhase;
 }
 namespace basics {
 class StringBuffer;
@@ -241,7 +242,11 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   Endpoint* _endpoint;
-  bool _freeEndpointOnDestruction;
+  
+  // reference to communication feature phase (populated only once for
+  // the entire lifetime of the SimpleHttpClient, as the repeated feature
+  // lookup may be expensive otherwise)
+  application_features::CommunicationFeaturePhase& _comm;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request timeout (in seconds)
@@ -266,6 +271,8 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t _numConnectRetries;
+  
+  bool _freeEndpointOnDestruction;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether we're connected

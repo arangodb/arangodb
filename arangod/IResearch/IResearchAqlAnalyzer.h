@@ -46,6 +46,7 @@ namespace arangodb {
 namespace iresearch {
 
 class AqlAnalyzer final : public irs::analysis::analyzer{
+
  public:
   struct Options {
     Options() = default;
@@ -84,6 +85,11 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
     return "aql";
   }
 
+ public:
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  bool isOptimized() const;
+#endif
+
   static bool normalize_vpack(const irs::string_ref& args, std::string& out);
   static irs::analysis::analyzer::ptr make_vpack(irs::string_ref const& args);
   static bool normalize_json(const irs::string_ref& args, std::string& out);
@@ -99,6 +105,13 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   virtual bool reset(irs::string_ref const& field) noexcept override;
 
  private:
+
+  using ResetImplFunctor = void (*)(AqlAnalyzer* analyzer);
+
+  friend bool tryOptimize(AqlAnalyzer* analyzer);
+  friend void resetFromExpression(AqlAnalyzer* analyzer);
+  friend void resetFromQuery(AqlAnalyzer* analyzer);
+
   using attributes = std::tuple<
     irs::increment,
     AnalyzerValueTypeAttribute,
@@ -114,10 +127,14 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   aql::AqlItemBlockManager _itemBlockManager;
   aql::ExecutionEngine _engine;
   std::unique_ptr<aql::ExecutionPlan> _plan;
+
+  aql::CalculationNode* _nodeToOptimize{nullptr};
+  ResetImplFunctor _resetImpl;
   aql::SharedAqlItemBlockPtr _queryResults;
   std::vector<aql::AstNode*> _bindedNodes;
   aql::ExecutionState _executionState{aql::ExecutionState::DONE};
 
+  aql::RegisterId _engineResultRegister;
   attributes _attrs;
   size_t _resultRowIdx{ 0 };
   uint32_t _nextIncVal{0};

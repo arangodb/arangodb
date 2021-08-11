@@ -395,7 +395,7 @@ auto replicated_log::LogFollower::getCommittedLogIterator(LogIndex firstIndex) c
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getCommittedLogIterator(LogIndex firstIndex) const
--> std::unique_ptr<LogRangeIterator> {
+    -> std::unique_ptr<LogRangeIterator> {
   auto const endIdx = _inMemoryLog.getNextIndex();
   TRI_ASSERT(firstIndex < endIdx);
   // return an iterator for the range [firstIndex, _commitIndex + 1)

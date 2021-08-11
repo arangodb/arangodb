@@ -308,6 +308,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
         Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
         Replication2/ReplicatedState/AbstractStateMachinePollTest.cpp Replication2/ReplicatedState/StateMachineTestHelper.cpp Replication2/ReplicatedState/StateMachineTestHelper.h Replication2/Mocks/PersistedLog.cpp Replication2/Mocks/PersistedLog.h)
 
+
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
   # this speeds up the compilation with optimizations and newer g++ versions
