@@ -692,6 +692,60 @@ constexpr auto TRI_ERROR_REPLICATION_WRONG_CHECKSUM                             
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr auto TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = ErrorCode{1417};
 
+/// 1418: ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND
+/// "replicated log % PRIu64 " not found""
+/// Will be raised when a specific replicated log is not found
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND                    = ErrorCode{1418};
+
+/// 1419: ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER
+/// "not the log leader"
+/// Will be raised when a participant of a replicated log is ordered to do
+/// something only the leader can do
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER               = ErrorCode{1419};
+
+/// 1420: ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER
+/// "not a log follower"
+/// Will be raised when a participant of a replicated log is ordered to do
+/// something only a follower can do
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER               = ErrorCode{1420};
+
+/// 1421: ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED
+/// "follower rejected append entries request"
+/// Will be raised when a follower of a replicated log rejects an append
+/// entries request
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED      = ErrorCode{1421};
+
+/// 1422: ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED
+/// "a resigned leader instance rejected a request"
+/// Will be raised when a leader instance of a replicated log rejects a request
+/// because it just resigned. This can also happen if the term changes (due to
+/// a configuration change), even if the leader stays the same.
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED              = ErrorCode{1422};
+
+/// 1423: ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED
+/// "a resigned follower instance rejected a request"
+/// Will be raised when a follower instance of a replicated log rejects a
+/// request because it just resigned. This can also happen if the term changes
+/// (due to a configuration change), even if the server stays a follower.
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED            = ErrorCode{1423};
+
+/// 1424: ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE
+/// "the replicated log of the participant is gone"
+/// Will be raised when a participant instance of a replicated log is no longer
+/// available.
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE             = ErrorCode{1424};
+
+/// 1425: ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM
+/// "an invalid term was given"
+/// Will be raised when a participant tries to change its term but found a
+/// invalid new term.
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM                 = ErrorCode{1425};
+
+/// 1446: ERROR_CLUSTER_NOT_FOLLOWER
+/// "not a follower"
+/// Will be raised when an operation is sent to a non-following server.
+constexpr auto TRI_ERROR_CLUSTER_NOT_FOLLOWER                                    = ErrorCode{1446};
+
 /// 1447: ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED
 /// "follower transaction intermediate commit already performed"
 /// Will be raised when a follower transaction has already performed an

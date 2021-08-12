@@ -50,6 +50,7 @@ class EncryptionProvider;
 
 namespace arangodb {
 
+struct RocksDBLogPersistor;
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
@@ -173,6 +174,7 @@ class RocksDBEngine final : public StorageEngine {
                                      arangodb::velocypack::Builder& result,
                                      bool wasCleanShutdown, bool isUpgrade) override;
 
+  void getReplicatedLogs(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result);
   ErrorCode getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override;
@@ -246,6 +248,12 @@ class RocksDBEngine final : public StorageEngine {
 
   void compactRange(RocksDBKeyBounds bounds);
   void processCompactions();
+
+  virtual auto createReplicatedLog(TRI_vocbase_t&, arangodb::replication2::LogId)
+      -> ResultT<std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> override;
+  virtual auto dropReplicatedLog(TRI_vocbase_t&,
+                                 std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const&)
+      -> Result override;
 
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
@@ -542,6 +550,9 @@ class RocksDBEngine final : public StorageEngine {
   std::deque<RocksDBKeyBounds> _pendingCompactions;
   // number of currently running compaction jobs
   size_t _runningCompactions;
+
+  // @brief persistor for replicated logs
+  std::shared_ptr<RocksDBLogPersistor> _logPersistor;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";
