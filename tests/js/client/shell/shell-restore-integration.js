@@ -33,6 +33,39 @@ let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 let isCluster = require("internal").isCluster();
+let dbs = [{"name": "maçã", "id": "9999994", "isUnicode": true}, {"name": "cachorro", "id": "9999995", "isUnicode": false}, {"name": "testName", "id": "9999996", "isUnicode": false}, {"name": "😀", "id": "9999997", "isUnicode": true}, {"name": "かわいい犬", "id": "9999998"}, {"name": "ﻚﻠﺑ ﻞﻄﻴﻓ", "id": "9999999", "isUnicode": true}];
+
+function createCollectionFiles (path, cn) {
+  let fn = fs.join(path, cn + ".structure.json");
+  fs.write(fn, JSON.stringify({
+    indexes: [],
+    parameters: {
+      name: cn,
+      numberOfShards: 3,
+      type: 2
+    }
+  }));
+
+  let data = [];
+  for (let i = 0; i < 1000; ++i) {
+    data.push({ type: 2300, data: { _key: "test" + i, value: i} });
+  }
+
+  fn = fs.join(path, cn + ".data.json");
+  fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+  return data;
+}
+
+function createDumpJsonFile (path, databaseName, id) {  
+  let fn = fs.join(path, "dump.json");
+  fs.write(fn, JSON.stringify({
+    database: databaseName,
+    properties: {
+      name: databaseName,
+      id: id
+    }
+  }));
+}
 
 function restoreIntegrationSuite () {
   'use strict';
@@ -46,8 +79,10 @@ function restoreIntegrationSuite () {
     let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
     args.push('--server.endpoint');
     args.push(endpoint);
-    args.push('--server.database');
-    args.push(arango.getDatabaseName());
+    if(args.indexOf("--all-databases") === -1 && args.indexOf("--server.database") === -1) {
+      args.push('--server.database');
+      args.push(arango.getDatabaseName());
+    }
     args.push('--server.username');
     args.push(arango.connectedUser());
   };
@@ -70,6 +105,11 @@ function restoreIntegrationSuite () {
 
     tearDown: function () {
       db._drop(cn);
+      db._databases().forEach((database) => {
+        if(database !== "_system") {
+          db._dropDatabase(database);
+        }
+      });
     },
     
     testRestoreAutoIncrementKeyGenerator: function () {
@@ -375,7 +415,143 @@ function restoreIntegrationSuite () {
         } catch (err) {}
       }
     },
+
+    testRestoreWithAllDatabasesUnicodeNoCollections: function () {
+      let path = fs.getTempFile();
+      fs.makeDirectory(path);
+      let args = ['--all-databases', 'true', '--create-database', 'true'];
+      try {
+        let subdir = "";
+        dbs.forEach((database) => {
+          if(database["isUnicode"]) {
+            subdir = database["id"];
+          } else {
+            subdir = database["name"];
+          }
+          let dbPath = fs.join(path, subdir);
+          fs.makeDirectory(dbPath);
+          createDumpJsonFile(dbPath, database["name"], database["id"]);  
+        });
+        runRestore(path, args, 0);
+        dbs.forEach((database) => {
+          db._useDatabase(database["name"]);
+          if(database["isUnicode"]) {
+            subdir = database["id"];
+          } else {
+            subdir = database["name"];
+            assertEqual(subdir, db._name());
+          }
+          let data = JSON.parse(fs.readFileSync(fs.join(path, fs.join(subdir, "dump.json"))).toString());
+          assertEqual(data.properties.name, db._name());
+        });
+      } finally {
+        db._useDatabase("_system");
+        fs.removeDirectoryRecursive(path, true);
+      }
+    },
+
+    testRestoreWithSomeAlreadyExistingDatabasesUnicodeNoCollections: function () {
+      let path = fs.getTempFile();
+      fs.makeDirectory(path);
+      let args = ['--all-databases', 'true', '--create-database', 'true'];
+      try {
+        let subdir = "";
+        dbs.forEach((database, index) => {
+          if(database["isUnicode"]) {
+            subdir = database["id"];
+          } else {
+            subdir = database["name"];
+          }
+          let dbPath = fs.join(path, subdir);
+          fs.makeDirectory(dbPath);
+          if(index % 2 === 0) {
+            db._createDatabase(database["name"]);
+          }
+          createDumpJsonFile(dbPath, database["name"], database["id"]);  
+        });
+        assertTrue(db._databases().length > 2);
+        runRestore(path, args, 0);
+        dbs.forEach((database) => {
+          db._useDatabase(database["name"]);
+          if(database["isUnicode"]) {
+            subdir = database["id"];
+          } else {
+            subdir = database["name"];
+            assertEqual(subdir, db._name());
+          }
+          let data = JSON.parse(fs.readFileSync(fs.join(path, fs.join(subdir, "dump.json"))).toString());
+          assertEqual(data.properties.name, db._name());
+        });
+      } finally {
+        db._useDatabase("_system");
+        fs.removeDirectoryRecursive(path, true);
+      }
+    },
+
+    testRestoreCollectionDatabasesUnicode: function () {
+      let path = fs.getTempFile();
+      fs.makeDirectory(path);
+      try {
+        let subdir = "";
+        dbs.forEach((database) => {
+          if(database["isUnicode"]) {
+            subdir = database["id"];
+          } else {
+            subdir = database["name"];
+          }
+          let dbPath = fs.join(path, subdir);
+          fs.makeDirectory(dbPath);
+          createDumpJsonFile(dbPath, database["name"], database["id"]);  
+          let data = createCollectionFiles(dbPath, cn);
+          let args = ['--collection', cn, '--import-data', 'true', '--create-database', 'true', '--server.database', database["name"]];
+          runRestore(dbPath, args, 0);
+          db._useDatabase(database["name"]);
+          let c = db._collection(cn);
+          assertEqual(data.length, c.count());
+          for (let i = 0; i < data.length; ++i) {
+            let doc = c.document("test" + i);
+            assertEqual(i, doc.value);
+          } 
+        });
+      } finally {
+        db._useDatabase("_system");
+        fs.removeDirectoryRecursive(path, true);
+      }
+    }, 
     
+    testRestoreCollectionWithAllDatabasesUnicode: function () {
+      let path = fs.getTempFile();
+      fs.makeDirectory(path);
+      try {
+        let subdir = "";
+        dbs.forEach((database) => {
+          if(database["isUnicode"]) {
+            subdir = database["id"];
+          } else {
+            subdir = database["name"];
+          }
+          let dbPath = fs.join(path, subdir);
+          fs.makeDirectory(dbPath);
+          createDumpJsonFile(dbPath, database["name"], database["id"]);  
+          createCollectionFiles(dbPath, cn);
+        });
+        let args = ['--collection', cn, '--import-data', 'true', '--create-database', 'true', '--all-databases', 'true'];
+        runRestore(path, args, 0);
+        dbs.forEach((database) => { 
+          db._useDatabase(database["name"]);
+          let c = db._collection(cn);
+          assertEqual(1000, c.count());
+          for (let i = 0; i < 1000; ++i) {
+            let doc = c.document("test" + i);
+            assertEqual(i, doc.value);
+          } 
+        });  
+      } finally {
+        db._useDatabase("_system");
+        fs.removeDirectoryRecursive(path, true);
+      }
+    },
+
     testRestoreWithoutEnvelopesWithDumpJsonFile: function () {
       let path = fs.getTempFile();
       try {

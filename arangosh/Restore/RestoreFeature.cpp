@@ -1939,7 +1939,6 @@ void RestoreFeature::start() {
     result.reset();
 
     if (_options.allDatabases) {
-      LOG_DEVEL << "database name " << db.name;
       // inject current database
       client.setDatabaseName(db.name);
       LOG_TOPIC("36075", INFO, Logger::RESTORE) << "Restoring database '" << db.name << "'";
