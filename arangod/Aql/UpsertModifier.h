@@ -38,6 +38,9 @@ namespace arangodb::aql {
 
 struct ModificationExecutorInfos;
 
+// TODO Remove this state, and use a variant as in SimpleModifier.
+//      It makes most sense to do this when implementing async upsert operations,
+//      so I'm leaving it for now.
 enum class ModificationExecutorResultState {
   // State that is used when the Executor's modifier has not been
   // asked to produce a result.
