@@ -204,6 +204,14 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     }
 
     auto action = std::invoke([&]() noexcept -> DeferredAction {
+      TRI_ASSERT(req.largestCommonIndex >= self->_largestCommonIndex);
+      if (self->_largestCommonIndex > req.largestCommonIndex) {
+        LOG_CTX("fc467", TRACE, self->_follower._loggerContext)
+            << "largest common index went from " << self->_largestCommonIndex
+            << " to " << req.largestCommonIndex << ".";
+        self->_largestCommonIndex = req.largestCommonIndex;
+      }
+
       if (self->_commitIndex < req.leaderCommit && !self->_inMemoryLog.empty()) {
         self->_commitIndex =
             std::min(req.leaderCommit, self->_inMemoryLog.back().entry().logIndex());
@@ -261,6 +269,7 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
     status.local = followerData.getLocalStatistics();
     status.leader = _leaderId;
     status.term = _currentTerm;
+    status.largestCommonIndex = followerData._largestCommonIndex;
     return LogStatus{std::move(status)};
   });
 }
@@ -414,7 +423,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() cons
     -> LogStatistics {
   auto result = LogStatistics{};
   result.commitIndex = _commitIndex;
-  result.spearHead.index = _inMemoryLog.getLastIndex();
-  result.spearHead.term = _inMemoryLog.getLastTerm();
+  result.firstIndex = _inMemoryLog.getFirstIndex();
+  result.spearHead = _inMemoryLog.getLastTermIndexPair();
   return result;
 }

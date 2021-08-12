@@ -43,6 +43,7 @@ struct LeaderStatus {
 
   LogStatistics local;
   LogTerm term;
+  LogIndex largestCommonIndex;
   std::unordered_map<ParticipantId, FollowerStatistics> follower;
 
   void toVelocyPack(velocypack::Builder& builder) const;
@@ -53,6 +54,7 @@ struct FollowerStatus {
   LogStatistics local;
   std::optional<ParticipantId> leader;
   LogTerm term;
+  LogIndex largestCommonIndex;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatus;

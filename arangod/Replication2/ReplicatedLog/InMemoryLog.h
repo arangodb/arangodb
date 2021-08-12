@@ -67,7 +67,6 @@ struct InMemoryLog {
 
  public:
   InMemoryLog() = delete;
-  InMemoryLog(replicated_log::LogCore const& logCore);
 
   InMemoryLog(InMemoryLog&& other) noexcept;
   InMemoryLog(InMemoryLog const&) = default;
@@ -122,6 +121,8 @@ struct InMemoryLog {
   [[nodiscard]] static auto dump(log_type const& log) -> std::string;
   [[nodiscard]] auto dump() const -> std::string;
 
+
+  [[nodiscard]] static auto loadFromLogCore(LogCore const&) -> InMemoryLog;
  protected:
   explicit InMemoryLog(log_type log);
   explicit InMemoryLog(log_type log, LogIndex first);

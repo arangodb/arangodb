@@ -306,7 +306,7 @@ auto replicated_log::LogLeader::construct(
                     std::move(id), term, std::move(inMemoryLog)) {}
   };
 
-  auto log = InMemoryLog{*logCore};
+  auto log = InMemoryLog::loadFromLogCore(*logCore);
   auto const lastIndex = log.getLastTermIndexPair();
   if (lastIndex.term != term) {
     // Immediately append an empty log entry in the new term. This is necessary
@@ -402,13 +402,14 @@ auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
 }
 
 auto replicated_log::LogLeader::getStatus() const -> LogStatus {
-  return _guardedLeaderData.doUnderLock([term = _currentTerm](auto& leaderData) {
+  return _guardedLeaderData.doUnderLock([term = _currentTerm](GuardedLeaderData const& leaderData) {
     if (leaderData._didResign) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
     LeaderStatus status;
     status.local = leaderData.getLocalStatistics();
     status.term = term;
+    status.largestCommonIndex = leaderData._largestCommonIndex;
     for (FollowerInfo const& f : leaderData._follower) {
       status.follower[f._impl->getParticipantId()] = {
           LogStatistics{f.lastAckedEntry, f.lastAckedCommitIndex}, f.lastErrorReason,
@@ -806,6 +807,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
 auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const -> LogStatistics {
   auto result = LogStatistics{};
   result.commitIndex = _commitIndex;
+  result.firstIndex = _inMemoryLog.getFirstIndex();
   result.spearHead = _inMemoryLog.getLastTermIndexPair();
   return result;
 }
@@ -830,10 +832,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction() -> Result {
   auto const compactionStop = std::min(_largestCommonIndex, _releaseIndex);
   LOG_CTX("080d5", TRACE, _self._logContext)
       << "compaction index calculated as " << compactionStop;
-  if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {
+  if (compactionStop <= _inMemoryLog.getFirstIndex()) {
     // only do a compaction every 1000 entries
     LOG_CTX("ebb9f", TRACE, _self._logContext)
-    << "won't trigger a compaction, not enough entries (" << (compactionStop.value - _inMemoryLog.getFirstIndex().value);
+        << "won't trigger a compaction, not enough entries. First index = "
+        << _inMemoryLog.getFirstIndex();
     return {};
   }
 

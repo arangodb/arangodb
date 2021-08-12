@@ -75,6 +75,7 @@ void replicated_log::QuorumData::toVelocyPack(velocypack::Builder& builder) cons
 void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex.value));
+  builder.add("firstIndex", VPackValue(firstIndex.value));
   builder.add(VPackValue(StaticStrings::Spearhead));
   spearHead.toVelocyPack(builder);
 }
@@ -82,6 +83,7 @@ void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) c
 auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice) -> LogStatistics {
   LogStatistics stats;
   stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
+  stats.firstIndex = slice.get("firstIndex").extract<LogIndex>();
   stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
   return stats;
 }

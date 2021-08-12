@@ -83,6 +83,7 @@ class LogFollower final : public ILogParticipant,
     InMemoryLog _inMemoryLog;
     std::unique_ptr<LogCore> _logCore;
     LogIndex _commitIndex{0};
+    LogIndex _largestCommonIndex;
     MessageId _lastRecvMessageId{0};
     Guarded<WaitForQueue, arangodb::basics::UnshackledMutex> _waitForQueue;
   };

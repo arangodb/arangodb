@@ -58,8 +58,7 @@ struct arangodb::ReplicatedLogMethods {
   }
 
   virtual auto getReplicatedLogs() const
-  -> futures::Future<std::unordered_map<arangodb::replication2::LogId,
-      arangodb::replication2::replicated_log::LogStatus>> {
+      -> futures::Future<std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -68,7 +67,8 @@ struct arangodb::ReplicatedLogMethods {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  virtual auto getLogEntryByIndex(LogId, LogIndex) const -> futures::Future<std::optional<PersistingLogEntry>> {
+  virtual auto getLogEntryByIndex(LogId, LogIndex) const
+      -> futures::Future<std::optional<PersistingLogEntry>> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -78,12 +78,16 @@ struct arangodb::ReplicatedLogMethods {
   }
 
   virtual auto tailEntries(LogId, LogIndex, std::size_t limit) const
-  -> futures::Future<std::unique_ptr<LogIterator>> {
+      -> futures::Future<std::unique_ptr<LogIterator>> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   virtual auto insert(LogId, LogPayload) const
-  -> futures::Future<std::pair<LogIndex, std::shared_ptr<replicated_log::QuorumData const>>> {
+      -> futures::Future<std::pair<LogIndex, std::shared_ptr<replicated_log::QuorumData const>>> {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  virtual auto releaseIndex(LogId, LogIndex) const -> futures::Future<Result> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -95,32 +99,30 @@ struct arangodb::ReplicatedLogMethods {
 
 namespace {
 
-auto sendInsertRequest(network::ConnectionPool *pool, std::string const& server, std::string const& database,
-                       LogId id, LogPayload payload)
-                       -> futures::Future<std::pair<LogIndex, std::shared_ptr<replicated_log::QuorumData const>>> {
-
+auto sendInsertRequest(network::ConnectionPool* pool, std::string const& server,
+                       std::string const& database, LogId id, LogPayload payload)
+    -> futures::Future<std::pair<LogIndex, std::shared_ptr<replicated_log::QuorumData const>>> {
   auto path = basics::StringUtils::joinT("/", "_api/log", id, "insert");
 
   network::RequestOptions opts;
   opts.database = database;
-  return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post, path,
-                              payload.dummy, opts)
+  return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
+                              path, payload.dummy, opts)
       .thenValue([](network::Response&& resp) {
         if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
           THROW_ARANGO_EXCEPTION(resp.combinedResult());
         }
         auto result = resp.slice().get("result");
-        auto quorum = std::make_shared<replication2::replicated_log::QuorumData const>(result.get("quorum"));
+        auto quorum = std::make_shared<replication2::replicated_log::QuorumData const>(
+            result.get("quorum"));
         auto index = result.get("index").extract<LogIndex>();
         return std::make_pair(index, std::move(quorum));
       });
 }
 
-
-auto sendLogStatusRequest(network::ConnectionPool *pool, std::string const& server, std::string const& database,
-                       LogId id)
--> futures::Future<replication2::replicated_log::LogStatus> {
-
+auto sendLogStatusRequest(network::ConnectionPool* pool, std::string const& server,
+                          std::string const& database, LogId id)
+    -> futures::Future<replication2::replicated_log::LogStatus> {
   auto path = basics::StringUtils::joinT("/", "_api/log", id);
 
   network::RequestOptions opts;
@@ -130,14 +132,14 @@ auto sendLogStatusRequest(network::ConnectionPool *pool, std::string const& serv
         if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
           THROW_ARANGO_EXCEPTION(resp.combinedResult());
         }
-        return replication2::replicated_log::LogStatus::fromVelocyPack(resp.slice().get("result"));
+        return replication2::replicated_log::LogStatus::fromVelocyPack(
+            resp.slice().get("result"));
       });
 }
 
-auto sendReadEntryRequest(network::ConnectionPool *pool, std::string const& server, std::string const& database,
-                       LogId id, LogIndex index)
--> futures::Future<std::optional<PersistingLogEntry>> {
-
+auto sendReadEntryRequest(network::ConnectionPool* pool, std::string const& server,
+                          std::string const& database, LogId id, LogIndex index)
+    -> futures::Future<std::optional<PersistingLogEntry>> {
   auto path = basics::StringUtils::joinT("/", "_api/log", id, "readEntry", index.value);
 
   network::RequestOptions opts;
@@ -190,7 +192,7 @@ auto sendTailRequest(network::ConnectionPool* pool, std::string const& server,
         return std::make_unique<VPackLogIterator>(resp.response().stealPayload());
       });
 }
-}
+}  // namespace
 
 struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
   auto getLogLeader(LogId id) const {
@@ -258,8 +260,7 @@ struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
   }
 
   auto getReplicatedLogs() const
-  -> futures::Future<std::unordered_map<arangodb::replication2::LogId,
-      arangodb::replication2::replicated_log::LogStatus>> override {
+      -> futures::Future<std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>> override {
     return vocbase.getReplicatedLogs();
   }
 
@@ -268,11 +269,13 @@ struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
     return vocbase.getReplicatedLogById(id)->getParticipant()->getStatus();
   }
 
-  auto getLogEntryByIndex(LogId id, LogIndex idx) const -> futures::Future<std::optional<PersistingLogEntry>> override {
+  auto getLogEntryByIndex(LogId id, LogIndex idx) const
+      -> futures::Future<std::optional<PersistingLogEntry>> override {
     return vocbase.getReplicatedLogLeaderById(id)->readReplicatedEntryByIndex(idx);
   }
 
-  auto tailEntries(LogId id, LogIndex idx, std::size_t limit) const -> futures::Future<std::unique_ptr<LogIterator>> override {
+  auto tailEntries(LogId id, LogIndex idx, std::size_t limit) const
+      -> futures::Future<std::unique_ptr<LogIterator>> override {
     struct LimitingIterator : LogIterator {
       LimitingIterator(size_t limit, std::unique_ptr<LogIterator> source)
           : _limit(limit), _source(std::move(source)) {}
@@ -308,6 +311,11 @@ struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
         [idx](auto&& quorum) { return std::make_pair(idx, std::move(quorum)); });
   }
 
+  auto releaseIndex(LogId id, LogIndex idx) const -> futures::Future<Result> override {
+    auto log = vocbase.getReplicatedLogById(id);
+    return log->getParticipant()->release(idx);
+  }
+
   explicit ReplicatedLogMethodsDBServ(TRI_vocbase_t& vocbase)
       : vocbase(vocbase) {}
 
@@ -316,7 +324,6 @@ struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
 };
 
 RestStatus RestLogHandler::execute() {
-
   // for now required admin access to the database
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
@@ -355,9 +362,7 @@ RestStatus RestLogHandler::executeByMethod(ReplicatedLogMethods const& methods) 
   return RestStatus::DONE;
 }
 
-
 RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods) {
-
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   bool parseSuccess = false;
@@ -403,30 +408,42 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
           }
           generateOk(rest::ResponseCode::ACCEPTED, response.slice());
         }));
-  } else if(verb == "updateTermSpecification") {
-    auto term = replication2::agency::LogPlanTermSpecification(replication2::agency::from_velocypack, body);
-    return waitForFuture(
-        methods.updateTermSpecification(logId, term).thenValue([this](auto&& result) {
-      if (result.ok()) {
-        generateOk(ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
+  } else if (verb == "release") {
+    auto idx = LogIndex{basics::StringUtils::uint64(_request->value("index"))};
+    return waitForFuture(methods.releaseIndex(logId, idx).thenValue([this](Result&& res) {
+      if (res.fail()) {
+        generateError(res);
       } else {
-        generateError(result);
+        generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
       }
     }));
-  } else if(verb == "becomeLeader") {
+  } else if (verb == "updateTermSpecification") {
+    auto term = replication2::agency::LogPlanTermSpecification(replication2::agency::from_velocypack,
+                                                               body);
+    return waitForFuture(
+        methods.updateTermSpecification(logId, term).thenValue([this](auto&& result) {
+          if (result.ok()) {
+            generateOk(ResponseCode::ACCEPTED, VPackSlice::emptyObjectSlice());
+          } else {
+            generateError(result);
+          }
+        }));
+  } else if (verb == "becomeLeader") {
     if (!ServerState::instance()->isDBServer()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
     auto log = _vocbase.getReplicatedLogById(logId);
 
     auto term = LogTerm{body.get(StaticStrings::Term).getNumericValue<uint64_t>()};
-    auto writeConcern = body.get(StaticStrings::WriteConcern).getNumericValue<std::size_t>();
+    auto writeConcern =
+        body.get(StaticStrings::WriteConcern).getNumericValue<std::size_t>();
     auto waitForSync = body.get(StaticStrings::WaitForSyncString).isTrue();
 
     std::vector<std::shared_ptr<replicated_log::AbstractFollower>> follower;
     for (auto const& part : VPackArrayIterator(body.get(StaticStrings::Follower))) {
       auto partId = part.copyString();
-      follower.emplace_back(std::make_shared<replicated_log::NetworkAttachedFollower>(server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name(), logId));
+      follower.emplace_back(std::make_shared<replicated_log::NetworkAttachedFollower>(
+          server().getFeature<NetworkFeature>().pool(), partId, _vocbase.name(), logId));
     }
 
     replication2::LogConfig config;
@@ -457,10 +474,8 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
 
     return waitForFuture(std::move(f));
   } else {
-    generateError(
-        rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-        "expecting one of the resources 'insert', ");
-
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                  "expecting one of the resources 'insert', ");
   }
   return RestStatus::DONE;
 }
@@ -490,7 +505,6 @@ RestStatus RestLogHandler::handleGetRequest(ReplicatedLogMethods const& methods)
 }
 
 RestStatus RestLogHandler::handleDeleteRequest(ReplicatedLogMethods const& methods) {
-
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() != 1) {
@@ -549,17 +563,18 @@ RestStatus RestLogHandler::handleGetTail(const ReplicatedLogMethods& methods,
   LogIndex logIdx{basics::StringUtils::uint64(_request->value("first"))};
   std::size_t limit{basics::StringUtils::uint64(_request->value("limit"))};
 
-  auto fut = methods.tailEntries(logId, logIdx, limit).thenValue([&](std::unique_ptr<LogIterator> iter) {
-    VPackBuilder builder;
-    {
-      VPackArrayBuilder ab(&builder);
-      while (auto entry = iter->next()) {
-        entry->toVelocyPack(builder);
-      }
-    }
+  auto fut =
+      methods.tailEntries(logId, logIdx, limit).thenValue([&](std::unique_ptr<LogIterator> iter) {
+        VPackBuilder builder;
+        {
+          VPackArrayBuilder ab(&builder);
+          while (auto entry = iter->next()) {
+            entry->toVelocyPack(builder);
+          }
+        }
 
-    generateOk(rest::ResponseCode::OK, builder.slice());
-  });
+        generateOk(rest::ResponseCode::OK, builder.slice());
+      });
 
   return waitForFuture(std::move(fut));
 }
