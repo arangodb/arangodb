@@ -172,6 +172,8 @@ class range_column_iterator final
       min_base_{header.min},
       min_doc_{min_base_},
       max_doc_{min_base_ + header.docs_count - 1} {
+    assert(min_doc_ <= max_doc_);
+    assert(!doc_limits::eof(max_doc_));
     std::get<irs::cost>(attrs_).reset(header.docs_count);
   }
 
@@ -184,20 +186,22 @@ class range_column_iterator final
   }
 
   virtual doc_id_t seek(irs::doc_id_t doc) override {
-    if (IRS_LIKELY(min_doc_ < doc && doc <= max_doc_)) {
-      min_doc_ = doc;
+    if (IRS_LIKELY(min_doc_ <= doc && doc <= max_doc_)) {
       std::get<document>(attrs_).value = doc;
+      min_doc_ = doc + 1;
       std::get<irs::payload>(attrs_).value = this->payload(doc - min_base_);
       return doc;
-    } else if (doc <= min_doc_) {
-      std::get<document>(attrs_).value = min_doc_;
-      std::get<irs::payload>(attrs_).value = this->payload(min_doc_ - min_base_);
-      return std::get<document>(attrs_).value;
-    } else { // max_doc_ < doc
+    }
+
+    if (value() < doc) {
+      max_doc_ = doc_limits::invalid();
+      min_doc_ = doc_limits::eof();
       std::get<document>(attrs_).value = doc_limits::eof();
       std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
       return doc_limits::eof();
     }
+
+    return value();
   }
 
   virtual bool next() override {
@@ -1096,7 +1100,7 @@ void column::finish(index_output& index_out) {
       : ColumnType::FIXED;
   }
 
-  irs::write_string(index_out, comp_type_.name());
+  irs::write_string(index_out, compression_.name());
   write_header(index_out, hdr);
   write_index(index_out, docs_writer_.index());
 
@@ -1153,7 +1157,14 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 }
 
 columnstore_writer::column_t writer::push_column(const column_info& info) {
-  irs::type_info compression = info.compression();
+  // FIXME
+  // Since current implementation doesn't support custom compression,
+  // we ignore the compression option set in column_info.
+  // We can potentially implement compression logic later on,
+  // thus we make a column aware of compression algrorithm for further
+  // extensibility.
+  auto compression = irs::type<compression::none>::get(); /* info.compression(); */
+
   encryption::stream* cipher = info.encryption()
     ? data_cipher_.get()
     : nullptr;
@@ -1172,7 +1183,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
       cipher,
       { buf_.get() },
       consolidation_ },
-    info.compression(),
+    compression,
     compressor);
 
   return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {

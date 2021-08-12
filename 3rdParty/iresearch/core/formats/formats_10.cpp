@@ -204,6 +204,31 @@ inline void prepare_input(
 /// @class postings_writer_base
 //////////////////////////////////////////////////////////////////////////////
 class postings_writer_base : public irs::postings_writer {
+ private:
+  // FIXME consider using a set of bools
+  class index_features {
+   public:
+    explicit index_features(IndexFeatures mask = IndexFeatures::NONE) noexcept
+      : mask_{static_cast<decltype(mask_)>(mask)} {
+    }
+
+    bool freq() const noexcept { return check_bit<0>(mask_); }
+    bool position() const noexcept { return check_bit<1>(mask_); }
+    bool offset() const noexcept { return check_bit<2>(mask_); }
+    bool payload() const noexcept { return check_bit<3>(mask_); }
+
+    explicit operator IndexFeatures() const noexcept {
+      return static_cast<IndexFeatures>(mask_);
+    }
+
+    bool any(IndexFeatures mask) const noexcept {
+      return IndexFeatures::NONE != (IndexFeatures{mask_} & mask);
+    }
+
+   private:
+    std::underlying_type_t<IndexFeatures> mask_{};
+  }; // index_features
+
  public:
   static constexpr int32_t TERMS_FORMAT_MIN = 0;
   static constexpr int32_t TERMS_FORMAT_MAX = TERMS_FORMAT_MIN;
@@ -895,13 +920,13 @@ struct doc_state {
   uint32_t* enc_buf;
   uint64_t tail_start;
   size_t tail_length;
-  IndexFeatures features;
 }; // doc_state
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits,
+         typename FieldTraits,
          bool Offset = IteratorTraits::offset(),
          bool Payload = IteratorTraits::payload()>
 struct position_impl;
@@ -909,10 +934,10 @@ struct position_impl;
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base (position + payload + offset)
 ///////////////////////////////////////////////////////////////////////////////
-template<typename IteratorTraits>
-struct position_impl<IteratorTraits, true, true>
-    : public position_impl<IteratorTraits, false, false> {
-  typedef position_impl<IteratorTraits, false, false> base;
+template<typename IteratorTraits, typename FieldTraits>
+struct position_impl<IteratorTraits, FieldTraits, true, true>
+    : public position_impl<IteratorTraits, FieldTraits, false, false> {
+  typedef position_impl<IteratorTraits, FieldTraits, false, false> base;
 
   irs::attribute* attribute(irs::type_info::type_id type) noexcept {
     if (irs::type<payload>::id() == type) {
@@ -1051,10 +1076,10 @@ struct position_impl<IteratorTraits, true, true>
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base (position + payload)
 ///////////////////////////////////////////////////////////////////////////////
-template<typename IteratorTraits>
-struct position_impl<IteratorTraits, false, true>
-    : public position_impl<IteratorTraits, false, false> {
-  typedef position_impl<IteratorTraits, false, false> base;
+template<typename IteratorTraits, typename FieldTraits>
+struct position_impl<IteratorTraits, FieldTraits, false, true>
+    : public position_impl<IteratorTraits, FieldTraits, false, false> {
+  typedef position_impl<IteratorTraits, FieldTraits, false, false> base;
 
   irs::attribute* attribute(irs::type_info::type_id type) noexcept {
     return irs::type<payload>::id() == type ? &pay_ : nullptr;
@@ -1111,7 +1136,7 @@ struct position_impl<IteratorTraits, false, true>
       #endif // IRESEARCH_DEBUG
     }
 
-    if (this->features_.offset()) {
+    if constexpr (FieldTraits::offset()) {
       base::skip_offsets(*pay_in_);
     }
 
@@ -1147,7 +1172,7 @@ struct position_impl<IteratorTraits, false, true>
       }
 
       // skip offsets
-      if (this->features_.offset()) {
+      if constexpr (FieldTraits::offset()) {
         uint32_t code;
         if (shift_unpack_32(this->pos_in_->read_vint(), code)) {
           this->pos_in_->read_vint();
@@ -1161,7 +1186,7 @@ struct position_impl<IteratorTraits, false, true>
   void skip_block() {
     base::skip_block();
     base::skip_payload(*pay_in_);
-    if (this->features_.offset()) {
+    if constexpr (FieldTraits::offset()) {
       base::skip_offsets(*pay_in_);
     }
   }
@@ -1185,10 +1210,10 @@ struct position_impl<IteratorTraits, false, true>
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base (position + offset)
 ///////////////////////////////////////////////////////////////////////////////
-template<typename IteratorTraits>
-struct position_impl<IteratorTraits, true, false>
-    : public position_impl<IteratorTraits, false, false> {
-  typedef position_impl<IteratorTraits, false, false> base;
+template<typename IteratorTraits, typename FieldTraits>
+struct position_impl<IteratorTraits, FieldTraits, true, false>
+    : public position_impl<IteratorTraits, FieldTraits, false, false> {
+  typedef position_impl<IteratorTraits, FieldTraits, false, false> base;
 
   irs::attribute* attribute(irs::type_info::type_id type) noexcept {
     return irs::type<offset>::id() == type ? &offs_ : nullptr;
@@ -1227,7 +1252,7 @@ struct position_impl<IteratorTraits, true, false>
   void read_block() {
     base::read_block();
 
-    if (this->features_.payload()) {
+    if constexpr (FieldTraits::payload()) {
       base::skip_payload(*pay_in_);
     }
 
@@ -1240,7 +1265,7 @@ struct position_impl<IteratorTraits, true, false>
     uint32_t pay_size = 0;
     for (size_t i = 0; i < this->tail_length_; ++i) {
       // skip payloads
-      if (this->features_.payload()) {
+      if constexpr (FieldTraits::payload()) {
         if (shift_unpack_32(this->pos_in_->read_vint(), this->pos_deltas_[i])) {
           pay_size = this->pos_in_->read_vint();
         }
@@ -1263,7 +1288,7 @@ struct position_impl<IteratorTraits, true, false>
 
   void skip_block() {
     base::skip_block();
-    if (this->features_.payload()) {
+    if constexpr (FieldTraits::payload()) {
       base::skip_payload(*pay_in_);
     }
     base::skip_offsets(*pay_in_);
@@ -1278,8 +1303,8 @@ struct position_impl<IteratorTraits, true, false>
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base (position)
 ///////////////////////////////////////////////////////////////////////////////
-template<typename IteratorTraits>
-struct position_impl<IteratorTraits, false, false> {
+template<typename IteratorTraits, typename FieldTraits>
+struct position_impl<IteratorTraits, FieldTraits, false, false> {
   static void skip_payload(index_input& in) {
     const size_t size = in.read_vint();
     if (size) {
@@ -1311,7 +1336,6 @@ struct position_impl<IteratorTraits, false, false> {
     cookie_.file_pointer_ = state.term_state->pos_start;
     pos_in_->seek(state.term_state->pos_start);
     freq_ = state.freq;
-    features_ = index_features{state.features};
     enc_buf_ = state.enc_buf;
     tail_start_ = state.tail_start;
     tail_length_ = state.tail_length;
@@ -1340,7 +1364,7 @@ struct position_impl<IteratorTraits, false, false> {
   void read_tail_block() {
     uint32_t pay_size = 0;
     for (size_t i = 0; i < tail_length_; ++i) {
-      if (features_.payload()) {
+      if constexpr (FieldTraits::payload()) {
         if (shift_unpack_32(pos_in_->read_vint(), pos_deltas_[i])) {
           pay_size = pos_in_->read_vint();
         }
@@ -1351,7 +1375,7 @@ struct position_impl<IteratorTraits, false, false> {
         pos_deltas_[i] = pos_in_->read_vint();
       }
 
-      if (features_.offset()) {
+      if constexpr (FieldTraits::offset()) {
         uint32_t delta;
         if (shift_unpack_32(pos_in_->read_vint(), delta)) {
           pos_in_->read_vint();
@@ -1387,14 +1411,13 @@ struct position_impl<IteratorTraits, false, false> {
   uint32_t buf_pos_{ postings_writer_base::BLOCK_SIZE }; // current position in pos_deltas_ buffer
   cookie cookie_;
   index_input::ptr pos_in_;
-  index_features features_;
 }; // position_impl
 
-template<typename IteratorTraits, bool Position = IteratorTraits::position()>
+template<typename IteratorTraits, typename FieldTraits, bool Position = IteratorTraits::position()>
 class position final : public irs::position,
-                       protected position_impl<IteratorTraits> {
+                       protected position_impl<IteratorTraits, FieldTraits> {
  public:
-  typedef position_impl<IteratorTraits> impl;
+  using impl = position_impl<IteratorTraits, FieldTraits> ;
 
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) override {
     return impl::attribute(type);
@@ -1509,8 +1532,8 @@ class position final : public irs::position,
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator (empty)
 ///////////////////////////////////////////////////////////////////////////////
-template<typename IteratorTraits>
-struct position<IteratorTraits, false> : attribute {
+template<typename IteratorTraits, typename FieldTraits>
+struct position<IteratorTraits, FieldTraits, false> : attribute {
   static constexpr string_ref type_name() noexcept {
     return irs::position::type_name();
   }
@@ -1524,12 +1547,12 @@ struct position<IteratorTraits, false> : attribute {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
-template<typename IteratorTraits>
+template<typename IteratorTraits, typename FieldTraits>
 class doc_iterator final : public irs::doc_iterator {
  private:
   using attributes = std::conditional_t<
     IteratorTraits::frequency() && IteratorTraits::position(),
-      std::tuple<document, frequency, cost, score, position<IteratorTraits>>,
+      std::tuple<document, frequency, cost, score, position<IteratorTraits, FieldTraits>>,
       std::conditional_t<IteratorTraits::frequency(),
         std::tuple<document, frequency, cost, score>,
         std::tuple<document, cost, score>
@@ -1548,17 +1571,14 @@ class doc_iterator final : public irs::doc_iterator {
   }
 
   void prepare(
-      IndexFeatures field,
       const term_meta& meta,
       const index_input* doc_in,
       [[maybe_unused]] const index_input* pos_in,
       [[maybe_unused]] const index_input* pay_in) {
-    features_ = index_features{field}; // set field features
-
-    assert(!IteratorTraits::frequency() || IteratorTraits::frequency() == features_.freq());
-    assert(!IteratorTraits::position() || IteratorTraits::position() == features_.position());
-    assert(!IteratorTraits::offset() || IteratorTraits::offset() == features_.offset());
-    assert(!IteratorTraits::payload() || IteratorTraits::payload() == features_.payload());
+    assert(!IteratorTraits::frequency() || IteratorTraits::frequency() == FieldTraits::frequency());
+    assert(!IteratorTraits::position() || IteratorTraits::position() == FieldTraits::position());
+    assert(!IteratorTraits::offset() || IteratorTraits::offset() == FieldTraits::offset());
+    assert(!IteratorTraits::payload() || IteratorTraits::payload() == FieldTraits::payload());
 
     // add mandatory attributes
     begin_ = end_ = docs_;
@@ -1594,7 +1614,6 @@ class doc_iterator final : public irs::doc_iterator {
         state.pay_in = pay_in;
         state.term_state = &term_state_;
         state.freq = &std::get<frequency>(attrs_).value;
-        state.features = static_cast<IndexFeatures>(features_);
         state.enc_buf = enc_buf_;
 
         if (term_freq_ < postings_writer_base::BLOCK_SIZE) {
@@ -1606,7 +1625,7 @@ class doc_iterator final : public irs::doc_iterator {
         }
 
         state.tail_length = term_freq_ % postings_writer_base::BLOCK_SIZE;
-        std::get<position<IteratorTraits>>(attrs_).prepare(state);
+        std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(state);
       }
     }
 
@@ -1659,7 +1678,7 @@ class doc_iterator final : public irs::doc_iterator {
       } else {
         assert(IteratorTraits::frequency());
         auto& freq = std::get<frequency>(attrs_);
-        auto& pos = std::get<position<IteratorTraits>>(attrs_);
+        auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
         freq.value = *doc_freq_++;
         notify += freq.value;
 
@@ -1672,7 +1691,7 @@ class doc_iterator final : public irs::doc_iterator {
     }
 
     if constexpr (IteratorTraits::position()) {
-      std::get<position<IteratorTraits>>(attrs_).notify(notify);
+      std::get<position<IteratorTraits, FieldTraits>>(attrs_).notify(notify);
     }
     while (doc.value < target) {
       next();
@@ -1714,7 +1733,7 @@ class doc_iterator final : public irs::doc_iterator {
       freq.value = *doc_freq_++; // update frequency attribute
 
       if constexpr (IteratorTraits::position()) {
-        auto& pos = std::get<position<IteratorTraits>>(attrs_);
+        auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
         pos.notify(freq.value);
         pos.clear();
       }
@@ -1742,14 +1761,12 @@ class doc_iterator final : public irs::doc_iterator {
     state.doc = in.read_vint();
     state.doc_ptr += in.read_vlong();
 
-    if (features_.position()) {
+    if constexpr (FieldTraits::position()) {
       state.pend_pos = in.read_vint();
       state.pos_ptr += in.read_vlong();
 
-      const bool has_pay = features_.payload();
-
-      if (has_pay || features_.offset()) {
-        if (has_pay) {
+      if constexpr (FieldTraits::payload() || FieldTraits::offset()) {
+        if constexpr (FieldTraits::payload()) {
           state.pay_pos = in.read_vint();
         }
 
@@ -1761,7 +1778,7 @@ class doc_iterator final : public irs::doc_iterator {
   }
 
   void read_end_block(size_t size) {
-    if (features_.freq()) {
+    if constexpr (FieldTraits::frequency()) {
       for (size_t i = 0; i < size; ++i) {
         if (shift_unpack_32(doc_in_->read_vint(), docs_[i])) {
           doc_freqs_[i] = 1;
@@ -1793,7 +1810,7 @@ class doc_iterator final : public irs::doc_iterator {
           *doc_in_,
           enc_buf_,
           doc_freqs_);
-      } else if (features_.freq()) {
+      } else if constexpr (FieldTraits::frequency()) {
         IteratorTraits::skip_block(*doc_in_);
       }
 
@@ -1826,14 +1843,14 @@ class doc_iterator final : public irs::doc_iterator {
   uint32_t term_freq_{}; // total term frequency
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
-  index_features features_; // field features
   attributes attrs_;
 }; // doc_iterator
 
-template<typename IteratorTraits>
-void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
+template<typename IteratorTraits, typename FieldTraits>
+void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
   // check whether it make sense to use skip-list
-  if (skip_levels_.front().doc < target && term_state_.docs_count > postings_writer_base::BLOCK_SIZE) {
+  if (skip_levels_.front().doc < target &&
+      term_state_.docs_count > postings_writer_base::BLOCK_SIZE) {
     skip_context last; // where block starts
     skip_ctx_ = &last;
 
@@ -1849,8 +1866,8 @@ void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
 
       skip_in->seek(term_state_.doc_start + term_state_.e_skip_start);
 
-      skip_.prepare(
-        std::move(skip_in),
+
+      skip_.prepare(std::move(skip_in),
         [this](size_t level, data_input& in) {
           skip_state& last = *skip_ctx_;
           auto& last_level = skip_ctx_->level;
@@ -1894,7 +1911,7 @@ void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
       cur_pos_ = skipped;
       begin_ = end_ = docs_; // will trigger refill in "next"
       if constexpr (IteratorTraits::position()) {
-        std::get<position<IteratorTraits>>(attrs_).prepare(last); // notify positions
+        std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(last); // notify positions
       }
     }
   }
@@ -2791,11 +2808,13 @@ class postings_reader final: public postings_reader_base {
  public:
   template<bool Freq, bool Pos, bool Offset, bool Payload>
   struct iterator_traits : FormatTraits {
-    static constexpr bool frequency() { return Freq; }
-    static constexpr bool position() { return Freq && Pos; }
-    static constexpr bool offset() { return position() && Offset; }
-    static constexpr bool payload() { return position() && Payload; }
-    static constexpr bool one_based_position_storage() { return OneBasedPositionStorage; }
+    static constexpr bool frequency() noexcept { return Freq; }
+    static constexpr bool position() noexcept { return Freq && Pos; }
+    static constexpr bool offset() noexcept { return position() && Offset; }
+    static constexpr bool payload() noexcept { return position() && Payload; }
+    static constexpr bool one_based_position_storage() noexcept {
+      return OneBasedPositionStorage;
+    }
   };
 
   virtual irs::doc_iterator::ptr iterator(
@@ -2809,29 +2828,23 @@ class postings_reader final: public postings_reader_base {
     size_t* set) override;
 
  private:
-  struct doc_iterator_maker {
-    template<typename IteratorTraits>
-    static typename doc_iterator<IteratorTraits>::ptr make(
-        IndexFeatures features,
-        const postings_reader& ctx,
-        const term_meta& meta) {
-      auto it = memory::make_managed<doc_iterator<IteratorTraits>>();
+  template<typename IteratorTraits, typename FieldTraits>
+  static irs::doc_iterator::ptr iterator_impl(
+      const postings_reader& ctx,
+      const term_meta& meta) {
+    auto it = memory::make_managed<doc_iterator<IteratorTraits, FieldTraits>>();
 
-      it->prepare(
-        features, meta,
-        ctx.doc_in_.get(),
-        ctx.pos_in_.get(),
-        ctx.pay_in_.get());
+    it->prepare(
+      meta,
+      ctx.doc_in_.get(),
+      ctx.pos_in_.get(),
+      ctx.pay_in_.get());
 
-      return it;
-    }
-  };
+    return it;
+  }
 
-  template<typename Maker, typename... Args>
-  irs::doc_iterator::ptr iterator_impl(
-    IndexFeatures field_features,
-    IndexFeatures required_features,
-    Args&&... args);
+  template<typename FieldTraits, typename... Args>
+  irs::doc_iterator::ptr iterator_impl(IndexFeatures enabled, Args&&... args);
 }; // postings_reader
 
 #if defined(_MSC_VER)
@@ -2841,39 +2854,39 @@ class postings_reader final: public postings_reader_base {
 #endif
 
 template<typename FormatTraits, bool OneBasedPositionStorage>
-template<typename Maker, typename... Args>
+template<typename FieldTraits, typename... Args>
 irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator_impl(
-    IndexFeatures field_features,
-    IndexFeatures required_features,
-    Args&&... args) {
-  // get enabled features as the intersection
-  // between requested and available features
-  const auto enabled = field_features & required_features;
-
+    IndexFeatures enabled, Args&&... args) {
   switch (enabled) {
-    case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS | IndexFeatures::PAY: {
-      return Maker::template make<iterator_traits<true, true, true, true>>(
-        field_features, *this, std::forward<Args>(args)...);
+    case IndexFeatures::ALL : {
+      using iterator_traits_t = iterator_traits<true, true, true, true>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
+        *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS: {
-      return Maker::template make<iterator_traits<true, true, true, false>>(
-        field_features, *this, std::forward<Args>(args)...);
+      using iterator_traits_t = iterator_traits<true, true, true, false>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
+        *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::PAY: {
-      return Maker::template make<iterator_traits<true, true, false, true>>(
-        field_features, *this, std::forward<Args>(args)...);
+      using iterator_traits_t = iterator_traits<true, true, false, true>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
+        *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ | IndexFeatures::POS: {
-      return Maker::template make<iterator_traits<true, true, false, false>>(
-        field_features, *this, std::forward<Args>(args)...);
+      using iterator_traits_t = iterator_traits<true, true, false, false>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
+        *this, std::forward<Args>(args)...);
     }
     case IndexFeatures::FREQ: {
-      return Maker::template make<iterator_traits<true, false, false, false>>(
-        field_features, *this, std::forward<Args>(args)...);
+      using iterator_traits_t = iterator_traits<true, false, false, false>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
+        *this, std::forward<Args>(args)...);
     }
     default: {
-      return Maker::template make<iterator_traits<false, false, false, false>>(
-        field_features, *this, std::forward<Args>(args)...);
+      using iterator_traits_t = iterator_traits<false, false, false, false>;
+      return iterator_impl<iterator_traits_t, FieldTraits>(
+        *this, std::forward<Args>(args)...);
     }
   }
 
@@ -2881,18 +2894,47 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::i
   return irs::doc_iterator::empty();
 }
 
-#if defined(_MSC_VER)
-#elif defined(__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 template<typename FormatTraits, bool OneBasedPositionStorage>
 irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator(
     IndexFeatures field_features,
     IndexFeatures required_features,
     const term_meta& meta) {
-  return iterator_impl<doc_iterator_maker>(field_features, required_features, meta);
+  // get enabled features as the intersection
+  // between requested and available features
+  const auto enabled = field_features & required_features;
+
+  switch (field_features) {
+    case IndexFeatures::ALL : {
+      using field_traits_t = iterator_traits<true, true, true, true>;
+      return iterator_impl<field_traits_t>(enabled, meta);
+    }
+    case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS: {
+      using field_traits_t = iterator_traits<true, true, true, false>;
+      return iterator_impl<field_traits_t>(enabled, meta);
+    }
+    case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::PAY: {
+      using field_traits_t = iterator_traits<true, true, false, true>;
+      return iterator_impl<field_traits_t>(enabled, meta);
+    }
+    case IndexFeatures::FREQ | IndexFeatures::POS: {
+      using field_traits_t = iterator_traits<true, true, false, false>;
+      return iterator_impl<field_traits_t>(enabled, meta);
+    }
+    case IndexFeatures::FREQ: {
+      using field_traits_t = iterator_traits<true, false, false, false>;
+      return iterator_impl<field_traits_t>(enabled, meta);
+    }
+    default: {
+      using field_traits_t = iterator_traits<false, false, false, false>;
+      return iterator_impl<field_traits_t>(enabled, meta);
+    }
+  }
 }
+
+#if defined(_MSC_VER)
+#elif defined(__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
 template<typename IteratorTraits, size_t N>
 void bit_union(
@@ -3506,7 +3548,7 @@ format::format(const irs::type_info& type) noexcept
 } // version10
 
 // use base irs::position type for ancestors
-template<typename IteratorTraits, bool Position>
-struct type<::position<IteratorTraits, Position>> : type<irs::position> { };
+template<typename IteratorTraits, typename FieldTraits, bool Position>
+struct type<::position<IteratorTraits, FieldTraits, Position>> : type<irs::position> { };
 
 } // root

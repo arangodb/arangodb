@@ -364,12 +364,11 @@ int put(
     return 1;
   }
 
-  irs::features_t text_features{ TEXT_FEATURES.begin(), TEXT_FEATURES.size() };
+  irs::features_t text_features{ TEXT_FEATURES.data(), TEXT_FEATURES.size() };
   if (LEGACY_FORMATS.count(codec->type().name()) > 0) {
     // legacy formats don't support pluggable features
-    text_features = { LEGACY_TEXT_FEATURES.begin(), LEGACY_TEXT_FEATURES.size() };
+    text_features = { LEGACY_TEXT_FEATURES.data(), LEGACY_TEXT_FEATURES.size() };
   }
-
   analyzer_factory_f analyzer_factory = [&analyzer_type, &analyzer_options](){
     irs::analysis::analyzer::ptr analyzer;
 

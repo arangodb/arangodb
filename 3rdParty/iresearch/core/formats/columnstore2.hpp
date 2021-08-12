@@ -68,11 +68,11 @@ class column final : public irs::column_output {
 
   explicit column(
       const context& ctx,
-      const irs::type_info& type,
+      const irs::type_info& compression,
       const compression::compressor::ptr& deflater)
-    : ctx_(ctx),
-      comp_type_(type),
-      deflater_(deflater) {
+    : ctx_{ctx},
+      compression_{compression},
+      deflater_{deflater} {
   }
 
   void prepare(doc_id_t key) {
@@ -168,7 +168,7 @@ class column final : public irs::column_output {
   void flush_block();
 
   context ctx_;
-  irs::type_info comp_type_;
+  irs::type_info compression_;
   compression::compressor::ptr deflater_;
   std::vector<column_block> blocks_; // at most 65536 blocks
   memory_output data_{*ctx_.alloc};

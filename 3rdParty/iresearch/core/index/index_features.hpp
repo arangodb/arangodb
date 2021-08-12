@@ -79,30 +79,6 @@ FORCE_INLINE bool is_subset_of(IndexFeatures lhs, IndexFeatures rhs) noexcept {
   return lhs == (lhs & rhs);
 }
 
-// FIXME consider using a set of bools
-class index_features {
- public:
-  explicit index_features(IndexFeatures mask = IndexFeatures::NONE) noexcept
-    : mask_{static_cast<decltype(mask_)>(mask)} {
-  }
-
-  bool freq() const noexcept { return check_bit<0>(mask_); }
-  bool position() const noexcept { return check_bit<1>(mask_); }
-  bool offset() const noexcept { return check_bit<2>(mask_); }
-  bool payload() const noexcept { return check_bit<3>(mask_); }
-
-  explicit operator IndexFeatures() const noexcept {
-    return static_cast<IndexFeatures>(mask_);
-  }
-
-  bool any(IndexFeatures mask) const noexcept {
-    return IndexFeatures::NONE != (IndexFeatures{mask_} & mask);
-  }
-
- private:
-  std::underlying_type_t<IndexFeatures> mask_{};
-}; // index_features
-
 using feature_handler_f = void(*)(
   const field_stats&,
   doc_id_t,
