@@ -213,25 +213,35 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction:
   guard.unlock();
 
   auto self = this->shared_from_this();
-  std::move(result).thenValue([self, sqs = _infos.engine()->sharedState()](OperationResult&& opRes) {
-    sqs->executeAndWakeup([&] {
+  std::move(result).thenFinal([self, sqs = _infos.engine()->sharedState()](futures::Try<OperationResult>&& opRes) {
+    sqs->executeAndWakeup([&]() noexcept {
       std::unique_lock<std::mutex> guard(self->_resultStateMutex);
-      TRI_ASSERT(self->_resultState == ModificationExecutorResultState::WaitingForResult);
-      if (self->_resultState == ModificationExecutorResultState::WaitingForResult) {
-        self->_results = std::move(opRes);
-        self->_resultState = ModificationExecutorResultState::HaveResult;
-      } else {
-        auto message = StringUtils::concatT(
-            "Unexpected state ", to_string(self->_resultState),
-            " when reporting modification result: expected ",
-            to_string(ModificationExecutorResultState::WaitingForResult));
-        LOG_TOPIC("1f48d", ERR, Logger::AQL) << message;
-        // This can never happen. However, if it does anyway: we can't clean up
-        // the query from here, so we do not wake it up and let it run into a
-        // timeout instead. This should be good enough for an impossible case.
-        return false;
+      try {
+        TRI_ASSERT(self->_resultState == ModificationExecutorResultState::WaitingForResult);
+        if (self->_resultState == ModificationExecutorResultState::WaitingForResult) {
+          // get() will throw if opRes holds an exception, which is intended.
+          self->_results = std::move(opRes.get());
+          self->_resultState = ModificationExecutorResultState::HaveResult;
+        } else {
+          auto message = StringUtils::concatT(
+              "Unexpected state ", to_string(self->_resultState),
+              " when reporting modification result: expected ",
+              to_string(ModificationExecutorResultState::WaitingForResult));
+          LOG_TOPIC("1f48d", ERR, Logger::AQL) << message;
+          // This can never happen. However, if it does anyway: we can't clean up
+          // the query from here, so we do not wake it up and let it run into a
+          // timeout instead. This should be good enough for an impossible case.
+          return false;
+        }
+        return true;
+      } catch(std::exception const& ex) {
+        LOG_TOPIC("027ea", FATAL, Logger::AQL) << ex.what();
+        TRI_ASSERT(false);
+      } catch(...) {
+        auto exptr = std::current_exception();
+        TRI_ASSERT(false);
+        //self->_results = exptr;
       }
-      return true;
     });
   });
 
