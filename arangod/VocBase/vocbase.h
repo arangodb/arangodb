@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <stddef.h>
+#include <cstddef>
 #include <atomic>
 #include <cstdint>
 #include <functional>
@@ -37,7 +37,9 @@
 #include "Basics/DeadlockDetector.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "Basics/voc-errors.h"
+#include "Replication2/Version.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
@@ -52,6 +54,20 @@ class ApplicationServer;
 namespace aql {
 class QueryList;
 }
+namespace replication2 {
+class LogId;
+struct LogIndex;
+struct LogTerm;
+struct LogPayload;
+namespace replicated_log {
+class LogLeader;
+class LogFollower;
+struct ILogParticipant;
+struct LogStatus;
+struct PersistedLog;
+struct ReplicatedLog;
+}  // namespace replicated_log
+}  // namespace replication2
 namespace velocypack {
 class Builder;
 class Slice;
@@ -66,6 +82,7 @@ class LogicalDataSource;
 class LogicalView;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
+struct VocBaseLogManager;
 }  // namespace arangodb
 
 /// @brief document handle separator as character
@@ -157,6 +174,24 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker> _replicationClients;
 
  public:
+  std::shared_ptr<arangodb::VocBaseLogManager> _logManager;
+  [[nodiscard]] auto getReplicatedLogById(arangodb::replication2::LogId id) const
+      -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
+  [[nodiscard]] auto getReplicatedLogLeaderById(arangodb::replication2::LogId id) const
+      -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>;
+  [[nodiscard]] auto getReplicatedLogFollowerById(arangodb::replication2::LogId id) const
+      -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
+  [[nodiscard]] auto getReplicatedLogs() const
+      -> std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>;
+  [[nodiscard]] auto createReplicatedLog(arangodb::replication2::LogId id,
+                                         std::optional<std::string> const& collectionName)
+      -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>>;
+  [[nodiscard]] auto dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result;
+  auto ensureReplicatedLog(arangodb::replication2::LogId id,
+                           std::optional<std::string> const& collectionName)
+      -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
+
+ public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId, arangodb::LogicalCollection> _deadlockDetector;
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
@@ -184,6 +219,7 @@ struct TRI_vocbase_t {
   std::string path() const;
   std::uint32_t replicationFactor() const;
   std::uint32_t writeConcern() const;
+  arangodb::replication::Version replicationVersion() const;
   std::string const& sharding() const;
   bool isOneShard() const;
   TRI_vocbase_type_e type() const { return _type; }
@@ -288,6 +324,10 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(std::string const& nameOrId) const
       noexcept;
 
+  /// @brief looks up a replicated log by identifier
+  std::shared_ptr<arangodb::replication2::replicated_log::ILogParticipant> lookupLog(
+      arangodb::replication2::LogId id) const noexcept;
+
   /// @brief looks up a view by identifier
   std::shared_ptr<arangodb::LogicalView> lookupView(arangodb::DataSourceId id) const;
 
@@ -371,6 +411,12 @@ struct TRI_vocbase_t {
   /// @brief removes a view from the global list of views
   /// This function is called when a view is dropped.
   bool unregisterView(arangodb::LogicalView const& view);
+
+  /// @brief adds a new replicated log with given log id
+  void registerReplicatedLog(arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>);
+
+  /// @brief removes the replicated log with the given id
+  void unregisterReplicatedLog(arangodb::replication2::LogId);
 };
 
 /// @brief sanitize an object, given as slice, builder must contain an

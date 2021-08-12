@@ -45,7 +45,8 @@ struct RocksDBColumnFamilyManager {
     VPackIndex = 4,  // persistent, "skiplist", "hash"
     GeoIndex = 5,
     FulltextIndex = 6,
-    ZkdIndex = 7,
+    ReplicatedLogs = 7,
+    ZkdIndex = 8,
 
     Invalid = 1024  // special placeholder
   };
@@ -55,8 +56,8 @@ struct RocksDBColumnFamilyManager {
     External   // for display to users
   };
 
-  static constexpr size_t minNumberOfColumnFamilies = 8;
-  static constexpr size_t numberOfColumnFamilies = 8;
+  static constexpr size_t minNumberOfColumnFamilies = 7;
+  static constexpr size_t numberOfColumnFamilies = 9;
 
   static void initialize();
 

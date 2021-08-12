@@ -157,6 +157,10 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t objectId,
   return b;
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::LogRange(uint64_t objectId) {
+  return RocksDBKeyBounds(RocksDBEntryType::LogEntry, objectId);
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(uint64_t indexId,
                                                          arangodb::velocypack::StringRef const& word) {
   return RocksDBKeyBounds(RocksDBEntryType::FulltextIndexValue, indexId, word);
@@ -232,6 +236,8 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex);
     case RocksDBEntryType::ZkdIndexValue:
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ZkdIndex);
+    case RocksDBEntryType::LogEntry:
+      return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::CounterValue:
@@ -241,6 +247,7 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::RevisionTreeValue:
     case RocksDBEntryType::View:
+    case RocksDBEntryType::ReplicatedLog:
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
@@ -333,6 +340,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       break;
     }
     case RocksDBEntryType::Document:
+    case RocksDBEntryType::LogEntry:
     case RocksDBEntryType::LegacyGeoIndexValue:
     case RocksDBEntryType::GeoIndexValue: {
       // Documents are stored as follows:
