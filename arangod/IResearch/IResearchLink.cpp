@@ -1263,7 +1263,7 @@ Result IResearchLink::initDataStore(
   auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
   auto& flushFeature = server.getFeature<FlushFeature>();
 
-  const auto formatId = getFormat(LinkVersion{version});
+  auto const formatId = getFormat(LinkVersion{version});
   auto format = irs::formats::get(formatId);
 
   if (!format) {
@@ -1965,6 +1965,10 @@ void IResearchLink::toVelocyPackStats(VPackBuilder& builder) const {
   builder.add("numSegments", VPackValue(stats.numSegments));
   builder.add("numFiles", VPackValue(stats.numFiles));
   builder.add("indexSize", VPackValue(stats.indexSize));
+}
+
+std::string_view IResearchLink::format() const noexcept {
+  return getFormat(LinkVersion{_meta._version});
 }
 
 IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {
