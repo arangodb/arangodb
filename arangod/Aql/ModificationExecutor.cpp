@@ -89,22 +89,6 @@ AqlValue const& ModifierOutput::getNewValue() const {
   return _newValue.value();
 }
 
-auto to_string(ModificationExecutorResultState resultState) -> std::string {
-  switch (resultState) {
-    case ModificationExecutorResultState::NoResult:
-      return "NoResult";
-    case ModificationExecutorResultState::WaitingForResult:
-      return "WaitingForResult";
-    case ModificationExecutorResultState::HaveResult:
-      return "HaveResult";
-  }
-
-  LOG_TOPIC("4bdea", FATAL, Logger::AQL)
-      << "Unhandled state "
-      << static_cast<std::underlying_type_t<decltype(resultState)>>(resultState);
-  FATAL_ERROR_ABORT();
-}
-
 template <typename FetcherType, typename ModifierType>
 ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher,
                                                                       Infos& infos)
@@ -176,7 +160,7 @@ template <typename ProduceOrSkipData>
       return {ExecutionState::WAITING, stats, upstreamCall};
     }
 
-    TRI_ASSERT(_modifier->resultState() == ModificationExecutorResultState::HaveResult);
+    TRI_ASSERT(_modifier->hasResultOrException());
 
     _modifier->checkException();
     if (_infos._doCount) {
@@ -188,7 +172,7 @@ template <typename ProduceOrSkipData>
     _modifier->reset();
   }
 
-  TRI_ASSERT(_modifier->resultState() == ModificationExecutorResultState::NoResult);
+  TRI_ASSERT(_modifier->hasNoResultOrOperationPending());
 
   return {translateReturnType(_rangeHandler.upstreamState(input)), stats, upstreamCall};
 }

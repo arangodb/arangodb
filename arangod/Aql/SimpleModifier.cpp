@@ -126,49 +126,27 @@ SimpleModifier<ModifierCompletion, Enable>::OutputIterator::end() const {
 }
 
 template <typename ModifierCompletion, typename Enable>
-ModificationExecutorResultState SimpleModifier<ModifierCompletion, Enable>::resultState() const noexcept {
-  std::lock_guard<std::mutex> guard(_resultStateMutex);
-  return _resultState;
-}
-
-template <typename ModifierCompletion, typename Enable>
-bool SimpleModifier<ModifierCompletion, Enable>::operationPending() const noexcept {
-  switch (resultState()) {
-    case ModificationExecutorResultState::NoResult:
-      return false;
-    case ModificationExecutorResultState::WaitingForResult:
-    case ModificationExecutorResultState::HaveResult:
-      return true;
-  }
-  LOG_TOPIC("710c4", FATAL, Logger::AQL)
-      << "Invalid or unhandled value for ModificationExecutorResultState: "
-      << static_cast<std::underlying_type_t<ModificationExecutorResultState>>(resultState());
-  FATAL_ERROR_ABORT();
-}
-
-template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::checkException() const {
-  throwOperationResultException(_infos, _results);
+  throwOperationResultException(_infos, std::get<OperationResult>(_results));
 }
 
 template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::resetResult() noexcept {
-  std::lock_guard<std::mutex> guard(_resultStateMutex);
-  _resultState = ModificationExecutorResultState::NoResult;
+  std::lock_guard<std::mutex> guard(_resultMutex);
+  _results = NoResult{};
 }
 
 template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::reset() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
-    std::unique_lock<std::mutex> guard(_resultStateMutex, std::try_to_lock);
+    std::unique_lock<std::mutex> guard(_resultMutex, std::try_to_lock);
     TRI_ASSERT(guard.owns_lock());
-    TRI_ASSERT(_resultState != ModificationExecutorResultState::WaitingForResult);
+    TRI_ASSERT(!std::holds_alternative<Waiting>(_results));
   }
 #endif
   _accumulator.reset();
   _operations.clear();
-  _results.reset();
   resetResult();
 }
 
@@ -180,29 +158,27 @@ void SimpleModifier<ModifierCompletion, Enable>::accumulate(InputAqlItemRow& row
 
 template <typename ModifierCompletion, typename Enable>
 ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction::Methods& trx) {
-  std::unique_lock<std::mutex> guard(_resultStateMutex);
-  switch (_resultState) {
-    case ModificationExecutorResultState::WaitingForResult:
-      return ExecutionState::WAITING;
-    case ModificationExecutorResultState::HaveResult:
-      return ExecutionState::DONE;
-    case ModificationExecutorResultState::NoResult:
-      // continue
-      break;
+  std::unique_lock<std::mutex> guard(_resultMutex);
+  if (std::holds_alternative<Waiting>(_results)) {
+    return ExecutionState::WAITING;
+  } else if (std::holds_alternative<OperationResult>(_results)) {
+    return ExecutionState::DONE;
+  } else if (auto* ex = std::get_if<std::exception_ptr>(&_results); ex != nullptr) {
+    std::rethrow_exception(*ex);
+  } else {
+    TRI_ASSERT(std::holds_alternative<NoResult>(_results));
   }
 
-  TRI_ASSERT(_resultState == ModificationExecutorResultState::NoResult);
-  _resultState = ModificationExecutorResultState::NoResult;
+  _results = NoResult{};
 
   auto result = _completion.transact(trx, _accumulator.closeAndGetContents());
 
   if (result.isReady()) {
     _results = std::move(result.get());
-    _resultState = ModificationExecutorResultState::HaveResult;
     return ExecutionState::DONE;
   } 
 
-  _resultState = ModificationExecutorResultState::WaitingForResult;
+  _results = Waiting{};
 
   TRI_ASSERT(!ServerState::instance()->isSingleServer());
   TRI_ASSERT(_infos.engine() != nullptr);
@@ -215,33 +191,53 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction:
   auto self = this->shared_from_this();
   std::move(result).thenFinal([self, sqs = _infos.engine()->sharedState()](futures::Try<OperationResult>&& opRes) {
     sqs->executeAndWakeup([&]() noexcept {
-      std::unique_lock<std::mutex> guard(self->_resultStateMutex);
+      std::unique_lock<std::mutex> guard(self->_resultMutex);
       try {
-        TRI_ASSERT(self->_resultState == ModificationExecutorResultState::WaitingForResult);
-        if (self->_resultState == ModificationExecutorResultState::WaitingForResult) {
+        TRI_ASSERT(std::holds_alternative<Waiting>(self->_results));
+        if (std::holds_alternative<Waiting>(self->_results)) {
           // get() will throw if opRes holds an exception, which is intended.
           self->_results = std::move(opRes.get());
-          self->_resultState = ModificationExecutorResultState::HaveResult;
         } else {
+          // This can never happen.
+          using namespace std::string_literals;
+          auto state =
+              std::visit(overload{[&](NoResult) { return "NoResults"s; },
+                                  [&](Waiting) { return "Waiting"s; },
+                                  [&](OperationResult const&) {
+                                    return "Result"s;
+                                  },
+                                  [&](std::exception_ptr const& ep) {
+                                    auto what = std::string{};
+                                    try {
+                                      std::rethrow_exception(ep);
+                                    } catch (std::exception const& ex) {
+                                      what = ex.what();
+                                    } catch (...) {
+                                      // Exception unknown, give up immediately.
+                                      LOG_TOPIC("4646a", FATAL, Logger::AQL) << "Caught an exception while handling another one, giving up.";
+                                      FATAL_ERROR_ABORT();
+                                    }
+                                    return StringUtils::concatT("Exception: ", what);
+                                  }},
+                         self->_results);
           auto message = StringUtils::concatT(
-              "Unexpected state ", to_string(self->_resultState),
-              " when reporting modification result: expected ",
-              to_string(ModificationExecutorResultState::WaitingForResult));
+              "Unexpected state when reporting modification result, expected "
+              "'Waiting' but got: ",
+              state);
           LOG_TOPIC("1f48d", ERR, Logger::AQL) << message;
-          // This can never happen. However, if it does anyway: we can't clean up
-          // the query from here, so we do not wake it up and let it run into a
-          // timeout instead. This should be good enough for an impossible case.
-          return false;
+          if (std::holds_alternative<std::exception_ptr>(self->_results)) {
+            // Avoid overwriting an exception with another exception.
+            LOG_TOPIC("2d310", FATAL, Logger::AQL)
+                << "Caught an exception while handling another one, giving up.";
+            FATAL_ERROR_ABORT();
+          }
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, std::move(message));
         }
-        return true;
-      } catch(std::exception const& ex) {
-        LOG_TOPIC("027ea", FATAL, Logger::AQL) << ex.what();
-        TRI_ASSERT(false);
       } catch(...) {
         auto exptr = std::current_exception();
-        TRI_ASSERT(false);
-        //self->_results = exptr;
+        self->_results = exptr;
       }
+      return true;
     });
   });
 
@@ -260,17 +256,19 @@ size_t SimpleModifier<ModifierCompletion, Enable>::nrOfDocuments() const {
 
 template <typename ModifierCompletion, typename Enable>
 size_t SimpleModifier<ModifierCompletion, Enable>::nrOfResults() const {
-  if (_results.hasSlice() && _results.slice().isArray()) {
-    return _results.slice().length();
+  if (auto* res = std::get_if<OperationResult>(&_results);
+      res != nullptr && res->hasSlice() && res->slice().isArray()) {
+    return res->slice().length();
+  } else {
+    return 0;
   }
-  return 0;
 }
 
 template <typename ModifierCompletion, typename Enable>
 size_t SimpleModifier<ModifierCompletion, Enable>::nrOfErrors() const {
   size_t nrOfErrors{0};
 
-  for (auto const& pair : _results.countErrorCodes) {
+  for (auto const& pair : std::get<OperationResult>(_results).countErrorCodes) {
     nrOfErrors += pair.second;
   }
   return nrOfErrors;
@@ -305,10 +303,33 @@ bool SimpleModifier<ModifierCompletion, Enable>::resultAvailable() const {
 template <typename ModifierCompletion, typename Enable>
 VPackArrayIterator SimpleModifier<ModifierCompletion, Enable>::getResultsIterator() const {
   if (resultAvailable()) {
-    TRI_ASSERT(_results.hasSlice() && _results.slice().isArray());
-    return VPackArrayIterator{_results.slice()};
+    auto const& results = std::get<OperationResult>(_results);
+    TRI_ASSERT(results.hasSlice() && results.slice().isArray());
+    return VPackArrayIterator{results.slice()};
   }
   return VPackArrayIterator(VPackArrayIterator::Empty{});
+}
+
+template <typename ModifierCompletion, typename Enable>
+bool SimpleModifier<ModifierCompletion, Enable>::hasResultOrException() const noexcept {
+  return std::visit(overload{
+                        [](NoResult) { return false; },
+                        [](Waiting) { return false; },
+                        [](OperationResult const&) { return true; },
+                        [](std::exception_ptr const&) { return true; },
+                    },
+                    _results);
+}
+
+template <typename ModifierCompletion, typename Enable>
+bool SimpleModifier<ModifierCompletion, Enable>::hasNoResultOrOperationPending() const noexcept {
+  return std::visit(overload{
+                        [](NoResult) { return true; },
+                        [](Waiting) { return false; },
+                        [](OperationResult const&) { return false; },
+                        [](std::exception_ptr const&) { return false; },
+                    },
+                    _results);
 }
 
 template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;

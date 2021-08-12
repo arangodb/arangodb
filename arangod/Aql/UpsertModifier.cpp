@@ -134,20 +134,6 @@ ModificationExecutorResultState UpsertModifier::resultState() const noexcept {
   return _resultState; 
 }
 
-bool UpsertModifier::operationPending() const noexcept {
-  switch (resultState()) {
-    case ModificationExecutorResultState::NoResult:
-      return false;
-    case ModificationExecutorResultState::WaitingForResult:
-    case ModificationExecutorResultState::HaveResult:
-      return true;
-  }
-  LOG_TOPIC("ef67c", FATAL, Logger::AQL)
-      << "Invalid or unhandled value for ModificationExecutorResultState: "
-      << static_cast<std::underlying_type_t<ModificationExecutorResultState>>(resultState());
-  FATAL_ERROR_ABORT();
-}
-
 void UpsertModifier::reset() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
@@ -350,3 +336,11 @@ size_t UpsertModifier::nrOfWritesExecuted() const {
 size_t UpsertModifier::nrOfWritesIgnored() const { return nrOfErrors(); }
 
 size_t UpsertModifier::getBatchSize() const { return _batchSize; }
+
+bool UpsertModifier::hasResultOrException() const noexcept {
+  return resultState() == ModificationExecutorResultState::HaveResult;
+}
+
+bool UpsertModifier::hasNoResultOrOperationPending() const noexcept {
+  return resultState() == ModificationExecutorResultState::NoResult;
+}

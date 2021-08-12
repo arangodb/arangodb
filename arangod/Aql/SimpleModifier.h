@@ -80,6 +80,10 @@ class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<Modifi
   friend class RemoveModifierCompletion;
   friend class UpdateReplaceModifierCompletion;
 
+  struct NoResult {};
+  struct Waiting {};
+  using ResultType = std::variant<NoResult, Waiting, OperationResult, std::exception_ptr>;
+
  public:
   using ModOp = std::pair<ModifierOperationType, InputAqlItemRow>;
 
@@ -107,9 +111,8 @@ class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<Modifi
   explicit SimpleModifier(ModificationExecutorInfos& infos)
       : _infos(infos),
         _completion(infos),
-        _results(Result(), infos._options),
         _batchSize(ExecutionBlock::DefaultBatchSize),
-        _resultState(ModificationExecutorResultState::NoResult) {
+        _results(NoResult{}) {
     TRI_ASSERT(_infos.engine() != nullptr);
   }
 
@@ -119,9 +122,6 @@ class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<Modifi
 
   void accumulate(InputAqlItemRow& row);
   [[nodiscard]] ExecutionState transact(transaction::Methods& trx);
-
-  [[nodiscard]] ModificationExecutorResultState resultState() const noexcept;
-  [[nodiscard]] bool operationPending() const noexcept;
 
   void checkException() const;
   void resetResult() noexcept;
@@ -144,6 +144,9 @@ class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<Modifi
   [[nodiscard]] ModificationExecutorInfos& getInfos() const noexcept;
   [[nodiscard]] size_t getBatchSize() const noexcept;
 
+  bool hasResultOrException() const noexcept;
+  bool hasNoResultOrOperationPending() const noexcept;
+
  private:
   [[nodiscard]] bool resultAvailable() const;
   [[nodiscard]] VPackArrayIterator getResultsIterator() const;
@@ -154,12 +157,10 @@ class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<Modifi
   std::vector<ModOp> _operations;
   ModificationExecutorAccumulator _accumulator;
 
-  OperationResult _results;
-
   size_t const _batchSize;
 
-  mutable std::mutex _resultStateMutex;
-  ModificationExecutorResultState _resultState;
+  mutable std::mutex _resultMutex;
+  ResultType _results;
 };
 
 using InsertModifier = SimpleModifier<InsertModifierCompletion>;

@@ -38,6 +38,21 @@ namespace arangodb::aql {
 
 struct ModificationExecutorInfos;
 
+enum class ModificationExecutorResultState {
+  // State that is used when the Executor's modifier has not been
+  // asked to produce a result.
+  // this is also the initial state.
+  NoResult,
+  // State that is used when the Executor's modifier has been asked
+  // to produce a result, but it returned a WAITING status, i.e. the
+  // result is not yet ready to consume.
+  // This state cannot happen in single servers!
+  WaitingForResult,
+  // State that is used when the Executor's modifier has produced
+  // a result that is ready to consume.
+  HaveResult,
+  };
+
 class UpsertModifier {
  public:
   enum class OperationType {
@@ -88,7 +103,6 @@ class UpsertModifier {
   ~UpsertModifier() = default;
 
   ModificationExecutorResultState resultState() const noexcept;
-  [[nodiscard]] bool operationPending() const noexcept;
 
   void checkException() const {}
   void resetResult() noexcept;
@@ -105,6 +119,9 @@ class UpsertModifier {
   size_t nrOfWritesIgnored() const;
 
   size_t getBatchSize() const;
+
+  bool hasResultOrException() const noexcept;
+  bool hasNoResultOrOperationPending() const noexcept;
 
  private:
   bool resultAvailable() const;

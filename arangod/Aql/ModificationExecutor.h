@@ -157,23 +157,6 @@ class ModifierOutput {
   std::optional<AqlValueGuard> _newValueGuard;
 };
 
-enum class ModificationExecutorResultState {
-  // State that is used when the Executor's modifier has not been
-  // asked to produce a result.
-  // this is also the initial state.
-  NoResult,
-  // State that is used when the Executor's modifier has been asked
-  // to produce a result, but it returned a WAITING status, i.e. the
-  // result is not yet ready to consume.
-  // This state cannot happen in single servers!
-  WaitingForResult,
-  // State that is used when the Executor's modifier has produced
-  // a result that is ready to consume.
-  HaveResult,
-};
-
-auto to_string(ModificationExecutorResultState resultState) -> std::string;
-
 template <typename FetcherType, typename ModifierType>
 class ModificationExecutor {
  public:
