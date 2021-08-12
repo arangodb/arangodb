@@ -1,6 +1,8 @@
 devel
 -----
 
+* Error codes licsnsing
+
 * Add ReplicatedLogs column family.
 
 * Add optimization rule for AqlAnalyzer.
