@@ -42,9 +42,9 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 class TraversalNodeTest : public ::testing::Test {
- public:
   MockAqlServer _server{};
   std::unique_ptr<Query> _query{_server.createFakeQuery()};
+  std::unique_ptr<Query> _otherQuery{_server.createFakeQuery()};
   std::string _startNode{"v/123"};
   AstNode* _start{nullptr};
   AstNode* _direction{nullptr};
@@ -54,23 +54,79 @@ class TraversalNodeTest : public ::testing::Test {
   TraversalNodeTest() {
     auto ast = _query->ast();
     _start = ast->createNodeValueString(_startNode.c_str(), _startNode.length());
-    _direction = ast->createNodeDirection(0,1);
+    _direction = ast->createNodeDirection(0, 1);
     AstNode* edges = ast->createNodeArray(0);
     _graph = ast->createNodeCollectionList(edges, _query->resolver());
   }
 
-  
+  ExecutionPlan* plan() const {
+    return _query->plan();
+  }
+  ExecutionPlan* otherPlan(bool emptyQuery = false) {
+    if (emptyQuery) {
+      // Let us start a new blank query
+      _otherQuery = _server.createFakeQuery();
+    }
+    return _otherQuery->plan();
+  }
+
+  TraversalNode createNode(ExecutionNodeId id,
+                           std::unique_ptr<traverser::TraverserOptions> opts) const {
+    std::unique_ptr<Expression> pruneExp = nullptr;
+    return TraversalNode{plan(), id,     &_query->vocbase(),  _direction,
+                         _start, _graph, std::move(pruneExp), std::move(opts)};
+  };
+
+  std::unique_ptr<traverser::TraverserOptions> makeOptions() const {
+    return std::make_unique<traverser::TraverserOptions>(*_query);
+  }
 };
 
-TEST_F(TraversalNodeTest, cloneHelper) {
-  auto opts = std::make_unique<traverser::TraverserOptions>(*_query);
+TEST_F(TraversalNodeTest, clone_should_preserve_isSmart) {
   ExecutionNodeId id(12);
-  std::unique_ptr<Expression> pruneExp = nullptr;
-  TraversalNode testee{
-      _query->plan(), id,    &_query->vocbase(),  _direction,
-      _start,          _graph, std::move(pruneExp), std::move(opts)};
-  ASSERT_EQ(testee.id(), id);
+  auto opts = makeOptions();
+  TraversalNode original = createNode(id, std::move(opts));
+  ASSERT_EQ(original.id(), id);
+  for (bool keepPlan : std::vector<bool>{false, true}) {
+    for (bool value : std::vector<bool>{false, true}) {
+      auto p = keepPlan ? plan() : otherPlan(true);
+      original.setIsSmart(value);
+      auto clone = ExecutionNode::castTo<TraversalNode*>(original.clone(p, false, !keepPlan));
+      if (keepPlan) {
+        EXPECT_NE(clone->id(), original.id()) << "Clone did keep the id";
+      } else {
+        EXPECT_EQ(clone->id(), original.id()) << "Clone did not keep the id";
+      }
+      EXPECT_EQ(original.isSmart(), value);
+      EXPECT_EQ(clone->isSmart(), value);
+    }
+  }
 }
+
+TEST_F(TraversalNodeTest, clone_should_preserve_isDisjoint) {
+  ExecutionNodeId id(12);
+  auto opts = makeOptions();
+  TraversalNode original = createNode(id, std::move(opts));
+  ASSERT_EQ(original.id(), id);
+  for (bool keepPlan : std::vector<bool>{false, true}) {
+    for (bool value : std::vector<bool>{false, true}) {
+      auto p = keepPlan ? plan() : otherPlan(true);
+      original.setIsDisjoint(value);
+      auto clone = ExecutionNode::castTo<TraversalNode*>(original.clone(p, false, !keepPlan));
+      if (keepPlan) {
+        EXPECT_NE(clone->id(), original.id()) << "Clone did keep the id";
+      } else {
+        EXPECT_EQ(clone->id(), original.id()) << "Clone did not keep the id";
+      }
+      EXPECT_EQ(original.isDisjoint(), value);
+      EXPECT_EQ(clone->isDisjoint(), value);
+    }
+  }
+}
+
+
+
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
