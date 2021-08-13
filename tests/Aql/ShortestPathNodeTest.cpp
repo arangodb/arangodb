@@ -70,9 +70,10 @@ class ShortestPathNodeTest : public ::testing::Test {
   }
 
   ShortestPathNode createNode(ExecutionNodeId id,
-                           std::unique_ptr<ShortestPathOptions> opts) const {
-    return ShortestPathNode{plan(), id,     &_query->vocbase(),  _direction,
-                         _source, _target, _graph, std::move(opts)};
+                              std::unique_ptr<ShortestPathOptions> opts) const {
+    return ShortestPathNode{
+        plan(),  id,     &_query->vocbase(), _direction, _source,
+        _target, _graph, std::move(opts)};
   };
 
   std::unique_ptr<ShortestPathOptions> makeOptions() const {
