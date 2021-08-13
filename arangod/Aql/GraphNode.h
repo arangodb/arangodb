@@ -197,6 +197,18 @@ class GraphNode : public ExecutionNode {
 
   graph::Graph const* graph() const noexcept;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // Internal Helpers used in tests to modify enterprise detections
+  // These should not be used in Production, as their detection
+  // is implemented in constructors.
+  void setIsSmart(bool target) {
+    _isSmart = target;
+  }
+
+  void setIsDisjoint(bool target) {
+    _isDisjoint = target;
+  }
+#endif
  protected:  
   void doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const override;
 
