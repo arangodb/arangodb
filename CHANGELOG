@@ -1,3 +1,9 @@
+v3.8.2 (XXXX-XX-XX)
+-------------------
+
+* Improve log messages for Pregel runs by giving them more context.
+
+
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
