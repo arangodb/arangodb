@@ -510,7 +510,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   } catch (...) {
     // If those promises are not fulfilled we can not continue.
     // Note that the move constructor of std::multi_map is not noexcept.
-    LOG_CTX("e7a4d", FATAL, _self._logContext)
+    LOG_CTX("c0bbb", FATAL, _self._logContext)
         << "failed to fulfill replication promises due to exception; system "
            "can not continue";
     FATAL_ERROR_EXIT();
