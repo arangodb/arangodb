@@ -843,9 +843,10 @@ void AnalyzerPool::toVelocyPack(
 
   // add features
   VPackArrayBuilder featuresScope(&builder, StaticStrings::AnalyzerFeaturesField);
-  for (auto& feature : features().getNames()) {
+
+  features().visit([&builder](std::string_view feature) {
     addStringRef(builder, feature);
-  }
+  });
 }
 
 void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
@@ -1306,8 +1307,8 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
       errorText << "  properties:'" << properties.toString() << "'\n";
     }
     errorText  << "  features: [\n";
-    bool first{true};
-    for (auto const& feature : features.getNames()) {
+
+    features.visit([&errorText, first = true](std::string_view feature) mutable {
       if (!first) {
         errorText << ",";
       } else {
@@ -1315,7 +1316,8 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
       }
       errorText << "    '" << feature << "'";
       errorText << "\n";
-    }
+    });
+
     VPackBuilder existingDefinition;
     analyzer->toVelocyPack(existingDefinition, false);
     errorText << "  ]\n}\nPrevious definition was:\n"
@@ -2862,25 +2864,24 @@ AnalyzerPool::AnalyzerFeatures::AnalyzerFeatures(
   : AnalyzerPool::AnalyzerFeatures(ff, ii, static_cast<uint32_t>(LinkVersion::MAX)) {
 }
 
-std::vector<std::string> AnalyzerPool::AnalyzerFeatures::getNames() const {
+void AnalyzerPool::AnalyzerFeatures::visit(std::function<void(std::string_view)> visitor) const {
   std::vector<std::string> res;
   if (irs::IndexFeatures::FREQ == (_indexFeatures & irs::IndexFeatures::FREQ)) {
-    res.emplace_back("frequency");
+    visitor(irs::type<irs::frequency>::name());
   }
   if (irs::IndexFeatures::POS == (_indexFeatures & irs::IndexFeatures::POS)) {
-    res.emplace_back("position");
+    visitor(irs::type<irs::position>::name());
   }
 
   // add typed features
-  for (auto& feature : _fieldFeatures) {
+  for (auto feature : _fieldFeatures) {
     TRI_ASSERT(feature); // has to be non-nullptr
     // never show norm2 to the user - it is internal impl details
     const auto name = feature().id() == irs::type<irs::norm2>::id()
       ? irs::type<irs::norm>::name()
       : feature().name();
-    res.emplace_back(name);
+    visitor(name);
   }
-  return res;
 }
 
 bool AnalyzerPool::AnalyzerFeatures::add(irs::string_ref featureName) {

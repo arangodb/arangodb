@@ -104,10 +104,10 @@ void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    auto i = 0;
     auto result = v8::Array::New(isolate);
 
-    for (auto const& feature: analyzer->features().getNames()) {
+    analyzer->features().visit(
+        [&result, &context, &isolate, i = size_t{0}](std::string_view feature) mutable {
       if (feature.empty()) {
         result->Set(context, i++, v8::Null(isolate)).FromMaybe(false);
       } else {
@@ -116,7 +116,7 @@ void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
                   i++, TRI_V8_STD_STRING(isolate, feature))
             .FromMaybe(false);  // args
       }
-    }
+    });
 
     TRI_V8_RETURN(result);
   } catch (arangodb::basics::Exception const& ex) {

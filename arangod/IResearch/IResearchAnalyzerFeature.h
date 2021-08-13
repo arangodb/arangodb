@@ -70,6 +70,12 @@ class ApplicationServer;
 namespace arangodb {
 namespace iresearch {
 
+// AnalyzerPool
+// AnalyzerMeta
+// Features
+
+// Analyzer { AnalyzerPool, AnalyzerMeta,
+
 // thread-safe analyzer pool
 class AnalyzerPool : private irs::util::noncopyable {
  public:
@@ -99,7 +105,7 @@ class AnalyzerPool : private irs::util::noncopyable {
 
     /// @brief build features names
     /// @return vector of feature names (index and field combined)
-    std::vector<std::string> getNames() const;
+    void visit(std::function<void(std::string_view)> visitor) const;
 
     /// @brief adds feature by name. Properly resolves field/index features
     /// @param featureName feature name

@@ -394,7 +394,10 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
-    EXPECT_EQ(analyzer->features().getNames().size(), v8Result->Length());
+
+    size_t size= 0;
+    analyzer->features().visit([&size](std::string_view) { ++size; });
+    EXPECT_EQ(size, v8Result->Length());
   }
 
   // test features (not authorised)
@@ -959,7 +962,9 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
-    EXPECT_EQ(2, v8AnalyzerWeak->features().getNames().size());
+    size_t size= 0;
+    v8AnalyzerWeak->features().visit([&size](std::string_view) { ++size; });
+    EXPECT_EQ(2, size);
   }
 
   // get static (unknown analyzer)
