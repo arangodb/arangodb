@@ -88,7 +88,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
     EXPECT_NE(nullptr, p);
     EXPECT_NE(0, size);
 
-    return { p, static_cast<size_t>(size) };
+    return { p, static_cast<size_t>(size)-1 };
   };
 
   {
@@ -104,6 +104,28 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
     ASSERT_NE(nullptr, term);
     auto* inc = irs::get<irs::increment>(*stream);
     ASSERT_NE(nullptr, inc);
+
+    {
+      const irs::string_ref data{irs::string_ref::NIL};
+      ASSERT_TRUE(stream->reset(data));
+      ASSERT_TRUE(stream->next());
+      ASSERT_EQ(0, offset->start);
+      ASSERT_EQ(data.size(), offset->end);
+      ASSERT_EQ(get_collation_key(data), term->value);
+      ASSERT_EQ(1, inc->value);
+      ASSERT_FALSE(stream->next());
+    }
+
+    {
+      const irs::string_ref data{irs::string_ref::EMPTY};
+      ASSERT_TRUE(stream->reset(data));
+      ASSERT_TRUE(stream->next());
+      ASSERT_EQ(0, offset->start);
+      ASSERT_EQ(data.size(), offset->end);
+      ASSERT_EQ(get_collation_key(data), term->value);
+      ASSERT_EQ(1, inc->value);
+      ASSERT_FALSE(stream->next());
+    }
 
     {
       constexpr irs::string_ref data{"quick"};
@@ -170,7 +192,7 @@ TEST(collation_token_stream_test, check_tokens) {
     EXPECT_NE(nullptr, p);
     EXPECT_NE(0, size);
 
-    return { p, static_cast<size_t>(size) };
+    return { p, static_cast<size_t>(size)-1 };
   };
 
   {

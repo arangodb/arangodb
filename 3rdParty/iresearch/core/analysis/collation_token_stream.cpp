@@ -305,9 +305,16 @@ bool collation_token_stream::reset(const string_ref& data) {
   const icu::UnicodeString icu_token = icu::UnicodeString::fromUTF8(
     icu::StringPiece(data_utf8_ref.c_str(), static_cast<int32_t>(data_utf8_ref.size())));
 
-  const int32_t term_size = state_->collator->getSortKey(
+  int32_t term_size = state_->collator->getSortKey(
     icu_token, state_->term_buf, sizeof state_->term_buf);
-  assert(term_size >= 0);
+
+  // https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/classicu_1_1Collator.html
+  // according to ICU docs sort keys are always zero-terminated,
+  // there is no reason to store terminal zero in term dictionary
+  assert(term_size > 0);
+
+  --term_size;
+  assert(0 == state_->term_buf[term_size]);
 
   if (term_size > static_cast<int32_t>(sizeof state_->term_buf)) {
     IR_FRMT_ERROR(

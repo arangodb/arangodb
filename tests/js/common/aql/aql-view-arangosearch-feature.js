@@ -1892,11 +1892,11 @@ function iResearchFeatureAqlTestSuite () {
             null,
             { }).toArray();
           assertEqual(1, result.length);
-          assertEqual(17, result[0][0].length);
+          assertEqual(16, result[0][0].length);
 
           const expected = [
             39, 6, 65533, 6, 120, 16, 65533, 26, 12,
-            1, 12, 1, 65533, 65533, 65533, 65533, 0 ];
+            1, 12, 1, 65533, 65533, 65533, 65533 ];
 
           assertTrue(
             _.isEqual(expected, result[0][0].split('').map(c => c.charCodeAt(0))));
