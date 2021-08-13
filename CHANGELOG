@@ -1,6 +1,8 @@
 devel
 -----
 
+* Improve log messages for Pregel runs by giving them more context.
+
 * Add ReplicatedLogs column family.
 
 * Add optimization rule for AqlAnalyzer.
