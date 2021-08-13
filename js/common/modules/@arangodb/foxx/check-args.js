@@ -33,7 +33,7 @@ const mimeTypes = require('mime-types');
 const ct = require('content-type');
 const ArangoError = require('@arangodb').ArangoError;
 const ERROR_BAD_PARAMETER = require('@arangodb').errors.ERROR_BAD_PARAMETER;
-const ajv = new Ajv({coerceTypes: true});
+const ajv = new Ajv({coerceTypes: true, useDefaults: true});
 
 function normalizeMimeType (mime) {
   if (mime === 'binary') {
