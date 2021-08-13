@@ -67,6 +67,7 @@ struct InMemoryLog {
 
  public:
   InMemoryLog() = delete;
+  explicit InMemoryLog(log_type log);
 
   InMemoryLog(InMemoryLog&& other) noexcept;
   InMemoryLog(InMemoryLog const&) = default;
@@ -124,7 +125,6 @@ struct InMemoryLog {
 
   [[nodiscard]] static auto loadFromLogCore(LogCore const&) -> InMemoryLog;
  protected:
-  explicit InMemoryLog(log_type log);
   explicit InMemoryLog(log_type log, LogIndex first);
 };
 

@@ -587,6 +587,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   if (lastAcked) {
     req.prevLogEntry.index = lastAcked->entry().logIndex();
     req.prevLogEntry.term = lastAcked->entry().logTerm();
+    TRI_ASSERT(req.prevLogEntry.index == follower.lastAckedEntry.index);
   } else {
     req.prevLogEntry.index = LogIndex{0};
     req.prevLogEntry.term = LogTerm{0};

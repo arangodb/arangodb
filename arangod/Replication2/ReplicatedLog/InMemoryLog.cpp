@@ -318,7 +318,7 @@ auto replicated_log::InMemoryLog::dump() const -> std::string {
 }
 
 auto replicated_log::InMemoryLog::getIndexRange() const noexcept -> LogRange {
-  return LogRange(_first, _first + _log.size());
+  return {_first, _first + _log.size()};
 }
 
 auto replicated_log::InMemoryLog::getFirstIndex() const noexcept -> LogIndex {
