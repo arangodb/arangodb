@@ -461,7 +461,7 @@ auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
   auto const compactionStop = std::min(_largestCommonIndex, _releaseIndex);
   LOG_CTX("080d5", TRACE, _follower._loggerContext)
       << "compaction index calculated as " << compactionStop;
-  if (compactionStop <= _inMemoryLog.getFirstIndex()) {
+  if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {
     // only do a compaction every 1000 entries
     LOG_CTX("ebb9f", TRACE, _follower._loggerContext)
         << "won't trigger a compaction, not enough entries. First index = "

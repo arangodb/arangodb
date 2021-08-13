@@ -76,8 +76,7 @@ auto replicated_log::InMemoryLog::getEntryByIndex(LogIndex const idx) const noex
   }
 
   auto const& e = _log.at(idx.value - _first.value);
-  auto const entryIndex = e.entry().logIndex();
-  TRI_ASSERT(entryIndex == idx);
+  TRI_ASSERT(e.entry().logIndex() == idx);
   return e;
 }
 
