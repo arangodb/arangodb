@@ -1,6 +1,9 @@
 devel
 -----
 
+* Bug-Fix: In more complex queries there was a code-path where a (Disjoint-) Smart
+  graph access was not properly optimized.
+
 * Add ReplicatedLogs column family.
 
 * Add optimization rule for AqlAnalyzer.
