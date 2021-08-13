@@ -2,8 +2,8 @@ v3.8.2 (XXXX-XX-XX)
 -------------------
 
 * When creating Pregel memory-mapped files, create them with O_TMPFILE
-  attribute on Linux and MacOS so that files are guaranteed to vanish
-  even if a process dies.
+  attribute on Linux so that files are guaranteed to vanish even if a
+  process dies.
 
 
 v3.8.1 (XXXX-XX-XX)
