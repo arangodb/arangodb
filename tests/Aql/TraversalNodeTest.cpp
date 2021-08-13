@@ -59,9 +59,7 @@ class TraversalNodeTest : public ::testing::Test {
     _graph = ast->createNodeCollectionList(edges, _query->resolver());
   }
 
-  ExecutionPlan* plan() const {
-    return _query->plan();
-  }
+  ExecutionPlan* plan() const { return _query->plan(); }
   ExecutionPlan* otherPlan(bool emptyQuery = false) {
     if (emptyQuery) {
       // Let us start a new blank query
@@ -91,7 +89,8 @@ TEST_F(TraversalNodeTest, clone_should_preserve_isSmart) {
     for (bool value : std::vector<bool>{false, true}) {
       auto p = keepPlan ? plan() : otherPlan(true);
       original.setIsSmart(value);
-      auto clone = ExecutionNode::castTo<TraversalNode*>(original.clone(p, false, !keepPlan));
+      auto clone =
+          ExecutionNode::castTo<TraversalNode*>(original.clone(p, false, !keepPlan));
       if (keepPlan) {
         EXPECT_NE(clone->id(), original.id()) << "Clone did keep the id";
       } else {
@@ -112,7 +111,8 @@ TEST_F(TraversalNodeTest, clone_should_preserve_isDisjoint) {
     for (bool value : std::vector<bool>{false, true}) {
       auto p = keepPlan ? plan() : otherPlan(true);
       original.setIsDisjoint(value);
-      auto clone = ExecutionNode::castTo<TraversalNode*>(original.clone(p, false, !keepPlan));
+      auto clone =
+          ExecutionNode::castTo<TraversalNode*>(original.clone(p, false, !keepPlan));
       if (keepPlan) {
         EXPECT_NE(clone->id(), original.id()) << "Clone did keep the id";
       } else {
@@ -123,9 +123,6 @@ TEST_F(TraversalNodeTest, clone_should_preserve_isDisjoint) {
     }
   }
 }
-
-
-
 
 }  // namespace aql
 }  // namespace tests
