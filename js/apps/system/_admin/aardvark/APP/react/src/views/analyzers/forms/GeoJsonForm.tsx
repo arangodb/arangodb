@@ -1,14 +1,20 @@
 import React, { ChangeEvent } from "react";
-import { FormProps } from "../constants";
-import { get } from 'lodash';
+import { FormProps, GeoJsonState } from "../constants";
 import OptionsInput from "./OptionsInput";
 
-const GeoJsonForm = ({ formState, updateFormField }: FormProps) => {
+const GeoJsonForm = ({ state, dispatch }: FormProps) => {
   const updateType = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFormField('properties.type', event.target.value);
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.type',
+        value: event.target.value
+      }
+    });
   };
 
-  const typeProperty = get(formState, ['properties', 'type'], 'shape');
+  const formState = state.formState as GeoJsonState;
+  const typeProperty = formState.properties.type;
 
   return <div className={'pure-g'}>
     <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
@@ -31,7 +37,7 @@ const GeoJsonForm = ({ formState, updateFormField }: FormProps) => {
                        width: 'auto',
                        marginBottom: 10
                      }}
-                     checked={typeProperty === 'shape'}/> Shape
+                     checked={!typeProperty || typeProperty === 'shape'}/> Shape
             </label>
           </div>
           <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
@@ -58,7 +64,7 @@ const GeoJsonForm = ({ formState, updateFormField }: FormProps) => {
       </fieldset>
     </div>
     <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-      <OptionsInput formState={formState} updateFormField={updateFormField}/>
+      <OptionsInput state={state} dispatch={dispatch}/>
     </div>
   </div>;
 };

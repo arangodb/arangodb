@@ -1,19 +1,39 @@
-import React, { ChangeEvent, useEffect } from "react";
-import { FormProps } from "../constants";
+import React, { ChangeEvent } from "react";
+import { FormProps, TextState } from "../constants";
 import CaseInput from "./CaseInput";
-import { filter, get, has, isEmpty, negate } from 'lodash';
+import { filter, get, isEmpty, negate } from 'lodash';
 
-const EdgeNGramInput = ({ formState, updateFormField }: FormProps) => {
+const EdgeNGramInput = ({ state, dispatch }: FormProps) => {
   const updateMinLength = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFormField('properties.edgeNgram.min', parseInt(event.target.value));
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.edgeNgram.min',
+        value: parseInt(event.target.value)
+      }
+    });
   };
 
   const updateMaxLength = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFormField('properties.edgeNgram.max', parseInt(event.target.value));
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.edgeNgram.max',
+        value: parseInt(event.target.value)
+      }
+    });
   };
 
+  const formState = state.formState as TextState;
+
   const togglePreserve = () => {
-    updateFormField('properties.edgeNgram.preserveOriginal', !get(formState, ['properties', 'edgeNgram', 'preserveOriginal']));
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.edgeNgram.preserveOriginal',
+        value: !get(formState, ['properties', 'edgeNgram', 'preserveOriginal'])
+      }
+    });
   };
 
   return <fieldset>
@@ -57,57 +77,73 @@ const EdgeNGramInput = ({ formState, updateFormField }: FormProps) => {
   </fieldset>;
 };
 
-interface TextFormProps extends FormProps {
-  unsetFormField: (field: string) => void;
-}
-
-const TextForm = ({ formState, updateFormField, unsetFormField }: TextFormProps) => {
+const TextForm = ({ state, dispatch }: FormProps) => {
   const updateLocale = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFormField('properties.locale', event.target.value);
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.locale',
+        value: event.target.value
+      }
+    });
   };
 
   const updateStopwords = (event: ChangeEvent<HTMLTextAreaElement>) => {
     const stopwords = event.target.value.split('\n');
 
     if (filter(stopwords, negate(isEmpty)).length) {
-      updateFormField('properties.stopwords', stopwords);
+      dispatch({
+        type: 'setField',
+        field: {
+          path: 'properties.stopwords',
+          value: stopwords
+        }
+      });
     } else {
-      unsetFormField('properties.stopwords');
+      dispatch({
+        type: 'unsetField',
+        field: {
+          path: 'properties.stopwords'
+        }
+      });
     }
   };
+
+  const formState = state.formState as TextState;
 
   const getStopwords = () => {
     return get(formState, ['properties', 'stopwords'], []).join('\n');
   };
 
   const updateStopwordsPath = (event: ChangeEvent<HTMLInputElement>) => {
-    const stopwordsPath = event.target.value;
-
-    if (stopwordsPath) {
-      updateFormField('properties.stopwordsPath', stopwordsPath);
-    } else {
-      unsetFormField('properties.stopwordsPath');
-    }
-
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.stopwordsPath',
+        value: event.target.value
+      }
+    });
   };
 
   const toggleAccent = () => {
-    updateFormField('properties.accent', !get(formState, ['properties', 'accent']));
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.accent',
+        value: !formState.properties.accent
+      }
+    });
   };
 
   const toggleStemming = () => {
-    updateFormField('properties.stemming', !get(formState, ['properties', 'stemming']));
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.stemming',
+        value: !formState.properties.stemming
+      }
+    });
   };
-
-  useEffect(() => {
-    if (!has(formState, ['properties', 'stemming'])) {
-      updateFormField('properties.stemming', false);
-    }
-
-    if (!has(formState, ['properties', 'accent'])) {
-      updateFormField('properties.accent', false);
-    }
-  }, [formState, updateFormField]);
 
   return <div className={'pure-g'}>
     <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
@@ -115,7 +151,7 @@ const TextForm = ({ formState, updateFormField, unsetFormField }: TextFormProps)
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
           <label htmlFor={'locale'}>Locale</label>
           <input id="locale" type="text" placeholder="language[_COUNTRY][.encoding][@variant]"
-                 value={get(formState, ['properties', 'locale'], '')} onChange={updateLocale} required={true}
+                 value={formState.properties.locale} onChange={updateLocale} required={true}
                  style={{
                    height: 'auto',
                    width: '90%'
@@ -125,20 +161,20 @@ const TextForm = ({ formState, updateFormField, unsetFormField }: TextFormProps)
         <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
           <label htmlFor={'stemming'} className="pure-checkbox">
             <input id={'stemming'} type={'checkbox'}
-                   checked={get(formState, ['properties', 'stemming'], false)}
+                   checked={formState.properties.stemming}
                    onChange={toggleStemming} style={{ width: 'auto' }}/> Stemming
           </label>
         </div>
 
         <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
           <label htmlFor={'accent'} className="pure-checkbox">
-            <input id={'accent'} type={'checkbox'} checked={get(formState, ['properties', 'accent'], false)}
+            <input id={'accent'} type={'checkbox'} checked={formState.properties.accent}
                    onChange={toggleAccent} style={{ width: 'auto' }}/> Accent
           </label>
         </div>
 
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <CaseInput formState={formState} updateFormField={updateFormField}/>
+          <CaseInput state={state} dispatch={dispatch}/>
         </div>
       </div>
     </div>
@@ -148,7 +184,7 @@ const TextForm = ({ formState, updateFormField, unsetFormField }: TextFormProps)
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
           <label htmlFor={'stopwordsPath'}>Stopwords Path</label>
           <input id="stopwordsPath" type="text"
-                 value={get(formState, ['properties', 'stopwordsPath'], '')}
+                 value={formState.properties.stopwordsPath}
                  onChange={updateStopwordsPath}
                  style={{
                    height: 'auto',
@@ -164,10 +200,12 @@ const TextForm = ({ formState, updateFormField, unsetFormField }: TextFormProps)
       </div>
     </div>
 
-    <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}><hr/></div>
+    <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+      <hr/>
+    </div>
 
     <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-      <EdgeNGramInput formState={formState} updateFormField={updateFormField}/>
+      <EdgeNGramInput state={state} dispatch={dispatch}/>
     </div>
   </div>;
 };

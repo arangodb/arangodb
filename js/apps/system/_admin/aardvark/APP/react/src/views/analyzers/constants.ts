@@ -1,3 +1,7 @@
+import Ajv, { JSONSchemaType } from 'ajv';
+import { Dispatch } from 'React';
+import _, { merge, partial } from 'lodash';
+
 export const typeNameMap = {
   identity: 'Identity',
   delimiter: 'Delimiter',
@@ -11,84 +15,145 @@ export const typeNameMap = {
   pipeline: 'Pipeline'
 };
 
-export interface FormProps {
-  formState: { [key: string]: any };
-  updateFormField: (field: string, value: any) => void;
-}
-
-type AnalyzerType =
-  'identity'
-  | 'delimiter'
-  | 'stem'
-  | 'norm'
-  | 'ngram'
-  | 'text'
-  | 'aql'
-  | 'geojson'
-  | 'geopoint'
-  | 'pipeline';
-type AnalyzerNormCase = 'lower' | 'upper' | 'none';
-type AnalyzerStreamType = 'binary' | 'utf8';
-type AnalyzerFeature = 'frequency' | 'norm' | 'position';
-type AnalyzerFeatures = AnalyzerFeature[];
+type CaseProperty = 'lower' | 'upper' | 'none';
+export type Feature = 'frequency' | 'norm' | 'position';
+type Features = Feature[];
 type Int = number & { __int__: void };
-type AnalyzerEdgeNgram = {
-  max?: Int;
-  min?: Int;
-  preserveOriginal?: boolean;
-}
-type AnalyzerReturnType = 'string' | 'number' | 'bool';
-type AnalyzerGeoJsonType = 'shape' | 'centroid' | 'point';
-type AnalyzerGeoJsonOptions = {
+export type GeoOptions = {
   maxCells?: Int;
   minLevel?: Int;
   maxLevel?: Int;
 };
-type AnalyzerProperties = {
-  delimiter?: string;
-  locale?: string;
-  case?: AnalyzerNormCase;
-  max?: Int;
-  min?: Int;
-  preserveOriginal?: boolean;
-  startMarker?: string;
-  endMarker?: string;
-  streamType?: AnalyzerStreamType;
-  accent?: boolean;
-  stemming?: boolean;
-  edgeNgram?: AnalyzerEdgeNgram;
-  stopwords?: string[];
-  stopwordsPath?: string;
-  queryString?: string;
-  collapsePositions?: boolean;
-  keepNull?: boolean;
-  batchSize?: Int;
-  memoryLimit?: Int;
-  returnType?: AnalyzerReturnType;
-  type?: AnalyzerGeoJsonType;
-  options?: AnalyzerGeoJsonOptions;
-  latitude?: string[];
-  longitude?: string[];
-}
 
-export interface FormState {
+export type BaseFormState = {
   name: string;
-  type: AnalyzerType;
-  features?: AnalyzerFeatures;
-  properties?: AnalyzerProperties;
-}
+  features: Features;
+};
 
-export const formSchema = {
-  type: 'object',
+type IdentityState = {
+  type: 'identity'
+};
+
+export type DelimiterState = {
+  type: 'delimiter';
+  properties: {
+    delimiter: string;
+  };
+};
+
+export type StemState = {
+  type: 'stem';
+  properties: {
+    locale: string;
+  };
+};
+
+export type CaseState = {
+  properties: {
+    case?: CaseProperty;
+  };
+};
+
+export type NormState = CaseState & {
+  type: 'norm';
+  properties: {
+    locale: string;
+    accent?: boolean;
+  };
+};
+
+export type NGramState = {
+  type: 'ngram';
+  properties: {
+    min: Int;
+    max: Int;
+    preserveOriginal: boolean;
+    startMarker?: string;
+    endMarker?: string;
+    streamType?: 'binary' | 'utf8';
+  };
+};
+
+export type TextState = CaseState & {
+  type: 'text';
+  properties: {
+    locale: string;
+    accent?: boolean;
+    stemming?: boolean;
+    edgeNgram?: {
+      max?: Int;
+      min?: Int;
+      preserveOriginal?: boolean;
+    };
+    stopwords?: string[];
+    stopwordsPath?: string;
+  };
+};
+
+export type AqlState = {
+  type: 'aql';
+  properties: {
+    queryString: string;
+    collapsePositions?: boolean;
+    keepNull?: boolean;
+    batchSize?: Int;
+    memoryLimit?: Int;
+    returnType?: 'string' | 'number' | 'bool';
+  };
+};
+
+export type GeoOptionsState = {
+  properties: {
+    options?: GeoOptions;
+  };
+};
+
+export type GeoJsonState = GeoOptionsState & {
+  type: 'geojson';
+  properties: {
+    type?: 'shape' | 'centroid' | 'point';
+  };
+};
+
+export type GeoPointState = GeoOptionsState & {
+  type: 'geopoint';
+  properties: {
+    latitude?: string[];
+    longitude?: string[];
+  };
+};
+
+type PipelineState = IdentityState
+  | DelimiterState
+  | StemState
+  | NormState
+  | NGramState
+  | TextState
+  | AqlState;
+export type PipelineStates = {
+  type: 'pipeline';
+  properties: PipelineState[];
+};
+
+type AnalyzerTypeState = IdentityState
+  | DelimiterState
+  | StemState
+  | NormState
+  | NGramState
+  | TextState
+  | AqlState
+  | GeoJsonState
+  | GeoPointState
+  | PipelineStates;
+
+export type FormState = BaseFormState & AnalyzerTypeState;
+
+const baseSchema = {
   properties: {
     name: {
       nullable: false,
-      type: 'string'
-    },
-    type: {
-      nullable: false,
       type: 'string',
-      enum: ['identity', 'delimiter', 'stem', 'norm', 'ngram', 'text', 'aql', 'geojson', 'geopoint', 'pipeline']
+      default: ''
     },
     features: {
       type: 'array',
@@ -99,38 +164,161 @@ export const formSchema = {
         type: 'string',
         nullable: false,
         enum: ['frequency', 'norm', 'position']
-      }
+      },
+      default: []
+    }
+  },
+  additionalProperties: false
+};
+
+const localeSchema = {
+  type: 'string',
+  nullable: false,
+  default: ''
+};
+
+const accentSchema = {
+  type: 'boolean',
+  nullable: false
+};
+
+const caseSchema = {
+  type: 'string',
+  nullable: false,
+  enum: ['lower', 'upper', 'none']
+};
+
+const geoOptionsSchema = {
+  type: 'object',
+  nullable: false,
+  properties: {
+    maxCells: {
+      type: 'integer',
+      minimum: 0,
+      nullable: false
     },
-    properties: {
+    minLevel: {
+      type: 'integer',
+      minimum: 0,
+      maximum: { $data: '1/maxLevel' },
+      nullable: false
+    },
+    maxLevel: {
+      type: 'integer',
+      minimum: { $data: '1/minLevel' },
+      nullable: false
+    }
+  },
+  additionalProperties: false
+};
+
+const mergeBase = partial(merge, _, baseSchema);
+
+const identitySchema = mergeBase({
+  properties: {
+    type: {
+      const: 'identity'
+    }
+  },
+  required: ['type']
+});
+console.log(identitySchema);
+
+const delimiterSchema = mergeBase({
+  properties: {
+    type: {
+      const: 'delimiter'
+    },
+    'properties': {
       type: 'object',
       nullable: false,
       properties: {
         delimiter: {
           type: 'string',
-          nullable: false
-        },
-        locale: {
-          type: 'string',
-          nullable: false
-        },
-        case: {
-          type: 'string',
           nullable: false,
-          enum: ['lower', 'upper', 'none']
-        },
+          default: ''
+        }
+      },
+      required: ['delimiter'],
+      additionalProperties: false,
+      default: {
+        delimiter: ''
+      }
+    }
+  },
+  required: ['type', 'properties']
+});
+
+const stemSchema = mergeBase({
+  properties: {
+    type: {
+      const: 'stem'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
+        locale: localeSchema
+      },
+      required: ['locale'],
+      additionalProperties: false,
+      default: {
+        locale: ''
+      }
+    }
+  },
+  required: ['type', 'properties']
+});
+
+const normSchema = mergeBase({
+  properties: {
+    type: {
+      const: 'norm'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
+        locale: localeSchema,
+        accent: accentSchema,
+        case: caseSchema
+      },
+      required: ['locale'],
+      additionalProperties: false,
+      default: {
+        locale: ''
+      }
+    }
+  },
+  required: ['type', 'properties']
+});
+
+const ngramSchema = mergeBase({
+  properties: {
+    type: {
+      const: 'ngram'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
         min: {
           type: 'integer',
           nullable: false,
-          minimum: 1
+          minimum: 1,
+          maximum: { $data: '1/max' },
+          default: 2
         },
         max: {
           type: 'integer',
           nullable: false,
-          minimum: 1
+          minimum: { $data: '1/min' },
+          default: 3
         },
         preserveOriginal: {
           type: 'boolean',
-          nullable: false
+          nullable: false,
+          default: false
         },
         startMarker: {
           type: 'string',
@@ -144,11 +332,32 @@ export const formSchema = {
           type: 'string',
           nullable: false,
           enum: ['binary', 'utf8']
-        },
-        accent: {
-          type: 'boolean',
-          nullable: false
-        },
+        }
+      },
+      required: ['min', 'max', 'preserveOriginal'],
+      additionalProperties: false,
+      default: {
+        min: 2,
+        max: 3,
+        preserveOriginal: false
+      }
+    }
+  },
+  required: ['type', 'properties']
+});
+
+const textSchema = mergeBase({
+  properties: {
+    type: {
+      const: 'text'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
+        locale: localeSchema,
+        accent: accentSchema,
+        case: caseSchema,
         stemming: {
           type: 'boolean',
           nullable: false
@@ -160,12 +369,13 @@ export const formSchema = {
             min: {
               type: 'integer',
               nullable: false,
+              maximum: { $data: '1/max' },
               minimum: 1
             },
             max: {
               type: 'integer',
               nullable: false,
-              minimum: 1
+              minimum: { $data: '1/min' }
             },
             preserveOriginal: {
               type: 'boolean',
@@ -183,10 +393,31 @@ export const formSchema = {
         stopwordsPath: {
           type: 'string',
           nullable: false
-        },
+        }
+      },
+      required: ['locale'],
+      additionalProperties: false,
+      default: {
+        locale: ''
+      }
+    }
+  },
+  required: ['type', 'properties']
+});
+
+const aqlSchema = mergeBase({
+  properties: {
+    type: {
+      const: 'aql'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
         queryString: {
           type: 'string',
-          nullable: false
+          nullable: false,
+          default: ''
         },
         collapsePositions: {
           type: 'boolean',
@@ -211,30 +442,50 @@ export const formSchema = {
           nullable: false,
           type: 'string',
           enum: ['string', 'number', 'bool']
-        },
+        }
+      },
+      required: ['queryString'],
+      additionalProperties: false,
+      default: {
+        queryString: ''
+      }
+    }
+  },
+  required: ['type', 'properties']
+});
+
+const geojsonSchema = mergeBase({
+  properties: {
+    type: {
+      const: 'geojson'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
         type: {
           nullable: false,
           type: 'string',
           enum: ['shape', 'centroid', 'point']
         },
-        options: {
-          type: 'object',
-          nullable: false,
-          properties: {
-            maxCells: {
-              type: 'integer',
-              nullable: false
-            },
-            minLevel: {
-              type: 'integer',
-              nullable: false
-            },
-            maxLevel: {
-              type: 'integer',
-              nullable: false
-            }
-          }
-        },
+        options: geoOptionsSchema
+      },
+      additionalProperties: false,
+      default: {}
+    }
+  },
+  required: ['type', 'properties']
+});
+
+const geopointSchema = mergeBase({
+  properties: {
+    type: {
+      const: 'geopoint'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
         latitude: {
           type: 'array',
           nullable: false,
@@ -248,10 +499,91 @@ export const formSchema = {
           items: {
             type: 'string'
           }
-        }
-      }
+        },
+        options: geoOptionsSchema
+      },
+      additionalProperties: false,
+      default: {}
     }
   },
-  required: ['name', 'type'],
-  additionalProperties: false
+  required: ['type', 'properties']
+});
+
+const pipelineSchema = mergeBase({
+  properties: {
+    type: {
+      const: 'pipeline'
+    },
+    'properties': {
+      type: 'array',
+      nullable: false,
+      items: {
+        discriminator: {
+          propertyName: "type"
+        },
+        oneOf: [
+          identitySchema,
+          delimiterSchema,
+          stemSchema,
+          normSchema,
+          ngramSchema,
+          textSchema,
+          aqlSchema
+        ]
+      },
+      default: []
+    }
+  },
+  required: ['type', 'properties']
+});
+
+export const formSchema: JSONSchemaType<FormState> = {
+  type: 'object',
+  discriminator: {
+    propertyName: 'type'
+  },
+  oneOf: [
+    identitySchema,
+    delimiterSchema,
+    stemSchema,
+    normSchema,
+    ngramSchema,
+    textSchema,
+    aqlSchema,
+    geojsonSchema,
+    geopointSchema,
+    pipelineSchema
+  ],
+  required: ['name', 'features']
+};
+
+const ajv = new Ajv({
+  removeAdditional: 'failing',
+  useDefaults: true,
+  discriminator: true,
+  $data: true
+});
+export const validateAndFix = ajv.compile(formSchema);
+
+export type State = {
+  formState: FormState;
+  formCache: object;
+  show: boolean;
+  showJsonForm: boolean;
+  lockJsonForm: boolean;
+  renderKey: string;
+};
+
+export type DispatchArgs = {
+  type: string;
+  field?: {
+    path: string;
+    value?: any;
+  };
+  formState?: FormState;
+};
+
+export type FormProps = {
+  state: State;
+  dispatch: Dispatch<DispatchArgs>;
 };

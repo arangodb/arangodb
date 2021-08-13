@@ -176,7 +176,7 @@ const AnalyzersReactView = () => {
                                  width: 300,
                                  paddingLeft: 25
                                }}/>
-                <i className={'fa fa-search'} style={{
+                <i className={'fa fa-filter'} style={{
                   position: 'relative',
                   float: 'left',
                   top: 9,

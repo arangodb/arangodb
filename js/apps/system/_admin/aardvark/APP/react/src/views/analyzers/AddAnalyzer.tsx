@@ -1,6 +1,6 @@
-import React, { ReactFragment, useState } from 'react';
+import React, { ReactFragment, useReducer } from 'react';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
-import { cloneDeep, set, uniqueId, unset } from 'lodash';
+import { cloneDeep, merge, set, uniqueId, unset } from 'lodash';
 import JsonForm from "./forms/JsonForm";
 import FeatureForm from "./forms/FeatureForm";
 import DelimiterForm from "./forms/DelimiterForm";
@@ -11,7 +11,7 @@ import BaseForm from "./forms/BaseForm";
 import TextForm from "./forms/TextForm";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
-import { FormState } from "./constants";
+import { DispatchArgs, FormState, State, validateAndFix } from "./constants";
 import CopyFromInput from "./forms/CopyFromInput";
 import AqlForm from "./forms/AqlForm";
 import GeoJsonForm from "./forms/GeoJsonForm";
@@ -23,7 +23,87 @@ const initialFormState: FormState = {
   name: '',
   type: 'delimiter',
   features: [],
-  properties: {}
+  properties: {
+    delimiter: ''
+  }
+};
+
+const initialState: State = {
+  formState: cloneDeep(initialFormState),
+  formCache: cloneDeep(initialFormState),
+  show: false,
+  showJsonForm: false,
+  lockJsonForm: false,
+  renderKey: uniqueId('force_re-render_')
+};
+
+const reducer = (state: State, action: DispatchArgs): State => {
+  const newState = cloneDeep(state);
+
+  switch (action.type) {
+    case 'lockJsonForm':
+      newState.lockJsonForm = true;
+      break;
+
+    case 'unlockJsonForm':
+      newState.lockJsonForm = false;
+      break;
+
+    case 'show':
+      newState.show = true;
+      break;
+
+    case 'hide':
+      newState.show = false;
+      break;
+
+    case 'showJsonForm':
+      newState.showJsonForm = true;
+      break;
+
+    case 'hideJsonForm':
+      newState.showJsonForm = false;
+      break;
+
+    case 'regenRenderKey':
+      newState.renderKey = uniqueId('force_re-render_');
+      break;
+
+    case 'setField':
+      if (action.field && action.field.value) {
+        set(newState.formCache, action.field.path, action.field.value);
+
+        if (action.field.path === 'type') {
+          const tempFormState = cloneDeep(newState.formCache);
+          validateAndFix(tempFormState);
+          newState.formState = tempFormState as FormState;
+
+          merge(newState.formCache, newState.formState);
+        } else {
+          set(newState.formState, action.field.path, action.field.value);
+        }
+      }
+      break;
+
+    case 'unsetField':
+      if (action.field) {
+        unset(newState.formState, action.field.path);
+        unset(newState.formCache, action.field.path);
+      }
+      break;
+
+    case 'setFormState':
+      if (action.formState) {
+        newState.formState = action.formState;
+        merge(newState.formCache, newState.formState);
+      }
+      break;
+
+    case 'reset':
+      return initialState;
+  }
+
+  return newState;
 };
 
 interface AddAnalyzerProps {
@@ -31,23 +111,19 @@ interface AddAnalyzerProps {
 }
 
 const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
-  const [show, setShow] = useState(false);
-  const [showJsonForm, setShowJsonForm] = useState(false);
-  const [lockJsonForm, setLockJsonForm] = useState(false);
-  const [formState, setFormState] = useState(initialFormState);
-  const [renderKey, setRenderKey] = useState(uniqueId('force_re-render_'));
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   const handleAdd = async () => {
     try {
-      const result = await getApiRouteForCurrentDB().post('/analyzer/', formState);
+      const result = await getApiRouteForCurrentDB().post('/analyzer/', state.formState);
 
       if (result.body.error) {
         arangoHelper.arangoError('Failure', `Got unexpected server response: ${result.body.errorMessage}`);
       } else {
         arangoHelper.arangoNotification('Success', `Created Analyzer: ${result.body.name}`);
         await mutate('/analyzer');
-        setFormState(initialFormState);
-        setShow(false);
+
+        dispatch({ type: 'reset' });
       }
     } catch (e) {
       arangoHelper.arangoError('Failure', `Got unexpected server response: ${e.message}`);
@@ -55,39 +131,24 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
   };
 
   const toggleJsonForm = () => {
-    setShowJsonForm(!showJsonForm);
-  };
-
-  const updateFormField = (field: string, value: any) => {
-    const newFormState = cloneDeep(formState);
-
-    set(newFormState, field, value);
-    setFormState(newFormState);
-  };
-
-  const unsetFormField = (field: string) => {
-    const newFormState = cloneDeep(formState);
-
-    unset(newFormState, field);
-    setFormState(newFormState);
+    dispatch({ type: state.showJsonForm ? 'hideJsonForm' : 'showJsonForm' });
   };
 
   const forms: { [key: string]: ReactFragment | null } = {
     identity: null,
-    delimiter: <DelimiterForm formState={formState} updateFormField={updateFormField}/>,
-    stem: <StemForm formState={formState} updateFormField={updateFormField}/>,
-    norm: <NormForm formState={formState} updateFormField={updateFormField}/>,
-    ngram: <NGramForm formState={formState} updateFormField={updateFormField}/>,
-    text: <TextForm formState={formState} updateFormField={updateFormField} unsetFormField={unsetFormField}/>,
-    aql: <AqlForm formState={formState} updateFormField={updateFormField}/>,
-    geojson: <GeoJsonForm formState={formState} updateFormField={updateFormField}/>,
-    geopoint: <GeoPointForm formState={formState} updateFormField={updateFormField}
-                            unsetFormField={unsetFormField}/>,
+    delimiter: <DelimiterForm state={state} dispatch={dispatch}/>,
+    stem: <StemForm state={state} dispatch={dispatch}/>,
+    norm: <NormForm state={state} dispatch={dispatch}/>,
+    ngram: <NGramForm state={state} dispatch={dispatch}/>,
+    text: <TextForm state={state} dispatch={dispatch}/>,
+    aql: <AqlForm state={state} dispatch={dispatch}/>,
+    geojson: <GeoJsonForm state={state} dispatch={dispatch}/>,
+    geopoint: <GeoPointForm state={state} dispatch={dispatch}/>,
     pipeline: 'Pipeline'
   };
 
   return <>
-    <button className={'pure-button'} onClick={() => setShow(true)} style={{
+    <button className={'pure-button'} onClick={() => dispatch({ type: 'show' })} style={{
       background: 'transparent',
       color: 'white',
       paddingLeft: 0,
@@ -95,19 +156,19 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
     }}>
       <i className="fa fa-plus-circle"/> Add Analyzer
     </button>
-    <Modal show={show} setShow={setShow}>
+    <Modal show={state.show} setShow={(show) => dispatch({ type: show ? 'show' : 'hide' })}>
       <ModalHeader title={'Create Analyzer'}>
         <div className={'pure-g'}>
           <div className={'pure-u-16-24 pure-u-md-16-24 pure-u-lg-16-24 pure-u-xl-16-24'}>
-            <CopyFromInput analyzers={analyzers} setFormState={setFormState} setRenderKey={setRenderKey}/>
+            <CopyFromInput analyzers={analyzers} dispatch={dispatch}/>
           </div>
           <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-            <button className={'pure-button'} onClick={toggleJsonForm} disabled={lockJsonForm}
+            <button className={'pure-button'} onClick={toggleJsonForm} disabled={state.lockJsonForm}
                     style={{
                       fontSize: '70%',
                       float: 'right'
                     }}>
-              {showJsonForm ? 'Switch to form view' : 'Switch to code view'}
+              {state.showJsonForm ? 'Switch to form view' : 'Switch to code view'}
             </button>
           </div>
         </div>
@@ -115,28 +176,27 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
       <ModalBody>
         <div className={'pure-g'}>
           {
-            showJsonForm
+            state.showJsonForm
               ? <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-                <JsonForm formState={formState} setFormState={setFormState}
-                          setLockJsonForm={setLockJsonForm} renderKey={renderKey}/>
+                <JsonForm state={state} dispatch={dispatch}/>
               </div>
               : <>
                 <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-                  <BaseForm formState={formState} updateFormField={updateFormField}/>
+                  <BaseForm state={state} dispatch={dispatch}/>
                 </div>
                 <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
                   <fieldset>
                     <legend style={{ fontSize: '12pt' }}>Features</legend>
-                    <FeatureForm formState={formState} updateFormField={updateFormField}/>
+                    <FeatureForm state={state} dispatch={dispatch}/>
                   </fieldset>
                 </div>
 
                 {
-                  formState.type === 'identity' ? null
+                  state.formState.type === 'identity' ? null
                     : <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
                       <fieldset>
                         <legend style={{ fontSize: '12pt' }}>Configuration</legend>
-                        {forms[formState.type]}
+                        {forms[state.formState.type]}
                       </fieldset>
                     </div>
                 }
@@ -145,7 +205,7 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
         </div>
       </ModalBody>
       <ModalFooter>
-        <button className="button-close" onClick={() => setShow(false)}>Close</button>
+        <button className="button-close" onClick={() => dispatch({ type: 'hide' })}>Close</button>
         <button className="button-success" style={{ float: 'right' }} onClick={handleAdd}>Create</button>
       </ModalFooter>
     </Modal>

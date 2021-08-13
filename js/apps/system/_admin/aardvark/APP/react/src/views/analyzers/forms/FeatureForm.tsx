@@ -1,14 +1,14 @@
-import React, { ChangeEvent, useEffect } from "react";
-import { clone, get, has, pull } from "lodash";
-import { FormProps } from "../constants";
+import React, { ChangeEvent } from "react";
+import { clone, pull } from "lodash";
+import { Feature, FormProps } from "../constants";
 
-const FeatureForm = ({ formState, updateFormField }: FormProps) => {
-  const features = get(formState, 'features', []);
+const FeatureForm = ({ state, dispatch }: FormProps) => {
+  const features = state.formState.features;
   const frequency = features.includes('frequency');
   const norm = features.includes('norm');
   const position = features.includes('position');
 
-  const getFeatureToggler = (feature: string) => {
+  const getFeatureToggler = (feature: Feature) => {
     return (event: ChangeEvent<HTMLInputElement>) => {
       const formFeatures = clone(features);
       if (event.target.checked) {
@@ -17,15 +17,15 @@ const FeatureForm = ({ formState, updateFormField }: FormProps) => {
         pull(formFeatures, feature);
       }
 
-      updateFormField('features', formFeatures);
+      dispatch({
+        type: 'setField',
+        field: {
+          path: 'features',
+          value: formFeatures
+        }
+      });
     };
   };
-
-  useEffect(() => {
-    if (!has(formState, 'features')) {
-      updateFormField('features', []);
-    }
-  }, [formState, updateFormField]);
 
   return <div className={'pure-g'}>
     <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>

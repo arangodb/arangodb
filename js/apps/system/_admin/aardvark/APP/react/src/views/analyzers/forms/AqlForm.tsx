@@ -1,47 +1,75 @@
-import React, { ChangeEvent, useEffect } from "react";
-import { FormProps } from "../constants";
-import { get, has } from 'lodash';
+import React, { ChangeEvent } from "react";
+import { AqlState, FormProps } from "../constants";
 
-const AqlForm = ({ formState, updateFormField }: FormProps) => {
+const AqlForm = ({ state, dispatch }: FormProps) => {
   const updateBatchSize = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFormField('properties.batchSize', parseInt(event.target.value));
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.batchSize',
+        value: parseInt(event.target.value)
+      }
+    });
   };
 
   const updateMemoryLimit = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFormField('properties.memoryLimit', parseInt(event.target.value));
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.memoryLimit',
+        value: parseInt(event.target.value)
+      }
+    });
   };
 
   const updateQueryString = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    updateFormField('properties.queryString', event.target.value);
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.queryString',
+        value: event.target.value
+      }
+    });
   };
 
   const updateReturnType = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFormField('properties.returnType', event.target.value);
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.returnType',
+        value: event.target.value
+      }
+    });
   };
 
+  const formState = state.formState as AqlState;
+
   const toggleCollapsePositions = () => {
-    updateFormField('properties.collapsePositions', !get(formState, ['properties', 'collapsePositions']));
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.collapsePositions',
+        value: !formState.properties.collapsePositions
+      }
+    });
   };
 
   const toggleKeepNull = () => {
-    updateFormField('properties.keepNull', !get(formState, ['properties', 'keepNull']));
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.keepNull',
+        value: !formState.properties.keepNull
+      }
+    });
   };
 
-  const returnTypeProperty = get(formState, ['properties', 'returnType'], 'string');
-
-  useEffect(() => {
-    if (!has(formState, ['properties', 'collapsePositions'])) {
-      updateFormField('properties.collapsePositions', false);
-    }
-    if (!has(formState, ['properties', 'keepNull'])) {
-      updateFormField('properties.keepNull', true);
-    }
-  }, [formState, updateFormField]);
+  const returnTypeProperty = formState.properties.returnType;
 
   return <div className={'pure-g'}>
     <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
       <label htmlFor={'queryString'}>Query String</label>
-      <textarea id="queryString" value={get(formState, ['properties', 'queryString'], '')}
+      <textarea id="queryString" value={formState.properties.queryString}
                 style={{ width: '90%' }} onChange={updateQueryString} rows={4} required={true}/>
     </div>
 
@@ -50,7 +78,7 @@ const AqlForm = ({ formState, updateFormField }: FormProps) => {
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
           <label htmlFor={'batchSize'}>Batch Size</label>
           <input id="batchSize" type="number" min={1} placeholder="10" required={true}
-                 value={get(formState, ['properties', 'batchSize'], '')} onChange={updateBatchSize}
+                 value={formState.properties.batchSize} onChange={updateBatchSize}
                  style={{
                    height: 'auto',
                    width: '90%'
@@ -59,7 +87,7 @@ const AqlForm = ({ formState, updateFormField }: FormProps) => {
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
           <label htmlFor={'memoryLimit'}>Memory Limit</label>
           <input id="memoryLimit" type="number" min={1} max={33554432} placeholder="1048576" required={true}
-                 value={get(formState, ['properties', 'memoryLimit'], '')} onChange={updateMemoryLimit}
+                 value={formState.properties.memoryLimit} onChange={updateMemoryLimit}
                  style={{
                    height: 'auto',
                    width: '90%'
@@ -73,13 +101,13 @@ const AqlForm = ({ formState, updateFormField }: FormProps) => {
         <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
           <label htmlFor={'collapsePositions'} className="pure-checkbox">Collapse Positions</label>
           <input id={'collapsePositions'} type={'checkbox'}
-                 checked={get(formState, ['properties', 'collapsePositions'], false)}
+                 checked={formState.properties.collapsePositions}
                  onChange={toggleCollapsePositions} style={{ width: 'auto' }}/>
         </div>
         <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
           <label htmlFor={'keepNull'} className="pure-checkbox">Keep Null</label>
           <input id={'keepNull'} type={'checkbox'}
-                 checked={get(formState, ['properties', 'keepNull'], true)}
+                 checked={formState.properties.keepNull}
                  onChange={toggleKeepNull} style={{ width: 'auto' }}/>
         </div>
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
@@ -102,7 +130,7 @@ const AqlForm = ({ formState, updateFormField }: FormProps) => {
                            width: 'auto',
                            marginBottom: 10
                          }}
-                         checked={returnTypeProperty === 'string'}/> String
+                         checked={!returnTypeProperty || returnTypeProperty === 'string'}/> String
                 </label>
               </div>
               <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>

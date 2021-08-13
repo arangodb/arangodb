@@ -1,46 +1,54 @@
-import React, { ChangeEvent, useEffect } from "react";
-import { FormProps } from "../constants";
+import React, { ChangeEvent } from "react";
+import { FormProps, NormState } from "../constants";
 import CaseInput from "./CaseInput";
-import { get, has } from 'lodash';
 
-const NormForm = ({ formState, updateFormField }: FormProps) => {
+const NormForm = ({ state, dispatch }: FormProps) => {
+
   const updateLocale = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFormField('properties.locale', event.target.value);
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.locale',
+        value: event.target.value
+      }
+    });
   };
+
+  const formState = state.formState as NormState;
 
   const toggleAccent = () => {
-    updateFormField('properties.accent', !get(formState, ['properties', 'accent']));
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.accent',
+        value: !formState.properties.accent
+      }
+    });
   };
 
-  useEffect(() => {
-    if (!has(formState, ['properties', 'accent'])) {
-      updateFormField('properties.accent', false);
-    }
-  }, [formState, updateFormField]);
-
   return <div className={'pure-g'}>
-    <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-      <label htmlFor={'locale'}>Locale</label>
-      <input id="locale" type="text" placeholder="language[_COUNTRY][.encoding][@variant]"
-             value={get(formState, ['properties', 'locale'], '')} onChange={updateLocale} required={true}
-             style={{
-               height: 'auto',
-               width: '90%'
-             }}/>
-    </div>
+      <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
+        <label htmlFor={'locale'}>Locale</label>
+        <input id="locale" type="text" placeholder="language[_COUNTRY][.encoding][@variant]"
+               value={formState.properties.locale} onChange={updateLocale} required={true}
+               style={{
+                 height: 'auto',
+                 width: '90%'
+               }}/>
+      </div>
 
-    <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-      <CaseInput formState={formState} updateFormField={updateFormField}/>
-    </div>
+      <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
+        <CaseInput state={state} dispatch={dispatch}/>
+      </div>
 
-    <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-      <label htmlFor={'accent'} className="pure-checkbox">
-        <input id={'accent'} type={'checkbox'} checked={get(formState, ['properties', 'accent'], false)}
-               onChange={toggleAccent} style={{ width: 'auto' }}/> Accent
-      </label>
-    </div>
+      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
+        <label htmlFor={'accent'} className="pure-checkbox">
+          <input id={'accent'} type={'checkbox'} checked={formState.properties.accent}
+                 onChange={toggleAccent} style={{ width: 'auto' }}/> Accent
+        </label>
+      </div>
 
-  </div>;
+    </div>;
 };
 
 export default NormForm;

@@ -1,20 +1,27 @@
 import React, { ChangeEvent } from "react";
-import { FormProps } from "../constants";
+import { FormProps, GeoPointState } from "../constants";
 import { filter, get, isEmpty, negate } from 'lodash';
 import OptionsInput from "./OptionsInput";
 
-interface GeoPointFormProps extends FormProps {
-  unsetFormField: (field: string) => void;
-}
-
-const GeoPointForm = ({ formState, updateFormField, unsetFormField }: GeoPointFormProps) => {
+const GeoPointForm = ({ state, dispatch }: FormProps) => {
   const updateArray = (event: ChangeEvent<HTMLTextAreaElement>, field: string) => {
     const items = event.target.value.split('\n');
 
     if (filter(items, negate(isEmpty)).length) {
-      updateFormField(field, items);
+      dispatch({
+        type: 'setField',
+        field: {
+          path: field,
+          value: items
+        }
+      });
     } else {
-      unsetFormField(field);
+      dispatch({
+        type: 'unsetField',
+        field: {
+          path: field
+        }
+      });
     }
   };
 
@@ -25,6 +32,8 @@ const GeoPointForm = ({ formState, updateFormField, unsetFormField }: GeoPointFo
   const updateLongitude = (event: ChangeEvent<HTMLTextAreaElement>) => {
     updateArray(event, 'properties.longitude');
   };
+
+  const formState = state.formState as GeoPointState;
 
   const getArray = (field: string[]) => {
     return get(formState, field, []).join('\n');
@@ -47,7 +56,7 @@ const GeoPointForm = ({ formState, updateFormField, unsetFormField }: GeoPointFo
     </div>
 
     <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-      <OptionsInput formState={formState} updateFormField={updateFormField}/>
+      <OptionsInput state={state} dispatch={dispatch}/>
     </div>
   </div>;
 };

@@ -1,17 +1,24 @@
 import React, { ChangeEvent } from "react";
-import { FormProps } from "../constants";
-import { get } from "lodash";
+import { DelimiterState, FormProps } from "../constants";
 
-const DelimiterForm = ({ formState, updateFormField }: FormProps) => {
+const DelimiterForm = ({ state, dispatch }: FormProps) => {
   const updateDelimiter = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFormField('properties.delimiter', event.target.value);
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.delimiter',
+        value: event.target.value
+      }
+    });
   };
+
+  const formState = state.formState as DelimiterState;
 
   return <div className={'pure-g'}>
     <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
       <label htmlFor={'delimiter'}>Delimiter</label>
       <input id="delimiter" type="text" placeholder="Delimiting Characters" required={true}
-             value={get(formState, ['properties', 'delimiter'], '')} onChange={updateDelimiter}
+             value={formState.properties.delimiter} onChange={updateDelimiter}
              style={{
                height: 'auto',
                width: 'auto'

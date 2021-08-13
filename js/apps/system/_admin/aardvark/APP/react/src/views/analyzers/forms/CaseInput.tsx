@@ -1,13 +1,18 @@
 import React, { ChangeEvent } from "react";
-import { FormProps } from "../constants";
-import { get } from 'lodash';
+import { CaseState, FormProps } from "../constants";
 
-const CaseInput = ({ formState, updateFormField }: FormProps) => {
+const CaseInput = ({ state, dispatch }: FormProps) => {
   const updateCase = (event: ChangeEvent<HTMLInputElement>) => {
-    updateFormField('properties.case', event.target.value);
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.case',
+        value: event.target.value
+      }
+    });
   };
 
-  const caseProperty = get(formState, ['properties', 'case'], 'none');
+  const caseProperty = (state.formState as CaseState).properties.case;
 
   return <fieldset>
     <legend style={{
@@ -47,7 +52,7 @@ const CaseInput = ({ formState, updateFormField }: FormProps) => {
                    width: 'auto',
                    marginBottom: 10
                  }}
-                 checked={caseProperty === 'none'}/> None
+                 checked={!caseProperty || caseProperty === 'none'}/> None
         </label>
       </div>
     </div>

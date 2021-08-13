@@ -1,25 +1,24 @@
-import { FormState } from "../constants";
+import { FormProps, FormState, validateAndFix } from "../constants";
 import React, { useState } from "react";
-import { chain, findIndex, sortBy, uniqueId } from "lodash";
+import { cloneDeep, findIndex, sortBy } from "lodash";
 
-interface CopyFromInputProps {
+type CopyFromInputProps = {
   analyzers: FormState[];
-  setFormState: (state: FormState) => void;
-  setRenderKey: (key: string) => void;
-}
+} & Pick<FormProps, 'dispatch'>;
 
-const CopyFromInput = ({ analyzers, setFormState, setRenderKey }: CopyFromInputProps) => {
+const CopyFromInput = ({ analyzers, dispatch }: CopyFromInputProps) => {
   const [selectedAnalyzer, setSelectedAnalyzer] = useState(0);
 
   const copyFormState = () => {
-    const newFormState = chain(analyzers[selectedAnalyzer])
-      .cloneDeep()
-      .pick('name', 'type', 'features', 'properties')
-      .value();
+    const newFormState = cloneDeep(analyzers[selectedAnalyzer]);
     newFormState.name = '';
+    validateAndFix(newFormState);
 
-    setFormState(newFormState);
-    setRenderKey(uniqueId('force_re-render_'));
+    dispatch({
+      type: 'setFormState',
+      formState: newFormState
+    });
+    dispatch({ type: 'regenRenderKey' });
   };
 
   return <div className={'pure-g'}>
