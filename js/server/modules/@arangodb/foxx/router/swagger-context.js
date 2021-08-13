@@ -33,7 +33,8 @@ const { uuidv4 } = require('@arangodb/crypto');
 
 const MIME_JSON = 'application/json; charset=utf-8';
 const MATCH_ALL_MODEL = check.validateSchema(true).value;
-const MATCH_STRINGS_MODEL = check.validateSchema({type: 'string'}).value;
+const MATCH_REQ_STRINGS_MODEL = check.validateSchema({type: 'string'}, false).value;
+const MATCH_OPT_STRINGS_MODEL = check.validateSchema({type: 'string'}, true).value;
 const DEFAULT_ERROR_MODEL = check.validateSchema({
   type: 'object',
   properties: {
@@ -106,7 +107,7 @@ module.exports = exports =
     header (...args) {
       const {
         name,
-        model = MATCH_STRINGS_MODEL,
+        model = MATCH_OPT_STRINGS_MODEL,
         description
       } = check(
         'endpoint.header',
@@ -123,7 +124,7 @@ module.exports = exports =
     pathParam (...args) {
       const {
         name,
-        model = MATCH_STRINGS_MODEL,
+        model = MATCH_REQ_STRINGS_MODEL,
         description
       } = check(
         'endpoint.pathParam',
@@ -140,7 +141,7 @@ module.exports = exports =
     queryParam  (...args) {
       const {
         name,
-        model = MATCH_STRINGS_MODEL,
+        model = MATCH_OPT_STRINGS_MODEL,
         description
       } = check(
         'endpoint.queryParam',
@@ -481,6 +482,7 @@ module.exports = exports =
         const parameter = swaggerifyParam(def.schema);
         parameter.name = name;
         parameter.in = 'query';
+        parameter.required = !def.optional;
         if (def.description) {
           parameter.description = def.description;
         }
@@ -491,6 +493,7 @@ module.exports = exports =
         const parameter = swaggerifyParam(def.schema);
         parameter.name = name;
         parameter.in = 'header';
+        parameter.required = !def.optional;
         if (def.description) {
           parameter.description = def.description;
         }
@@ -503,6 +506,7 @@ module.exports = exports =
           const parameter = swaggerifyBody(def.model.schema);
           parameter.name = 'body';
           parameter.in = 'body';
+          parameter.required = !def.optional;
           if (def.description) {
             parameter.description = def.description;
           }

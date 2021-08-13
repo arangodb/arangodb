@@ -55,7 +55,7 @@ function isJoiSchema (value, expectOpaque) {
   return values.every(value => isJoiSchema(value, true));
 }
 
-function createSchemaValidator (schema) {
+function createSchemaValidator (schema, optional = false) {
   if (schema.isJoi) {
     return (value) => schema.validate(value);
   }
@@ -69,6 +69,9 @@ function createSchemaValidator (schema) {
   }
   const validator = ajv.compile(schema);
   return (value) => {
+    if (optional && value === undefined) {
+      return {value: undefined, error: null};
+    }
     const valid = validator(value);
     if (valid) return {value, error: null};
     return {value, error: new Error(
@@ -238,17 +241,17 @@ exports.validateStatus = function (value) {
   return {value: status, error: null};
 };
 
-exports.validateSchema = function (schema = true) {
+exports.validateSchema = function (schema = true, optional = false) {
   if (schema === null) {
     return {
-      value: {schema: false, validate: createSchemaValidator(false)},
+      value: {schema: false, validate: createSchemaValidator(false, optional)},
       error: null
     };
   }
   if (isJoiSchema(schema)) {
     if (schema.isJoi) {
       return {
-        value: {schema, validate: createSchemaValidator(schema)},
+        value: {schema, validate: createSchemaValidator(schema, optional)},
         error: null
       };
     }
@@ -261,7 +264,7 @@ exports.validateSchema = function (schema = true) {
       )};
     }
     return {
-      value: {schema, validate: createSchemaValidator(schema)},
+      value: {schema, validate: createSchemaValidator(schema, optional)},
       error: null
     };
   }
@@ -272,7 +275,7 @@ exports.validateSchema = function (schema = true) {
     )};
   }
   return {
-    value: {schema, validate: createSchemaValidator(schema)},
+    value: {schema, validate: createSchemaValidator(schema, optional)},
     error: null
   };
 };
@@ -311,7 +314,7 @@ exports.validateModel = function (value) {
     model = {schema: model};
   }
 
-  const result = exports.validateSchema(model.schema);
+  const result = exports.validateSchema(model.schema, model.optional);
   if (result.error) {
     result.error.message = result.error.message
       .replace(/^"value"/, `"value"${schemaIndex}`);
@@ -376,7 +379,7 @@ exports.validateModel = function (value) {
         return {value: arr, error: null};
       };
     } else {
-      model.validate = createSchemaValidator(model.schema);
+      model.validate = createSchemaValidator(model.schema, model.optional);
     }
   }
 
