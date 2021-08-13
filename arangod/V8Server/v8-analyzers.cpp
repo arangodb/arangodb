@@ -323,7 +323,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
   }
 
-  arangodb::iresearch::AnalyzerPool::AnalyzerFeatures features;
+  arangodb::iresearch::Features features;
 
   if (args.Length() > 3) { // have features
     if (!args[3]->IsArray()) {

@@ -132,7 +132,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
     return;
   }
 
-  AnalyzerPool::AnalyzerFeatures features;
+  Features features;
 
   if (body.hasKey(StaticStrings::AnalyzerFeaturesField)) { // optional parameter
     auto featuresSlice = body.get(StaticStrings::AnalyzerFeaturesField);

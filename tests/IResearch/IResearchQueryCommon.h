@@ -82,7 +82,7 @@ class IResearchQueryTest
     auto res =
         analyzers.emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
                           VPackParser::fromJson("\"abc\"")->slice(),
-                          arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+                          arangodb::iresearch::Features(
                             {}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS)); // required for PHRASE
     EXPECT_TRUE(res.ok());
 
@@ -96,7 +96,7 @@ class IResearchQueryTest
         VPackParser::fromJson(
             "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
             ->slice(),
-        arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+        arangodb::iresearch::Features(
          {irs::type<irs::norm>::get().id()},
          irs::IndexFeatures::FREQ | irs::IndexFeatures::POS));  // cache analyzer
     EXPECT_TRUE(res.ok());
@@ -109,17 +109,17 @@ class IResearchQueryTest
 
     res = analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
                             VPackParser::fromJson("\"abc\"")->slice(),
-                            arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+                            arangodb::iresearch::Features(
                               {}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS));  // required for PHRASE
 
     res = analyzers.emplace(result, "_system::ngram_test_analyzer13", "ngram",
                             VPackParser::fromJson("{\"min\":1, \"max\":3, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
-                            arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+                            arangodb::iresearch::Features(
                               {}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS));  // required for PHRASE
 
     res = analyzers.emplace(result, "_system::ngram_test_analyzer2", "ngram",
                             VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
-                            arangodb::iresearch::AnalyzerPool::AnalyzerFeatures(
+                            arangodb::iresearch::Features(
                               {}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS));  // required for PHRASE
 
     EXPECT_TRUE(res.ok());

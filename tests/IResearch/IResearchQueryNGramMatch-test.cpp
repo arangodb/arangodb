@@ -67,7 +67,7 @@ TEST_F(IResearchQueryNGramMatchTest, SysVocbase) {
     auto res =
       analyzers.emplace(result, "_system::myngram", "ngram",
         VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
-        arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS)  // required for PHRASE
+        arangodb::iresearch::Features({}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS)  // required for PHRASE
     );  // cache analyzer
     EXPECT_TRUE(res.ok());
   }
@@ -593,7 +593,7 @@ TEST_F(IResearchQueryNGramMatchTest, test) {
     auto res =
       analyzers.emplace(result, "testVocbase::myngram", "ngram",
         VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
-        arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS)  // required for PHRASE
+        arangodb::iresearch::Features({}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS)  // required for PHRASE
     );  // cache analyzer
     EXPECT_TRUE(res.ok());
   }
@@ -617,7 +617,7 @@ TEST_F(IResearchQueryNGramMatchTest, test) {
       auto res =
         analyzers.emplace(result, "testVocbase2::myngram", "ngram",
           VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
-          arangodb::iresearch::AnalyzerPool::AnalyzerFeatures({}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS)
+          arangodb::iresearch::Features({}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS)
       );  // cache analyzer
       EXPECT_TRUE(res.ok());
     }

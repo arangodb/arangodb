@@ -145,7 +145,7 @@ bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
   return true;
 }
 
-bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
+bool FieldMeta::init(application_features::ApplicationServer& server,
                      velocypack::Slice const& slice,
                      std::string& errorField,
                      irs::string_ref const defaultVocbase,
@@ -233,6 +233,8 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
 
         if (!found && referencedAnalyzers) {
           // save in referencedAnalyzers
+
+          // FIXME translate features according to the current link version
           referencedAnalyzers->emplace(analyzer);
         }
 
@@ -399,7 +401,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
   return true;
 }
 
-bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
+bool FieldMeta::json(application_features::ApplicationServer& server,
                      velocypack::Builder& builder,
                      FieldMeta const* ignoreEqual /*= nullptr*/,
                      TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
@@ -462,8 +464,8 @@ bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
       for (auto& entry : _fields) {
         fieldMask._fields = !entry.value()->_fields.empty(); // do not output empty fields on subobjects
         fieldsBuilder.add( // add sub-object
-          arangodb::velocypack::StringRef(entry.key().c_str(), entry.key().size()), // field name
-          velocypack::Value(velocypack::ValueType::Object));
+          VPackStringRef(entry.key().c_str(), entry.key().size()), // field name
+          VPackValue(velocypack::ValueType::Object));
 
         if (!entry.value()->json(server, fieldsBuilder, &subDefaults, defaultVocbase, &fieldMask)) {
           return false;
@@ -732,7 +734,7 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
           }
         }
 
-        AnalyzerPool::AnalyzerFeatures features(_version);
+        Features features;
 
         {
           // optional string list
@@ -768,11 +770,11 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
           }
         }
 
-        arangodb::AnalyzersRevision::Revision revision{ arangodb::AnalyzersRevision::MIN };
+        AnalyzersRevision::Revision revision{ AnalyzersRevision::MIN };
         auto const revisionSlice = value.get(arangodb::StaticStrings::AnalyzersRevision);
         if (!revisionSlice.isNone()) {
           if (revisionSlice.isNumber()) {
-            revision = revisionSlice.getNumber<arangodb::AnalyzersRevision::Revision>();
+            revision = revisionSlice.getNumber<AnalyzersRevision::Revision>();
           } else {
             errorField = arangodb::StaticStrings::AnalyzersRevision;
             return false;
@@ -811,7 +813,7 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
                          defaults, mask, &_analyzerDefinitions);
 }
 
-bool IResearchLinkMeta::json(arangodb::application_features::ApplicationServer& server,
+bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
                              velocypack::Builder& builder,
                              bool writeAnalyzerDefinition,
                              IResearchLinkMeta const* ignoreEqual /*= nullptr*/,

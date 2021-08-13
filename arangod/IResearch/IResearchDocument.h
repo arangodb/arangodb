@@ -101,16 +101,12 @@ struct Field {
     return _name;
   }
 
-  const irs::features_t features() const noexcept {
-    TRI_ASSERT(_features);
-    auto const& field_features = _features->field_features();
-    return {field_features.data(),
-            field_features.size()};
+  irs::features_t features() const noexcept {
+    return _fieldFeatures;
   }
 
   irs::IndexFeatures index_features() const noexcept {
-    TRI_ASSERT(_features);
-    return _features->index_features();
+    return _indexFeatures;
   }
 
   irs::token_stream& get_tokens() const {
@@ -130,7 +126,8 @@ struct Field {
   irs::string_ref _name;
   irs::bytes_ref _value;
   ValueStorage _storeValues;
-  AnalyzerPool::AnalyzerFeatures const* _features{&AnalyzerPool::AnalyzerFeatures::empty_instance()};
+  irs::features_t _fieldFeatures;
+  irs::IndexFeatures _indexFeatures;
 };  // Field
 
 ////////////////////////////////////////////////////////////////////////////////

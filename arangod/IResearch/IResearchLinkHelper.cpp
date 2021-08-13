@@ -311,19 +311,18 @@ arangodb::Result modifyLinks(                              // modify links
     arangodb::velocypack::Builder namedJson;
 
     namedJson.openObject();
-    namedJson.add( // add
-      arangodb::StaticStrings::IndexType, // key
-      arangodb::velocypack::Value(LINK_TYPE) // value
-    );
-    namedJson.add( // add
-      arangodb::iresearch::StaticStrings::ViewIdField, // key
-      arangodb::velocypack::Value(view.guid()) // value
-    );
+    namedJson.add(
+      arangodb::StaticStrings::IndexType,
+      arangodb::velocypack::Value(LINK_TYPE));
+    namedJson.add(
+      arangodb::iresearch::StaticStrings::ViewIdField,
+      arangodb::velocypack::Value(view.guid()));
 
     if (!arangodb::iresearch::mergeSliceSkipKeys(namedJson, link, acceptor)) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
-        std::string("failed to update link definition with the view name while updating arangosearch view '") + view.name() + "' collection '" + collectionName + "'"
+        std::string("failed to update link definition with the view name while updating arangosearch view '") +
+        view.name() + "' collection '" + collectionName + "'"
       );
     }
 
@@ -336,7 +335,8 @@ arangodb::Result modifyLinks(                              // modify links
                        namedJson.slice(), true, error, view.vocbase().name())) {  // validated and normalized with 'isCreation=true' above via normalize(...)
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
-        std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "' collection '" + collectionName + "' error '" + error + "'"
+        std::string("error parsing link parameters from json for arangosearch view '") + view.name() +
+        "' collection '" + collectionName + "' error '" + error + "'"
       );
     }
 
