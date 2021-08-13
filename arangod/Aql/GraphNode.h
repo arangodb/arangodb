@@ -212,6 +212,8 @@ class GraphNode : public ExecutionNode {
  protected:  
   void doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const override;
 
+  void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone, bool withProperties) const;
+
  private:
   void addEdgeCollection(aql::Collections const& collections, std::string const& name, TRI_edge_direction_e dir);
   void addEdgeCollection(aql::Collection& collection, TRI_edge_direction_e dir);
