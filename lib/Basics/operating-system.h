@@ -172,7 +172,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
-#define TRI_O_TMPFILE O_TMPFILE
+#define TRI_O_TMPFILE 0
 #define TRI_NOATIME 0
 
 #define TRI_CHDIR ::chdir
