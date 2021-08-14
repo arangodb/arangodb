@@ -63,6 +63,7 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
 
  private:
   double _keepAliveTimeout = 300.0;
+  bool _exposeSupportInfoApi;
   bool _allowMethodOverride;
   bool _proxyCheck;
   bool _permanentRootRedirect;

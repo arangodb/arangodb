@@ -30,7 +30,7 @@
 #include "EnvironmentFeature.h"
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/MaxMapCountFeature.h"
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
@@ -41,6 +41,8 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/LogBufferFeature.h"
+#include "RestServer/MaxMapCountFeature.h"
 
 #ifdef __linux__
 #include <sys/sysinfo.h>
@@ -55,24 +57,36 @@ EnvironmentFeature::EnvironmentFeature(application_features::ApplicationServer& 
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 
+  startsAfter<LogBufferFeature>();
   startsAfter<MaxMapCountFeature>();
+  startsAfter<SharedPRNGFeature>();
 }
 
 void EnvironmentFeature::prepare() {
 #ifdef __linux__
+  _operatingSystem = "linux";
   try {
     if (basics::FileUtils::exists("/proc/version")) {
       std::string content;
       auto rv = basics::FileUtils::slurp("/proc/version", content);
       if (rv.ok()) {
-        std::string value = basics::StringUtils::trim(content);
-        LOG_TOPIC("75ddc", INFO, Logger::FIXME) << "detected operating system: " << value;
+        _operatingSystem = basics::StringUtils::trim(content);
       }
     }
   } catch (...) {
     // ignore any errors as the log output is just informational
   }
+#elif _WIN32
+  // TODO: improve Windows version detection
+  _operatingSystem = "windows";
+#elif __apple__
+  // TODO: improve MacOS version detection
+  _operatingSystem = "macos";
+#else
+  _operatingSystem = "unknown";
 #endif
+        
+  LOG_TOPIC("75ddc", INFO, Logger::FIXME) << "detected operating system: " << _operatingSystem;
 
   if (sizeof(void*) == 4) {
     // 32 bit build

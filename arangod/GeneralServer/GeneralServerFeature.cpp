@@ -84,9 +84,10 @@
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
-#include "RestHandler/RestSystemReportHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestSupervisionStateHandler.h"
+#include "RestHandler/RestSupportInfoHandler.h"
+#include "RestHandler/RestSystemReportHandler.h"
 #include "RestHandler/RestTasksHandler.h"
 #include "RestHandler/RestTestHandler.h"
 #include "RestHandler/RestTimeHandler.h"
@@ -121,6 +122,7 @@ static uint64_t const _maxIoThreads = 64;
 
 GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "GeneralServer"),
+      _exposeSupportInfoApi(true),
       _allowMethodOverride(false),
       _proxyCheck(true),
       _permanentRootRedirect(true),
@@ -153,6 +155,11 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "Number of threads used to handle IO",
                      new UInt64Parameter(&_numIoThreads),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  
+  options->addOption("--server.support-api",
+                     "Expose support info API for privileged users",
+                     new BooleanParameter(&_exposeSupportInfoApi))
+                     .setIntroducedIn(30900);
 
   options->addSection("http", "HTTP server features");
 
@@ -554,6 +561,11 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler("/_admin/status",
                               RestHandlerCreator<RestStatusHandler>::createNoData);
+ 
+  if (_exposeSupportInfoApi) {
+    _handlerFactory->addHandler("/_admin/support-info",
+                                RestHandlerCreator<RestSupportInfoHandler>::createNoData);
+  }
 
   _handlerFactory->addHandler("/_admin/system-report",
                               RestHandlerCreator<RestSystemReportHandler>::createNoData);

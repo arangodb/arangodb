@@ -1,6 +1,18 @@
 devel
 -----
 
+* Added metrics for the number of errors and warnings logged:
+  - `arangodb_logger_warnings_total`: total number of warnings (WARN messages)
+    logged since server start.
+  - `arangodb_logger_errors_total`: total number of errors (ERR messages)
+    logged since server start.
+
+* Added REST API `/_admin/support-info` to retrieve deployment information.
+  As this API may reveal sensitive data about the deployment, it can only 
+  be accessed from inside the system database and only if `--server.harden` 
+  is not set. The API can also be turned off entirely using the new startup
+  option flag `--server.support-api`.
+
 * Improve log messages for Pregel runs by giving them more context.
 
 * Add ReplicatedLogs column family.

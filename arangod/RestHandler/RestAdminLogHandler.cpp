@@ -35,12 +35,12 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "Logger/LogBufferFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
+#include "RestServer/LogBufferFeature.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;

@@ -23,10 +23,8 @@
 
 #include "ServerFeature.h"
 
-#include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/SupervisorFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
@@ -41,7 +39,9 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"
+#include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SupervisorFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
