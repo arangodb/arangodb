@@ -107,7 +107,7 @@ void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto result = v8::Array::New(isolate);
 
     analyzer->features().visit(
-        [&result, &context, &isolate, i = size_t{0}](std::string_view feature) mutable {
+        [&result, &context, &isolate, i = uint32_t{0}](std::string_view feature) mutable {
       if (feature.empty()) {
         result->Set(context, i++, v8::Null(isolate)).FromMaybe(false);
       } else {
