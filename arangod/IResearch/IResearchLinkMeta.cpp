@@ -781,6 +781,8 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
           }
         }
 
+        features.translate(LinkVersion{_version});
+
         AnalyzerPool::ptr analyzer;
         auto const res = IResearchAnalyzerFeature::createAnalyzerPool(
           analyzer, name, type, properties, revision, features);

@@ -61,7 +61,6 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearchAqlAnalyzer.h"
-#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchLink.h"
 #include "Logger/LogMacros.h"
@@ -2900,6 +2899,18 @@ bool Features::add(irs::string_ref featureName) {
   return true;
 }
 
+void Features::translate(LinkVersion version) noexcept {
+  for (auto& feature : _fieldFeatures) {
+    if (feature == irs::type<irs::norm>::id() &&
+        version > LinkVersion::MIN) {
+      feature = irs::type<irs::norm2>::id();
+    } else if (feature == irs::type<irs::norm2>::id() &&
+               version < LinkVersion::MAX) {
+      feature = irs::type<irs::norm>::id();
+    }
+  }
+}
+
 Result Features::validate() const {
   if (irs::IndexFeatures::POS == (_indexFeatures & irs::IndexFeatures::POS)) {
     if (irs::IndexFeatures::FREQ != (_indexFeatures & irs::IndexFeatures::FREQ)) {
@@ -2928,7 +2939,7 @@ Result Features::validate() const {
   return {};
 }
 
-Features const& Features::empty_instance() {
+Features const& Features::emptyInstance() {
   return EMPTY_FEATURES_INSTANCE;
 }
 

@@ -56,7 +56,8 @@
 #include "Basics/Result.h"
 #include "Basics/Identifier.h" // this include only need to make clang see << operator for Identifier
 #include "Cluster/ClusterTypes.h"
-#include "IResearchAnalyzerValueTypeAttribute.h"
+#include "IResearch/IResearchAnalyzerValueTypeAttribute.h"
+#include "IResearch/IResearchCommon.h"
 #include "Scheduler/SchedulerFeature.h"
 
 struct TRI_vocbase_t; // forward declaration
@@ -114,15 +115,17 @@ class Features {
     return !(*this == rhs);
   }
 
-  irs::features_t field_features() const noexcept {
+  irs::features_t fieldFeatures() const noexcept {
     return { _fieldFeatures.data(), _fieldFeatures.size() };
   }
 
-  irs::IndexFeatures index_features() const noexcept {
+  irs::IndexFeatures indexFeatures() const noexcept {
     return _indexFeatures;
   }
 
-  static Features const& empty_instance();
+  void translate(LinkVersion version) noexcept;
+
+  static Features const& emptyInstance();
 
  private:
   // we need plain layout to meet iresearch library expectations
@@ -192,7 +195,7 @@ class AnalyzerPool : private irs::util::noncopyable {
   bool init(irs::string_ref const& type,
             VPackSlice const properties,
             AnalyzersRevision::Revision revision,
-            Features const& features = Features::empty_instance());
+            Features const& features = Features::emptyInstance());
   void setKey(irs::string_ref const& type);
 
   // cache of irs::analysis::analyzer
@@ -347,7 +350,7 @@ class IResearchAnalyzerFeature final
                  irs::string_ref const& name,
                  irs::string_ref const& type,
                  VPackSlice const properties,
-                 Features const& features = Features::empty_instance());
+                 Features const& features = Features::emptyInstance());
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Emplaces batch of analyzers within single analyzers revision. Intended for use

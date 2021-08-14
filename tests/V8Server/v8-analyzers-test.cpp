@@ -699,7 +699,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
     ASSERT_EQ(v8AnalyzerWeak->features(),
-              arangodb::iresearch::Features::empty_instance());
+              arangodb::iresearch::Features::emptyInstance());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
@@ -766,7 +766,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
     ASSERT_EQ(v8AnalyzerWeak->features(),
-              arangodb::iresearch::Features::empty_instance());
+              arangodb::iresearch::Features::emptyInstance());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
@@ -801,7 +801,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
     ASSERT_EQ(v8AnalyzerWeak->features(),
-              arangodb::iresearch::Features::empty_instance());
+              arangodb::iresearch::Features::emptyInstance());
     auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
@@ -835,7 +835,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
     ASSERT_EQ(v8AnalyzerWeak->features(),
-              arangodb::iresearch::Features::empty_instance());
+              arangodb::iresearch::Features::emptyInstance());
     auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer4", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_NE(nullptr, analyzer);
   }
@@ -1018,7 +1018,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
     ASSERT_EQ(v8AnalyzerWeak->features(),
-              arangodb::iresearch::Features::empty_instance());
+              arangodb::iresearch::Features::emptyInstance());
   }
 
   // get custom (known analyzer) authorized but wrong current db
@@ -1082,7 +1082,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
     ASSERT_EQ(v8AnalyzerWeak->features(),
-              arangodb::iresearch::Features::empty_instance());
+              arangodb::iresearch::Features::emptyInstance());
   }
 
   // get custom (known analyzer) not authorized

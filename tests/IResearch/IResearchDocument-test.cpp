@@ -396,7 +396,7 @@ class IResearchDocumentTest
         arangodb::StaticStrings::SystemDatabase + "::iresearch-vpack-analyzer",
         "iresearch-vpack-analyzer",
         VPackSlice::emptyObjectSlice(),
-        arangodb::iresearch::Features::empty_instance());
+        arangodb::iresearch::Features::emptyInstance());
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
@@ -404,21 +404,21 @@ class IResearchDocumentTest
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-number",
         "iresearch-document-typed",
         arangodb::velocypack::Parser::fromJson("{ \"type\": \"number\" }")->slice(),
-        arangodb::iresearch::Features::empty_instance());
+        arangodb::iresearch::Features::emptyInstance());
     EXPECT_TRUE(res.ok());
     res = analyzers.emplace(
         result,
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-bool",
         "iresearch-document-typed",
         arangodb::velocypack::Parser::fromJson("{ \"type\": \"bool\" }")->slice(),
-        arangodb::iresearch::Features::empty_instance());
+        arangodb::iresearch::Features::emptyInstance());
     EXPECT_TRUE(res.ok());
     res = analyzers.emplace(
         result,
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-string",
         "iresearch-document-typed",
         arangodb::velocypack::Parser::fromJson("{ \"type\": \"string\" }")->slice(),
-        arangodb::iresearch::Features::empty_instance());
+        arangodb::iresearch::Features::emptyInstance());
     EXPECT_TRUE(res.ok());
   }
 };
@@ -904,8 +904,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
     auto expectedFeatures = arangodb::iresearch::Features({}, irs::IndexFeatures::FREQ);
-    EXPECT_EQ(expectedFeatures.field_features(), field.features());
-    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
+    EXPECT_EQ(expectedFeatures.fieldFeatures(), field.features());
+    EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
   }
 
   ++it;
@@ -918,8 +918,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<irs::null_token_stream&>(field.get_tokens());
     auto expectedFeatures = arangodb::iresearch::Features(
       {}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.field_features(), field.features());
-    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
+    EXPECT_EQ(expectedFeatures.fieldFeatures(), field.features());
+    EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -933,8 +933,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
     auto expectedFeatures = arangodb::iresearch::Features(
       {}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.field_features(), field.features());
-    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
+    EXPECT_EQ(expectedFeatures.fieldFeatures(), field.features());
+    EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -948,8 +948,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
     auto expectedFeatures = arangodb::iresearch::Features(
       {}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.field_features(), field.features());
-    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
+    EXPECT_EQ(expectedFeatures.fieldFeatures(), field.features());
+    EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -963,8 +963,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     auto expectedFeatures = arangodb::iresearch::Features(
       {irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.field_features(), field.features());
-    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
+    EXPECT_EQ(expectedFeatures.fieldFeatures(), field.features());
+    EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -978,8 +978,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     auto expectedFeatures = arangodb::iresearch::Features(
       {irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.field_features(), field.features());
-    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
+    EXPECT_EQ(expectedFeatures.fieldFeatures(), field.features());
+    EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -993,8 +993,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     auto expectedFeatures = arangodb::iresearch::Features(
       {irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.field_features(), field.features());
-    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
+    EXPECT_EQ(expectedFeatures.fieldFeatures(), field.features());
+    EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -1008,8 +1008,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     auto expectedFeatures = arangodb::iresearch::Features(
       {irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.field_features(), field.features());
-    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
+    EXPECT_EQ(expectedFeatures.fieldFeatures(), field.features());
+    EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -1023,8 +1023,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     auto expectedFeatures = arangodb::iresearch::Features(
       {irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.field_features(), field.features());
-    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
+    EXPECT_EQ(expectedFeatures.fieldFeatures(), field.features());
+    EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -1038,8 +1038,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     auto expectedFeatures = arangodb::iresearch::Features(
       {irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.field_features(), field.features());
-    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
+    EXPECT_EQ(expectedFeatures.fieldFeatures(), field.features());
+    EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -1053,8 +1053,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     auto expectedFeatures = arangodb::iresearch::Features(
       {irs::type<irs::granularity_prefix>::id()}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.field_features(), field.features());
-    EXPECT_EQ(expectedFeatures.index_features(), field.index_features());
+    EXPECT_EQ(expectedFeatures.fieldFeatures(), field.features());
+    EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
 
