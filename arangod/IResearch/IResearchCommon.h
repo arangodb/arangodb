@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include <array>
+
 #include "Basics/system-compiler.h"
 #include "Logger/LogTopic.h"
 #include "VocBase/LogicalDataSource.h"
