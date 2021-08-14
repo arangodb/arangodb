@@ -3685,19 +3685,19 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
         return false;
       }
 
-      if (_features.indexFeatures() < other._features.index_features()) {
+      if (_features.indexFeatures() < other._features.indexFeatures()) {
         return true;
       }
 
-      if (_features.indexFeatures() < other._features.index_features()) {
+      if (_features.indexFeatures() < other._features.indexFeatures()) {
         return false;
       }
 
-      if (_features.fieldFeatures().size() < other._features.field_features().size()) {
+      if (_features.fieldFeatures().size() < other._features.fieldFeatures().size()) {
         return true;
       }
 
-      if (_features.fieldFeatures().size()  < other._features.field_features().size()) {
+      if (_features.fieldFeatures().size()  < other._features.fieldFeatures().size()) {
         return false;
       }
 
