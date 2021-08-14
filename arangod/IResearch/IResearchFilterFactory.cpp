@@ -512,14 +512,6 @@ FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
   exprFilter.boost(filterCtx.boost);
 }
 
-FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
-                                   std::shared_ptr<aql::AstNode>&& node,
-                                   QueryContext const& ctx, FilterContext const& filterCtx) {
-  auto& exprFilter = filter.add<arangodb::iresearch::ByExpression>();
-  exprFilter.init(*ctx.plan, *ctx.ast, std::move(node));
-  exprFilter.boost(filterCtx.boost);
-}
-
 Result byTerm(irs::by_term* filter, std::string&& name,
               ScopedAqlValue const& value, QueryContext const& /*ctx*/,
               FilterContext const& filterCtx) {

@@ -737,13 +737,13 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
     return auth::TokenCache::Entry::Superuser();
   }
 
-  std::string::size_type methodPos = authStr.find_first_of(' ');
+  std::string::size_type methodPos = authStr.find(' ');
   if (methodPos == std::string::npos) {
     events::UnknownAuthenticationMethod(req);
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
-  // skip over authentication method
+  // skip over authentication method and following whitespace
   char const* auth = authStr.c_str() + methodPos;
   while (*auth == ' ') {
     ++auth;
@@ -770,6 +770,7 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
 
   auto authToken = this->_auth->tokenCache().checkAuthentication(authMethod, auth);
   req.setAuthenticated(authToken.authenticated());
+  req.setTokenExpiry(authToken.expiry());
   req.setUser(authToken.username());  // do copy here, so that we do not invalidate the member
   if (authToken.authenticated()) {
     events::Authenticated(req, authMethod);

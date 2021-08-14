@@ -88,11 +88,11 @@ int main(int argc, char* argv[]) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC("0a1a9", ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("0a1a9", ERR, arangodb::Logger::BENCH)
           << "arangobench terminated because of an unhandled exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG_TOPIC("61697", ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("61697", ERR, arangodb::Logger::BENCH)
           << "arangobench terminated because of an unhandled exception of "
              "unknown type";
       ret = EXIT_FAILURE;
