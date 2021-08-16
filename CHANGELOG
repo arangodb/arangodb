@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed: _api/transaction/begin called on edge collections of disjoint
+  SmartGraphs falsely returned CollectionNotFound errors.
+
 * Improve log messages for Pregel runs by giving them more context.
 
 * Add ReplicatedLogs column family.
