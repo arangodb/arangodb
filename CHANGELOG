@@ -1,6 +1,9 @@
 v3.7.14 (XXXX-XX-XX)
 --------------------
 
+* Fixed: _api/transaction/begin called on edge collections of disjoint
+  SmartGraphs falsely returned CollectionNotFound errors.
+
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented cases
   and numerically unstable behaviour. In particular, the case of the
   intersection of two polygons in which one is an S2LngLatRect is fixed
