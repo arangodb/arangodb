@@ -60,12 +60,11 @@ struct IndexTypeFactory {
                                              bool isClusterConstructor) const = 0;
 
   /// @brief normalize an Index definition prior to instantiation/persistence
-  virtual Result normalize( // normalize definition
-    velocypack::Builder& normalized, // normalized definition (out-param)
-    velocypack::Slice definition, // source definition
-    bool isCreation, // definition for index creation
-    TRI_vocbase_t const& vocbase // index vocbase
-  ) const = 0;
+  virtual Result normalize(
+    velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation,
+    TRI_vocbase_t const& vocbase) const = 0;
 
   /// @brief the order of attributes matters by default  
   virtual bool attributeOrderMatters() const {

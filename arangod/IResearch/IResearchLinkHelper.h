@@ -96,17 +96,16 @@ struct IResearchLinkHelper {
   /// @note engine == nullptr then SEGFAULT in Methods constructor during insert
   /// @note true == inRecovery() then AnalyzerFeature will not allow persistence
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result normalize( // normalize definition
-    arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
-    arangodb::velocypack::Slice definition, // source definition
-    bool isCreation, // definition for index creation
-    TRI_vocbase_t const& vocbase, // index vocbase
+  static arangodb::Result normalize(
+    arangodb::velocypack::Builder& normalized,
+    arangodb::velocypack::Slice definition,
+    bool isCreation,
+    TRI_vocbase_t const& vocbase,
     IResearchViewSort const* primarySort = nullptr,
     irs::type_info::type_id const* primarySortCompression = nullptr,
     IResearchViewStoredValues const* storedValues = nullptr,
-    arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice(), // id for normalized
-    irs::string_ref collectionName = irs::string_ref::NIL
-  );
+    arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice(),
+    irs::string_ref collectionName = irs::string_ref::NIL);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief IResearch Link index type string value

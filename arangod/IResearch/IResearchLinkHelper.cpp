@@ -288,8 +288,7 @@ arangodb::Result modifyLinks(                              // modify links
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
         normalized, link, true, view.vocbase(), &view.primarySort(),
         &view.primarySortCompression(), &view.storedValues(),
-        link.get(arangodb::StaticStrings::IndexId), collectionName
-    );
+        link.get(arangodb::StaticStrings::IndexId), collectionName);
 
     if (!res.ok()) {
       return res;
