@@ -1,6 +1,9 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Bug-Fix: In more complex queries there was a code-path where a (Disjoint-) Smart
+  graph access was not properly optimized.
+
 * Fixed issue BTS-539 "Unsynchronized query kill while it's being finalized in
   another thread was uncovered through `test-kill.js` of `communication_ssl`
   suite". Fixed possible (but unlikely) crash when killing an AQL query.
