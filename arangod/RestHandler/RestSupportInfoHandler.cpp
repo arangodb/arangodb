@@ -47,6 +47,7 @@
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utils/ExecContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -75,11 +76,13 @@ RestSupportInfoHandler::RestSupportInfoHandler(application_features::Application
     : RestBaseHandler(server, request, response) {}
   
 RestStatus RestSupportInfoHandler::execute() {
-  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
-  if (!security.canAccessHardenedApi()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "insufficent permissions");
-    return RestStatus::DONE;
+  if (!ExecContext::current().isSuperuser()) {
+    ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+    if (!security.canAccessHardenedApi()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "insufficent permissions");
+      return RestStatus::DONE;
+    }
   }
 
   if (_request->databaseName() != StaticStrings::SystemDatabase) {
@@ -94,29 +97,31 @@ RestStatus RestSupportInfoHandler::execute() {
   std::string timeString;
   LogTimeFormats::writeTime(timeString, LogTimeFormats::TimeFormat::UTCDateString, std::chrono::system_clock::now());
     
-  bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+  bool const isActiveFailover = server().getFeature<ReplicationFeature>().isActiveFailoverEnabled();
+  bool const fanout = (ServerState::instance()->isCoordinator() || isActiveFailover) && 
+                      !_request->parsedValue("local", false);
 
   VPackBuilder result;
   result.openObject();
   
-  if (server().getFeature<ReplicationFeature>().isActiveFailoverEnabled()) {
-    result.add("deployment", VPackValue(VPackValueType::Object));
-    result.add("type", VPackValue("active-failover"));
-    result.close(); // deployment
-    result.add("host", hostInfo.slice());
-    result.add("date", VPackValue(timeString));
-  } else if (ServerState::instance()->isSingleServer()) {
+  if (ServerState::instance()->isSingleServer() && !isActiveFailover) {
     result.add("deployment", VPackValue(VPackValueType::Object));
     result.add("type", VPackValue("single"));
     result.close(); // deployment
     result.add("host", hostInfo.slice());
     result.add("date", VPackValue(timeString));
   } else {
-    // cluster
+    // cluster or active failover
     if (fanout) {
-      // coordinator case, fan out to other servers!
+      // cluster coordinator or active failover case, fan out to other servers!
       result.add("deployment", VPackValue(VPackValueType::Object));
-      result.add("type", VPackValue("cluster"));
+      if (isActiveFailover) {
+        TRI_ASSERT(!ServerState::instance()->isCoordinator());
+        result.add("type", VPackValue("active-failover"));
+      } else {
+        TRI_ASSERT(ServerState::instance()->isCoordinator());
+        result.add("type", VPackValue("cluster"));
+      }
       
       // build results for all servers
       result.add("servers", VPackValue(VPackValueType::Object));
@@ -133,7 +138,7 @@ RestStatus RestSupportInfoHandler::execute() {
       std::vector<network::FutureRes> futures;
 
       network::RequestOptions options;
-      options.timeout = network::Timeout(15.0);
+      options.timeout = network::Timeout(30.0);
       options.database = _request->databaseName();
       options.param("local", "true");
       options.param("support", "true");
@@ -148,7 +153,11 @@ RestStatus RestSupportInfoHandler::execute() {
           ++coordinators;
         } else if (server.first.compare(0, 4, "PRMR", 4) == 0) {
           ++dbServers;
-        } 
+        } else if (server.first.compare(0, 4, "SNGL", 4) == 0) {
+          // SNGL counts as DB server here
+          TRI_ASSERT(isActiveFailover);
+          ++dbServers;
+        }
         if (server.first == ServerState::instance()->getId()) {
           // ourselves!
           continue;
@@ -187,8 +196,11 @@ RestStatus RestSupportInfoHandler::execute() {
       result.add("coordinators", VPackValue(coordinators));
       result.add("dbServers", VPackValue(dbServers));
 
-      result.add(VPackValue("shards"));
-      ci.getShardStatisticsGlobal(/*restrictServer*/ "", result);
+      if (ServerState::instance()->isCoordinator()) {
+        result.add(VPackValue("shards"));
+        ci.getShardStatisticsGlobal(/*restrictServer*/ "", result);
+      }
+      
       result.close(); // deployment
       
       result.add("date", VPackValue(timeString));
@@ -205,9 +217,11 @@ RestStatus RestSupportInfoHandler::execute() {
 }
 
 void RestSupportInfoHandler::buildHostInfo(VPackBuilder& result) {
+  bool const isActiveFailover = server().getFeature<ReplicationFeature>().isActiveFailoverEnabled();
+  
   result.openObject();
 
-  if (ServerState::instance()->isRunningInCluster()) {
+  if (ServerState::instance()->isRunningInCluster() || isActiveFailover) {
     result.add("id", VPackValue(ServerState::instance()->getId()));
     result.add("alias", VPackValue(ServerState::instance()->getShortName()));
     result.add("endpoint", VPackValue(ServerState::instance()->getEndpoint()));
