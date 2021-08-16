@@ -1,17 +1,17 @@
 devel
 -----
-<<<<<<< HEAD
+
 * Some AQL queries erroneously reported the "access after data-modification" 
   error for queries in which there was a read attempt from a collection
   _before_ a data-modification operation. Such access is legal and should not
   trigger said error anymore. Accessing a collection _after_ in a query a 
   data-modification in the same query is still disallowed.
 
-* Bugfix: In more complex queries there was a code-path where a (Disjoint-) 
-  Smart graph access was not properly optimized.
-
 * Fixed: _api/transaction/begin called on edge collections of disjoint
   SmartGraphs falsely returned CollectionNotFound errors.
+
+* Bugfix: In more complex queries there was a code-path where a (Disjoint-) 
+  Smart graph access was not properly optimized.
 
 * Improve log messages for Pregel runs by giving them more context.
 
