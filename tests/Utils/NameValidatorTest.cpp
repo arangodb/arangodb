@@ -36,7 +36,7 @@ TEST(NameValidatorTest, test_isSystemName) {
   EXPECT_FALSE(arangodb::NameValidator::isSystemName("abc_"));
 }
 
-TEST(DatabaseNameValidatorTest, test_isAllowedName_oldConvention) {
+TEST(DatabaseNameValidatorTest, test_isAllowedName_traditionalNames) {
   // direct (non-system)
   std::string const borderline(64, 'x');
   std::string const borderlineSystem(std::string("_") + std::string(borderline.size() - 1, 'x'));
@@ -91,7 +91,7 @@ TEST(DatabaseNameValidatorTest, test_isAllowedName_oldConvention) {
   EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("ﻚﻠﺑ ﻞﻄﻴﻓ")));
 }
 
-TEST(DatabaseNameValidatorTest, test_isAllowedName_newConvention) {
+TEST(DatabaseNameValidatorTest, test_isAllowedName_extendedNames) {
   // direct (non-system)
   std::string const borderline(128, 'x');
   std::string const tooLong(borderline.size() + 1, 'x');
@@ -143,7 +143,7 @@ TEST(DatabaseNameValidatorTest, test_isAllowedName_newConvention) {
   EXPECT_TRUE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("ﻚﻠﺑ ﻞﻄﻴﻓ")));
 }
 
-TEST(CollectionNameValidatorTest, test_isAllowedName_oldConvention) {
+TEST(CollectionNameValidatorTest, test_isAllowedName_traditionalNames) {
   // direct (non-system)
   std::string const borderline(256, 'x');
   std::string const borderlineSystem(std::string("_") + std::string(borderline.size() - 1, 'x'));
@@ -156,6 +156,9 @@ TEST(CollectionNameValidatorTest, test_isAllowedName_oldConvention) {
     EXPECT_FALSE(arangodb::CollectionNameValidator::isAllowedName(false, false, arangodb::velocypack::StringRef("123")));
     EXPECT_FALSE(arangodb::CollectionNameValidator::isAllowedName(false, false, arangodb::velocypack::StringRef("_123")));
     EXPECT_FALSE(arangodb::CollectionNameValidator::isAllowedName(false, false, arangodb::velocypack::StringRef("_abc")));
+    EXPECT_FALSE(arangodb::CollectionNameValidator::isAllowedName(false, false, arangodb::velocypack::StringRef("_")));
+    EXPECT_FALSE(arangodb::CollectionNameValidator::isAllowedName(false, false, arangodb::velocypack::StringRef(":")));
+    EXPECT_FALSE(arangodb::CollectionNameValidator::isAllowedName(false, false, arangodb::velocypack::StringRef("abc:d")));
     EXPECT_TRUE(arangodb::CollectionNameValidator::isAllowedName(false, false, arangodb::velocypack::StringRef(borderline)));  
     EXPECT_FALSE(arangodb::CollectionNameValidator::isAllowedName(false, false, arangodb::velocypack::StringRef(borderlineSystem)));  
     EXPECT_FALSE(arangodb::CollectionNameValidator::isAllowedName(false, false, arangodb::velocypack::StringRef(tooLong))); 
@@ -193,7 +196,7 @@ TEST(CollectionNameValidatorTest, test_isAllowedName_oldConvention) {
   EXPECT_FALSE(arangodb::CollectionNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("ﻚﻠﺑ ﻞﻄﻴﻓ")));
 }
 
-TEST(CollectionNameValidatorTest, test_isAllowedName_newConvention) {
+TEST(CollectionNameValidatorTest, test_isAllowedName_extendedNames) {
   // direct (non-system)
   std::string const borderline(256, 'x');
   std::string const borderlineSystem(std::string("_") + std::string(borderline.size() - 1, 'x'));
@@ -206,6 +209,9 @@ TEST(CollectionNameValidatorTest, test_isAllowedName_newConvention) {
     EXPECT_FALSE(arangodb::CollectionNameValidator::isAllowedName(false, true, arangodb::velocypack::StringRef("123")));
     EXPECT_FALSE(arangodb::CollectionNameValidator::isAllowedName(false, true, arangodb::velocypack::StringRef("_123")));
     EXPECT_FALSE(arangodb::CollectionNameValidator::isAllowedName(false, true, arangodb::velocypack::StringRef("_abc")));
+    EXPECT_FALSE(arangodb::CollectionNameValidator::isAllowedName(false, true, arangodb::velocypack::StringRef("_")));
+    EXPECT_TRUE(arangodb::CollectionNameValidator::isAllowedName(false, true, arangodb::velocypack::StringRef(":")));
+    EXPECT_TRUE(arangodb::CollectionNameValidator::isAllowedName(false, true, arangodb::velocypack::StringRef("abc:d")));
     EXPECT_TRUE(arangodb::CollectionNameValidator::isAllowedName(false, true, arangodb::velocypack::StringRef(borderline)));  
     EXPECT_FALSE(arangodb::CollectionNameValidator::isAllowedName(false, true, arangodb::velocypack::StringRef(tooLong))); 
   }
@@ -244,4 +250,83 @@ TEST(CollectionNameValidatorTest, test_isAllowedName_newConvention) {
   EXPECT_TRUE(arangodb::CollectionNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("😀 🍺")));
   EXPECT_TRUE(arangodb::CollectionNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("maçã")));
   EXPECT_TRUE(arangodb::CollectionNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("ﻚﻠﺑ ﻞﻄﻴﻓ")));
+}
+
+TEST(IndexNameValidatorTest, test_isAllowedName_traditionalNames) {
+  // direct (non-system)
+  std::string const borderline(256, 'x');
+  std::string const borderlineSystem(std::string("_") + std::string(borderline.size() - 1, 'x'));
+  std::string const tooLong(borderline.size() + 1, 'x');
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false,  arangodb::velocypack::StringRef(nullptr, 0)));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("abc123")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("123abc")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("123")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("_123")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("_abc")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("_")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef(":")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("abc:d")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef(borderline)));  
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef(borderlineSystem)));  
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef(tooLong))); 
+
+  // special characters
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef(" a + & ? = abc ")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("<script>alert(1);")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("a b c")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("test123 & ' \" < > abc")));
+  
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("abc:cde")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef(".abc")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("a\0b", 3)));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("a/b")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("//")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("/\\")));
+  
+  // unicode 
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("mötör")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("😀")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("😀 🍺")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("maçã")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("ﻚﻠﺑ ﻞﻄﻴﻓ")));
+}
+
+TEST(IndexNameValidatorTest, test_isAllowedName_extendedNames) {
+  // direct (non-system)
+  std::string const borderline(256, 'x');
+  std::string const borderlineSystem(std::string("_") + std::string(borderline.size() - 1, 'x'));
+  std::string const tooLong(borderline.size() + 1, 'x');
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef(nullptr, 0)));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("abc123")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("123abc")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("123")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("_123")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("_abc")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef(borderline)));  
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef(borderlineSystem))); 
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef(tooLong))); 
+
+  // special characters
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef(" a + & ? = abc ")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("<script>alert(1);")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("a b c")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("test123 & ' \" < > abc")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("abc:cde")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef(".abc")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("a\0b", 3)));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("/")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("/\\")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("a/")));
+  EXPECT_FALSE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("a/b")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("a\\b")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("a.b.c")));
+  
+  // unicode 
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("mötör")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("😀")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("😀 🍺")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("maçã")));
+  EXPECT_TRUE(arangodb::IndexNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("ﻚﻠﺑ ﻞﻄﻴﻓ")));
 }
