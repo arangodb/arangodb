@@ -3,6 +3,11 @@ devel
 
 * Error codes licsnsing
 
+* Bug-Fix: In more complex queries there was a code-path where a (Disjoint-) Smart
+  graph access was not properly optimized.
+
+* Improve log messages for Pregel runs by giving them more context.
+
 * Add ReplicatedLogs column family.
 
 * Add optimization rule for AqlAnalyzer.
