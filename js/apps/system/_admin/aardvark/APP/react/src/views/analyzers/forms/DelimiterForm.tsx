@@ -16,7 +16,13 @@ const DelimiterForm = ({ state, dispatch }: FormProps) => {
 
   return <div className={'pure-g'}>
     <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-      <label htmlFor={'delimiter'} style={{ cursor: 'default' }}>Delimiter</label>
+      <label htmlFor={'delimiter'} style={{ cursor: 'default' }}>
+        Delimiter&nbsp;
+        <a target={'_blank'} href={'https://www.arangodb.com/docs/stable/analyzers.html#delimiter'}
+           rel="noreferrer">
+          <i className={'fa fa-question-circle'}/>
+        </a>
+      </label>
       <input id="delimiter" type="text" placeholder="Delimiting Characters" required={true}
              value={formState.properties.delimiter} onChange={updateDelimiter}
              style={{

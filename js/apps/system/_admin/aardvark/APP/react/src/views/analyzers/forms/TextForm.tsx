@@ -2,6 +2,7 @@ import React, { ChangeEvent } from "react";
 import { FormProps, TextState } from "../constants";
 import CaseInput from "./CaseInput";
 import { filter, get, isEmpty, negate } from 'lodash';
+import LocaleInput from "./LocaleInput";
 
 const EdgeNGramInput = ({ state, dispatch }: FormProps) => {
   const updateMinLength = (event: ChangeEvent<HTMLInputElement>) => {
@@ -78,16 +79,6 @@ const EdgeNGramInput = ({ state, dispatch }: FormProps) => {
 };
 
 const TextForm = ({ state, dispatch }: FormProps) => {
-  const updateLocale = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.locale',
-        value: event.target.value
-      }
-    });
-  };
-
   const updateStopwords = (event: ChangeEvent<HTMLTextAreaElement>) => {
     const stopwords = event.target.value.split('\n');
 
@@ -149,13 +140,7 @@ const TextForm = ({ state, dispatch }: FormProps) => {
     <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
       <div className={'pure-g'}>
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <label htmlFor={'locale'} style={{ cursor: 'default' }}>Locale</label>
-          <input id="locale" type="text" placeholder="language[_COUNTRY][.encoding][@variant]"
-                 value={formState.properties.locale} onChange={updateLocale} required={true}
-                 style={{
-                   height: 'auto',
-                   width: '90%'
-                 }}/>
+          <LocaleInput formState={formState} dispatch={dispatch}/>
         </div>
 
         <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
