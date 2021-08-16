@@ -1,6 +1,10 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Make AQL modification operations in a cluster asynchronous. This allows to
+  free the thread for other work until both the write and synchronous
+  replication are complete.
+
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented cases
   and numerically unstable behaviour. In particular, the case of the
   intersection of two polygons in which one is an S2LngLatRect is fixed
