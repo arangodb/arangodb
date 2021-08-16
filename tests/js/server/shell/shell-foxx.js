@@ -1783,6 +1783,51 @@ function ExtendFoxxControllerSpec () {
   };
 }
 
+function CheckUnicodeDatabaseDirectories () {
+  'use strict';
+  let internal = require('internal');
+  let db = internal.db;
+  let appPath = internal.appPath;
+  let fs = require('fs'); 
+  return {
+    setUp: function () {
+    },
+
+    tearDown: function () {
+      db._useDatabase("_system");
+      db._databases().forEach((database) => {
+        if(database !== "_system") {
+          db._dropDatabase(database);
+        }
+      });
+    },
+
+    testDirectoryCreation: function () {
+      db._createDatabase("testName");
+      internal.sleep(5);
+      let dbPath = fs.join(appPath, "_db", "testName");
+      console = require('console');
+      console.log("dbPath ", dbPath, fs.listTree(appPath));
+      assertTrue(fs.isDirectory(dbPath));
+    },
+
+    testUnicodeDirectoryCreation: function () {
+      try {
+        db._createDatabase("maçã");
+        db._useDatabase("maçã");
+        let dbPath = fs.join(appPath, "_db", db._id());
+        console = require('console');
+        console.log("dbPath ",  dbPath, fs.listTree(appPath));
+        assertTrue(fs.isDirectory(dbPath));
+      } finally {
+        db._useDatabase("_system");
+      }
+    }
+
+  };
+}
+
+
 jsunity.run(CreateFoxxControllerSpec);
 jsunity.run(SetRoutesFoxxControllerSpec);
 jsunity.run(ControllerInjectionSpec);
@@ -1793,5 +1838,7 @@ jsunity.run(CommentDrivenDocumentationSpec);
 jsunity.run(SetupAuthorization);
 jsunity.run(SetupSessions);
 jsunity.run(FoxxControllerWithRootElement);
+jsunity.run(CheckUnicodeDatabaseDirectories);
+
 
 return jsunity.done();

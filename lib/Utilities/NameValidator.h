@@ -40,14 +40,14 @@ struct NameValidator {
 struct DatabaseNameValidator {
   /// @brief maximal database name length, in bytes (old convention, used when
   /// `--database.extended-names-databases=false`)
-  static constexpr std::size_t maxNameLengthOldConvention = 64;
+  static constexpr std::size_t maxNameLengthTraditional = 64;
   /// @brief maximal database name length, in bytes (new convention, used when
   /// `--database.extended-names-databases=true`)
-  static constexpr std::size_t maxNameLengthNewConvention = 128;
+  static constexpr std::size_t maxNameLengthExtended = 128;
 
   /// @brief maximum length of a database name (in bytes), based on convention
   static constexpr std::size_t maxNameLength(bool extendedNames) noexcept {
-    return extendedNames ? maxNameLengthNewConvention : maxNameLengthOldConvention;
+    return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
 
   /// @brief checks if a database name is allowed in the given context.
@@ -58,12 +58,12 @@ struct DatabaseNameValidator {
 
 struct CollectionNameValidator {
   /// @brief maximal collection name length, in bytes
-  static constexpr std::size_t maxNameLengthOldConvention = 256;
-  static constexpr std::size_t maxNameLengthNewConvention = maxNameLengthOldConvention;
+  static constexpr std::size_t maxNameLengthTraditional = 256;
+  static constexpr std::size_t maxNameLengthExtended = maxNameLengthTraditional;
 
   /// @brief maximum length of a collection name (in bytes), (not yet) based on convention
   static constexpr std::size_t maxNameLength(bool extendedNames) noexcept {
-    return extendedNames ? maxNameLengthNewConvention : maxNameLengthOldConvention;
+    return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
 
   /// @brief checks if a collection name is allowed in the given context.
@@ -75,14 +75,14 @@ struct CollectionNameValidator {
 struct ViewNameValidator {
   /// @brief maximal view name length, in bytes (old convention, used when
   /// `--database.extended-names-views=false`)
-  static constexpr std::size_t maxNameLengthOldConvention = 64;
+  static constexpr std::size_t maxNameLengthTraditional = 64;
   /// @brief maximal view name length, in bytes (new convention, used when
   /// `--database.extended-names-views=true`)
-  static constexpr std::size_t maxNameLengthNewConvention = 256;
+  static constexpr std::size_t maxNameLengthExtended = 256;
 
   /// @brief maximum length of a view name (in bytes), based on convention
   static constexpr std::size_t maxNameLength(bool extendedNames) noexcept {
-    return extendedNames ? maxNameLengthNewConvention : maxNameLengthOldConvention;
+    return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
 
   /// @brief checks if a view name is allowed in the given context.
@@ -93,12 +93,12 @@ struct ViewNameValidator {
 
 struct IndexNameValidator {
   /// @brief maximal index name length, in bytes 
-  static constexpr std::size_t maxNameLengthOldConvention = 64;
-  static constexpr std::size_t maxNameLengthNewConvention = maxNameLengthOldConvention;
+  static constexpr std::size_t maxNameLengthTraditional = 256;
+  static constexpr std::size_t maxNameLengthExtended = maxNameLengthTraditional;
 
   /// @brief maximum length of an index name (in bytes), (not yet) based on convention
   static constexpr std::size_t maxNameLength(bool extendedNames) noexcept {
-    return extendedNames ? maxNameLengthNewConvention : maxNameLengthOldConvention;
+    return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
 
   /// @brief checks if a index name is allowed in the given context.
@@ -109,12 +109,12 @@ struct IndexNameValidator {
 
 struct AnalyzerNameValidator {
   /// @brief maximal analyzer name length, in bytes 
-  static constexpr std::size_t maxNameLengthOldConvention = 64;
-  static constexpr std::size_t maxNameLengthNewConvention = maxNameLengthOldConvention;
+  static constexpr std::size_t maxNameLengthTraditional = 64;
+  static constexpr std::size_t maxNameLengthExtended = maxNameLengthTraditional;
 
   /// @brief maximum length of an analyzer name (in bytes), (not yet) based on convention
   static constexpr std::size_t maxNameLength(bool extendedNames) noexcept {
-    return extendedNames ? maxNameLengthNewConvention : maxNameLengthOldConvention;
+    return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
 
   /// @brief checks if an analyzer name is allowed in the given context.
