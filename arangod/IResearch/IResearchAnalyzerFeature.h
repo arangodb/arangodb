@@ -122,7 +122,7 @@ class Features {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief custom field features
   //////////////////////////////////////////////////////////////////////////////
-  std::vector<irs::type_info::type_id> createFieldFeatures(
+  std::vector<irs::type_info::type_id> fieldFeatures(
     LinkVersion version) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -233,7 +233,7 @@ class AnalyzerPool : private irs::util::noncopyable {
             VPackSlice const properties,
             AnalyzersRevision::Revision revision,
             Features features,
-            LinkVersion version = LinkVersion::MIN);
+            LinkVersion version);
   void setKey(irs::string_ref const& type);
 
   mutable irs::unbounded_object_pool<Builder> _cache;  // cache of irs::analysis::analyzer

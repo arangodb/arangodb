@@ -308,7 +308,7 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
   // (field || exists) && (starts_with || phrase || range)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[3].slice(),  insertedDocs[4].slice(),
+        /*insertedDocs[3].slice(),*/  insertedDocs[4].slice(),
         insertedDocs[5].slice(),  insertedDocs[10].slice(),
         insertedDocs[11].slice(), insertedDocs[12].slice(),
         insertedDocs[14].slice(), insertedDocs[15].slice(),
@@ -347,8 +347,7 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
 
     EXPECT_EQ(i, expected.size());

@@ -113,7 +113,7 @@ void assertField(
     ASSERT_NE(nullptr, expectedArangoSearchAnalyzerPtr);
 
     ASSERT_EQ(expectedAnalyzerPtr->type(), analyzer->type());
-    ASSERT_EQ(expectedArangoSearchAnalyzerPtr->features().createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    ASSERT_EQ(expectedArangoSearchAnalyzerPtr->features().fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               value.features());
     ASSERT_EQ(expectedArangoSearchAnalyzerPtr->features().indexFeatures(), value.index_features());
   } else if constexpr (std::is_base_of_v<irs::token_stream, Analyzer>) {
@@ -528,7 +528,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_neste
 
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
     SCOPED_TRACE(field._name);
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               field.features());
     EXPECT_EQ(expected_features.indexFeatures(), field.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -607,7 +607,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) 
     }
 
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               field.features());
     EXPECT_EQ(expected_features.indexFeatures(), field.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -696,7 +696,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_all_
     EXPECT_EQ(1, expectedValues.erase(actualName));
 
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               field.features());
     EXPECT_EQ(expected_features.indexFeatures(), field.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -758,7 +758,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filt
   auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
   auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-  EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+  EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
             value.features());
   EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
   EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -892,7 +892,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               field.features());
     EXPECT_EQ(expected_features.indexFeatures(), field.index_features());
   }
@@ -910,7 +910,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
     auto expectedFeatures = arangodb::iresearch::Features(irs::IndexFeatures::FREQ);
-    EXPECT_EQ(expectedFeatures.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expectedFeatures.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               field.features());
     EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
   }
@@ -925,7 +925,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<irs::null_token_stream&>(field.get_tokens());
     auto expectedFeatures = arangodb::iresearch::Features(
       {}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expectedFeatures.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               field.features());
     EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
@@ -941,7 +941,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
     auto expectedFeatures = arangodb::iresearch::Features(
       {}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expectedFeatures.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               field.features());
     EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
@@ -957,7 +957,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& analyzer = dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
     auto expectedFeatures = arangodb::iresearch::Features(
       {}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expectedFeatures.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               field.features());
     EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
@@ -1102,7 +1102,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1121,7 +1121,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1142,7 +1142,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1232,7 +1232,7 @@ TEST_F(IResearchDocumentTest,
     EXPECT_EQ(1, expectedValues.erase(actualName));
 
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               field.features());
     EXPECT_EQ(expected_features.indexFeatures(), field.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1307,7 +1307,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1337,7 +1337,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1356,7 +1356,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1386,7 +1386,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1417,7 +1417,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1473,7 +1473,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
       EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1508,7 +1508,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-      EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+      EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
                 value.features());
       EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
       EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1540,7 +1540,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
               value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1584,7 +1584,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-      EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+      EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
                 value.features());
       EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
       EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1835,7 +1835,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
       auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
       EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-      EXPECT_EQ(expected_features.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+      EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
                 field.features());
       EXPECT_EQ(expected_features.indexFeatures(), field.index_features());
     }

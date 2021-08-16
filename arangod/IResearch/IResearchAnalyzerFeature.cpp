@@ -929,7 +929,7 @@ bool AnalyzerPool::init(
     VPackSlice const properties,
     AnalyzersRevision::Revision revision,
     Features features,
-    LinkVersion version /*= LinkVersion::MIN*/) {
+    LinkVersion version) {
   try {
     _cache.clear();  // reset for new type/properties
     _config.clear();
@@ -996,7 +996,7 @@ bool AnalyzerPool::init(
       } else {
         std::tie(_inputType, _returnType, _storeFunc) = getAnalyzerMeta(instance.get());
       }
-      _fieldFeatures = features.createFieldFeatures(version);
+      _fieldFeatures = features.fieldFeatures(version);
       _features = features;  // store only requested features
       _revision = revision;
       return true;
@@ -1199,7 +1199,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
 
   auto analyzerPool = std::make_shared<AnalyzerPool>(name);
 
-  if (!analyzerPool->init(type, properties, revision, features)) {
+  if (!analyzerPool->init(type, properties, revision, features, version)) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       "Failure initializing an arangosearch analyzer instance for name '" + std::string(name) +
@@ -1219,7 +1219,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
 /// @brief validate analyzer parameters and emplace into map
 ////////////////////////////////////////////////////////////////////////////////
 Result IResearchAnalyzerFeature::emplaceAnalyzer(
-    EmplaceAnalyzerResult& result, // emplacement result on success (out-param)
+    EmplaceAnalyzerResult& result,
     Analyzers& analyzers,
     irs::string_ref const name,
     irs::string_ref const type,
@@ -1264,9 +1264,9 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
     const_cast<AnalyzerPool::ptr&>(value) = pool; // lazy-instantiate pool to avoid allocation if pool is already present
     return pool ? irs::hashed_string_ref(key.hash(), pool->name()) : key; // reuse hash but point ref at value in pool
   };
-  auto itr = irs::map_utils::try_emplace_update_key( // emplace and update key
-    analyzers, // destination
-    generator, // key generator
+  auto itr = irs::map_utils::try_emplace_update_key(
+    analyzers,
+    generator,
     irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
   auto analyzer = itr.first->second;
 
@@ -1287,7 +1287,8 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
       }
     });
 
-    if (!analyzer->init(type, properties, revision, features)) {
+    // emplaceAnalyzer is used by Analyzers API where we don't actually use features
+    if (!analyzer->init(type, properties, revision, features, LinkVersion::MIN)) {
       return {
         TRI_ERROR_BAD_PARAMETER,
         "Failure initializing an arangosearch analyzer instance for name '" + std::string(name) +
@@ -1799,7 +1800,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
         if (!pool || !pool->init(irs::type<IdentityAnalyzer>::name(),
                                  VPackSlice::emptyObjectSlice(),
                                  AnalyzersRevision::MIN,
-                                 extraFeatures)) {
+                                 extraFeatures, LinkVersion::MIN)) {
           LOG_TOPIC("26de1", WARN, iresearch::TOPIC)
               << "failure creating an arangosearch static analyzer instance "
                  "for name '"
@@ -1840,7 +1841,8 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
           auto pool = std::make_shared<AnalyzerPool>(staticName->first);
 
           if (!pool->init(type, properties.slice(),
-                          AnalyzersRevision::MIN, extraFeatures)) {
+                          AnalyzersRevision::MIN,
+                          extraFeatures, LinkVersion::MIN)) {
             LOG_TOPIC("e25f5", WARN, iresearch::TOPIC)
                 << "failure creating an arangosearch static analyzer instance "
                    "for name '"
@@ -2873,7 +2875,7 @@ void Features::visit(std::function<void(std::string_view)> visitor) const {
   }
 }
 
-std::vector<irs::type_info::type_id> Features::createFieldFeatures(LinkVersion version) const {
+std::vector<irs::type_info::type_id> Features::fieldFeatures(LinkVersion version) const {
   if (_fieldFeatures == FieldFeatures::NONE) {
     return {};
   }

@@ -2111,6 +2111,86 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_emplace_on_single_server) 
   }
 }
 
+TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
+  {
+    arangodb::iresearch::AnalyzerPool::ptr pool;
+    ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+                    pool, "db::test", "TestAnalyzer",
+                    VPackParser::fromJson("\"abc\"")->slice(),
+                    arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::Features{},
+                    arangodb::iresearch::LinkVersion::MIN).ok());
+    ASSERT_NE(nullptr, pool);
+    ASSERT_EQ(arangodb::iresearch::Features{}, pool->features());
+    ASSERT_EQ(irs::IndexFeatures::NONE, pool->indexFeatures());
+    ASSERT_TRUE(pool->fieldFeatures().empty());
+  }
+
+  {
+    arangodb::iresearch::AnalyzerPool::ptr pool;
+    ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+                    pool, "db::test", "TestAnalyzer",
+                    VPackParser::fromJson("\"abc\"")->slice(),
+                    arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::Features{irs::IndexFeatures::FREQ},
+                    arangodb::iresearch::LinkVersion::MIN).ok());
+    ASSERT_NE(nullptr, pool);
+    ASSERT_EQ(arangodb::iresearch::Features{irs::IndexFeatures::FREQ}, pool->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
+    ASSERT_TRUE(pool->fieldFeatures().empty());
+  }
+
+  // norm, version 0
+  {
+    arangodb::iresearch::AnalyzerPool::ptr pool;
+    ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+                    pool, "db::test", "TestAnalyzer",
+                    VPackParser::fromJson("\"abc\"")->slice(),
+                    arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::Features{arangodb::iresearch::FieldFeatures::NORM,
+                                                  irs::IndexFeatures::FREQ},
+                    arangodb::iresearch::LinkVersion::MIN).ok());
+    ASSERT_NE(nullptr, pool);
+    ASSERT_EQ((arangodb::iresearch::Features{
+                arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ}),
+              pool->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
+    irs::type_info::type_id const expectedFeatures[] {irs::type<irs::norm>::id()};
+    ASSERT_EQ((irs::features_t{expectedFeatures, 1}), pool->fieldFeatures());
+  }
+
+  // norm, version 1
+  {
+    arangodb::iresearch::AnalyzerPool::ptr pool;
+    ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+                    pool, "db::test", "TestAnalyzer",
+                    VPackParser::fromJson("\"abc\"")->slice(),
+                    arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::Features{arangodb::iresearch::FieldFeatures::NORM,
+                                                  irs::IndexFeatures::FREQ},
+                    arangodb::iresearch::LinkVersion::MAX).ok());
+    ASSERT_NE(nullptr, pool);
+    ASSERT_EQ((arangodb::iresearch::Features{
+                arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ}),
+              pool->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
+    irs::type_info::type_id const expectedFeatures[] {irs::type<irs::norm2>::id()};
+    ASSERT_EQ((irs::features_t{expectedFeatures, 1}), pool->fieldFeatures());
+  }
+
+  // frequency is not set
+  {
+    arangodb::iresearch::AnalyzerPool::ptr pool;
+    ASSERT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+                    pool, "db::test", "TestAnalyzer",
+                    VPackParser::fromJson("\"abc\"")->slice(),
+                    arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::Features{irs::IndexFeatures::POS},
+                    arangodb::iresearch::LinkVersion::MIN).ok());
+    ASSERT_EQ(nullptr, pool);
+  }
+}
+
 TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
   arangodb::iresearch::AnalyzerPool::ptr lhs;
   ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
@@ -3680,9 +3760,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
         return false;
       }
 
-      const auto fieldFeatures = _features.createFieldFeatures(
+      const auto fieldFeatures = _features.fieldFeatures(
         arangodb::iresearch::LinkVersion::MIN);
-      const auto otherFieldFeatures = other._features.createFieldFeatures(
+      const auto otherFieldFeatures = other._features.fieldFeatures(
         arangodb::iresearch::LinkVersion::MIN);
 
       if (fieldFeatures.size() < otherFieldFeatures.size()) {
@@ -4441,8 +4521,8 @@ TEST(FeaturesTest, construct) {
   arangodb::iresearch::Features f;
   ASSERT_TRUE(f.validate().ok());
   ASSERT_EQ(irs::IndexFeatures::NONE, f.indexFeatures());
-  ASSERT_TRUE(f.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
-  ASSERT_TRUE(f.createFieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
+  ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
+  ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
   ASSERT_EQ(arangodb::iresearch::Features{}, f);
   ASSERT_FALSE(arangodb::iresearch::Features{} != f);
 }
@@ -4454,8 +4534,8 @@ TEST(FeaturesTest, add_invalid) {
   {
     ASSERT_TRUE(f.add(irs::type<irs::position>::name()));
     ASSERT_EQ(irs::IndexFeatures::POS, f.indexFeatures());
-    ASSERT_TRUE(f.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
-    ASSERT_TRUE(f.createFieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
     ASSERT_TRUE(f.validate().fail());
   }
 }
@@ -4467,24 +4547,24 @@ TEST(FeaturesTest, add_validate) {
   {
     ASSERT_FALSE(f.add("invalidFeature"));
     ASSERT_EQ(irs::IndexFeatures::NONE, f.indexFeatures());
-    ASSERT_TRUE(f.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
-    ASSERT_TRUE(f.createFieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
     ASSERT_TRUE(f.validate().ok());
   }
 
   {
     ASSERT_TRUE(f.add(irs::type<irs::frequency>::name()));
     ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
-    ASSERT_TRUE(f.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
-    ASSERT_TRUE(f.createFieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
     ASSERT_TRUE(f.validate().ok());
   }
 
   {
     ASSERT_TRUE(f.add(irs::type<irs::frequency>::name()));
     ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
-    ASSERT_TRUE(f.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
-    ASSERT_TRUE(f.createFieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
     ASSERT_TRUE(f.validate().ok());
   }
 
@@ -4492,9 +4572,9 @@ TEST(FeaturesTest, add_validate) {
     ASSERT_TRUE(f.add(irs::type<irs::norm>::name()));
     ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
     ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
-              f.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN));
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
     ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
-              f.createFieldFeatures(arangodb::iresearch::LinkVersion::MAX));
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
     ASSERT_TRUE(f.validate().ok());
   }
 
@@ -4502,9 +4582,9 @@ TEST(FeaturesTest, add_validate) {
     ASSERT_TRUE(f.add(irs::type<irs::norm>::name()));
     ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
     ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
-              f.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN));
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
     ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
-              f.createFieldFeatures(arangodb::iresearch::LinkVersion::MAX));
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
     ASSERT_TRUE(f.validate().ok());
   }
 
@@ -4512,9 +4592,9 @@ TEST(FeaturesTest, add_validate) {
     ASSERT_TRUE(f.add(irs::type<irs::position>::name()));
     ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, f.indexFeatures());
     ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
-              f.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN));
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
     ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
-              f.createFieldFeatures(arangodb::iresearch::LinkVersion::MAX));
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
     ASSERT_TRUE(f.validate().ok());
   }
 
@@ -4522,9 +4602,9 @@ TEST(FeaturesTest, add_validate) {
     ASSERT_FALSE(f.add(irs::type<irs::norm2>::name()));
     ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, f.indexFeatures());
     ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
-              f.createFieldFeatures(arangodb::iresearch::LinkVersion::MIN));
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
     ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
-              f.createFieldFeatures(arangodb::iresearch::LinkVersion::MAX));
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
     ASSERT_TRUE(f.validate().ok());
   }
 }
