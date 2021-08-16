@@ -928,7 +928,7 @@ bool AnalyzerPool::init(
     irs::string_ref const& type,
     VPackSlice const properties,
     AnalyzersRevision::Revision revision,
-    Features const& features /*= AnalyzerFeatures::empty_instance()*/) {
+    Features const& features /*= Features::emptyInstance()*/) {
   try {
     _cache.clear();  // reset for new type/properties
     _config.clear();
@@ -1333,7 +1333,7 @@ Result IResearchAnalyzerFeature::emplace(
     irs::string_ref const& name,
     irs::string_ref const& type,
     VPackSlice const properties,
-    Features const& features /* = Features::empty_instance() */) {
+    Features const& features /* = Features::emptyInstance() */) {
   auto const split = splitAnalyzerName(name);
 
   auto transaction = createAnalyzerModificationTransaction(server(), split.first);
@@ -1787,6 +1787,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       {
         Features const extraFeatures{
           {irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ};
+        TRI_ASSERT(extraFeatures.validate().ok());
 
         auto pool = std::make_shared<AnalyzerPool>(IdentityAnalyzer::type_name());
 
@@ -1818,8 +1819,9 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
         Features const extraFeatures{
           {irs::type<irs::norm>::get().id()},
           irs::IndexFeatures::FREQ | irs::IndexFeatures::POS};
+        TRI_ASSERT(extraFeatures.validate().ok());
 
-        irs::string_ref const type("text");
+        irs::string_ref constexpr type("text");
 
         VPackBuilder properties;
         static_assert(STATIC_ANALYZERS_NAMES.size() > 1, "Static analyzer count too low");
@@ -2108,7 +2110,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         return {}; // skip analyzer
       }
 
-      Features features;
       irs::string_ref key;
       irs::string_ref name;
       irs::string_ref type;
@@ -2125,6 +2126,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
       key = getStringRef(slice.get(arangodb::StaticStrings::KeyString));
 
+      Features features;
       auto parseRes = parseAnalyzerSlice(slice, name, type, features, properties);
 
       if (parseRes.fail()) {
@@ -2857,7 +2859,6 @@ void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
 }
 
 void Features::visit(std::function<void(std::string_view)> visitor) const {
-  std::vector<std::string> res;
   if (irs::IndexFeatures::FREQ == (_indexFeatures & irs::IndexFeatures::FREQ)) {
     visitor(irs::type<irs::frequency>::name());
   }
@@ -2865,10 +2866,16 @@ void Features::visit(std::function<void(std::string_view)> visitor) const {
     visitor(irs::type<irs::position>::name());
   }
 
-  // add typed features
   for (auto feature : _fieldFeatures) {
     TRI_ASSERT(feature); // has to be non-nullptr
     visitor(feature().name());
+  }
+}
+
+void Features::visitFieldFeatures(std::function<void(irs::type_info::type_id&)> visitor) {
+  for (auto& feature : _fieldFeatures) {
+    TRI_ASSERT(feature); // has to be non-nullptr
+    visitor(feature);
   }
 }
 
@@ -2897,18 +2904,6 @@ bool Features::add(irs::string_ref featureName) {
     _fieldFeatures.push_back(feature.id());
   }
   return true;
-}
-
-void Features::translate(LinkVersion version) noexcept {
-  for (auto& feature : _fieldFeatures) {
-    if (feature == irs::type<irs::norm>::id() &&
-        version > LinkVersion::MIN) {
-      feature = irs::type<irs::norm2>::id();
-    } else if (feature == irs::type<irs::norm2>::id() &&
-               version < LinkVersion::MAX) {
-      feature = irs::type<irs::norm>::id();
-    }
-  }
 }
 
 Result Features::validate() const {

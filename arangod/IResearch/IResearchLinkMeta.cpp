@@ -27,6 +27,7 @@
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "index/norm.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/locale_utils.hpp"
 
@@ -781,7 +782,14 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
           }
         }
 
-        features.translate(LinkVersion{_version});
+        // translate field features if necessary
+        if (LinkVersion{_version} > LinkVersion::MIN) {
+          features.visitFieldFeatures([](irs::type_info::type_id& feature) noexcept {
+            if (feature == irs::type<irs::norm>::id()) {
+              feature = irs::type<irs::norm2>::id();
+            }
+          });
+        }
 
         AnalyzerPool::ptr analyzer;
         auto const res = IResearchAnalyzerFeature::createAnalyzerPool(

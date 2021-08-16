@@ -4440,3 +4440,78 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
                      .ok());
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     Features test
+// -----------------------------------------------------------------------------
+
+TEST(FeaturesTest, construct) {
+  arangodb::iresearch::Features f;
+  ASSERT_TRUE(f.validate().ok());
+  ASSERT_EQ(irs::IndexFeatures::NONE, f.indexFeatures());
+  ASSERT_TRUE(f.fieldFeatures().empty());
+  ASSERT_EQ(arangodb::iresearch::Features::emptyInstance(), f);
+  ASSERT_FALSE(arangodb::iresearch::Features::emptyInstance() != f);
+}
+
+TEST(FeaturesTest, add_invalid) {
+  arangodb::iresearch::Features f;
+  ASSERT_TRUE(f.validate().ok());
+
+  {
+    ASSERT_TRUE(f.add(irs::type<irs::position>::name()));
+    ASSERT_EQ(irs::IndexFeatures::POS, f.indexFeatures());
+    ASSERT_TRUE(f.fieldFeatures().empty());
+    ASSERT_TRUE(f.validate().fail());
+  }
+}
+
+TEST(FeaturesTest, add_validate) {
+  arangodb::iresearch::Features f;
+  ASSERT_TRUE(f.validate().ok());
+
+  {
+    ASSERT_FALSE(f.add("invalidFeature"));
+    ASSERT_EQ(irs::IndexFeatures::NONE, f.indexFeatures());
+    ASSERT_TRUE(f.fieldFeatures().empty());
+    ASSERT_TRUE(f.validate().ok());
+  }
+
+  {
+    ASSERT_TRUE(f.add(irs::type<irs::frequency>::name()));
+    ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
+    ASSERT_TRUE(f.fieldFeatures().empty());
+    ASSERT_TRUE(f.validate().ok());
+  }
+
+  {
+    ASSERT_TRUE(f.add(irs::type<irs::frequency>::name()));
+    ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
+    ASSERT_TRUE(f.fieldFeatures().empty());
+    ASSERT_TRUE(f.validate().ok());
+  }
+
+  {
+    ASSERT_TRUE(f.add(irs::type<irs::norm>::name()));
+    ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
+    const irs::type_info::type_id expectedFeatures[] {irs::type<irs::norm>::id()};
+    ASSERT_EQ((irs::features_t{ expectedFeatures, 1 }), f.fieldFeatures());
+    ASSERT_TRUE(f.validate().ok());
+  }
+
+  {
+    ASSERT_TRUE(f.add(irs::type<irs::position>::name()));
+    ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, f.indexFeatures());
+    const irs::type_info::type_id expectedFeatures[] {irs::type<irs::norm>::id()};
+    ASSERT_EQ((irs::features_t{ expectedFeatures, 1 }), f.fieldFeatures());
+    ASSERT_TRUE(f.validate().ok());
+  }
+
+  {
+    ASSERT_FALSE(f.add(irs::type<irs::norm2>::name()));
+    ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, f.indexFeatures());
+    const irs::type_info::type_id expectedFeatures[] {irs::type<irs::norm>::id()};
+    ASSERT_EQ((irs::features_t{ expectedFeatures, 1 }), f.fieldFeatures());
+    ASSERT_TRUE(f.validate().ok());
+  }
+}
