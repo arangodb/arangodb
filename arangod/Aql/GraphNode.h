@@ -198,8 +198,8 @@ class GraphNode : public ExecutionNode {
   graph::Graph const* graph() const noexcept;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  // Internal Helpers used in tests to modify enterprise detections
-  // These should not be used in Production, as their detection
+  // Internal helpers used in tests to modify enterprise detections.
+  // These should not be used in production, as their detection
   // is implemented in constructors.
   void setIsSmart(bool target) {
     _isSmart = target;
