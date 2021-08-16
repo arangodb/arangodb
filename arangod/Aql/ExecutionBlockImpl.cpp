@@ -1254,9 +1254,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
           
   ExecutorState localExecutorState = ExecutorState::DONE;
 
-  TRI_ASSERT(!(clientCall.getOffset() == 0 && clientCall.softLimit == AqlCall::Limit{0u}));
-  TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.fullCount));
-  TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.hasHardLimit()));
   if constexpr (executorCanReturnWaiting<Executor>) {
     TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
                _execState == ExecState::UPSTREAM || _execState == ExecState::PRODUCE ||
@@ -1370,13 +1367,13 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
       default:
         break;
       case ExecState::SKIP:
-        TRI_ASSERT(_clientRequest.requestLessDataThan(clientCall));
-        clientCall = _clientRequest;
+        TRI_ASSERT(_clientRequest.requestLessDataThan(ctx.clientCall));
+        ctx.clientCall = _clientRequest;
         [[fallthrough]];
       case ExecState::PRODUCE:
       case ExecState::FASTFORWARD:
-        TRI_ASSERT(_stackBeforeWaiting.requestLessDataThan(stack));
-        stack = _stackBeforeWaiting;
+        TRI_ASSERT(_stackBeforeWaiting.requestLessDataThan(ctx.stack));
+        ctx.stack = _stackBeforeWaiting;
     }
   }
 
@@ -1417,17 +1414,17 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
         size_t skippedLocal = 0;
         AqlCallType call{};
         if constexpr (executorCanReturnWaiting<Executor>) {
-          TRI_DEFER(clientCall.resetSkipCount());
+          TRI_DEFER(ctx.clientCall.resetSkipCount());
           ExecutionState executorState = ExecutionState::HASMORE;
           std::tie(executorState, stats, skippedLocal, call) =
-              _executor.skipRowsRange(_lastRange, clientCall);
+              _executor.skipRowsRange(_lastRange, ctx.clientCall);
 
           if (executorState == ExecutionState::WAITING) {
             // We need to persist the old call before we return.
             // We might have some local accounting to this call.
-            _clientRequest = clientCall;
+            _clientRequest = ctx.clientCall;
             // We might also have some local accounting in this stack.
-            _stackBeforeWaiting = stack;
+            _stackBeforeWaiting = ctx.stack;
             // We do not return anything in WAITING state, also NOT skipped.
             TRI_ASSERT(skippedLocal == 0);
             return {executorState, SkipResult{}, nullptr};
@@ -1439,7 +1436,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
         } else {
           // Execute skipSome
           std::tie(state, stats, skippedLocal, call) =
-              executeSkipRowsRange(_lastRange, clientCall);
+              executeSkipRowsRange(_lastRange, ctx.clientCall);
         }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1514,7 +1511,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
           if (executorState == ExecutionState::WAITING) {
             // We need to persist the old stack before we return.
             // We might have some local accounting in this stack.
-            _stackBeforeWaiting = stack;
+            _stackBeforeWaiting = ctx.stack;
             // We do not return anything in WAITING state, also NOT skipped.
             return {executorState, SkipResult{}, nullptr};
           } else if (executorState == ExecutionState::DONE) {
@@ -1584,7 +1581,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
           if (executorState == ExecutionState::WAITING) {
             // We need to persist the old stack before we return.
             // We might have some local accounting in this stack.
-            _stackBeforeWaiting = stack;
+            _stackBeforeWaiting = ctx.stack;
             // We do not return anything in WAITING state, also NOT skipped.
             TRI_ASSERT(skippedLocal == 0);
             return {executorState, SkipResult{}, nullptr};
