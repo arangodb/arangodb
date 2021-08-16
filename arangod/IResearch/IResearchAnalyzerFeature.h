@@ -71,6 +71,10 @@ class ApplicationServer;
 namespace arangodb {
 namespace iresearch {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @enum FieldFeatures
+/// @brief supported field features
+////////////////////////////////////////////////////////////////////////////////
 enum class FieldFeatures : uint32_t {
   NONE = 0,
   NORM = 1
@@ -80,7 +84,7 @@ ENABLE_BITMASK_ENUM(FieldFeatures);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class Features
-/// @brief a representation of support IResearch features
+/// @brief a representation of supported IResearch features
 ////////////////////////////////////////////////////////////////////////////////
 class Features {
  public:
@@ -218,7 +222,7 @@ class AnalyzerPool : private irs::util::noncopyable {
 
   // 'make(...)' method wrapper for irs::analysis::analyzer types
   struct Builder {
-    typedef irs::analysis::analyzer::ptr ptr;
+    using ptr = irs::analysis::analyzer::ptr;
     DECLARE_FACTORY(irs::string_ref const& type, VPackSlice properties);
   };
 
