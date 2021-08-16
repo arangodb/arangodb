@@ -66,7 +66,7 @@ const NGramForm = ({ state, dispatch }: FormProps) => {
 
   return <div className={'pure-g'}>
       <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'min'}>Minimum N-Gram Length</label>
+        <label htmlFor={'min'} style={{ cursor: 'default' }}>Minimum N-Gram Length</label>
         <input id="min" type="number" min={1} placeholder="2" required={true}
                value={formState.properties.min} onChange={updateMinLength}
                style={{
@@ -76,7 +76,7 @@ const NGramForm = ({ state, dispatch }: FormProps) => {
       </div>
 
       <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'max'}>Maximum N-Gram Length</label>
+        <label htmlFor={'max'} style={{ cursor: 'default' }}>Maximum N-Gram Length</label>
         <input id="max" type="number" min={1} placeholder="3" required={true}
                value={formState.properties.max} onChange={updateMaxLength}
                style={{
@@ -93,7 +93,7 @@ const NGramForm = ({ state, dispatch }: FormProps) => {
       </div>
 
       <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'startMarker'}>Start Marker</label>
+        <label htmlFor={'startMarker'} style={{ cursor: 'default' }}>Start Marker</label>
         <input id="startMarker" type="text" placeholder={'^'}
                value={formState.properties.startMarker}
                onChange={updateStartMarker}
@@ -104,7 +104,7 @@ const NGramForm = ({ state, dispatch }: FormProps) => {
       </div>
 
       <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'endMarker'}>End Marker</label>
+        <label htmlFor={'endMarker'} style={{ cursor: 'default' }}>End Marker</label>
         <input id="endMarker" type="text" placeholder={'$'}
                value={formState.properties.endMarker}
                onChange={updateEndMarker}

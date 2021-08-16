@@ -16,7 +16,7 @@ const StemForm = ({ state, dispatch }: FormProps) => {
 
   return <div className={'pure-g'}>
     <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-      <label htmlFor={'locale'}>Locale</label>
+      <label htmlFor={'locale'} style={{ cursor: 'default' }}>Locale</label>
       <input id="locale" type="text" placeholder="language[_COUNTRY][.encoding][@variant]"
              value={formState.properties.locale} onChange={updateLocale} required={true}
              style={{

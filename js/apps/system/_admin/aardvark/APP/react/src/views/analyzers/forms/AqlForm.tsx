@@ -68,7 +68,7 @@ const AqlForm = ({ state, dispatch }: FormProps) => {
 
   return <div className={'pure-g'}>
     <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-      <label htmlFor={'queryString'}>Query String</label>
+      <label htmlFor={'queryString'} style={{ cursor: 'default' }}>Query String</label>
       <textarea id="queryString" value={formState.properties.queryString}
                 style={{ width: '90%' }} onChange={updateQueryString} rows={4} required={true}/>
     </div>
@@ -76,7 +76,7 @@ const AqlForm = ({ state, dispatch }: FormProps) => {
     <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
       <div className={'pure-g'}>
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <label htmlFor={'batchSize'}>Batch Size</label>
+          <label htmlFor={'batchSize'} style={{ cursor: 'default' }}>Batch Size</label>
           <input id="batchSize" type="number" min={1} placeholder="10" required={true}
                  value={formState.properties.batchSize} onChange={updateBatchSize}
                  style={{
@@ -85,7 +85,7 @@ const AqlForm = ({ state, dispatch }: FormProps) => {
                  }}/>
         </div>
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <label htmlFor={'memoryLimit'}>Memory Limit</label>
+          <label htmlFor={'memoryLimit'} style={{ cursor: 'default' }}>Memory Limit</label>
           <input id="memoryLimit" type="number" min={1} max={33554432} placeholder="1048576" required={true}
                  value={formState.properties.memoryLimit} onChange={updateMemoryLimit}
                  style={{

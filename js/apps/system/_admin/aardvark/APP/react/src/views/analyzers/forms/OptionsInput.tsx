@@ -47,7 +47,7 @@ const OptionsInput = ({ state, dispatch }: FormProps) => {
     </legend>
     <div className={'pure-g'}>
       <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'maxCells'}>Max S2 Cells</label>
+        <label htmlFor={'maxCells'} style={{ cursor: 'default' }}>Max S2 Cells</label>
         <input id="maxCells" type="number" placeholder="20"
                value={get(options, 'maxCells', '')} onChange={updateMaxCells}
                style={{
@@ -57,7 +57,7 @@ const OptionsInput = ({ state, dispatch }: FormProps) => {
       </div>
 
       <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'minLevel'}>Least Precise S2 Level</label>
+        <label htmlFor={'minLevel'} style={{ cursor: 'default' }}>Least Precise S2 Level</label>
         <input id="minLevel" type="number" placeholder="4"
                value={get(options, 'minLevel', '')} onChange={updateMinLevel}
                style={{
@@ -67,7 +67,7 @@ const OptionsInput = ({ state, dispatch }: FormProps) => {
       </div>
 
       <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'maxLevel'}>Most Precise S2 Level</label>
+        <label htmlFor={'maxLevel'} style={{ cursor: 'default' }}>Most Precise S2 Level</label>
         <input id="maxLevel" type="number" placeholder="23"
                value={get(options, 'maxLevel', '')} onChange={updateMaxLevel}
                style={{

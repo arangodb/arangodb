@@ -48,7 +48,7 @@ const EdgeNGramInput = ({ state, dispatch }: FormProps) => {
     </legend>
     <div className={'pure-g'}>
       <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'min'}>Minimum N-Gram Length</label>
+        <label htmlFor={'min'} style={{ cursor: 'default' }}>Minimum N-Gram Length</label>
         <input id="min" type="number" min={1} placeholder="2" required={true}
                value={get(formState, ['properties', 'edgeNgram', 'min'], '')} onChange={updateMinLength}
                style={{
@@ -58,7 +58,7 @@ const EdgeNGramInput = ({ state, dispatch }: FormProps) => {
       </div>
 
       <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'max'}>Maximum N-Gram Length</label>
+        <label htmlFor={'max'} style={{ cursor: 'default' }}>Maximum N-Gram Length</label>
         <input id="max" type="number" min={1} placeholder="3" required={true}
                value={get(formState, ['properties', 'edgeNgram', 'max'], '')} onChange={updateMaxLength}
                style={{
@@ -149,7 +149,7 @@ const TextForm = ({ state, dispatch }: FormProps) => {
     <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
       <div className={'pure-g'}>
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <label htmlFor={'locale'}>Locale</label>
+          <label htmlFor={'locale'} style={{ cursor: 'default' }}>Locale</label>
           <input id="locale" type="text" placeholder="language[_COUNTRY][.encoding][@variant]"
                  value={formState.properties.locale} onChange={updateLocale} required={true}
                  style={{
@@ -182,7 +182,7 @@ const TextForm = ({ state, dispatch }: FormProps) => {
     <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
       <div className={'pure-g'}>
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <label htmlFor={'stopwordsPath'}>Stopwords Path</label>
+          <label htmlFor={'stopwordsPath'} style={{ cursor: 'default' }}>Stopwords Path</label>
           <input id="stopwordsPath" type="text"
                  value={formState.properties.stopwordsPath}
                  onChange={updateStopwordsPath}
@@ -193,7 +193,7 @@ const TextForm = ({ state, dispatch }: FormProps) => {
         </div>
 
         <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <label htmlFor={'stopwords'}>Stopwords (One per line)</label>
+          <label htmlFor={'stopwords'} style={{ cursor: 'default' }}>Stopwords (One per line)</label>
           <textarea id="stopwords" value={getStopwords()} style={{ width: '90%' }}
                     onChange={updateStopwords}/>
         </div>

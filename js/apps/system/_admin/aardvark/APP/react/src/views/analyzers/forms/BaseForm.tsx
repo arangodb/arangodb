@@ -25,7 +25,7 @@ const BaseForm = ({ state, dispatch }: FormProps) => {
 
   return <div className={'pure-g'}>
     <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-      <label htmlFor={'analyzer-name'}>Analyzer Name:</label>
+      <label htmlFor={'analyzer-name'} style={{ cursor: 'default' }}>Analyzer Name:</label>
       <input id="analyzer-name" type="text" placeholder="Analyzer Name" value={state.formState.name}
              onChange={updateName} required={true} style={{
         height: 'auto',
@@ -34,7 +34,7 @@ const BaseForm = ({ state, dispatch }: FormProps) => {
     </div>
 
     <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-      <label htmlFor={'analyzer-type'}>Analyzer Type:</label>
+      <label htmlFor={'analyzer-type'} style={{ cursor: 'default' }}>Analyzer Type:</label>
       <select id="analyzer-type" value={state.formState.type} style={{ width: 'auto' }}
               onChange={updateType} required={true}>
         {

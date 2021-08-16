@@ -16,7 +16,7 @@ const DelimiterForm = ({ state, dispatch }: FormProps) => {
 
   return <div className={'pure-g'}>
     <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-      <label htmlFor={'delimiter'}>Delimiter</label>
+      <label htmlFor={'delimiter'} style={{ cursor: 'default' }}>Delimiter</label>
       <input id="delimiter" type="text" placeholder="Delimiting Characters" required={true}
              value={formState.properties.delimiter} onChange={updateDelimiter}
              style={{

@@ -44,13 +44,13 @@ const GeoPointForm = ({ state, dispatch }: FormProps) => {
 
   return <div className={'pure-g'}>
     <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-      <label htmlFor={'latitude'}>Latitude Path (One segment per line)</label>
+      <label htmlFor={'latitude'} style={{ cursor: 'default' }}>Latitude Path (One segment per line)</label>
       <textarea id="latitude" value={getLatitude()} style={{ width: '90%' }}
                 onChange={updateLatitude}/>
     </div>
 
     <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-      <label htmlFor={'longitude'}>Longitude Path (One segment per line)</label>
+      <label htmlFor={'longitude'} style={{ cursor: 'default' }}>Longitude Path (One segment per line)</label>
       <textarea id="longitude" value={getLongitude()} style={{ width: '90%' }}
                 onChange={updateLongitude}/>
     </div>
