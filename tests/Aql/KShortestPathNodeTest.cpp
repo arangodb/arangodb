@@ -55,7 +55,7 @@ class KShortestPathsNodeTest : public ::testing::Test {
     auto ast = _query->ast();
     _source = ast->createNodeValueString(_startNode.c_str(), _startNode.length());
     _target = ast->createNodeValueString(_startNode.c_str(), _startNode.length());
-    _direction = ast->createNodeDirection(0, 1);
+    _direction = ast->createNodeValueInt(0);
     AstNode* edges = ast->createNodeArray(0);
     _graph = ast->createNodeCollectionList(edges, _query->resolver());
   }
