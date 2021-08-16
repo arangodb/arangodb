@@ -25,8 +25,7 @@
 
 #include <ostream>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 std::ostream& operator<<(std::ostream& ostream, ExecutionState state) {
   switch (state) {
@@ -51,12 +50,8 @@ std::ostream& operator<<(std::ostream& ostream, ExecutorState state) {
     case ExecutorState::HASMORE:
       ostream << "HASMORE";
       break;
-    default:
-      ostream << " WAT WAT WAT";
-      break;
   }
   return ostream;
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
