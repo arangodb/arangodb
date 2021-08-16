@@ -469,6 +469,32 @@ function ahuacatlMiscFunctionsTestSuite () {
 
       internal.db._drop(cn);
     },
+    
+    testDocumentUseAfterModification : function () {
+      const cn = "UnitTestsAhuacatlFunctions";
+
+      let c = internal.db._create(cn);
+      try {
+        c.insert({ "title" : "123", "value" : 456 });
+        c.insert({ "title" : "nada", "value" : 123 });
+
+        let res = AQL_EXECUTE("FOR doc IN " + cn + " SORT doc.value RETURN DOCUMENT(doc._id).title");
+        assertEqual([ "nada", "123" ], res.json);
+        
+        try {
+          AQL_EXECUTE("FOR doc IN " + cn + " SORT doc.value REMOVE doc IN " + cn + " RETURN DOCUMENT(doc._id).title");
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, err.errorNum);
+        }
+      
+        res = AQL_EXECUTE("FOR doc IN " + cn + " SORT doc.value LET title = DOCUMENT(doc._id).title INSERT { title } INTO " + cn + " RETURN NEW");
+        assertEqual(2, res.json.length);
+        assertEqual(4, c.count());
+      } finally {
+        internal.db._drop(cn);
+      }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test document function
@@ -772,8 +798,13 @@ function ahuacatlCollectionCountTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test LENGTH(collection)
 ////////////////////////////////////////////////////////////////////////////////
+    
+    testLengthUseBeforeModification : function () {
+      let res = AQL_EXECUTE("FOR doc IN " + cn + " LET l = LENGTH(" + cn + ") REMOVE doc IN " + cn + " RETURN l");
+      assertEqual(Array(1000).fill(1000), res.json);
+    },
 
-    testLengthUseInModification : function () {
+    testLengthUseAfterModification : function () {
       try {
         AQL_EXECUTE("FOR doc IN " + cn + " REMOVE doc IN " + cn + " RETURN LENGTH(" + cn + ")");
         fail();
@@ -781,7 +812,7 @@ function ahuacatlCollectionCountTestSuite () {
         assertEqual(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, err.errorNum);
       }
       assertEqual(1000, c.count());
-   },
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test COLLECTIONS()
