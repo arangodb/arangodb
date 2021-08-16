@@ -293,7 +293,7 @@ function Run (testsuite) {
   COMPLETE[suite.suiteName] = COMPLETE[suite.suiteName] || {};
 
   let duplicates = [];
-  // Reference will be modifeid within complete
+  // Reference will be modified within complete
   let cmpl = COMPLETE[suite.suiteName];
   for (var attrname in RESULTS) {
     if (typeof(RESULTS[attrname]) === 'number') {
