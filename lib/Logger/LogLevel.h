@@ -28,8 +28,8 @@
 
 #include "Basics/operating-system.h"
 
-#ifdef TRI_UNDEF_ERR
-#undef ERR
+#ifdef _WIN32
+#undef DEBUG
 #endif
 
 namespace arangodb {
@@ -45,4 +45,3 @@ enum class LogLevel {
 }
 
 std::ostream& operator<<(std::ostream&, arangodb::LogLevel);
-

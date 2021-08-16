@@ -1,6 +1,34 @@
 devel
 -----
 
+* Fixed: _api/transaction/begin called on edge collections of disjoint
+  SmartGraphs falsely returned CollectionNotFound errors.
+
+* Bug-Fix: In more complex queries there was a code-path where a (Disjoint-) Smart
+  graph access was not properly optimized.
+
+* Improve log messages for Pregel runs by giving them more context.
+
+* Add ReplicatedLogs column family.
+
+* Add optimization rule for AqlAnalyzer.
+
+* Fixed issue #14592: IS_NULL(@x) isn't recognized as a constant expression.
+
+* Fixed issue BTS-539 "Unsynchronized query kill while it's being finalized in
+  another thread was uncovered through `test-kill.js` of `communication_ssl`
+  suite". Fixed possible (but unlikely) crash when killing an AQL query.
+
+* Append physical compaction of log collection to every Raft log
+  compaction (BTS-542).
+
+* Change optimization level for debug builds back to `-O0` (from `-Og`)
+  because `-Og` seems to cause debuggability issues in some environments.
+
+* Fixed issue BTS-536 "Upgrading without rest-server is aborted by error".
+  Now stating `--server.rest-server false` does not require the additional
+  `--console` argument for upgrading a server.
+
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented
   cases and numerically unstable behaviour. In particular, the case of
   the intersection of two polygons in which one is an S2LngLatRect
