@@ -7,6 +7,9 @@ devel
   trigger said error anymore. Accessing a collection _after_ in a query a 
   data-modification in the same query is still disallowed.
 
+* Fixed: _api/transaction/begin called on edge collections of disjoint
+  SmartGraphs falsely returned CollectionNotFound errors.
+
 * Bugfix: In more complex queries there was a code-path where a (Disjoint-) 
   Smart graph access was not properly optimized.
 
