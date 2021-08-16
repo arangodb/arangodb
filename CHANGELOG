@@ -1,6 +1,10 @@
 devel
 -----
 
+* Make AQL modification operations in a cluster asynchronous. This allows to
+  free the thread for other work until both the write and synchronous
+  replication are complete.
+
 * Bug-Fix: In more complex queries there was a code-path where a (Disjoint-) Smart
   graph access was not properly optimized.
 
