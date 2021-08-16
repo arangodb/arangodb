@@ -222,7 +222,6 @@ const identitySchema = mergeBase({
   },
   required: ['type']
 });
-console.log(identitySchema);
 
 const delimiterSchema = mergeBase({
   properties: {

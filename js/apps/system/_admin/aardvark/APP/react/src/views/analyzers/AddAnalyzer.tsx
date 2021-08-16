@@ -70,7 +70,7 @@ const reducer = (state: State, action: DispatchArgs): State => {
       break;
 
     case 'setField':
-      if (action.field && action.field.value) {
+      if (action.field && action.field.value !== undefined) {
         set(newState.formCache, action.field.path, action.field.value);
 
         if (action.field.path === 'type') {
@@ -163,9 +163,8 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
             <CopyFromInput analyzers={analyzers} dispatch={dispatch}/>
           </div>
           <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-            <button className={'pure-button'} onClick={toggleJsonForm} disabled={state.lockJsonForm}
+            <button className={'button-info'} onClick={toggleJsonForm} disabled={state.lockJsonForm}
                     style={{
-                      fontSize: '70%',
                       float: 'right'
                     }}>
               {state.showJsonForm ? 'Switch to form view' : 'Switch to code view'}

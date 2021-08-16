@@ -23,7 +23,7 @@ const CopyFromInput = ({ analyzers, dispatch }: CopyFromInputProps) => {
 
   return <div className={'pure-g'}>
     <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-      <button className={'pure-button'} onClick={copyFormState}>
+      <button className={'button-warning'} onClick={copyFormState}>
         Copy to form
       </button>
     </div>
