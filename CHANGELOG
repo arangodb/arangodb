@@ -5,6 +5,9 @@ devel
   free the thread for other work until both the write and synchronous
   replication are complete.
 
+* Fixed: _api/transaction/begin called on edge collections of disjoint
+  SmartGraphs falsely returned CollectionNotFound errors.
+
 * Bug-Fix: In more complex queries there was a code-path where a (Disjoint-) Smart
   graph access was not properly optimized.
 
