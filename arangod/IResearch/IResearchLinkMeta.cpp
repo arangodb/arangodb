@@ -782,18 +782,9 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
           }
         }
 
-        // translate field features if necessary
-        if (LinkVersion{_version} > LinkVersion::MIN) {
-          features.visitFieldFeatures([](irs::type_info::type_id& feature) noexcept {
-            if (feature == irs::type<irs::norm>::id()) {
-              feature = irs::type<irs::norm2>::id();
-            }
-          });
-        }
-
         AnalyzerPool::ptr analyzer;
         auto const res = IResearchAnalyzerFeature::createAnalyzerPool(
-          analyzer, name, type, properties, revision, features);
+          analyzer, name, type, properties, revision, features, LinkVersion{_version});
 
         if (res.fail() || !analyzer) {
           errorField = fieldName + "[" + std::to_string(itr.index()) + "]";

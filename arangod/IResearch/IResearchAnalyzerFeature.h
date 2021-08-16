@@ -71,6 +71,13 @@ class ApplicationServer;
 namespace arangodb {
 namespace iresearch {
 
+enum class FieldFeatures : uint32_t {
+  NONE = 0,
+  NORM = 1
+};
+
+ENABLE_BITMASK_ENUM(FieldFeatures);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class Features
 /// @brief a representation of support IResearch features
@@ -78,19 +85,18 @@ namespace iresearch {
 class Features {
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns an empty instance of Features
-  //////////////////////////////////////////////////////////////////////////////
-  static Features const& emptyInstance();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief ctor
   //////////////////////////////////////////////////////////////////////////////
-  Features() = default;
+  constexpr Features() = default;
 
-  Features(
-      std::initializer_list<irs::type_info::type_id> fieldsFeatures,
-      irs::IndexFeatures indexFeatures)
-    : _fieldFeatures{fieldsFeatures},
+  constexpr Features(irs::IndexFeatures indexFeatures) noexcept
+    : Features{FieldFeatures::NONE, indexFeatures} {
+  }
+
+  constexpr Features(
+      FieldFeatures fieldFeatures,
+      irs::IndexFeatures indexFeatures) noexcept
+    : _fieldFeatures{fieldFeatures},
       _indexFeatures{indexFeatures} {
   }
 
@@ -106,20 +112,19 @@ class Features {
   //////////////////////////////////////////////////////////////////////////////
   void clear() noexcept {
     _indexFeatures = irs::IndexFeatures::NONE;
-    _fieldFeatures.clear();
+    _fieldFeatures = FieldFeatures::NONE;
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief custom field features
   //////////////////////////////////////////////////////////////////////////////
-  irs::features_t fieldFeatures() const noexcept {
-    return { _fieldFeatures.data(), _fieldFeatures.size() };
-  }
+  std::vector<irs::type_info::type_id> createFieldFeatures(
+    LinkVersion version) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief index features
   //////////////////////////////////////////////////////////////////////////////
-  irs::IndexFeatures indexFeatures() const noexcept {
+  constexpr irs::IndexFeatures indexFeatures() const noexcept {
     return _indexFeatures;
   }
 
@@ -136,14 +141,9 @@ class Features {
   void visit(std::function<void(std::string_view)> visitor) const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief visit field features
-  //////////////////////////////////////////////////////////////////////////////
-  void visitFieldFeatures(std::function<void(irs::type_info::type_id&)> visitor);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief compare features for equality
   //////////////////////////////////////////////////////////////////////////////
-  bool operator==(Features const& rhs) const noexcept {
+  constexpr bool operator==(Features const& rhs) const noexcept {
     return _indexFeatures == rhs._indexFeatures &&
            _fieldFeatures == rhs._fieldFeatures;
   }
@@ -151,13 +151,12 @@ class Features {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compare features for inequality
   //////////////////////////////////////////////////////////////////////////////
-  bool operator!=(Features const& rhs) const noexcept {
+  constexpr bool operator!=(Features const& rhs) const noexcept {
     return !(*this == rhs);
   }
 
  private:
-  // we need plain layout to meet iresearch library expectations
-  std::vector<irs::type_info::type_id> _fieldFeatures;
+  FieldFeatures _fieldFeatures{FieldFeatures::NONE};
   irs::IndexFeatures _indexFeatures{irs::IndexFeatures::NONE};
 }; // Features
 
@@ -179,7 +178,13 @@ class AnalyzerPool : private irs::util::noncopyable {
   // nullptr == error creating analyzer
   irs::analysis::analyzer::ptr get() const noexcept;
 
-  Features const& features() const noexcept { return _features; }
+  Features features() const noexcept { return _features; }
+  irs::features_t fieldFeatures() const noexcept {
+    return { _fieldFeatures.data(), _fieldFeatures.size() };
+  }
+  irs::IndexFeatures indexFeatures() const noexcept {
+    return features().indexFeatures();
+  }
   std::string const& name() const noexcept { return _name; }
   VPackSlice properties() const noexcept { return _properties; }
   irs::string_ref const& type() const noexcept { return _type; }
@@ -223,14 +228,13 @@ class AnalyzerPool : private irs::util::noncopyable {
   bool init(irs::string_ref const& type,
             VPackSlice const properties,
             AnalyzersRevision::Revision revision,
-            Features const& features = Features::emptyInstance());
+            Features features,
+            LinkVersion version = LinkVersion::MIN);
   void setKey(irs::string_ref const& type);
 
-  // cache of irs::analysis::analyzer
-  // (constructed via AnalyzerBuilder::make(...))
-  mutable irs::unbounded_object_pool<Builder> _cache;
+  mutable irs::unbounded_object_pool<Builder> _cache;  // cache of irs::analysis::analyzer
+  std::vector<irs::type_info::type_id> _fieldFeatures; // cached iresearch field features
   std::string _config;     // non-null type + non-null properties + key
-  Features _features;      // cached analyzer features
   irs::string_ref _key;    // the key of the persisted configuration for this pool,
                            // null == static analyzer
   std::string _name;       // ArangoDB alias for an IResearch analyzer configuration.
@@ -238,6 +242,7 @@ class AnalyzerPool : private irs::util::noncopyable {
                            // assertion in ctor
   VPackSlice _properties;  // IResearch analyzer configuration
   irs::string_ref _type;   // IResearch analyzer name
+  Features _features;      // analyzer features
   StoreFunc _storeFunc{};
   AnalyzerValueType _inputType{ AnalyzerValueType::Undefined };
   AnalyzerValueType _returnType{ AnalyzerValueType::Undefined };
@@ -294,6 +299,7 @@ class IResearchAnalyzerFeature final
   /// @param properties the configuration for the underlying IResearch type
   /// @param revision the revision number for analyzer
   /// @param features the expected features the analyzer should produce
+  /// @param version the target link version
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
   static Result createAnalyzerPool(AnalyzerPool::ptr& analyzer,
@@ -301,7 +307,8 @@ class IResearchAnalyzerFeature final
                                    irs::string_ref const& type,
                                    VPackSlice const properties,
                                    AnalyzersRevision::Revision revision,
-                                   Features const& features);
+                                   Features features,
+                                   LinkVersion version);
 
   static AnalyzerPool::ptr identity() noexcept;  // the identity analyzer
   static std::string const& name() noexcept;
@@ -378,7 +385,7 @@ class IResearchAnalyzerFeature final
                  irs::string_ref const& name,
                  irs::string_ref const& type,
                  VPackSlice const properties,
-                 Features const& features = Features::emptyInstance());
+                 Features features = {});
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Emplaces batch of analyzers within single analyzers revision. Intended for use

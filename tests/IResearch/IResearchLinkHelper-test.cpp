@@ -512,7 +512,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     arangodb::iresearch::IResearchViewSort sort;
     sort.emplace_back({ arangodb::basics::AttributeName(std::string("abc"), false) }, false);
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
-      builder, json->slice(), true, sysVocbase, &sort).ok());
+      builder, json->slice(), true, sysVocbase, nullptr, &sort).ok());
     builder.close();
     EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1", 
       arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
@@ -554,7 +554,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     sort.emplace_back({ arangodb::basics::AttributeName(std::string("abc"), false) }, true);
     auto compression = irs::type<irs::compression::none>::id();
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
-      builder, json->slice(), true, sysVocbase, &sort, &compression).ok());
+      builder, json->slice(), true, sysVocbase, nullptr, &sort, &compression).ok());
     builder.close();
     EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1", 
       arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
@@ -598,7 +598,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     sort.emplace_back({ arangodb::basics::AttributeName(std::string("abc"), false) }, true);
     auto compression = irs::type<irs::compression::none>::id();
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
-      builder, json->slice(), true, sysVocbase, &sort, &compression).ok());
+      builder, json->slice(), true, sysVocbase, nullptr, &sort, &compression).ok());
     builder.close();
     EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
       arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
@@ -642,6 +642,6 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     sort.emplace_back({ arangodb::basics::AttributeName(std::string("abc"), false) }, true);
     auto compression = irs::type<irs::compression::none>::id();
     EXPECT_FALSE(arangodb::iresearch::IResearchLinkHelper::normalize(
-      builder, json->slice(), true, sysVocbase, &sort, &compression).ok());
+      builder, json->slice(), true, sysVocbase, nullptr, &sort, &compression).ok());
   }
 }

@@ -511,12 +511,10 @@ bool FieldIterator::setValue(VPackSlice const value,
       }
       break;
     default: {
-      const auto& features = pool->features();
-
       iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
       _value._analyzer = analyzer;
-      _value._fieldFeatures = features.fieldFeatures();
-      _value._indexFeatures = features.indexFeatures();
+      _value._fieldFeatures = pool->fieldFeatures();
+      _value._indexFeatures = pool->indexFeatures();
       _value._name = _nameBuffer;
     } break;
   }

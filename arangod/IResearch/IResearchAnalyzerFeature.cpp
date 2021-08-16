@@ -928,7 +928,8 @@ bool AnalyzerPool::init(
     irs::string_ref const& type,
     VPackSlice const properties,
     AnalyzersRevision::Revision revision,
-    Features const& features /*= Features::emptyInstance()*/) {
+    Features features,
+    LinkVersion version /*= LinkVersion::MIN*/) {
   try {
     _cache.clear();  // reset for new type/properties
     _config.clear();
@@ -995,6 +996,7 @@ bool AnalyzerPool::init(
       } else {
         std::tie(_inputType, _returnType, _storeFunc) = getAnalyzerMeta(instance.get());
       }
+      _fieldFeatures = features.createFieldFeatures(version);
       _features = features;  // store only requested features
       _revision = revision;
       return true;
@@ -1159,7 +1161,8 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
     irs::string_ref const& type,
     VPackSlice const properties,
     AnalyzersRevision::Revision revision,
-    Features const& features) {
+    Features features,
+    LinkVersion version) {
   // check type available
   if (!irs::analysis::analyzers::exists(type, irs::type<irs::text_format::vpack>::get(), false)) {
     return {
@@ -1180,7 +1183,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
 
   // validate that features are supported by arangod an ensure that their
   // dependencies are met
-  auto validationRes = features.validate();
+  const auto validationRes = features.validate();
   if (validationRes.fail()) {
     return validationRes;
   }
@@ -1333,7 +1336,7 @@ Result IResearchAnalyzerFeature::emplace(
     irs::string_ref const& name,
     irs::string_ref const& type,
     VPackSlice const properties,
-    Features const& features /* = Features::emptyInstance() */) {
+    Features features /* = {} */) {
   auto const split = splitAnalyzerName(name);
 
   auto transaction = createAnalyzerModificationTransaction(server(), split.first);
@@ -1785,8 +1788,8 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     Instance() {
       // register the identity analyzer
       {
-        Features const extraFeatures{
-          {irs::type<irs::norm>::get().id()}, irs::IndexFeatures::FREQ};
+        Features constexpr extraFeatures{
+          FieldFeatures::NORM, irs::IndexFeatures::FREQ};
         TRI_ASSERT(extraFeatures.validate().ok());
 
         auto pool = std::make_shared<AnalyzerPool>(IdentityAnalyzer::type_name());
@@ -1816,8 +1819,8 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       {
         // Note: ArangoDB strings coming from JavaScript user input are UTF-8 encoded
         // add norms + frequency/position for by_phrase
-        Features const extraFeatures{
-          {irs::type<irs::norm>::get().id()},
+        Features constexpr extraFeatures{
+          FieldFeatures::NORM,
           irs::IndexFeatures::FREQ | irs::IndexFeatures::POS};
         TRI_ASSERT(extraFeatures.validate().ok());
 
@@ -2865,45 +2868,38 @@ void Features::visit(std::function<void(std::string_view)> visitor) const {
   if (irs::IndexFeatures::POS == (_indexFeatures & irs::IndexFeatures::POS)) {
     visitor(irs::type<irs::position>::name());
   }
-
-  for (auto feature : _fieldFeatures) {
-    TRI_ASSERT(feature); // has to be non-nullptr
-    visitor(feature().name());
+  if (FieldFeatures::NORM == (_fieldFeatures & FieldFeatures::NORM)) {
+    visitor(irs::type<irs::norm>::name());
   }
 }
 
-void Features::visitFieldFeatures(std::function<void(irs::type_info::type_id&)> visitor) {
-  for (auto& feature : _fieldFeatures) {
-    TRI_ASSERT(feature); // has to be non-nullptr
-    visitor(feature);
+std::vector<irs::type_info::type_id> Features::createFieldFeatures(LinkVersion version) const {
+  if (_fieldFeatures == FieldFeatures::NONE) {
+    return {};
   }
+
+  return { version > LinkVersion::MIN
+    ? irs::type<irs::norm2>::id()
+    : irs::type<irs::norm>::id() };
 }
 
 bool Features::add(irs::string_ref featureName) {
   if (featureName == irs::type<irs::position>::name()) {
     _indexFeatures |= irs::IndexFeatures::POS;
     return true;
-  } else if (featureName == irs::type<irs::frequency>::name()) {
+  }
+
+  if (featureName == irs::type<irs::frequency>::name()) {
     _indexFeatures |= irs::IndexFeatures::FREQ;
     return true;
   }
 
-  // forbid setting of undocumented features!
-  // only "norm" is documented
-  if (irs::type<irs::norm>::name() != featureName) {
-    return false;
+  if (featureName == irs::type<irs::norm>::name()) {
+    _fieldFeatures |= FieldFeatures::NORM;
+    return true;
   }
 
-  const auto feature = irs::attributes::get(featureName, false);
-  if (!feature) {
-    return false;
-  }
-  auto existingFeature = std::find(
-    _fieldFeatures.begin(), _fieldFeatures.end(),  feature.id());
-  if (existingFeature == _fieldFeatures.end()) {
-    _fieldFeatures.push_back(feature.id());
-  }
-  return true;
+  return false;
 }
 
 Result Features::validate() const {
@@ -2923,19 +2919,7 @@ Result Features::validate() const {
           std::to_string(static_cast<std::underlying_type_t<irs::IndexFeatures>>(_indexFeatures))};
   }
 
-  for (auto& feature : _fieldFeatures) {
-    if (feature().id() != irs::type<irs::norm>::id()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "unsupported analyzer feature '" +
-                  std::string(feature().name()) + "'"};
-    }
-  }
-
   return {};
-}
-
-Features const& Features::emptyInstance() {
-  return EMPTY_FEATURES_INSTANCE;
 }
 
 }  // namespace iresearch
