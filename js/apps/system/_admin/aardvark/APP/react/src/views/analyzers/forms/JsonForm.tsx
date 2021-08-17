@@ -30,7 +30,8 @@ const JsonForm = ({ state, dispatch }: FormProps) => {
         `
           ${error.keyword} error: ${error.instancePath} ${error.message}.
           Schema: ${JSON.stringify(error.params)}
-        `));
+        `
+      ));
     }
   };
 
