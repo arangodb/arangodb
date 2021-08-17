@@ -27,11 +27,13 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
@@ -335,10 +337,18 @@ RestStatus RestIndexHandler::createIndex() {
   VPackBuilder indexInfo;
   indexInfo.add(body);
 
+  auto execContext = std::unique_ptr<VocbaseContext>(VocbaseContext::create(*_request, _vocbase));
+  // this is necessary, because the execContext will release the vocbase in its dtor
+  if (!_vocbase.use()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
   std::unique_lock<std::mutex> locker(_mutex);
     
   // the following callback is executed in a background thread
-  auto cb = [this, self = shared_from_this(), collection = std::move(coll), body = std::move(indexInfo)]{
+  auto cb = [this, self = shared_from_this(), execContext = std::move(execContext),
+             collection = std::move(coll), body = std::move(indexInfo)]{
+    ExecContextScope scope(execContext.get());
     {
       std::unique_lock<std::mutex> locker(_mutex);
 
