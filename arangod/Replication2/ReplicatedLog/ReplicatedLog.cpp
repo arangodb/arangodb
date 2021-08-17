@@ -70,7 +70,7 @@ auto replicated_log::ReplicatedLog::becomeLeader(
         << "becoming leader in term " << newTerm;
     auto leader = LogLeader::construct(config, std::move(logCore), follower,
                                        std::move(id), newTerm, _logContext, _metrics);
-    _participant = std::static_pointer_cast<LogParticipantI>(leader);
+    _participant = std::static_pointer_cast<ILogParticipant>(leader);
     _metrics->replicatedLogLeaderTookOverNumber->count();
     return std::make_pair(std::move(leader), std::move(deferred));
   });
@@ -97,7 +97,7 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm ter
     auto follower = std::make_shared<LogFollower>(_logContext, _metrics,
                                                   std::move(id), std::move(logCore),
                                                   term, std::move(leaderId), log);
-    _participant = std::static_pointer_cast<LogParticipantI>(follower);
+    _participant = std::static_pointer_cast<ILogParticipant>(follower);
     _metrics->replicatedLogStartedFollowingNumber->operator++();
     return std::make_tuple(follower, std::move(deferred));
   });
@@ -105,7 +105,7 @@ auto replicated_log::ReplicatedLog::becomeFollower(ParticipantId id, LogTerm ter
 }
 
 auto replicated_log::ReplicatedLog::getParticipant() const
-    -> std::shared_ptr<LogParticipantI> {
+    -> std::shared_ptr<ILogParticipant> {
   std::unique_lock guard(_mutex);
   if (_participant == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);

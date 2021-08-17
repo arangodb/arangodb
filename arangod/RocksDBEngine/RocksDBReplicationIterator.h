@@ -49,7 +49,6 @@ class RocksDBRevisionReplicationIterator : public RevisionReplicationIterator {
 
  private:
   std::unique_ptr<rocksdb::Iterator> _iter;
-  rocksdb::ReadOptions _readOptions;
   RocksDBKeyBounds _bounds;
   rocksdb::Comparator const* _cmp;
 };

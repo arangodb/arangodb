@@ -33,6 +33,7 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::replicated_log;
 
 replicated_log::LogCore::LogCore(std::shared_ptr<PersistedLog> persistedLog)
     : _persistedLog(std::move(persistedLog)) {
@@ -49,19 +50,19 @@ auto replicated_log::LogCore::removeBack(LogIndex first) -> Result {
   return _persistedLog->removeBack(first);
 }
 
-auto replicated_log::LogCore::insert(LogIterator& iter, bool waitForSync) -> Result {
+auto replicated_log::LogCore::insert(PersistedLogIterator& iter, bool waitForSync) -> Result {
   std::unique_lock guard(_operationMutex);
   PersistedLog::WriteOptions opts;
   opts.waitForSync = waitForSync;
   return _persistedLog->insert(iter, opts);
 }
 
-auto replicated_log::LogCore::read(LogIndex first) const -> std::unique_ptr<LogIterator> {
+auto replicated_log::LogCore::read(LogIndex first) const -> std::unique_ptr<PersistedLogIterator> {
   std::unique_lock guard(_operationMutex);
   return _persistedLog->read(first);
 }
 
-auto replicated_log::LogCore::insertAsync(std::unique_ptr<LogIterator> iter, bool waitForSync)
+auto replicated_log::LogCore::insertAsync(std::unique_ptr<PersistedLogIterator> iter, bool waitForSync)
     -> futures::Future<Result> {
   std::unique_lock guard(_operationMutex);
   // This will hold the mutex

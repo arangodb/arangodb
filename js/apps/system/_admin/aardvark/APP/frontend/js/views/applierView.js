@@ -46,7 +46,7 @@
       if (this.database === '_system' || global) {
         url = this.endpoint + '/_api/replication/applier-state';
       } else {
-        url = this.endpoint + '/_db/' + this.database + '/_api/replication/applier-state';
+        url = this.endpoint + '/_db/' + encodeURIComponent(this.database) + '/_api/replication/applier-state';
       }
       if (global) {
         url = url + '?global=true';

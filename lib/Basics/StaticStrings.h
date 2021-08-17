@@ -329,6 +329,7 @@ class StaticStrings {
   static std::string const Spearhead;
   static std::string const TargetConfig;
   static std::string const Term;
+  static std::string const CommitIndex;
 
   // generic attribute names
   static std::string const AttrCoordinator;

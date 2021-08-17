@@ -23,9 +23,9 @@
 #pragma once
 
 #include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/ILogParticipant.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
-#include "Replication2/ReplicatedLog/LogParticipantI.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 
 #include <iosfwd>
@@ -48,7 +48,7 @@ namespace arangodb::replication2::replicated_log {
  * vocbase. Exactly one instance exists for each replicated log this server is a
  * participant of.
  *
- * It holds a single LogParticipantI; starting with a LogUnconfiguredParticipant,
+ * It holds a single ILogParticipant; starting with a LogUnconfiguredParticipant,
  * this will usually be either a LogLeader or a LogFollower.
  *
  * The active participant is also responsible for the singular LogCore of this
@@ -81,7 +81,7 @@ struct alignas(64) ReplicatedLog {
   auto becomeFollower(ParticipantId id, LogTerm term, std::optional<ParticipantId> leaderId)
       -> std::shared_ptr<LogFollower>;
 
-  auto getParticipant() const -> std::shared_ptr<LogParticipantI>;
+  auto getParticipant() const -> std::shared_ptr<ILogParticipant>;
 
   auto getLeader() const -> std::shared_ptr<LogLeader>;
   auto getFollower() const -> std::shared_ptr<LogFollower>;
@@ -107,7 +107,7 @@ struct alignas(64) ReplicatedLog {
  private:
   LoggerContext const _logContext = LoggerContext(Logger::REPLICATION2);
   mutable std::mutex _mutex;
-  std::shared_ptr<LogParticipantI> _participant;
+  std::shared_ptr<ILogParticipant> _participant;
   std::shared_ptr<ReplicatedLogMetrics> const _metrics;
 };
 

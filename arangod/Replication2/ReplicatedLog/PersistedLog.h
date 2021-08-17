@@ -29,7 +29,13 @@
 
 #include <memory>
 
-namespace arangodb::replication2 {
+namespace arangodb::replication2::replicated_log {
+
+// ReplicatedLog-internal iterator over PersistingLogEntries
+struct PersistedLogIterator {
+  virtual ~PersistedLogIterator() = default;
+  virtual auto next() -> std::optional<PersistingLogEntry> = 0;
+};
 
 /**
  * @brief Interface to persist a replicated log locally. Implemented by
@@ -44,9 +50,9 @@ struct PersistedLog {
   };
 
   [[nodiscard]] auto id() const noexcept -> LogId { return _lid; }
-  virtual auto insert(LogIterator& iter, WriteOptions const&) -> Result = 0;
-  virtual auto insertAsync(std::unique_ptr<LogIterator> iter, WriteOptions const&) -> futures::Future<Result> = 0;
-  virtual auto read(LogIndex start) -> std::unique_ptr<LogIterator> = 0;
+  virtual auto insert(PersistedLogIterator& iter, WriteOptions const&) -> Result = 0;
+  virtual auto insertAsync(std::unique_ptr<PersistedLogIterator> iter, WriteOptions const&) -> futures::Future<Result> = 0;
+  virtual auto read(LogIndex start) -> std::unique_ptr<PersistedLogIterator> = 0;
   virtual auto removeFront(LogIndex stop) -> Result = 0;
   virtual auto removeBack(LogIndex start) -> Result = 0;
 

@@ -32,6 +32,7 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::replicated_log;
 
 struct RocksDBLogTest : testing::Test {
  protected:
@@ -85,11 +86,11 @@ rocksdb::DB* RocksDBLogTest::_db = nullptr;
 std::shared_ptr<RocksDBLogPersistor> RocksDBLogTest::_persistor = nullptr;
 
 template <typename I>
-struct SimpleIterator : LogIterator {
+struct SimpleIterator : PersistedLogIterator {
   SimpleIterator(I begin, I end) : current(begin), end(end) {}
   ~SimpleIterator() override = default;
 
-  auto next() -> std::optional<LogEntry> override {
+  auto next() -> std::optional<PersistingLogEntry> override {
     if (current == end) {
       return std::nullopt;
     }
@@ -105,9 +106,9 @@ auto make_iterator(C const& c) -> std::shared_ptr<SimpleIterator<Iter>> {
   return std::make_shared<SimpleIterator<Iter>>(c.begin(), c.end());
 }
 
-auto make_iterator(std::initializer_list<LogEntry> c)
-    -> std::shared_ptr<SimpleIterator<std::initializer_list<LogEntry>::iterator>> {
-  return std::make_shared<SimpleIterator<std::initializer_list<LogEntry>::iterator>>(
+auto make_iterator(std::initializer_list<PersistingLogEntry> c)
+    -> std::shared_ptr<SimpleIterator<std::initializer_list<PersistingLogEntry>::iterator>> {
+  return std::make_shared<SimpleIterator<std::initializer_list<PersistingLogEntry>::iterator>>(
       c.begin(), c.end());
 }
 
@@ -116,10 +117,10 @@ TEST_F(RocksDBLogTest, insert_iterate) {
 
   {
     auto entries = std::vector{
-        LogEntry{LogTerm{1}, LogIndex{1}, LogPayload{"first"}},
-        LogEntry{LogTerm{1}, LogIndex{2}, LogPayload{"second"}},
-        LogEntry{LogTerm{2}, LogIndex{3}, LogPayload{"third"}},
-        LogEntry{LogTerm{2}, LogIndex{1000}, LogPayload{"thousand"}},
+        PersistingLogEntry{LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{2}, LogPayload::createFromString("second")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{3}, LogPayload::createFromString("third")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{1000}, LogPayload::createFromString("thousand")},
     };
     auto iter = make_iterator(entries);
 
@@ -128,32 +129,32 @@ TEST_F(RocksDBLogTest, insert_iterate) {
   }
 
   {
-    auto entry = std::optional<LogEntry>{};
+    auto entry = std::optional<PersistingLogEntry>{};
     auto iter = log->read(LogIndex{1});
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 1);
     ASSERT_EQ(entry->logTerm().value, 1);
-    ASSERT_EQ(entry->logPayload(), LogPayload{"first"});
+    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("first"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 2);
     ASSERT_EQ(entry->logTerm().value, 1);
-    ASSERT_EQ(entry->logPayload(), LogPayload{"second"});
+    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("second"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 3);
     ASSERT_EQ(entry->logTerm().value, 2);
-    ASSERT_EQ(entry->logPayload(), LogPayload{"third"});
+    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("third"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 1000);
     ASSERT_EQ(entry->logTerm().value, 2);
-    ASSERT_EQ(entry->logPayload(), LogPayload{"thousand"});
+    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("thousand"));
 
     entry = iter->next();
     ASSERT_FALSE(entry.has_value());
@@ -165,11 +166,11 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
 
   {
     auto entries = std::vector{
-        LogEntry{LogTerm{1}, LogIndex{1}, LogPayload{"first"}},
-        LogEntry{LogTerm{1}, LogIndex{2}, LogPayload{"second"}},
-        LogEntry{LogTerm{2}, LogIndex{3}, LogPayload{"third"}},
-        LogEntry{LogTerm{2}, LogIndex{999}, LogPayload{"nine-nine-nine"}},
-        LogEntry{LogTerm{2}, LogIndex{1000}, LogPayload{"thousand"}},
+        PersistingLogEntry{LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{2}, LogPayload::createFromString("second")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{3}, LogPayload::createFromString("third")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{999}, LogPayload::createFromString("nine-nine-nine")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{1000}, LogPayload::createFromString("thousand")},
     };
     auto iter = make_iterator(entries);
 
@@ -183,14 +184,14 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
   }
 
   {
-    auto entry = std::optional<LogEntry>{};
+    auto entry = std::optional<PersistingLogEntry>{};
     auto iter = log->read(LogIndex{1});
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 1000);
     ASSERT_EQ(entry->logTerm().value, 2);
-    ASSERT_EQ(entry->logPayload(), LogPayload{"thousand"});
+    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("thousand"));
 
     entry = iter->next();
     ASSERT_FALSE(entry.has_value());
@@ -203,11 +204,11 @@ TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
 
   {
     auto entries = std::vector{
-        LogEntry{LogTerm{1}, LogIndex{1}, LogPayload{"first"}},
-        LogEntry{LogTerm{1}, LogIndex{2}, LogPayload{"second"}},
-        LogEntry{LogTerm{2}, LogIndex{3}, LogPayload{"third"}},
-        LogEntry{LogTerm{2}, LogIndex{999}, LogPayload{"nine-nine-nine"}},
-        LogEntry{LogTerm{2}, LogIndex{1000}, LogPayload{"thousand"}},
+        PersistingLogEntry{LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first")},
+        PersistingLogEntry{LogTerm{1}, LogIndex{2}, LogPayload::createFromString("second")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{3}, LogPayload::createFromString("third")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{999}, LogPayload::createFromString("nine-nine-nine")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{1000}, LogPayload::createFromString("thousand")},
     };
     auto iter = make_iterator(entries);
 
@@ -223,37 +224,38 @@ TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
   }
 
   {
-    auto entry = std::optional<LogEntry>{};
+    auto entry = std::optional<PersistingLogEntry>{};
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 1);
     ASSERT_EQ(entry->logTerm().value, 1);
-    ASSERT_EQ(entry->logPayload(), LogPayload{"first"});
+    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("first"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 2);
     ASSERT_EQ(entry->logTerm().value, 1);
-    ASSERT_EQ(entry->logPayload(), LogPayload{"second"});
+    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("second"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 3);
     ASSERT_EQ(entry->logTerm().value, 2);
-    ASSERT_EQ(entry->logPayload(), LogPayload{"third"});
+    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("third"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 999);
     ASSERT_EQ(entry->logTerm().value, 2);
-    ASSERT_EQ(entry->logPayload(), LogPayload{"nine-nine-nine"});
+    ASSERT_EQ(entry->logPayload(),
+              LogPayload::createFromString("nine-nine-nine"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     ASSERT_EQ(entry->logIndex().value, 1000);
     ASSERT_EQ(entry->logTerm().value, 2);
-    ASSERT_EQ(entry->logPayload(), LogPayload{"thousand"});
+    ASSERT_EQ(entry->logPayload(), LogPayload::createFromString("thousand"));
     entry = iter->next();
     ASSERT_FALSE(entry.has_value());
   }

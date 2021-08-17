@@ -52,8 +52,8 @@ replicated_log::QuorumData::QuorumData(LogIndex index, LogTerm term)
     : QuorumData(index, term, {}) {}
 
 replicated_log::QuorumData::QuorumData(VPackSlice slice) {
-  index = LogIndex{slice.get(StaticStrings::Index).extract<std::size_t>()};
-  term = LogTerm{slice.get("term").extract<std::size_t>()};
+  index = slice.get(StaticStrings::Index).extract<LogIndex>();
+  term = slice.get(StaticStrings::Term).extract<LogTerm>();
   for (auto part : VPackArrayIterator(slice.get("quorum"))) {
     quorum.push_back(part.copyString());
   }
@@ -62,7 +62,7 @@ replicated_log::QuorumData::QuorumData(VPackSlice slice) {
 void replicated_log::QuorumData::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Index, VPackValue(index.value));
-  builder.add("term", VPackValue(term.value));
+  builder.add(StaticStrings::Term, VPackValue(term.value));
   {
     VPackArrayBuilder ab(&builder, "quorum");
     for (auto const& part : quorum) {
@@ -74,14 +74,14 @@ void replicated_log::QuorumData::toVelocyPack(velocypack::Builder& builder) cons
 
 void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
-  builder.add("commitIndex", VPackValue(commitIndex.value));
+  builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex.value));
   builder.add(VPackValue(StaticStrings::Spearhead));
   spearHead.toVelocyPack(builder);
 }
 
 auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice) -> LogStatistics {
   LogStatistics stats;
-  stats.commitIndex = LogIndex{slice.get("commitIndex").getNumericValue<size_t>()};
+  stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
   stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
   return stats;
 }

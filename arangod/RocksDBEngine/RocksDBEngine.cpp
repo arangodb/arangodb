@@ -185,12 +185,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _pruneWaitTimeInitial(180.0),
       _maxWalArchiveSizeLimit(0),
       _releasedTick(0),
-#ifdef _WIN32
-      // background syncing is not supported on Windows
-      _syncInterval(0),
-#else
       _syncInterval(100),
-#endif
       _syncDelayThreshold(5000),
       _requiredDiskFreePercentage(0.01),
       _requiredDiskFreeBytes(16 * 1024 * 1024),
@@ -410,14 +405,6 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> opt
           << "auto-adjusting value of --rocksdb.sync-delay-threshold to " << _syncDelayThreshold << " ms";
     }
   }
-
-#ifdef _WIN32
-  if (_syncInterval > 0) {
-    LOG_TOPIC("68301", WARN, arangodb::Logger::CONFIG)
-        << "automatic syncing of RocksDB WAL via background thread is not "
-        << " supported on this platform";
-  }
-#endif
 
   if (_pruneWaitTimeInitial < 10) {
     LOG_TOPIC("a9667", WARN, arangodb::Logger::ENGINES)
@@ -1157,12 +1144,12 @@ ErrorCode RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-ErrorCode RocksDBEngine::getReplicatedLogs(TRI_vocbase_t& vocbase,
-                                           arangodb::velocypack::Builder& result) {
+void RocksDBEngine::getReplicatedLogs(TRI_vocbase_t& vocbase,
+                                      arangodb::velocypack::Builder& result) {
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(
       _db->NewIterator(readOptions, RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Definitions)));
+                                        RocksDBColumnFamilyManager::Family::Definitions)));
 
   result.openArray();
 
@@ -1184,8 +1171,6 @@ ErrorCode RocksDBEngine::getReplicatedLogs(TRI_vocbase_t& vocbase,
   }
 
   result.close();
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ErrorCode RocksDBEngine::getViews(TRI_vocbase_t& vocbase,
@@ -2364,16 +2349,13 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   // scan the database path for replicated logs
   try {
     VPackBuilder builder;
-    auto res = getReplicatedLogs(*vocbase, builder);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
+    getReplicatedLogs(*vocbase, builder);
 
     VPackSlice const slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
     for (VPackSlice it : VPackArrayIterator(slice)) {
-      // we found a view that is still active
+      // we found a log that is still active
       TRI_ASSERT(!it.get("id").isNone());
 
       auto logId = arangodb::replication2::LogId{
@@ -2979,7 +2961,7 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
 }
 
 auto RocksDBEngine::dropReplicatedLog(TRI_vocbase_t& vocbase,
-                                      std::shared_ptr<arangodb::replication2::PersistedLog> const& log)
+                                      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const& log)
     -> Result {
   auto key = RocksDBKey{};
   key.constructReplicatedLog(vocbase.id(), log->id());
@@ -2990,7 +2972,7 @@ auto RocksDBEngine::dropReplicatedLog(TRI_vocbase_t& vocbase,
 }
 
 auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase, arangodb::replication2::LogId logId)
-    -> ResultT<std::shared_ptr<arangodb::replication2::PersistedLog>> {
+    -> ResultT<std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> {
 
   auto key = RocksDBKey{};
   key.constructReplicatedLog(vocbase.id(), logId);
@@ -3011,8 +2993,7 @@ auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase, arangodb::replic
                             RocksDBColumnFamilyManager::Family::Definitions),
                         key.string(), value.string());
   if (s.ok()) {
-    auto log = std::make_shared<RocksDBPersistedLog>(logId, objectId, _logPersistor);
-    return {log};
+    return { std::make_shared<RocksDBPersistedLog>(logId, objectId, _logPersistor) };
   }
 
   return rocksutils::convertStatus(s);

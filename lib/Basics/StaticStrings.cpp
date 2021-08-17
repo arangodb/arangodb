@@ -353,6 +353,7 @@ std::string const StaticStrings::ServerId("serverId");
 std::string const StaticStrings::Spearhead("spearhead");
 std::string const StaticStrings::TargetConfig("targetConfig");
 std::string const StaticStrings::Term("term");
+std::string const StaticStrings::CommitIndex("commitIndex");
 
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");

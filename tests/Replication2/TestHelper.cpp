@@ -33,17 +33,14 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-auto MockLog::insert(LogIterator& iter, WriteOptions const&) -> arangodb::Result {
+auto MockLog::insert(PersistedLogIterator& iter, WriteOptions const&) -> arangodb::Result {
   auto lastIndex = LogIndex{0};
-  auto lastTerm = LogTerm{0};
 
   while (auto entry = iter.next()) {
     auto const res = _storage.try_emplace(entry->logIndex(), entry.value());
     TRI_ASSERT(res.second);
 
-    TRI_ASSERT(entry->logTerm() >= lastTerm);
     TRI_ASSERT(entry->logIndex() > lastIndex);
-    lastTerm = entry->logTerm();
     lastIndex = entry->logIndex();
   }
 
@@ -51,17 +48,19 @@ auto MockLog::insert(LogIterator& iter, WriteOptions const&) -> arangodb::Result
 }
 
 template <typename I>
-struct MockLogContainerIterator : LogIterator {
+struct MockLogContainerIterator : PersistedLogIterator {
   MockLogContainerIterator(MockLog::storeType store, LogIndex start)
       : _store(std::move(store)),
         _current(_store.lower_bound(start)),
         _end(_store.end()) {}
 
-  auto next() -> std::optional<LogEntry> override {
-    if (_current == _end) {
-      return std::nullopt;
+  auto next() -> std::optional<PersistingLogEntry> override {
+    if (_current != _end) {
+      auto it = _current;
+      ++_current;
+      return it->second;
     }
-    return (_current++)->second;
+    return std::nullopt;
   }
 
   MockLog::storeType _store;
@@ -69,19 +68,16 @@ struct MockLogContainerIterator : LogIterator {
   I _end;
 };
 
-auto MockLog::read(replication2::LogIndex start)
--> std::unique_ptr<LogIterator> {
+auto MockLog::read(replication2::LogIndex start) -> std::unique_ptr<PersistedLogIterator> {
   return std::make_unique<MockLogContainerIterator<iteratorType>>(_storage, start);
 }
 
-auto MockLog::removeFront(replication2::LogIndex stop)
--> Result {
+auto MockLog::removeFront(replication2::LogIndex stop) -> Result {
   _storage.erase(_storage.begin(), _storage.lower_bound(stop));
   return {};
 }
 
-auto MockLog::removeBack(replication2::LogIndex start)
--> Result {
+auto MockLog::removeBack(replication2::LogIndex start) -> Result {
   _storage.erase(_storage.lower_bound(start), _storage.end());
   return {};
 }
@@ -107,16 +103,17 @@ AsyncMockLog::AsyncMockLog(replication2::LogId id)
 
 AsyncMockLog::~AsyncMockLog() noexcept { stop(); }
 
-void MockLog::setEntry(replication2::LogEntry entry) {
+void MockLog::setEntry(replication2::PersistingLogEntry entry) {
   _storage.emplace(entry.logIndex(), std::move(entry));
 }
 
-auto MockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter, WriteOptions const& opts) -> futures::Future<Result> {
+auto MockLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
+                          WriteOptions const& opts) -> futures::Future<Result> {
   return insert(*iter, opts);
 }
 
-auto AsyncMockLog::insertAsync(std::unique_ptr<replication2::LogIterator> iter, WriteOptions const& opts)
-    -> futures::Future<Result> {
+auto AsyncMockLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
+                               WriteOptions const& opts) -> futures::Future<Result> {
   auto entry = std::make_shared<QueueEntry>();
   entry->opts = opts;
   entry->iter = std::move(iter);
@@ -163,28 +160,17 @@ auto TestReplicatedLog::becomeFollower(ParticipantId const& id, LogTerm term, Pa
 
 auto TestReplicatedLog::becomeLeader(LogConfig config, ParticipantId id, LogTerm term,
                                      std::vector<std::shared_ptr<AbstractFollower>> const& follower)
-    -> std::shared_ptr<DelayedLogLeader> {
-  auto ptr = ReplicatedLog::becomeLeader(config, std::move(id), term, follower);
-  return std::make_shared<DelayedLogLeader>(ptr);
+    -> std::shared_ptr<LogLeader> {
+  return ReplicatedLog::becomeLeader(config, std::move(id), term, follower);
 }
 
 auto TestReplicatedLog::becomeLeader(ParticipantId const& id, LogTerm term,
                                      std::vector<std::shared_ptr<AbstractFollower>> const& follower,
                                      std::size_t writeConcern)
-    -> std::shared_ptr<DelayedLogLeader> {
+    -> std::shared_ptr<LogLeader> {
   LogConfig config;
   config.writeConcern = writeConcern;
   config.waitForSync = false;
 
   return becomeLeader(config, id, term, follower);
-}
-
-DelayedLogLeader::DelayedLogLeader(std::shared_ptr<LogLeader>  leader)
-    : _leader(std::move(leader)) {}
-
-LogStatus DelayedLogLeader::getStatus() const {
-  return _leader->getStatus();
-}
-auto DelayedLogLeader::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
-  return std::move(*_leader).resign();
 }

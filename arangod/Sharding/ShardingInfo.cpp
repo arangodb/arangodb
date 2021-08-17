@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShardingInfo.h"
-#include "Agency/AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -31,7 +30,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingStrategyDefault.h"
 #include "Utils/CollectionNameResolver.h"
@@ -45,12 +43,12 @@ using namespace arangodb;
 ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* collection)
     : _collection(collection),
       _numberOfShards(basics::VelocyPackHelper::getNumericValue<size_t>(info, StaticStrings::NumberOfShards,
-                                                                        1)),
+                                                                         1)),
       _replicationFactor(1),
       _writeConcern(1),
       _distributeShardsLike(basics::VelocyPackHelper::getStringValue(info, StaticStrings::DistributeShardsLike,
                                                                      "")),
-      _shardIds(std::make_shared<ShardMap>()) {
+      _shardIds(new ShardMap()) {
   bool const isSmart =
       basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IsSmart, false);
 
@@ -76,7 +74,8 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
   }
 
   VPackSlice distributeShardsLike = info.get(StaticStrings::DistributeShardsLike);
-  if (!distributeShardsLike.isNone() && !distributeShardsLike.isString() &&
+  if (!distributeShardsLike.isNone() && 
+      !distributeShardsLike.isString() &&
       !distributeShardsLike.isNull()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -104,7 +103,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     }
   }
 
-  bool isASatellite = false;
+  bool isASatellite = false; 
   auto replicationFactorSlice = info.get(StaticStrings::ReplicationFactor);
   if (!replicationFactorSlice.isNone()) {
     bool isError = true;
@@ -131,9 +130,8 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     }
 
     if (isSmart && isASatellite) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "'isSmart' and replicationFactor 'satellite' cannot be combined");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "'isSmart' and replicationFactor 'satellite' cannot be combined");
     }
 #endif
     if (isError) {
@@ -144,7 +142,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
 
   if (!isASatellite) {
     auto writeConcernSlice = info.get(StaticStrings::WriteConcern);
-    if (writeConcernSlice.isNone()) {  // minReplicationFactor is deprecated in 3.6
+    if (writeConcernSlice.isNone()) { // minReplicationFactor is deprecated in 3.6
       writeConcernSlice = info.get(StaticStrings::MinReplicationFactor);
     }
     if (!writeConcernSlice.isNone()) {
@@ -168,7 +166,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       }
     }
   }
-
+  
   // replicationFactor == 0 -> SatelliteCollection
   if (shardKeysSlice.isNone() || _replicationFactor == 0) {
     // Use default.
@@ -190,10 +188,10 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
             }
           }
           // system attributes are not allowed (except _key, _from and _to)
-          if (stripped == StaticStrings::IdString || stripped == StaticStrings::RevString) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_BAD_PARAMETER,
-                "_id or _rev cannot be used as shard keys");
+          if (stripped == StaticStrings::IdString || 
+              stripped == StaticStrings::RevString) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, 
+                                           "_id or _rev cannot be used as shard keys");
           }
 
           if (!stripped.empty()) {
@@ -201,7 +199,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
           }
         }
       }
-      if (_shardKeys.empty()) {
+      if (_shardKeys.empty()) { 
         // Compatibility. Old configs might store empty shard-keys locally.
         // This is translated to ["_key"]. In cluster-case this always was
         // forbidden.
@@ -214,7 +212,8 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
 
   if (_shardKeys.empty() || _shardKeys.size() > 8) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER, "invalid number of shard keys for collection");
+        TRI_ERROR_BAD_PARAMETER,
+        "invalid number of shard keys for collection");
   }
 
   auto shardsSlice = info.get("shards");
@@ -229,49 +228,6 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
         }
         _shardIds->try_emplace(shard, servers);
       }
-    }
-  }
-
-  if (_collection->vocbase().replicationVersion() == replication::Version::TWO) {
-    auto const& path = cluster::paths::root()
-                           ->arango()
-                           ->plan()
-                           ->collections()
-                           ->database(_collection->vocbase().name())
-                           ->collection(_collection->name())
-                           ->replicatedLogs();
-    auto const& replicatedLogsKey = path->component();
-    auto replicatedLogsSlice = info.get(replicatedLogsKey);
-    if (replicatedLogsSlice.isObject()) {
-      TRI_ASSERT(replicatedLogsSlice.isObject() ==
-                 (_collection->vocbase().replicationVersion() == replication::Version::TWO));
-      try {
-        auto replicatedLogs = std::make_shared<ReplicatedLogsMap>();
-        for (auto const& logSlice : VPackObjectIterator(replicatedLogsSlice)) {
-          auto shardId = logSlice.key.stringView();
-          auto logId = logSlice.value.stringView();
-          auto success =
-              replicatedLogs
-                  ->emplace(shardId, replication2::LogId::fromString(logId).value())
-                  .second;
-          TRI_ASSERT(success);
-        }
-        _replicatedLogs = std::move(replicatedLogs);
-      } catch (std::exception const& ex) {
-        using basics::StringUtils::concatT;
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            concatT("When creating ShardingInfo of collection ",
-                    _collection->vocbase().name(), "/", _collection->name(),
-                    ": "
-                    "Invalid agency entry at ",
-                    *path, ", exception while reading was: ", ex.what(), "."));
-      }
-    } else {
-      LOG_TOPIC("77879", INFO, Logger::MAINTENANCE)
-          << "Empty replicatedLogsSlice for " << _collection->vocbase().name()
-          << "/" << _collection->name()
-          << ", even though the database uses replicationVersion 2.";
     }
   }
 
@@ -295,10 +251,7 @@ ShardingInfo::ShardingInfo(ShardingInfo const& other, LogicalCollection* collect
       _distributeShardsLike(other.distributeShardsLike()),
       _avoidServers(other.avoidServers()),
       _shardKeys(other.shardKeys()),
-      _shardIds(std::make_shared<ShardMap>()),
-      _replicatedLogs(collection->vocbase().replicationVersion() == replication::Version::TWO
-                          ? decltype(_replicatedLogs){other.replicatedLogs()}
-                          : std::nullopt),
+      _shardIds(new ShardMap()),
       _shardingStrategy() {
   TRI_ASSERT(_collection != nullptr);
 
@@ -343,17 +296,6 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) const 
   }
 
   result.close();  // shards
-
-  if (_collection->vocbase().replicationVersion() == replication::Version::TWO) {
-    result.add(VPackValue(StaticStrings::ReplicatedLogs));
-    result.openObject();
-    {
-      for (auto const& it : *replicatedLogs()) {
-        result.add(it.first, VPackValue(to_string(it.second)));
-      }
-    }
-    result.close();
-  }
 
   if (isSatellite()) {
     result.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
@@ -469,8 +411,7 @@ void ShardingInfo::writeConcern(size_t writeConcern) {
   _writeConcern = writeConcern;
 }
 
-void ShardingInfo::setWriteConcernAndReplicationFactor(size_t writeConcern,
-                                                       size_t replicationFactor) {
+void ShardingInfo::setWriteConcernAndReplicationFactor(size_t writeConcern, size_t replicationFactor) {
   if (writeConcern > replicationFactor) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -533,12 +474,8 @@ std::shared_ptr<ShardMap> ShardingInfo::shardIds(std::unordered_set<std::string>
   return result;
 }
 
-void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> map) noexcept {
-  _shardIds = std::move(map);
-}
-
-void ShardingInfo::setReplicatedLogsMap(std::shared_ptr<ReplicatedLogsMap> map) noexcept {
-  _replicatedLogs = std::move(map);
+void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> const& map) {
+  _shardIds = map;
 }
 
 ErrorCode ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice,
@@ -549,9 +486,9 @@ ErrorCode ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice,
                                                 usesDefaultShardKeys, key);
 }
 
-Result ShardingInfo::validateShardsAndReplicationFactor(
-    arangodb::velocypack::Slice slice,
-    application_features::ApplicationServer const& server, bool enforceReplicationFactor) {
+Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice,
+                                                        application_features::ApplicationServer const& server,
+                                                        bool enforceReplicationFactor) {
   if (slice.isObject()) {
     auto& cl = server.getFeature<ClusterFeature>();
 
@@ -559,26 +496,22 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
     if (numberOfShardsSlice.isNumber()) {
       uint32_t const maxNumberOfShards = cl.maxNumberOfShards();
       uint32_t numberOfShards = numberOfShardsSlice.getNumber<uint32_t>();
-      if (maxNumberOfShards > 0 && numberOfShards > maxNumberOfShards) {
-        return Result(TRI_ERROR_CLUSTER_TOO_MANY_SHARDS,
-                      std::string(
-                          "too many shards. maximum number of shards is ") +
-                          std::to_string(maxNumberOfShards));
+      if (maxNumberOfShards > 0 &&
+          numberOfShards > maxNumberOfShards) {
+        return Result(TRI_ERROR_CLUSTER_TOO_MANY_SHARDS, 
+                      std::string("too many shards. maximum number of shards is ") + std::to_string(maxNumberOfShards));
       }
 
-      TRI_ASSERT((cl.forceOneShard() && numberOfShards <= 1) || !cl.forceOneShard());
+      TRI_ASSERT((cl.forceOneShard() && numberOfShards <= 1) || !cl.forceOneShard()); 
     }
-
+          
     auto writeConcernSlice = slice.get(StaticStrings::WriteConcern);
     auto minReplicationFactorSlice = slice.get(StaticStrings::MinReplicationFactor);
-
+          
     if (writeConcernSlice.isNumber() && minReplicationFactorSlice.isNumber()) {
       // both attributes set. now check if they have different values
-      if (basics::VelocyPackHelper::compare(writeConcernSlice,
-                                            minReplicationFactorSlice, false) != 0) {
-        return Result(
-            TRI_ERROR_BAD_PARAMETER,
-            "got ambiguous values for writeConcern and minReplicationFactor");
+      if (basics::VelocyPackHelper::compare(writeConcernSlice, minReplicationFactorSlice, false) != 0) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "got ambiguous values for writeConcern and minReplicationFactor");
       }
     }
 
@@ -589,13 +522,12 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
         if (replicationFactorSlice.isNumber()) {
           int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
           if (replicationFactorProbe == 0) {
-            // TODO: Which configuration for satellites are valid regarding
-            // minRepl and writeConcern valid for creating a SatelliteCollection
+            // TODO: Which configuration for satellites are valid regarding minRepl and writeConcern
+            // valid for creating a SatelliteCollection
             return Result();
           }
           if (replicationFactorProbe < 0) {
-            return Result(TRI_ERROR_BAD_PARAMETER,
-                          "invalid value for replicationFactor");
+            return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
           }
 
           uint32_t const minReplicationFactor = cl.minReplicationFactor();
@@ -603,23 +535,19 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
           uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
 
           // make sure the replicationFactor value is between the configured min and max values
-          if (replicationFactor > maxReplicationFactor && maxReplicationFactor > 0) {
+          if (replicationFactor > maxReplicationFactor &&
+              maxReplicationFactor > 0) {
             return Result(TRI_ERROR_BAD_PARAMETER,
-                          std::string(
-                              "replicationFactor must not be higher than "
-                              "maximum allowed replicationFactor (") +
-                              std::to_string(maxReplicationFactor) + ")");
-          } else if (replicationFactor < minReplicationFactor && minReplicationFactor > 0) {
+                          std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
+          } else if (replicationFactor < minReplicationFactor &&
+              minReplicationFactor > 0) {
             return Result(TRI_ERROR_BAD_PARAMETER,
-                          std::string(
-                              "replicationFactor must not be lower than "
-                              "minimum allowed replicationFactor (") +
-                              std::to_string(minReplicationFactor) + ")");
+                          std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
           }
-
+        
           // make sure we have enough servers available for the replication factor
           if (ServerState::instance()->isCoordinator() &&
-              replicationFactor > cl.clusterInfo().getCurrentDBServers().size()) {
+              replicationFactor > cl.clusterInfo().getCurrentDBServers().size()) { 
             return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
           }
         }
@@ -633,12 +561,10 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
           if (writeConcernSlice.isNumber()) {
             int64_t writeConcern = writeConcernSlice.getNumber<int64_t>();
             if (writeConcern <= 0) {
-              return Result(TRI_ERROR_BAD_PARAMETER,
-                            "invalid value for writeConcern");
+              return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for writeConcern");
             }
             if (ServerState::instance()->isCoordinator() &&
-                static_cast<size_t>(writeConcern) >
-                    cl.clusterInfo().getCurrentDBServers().size()) {
+                static_cast<size_t>(writeConcern) > cl.clusterInfo().getCurrentDBServers().size()) { 
               return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
             }
           }
@@ -659,26 +585,4 @@ void ShardingInfo::sortShardNamesNumerically(std::vector<ShardID>& list) {
     uint64_t r = basics::StringUtils::uint64(rhs.c_str() + 1, rhs.size() - 1);
     return l < r;
   });
-}
-
-auto ShardingInfo::replicatedLogs() const -> std::shared_ptr<ReplicatedLogsMap> {
-  if (_replicatedLogs.has_value()) {
-    return *_replicatedLogs;
-  }
-
-  using basics::StringUtils::concatT;
-  auto detail =
-      _collection->vocbase().replicationVersion() == replication::Version::TWO
-          ? "Thus the access is expected, but non-existence is not."
-          : "Thus the non-existence is expected, but the access is not.";
-
-  abortOrThrow(TRI_ERROR_INTERNAL,
-               concatT("Access to ShardingInfo::replicatedLogs of collection ",
-                       _collection->name(),
-                       " failed: Does not exist. The containing database is ",
-                       _collection->vocbase().name(),
-                       " and uses replication version ",
-                       versionToString(_collection->vocbase().replicationVersion()),
-                       ". ", detail),
-               ADB_HERE);
 }

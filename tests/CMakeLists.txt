@@ -131,8 +131,9 @@ set(ARANGODB_TESTS_SOURCES
   Aql/NgramPosSimilarityFunctionTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/ProjectionsTest.cpp
-  Aql/QueryHelper.cpp
   Aql/QueryCursorTest.cpp
+  Aql/QueryHelper.cpp
+  Aql/QueryLimitsTest.cpp
   Aql/RegisterPlanTest.cpp
   Aql/RemoteExecutorTest.cpp
   Aql/RemoveExecutorTest.cpp
@@ -158,6 +159,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/WaitingExecutionBlockMock.cpp
   Aql/WindowExecutorTest.cpp
   Aql/DecaysFunctionTest.cpp
+  Aql/DistanceFunctionTest.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerTest.cpp
   Auth/UserManagerClusterTest.cpp

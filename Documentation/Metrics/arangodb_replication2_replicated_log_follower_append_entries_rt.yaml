@@ -1,7 +1,7 @@
 name: arangodb_replication2_replicated_log_follower_append_entries_rt
 introducedIn: "3.9.0"
 help: |
-  Histogram of the duration of appendEntries calls in us.
+  Histogram of the duration of appendEntries calls in microseconds.
 unit: us
 type: histogram
 category: Replication

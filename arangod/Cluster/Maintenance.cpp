@@ -409,8 +409,7 @@ static void handleLocalShard(std::string const& dbname, std::string const& colna
 
   std::shared_ptr<ActionDescription> description;
 
-  std::unordered_set<std::string>::const_iterator it =
-      std::find(commonShrds.begin(), commonShrds.end(), colname);
+  std::unordered_set<std::string>::const_iterator it = commonShrds.find(colname);
 
   auto localLeader = cprops.get(THE_LEADER).stringRef();
   bool const isLeading = localLeader.empty();
@@ -516,12 +515,11 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
   return shardMap;
 }
 
-auto arangodb::maintenance::diffReplicatedLogs(
+void arangodb::maintenance::diffReplicatedLogs(
     DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
     ReplicatedLogSpecMap const& planLogs, std::string const& serverId,
-    MaintenanceFeature::errors_t& errors,
-    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
-    std::vector<std::shared_ptr<ActionDescription>>& actions) -> arangodb::Result {
+    MaintenanceFeature::errors_t& errors, std::unordered_set<DatabaseID>& makeDirty,
+    bool& callNotify, std::vector<std::shared_ptr<ActionDescription>>& actions) {
   using namespace arangodb::replication2;
 
   auto const createReplicatedLogAction = [&](LogId id, agency::LogPlanSpecification const* spec) {
@@ -590,8 +588,6 @@ auto arangodb::maintenance::diffReplicatedLogs(
       createReplicatedLogAction(id, nullptr);
     }
   }
-
-  return Result{};
 }
 
 /// @brief calculate difference between plan and local for for databases
@@ -780,11 +776,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       planLogs.emplace(spec.id, std::move(spec));
     }
 
-    if (auto res = diffReplicatedLogs(dbname, logs, planLogs, serverId, errors,
-                                      makeDirty, callNotify, actions);
-        !res.ok()) {
-      return res;
-    }
+    diffReplicatedLogs(dbname, logs, planLogs, serverId, errors, makeDirty,
+                       callNotify, actions);
   }
 
   // See if shard errors can be thrown out:
@@ -1565,12 +1558,14 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
           LOG_CTX("11dbd", TRACE, logContext)
               << "checking replicated log " << id << " local term = "
-              << (localTerm ? to_string(localTerm.value()) : "n/a") << " current "
+              << (localTerm ? to_string(*localTerm) : "n/a") << " current "
               << (!termInCurrent.isNone() ? termInCurrent.toJson() : "n/a");
 
+          auto localStats = status.getLocalStatistics();
+          TRI_ASSERT(localStats.has_value()); // if status has a term, then it has statistics
           replication2::agency::LogCurrentLocalState localState;
           localState.term = localTerm.value();
-          localState.spearhead = status.getLocalStatistics().value().spearHead;
+          localState.spearhead = localStats->spearHead;
 
           using namespace cluster::paths;
           auto reportPath =
