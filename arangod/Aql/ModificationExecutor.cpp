@@ -172,7 +172,7 @@ template <typename ProduceOrSkipData>
     _modifier->reset();
   }
 
-  TRI_ASSERT(_modifier->hasNoResultOrOperationPending());
+  TRI_ASSERT(_modifier->hasNeitherResultNorOperationPending());
 
   return {translateReturnType(_rangeHandler.upstreamState(input)), stats, upstreamCall};
 }

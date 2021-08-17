@@ -75,7 +75,6 @@ struct is_modifier_completion_trait<UpdateReplaceModifierCompletion> : std::true
 
 template <typename ModifierCompletion, typename Enable = typename std::enable_if_t<is_modifier_completion_trait<ModifierCompletion>::value>>
 class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<ModifierCompletion, Enable>> {
-  /// @brief mutex that pr
   friend class InsertModifierCompletion;
   friend class RemoveModifierCompletion;
   friend class UpdateReplaceModifierCompletion;
@@ -145,7 +144,7 @@ class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<Modifi
   [[nodiscard]] size_t getBatchSize() const noexcept;
 
   bool hasResultOrException() const noexcept;
-  bool hasNoResultOrOperationPending() const noexcept;
+  bool hasNeitherResultNorOperationPending() const noexcept;
 
  private:
   [[nodiscard]] bool resultAvailable() const;
@@ -159,6 +158,7 @@ class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<Modifi
 
   size_t const _batchSize;
 
+  /// @brief mutex that protects _results
   mutable std::mutex _resultMutex;
   ResultType _results;
 };

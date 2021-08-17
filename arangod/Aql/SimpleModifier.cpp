@@ -322,7 +322,7 @@ bool SimpleModifier<ModifierCompletion, Enable>::hasResultOrException() const no
 }
 
 template <typename ModifierCompletion, typename Enable>
-bool SimpleModifier<ModifierCompletion, Enable>::hasNoResultOrOperationPending() const noexcept {
+bool SimpleModifier<ModifierCompletion, Enable>::hasNeitherResultNorOperationPending() const noexcept {
   return std::visit(overload{
                         [](NoResult) { return true; },
                         [](Waiting) { return false; },

@@ -124,7 +124,7 @@ class UpsertModifier {
   size_t getBatchSize() const;
 
   bool hasResultOrException() const noexcept;
-  bool hasNoResultOrOperationPending() const noexcept;
+  bool hasNeitherResultNorOperationPending() const noexcept;
 
  private:
   bool resultAvailable() const;

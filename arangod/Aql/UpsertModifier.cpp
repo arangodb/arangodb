@@ -341,6 +341,6 @@ bool UpsertModifier::hasResultOrException() const noexcept {
   return resultState() == ModificationExecutorResultState::HaveResult;
 }
 
-bool UpsertModifier::hasNoResultOrOperationPending() const noexcept {
+bool UpsertModifier::hasNeitherResultNorOperationPending() const noexcept {
   return resultState() == ModificationExecutorResultState::NoResult;
 }

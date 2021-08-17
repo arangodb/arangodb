@@ -60,7 +60,10 @@ class ModificationExecutorAccumulator {
     _accumulator.openArray();
   }
 
-  [[nodiscard]] size_t nrOfDocuments() const { return _accumulator.slice().length(); }
+  [[nodiscard]] size_t nrOfDocuments() const {
+    TRI_ASSERT(_accumulator.isClosed());
+    return _accumulator.slice().length();
+  }
 
  private:
   VPackBuilder _accumulator{};
