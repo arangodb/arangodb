@@ -10,7 +10,7 @@
 
 #include <type_traits>
 
-#if __GNUC__ == 7 || __GNUC_MINOR__ == 1
+#if __GNUC__ == 7 &&  __GNUC_MINOR__ == 1
 #define IMMER_BROKEN_STANDARD_LAYOUT_DETECTION 1
 #define immer_offsetof(st, m) ((std::size_t) &(((st*)0)->m))
 #else
