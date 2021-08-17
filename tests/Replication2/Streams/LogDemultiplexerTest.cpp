@@ -84,13 +84,20 @@ using MyTestSpecification = stream_descriptor_set<
 /* clang-format on */
 
 #include <Replication2/LogMultiplexer.tpp>
-template struct streams::LogDemultiplexer<MyTestSpecification>;
+template struct streams::LogDemultiplexer2<MyTestSpecification>;
+template struct streams::LogMultiplexer<MyTestSpecification>;
+
+
 
 TEST_F(LogDemuxTest, simple_test) {
-  LogDemultiplexer<MyTestSpecification> demux(nullptr);
 
-  auto stream = demux.getStream<my_stream_id>();
-  stream->waitForIterator(LogIndex{1}).thenValue([](std::unique_ptr<Stream<int>::Iterator> iter) {
-    return false;
-  });
+  auto mux = streams::LogDemultiplexer2<MyTestSpecification>::construct();
+  auto streamA = mux->getStreamBaseById<my_stream_id>();
+  auto streamB = mux->getStreamBaseById<my_foo_stream_id>();
+
+
+  auto iter = streamA->getIterator();
+
+
+
 }

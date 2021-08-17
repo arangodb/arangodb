@@ -52,13 +52,13 @@ struct stream_descriptor<StreamId, Type, tag_descriptor_set<TDs...>> {
   using tags = tag_descriptor_set<TDs...>;
   using type = Type;
 
-  // Check that all deserializers are invocable with (serializer_tag<Type>{}, slice)
-  // and return Type.
+  // Check that all deserializers are invocable with (serializer_tag<Type>{},
+  // slice) and return Type.
   static_assert((std::is_invocable_r_v<Type, typename TDs::deserializer, serializer_tag_t<Type>, velocypack::Slice> &&
                  ...));
 
-  // Check that all serializers are invocable with (serializer_tag<Type>{}, T const&, Builder)
-  // and return void.
+  // Check that all serializers are invocable with (serializer_tag<Type>{}, T
+  // const&, Builder) and return void.
   static_assert((std::is_invocable_r_v<void, typename TDs::serializer, serializer_tag_t<Type>,
                                        std::add_lvalue_reference_t<std::add_const_t<Type>>,
                                        std::add_lvalue_reference_t<velocypack::Builder>> &&
@@ -157,69 +157,89 @@ struct stream_index_by_id<StreamId, stream_descriptor_set<Ds...>> {
 template <StreamId StreamId, typename Ds>
 inline constexpr auto stream_index_by_id_v = stream_index_by_id<StreamId, Ds>::value;
 
+template<typename T>
+struct StreamEntryView {
+  LogIndex index;
+  T const& value;
+};
+
+template<typename T>
+struct StreamEntry {
+  LogIndex index;
+  T value;
+
+  auto intoView() const -> StreamEntryView<T> {
+    return {index, value};
+  }
+};
+
 template <typename T>
 struct Stream {
-
-  struct EntryView {
-    LogIndex index;
-    T const& value;
-  };
-
-  using Iterator = TypedLogRangeIterator<EntryView>;
+  using EntryViewType = StreamEntryView<T>;
+  using EntryType = StreamEntry<T>;
+  using Iterator = TypedLogRangeIterator<EntryViewType>;
 
   virtual ~Stream() = default;
   virtual auto waitForIterator(LogIndex)
-  -> futures::Future<std::unique_ptr<Iterator>> = 0;
+      -> futures::Future<std::unique_ptr<Iterator>> = 0;
   virtual auto waitFor(LogIndex) -> futures::Future<futures::Unit> = 0;
   virtual auto release(LogIndex) -> void = 0;
 };
 
-// TODO we should replace this interface with ILogParticipant or some entity
-//      from Replication2/ReplicatedLogs should implement this. Otherwise we
-//      always have two indirections instead of one.
-struct LogInterface {
-  virtual ~LogInterface() = default;
-  virtual auto insert(LogPayload) -> LogIndex = 0;
-  virtual auto waitFor(LogIndex) -> futures::Future<std::unique_ptr<LogRangeIterator>> = 0;
-  virtual auto release(LogIndex) -> void = 0;
+template<typename T>
+struct ProducerStream : Stream<T> {
+  virtual auto insert(T const&) -> LogIndex = 0;
+};
+
+template <typename Ds, template<typename> typename StreamType, typename Type = stream_descriptor_type_t<Ds>>
+    struct StreamBase : StreamType<Type> {
+  static_assert(is_stream_descriptor_v<Ds>);
+  using Iterator = typename StreamType<Type>::Iterator;
+  virtual auto getIterator() -> std::unique_ptr<Iterator> = 0;
+};
+
+template <typename, typename, template<typename> typename>
+struct StreamDispatcherBase;
+template <typename Self, typename... Streams, template<typename> typename StreamType>
+struct StreamDispatcherBase<Self, stream_descriptor_set<Streams...>, StreamType>
+    : virtual StreamBase<Streams, StreamType>... {
+ protected:
+  template <typename Descriptor>
+  auto getStreamByIdInternal() {
+    return std::static_pointer_cast<StreamBase<Descriptor, StreamType>>(
+        self().shared_from_this());
+  }
+
+ private:
+  auto self() -> Self& { return static_cast<Self&>(*this); }
+};
+
+template <typename Self, typename Spec, template <typename> typename StreamType>
+struct LogDemultiplexerBase : std::enable_shared_from_this<Self>,
+                              StreamDispatcherBase<Self, Spec, StreamType> {
+  template <StreamId Id, typename Descriptor = stream_descriptor_by_id_t<Id, Spec>,
+            typename Type = stream_descriptor_type_t<Descriptor>>
+  auto getStreamBaseById()
+      -> std::shared_ptr<StreamBase<Descriptor, StreamType>> {
+    return this->template getStreamByIdInternal<Descriptor>();
+  }
+
+  template <StreamId Id, typename Descriptor = stream_descriptor_by_id_t<Id, Spec>,
+      typename Type = stream_descriptor_type_t<Descriptor>>
+  auto getStreamById() -> std::shared_ptr<Stream<Type>> {
+    return this->template getStreamByIdInternal<Descriptor>();
+  }
 };
 
 template <typename Spec>
-struct LogDemultiplexer {
-  explicit LogDemultiplexer(std::shared_ptr<LogInterface> const&);
-
-  template <unsigned StreamId, typename D = stream_descriptor_by_id_t<StreamId, Spec>>
-  auto getStream() -> std::shared_ptr<Stream<stream_descriptor_type_t<D>>> {
-    return std::dynamic_pointer_cast<StreamImplementationBase<D>>(_container);
-  }
-
-  void digestIterator(LogRangeIterator& iter);
-
- private:
-  template <typename Ds>
-  struct StreamImplementationBase : Stream<stream_descriptor_type_t<Ds>> {
-    static_assert(is_stream_descriptor_v<Ds>);
-  };
-
-  template <typename>
-  struct StreamContainerBase;
-  template <typename... Ds>
-  struct StreamContainerBase<stream_descriptor_set<Ds...>>
-      : virtual StreamImplementationBase<Ds>... {
-    static_assert((is_stream_descriptor_v<Ds> && ...));
-    virtual ~StreamContainerBase() = default;
-    virtual void listen() = 0;
-  };
-
-  template <typename, typename>
-  struct StreamImplementation;
-  template <typename, typename>
-  struct StreamContainer;
-
-  using ContainerType = StreamContainer<Spec, std::make_index_sequence<Spec::length>>;
-
-  auto getContainer() -> ContainerType&;
-
-  std::shared_ptr<StreamContainerBase<Spec>> const _container;
+struct LogDemultiplexer2 : LogDemultiplexerBase<LogDemultiplexer2<Spec>, Spec, Stream> {
+  virtual auto digestIterator(LogRangeIterator& iter) -> void = 0;
+  static auto construct() -> std::shared_ptr<LogDemultiplexer2>;
 };
+
+template <typename Spec>
+struct LogMultiplexer : LogDemultiplexerBase<LogMultiplexer<Spec>, Spec, ProducerStream> {
+  static auto construct() -> std::shared_ptr<LogMultiplexer>;
+};
+
 }  // namespace arangodb::replication2::streams
