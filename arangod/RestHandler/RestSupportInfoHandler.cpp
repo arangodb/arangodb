@@ -35,6 +35,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogTimeFormat.h"
 #include "Network/Methods.h"
@@ -76,9 +77,28 @@ RestSupportInfoHandler::RestSupportInfoHandler(application_features::Application
     : RestBaseHandler(server, request, response) {}
   
 RestStatus RestSupportInfoHandler::execute() {
-  if (!ExecContext::current().isSuperuser()) {
+  GeneralServerFeature& gs = server().getFeature<GeneralServerFeature>();
+  auto const& apiPolicy = gs.supportInfoApiPolicy();
+  TRI_ASSERT(apiPolicy != "disabled");
+
+  if (apiPolicy == "jwt") {
+    if (!ExecContext::current().isSuperuser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "insufficent permissions");
+      return RestStatus::DONE;
+    }
+  }
+ 
+  if (apiPolicy == "hardened") {
     ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
     if (!security.canAccessHardenedApi()) {
+      // superuser can still access API even if hardened
+      if (!ExecContext::current().isSuperuser()) {
+        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                      "insufficent permissions");
+        return RestStatus::DONE;
+      }
+    } else if (!ExecContext::current().isAdminUser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "insufficent permissions");
       return RestStatus::DONE;

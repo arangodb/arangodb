@@ -122,11 +122,11 @@ static uint64_t const _maxIoThreads = 64;
 
 GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "GeneralServer"),
-      _exposeSupportInfoApi(true),
       _allowMethodOverride(false),
       _proxyCheck(true),
       _permanentRootRedirect(true),
       _redirectRootTo("/_admin/aardvark/index.html"),
+      _supportInfoApiPolicy("hardened"),
       _numIoThreads(0) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
@@ -152,13 +152,15 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOldOption("no-server", "server.rest-server");
 
   options->addOption("--server.io-threads",
-                     "Number of threads used to handle IO",
+                     "number of threads used to handle IO",
                      new UInt64Parameter(&_numIoThreads),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
   
   options->addOption("--server.support-info-api",
-                     "Expose support info API for privileged users",
-                     new BooleanParameter(&_exposeSupportInfoApi))
+                     "policy for exposing support info API",
+                     new DiscreteValuesParameter<StringParameter>(
+                         &_supportInfoApiPolicy,
+                         std::unordered_set<std::string>{"disabled", "jwt", "hardened", "public"}))
                      .setIntroducedIn(30900);
 
   options->addSection("http", "HTTP server features");
@@ -329,6 +331,10 @@ bool GeneralServerFeature::permanentRootRedirect() const {
 
 std::string GeneralServerFeature::redirectRootTo() const {
   return _redirectRootTo;
+}
+  
+std::string const& GeneralServerFeature::supportInfoApiPolicy() const noexcept {
+  return _supportInfoApiPolicy;
 }
 
 rest::RestHandlerFactory& GeneralServerFeature::handlerFactory() {
@@ -562,7 +568,7 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler("/_admin/status",
                               RestHandlerCreator<RestStatusHandler>::createNoData);
  
-  if (_exposeSupportInfoApi) {
+  if (_supportInfoApiPolicy != "disabled") {
     _handlerFactory->addHandler("/_admin/support-info",
                                 RestHandlerCreator<RestSupportInfoHandler>::createNoData);
   }

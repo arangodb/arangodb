@@ -30,7 +30,7 @@
 
 if (getOptions === true) {
   return {
-    'server.support-info-api': "true"
+    'server.support-info-api': "disabled"
   };
 }
 
@@ -40,7 +40,8 @@ function testSuite() {
   return {
     testApiGet : function() {
       let res = arango.GET("/_admin/support-info");
-      assertTrue(res.hasOwnProperty("deployment"));
+      assertTrue(res.error);
+      assertEqual(404, res.code);
     },
   };
 }

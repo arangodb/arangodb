@@ -1,8 +1,10 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, runSetup, assertEqual, arango */
+/* global getOptions, assertEqual, assertTrue, arango, runSetup */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
+///
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -23,7 +25,7 @@
 /// Copyright holder is ArangoDB Inc, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2020, ArangoDB Inc, Cologne, Germany
+/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 const crypto = require('@arangodb/crypto');
@@ -35,6 +37,7 @@ if (getOptions === true) {
   return {
     'server.harden': 'true',
     'server.authentication': 'true',
+    'server.support-info-api': "hardened",
     'server.jwt-secret': jwtSecret,
     'runSetup': true
   };
@@ -42,6 +45,9 @@ if (getOptions === true) {
 
 if (runSetup === true) {
   let users = require("@arangodb/users");
+  
+  users.save("test_rw", "testi");
+  users.grantDatabase("test_rw", "_system", "rw");
   
   users.save("test_ro", "testi");
   users.grantDatabase("test_ro", "_system", "ro");
@@ -53,7 +59,6 @@ const jsunity = require('jsunity');
 
 function testSuite() {
   let endpoint = arango.getEndpoint();
-  let db = require("@arangodb").db;
 
   let baseUrl = function () {
     return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
@@ -65,37 +70,41 @@ function testSuite() {
   }, 'HS256');
 
   return {
-    testCanAccessSupportInfoApiNoJwt : function() {
+    testApiGetRw : function() {
       let res = request.get({
         url: baseUrl() + "/_admin/support-info",
-        auth: { username: "test_ro", password: "testi" },
+        auth: {
+          username: "test_rw",
+          password: "testi"
+        }
+      });
+      assertEqual(200, res.status);
+      assertTrue(res.json.hasOwnProperty("deployment"));
+    },
+    
+    testApiGetRo : function() {
+      let res = request.get({
+        url: baseUrl() + "/_admin/support-info",
+        auth: {
+          username: "test_ro",
+          password: "testi"
+        }
       });
       assertEqual(403, res.status);
     },
-    
-    testCanAccessSupportInfoApiWithJwt : function() {
+
+    testApiGetJwt : function() {
       let res = request.get({
         url: baseUrl() + "/_admin/support-info",
-        auth: { bearer: jwt },
+        auth: {
+          bearer: jwt,
+        }
       });
       assertEqual(200, res.status);
+      assertTrue(res.json.hasOwnProperty("deployment"));
     },
-    
-    testCanAccessSupportInfoApiOtherDatabaseWithJwt : function() {
-      const cn = "SupportInfoApiTest";
-      db._createDatabase(cn);
-      try {
-        let res = request.get({
-          url: baseUrl() + "/_db/" + cn + "/_admin/support-info",
-          auth: { bearer: jwt },
-        });
-        assertEqual(403, res.status);
-      } finally {
-        db._useDatabase("_system");
-        db._dropDatabase(cn);
-      }
-    }
   };
 }
+
 jsunity.run(testSuite);
 return jsunity.done();

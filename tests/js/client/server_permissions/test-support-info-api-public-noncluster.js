@@ -30,7 +30,8 @@
 
 if (getOptions === true) {
   return {
-    'server.support-info-api': "false"
+    'server.authentication': 'true',
+    'server.support-info-api': "public"
   };
 }
 
@@ -40,8 +41,7 @@ function testSuite() {
   return {
     testApiGet : function() {
       let res = arango.GET("/_admin/support-info");
-      assertTrue(res.error);
-      assertEqual(404, res.code);
+      assertTrue(res.hasOwnProperty("deployment"));
     },
   };
 }

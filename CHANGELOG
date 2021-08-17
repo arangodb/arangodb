@@ -9,10 +9,17 @@ devel
 
 * Added REST API `/_admin/support-info` to retrieve deployment information.
   As this API may reveal sensitive data about the deployment, it can only 
-  be accessed from inside the system database. In addition accessing it
-  requires either the superuser JWT token or that `--server.harden` is not
-  set. The API can also be turned off entirely using the new startup option 
-  `--server.support-info-api`.
+  be accessed from inside the system database. In addition, there is a
+  policy control startup option `--server.support-info-api` that 
+  determines if and to whom the API is made available. This option can
+  have the following values:
+  - `disabled`: support info API is disabled.
+  - `jwt`: support info API can only be accessed via superuser JWT.
+  - `hardened`: if `--server.harden` is set, the support info API can
+     only be accessed via superuser JWT. Otherwise it can be accessed
+     by admin users only.
+  - `public`: everyone with access to `_system` database can access the
+    support info API.
 
 * Bug-Fix: In more complex queries there was a code-path where a (Disjoint-) Smart
   graph access was not properly optimized.

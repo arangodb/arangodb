@@ -1,8 +1,10 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, runSetup, assertEqual, arango */
+/* global getOptions, assertEqual, assertTrue, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
+///
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -23,7 +25,7 @@
 /// Copyright holder is ArangoDB Inc, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2020, ArangoDB Inc, Cologne, Germany
+/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 const crypto = require('@arangodb/crypto');
@@ -33,20 +35,10 @@ const jwtSecret = 'abc123';
 
 if (getOptions === true) {
   return {
-    'server.harden': 'false',
     'server.authentication': 'true',
+    'server.support-info-api': "jwt",
     'server.jwt-secret': jwtSecret,
-    'runSetup': true
   };
-}
-
-if (runSetup === true) {
-  let users = require("@arangodb/users");
-  
-  users.save("test_ro", "testi");
-  users.grantDatabase("test_ro", "_system", "ro");
-  
-  return true;
 }
 
 const jsunity = require('jsunity');
@@ -65,23 +57,25 @@ function testSuite() {
   }, 'HS256');
 
   return {
-    testCanAccessSupportInfoApiNoJwt : function() {
+    testApiGetNoJwt : function() {
       let res = request.get({
         url: baseUrl() + "/_admin/support-info",
-        auth: { username: "test_ro", password: "testi" },
       });
-      assertEqual(200, res.status);
+      assertEqual(401, res.status);
     },
-    
-    testCanAccessSupportInfoApiWithJwt : function() {
+
+    testApiGetJwt : function() {
       let res = request.get({
         url: baseUrl() + "/_admin/support-info",
-        auth: { bearer: jwt },
+        auth: {
+          bearer: jwt,
+        }
       });
       assertEqual(200, res.status);
+      assertTrue(res.json.hasOwnProperty("deployment"));
     },
     
-    testCanAccessSupportInfoApiOtherDatabaseWithJwt : function() {
+    testApiGetJwtOtherDatabase : function() {
       const cn = "SupportInfoApiTest";
       db._createDatabase(cn);
       try {
@@ -97,5 +91,6 @@ function testSuite() {
     }
   };
 }
+
 jsunity.run(testSuite);
 return jsunity.done();
