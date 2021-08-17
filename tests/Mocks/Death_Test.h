@@ -67,6 +67,6 @@ inline void disableCoredump() {
 // please feel free to fix it here.
 
 #define EXPECT_DEATH_CORE_FREE(func, assertion) EXPECT_TRUE(true)
-#define ASSERT_DEATH_CORE_FREE(func, assertion) EXPECT_TRUE(true)
+#define ASSERT_DEATH_CORE_FREE(func, assertion) ASSERT_TRUE(true)
 
 #endif
