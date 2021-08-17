@@ -5,7 +5,7 @@ devel
   the REST API `/_admin/shutdown` and the server is started with the
   `--console` argument. The keystroke will exit the blocking read loop that
   is waiting on console input and that otherwise blocks the shutdown.
-  The implementation is based on ioctl and is thus on present on Linux and
+  The implementation is based on ioctl and is thus only present on Linux and
   MacOS.
 
 * Add optimization rule for AqlAnalyzer 
