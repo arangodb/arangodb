@@ -27,6 +27,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
@@ -55,6 +57,11 @@ using namespace arangodb::rest;
 RestIndexHandler::RestIndexHandler(application_features::ApplicationServer& server,
                                    GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
+  
+RestIndexHandler::~RestIndexHandler() {
+  std::unique_lock<std::mutex> locker(_mutex);
+  shutdownBackgroundThread();
+}
 
 RestStatus RestIndexHandler::execute() {
   // extract the request type
@@ -72,6 +79,56 @@ RestStatus RestIndexHandler::execute() {
   } else {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
+  }
+}
+
+RestStatus RestIndexHandler::continueExecute() {
+  TRI_ASSERT(_request->requestType() == rest::RequestType::POST);
+
+  std::unique_lock<std::mutex> locker(_mutex);
+
+  shutdownBackgroundThread();
+  
+  if (_createInBackgroundData.result.ok()) {
+    TRI_ASSERT(_createInBackgroundData.response.slice().isObject());
+
+    VPackSlice created = _createInBackgroundData.response.slice().get("isNewlyCreated");
+    auto r = created.isBool() && created.getBool() ? rest::ResponseCode::CREATED
+                                                   : rest::ResponseCode::OK;
+
+    generateResult(r, _createInBackgroundData.response.slice());
+  } else {
+    if (_createInBackgroundData.result.is(TRI_ERROR_FORBIDDEN) ||
+        _createInBackgroundData.result.is(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
+      generateError(_createInBackgroundData.result);
+    } else {  // http_server compatibility
+      generateError(rest::ResponseCode::BAD, 
+                    _createInBackgroundData.result.errorNumber(), 
+                    _createInBackgroundData.result.errorMessage());
+    }
+  }
+
+  return RestStatus::DONE;
+}
+
+void RestIndexHandler::shutdownExecute(bool isFinalized) noexcept {
+  TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
+
+  // request not done yet
+  if (!isFinalized) {
+    return;
+  }
+  
+  if (_request->requestType() == rest::RequestType::POST) {
+    std::unique_lock<std::mutex> locker(_mutex);
+    shutdownBackgroundThread();
+  }
+}
+
+void RestIndexHandler::shutdownBackgroundThread() {
+  if (_createInBackgroundData.thread != nullptr) {
+    _createInBackgroundData.thread->join();
+    _createInBackgroundData.thread.reset();
   }
 }
 
@@ -128,9 +185,9 @@ RestStatus RestIndexHandler::getIndexes() {
     tmp.add("indexes", indexes.slice());
     tmp.add("identifiers", VPackValue(VPackValueType::Object));
     for (VPackSlice const& index : VPackArrayIterator(indexes.slice())) {
-      VPackSlice idd = index.get("id");
+      VPackSlice id = index.get("id");
       VPackValueLength l = 0;
-      char const* str = idd.getString(l);
+      char const* str = id.getString(l);
       tmp.add(str, l, index);
     }
     tmp.close();
@@ -235,9 +292,6 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   return RestStatus::DONE;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_get_api_database_create
-// //////////////////////////////////////////////////////////////////////////////
 RestStatus RestIndexHandler::createIndex() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   bool parseSuccess = false;
@@ -278,30 +332,53 @@ RestStatus RestIndexHandler::createIndex() {
     body = copy.slice();
   }
 
-  VPackBuilder output;
-  Result res = methods::Indexes::ensureIndex(coll.get(), body, true, output);
-  if (res.ok()) {
-    VPackSlice created = output.slice().get("isNewlyCreated");
-    auto r = created.isBool() && created.getBool() ? rest::ResponseCode::CREATED
-                                                   : rest::ResponseCode::OK;
+  VPackBuilder indexInfo;
+  indexInfo.add(body);
 
-    VPackBuilder b;
-    b.openObject();
-    b.add(StaticStrings::Error, VPackValue(false));
-    b.add(StaticStrings::Code, VPackValue(static_cast<int>(r)));
-    b.close();
-    output = VPackCollection::merge(output.slice(), b.slice(), false);
+  std::unique_lock<std::mutex> locker(_mutex);
+    
+  // the following callback is executed in a background thread
+  auto cb = [this, self = shared_from_this(), collection = std::move(coll), body = std::move(indexInfo)]{
+    {
+      std::unique_lock<std::mutex> locker(_mutex);
 
-    generateResult(r, output.slice());
-  } else {
-    if (res.errorNumber() == TRI_ERROR_FORBIDDEN ||
-        res.errorNumber() == TRI_ERROR_ARANGO_INDEX_NOT_FOUND) {
-      generateError(res);
-    } else {  // http_server compatibility
-      generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
+      try {
+        _createInBackgroundData.result = methods::Indexes::ensureIndex(collection.get(), body.slice(), true, _createInBackgroundData.response);
+
+        if (_createInBackgroundData.result.ok()) {
+          VPackSlice created = _createInBackgroundData.response.slice().get("isNewlyCreated");
+          auto r = created.isBool() && created.getBool() ? rest::ResponseCode::CREATED
+                                                         : rest::ResponseCode::OK;
+
+          VPackBuilder b;
+          b.openObject();
+          b.add(StaticStrings::Error, VPackValue(false));
+          b.add(StaticStrings::Code, VPackValue(static_cast<int>(r)));
+          b.close();
+          _createInBackgroundData.response = VPackCollection::merge(_createInBackgroundData.response.slice(), b.slice(), false);
+        } 
+      } catch (basics::Exception const& ex) {
+        _createInBackgroundData.result = Result(ex.code(), ex.message());
+      } catch (std::exception const& ex) {
+        _createInBackgroundData.result = Result(TRI_ERROR_INTERNAL, ex.what());
+      }
     }
-  }
-  return RestStatus::DONE;
+
+    // notify REST handler
+    bool queued = SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self]() {
+      self->wakeupHandler();
+    });
+    if (!queued) {
+      // not much we can do
+      LOG_TOPIC("466c2", WARN, Logger::FIXME) 
+          << "unable to queue index handler result action";
+    }
+  };
+
+  // start background thread
+  _createInBackgroundData.thread = std::make_unique<std::thread>(std::move(cb));
+      
+  return RestStatus::WAITING;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
