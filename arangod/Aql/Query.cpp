@@ -182,8 +182,6 @@ Query::~Query() {
                                               << " this: " << (uintptr_t)this;
   }
 
-  _queryProfile.reset(); // unregister from QueryList
-
   // log to audit log
   if (!_queryOptions.skipAudit &&
      (ServerState::instance()->isCoordinator() ||
@@ -203,6 +201,8 @@ Query::~Query() {
     // unfortunately we cannot do anything here, as we are in
     // the destructor
   }
+
+  _queryProfile.reset(); // unregister from QueryList
 
   unregisterSnippets();
 
