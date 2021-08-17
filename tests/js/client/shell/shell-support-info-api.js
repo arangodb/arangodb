@@ -24,23 +24,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
+const request = require('@arangodb/request');
+const isCluster = require("internal").isCluster();
+const { getEndpointsByType } = require('@arangodb/test-helper');
 
-function supportInfoSuite() {
+function supportInfoApiSuite() {
   'use strict';
 
-  let validateHost = function(host, isCluster) {
-    if (isCluster) {
-      assertTrue(host.hasOwnProperty("id"));
-      assertTrue(host.hasOwnProperty("alias"));
-      assertTrue(host.hasOwnProperty("endpoint"));
-    }
-
-    assertTrue(host.hasOwnProperty("role"));
-    if (isCluster) {
-      assertTrue(host.role === "COORDINATOR" || host.role === "PRIMARY");
-    } else {
-      assertEqual("SINGLE", host.role);
-    }
+  let validateHost = function(host) {
     assertTrue(host.hasOwnProperty("maintenance"));
     assertEqual("boolean", typeof host.maintenance);
     assertFalse(host.maintenance);
@@ -77,18 +68,24 @@ function supportInfoSuite() {
 
   return {
 
-    testAccess: function () {
+    testAccessOnSingleOrCoordinator: function () {
       let res = arango.GET("/_admin/support-info");
       assertTrue(res.hasOwnProperty("deployment"));
       assertTrue(res.hasOwnProperty("date"));
       assertMatch(/^\d+-\d+-\d+T\d+:\d+:\d+/, res.date);
 
-      if (require("internal").isCluster()) {
+      if (isCluster) {
         assertEqual("cluster", res.deployment.type);
         assertTrue(res.deployment.hasOwnProperty("servers"));
         Object.keys(res.deployment.servers).forEach((server) => {
           let host = res.deployment.servers[server];
-          validateHost(host, true);
+      
+          assertTrue(host.hasOwnProperty("id"));
+          assertTrue(host.hasOwnProperty("alias"));
+          assertTrue(host.hasOwnProperty("endpoint"));
+          assertTrue(host.hasOwnProperty("role"));
+          assertTrue(host.role === "COORDINATOR" || host.role === "PRIMARY");
+          validateHost(host);
         });
         assertEqual("number", typeof res.deployment.agents);
         assertEqual("number", typeof res.deployment.coordinators);
@@ -100,11 +97,35 @@ function supportInfoSuite() {
       } else {
         assertEqual("single", res.deployment.type);
         assertTrue(res.hasOwnProperty("host"));
-        validateHost(res.host, false);
+        assertTrue(res.host.hasOwnProperty("role"));
+        assertTrue(res.host.role === "SINGLE");
+        validateHost(res.host);
       }
-    }
+    },
+
+    testAccessOnDBServers: function () {
+      if (!isCluster) {
+        return;
+      }
+
+      const getUrl = endpoint => endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+
+      let dbs = getEndpointsByType('dbserver');
+      assertTrue(dbs.length > 1);
+
+      dbs.forEach((ep) => {
+        const res = request.get({
+          url: getUrl(ep) + '/_admin/support-info'
+        });
+        assertFalse(res.json.hasOwnProperty("deployment"));
+        assertTrue(res.json.hasOwnProperty("host"));
+        assertTrue(res.json.host.hasOwnProperty("role"));
+        assertTrue(res.json.host.role === "PRIMARY");
+        validateHost(res.json.host);
+      });
+    },
   };
 }
 
-jsunity.run(supportInfoSuite);
+jsunity.run(supportInfoApiSuite);
 return jsunity.done();
