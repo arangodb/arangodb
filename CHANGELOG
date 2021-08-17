@@ -1,6 +1,8 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Improve log messages for Pregel runs by giving them more context.
+
 * Fixed issue BTS-536 "Upgrading without rest-server is aborted by error".
   Now stating `--server.rest-server false` does not require the additional
   `--console` argument for upgrading a server.
