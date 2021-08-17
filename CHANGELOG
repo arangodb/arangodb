@@ -1,6 +1,12 @@
 v3.7.14 (XXXX-XX-XX)
 --------------------
 
+* Fixed: getResponsibleShard call on disjoint Smart Graphs
+  if you asked for the responsible shard on a disjoint edge collection
+  where the _from and _to differ (invalid), the server would respond with
+  "DATASOURCE_NOT_FOUND". This is now fixed to "BAD_PARAMETER"
+  to emphasize that the collection is fine but the input is invalid.
+
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented cases
   and numerically unstable behaviour. In particular, the case of the
   intersection of two polygons in which one is an S2LngLatRect is fixed
