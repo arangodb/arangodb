@@ -91,6 +91,9 @@ class MutexGuard {
   auto get() const noexcept -> T&;
   auto operator->() const noexcept -> T*;
 
+  // @brief Unlocks and releases the mutex, and releases the value.
+  //        The guard is unusable after this, and the value inaccessible from
+  //        the guard.
   void unlock() noexcept(noexcept(std::declval<L>().unlock()));
 
  private:
