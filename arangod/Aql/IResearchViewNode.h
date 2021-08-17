@@ -102,10 +102,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_IRESEARCH_VIEW; }
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief clone ExecutionNode recursively
   aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,
                             bool withProperties) const override final;
@@ -270,6 +266,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   OptimizationState& state() noexcept { return _optState; }
 
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned) const override final;
 
  private:
   /// @brief the database

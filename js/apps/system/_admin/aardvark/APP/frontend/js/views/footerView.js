@@ -13,6 +13,10 @@
     timer: 15000,
     lap: 0,
     timerFunction: null,
+    // last time of JWT renewal call, in seconds.
+    // this is initialized to the current time so we don't 
+    // fire off a renewal request at the very beginning.
+    lastTokenRenewal: Date.now() / 1000, 
 
     events: {
       'click .footer-center p': 'showShortcutModal'
@@ -43,6 +47,50 @@
           });
         }
       }, 1000);
+
+      // track an activity once when we initialize this view
+      arangoHelper.noteActivity();
+      
+      window.setInterval(function () {
+        if (self.isOffline) {
+          // only try to renew token if we are still online
+          return;
+        }
+        
+        var frac = (frontendConfig.sessionTimeout >= 1800) ? 0.95 : 0.8;
+        // threshold for renewal: once session is x% over
+        var renewalThreshold = frontendConfig.sessionTimeout * frac;
+
+        var now = Date.now() / 1000;
+        var lastActivity = arangoHelper.lastActivity();
+
+        // seconds in which the last user activity counts as significant
+        var lastSignificantActivityTimePeriod = 90 * 60;
+
+        // if this is more than the renewal threshold, limit it
+        if (lastSignificantActivityTimePeriod > renewalThreshold * 0.95) {
+          lastSignificantActivityTimePeriod = renewalThreshold * 0.95;
+        }
+
+        if (lastActivity > 0 && (now - lastActivity) > lastSignificantActivityTimePeriod) {
+          // don't make an attempt to renew the token if last 
+          // user activity is longer than 90 minutes ago
+          return;
+        }
+
+        // to save some superfluous HTTP requests to the server, 
+        // try to renew only if session time is x% or more over
+        if (now - self.lastTokenRenewal < renewalThreshold) {
+          return;
+        }
+
+        arangoHelper.renewJwt(function() {
+          // successful renewal of token. now store last renewal time so
+          // that we later only renew if the session is again about to
+          // expire
+          self.lastTokenRenewal = now;
+        });
+      }, 15 * 1000);
     },
 
     template: templateEngine.createTemplate('footerView.ejs'),

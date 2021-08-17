@@ -514,11 +514,7 @@ std::string const& GraphNode::collectionToShardName(std::string const& collName)
   return found->second;
 }
 
-void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                   std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // Vocbase
   nodes.add("database", VPackValue(_vocbase->name()));
 
@@ -616,6 +612,11 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 
   nodes.add(VPackValue("indexes"));
   _options->toVelocyPackIndexes(nodes);
+}
+
+void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone, bool) const {
+  clone._isSmart = _isSmart;
+  clone._isDisjoint = _isDisjoint;
 }
 
 CostEstimate GraphNode::estimateCost() const {

@@ -87,6 +87,9 @@ class Ast {
   /// @brief destroy the AST
   ~Ast();
 
+  /// @brief maximum nesting level for expressions
+  static constexpr uint64_t maxExpressionNesting = 500;
+
   /// @brief return the query
   QueryContext& query() const { return _query; }
   
@@ -489,6 +492,11 @@ class Ast {
   /// isValid is set to false, then the returned value is not to be trued and the
   /// the result is equivalent to an AQL `null` value
   static AstNode const* resolveConstAttributeAccess(AstNode const*, bool& isValid);
+  
+  /// @brief optimizes the unary operators + and -
+  /// the unary plus will be converted into a simple value node if the operand
+  /// of the operation is a constant number
+  AstNode* optimizeUnaryOperatorArithmetic(AstNode*);
 
  private:
   /// @brief make condition from example
@@ -499,11 +507,6 @@ class Ast {
 
   /// @brief create a number node for an arithmetic result, double
   AstNode* createArithmeticResultNode(double);
-
-  /// @brief optimizes the unary operators + and -
-  /// the unary plus will be converted into a simple value node if the operand
-  /// of the operation is a constant number
-  AstNode* optimizeUnaryOperatorArithmetic(AstNode*);
 
   /// @brief optimizes the unary operator NOT with a non-constant expression
   AstNode* optimizeNotExpression(AstNode*);

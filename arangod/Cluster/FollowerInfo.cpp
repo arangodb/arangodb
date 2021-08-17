@@ -33,6 +33,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Random/RandomGenerator.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -316,9 +317,16 @@ void FollowerInfo::takeOverLeadership(std::vector<ServerID> const& previousInsyn
         std::make_shared<std::vector<ServerID>>(previousInsyncFollowers);
     auto myEntry =
         std::find(failoverCandidates->begin(), failoverCandidates->end(), ourselves);
+
+    // We expect of course to be one of the fail over candidates. However, if the creation
+    // of the TakeOverLeadership job and it's start leading here are timewise apart, chances
+    // are that Current has been changed in the meantime. The assertion should remain here
+    // to detect any errors during CI.
     if (myEntry == failoverCandidates->end()) {
-      LOG_TOPIC("c9422", ERR, Logger::CLUSTER)
-          << "invalid failover candidates for FollowerInfo of shard " 
+      LOG_TOPIC("c9422", WARN, Logger::CLUSTER)
+          << "invalid failover candidates for FollowerInfo of shard - "
+          << "can happen, when scheduling and starting the leadership "
+          << "takeover are timewise apart, so that the Current entry has expired. "
           << _docColl->vocbase().name() << "/" << _docColl->name() 
           << ". our id: " << ourselves << ", failover candidates: "
           << *failoverCandidates << ", previous in-sync followers: "
@@ -541,4 +549,37 @@ VPackBuilder FollowerInfo::newShardEntry(VPackSlice oldValue) const {
     injectFollowerInfoInternal(newValue);
   }
   return newValue;
+}
+
+uint64_t FollowerInfo::newFollowingTermId(ServerID const& s) noexcept {
+  WRITE_LOCKER(guard, _dataLock);
+  uint64_t i = 0;
+  uint64_t prev = 0;
+  auto it = _followingTermId.find(s);
+  if (it != _followingTermId.end()) {
+    prev = it->second;
+  }
+  // We want the random number to be non-zero and different from a previous one:
+  do {
+    i = RandomGenerator::interval(UINT64_MAX);
+  } while (i == 0 || i == prev);
+  try {
+    _followingTermId[s] = i;
+  } catch(std::bad_alloc const&) {
+    i = 1;   // I assume here that I do not get bad_alloc if the key is
+             // already in the map, since it then only has to overwrite
+             // an integer, if the key is not in the map, we default to 1.
+  }
+  return i;
+}
+
+uint64_t FollowerInfo::getFollowingTermId(ServerID const& s) const noexcept {
+  READ_LOCKER(guard, _dataLock);
+  // Note that we assume that find() does not throw!
+  auto it = _followingTermId.find(s);
+  if (it == _followingTermId.end()) {
+    // If not found, we use the default from above:
+    return 1;
+  }
+  return it->second;
 }

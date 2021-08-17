@@ -172,6 +172,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_TMPFILE 0
 #define TRI_NOATIME 0
 
 #define TRI_CHDIR ::chdir
@@ -187,8 +188,8 @@
 #define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
-#define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atimespec.tv_sec
-#define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtimespec.tv_sec
+#define TRI_STAT_ATIME_SEC(statbuf) (statbuf).st_atimespec.tv_sec
+#define TRI_STAT_MTIME_SEC(statbuf) (statbuf).st_mtimespec.tv_sec
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
@@ -318,6 +319,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_TMPFILE O_TMPFILE
 #define TRI_NOATIME 0
 
 #define TRI_CHDIR ::chdir
@@ -333,8 +335,8 @@
 #define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
-#define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atimespec.tv_sec
-#define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtimespec.tv_sec
+#define TRI_STAT_ATIME_SEC(statbuf) (statbuf).st_atimespec.tv_sec
+#define TRI_STAT_MTIME_SEC(statbuf) (statbuf).st_mtimespec.tv_sec
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
@@ -477,6 +479,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_TMPFILE O_TMPFILE
 #define TRI_NOATIME O_NOATIME
 
 #define TRI_CHDIR ::chdir
@@ -492,8 +495,8 @@
 #define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
-#define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atim.tv_sec
-#define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtim.tv_sec
+#define TRI_STAT_ATIME_SEC(statbuf) (statbuf).st_atim.tv_sec
+#define TRI_STAT_MTIME_SEC(statbuf) (statbuf).st_mtim.tv_sec
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
@@ -685,6 +688,7 @@ typedef unsigned char bool;
 #define S_IWUSR _S_IWRITE
 
 #define TRI_O_CLOEXEC 0
+#define TRI_O_TMPFILE 0
 #define TRI_NOATIME 0
 
 #define O_RDONLY _O_RDONLY

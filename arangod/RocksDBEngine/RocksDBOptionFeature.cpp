@@ -447,7 +447,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options
       ->addOption("--rocksdb.limit-open-files-at-startup",
                   "limit the amount of .sst files RocksDB will inspect at "
-                  "startup, in order to startup reduce IO",
+                  "startup, in order to reduce startup IO",
                   new BooleanParameter(&_limitOpenFilesAtStartup),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30405);
@@ -478,7 +478,8 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       RocksDBColumnFamilyManager::Family::EdgeIndex,
       RocksDBColumnFamilyManager::Family::VPackIndex,
       RocksDBColumnFamilyManager::Family::GeoIndex,
-      RocksDBColumnFamilyManager::Family::FulltextIndex};
+      RocksDBColumnFamilyManager::Family::FulltextIndex,
+      RocksDBColumnFamilyManager::Family::ReplicatedLogs};
 
   auto addMaxWriteBufferNumberCf = [this, &options](RocksDBColumnFamilyManager::Family family) {
     std::string name =
@@ -634,7 +635,8 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::columnFamilyOptions(
     case RocksDBColumnFamilyManager::Family::Documents:
     case RocksDBColumnFamilyManager::Family::PrimaryIndex:
     case RocksDBColumnFamilyManager::Family::GeoIndex:
-    case RocksDBColumnFamilyManager::Family::FulltextIndex: {
+    case RocksDBColumnFamilyManager::Family::FulltextIndex:
+    case RocksDBColumnFamilyManager::Family::ReplicatedLogs: {
       // fixed 8 byte object id prefix
       options.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
           rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));

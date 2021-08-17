@@ -124,6 +124,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/InputRangeTest.cpp
   Aql/InsertExecutorTest.cpp
   Aql/KShortestPathsExecutorTest.cpp
+  Aql/KShortestPathNodeTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MockTypedNode.cpp
   Aql/NgramMatchFunctionTest.cpp
@@ -131,8 +132,9 @@ set(ARANGODB_TESTS_SOURCES
   Aql/NgramPosSimilarityFunctionTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/ProjectionsTest.cpp
-  Aql/QueryHelper.cpp
   Aql/QueryCursorTest.cpp
+  Aql/QueryHelper.cpp
+  Aql/QueryLimitsTest.cpp
   Aql/RegisterPlanTest.cpp
   Aql/RemoteExecutorTest.cpp
   Aql/RemoveExecutorTest.cpp
@@ -141,6 +143,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/RowFetcherHelper.cpp
   Aql/ScatterExecutorTest.cpp
   Aql/ShortestPathExecutorTest.cpp
+  Aql/ShortestPathNodeTest.cpp
   Aql/SkipResultTest.cpp
   Aql/SortedCollectExecutorTest.cpp
   Aql/SortExecutorTest.cpp
@@ -152,12 +155,14 @@ set(ARANGODB_TESTS_SOURCES
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestLambdaExecutor.cpp
   Aql/TraversalExecutorTest.cpp
+  Aql/TraversalNodeTest.cpp
   Aql/UpdateExecutorTest.cpp
   Aql/UpsertExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Aql/WindowExecutorTest.cpp
   Aql/DecaysFunctionTest.cpp
+  Aql/DistanceFunctionTest.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerTest.cpp
   Auth/UserManagerClusterTest.cpp
@@ -178,6 +183,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/CpuUsageSnapshotTest.cpp
   Basics/EndpointTest.cpp
   Basics/FixedSizeAllocatorTest.cpp
+  Basics/GuardedTest.cpp
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
   Basics/MemoryUsageTest.cpp
@@ -189,6 +195,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/SpinLockTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
+  Basics/UnshackledMutexTest.cpp
   Basics/VelocyPackHelper-test.cpp
   Cache/BucketState.cpp
   Cache/CachedValue.cpp
@@ -283,6 +290,27 @@ set(ARANGODB_TESTS_SOURCES
   VPackDeserializer/BasicTests.cpp
   ${ADDITIONAL_TEST_SOURCES})
 
+set(ARANGODB_REPLICATION2_TEST_SOURCES
+  Replication2/AppendEntriesBatchTest.cpp
+  Replication2/ChangeStreamTests.cpp
+  Replication2/CheckLogsTest.cpp
+  Replication2/ConcurrencyTests.cpp
+  Replication2/DetectConflictTest.cpp
+  Replication2/FollowerAppendEntries.cpp
+  Replication2/FollowerWaitFor.cpp
+  Replication2/LeaderAppendEntriesTest.cpp
+  Replication2/LogReclaimTest.cpp
+  Replication2/MaintenanceTests.cpp
+  Replication2/MultiTermTest.cpp
+  Replication2/ReplicatedLogMetricsMock.cpp
+  Replication2/ReplicatedLogTest.cpp
+  Replication2/RewriteLogTest.cpp
+  Replication2/RocksDBLogTest.cpp
+  Replication2/SimpleInsertTests.cpp
+  Replication2/TestHelper.cpp
+  Replication2/UpdateReplicatedLogTests.cpp
+)
+
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
   # this speeds up the compilation with optimizations and newer g++ versions
@@ -299,8 +327,21 @@ endif ()
 add_executable(
   arangodbtests
   ${ARANGODB_TESTS_SOURCES}
+  ${ARANGODB_REPLICATION2_TEST_SOURCES}
   main.cpp
 )
+
+set(USE_SEPARATE_REPLICATION2_TESTS_BINARY FALSE CACHE BOOL
+  "Write a separate binary 'arangodbtests_replication2', containing only the Replication 2.0 tests.")
+
+if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+  add_executable(
+    arangodbtests_replication2
+    ${ARANGODB_TESTS_COMMON_SOURCES}
+    ${ARANGODB_REPLICATION2_TEST_SOURCES}
+    main.cpp
+  )
+endif()
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
@@ -320,21 +361,45 @@ target_link_libraries(arangodbtests
   boost_boost
 )
 
+if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+  target_link_libraries(arangodbtests_replication2
+    gtest
+    arango_agency
+    arango_v8server
+    arangoserver
+    arango_replication2
+    arango_iresearch
+  )
+endif()
+
 if (USE_ENTERPRISE)
   target_link_libraries(arangodbtests arango_rclone)
-endif()
+endif ()
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
-)
+  )
+
+if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+  target_include_directories(arangodbtests_replication2 PRIVATE
+    ${INCLUDE_DIRECTORIES}
+  )
+  target_link_libraries(arangodbtests_replication2 arango)
+endif()
 
 if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+    target_compile_options(arangodbtests_replication2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  endif()
 endif()
 
 if (DARWIN AND USE_FAIL_ON_WARNINGS)
   # Missing Braces is broken in older CLangs - disable them here.
   target_compile_options(arangodbtests PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
+  if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+    target_compile_options(arangodbtests_replication2 PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
+  endif()
 endif()
 
 # add these includes as system includes because otherwise
@@ -345,6 +410,12 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
+
+if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+  target_include_directories(arangodbtests_replication2 SYSTEM PRIVATE
+    ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
+  )
+endif()
 
 if (USE_JEMALLOC)
   add_dependencies(arangodbtests jemalloc_build)

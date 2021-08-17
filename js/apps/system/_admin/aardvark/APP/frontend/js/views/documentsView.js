@@ -1217,7 +1217,7 @@
 
       if (window.App.naviView && $('#subNavigationBar .breadcrumb').html() !== undefined) {
         $('#subNavigationBar .breadcrumb').html(
-          'Collection: ' + arangoHelper.escapeHtml(this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
+          'Collection: ' + _.escape(this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
         );
         arangoHelper.buildCollectionSubNav(this.collectionName, 'Content');
       } else {

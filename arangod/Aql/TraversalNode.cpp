@@ -426,10 +426,9 @@ bool TraversalNode::allDirectionsEqual() const {
   return true;
 }
 
-void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                       std::unordered_set<ExecutionNode const*>& seen) const {
+void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
-  GraphNode::toVelocyPackHelper(nodes, flags, seen);
+  GraphNode::doToVelocyPack(nodes, flags);
   // In variable
   if (usesInVariable()) {
     nodes.add(VPackValue("inVariable"));
@@ -535,9 +534,6 @@ void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
       }
     }
   }
-
-  // And close it:
-  nodes.close();
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -708,6 +704,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
                                          bool const withProperties) const {
+  graphCloneHelper(plan, c, withProperties);
   if (isVertexOutVariableAccessed()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
@@ -737,7 +734,6 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
 
   c._conditionVariables.reserve(_conditionVariables.size());
   for (auto const& it : _conditionVariables) {
-    //#warning TODO: check if not cloning variables breaks anything
     if (withProperties) {
       c._conditionVariables.emplace(it->clone());
     } else {

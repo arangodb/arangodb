@@ -52,6 +52,7 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -60,13 +61,17 @@ using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
+namespace {
+VPackStringRef const writeKey("write");
+VPackStringRef const exclusiveKey("exclusive");
+} // namespace
+
 RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
                                GeneralRequest* request, GeneralResponse* response,
                                QueryRegistry* qr)
     : RestVocbaseBaseHandler(server, request, response),
       _queryRegistry(qr),
-      _engine(nullptr),
-      _qId(0) {
+      _engine(nullptr) {
   TRI_ASSERT(_queryRegistry != nullptr);
 }
 
@@ -112,9 +117,15 @@ void RestAqlHandler::setupClusterQuery() {
   
   TRI_IF_FAILURE("Query::setupTimeoutFailSequence") {
     // simulate lock timeout during query setup
-    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    uint32_t r = 100;
+    TRI_IF_FAILURE("Query::setupTimeoutFailSequenceRandom") {
+      r = RandomGenerator::interval(uint32_t(100));
+    }
+    if (r >= 96) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    }
   }
-
+  
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
@@ -231,6 +242,8 @@ void RestAqlHandler::setupClusterQuery() {
     options.ttl = _queryRegistry->defaultTTL();
   }
 
+  AccessMode::Type access = AccessMode::Type::READ;
+
   // TODO: technically we could change the code in prepareClusterQuery to parse
   //       the collection info directly
   // Build the collection information
@@ -238,7 +251,7 @@ void RestAqlHandler::setupClusterQuery() {
   collectionBuilder.openArray();
   for (auto const& lockInf : VPackObjectIterator(lockInfoSlice)) {
     if (!lockInf.value.isArray()) {
-      LOG_TOPIC("1dc00", ERR, arangodb::Logger::AQL)
+      LOG_TOPIC("1dc00", WARN, arangodb::Logger::AQL)
           << "Invalid VelocyPack: \"lockInfo." << lockInf.key.copyString()
           << "\" is required but not an array.";
       generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -249,7 +262,7 @@ void RestAqlHandler::setupClusterQuery() {
     }
     for (VPackSlice col : VPackArrayIterator(lockInf.value)) {
       if (!col.isString()) {
-        LOG_TOPIC("9e29f", ERR, arangodb::Logger::AQL)
+        LOG_TOPIC("9e29f", WARN, arangodb::Logger::AQL)
             << "Invalid VelocyPack: \"lockInfo." << lockInf.key.copyString()
             << "\" is required but not an array.";
         generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -262,18 +275,23 @@ void RestAqlHandler::setupClusterQuery() {
       collectionBuilder.add("name", col);
       collectionBuilder.add("type", lockInf.key);
       collectionBuilder.close();
+
+      if (!AccessMode::isWriteOrExclusive(access) && lockInf.key.isEqualString(::writeKey)) {
+        access = AccessMode::Type::WRITE;
+      } else if (!AccessMode::isExclusive(access) && lockInf.key.isEqualString(::exclusiveKey)) {
+        access = AccessMode::Type::EXCLUSIVE;
+      }
     }
   }
   collectionBuilder.close();
 
-  // simon: making this write breaks queries where DOCUMENT function
-  // is used in a coordinator-snippet above a DBServer-snippet
-  AccessMode::Type access = AccessMode::Type::READ;
-  const double ttl = options.ttl;
+  double const ttl = options.ttl;
   // creates a StandaloneContext or a leased context
   auto q = std::make_unique<ClusterQuery>(clusterQueryId, 
                                           createTransactionContext(access),
                                           std::move(options));
+  
+  TRI_ASSERT(clusterQueryId == 0 || clusterQueryId == q->id());
 
   VPackBufferUInt8 buffer;
   VPackBuilder answerBuilder(buffer);
@@ -288,6 +306,9 @@ void RestAqlHandler::setupClusterQuery() {
     // coordinators
     answerBuilder.add("queryId", VPackValue(q->id()));
   }
+  // send back our own reboot id
+  answerBuilder.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId().value()));
+
   QueryAnalyzerRevisions analyzersRevision;
   auto revisionRes = analyzersRevision.fromVelocyPack(querySlice);
   if(ADB_UNLIKELY(revisionRes.fail())) {
@@ -327,6 +348,7 @@ void RestAqlHandler::setupClusterQuery() {
   }
 
   _queryRegistry->insertQuery(std::move(q), ttl, std::move(rGuard));
+  
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
@@ -351,12 +373,12 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
         [self = shared_from_this()] { return self->wakeupHandler(); });
   }
 
-  TRI_ASSERT(_qId > 0);
   TRI_ASSERT(_engine != nullptr);
+  TRI_ASSERT(std::to_string(_engine->engineId()) == idString);
 
   if (_engine->getQuery().queryOptions().profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
-        << "[query#" << _qId << "] remote request received: " << operation
+        << "[query#" << idString << "] remote request received: " << operation
         << " registryId=" << idString;
   }
 
@@ -382,6 +404,12 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
 
 // executes the handler
 RestStatus RestAqlHandler::execute() {
+  if (ServerState::instance()->isSingleServer()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_HTTP_NOT_IMPLEMENTED,
+                  "this endpoint is only available in clusters");
+    return RestStatus::DONE;
+  }
+
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   // extract the sub-request type
@@ -469,14 +497,12 @@ RestStatus RestAqlHandler::continueExecute() {
 
 void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
   try {
-    if (isFinalized) {
-      if (_engine) {
-        _engine->sharedState()->resetWakeupHandler();
-      }
-      if (_qId != 0) {
-        _engine = nullptr;
-        _queryRegistry->closeEngine(_qId);
-      }
+    if (isFinalized && _engine != nullptr) {
+      auto qId = _engine->engineId();
+      _engine->sharedState()->resetWakeupHandler();
+      _engine = nullptr;
+
+      _queryRegistry->closeEngine(qId);
     }
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC("f73b8", INFO, Logger::FIXME)
@@ -494,8 +520,7 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
 // dig out the query from ID, handle errors
 ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
   TRI_ASSERT(_engine == nullptr);
-  TRI_ASSERT(_qId == 0);
-  _qId = arangodb::basics::StringUtils::uint64(idString);
+  uint64_t qId = arangodb::basics::StringUtils::uint64(idString);
 
   // sleep for 10ms each time, wait for at most 30 seconds...
   static int64_t const SingleWaitPeriod = 10 * 1000;
@@ -513,7 +538,7 @@ ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
       break;
     }
     try {
-      q = _queryRegistry->openExecutionEngine(_qId);
+      q = _queryRegistry->openExecutionEngine(qId);
       // we got the query (or it was not found - at least no one else
       // can now have access to the same query)
       break;
@@ -526,13 +551,12 @@ ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
 
   if (q == nullptr) {
     LOG_TOPIC_IF("baef6", ERR, Logger::AQL, iterations == MaxIterations)
-        << "Timeout waiting for query " << _qId;
-    _qId = 0;
+        << "Timeout waiting for query " << qId;
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
                   "query ID " + idString + " not found");
   }
 
-  TRI_ASSERT(q == nullptr || _qId > 0);
+  TRI_ASSERT(q == nullptr || q->engineId() == qId);
 
   return q;
 }

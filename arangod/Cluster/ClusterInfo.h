@@ -30,6 +30,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <memory>
 
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
@@ -56,6 +57,12 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
+}
+
+namespace replication2::agency {
+struct LogPlanSpecification;
+struct CollectionGroupId;
+struct CollectionGroup;
 }
 
 class ClusterInfo;
@@ -848,7 +855,7 @@ class ClusterInfo final {
   /// an error.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<std::vector<ServerID>> getResponsibleServer(ShardID const&);
+  std::shared_ptr<std::vector<ServerID> const> getResponsibleServer(ShardID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
@@ -894,18 +901,12 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Plan" structure
   //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<VPackBuilder> getPlan();
-  std::shared_ptr<VPackBuilder> getPlan(uint64_t& planIndex);
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
     getPlan(uint64_t& planIndex, std::unordered_set<std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Current" structure
   //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<VPackBuilder> getCurrent();
-  std::shared_ptr<VPackBuilder> getCurrent(uint64_t& currentIndex);
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
     getCurrent(uint64_t& currentIndex, std::unordered_set<std::string> const&);
 
@@ -957,6 +958,9 @@ class ClusterInfo final {
 
   /// @brief map shardId to collection name (not ID)
   CollectionID getCollectionNameForShard(ShardID const& shardId);
+
+  auto getReplicatedLogLeader(DatabaseID const& database, replication2::LogId) const
+      -> std::optional<ServerID>;
 
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
@@ -1178,6 +1182,9 @@ class ClusterInfo final {
   // The Current state:
   AllCollectionsCurrent _currentCollections;  // from Current/Collections/
   std::unordered_map<ShardID, std::shared_ptr<std::vector<ServerID>>> _shardIds;  // from Current/Collections/
+
+  struct NewStuffByDatabase;
+  std::unordered_map<DatabaseID, std::shared_ptr<NewStuffByDatabase>> _newStuffByDatabase;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief uniqid sequence

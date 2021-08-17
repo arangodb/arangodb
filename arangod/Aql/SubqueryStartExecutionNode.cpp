@@ -60,15 +60,12 @@ CostEstimate SubqueryStartNode::estimateCost() const {
   return estimate;
 }
 
-void SubqueryStartNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                           std::unordered_set<ExecutionNode const*>& seen) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
+void SubqueryStartNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // We need this for the Explainer
   if (_subqueryOutVariable != nullptr) {
     nodes.add(VPackValue("subqueryOutVariable"));
     _subqueryOutVariable->toVelocyPack(nodes);
   }
-  nodes.close();
 }
 
 std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
