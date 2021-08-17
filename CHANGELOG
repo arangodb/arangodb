@@ -7,6 +7,10 @@ devel
   trigger said error anymore. Accessing a collection _after_ in a query a 
   data-modification in the same query is still disallowed.
 
+* Make AQL modification operations in a cluster asynchronous. This allows to
+  free the thread for other work until both the write and synchronous
+  replication are complete.
+
 * When creating Pregel memory-mapped files, create them with O_TMPFILE
   attribute on Linux so that files are guaranteed to vanish even if a 
   process dies.
