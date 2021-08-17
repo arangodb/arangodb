@@ -160,6 +160,7 @@ class Logger {
   static LogTopic AUTHENTICATION;
   static LogTopic AUTHORIZATION;
   static LogTopic BACKUP;
+  static LogTopic BENCH;
   static LogTopic CACHE;
   static LogTopic CLUSTER;
   static LogTopic CLUSTERCOMM;
