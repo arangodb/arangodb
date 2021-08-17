@@ -2272,12 +2272,19 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                           vocbase.server().getFeature<ClusterFeature>().maxNumberOfShards()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
   
-  // max number of shards
+  // force one shard collections?
   context->Global()
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "FORCE_ONE_SHARD"),
                           v8::Boolean::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().forceOneShard()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
+      .FromMaybe(false);  // ignore result
+  
+  // session timeout (used by web UI)
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "SESSION_TIMEOUT"),
+                          v8::Number::New(isolate, static_cast<double>(AuthenticationFeature::instance()->sessionTimeout())), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   // a thread-global variable that will contain the AQL module.
