@@ -52,7 +52,7 @@ struct MyEntryType {
   static auto fromVelocyPack(velocypack::Slice s) -> MyEntryType {
     return MyEntryType{s.get("value").copyString()};
   }
-  void toVelocyPack(velocypack::Builder& b) {
+  void toVelocyPack(velocypack::Builder& b) const {
     velocypack::ObjectBuilder ob(&b);
     b.add("value", velocypack::Value(value));
   }
