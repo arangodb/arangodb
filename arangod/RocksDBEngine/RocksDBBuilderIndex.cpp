@@ -193,7 +193,9 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
   MethodsType batched(state, &batch);
   
   auto commitLambda = [&] {
-    if (batch.GetWriteBatch()->Count() > 0) {
+    auto docsInBatch = batch.GetWriteBatch()->Count();
+
+    if (docsInBatch > 0) {
       s = rootDB->Write(wo, batch.GetWriteBatch());
       if (!s.ok()) {
         res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
@@ -225,10 +227,6 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
 
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
-    if (ridx.collection().vocbase().server().isStopping()) {
-      res.reset(TRI_ERROR_SHUTTING_DOWN);
-      break;
-    }
 
     res = ridx.insert(trx, &batched, RocksDBKey::documentId(it->key()),
                       VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data())), Index::OperationMode::normal);
@@ -237,10 +235,15 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
     }
     numDocsWritten++;
 
-    if (numDocsWritten % 200 == 0) {  // commit buffered writes
+    if (numDocsWritten % 1024 == 0) {  // commit buffered writes
       commitLambda();
       // cppcheck-suppress identicalConditionAfterEarlyExit
       if (res.fail()) {
+        break;
+      }
+    
+      if (ridx.collection().vocbase().server().isStopping()) {
+        res.reset(TRI_ERROR_SHUTTING_DOWN);
         break;
       }
     }
@@ -274,7 +277,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
   TRI_ASSERT(internal != nullptr);
 
   const rocksdb::Snapshot* snap = nullptr;
-
+  
   Result res;
   if (this->unique()) {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
@@ -453,7 +456,9 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
   }
 
   auto commitLambda = [&](rocksdb::SequenceNumber seq) {
-    if (wb.GetWriteBatch()->Count() > 0) {
+    auto docsInBatch =  wb.GetWriteBatch()->Count();
+
+    if (docsInBatch > 0) {
       rocksdb::WriteOptions wo;
       rocksdb::Status s = rootDB->Write(wo, wb.GetWriteBatch());
       if (!s.ok()) {

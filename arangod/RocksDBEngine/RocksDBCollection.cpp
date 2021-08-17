@@ -23,6 +23,7 @@
 #include "RocksDBCollection.h"
 
 #include "Aql/PlanCache.h"
+#include "Basics/Exceptions.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -66,6 +67,21 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+
+namespace {
+/// @brief remove an index from a container, by id
+bool removeIndex(arangodb::PhysicalCollection::IndexContainerType& indexes, TRI_idx_iid_t id) {
+  auto it = indexes.begin();
+  while (it != indexes.end()) {
+    if ((*it)->id() == id) {
+      indexes.erase(it);
+      return true;
+    }
+    ++it;
+  }
+  return false;
+}
+} // namespace
 
 RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                                      arangodb::velocypack::Slice const& info)
@@ -262,54 +278,52 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     vocbase.release();
   });
 
+  READ_LOCKER(inventoryLocker, vocbase._inventoryLock);
+
   RocksDBBuilderIndex::Locker locker(this);
   if (!locker.lock()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
   }
-
-  std::shared_ptr<Index> idx;
-  {  // Step 1. Check for matching index
-    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-    if ((idx = findIndex(info, _indexes)) != nullptr) {
-      // We already have this index.
-      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
-        // special handling for TTL indexes
-        // if there is exactly the same index present, we return it
-        if (idx->matchesDefinition(info)) {
-          created = false;
-          return idx;
-        }
-        // if there is another TTL index already, we make things abort here
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            "there can only be one ttl index per collection");
-      }
-
-      created = false;
-      return idx;
-    }
-  }
-
+  
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
 
-  // Step 2. We are sure that we do not have an index of this type.
-  // We also hold the lock. Create it
-  bool const generateKey = !restore;
+  // Step 1. Create new index object
+  std::shared_ptr<Index> newIdx;
   try {
-    idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey,
+    newIdx = engine->indexFactory().prepareIndexFromSlice(info, /*generateKey*/ !restore,
                                                        _logicalCollection, false);
   } catch (std::exception const& ex) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED, ex.what());
   }
-
+  
   // we cannot persist primary or edge indexes
-  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
+  TRI_ASSERT(newIdx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+  TRI_ASSERT(newIdx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
 
-  {
+
+  {  
+    // Step 2. Check for existing matching index
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-    for (auto const& other : _indexes) {  // conflicting index exists
-      if (other->id() == idx->id() || other->name() == idx->name()) {
+    if (auto existingIdx = findIndex(info, _indexes); existingIdx != nullptr) {
+      // We already have this index.
+      if (existingIdx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
+        // special handling for TTL indexes
+        // if there is exactly the same index present, we return it
+        if (!existingIdx->matchesDefinition(info)) {
+          // if there is another TTL index already, we make things abort here
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "there can only be one ttl index per collection");
+        }
+      }
+
+      created = false;
+      return existingIdx;
+    }
+
+    // check all existing indexes for id/new conflicts
+    for (auto const& other : _indexes) { 
+      if (other->id() == newIdx->id() || other->name() == newIdx->name()) {
         // definition shares an identifier with an existing index with a
         // different definition
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -327,11 +341,16 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     }
   }
 
-  do {
+  // until here we have been completely read only. 
+  // modifications start now...
+  TRI_ASSERT(res.ok());
+
+  res = arangodb::basics::catchToResult([&]() -> Result {
+    Result res;
 
     // Step 3. add index to collection entry (for removal after a crash)
     auto buildIdx =
-    std::make_shared<RocksDBBuilderIndex>(std::static_pointer_cast<RocksDBIndex>(idx));
+        std::make_shared<RocksDBBuilderIndex>(std::static_pointer_cast<RocksDBIndex>(newIdx));
     if (!engine->inRecovery()) {  // manually modify collection entry, other
       // methods need lock
       RocksDBKey key;             // read collection info from database
@@ -342,8 +361,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
                                             RocksDBColumnFamily::definitions(),
                                             key.string(), &ps);
       if (!s.ok()) {
-        res.reset(rocksutils::convertStatus(s));
-        break;
+        return res.reset(rocksutils::convertStatus(s));
       }
       
       VPackBuilder builder;
@@ -353,24 +371,28 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
           VPackArrayBuilder arrGuard(&builder, "indexes");
           builder.add(VPackArrayIterator(pair.value));
           buildIdx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Internals));
-          continue;
+        } else {
+          builder.add(pair.key);
+          builder.add(pair.value);
         }
-        builder.add(pair.key);
-        builder.add(pair.value);
       }
       builder.close();
       res = engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
                                                 _logicalCollection.id(), builder.slice(),
                                                 RocksDBLogValue::Empty());
       if (res.fail()) {
-        break;
+        return res;
       }
     }
+
+    // release inventory lock while we are filling the index
+    inventoryLocker.unlock();
 
     // Step 4. fill index
     bool const inBackground =
         basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IndexInBackground, false);
-    if (inBackground) {  // allow concurrent inserts into index
+    if (inBackground) {  
+      // allow concurrent inserts into index
       {
         RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
         _indexes.emplace(buildIdx);
@@ -380,31 +402,29 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       res = buildIdx->fillIndexForeground();
     }
     if (res.fail()) {
-      break;
+      return res;
     }
-    locker.lock(); // always lock to avoid inconsistencies
+    
+    // always lock to avoid inconsistencies
+    locker.lock(); 
+
+    inventoryLocker.lock();
 
     // Step 5. register in index list
     {
       RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-      if (inBackground) {  // swap in actual index
-        for (auto& it : _indexes) {
-          if (it->id() == buildIdx->id()) {
-            _indexes.erase(it);
-            _indexes.emplace(idx);
-            break;
-          }
-        }
-      } else {
-        _indexes.emplace(idx);
+      if (inBackground) { 
+        // remove temporary index and swap in actual index
+        removeIndex(_indexes, buildIdx->id());
       }
+      _indexes.emplace(newIdx);
     }
 #if USE_PLAN_CACHE
     arangodb::aql::PlanCache::instance()->invalidate(_logicalCollection.vocbase());
 #endif
 
     // inBackground index might not recover selectivity estimate w/o sync
-    if (inBackground && !idx->unique() && idx->hasSelectivityEstimate()) {
+    if (inBackground && !newIdx->unique() && newIdx->hasSelectivityEstimate()) {
       engine->settingsManager()->sync(false);
     }
 
@@ -414,33 +434,28 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
           {"path", "statusString"},
           LogicalDataSource::Serialization::PersistenceWithInProgress);
       VPackBuilder indexInfo;
-      idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::Internals));
+      newIdx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::Internals));
       res = engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
                                                 _logicalCollection.id(), builder.slice(),
                                                 RocksDBLogValue::IndexCreate(_logicalCollection.vocbase().id(),
                                                                              _logicalCollection.id(), indexInfo.slice()));
     }
-  } while(false);
+    return res;
+  });
 
-  // cleanup routine
-  if (res.fail()) { // We could not create the index. Better abort
-    {
-      RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-      auto it = _indexes.begin();
-      while (it != _indexes.end()) {
-        if ((*it)->id() == idx->id()) {
-          _indexes.erase(it);
-          break;
-        }
-        it++;
-      }
-    }
-    idx->drop();
-    THROW_ARANGO_EXCEPTION(res);
+  if (res.ok()) {
+    created = true;
+    return newIdx;
   }
 
-  created = true;
-  return idx;
+  // cleanup routine
+  // We could not create the index. Better abort
+  {
+    RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    removeIndex(_indexes, newIdx->id());
+  }
+  newIdx->drop();
+  THROW_ARANGO_EXCEPTION(res);
 }
 
 /// @brief Drop an index with the given iid.

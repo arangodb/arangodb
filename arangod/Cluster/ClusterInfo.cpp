@@ -3426,7 +3426,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
       if (!collectionWatcher.isPresent()) {
         return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                       "collection " + collectionID +
-                          "appears to have been dropped from database " +
+                          " appears to have been dropped from database " +
                           databaseName + " during ensureIndex");
       }
 
