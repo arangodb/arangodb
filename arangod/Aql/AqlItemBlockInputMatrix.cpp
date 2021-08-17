@@ -56,7 +56,7 @@ AqlItemBlockInputRange& AqlItemBlockInputMatrix::getInputRange() {
   if (_lastRange.hasDataRow()) {
     return _lastRange;
   }
-  // Need initialze lastRange
+  // Need initialize lastRange
   if (_aqlItemMatrix->numberOfBlocks() == 0) {
     _lastRange = {AqlItemBlockInputRange{upstreamState()}};
   } else {
@@ -69,7 +69,6 @@ AqlItemBlockInputRange& AqlItemBlockInputMatrix::getInputRange() {
 
 std::pair<ExecutorState, AqlItemMatrix const*> AqlItemBlockInputMatrix::getMatrix() noexcept {
   TRI_ASSERT(_aqlItemMatrix != nullptr);
-  TRI_ASSERT(!_shadowRow.isInitialized());
 
   // We are always done. This InputMatrix
   // guarantees that we have all data in our hand at once.
@@ -95,7 +94,7 @@ bool AqlItemBlockInputMatrix::hasValidRow() const noexcept {
 
 bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
   return _aqlItemMatrix != nullptr && !hasShadowRow() &&
-         ((_aqlItemMatrix->stoppedOnShadowRow()) ||
+         (_aqlItemMatrix->stoppedOnShadowRow() ||
           (_aqlItemMatrix->size() > 0 && _finalState == ExecutorState::DONE));
 }
 
