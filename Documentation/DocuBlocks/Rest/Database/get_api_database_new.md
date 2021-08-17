@@ -30,7 +30,7 @@ up-to-date copies will succeed at the same time however. The value of
 
 @RESTBODYPARAM{users,array,optional,get_api_database_new_USERS}
 An array of user objects. The users will be granted *Administrate* permissions
-for the new database. Users that do no exist yet will be created.
+for the new database. Users that do not exist yet will be created.
 If *users* is not specified or does not contain any users, the default user
 *root* will be used to ensure that the new database will be accessible after it
 is created. The *root* user is created with an empty password should it not
