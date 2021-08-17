@@ -28,6 +28,7 @@
 #include "analysis/token_attributes.hpp"
 
 #include "search/cost.hpp"
+#include "search/score.hpp"
 #include "index/iterators.hpp"
 
 #include "utils/bit_utils.hpp"
@@ -230,6 +231,9 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
 
   struct container_iterator_context {
     union {
+      // We can also have an inverse sparse container (where we
+      // most of values are 0). In this case only zeros can be
+      // stored as an array.
       struct {
         const uint16_t* u16data;
       } sparse;
@@ -260,7 +264,7 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
   void read_block_header();
 
   container_iterator_context ctx_;
-  std::tuple<document, cost, value_index> attrs_;
+  std::tuple<document, value_index, cost, score> attrs_;
   memory::managed_ptr<index_input> in_;
   std::unique_ptr<byte_type[]> block_index_data_;
   block_seek_f seek_func_;

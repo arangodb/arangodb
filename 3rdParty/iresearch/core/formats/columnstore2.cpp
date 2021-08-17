@@ -193,6 +193,12 @@ class range_column_iterator final
       return doc;
     }
 
+    if (!doc_limits::valid(value())) {
+      std::get<document>(attrs_).value = min_doc_++;
+      std::get<irs::payload>(attrs_).value = this->payload(value() - min_base_);
+      return value();
+    }
+
     if (value() < doc) {
       max_doc_ = doc_limits::invalid();
       min_doc_ = doc_limits::eof();
@@ -243,7 +249,7 @@ class bitmap_column_iterator final
   using attributes = std::tuple<
     attribute_ptr<document>,
     cost,
-    score,
+    attribute_ptr<score>,
     irs::payload>;
 
  public:
@@ -257,6 +263,7 @@ class bitmap_column_iterator final
       bitmap_{std::move(bitmap_in), opts, cost} {
     std::get<irs::cost>(attrs_).reset(cost);
     std::get<attribute_ptr<document>>(attrs_) = irs::get_mutable<document>(&bitmap_);
+    std::get<attribute_ptr<score>>(attrs_) = irs::get_mutable<score>(&bitmap_);
   }
 
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
@@ -268,7 +275,7 @@ class bitmap_column_iterator final
   }
 
   virtual doc_id_t seek(irs::doc_id_t doc) override {
-    assert(doc_limits::valid(doc));
+    assert(doc_limits::valid(doc) || doc_limits::valid(value()));
     doc = bitmap_.seek(doc);
 
     if (!doc_limits::eof(doc)) {

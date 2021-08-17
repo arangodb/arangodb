@@ -530,9 +530,7 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
       &tests::memory_directory,
       &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values("1_0")
-  ),
+      &tests::mmap_directory),
+    ::testing::Values("1_0", "1_2", "1_3", "1_4")),
   tests::to_string
 );
