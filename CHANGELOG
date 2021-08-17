@@ -1,11 +1,7 @@
-v3.8.2 (XXXX-XX-XX)
+v3.8.1 (XXXX-XX-XX)
 -------------------
 
 * Improve log messages for Pregel runs by giving them more context.
-
-
-v3.8.1 (XXXX-XX-XX)
--------------------
 
 * Fixed issue BTS-539 "Unsynchronized query kill while it's being finalized in
   another thread was uncovered through `test-kill.js` of `communication_ssl`
