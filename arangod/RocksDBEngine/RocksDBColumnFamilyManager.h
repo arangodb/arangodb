@@ -55,7 +55,7 @@ struct RocksDBColumnFamilyManager {
     External   // for display to users
   };
 
-  static constexpr size_t minNumberOfColumnFamilies = 8;
+  static constexpr size_t minNumberOfColumnFamilies = 7;
   static constexpr size_t numberOfColumnFamilies = 8;
 
   static void initialize();

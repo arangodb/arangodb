@@ -8,7 +8,43 @@ devel
   The implementation is based on ioctl and is thus only present on Linux and
   MacOS.
 
-* Add optimization rule for AqlAnalyzer 
+* Some AQL queries erroneously reported the "access after data-modification" 
+  error for queries in which there was a read attempt from a collection
+  _before_ a data-modification operation. Such access is legal and should not
+  trigger said error anymore. Accessing a collection _after_ in a query a 
+  data-modification in the same query is still disallowed.
+
+* Make AQL modification operations in a cluster asynchronous. This allows to
+  free the thread for other work until both the write and synchronous
+  replication are complete.
+
+* When creating Pregel memory-mapped files, create them with O_TMPFILE
+  attribute on Linux so that files are guaranteed to vanish even if a 
+  process dies.
+
+* Fixed: getResponsibleShard call on disjoint Smart Graphs
+  if you asked for the responsible shard on a disjoint edge collection
+  where the _from and _to differ (invalid), the server would respond with
+  "DATASOURCE_NOT_FOUND". This is now fixed to "BAD_PARAMETER"
+  to emphasize that the collection is fine but the input is invalid.
+
+* Fixed: /_api/transaction/begin called on edge collections of disjoint
+  SmartGraphs falsely returned CollectionNotFound errors.
+
+* Bugfix: In more complex queries there was a code-path where a (Disjoint-) 
+  Smart graph access was not properly optimized.
+
+* Improve log messages for Pregel runs by giving them more context.
+
+* Add ReplicatedLogs column family.
+
+* Add optimization rule for AqlAnalyzer.
+
+* Fixed issue #14592: IS_NULL(@x) isn't recognized as a constant expression.
+
+* Fixed issue BTS-539 "Unsynchronized query kill while it's being finalized in
+  another thread was uncovered through `test-kill.js` of `communication_ssl`
+  suite". Fixed possible (but unlikely) crash when killing an AQL query.
 
 * Append physical compaction of log collection to every Raft log
   compaction (BTS-542).
