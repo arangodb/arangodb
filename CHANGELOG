@@ -3,6 +3,12 @@ v3.8.1 (XXXX-XX-XX)
 
 * Improve log messages for Pregel runs by giving them more context.
 
+* Fixed issue BTS-536 "Upgrading without rest-server is aborted by error".
+  Now stating `--server.rest-server false` does not require the additional
+  `--console` argument for upgrading a server.
+
+* Fixed issue #14592:  IS_NULL(@x) isn't recognized as a constant expression.
+
 * Fixed issue BTS-539 "Unsynchronized query kill while it's being finalized in
   another thread was uncovered through `test-kill.js` of `communication_ssl`
   suite". Fixed possible (but unlikely) crash when killing an AQL query.
