@@ -1,6 +1,9 @@
 v3.7.14 (XXXX-XX-XX)
 --------------------
 
+* When creating Pregel memory-mapped files, create them with O_TMPFILE attribute
+  on Linux so that files are guaranteed to vanish even if a process dies.
+
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented cases
   and numerically unstable behaviour. In particular, the case of the
   intersection of two polygons in which one is an S2LngLatRect is fixed

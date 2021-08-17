@@ -293,12 +293,15 @@ void moveAppend(std::vector<X>& src, std::vector<X>& dst) {
 template<typename M>
 std::unique_ptr<TypedBuffer<M>> createBuffer(WorkerConfig const& config, size_t cap) {
   if (config.useMemoryMaps()) {
-    auto ptr = std::make_unique<MappedFileBuffer<M>>(cap);
+    // prefix used for logging in TypedBuffer.h
+    std::string logPrefix = "[job " + std::to_string(config.executionNumber()) + "] ";
+
+    auto ptr = std::make_unique<MappedFileBuffer<M>>(cap, logPrefix);
     ptr->sequentialAccess();
     return ptr;
-  } else {
-    return std::make_unique<VectorTypedBuffer<M>>(cap);
   }
+
+  return std::make_unique<VectorTypedBuffer<M>>(cap);
 }
 }
 

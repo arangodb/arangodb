@@ -73,7 +73,7 @@ TEST(PregelTypedBufferTest, test_with_mmap) {
   
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
   
-  MappedFileBuffer<int64_t> mapped(1024);
+  MappedFileBuffer<int64_t> mapped(1024, "");
   ASSERT_EQ(mapped.size(), 0);
   ASSERT_EQ(mapped.capacity(), 1024);
   ASSERT_EQ(mapped.remainingCapacity(), 1024);
