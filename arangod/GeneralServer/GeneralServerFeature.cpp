@@ -156,7 +156,7 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new UInt64Parameter(&_numIoThreads),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
   
-  options->addOption("--server.support-api",
+  options->addOption("--server.support-info-api",
                      "Expose support info API for privileged users",
                      new BooleanParameter(&_exposeSupportInfoApi))
                      .setIntroducedIn(30900);

@@ -12,7 +12,7 @@ devel
   be accessed from inside the system database. In addition accessing it
   requires either the superuser JWT token or that `--server.harden` is not
   set. The API can also be turned off entirely using the new startup option 
-  `--server.support-api`.
+  `--server.support-info-api`.
 
 * Bug-Fix: In more complex queries there was a code-path where a (Disjoint-) Smart
   graph access was not properly optimized.

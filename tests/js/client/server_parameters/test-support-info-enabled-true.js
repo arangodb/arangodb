@@ -30,7 +30,7 @@
 
 if (getOptions === true) {
   return {
-    'server.support-api': "true"
+    'server.support-info-api': "true"
   };
 }
 
