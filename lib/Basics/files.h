@@ -401,10 +401,6 @@ std::string TRI_LocateInstallDirectory(char const* argv0, const char* binaryPath
 
 std::string TRI_LocateConfigDirectory(char const* binaryPath);
 
-/// @brief creates a new datafile
-/// returns the file descriptor or -1 if the file cannot be created
-int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether path is full qualified or relative
 ////////////////////////////////////////////////////////////////////////////////
