@@ -1,6 +1,13 @@
 devel
 -----
 
+* Send a keystroke to arangod's stdin when a shutdown command is received via
+  the REST API `/_admin/shutdown` and the server is started with the
+  `--console` argument. The keystroke will exit the blocking read loop that
+  is waiting on console input and that otherwise blocks the shutdown.
+  The implementation is based on ioctl and is thus only present on Linux and
+  MacOS.
+
 * Some AQL queries erroneously reported the "access after data-modification" 
   error for queries in which there was a read attempt from a collection
   _before_ a data-modification operation. Such access is legal and should not
@@ -21,7 +28,7 @@ devel
   "DATASOURCE_NOT_FOUND". This is now fixed to "BAD_PARAMETER"
   to emphasize that the collection is fine but the input is invalid.
 
-* Fixed: _api/transaction/begin called on edge collections of disjoint
+* Fixed: /_api/transaction/begin called on edge collections of disjoint
   SmartGraphs falsely returned CollectionNotFound errors.
 
 * Bugfix: In more complex queries there was a code-path where a (Disjoint-) 
