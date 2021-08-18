@@ -130,7 +130,7 @@ doc_iterator::ptr multiterm_query::execute(
   }
 
   // get required features for order
-  auto& features = ord.features();
+  const IndexFeatures features = ord.features();
   auto& stats = this->stats();
 
   const bool has_unscored_terms = !state->unscored_terms.empty();

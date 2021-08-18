@@ -185,6 +185,27 @@ void memory_index_input::seek(size_t pos) {
   switch_buffer(pos);
 }
 
+const byte_type* memory_index_input::read_buffer(
+    size_t offset,
+    size_t size,
+    BufferHint /*hint*/) noexcept {
+  const auto idx = file_->buffer_offset(offset);
+  assert(idx < file_->buffer_count());
+  const auto& buf = file_->get_buffer(idx);
+  const auto begin = buf.data + offset - buf.offset;
+  const auto end = begin + size;
+  const auto buf_end = buf.data + std::min(buf.size, file_->length() - buf.offset);
+
+  if (end <= buf_end) {
+    buf_ = buf.data;
+    begin_ = end;
+    end_ = buf_end;
+    start_ = buf.offset;
+    return begin;
+  }
+
+  return nullptr;
+}
 
 const byte_type* memory_index_input::read_buffer(
     size_t size,
@@ -226,6 +247,12 @@ size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
     b += copied;
   }
   return length - left;
+}
+
+int16_t memory_index_input::read_short() {
+  return remain() < sizeof(uint16_t)
+    ? data_input::read_short()
+    : irs::read<uint16_t>(begin_);
 }
 
 int32_t memory_index_input::read_int() {
@@ -307,7 +334,7 @@ void memory_index_output::seek(size_t pos) {
   auto idx = file_.buffer_offset(pos);
 
   buf_ = idx < file_.buffer_count() ? file_.get_buffer(idx) : file_.push_buffer();
-  pos_ = buf_.data;
+  pos_ = buf_.data + pos - buf_.offset;
   end_ = buf_.data + buf_.size;
 }
 

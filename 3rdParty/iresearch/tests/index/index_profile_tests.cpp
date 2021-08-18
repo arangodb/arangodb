@@ -118,7 +118,7 @@ class index_profile_test_case : public tests::index_test_base {
 
       // register insertion jobs
       for (size_t i = 0; i < thread_count; ++i) {
-        thread_pool.run([&mutex, &commit_mutex, &writer, thread_count, i, writer_batch_size, &parsed_docs_count, &writer_commit_count, &import_again, this]()->void {
+        thread_pool.run([&mutex, &commit_mutex, &writer, thread_count, i, writer_batch_size, &parsed_docs_count, &writer_commit_count, &import_again]()->void {
           {
             // wait for all threads to be registered
             std::lock_guard<std::mutex> lock(mutex);
@@ -190,7 +190,7 @@ class index_profile_test_case : public tests::index_test_base {
 
       // register import jobs
       for (size_t i = 0; i < num_import_threads; ++i) {
-        thread_pool.run([&mutex, &writer, import_reader, &import_docs_count, &import_again, &import_interval, &writer_import_count, this]()->void {
+        thread_pool.run([&mutex, &writer, import_reader, &import_docs_count, &import_again, &import_interval, &writer_import_count]()->void {
           {
             // wait for all threads to be registered
             std::lock_guard<std::mutex> lock(mutex);
@@ -373,7 +373,7 @@ class index_profile_test_case : public tests::index_test_base {
     });
 
     {
-      auto finalizer = irs::make_finally([&working]()->void{working = false;});
+      auto finalizer = irs::make_finally([&working]()noexcept{working = false;});
       profile_bulk_index(num_threads, 0, 0, batch_size);
     }
 
@@ -383,9 +383,7 @@ class index_profile_test_case : public tests::index_test_base {
   void profile_bulk_index_dedicated_commit(
       size_t insert_threads,
       size_t commit_threads,
-      size_t commit_interval
-  ) {
-    auto* directory = &dir();
+      size_t commit_interval) {
     irs::index_writer::init_options options;
     std::atomic<bool> working(true);
     std::atomic<size_t> writer_commit_count(0);
@@ -397,7 +395,7 @@ class index_profile_test_case : public tests::index_test_base {
     auto writer = open_writer(irs::OM_CREATE, options);
 
     for (size_t i = 0; i < commit_threads; ++i) {
-      thread_pool.run([commit_interval, directory, &working, &writer, &writer_commit_count]()->void {
+      thread_pool.run([commit_interval, &working, &writer, &writer_commit_count]()->void {
         while (working.load()) {
           {
             REGISTER_TIMER_NAMED_DETAILED("commit");
@@ -410,7 +408,7 @@ class index_profile_test_case : public tests::index_test_base {
     }
 
     {
-      auto finalizer = irs::make_finally([&working]()->void{working = false;});
+      auto finalizer = irs::make_finally([&working]()noexcept{working = false;});
       profile_bulk_index(insert_threads, 0, 0, 0, writer, &writer_commit_count);
     }
 
@@ -419,7 +417,6 @@ class index_profile_test_case : public tests::index_test_base {
 
   void profile_bulk_index_dedicated_consolidate(size_t num_threads, size_t batch_size, size_t consolidate_interval) {
     const auto policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
-    auto* directory = &dir();
     irs::index_writer::init_options options;
     std::atomic<bool> working(true);
     irs::async_utils::thread_pool thread_pool(2, 2);
@@ -428,7 +425,7 @@ class index_profile_test_case : public tests::index_test_base {
 
     auto writer = open_writer(irs::OM_CREATE, options);
 
-    thread_pool.run([consolidate_interval, directory, &working, &writer, &policy]()->void {
+    thread_pool.run([consolidate_interval, &working, &writer, &policy]()->void {
       while (working.load()) {
         writer->consolidate(policy);
         std::this_thread::sleep_for(std::chrono::milliseconds(consolidate_interval));
@@ -436,7 +433,7 @@ class index_profile_test_case : public tests::index_test_base {
     });
 
     {
-      auto finalizer = irs::make_finally([&working]()->void{working = false;});
+      auto finalizer = irs::make_finally([&working]()noexcept{working = false;});
       profile_bulk_index(num_threads, 0, 0, batch_size, writer);
     }
 
@@ -526,16 +523,14 @@ TEST_P(index_profile_test_case, profile_bulk_index_multithread_update_batched_mt
   profile_bulk_index(16, 0, 5, 10000); // 5 does not divide evenly into 16
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   index_profile_test,
   index_profile_test_case,
   ::testing::Combine(
     ::testing::Values(
       &tests::memory_directory,
       &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values("1_0")
-  ),
+      &tests::mmap_directory),
+    ::testing::Values("1_0", "1_2", "1_3", "1_4")),
   tests::to_string
 );

@@ -25,14 +25,15 @@
 
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
-  #include "delimited_token_stream.hpp"
-  #include "ngram_token_stream.hpp"
-  #include "text_token_normalizing_stream.hpp"
-  #include "text_token_stemming_stream.hpp"
-  #include "text_token_stream.hpp"
-  #include "token_stopwords_stream.hpp"
-  #include "pipeline_token_stream.hpp"
-  #include "segmentation_token_stream.hpp"
+#include "analysis/delimited_token_stream.hpp"
+#include "analysis/collation_token_stream.hpp"
+#include "analysis/ngram_token_stream.hpp"
+#include "analysis/text_token_normalizing_stream.hpp"
+#include "analysis/text_token_stemming_stream.hpp"
+#include "analysis/text_token_stream.hpp"
+#include "analysis/token_stopwords_stream.hpp"
+#include "analysis/pipeline_token_stream.hpp"
+#include "analysis/segmentation_token_stream.hpp"
 #endif
 
 #include "analysis/analyzers.hpp"
@@ -202,16 +203,17 @@ namespace analysis {
 }
 
 /*static*/ void analyzers::init() {
-  #ifndef IRESEARCH_DLL
-    irs::analysis::delimited_token_stream::init();
-    irs::analysis::ngram_token_stream_base::init();
-    irs::analysis::text_token_normalizing_stream::init();
-    irs::analysis::text_token_stemming_stream::init();
-    irs::analysis::text_token_stream::init();
-    irs::analysis::token_stopwords_stream::init();
-    irs::analysis::pipeline_token_stream::init();
-    irs::analysis::segmentation_token_stream::init();
-  #endif
+#ifndef IRESEARCH_DLL
+  irs::analysis::delimited_token_stream::init();
+  irs::analysis::collation_token_stream::init();
+  irs::analysis::ngram_token_stream_base::init();
+  irs::analysis::text_token_normalizing_stream::init();
+  irs::analysis::text_token_stemming_stream::init();
+  irs::analysis::text_token_stream::init();
+  irs::analysis::token_stopwords_stream::init();
+  irs::analysis::pipeline_token_stream::init();
+  irs::analysis::segmentation_token_stream::init();
+#endif
 }
 
 /*static*/ void analyzers::load_all(const std::string& path) {

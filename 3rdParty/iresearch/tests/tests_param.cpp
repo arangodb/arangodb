@@ -76,29 +76,4 @@ std::pair<std::shared_ptr<irs::directory>, std::string> mmap_directory(const tes
   return std::make_pair(impl, "mmap");
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          directory_test_case_base
-// -----------------------------------------------------------------------------
-
-/*static*/ std::string directory_test_case_base::to_string(
-    const testing::TestParamInfo<tests::dir_factory_f>& info
-) {
-  return (*info.param)(nullptr).second;
-}
-
-void directory_test_case_base::SetUp() {
-  test_base::SetUp();
-
-  auto* factory = GetParam();
-  ASSERT_NE(nullptr, factory);
-
-  dir_ = (*factory)(this).first;
-  ASSERT_NE(nullptr, dir_);
-}
-
-void directory_test_case_base::TearDown() {
-  dir_ = nullptr;
-  test_base::TearDown();
-}
-
 } // tests
