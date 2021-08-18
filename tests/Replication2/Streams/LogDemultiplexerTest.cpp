@@ -28,56 +28,41 @@ struct LogDemuxTest : ::testing::Test {
 };
 
 struct default_deserializer {
-  template <typename T>
-  auto operator()(serializer_tag_t<T>, velocypack::Slice s) -> T {
-    return T::fromVelocyPack(s);
-  }
   auto operator()(serializer_tag_t<int>, velocypack::Slice s) -> int {
     return s.getNumericValue<int>();
+  }
+  auto operator()(serializer_tag_t<std::string>, velocypack::Slice s) -> std::string {
+    return s.copyString();
   }
 };
 
 struct default_serializer {
-  template <typename T, typename = void>
-  void operator()(serializer_tag_t<T>, T const& t, velocypack::Builder& b) {
-    t.toVelocyPack(b);
-  }
 
   void operator()(serializer_tag_t<int>, int t, velocypack::Builder& b) {
     b.add(velocypack::Value(t));
   }
+  void operator()(serializer_tag_t<std::string>, std::string const& t,
+                  velocypack::Builder& b) {
+    b.add(velocypack::Value(t));
+  }
 };
 
-struct MyEntryType {
-  static auto fromVelocyPack(velocypack::Slice s) -> MyEntryType {
-    return MyEntryType{s.get("value").copyString()};
-  }
-  void toVelocyPack(velocypack::Builder& b) const {
-    velocypack::ObjectBuilder ob(&b);
-    b.add("value", velocypack::Value(value));
-  }
-
-  std::string value;
-};
 
 /* clang-format off */
 
-inline constexpr auto my_stream_id = StreamId{1};
+inline constexpr auto my_int_stream_id = StreamId{1};
 inline constexpr auto my_int_stream_tag = StreamTag{12};
-inline constexpr auto my_old_int_stream_tag = StreamTag{13};
 
-
-inline constexpr auto my_foo_stream_id = StreamId{8};
-inline constexpr auto my_foo_tag = StreamTag{55};
+inline constexpr auto my_string_stream_id = StreamId{8};
+inline constexpr auto my_string_stream_tag = StreamTag{55};
 
 
 using MyTestSpecification = stream_descriptor_set<
-  stream_descriptor<my_stream_id, int, tag_descriptor_set<
-    tag_descriptor<my_int_stream_tag, default_deserializer, default_serializer>,
-    tag_descriptor<my_old_int_stream_tag, default_deserializer, default_serializer>
+  stream_descriptor<my_int_stream_id, int, tag_descriptor_set<
+    tag_descriptor<my_int_stream_tag, default_deserializer, default_serializer>
   >>,
-  stream_descriptor<my_foo_stream_id, MyEntryType, tag_descriptor_set<
-    tag_descriptor<my_foo_tag, default_deserializer, default_serializer>
+  stream_descriptor<my_string_stream_id, std::string, tag_descriptor_set<
+    tag_descriptor<my_string_stream_tag, default_deserializer, default_serializer>
   >>
 >;
 
@@ -112,28 +97,58 @@ struct TestInsertInterfaceImpl : TestInsertInterface {
   std::multimap<LogIndex, futures::Promise<replicated_log::WaitForResult>> _promises;
 };
 
-TEST_F(LogDemuxTest, simple_test) {
-  auto interface = std::make_shared<TestInsertInterfaceImpl>();
+TEST_F(LogDemuxTest, leader_follower_test) {
+  auto leaderLog = createReplicatedLog();
+  auto followerLog = createReplicatedLog();
 
-  auto mux = streams::LogMultiplexer<MyTestSpecification>::construct(interface);
-  std::shared_ptr<ProducerStream<int>> streamA = mux->getStreamBaseById<my_stream_id>();
-  auto streamB = mux->getStreamBaseById<my_foo_stream_id>();
+  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+  auto leader =
+      leaderLog->becomeLeader(LogConfig(2, false), "leader", LogTerm{1}, {follower});
 
-  auto index = streamA->insert(12);
-  EXPECT_EQ(interface->_promises.size(), 1);
+  auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
+  auto demux = LogDemultiplexer2<MyTestSpecification>::construct(follower);
 
-  auto fA = streamA->waitFor(index);
-  ASSERT_FALSE(fA.isReady());
+  auto leaderStreamA = mux->getStreamById<my_int_stream_id>();
+  auto leaderStreamB = mux->getStreamById<my_string_stream_id>();
 
-  auto fB = streamB->waitFor(index + 1);
-  ASSERT_FALSE(fB.isReady());
+  leaderStreamA->insert(12);
+  leaderStreamB->insert("foo");
+  leaderStreamA->insert(13);
+  leaderStreamB->insert("bar");
+  leaderStreamA->insert(14);
+  leaderStreamB->insert("baz");
+  leaderStreamA->insert(15);
+  leaderStreamB->insert("fuz");
+  leaderStreamA->insert(16);
 
-  interface->resolvePromises(index);
-  ASSERT_TRUE(fA.isReady());
-  ASSERT_FALSE(fB.isReady());
+  auto followerStreamA = demux->getStreamBaseById<my_int_stream_id>();
+  auto followerStreamB = demux->getStreamBaseById<my_string_stream_id>();
 
-  auto index2 = streamB->insert(MyEntryType{"hello world"});
+  auto futureA = followerStreamA->waitFor(LogIndex{2});
+  auto futureB = followerStreamB->waitFor(LogIndex{1});
+  ASSERT_FALSE(futureA.isReady());
+  ASSERT_FALSE(futureB.isReady());
 
-  interface->resolvePromises(index2);
-  ASSERT_TRUE(fB.isReady());
+  demux->listen();
+  ASSERT_TRUE(futureA.isReady());
+  ASSERT_TRUE(futureB.isReady());
+
+  {
+    auto iter = followerStreamA->getIterator();
+    for (auto x : {12, 13, 14, 15, 16}) {
+      auto entry = iter->next();
+      ASSERT_TRUE(entry.has_value());
+      EXPECT_EQ(entry->value, x);
+    }
+    EXPECT_EQ(iter->next(), std::nullopt);
+  }
+  {
+    auto iter = followerStreamB->getIterator();
+    for (auto x : {"foo", "bar", "baz", "fuz"}) {
+      auto entry = iter->next();
+      ASSERT_TRUE(entry.has_value());
+      EXPECT_EQ(entry->value, x);
+    }
+    EXPECT_EQ(iter->next(), std::nullopt);
+  }
 }

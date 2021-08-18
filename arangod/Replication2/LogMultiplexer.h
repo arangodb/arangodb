@@ -239,7 +239,9 @@ struct LogDemultiplexerBase : std::enable_shared_from_this<Self>,
 template <typename Spec>
 struct LogDemultiplexer2 : LogDemultiplexerBase<LogDemultiplexer2<Spec>, Spec, Stream> {
   virtual auto digestIterator(LogRangeIterator& iter) -> void = 0;
-  static auto construct() -> std::shared_ptr<LogDemultiplexer2>;
+  virtual auto listen() -> void = 0;
+  static auto construct(std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>)
+      -> std::shared_ptr<LogDemultiplexer2>;
 };
 
 struct TestInsertInterface {
