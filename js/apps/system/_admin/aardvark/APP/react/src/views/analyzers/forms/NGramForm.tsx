@@ -5,7 +5,7 @@ import Textbox from "../../../components/pure-css/form/Textbox";
 import Checkbox from "../../../components/pure-css/form/Checkbox";
 import RadioGroup from "../../../components/pure-css/form/RadioGroup";
 
-const NGramForm = ({ state, dispatch }: FormProps) => {
+const NGramForm = ({ state, dispatch, disabled }: FormProps) => {
   const updateMinLength = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -71,27 +71,27 @@ const NGramForm = ({ state, dispatch }: FormProps) => {
   return <Grid>
     <Cell size={'1-3'}>
       <Textbox label={'Minimum N-Gram Length'} type={'number'} min={1} placeholder="2" required={true}
-               value={formState.properties.min} onChange={updateMinLength}/>
+               value={formState.properties.min} onChange={updateMinLength} disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-3'}>
       <Textbox label={'Maximum N-Gram Length'} type={'number'} min={1} placeholder="3" required={true}
-               value={formState.properties.max} onChange={updateMaxLength}/>
+               value={formState.properties.max} onChange={updateMaxLength} disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-3'}>
-      <Checkbox onChange={togglePreserve} label={'Preserve Original'}
+      <Checkbox onChange={togglePreserve} label={'Preserve Original'} disabled={disabled}
                 checked={formState.properties.preserveOriginal}/>
     </Cell>
 
     <Cell size={'1-3'}>
       <Textbox label={'Start Marker'} type={'text'} placeholder={'^'} value={formState.properties.startMarker}
-               onChange={updateStartMarker}/>
+               onChange={updateStartMarker} disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-3'}>
       <Textbox label={'End Marker'} type={'text'} placeholder={'$'} value={formState.properties.endMarker}
-               onChange={updateEndMarker}/>
+               onChange={updateEndMarker} disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-3'}>
@@ -104,7 +104,7 @@ const NGramForm = ({ state, dispatch }: FormProps) => {
           label: 'UTF8',
           value: 'utf8'
         }
-      ]} checked={formState.properties.streamType || 'binary'}/>
+      ]} checked={formState.properties.streamType || 'binary'} disabled={disabled}/>
     </Cell>
   </Grid>;
 };

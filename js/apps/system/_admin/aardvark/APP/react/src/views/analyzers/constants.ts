@@ -585,4 +585,5 @@ export type DispatchArgs = {
 export type FormProps = {
   state: State;
   dispatch: Dispatch<DispatchArgs>;
+  disabled?: boolean
 };

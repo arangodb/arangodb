@@ -1,6 +1,6 @@
 import React, { ChangeEvent } from "react";
-import { FormProps } from "../constants";
-import Textbox from "../../../components/pure-css/form/Textbox";
+import { FormProps } from "../../constants";
+import Textbox from "../../../../components/pure-css/form/Textbox";
 
 type LocaleInputProps = {
   formState: {
@@ -8,9 +8,9 @@ type LocaleInputProps = {
       locale: string;
     }
   };
-} & Pick<FormProps, 'dispatch'>;
+} & Pick<FormProps, 'dispatch' | 'disabled'>;
 
-const LocaleInput = ({ formState, dispatch }: LocaleInputProps) => {
+const LocaleInput = ({ formState, dispatch, disabled }: LocaleInputProps) => {
   const updateLocale = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -29,7 +29,7 @@ const LocaleInput = ({ formState, dispatch }: LocaleInputProps) => {
       </a>
     </>
   } type={'text'} placeholder="language[_COUNTRY][.encoding][@variant]" value={formState.properties.locale}
-                  onChange={updateLocale} required={true}/>;
+                  onChange={updateLocale} required={true} disabled={disabled}/>;
 };
 
 export default LocaleInput;

@@ -1,10 +1,10 @@
 import React, { ChangeEvent } from "react";
 import { FormProps, GeoJsonState } from "../constants";
-import OptionsInput from "./OptionsInput";
+import OptionsInput from "./inputs/OptionsInput";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import RadioGroup from "../../../components/pure-css/form/RadioGroup";
 
-const GeoJsonForm = ({ state, dispatch }: FormProps) => {
+const GeoJsonForm = ({ state, dispatch, disabled }: FormProps) => {
   const updateType = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -32,10 +32,10 @@ const GeoJsonForm = ({ state, dispatch }: FormProps) => {
           label: 'Point',
           value: 'point'
         }
-      ]} checked={formState.properties.type || 'shape'}/>
+      ]} checked={formState.properties.type || 'shape'} disabled={disabled}/>
     </Cell>
     <Cell size={'1'}>
-      <OptionsInput state={state} dispatch={dispatch}/>
+      <OptionsInput state={state} dispatch={dispatch} disabled={disabled}/>
     </Cell>
   </Grid>;
 };

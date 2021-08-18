@@ -21,9 +21,10 @@ const StyledTextbox = styled.input.attrs(({ type, ...rest }: StyledTextboxProps)
 type TextboxProps = {
   id?: string;
   label: ReactNode;
+  disabled?: boolean;
 } & StyledTextboxProps;
 
-const Textbox = ({ id, label, ...rest }: TextboxProps) => {
+const Textbox = ({ id, label, disabled, ...rest }: TextboxProps) => {
   const { type } = rest;
 
   if (!id) {
@@ -32,7 +33,7 @@ const Textbox = ({ id, label, ...rest }: TextboxProps) => {
 
   return <>
     <PlainLabel htmlFor={id}>{label}</PlainLabel>
-    <StyledTextbox id={id} {...rest}/>
+    <StyledTextbox id={id} disabled={disabled} {...rest}/>
   </>;
 };
 

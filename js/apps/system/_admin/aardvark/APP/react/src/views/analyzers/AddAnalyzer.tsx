@@ -1,4 +1,4 @@
-import React, { ReactFragment, useReducer } from 'react';
+import React, { useReducer } from 'react';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
 import { cloneDeep, merge, set, uniqueId, unset } from 'lodash';
 import JsonForm from "./forms/JsonForm";
@@ -12,7 +12,7 @@ import TextForm from "./forms/TextForm";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { DispatchArgs, FormState, State, validateAndFix } from "./constants";
-import CopyFromInput from "./forms/CopyFromInput";
+import CopyFromInput from "./forms/inputs/CopyFromInput";
 import AqlForm from "./forms/AqlForm";
 import GeoJsonForm from "./forms/GeoJsonForm";
 import GeoPointForm from "./forms/GeoPointForm";
@@ -135,7 +135,7 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
     dispatch({ type: state.showJsonForm ? 'hideJsonForm' : 'showJsonForm' });
   };
 
-  const forms: { [key: string]: ReactFragment | null } = {
+  const forms = {
     identity: null,
     delimiter: <DelimiterForm state={state} dispatch={dispatch}/>,
     stem: <StemForm state={state} dispatch={dispatch}/>,

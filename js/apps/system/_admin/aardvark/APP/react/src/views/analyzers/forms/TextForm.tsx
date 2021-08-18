@@ -1,15 +1,15 @@
 import React, { ChangeEvent } from "react";
 import { FormProps, TextState } from "../constants";
-import CaseInput from "./CaseInput";
+import CaseInput from "./inputs/CaseInput";
 import { filter, get, isEmpty, negate } from 'lodash';
-import LocaleInput from "./LocaleInput";
+import LocaleInput from "./inputs/LocaleInput";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Fieldset from "../../../components/pure-css/form/Fieldset";
 import Textbox from "../../../components/pure-css/form/Textbox";
 import Textarea from "../../../components/pure-css/form/Textarea";
 import Checkbox from "../../../components/pure-css/form/Checkbox";
 
-const EdgeNGramInput = ({ state, dispatch }: FormProps) => {
+const EdgeNGramInput = ({ state, dispatch, disabled }: FormProps) => {
   const updateMinLength = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -47,24 +47,24 @@ const EdgeNGramInput = ({ state, dispatch }: FormProps) => {
       <Cell size={'1-3'}>
         <Textbox label={'Minimum N-Gram Length'} type={'number'} min={1} placeholder="2" required={true}
                  value={get(formState, ['properties', 'edgeNgram', 'min'], '')}
-                 onChange={updateMinLength}/>
+                 onChange={updateMinLength} disabled={disabled}/>
       </Cell>
 
       <Cell size={'1-3'}>
         <Textbox label={'Maximum N-Gram Length'} type={'number'} min={1} placeholder="3" required={true}
                  value={get(formState, ['properties', 'edgeNgram', 'max'], '')}
-                 onChange={updateMaxLength}/>
+                 onChange={updateMaxLength} disabled={disabled}/>
       </Cell>
 
       <Cell size={'1-3'}>
-        <Checkbox onChange={togglePreserve} label={'Preserve Original'}
+        <Checkbox onChange={togglePreserve} label={'Preserve Original'} disabled={disabled}
                   checked={get(formState, ['properties', 'edgeNgram', 'preserveOriginal'], false)}/>
       </Cell>
     </Grid>
   </Fieldset>;
 };
 
-const TextForm = ({ state, dispatch }: FormProps) => {
+const TextForm = ({ state, dispatch, disabled }: FormProps) => {
   const updateStopwords = (event: ChangeEvent<HTMLTextAreaElement>) => {
     const stopwords = event.target.value.split('\n');
 
@@ -126,19 +126,21 @@ const TextForm = ({ state, dispatch }: FormProps) => {
     <Cell size={'1-2'}>
       <Grid>
         <Cell size={'1'}>
-          <LocaleInput formState={formState} dispatch={dispatch}/>
+          <LocaleInput formState={formState} dispatch={dispatch} disabled={disabled}/>
         </Cell>
 
         <Cell size={'1-2'}>
-          <Checkbox onChange={toggleStemming} label={'Stemming'} inline={true} checked={formState.properties.stemming}/>
+          <Checkbox onChange={toggleStemming} label={'Stemming'} inline={true}
+                    checked={formState.properties.stemming} disabled={disabled}/>
         </Cell>
 
         <Cell size={'1-2'}>
-          <Checkbox onChange={toggleAccent} label={'Accent'} inline={true} checked={formState.properties.accent}/>
+          <Checkbox onChange={toggleAccent} label={'Accent'} inline={true} disabled={disabled}
+                    checked={formState.properties.accent}/>
         </Cell>
 
         <Cell size={'1'}>
-          <CaseInput state={state} dispatch={dispatch}/>
+          <CaseInput state={state} dispatch={dispatch} disabled={disabled}/>
         </Cell>
       </Grid>
     </Cell>
@@ -147,11 +149,12 @@ const TextForm = ({ state, dispatch }: FormProps) => {
       <Grid>
         <Cell size={'1'}>
           <Textbox label={'Stopwords Path'} type={'text'} value={formState.properties.stopwordsPath}
-                   onChange={updateStopwordsPath}/>
+                   onChange={updateStopwordsPath} disabled={disabled}/>
         </Cell>
 
         <Cell size={'1'}>
-          <Textarea label={'Stopwords (One per line)'} value={getStopwords()} onChange={updateStopwords}/>
+          <Textarea label={'Stopwords (One per line)'} value={getStopwords()} onChange={updateStopwords}
+                    disabled={disabled}/>
         </Cell>
       </Grid>
     </Cell>
@@ -161,7 +164,7 @@ const TextForm = ({ state, dispatch }: FormProps) => {
     </Cell>
 
     <Cell size={'1'}>
-      <EdgeNGramInput state={state} dispatch={dispatch}/>
+      <EdgeNGramInput state={state} dispatch={dispatch} disabled={disabled}/>
     </Cell>
   </Grid>;
 };

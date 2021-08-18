@@ -21,16 +21,18 @@ type RadioButtonProps = {
   label: ReactNode;
   id?: string;
   size: CellSize;
+  disabled?: boolean;
 };
 
-const RadioButton = ({ id, checked, onChange, name, value, label, size }: RadioButtonProps) => {
+const RadioButton = ({ id, checked, onChange, name, value, label, size, disabled }: RadioButtonProps) => {
   if (!id) {
     id = uniqueId(`radio-${value}-`);
   }
 
   return <Cell size={size}>
     <label htmlFor={id} className="pure-radio">
-      <StyledRadioButton id={id} name={name} value={value} onChange={onChange} checked={checked}/>
+      <StyledRadioButton id={id} name={name} value={value} onChange={onChange} checked={checked}
+                         disabled={disabled}/>
       &nbsp;{label}
     </label>
   </Cell>;
@@ -45,18 +47,19 @@ type RadioGroupProps = {
     value: string;
     id?: string;
   }[];
+  disabled?: boolean;
   checked?: string;
 };
 
-const RadioGroup = ({ legend, onChange, name, items, checked }: RadioGroupProps) => {
+const RadioGroup = ({ legend, onChange, name, items, checked, disabled }: RadioGroupProps) => {
   const size = `${24 / items.length}-24` as CellSize;
 
   return <Fieldset legend={legend}>
     <Grid>
       {
         items.map(item =>
-        <RadioButton onChange={onChange} name={name} value={item.value} label={item.label} id={item.id}
-                     checked={checked === item.value} size={size}/>)
+          <RadioButton onChange={onChange} name={name} value={item.value} label={item.label} id={item.id}
+                       checked={checked === item.value} size={size} disabled={disabled}/>)
       }
     </Grid>
   </Fieldset>;

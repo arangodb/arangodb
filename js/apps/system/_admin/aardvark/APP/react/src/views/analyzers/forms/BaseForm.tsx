@@ -5,7 +5,7 @@ import { Cell, Grid } from "../../../components/pure-css/grid";
 import Textbox from "../../../components/pure-css/form/Textbox";
 import Select from "../../../components/pure-css/form/Select";
 
-const BaseForm = ({ state, dispatch }: FormProps) => {
+const BaseForm = ({ state, dispatch, disabled }: FormProps) => {
   const updateName = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -29,11 +29,12 @@ const BaseForm = ({ state, dispatch }: FormProps) => {
   return <Grid>
     <Cell size={'1-2'}>
       <Textbox label={'Analyzer Name'} type={'text'} placeholder="Analyzer Name" value={state.formState.name}
-               onChange={updateName} required={true}/>
+               onChange={updateName} required={true} disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-2'}>
-      <Select label={'Analyzer Type'} value={state.formState.type} onChange={updateType} required={true}>
+      <Select label={'Analyzer Type'} value={state.formState.type} onChange={updateType} required={true}
+              disabled={disabled}>
         {
           map(typeNameMap, (value, key) => <option key={key} value={key}>{value}</option>)
         }

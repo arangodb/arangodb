@@ -1,8 +1,8 @@
 import React, { ChangeEvent } from "react";
-import { CaseState, FormProps } from "../constants";
-import RadioGroup from "../../../components/pure-css/form/RadioGroup";
+import { CaseState, FormProps } from "../../constants";
+import RadioGroup from "../../../../components/pure-css/form/RadioGroup";
 
-const CaseInput = ({ state, dispatch }: FormProps) => {
+const CaseInput = ({ state, dispatch, disabled }: FormProps) => {
   const updateCase = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -28,7 +28,7 @@ const CaseInput = ({ state, dispatch }: FormProps) => {
       label: 'None',
       value: 'none'
     }
-  ]} checked={caseProperty || 'none'}/>;
+  ]} checked={caseProperty || 'none'} disabled={disabled}/>;
 };
 
 export default CaseInput;

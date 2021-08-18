@@ -3,6 +3,19 @@ import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/mod
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { mutate } from "swr";
 import { JsonEditor as Editor } from "jsoneditor-react";
+import { noop, pick } from 'lodash';
+import { FormState, State } from "./constants";
+import { Cell, Grid } from "../../components/pure-css/grid";
+import BaseForm from "./forms/BaseForm";
+import FeatureForm from "./forms/FeatureForm";
+import DelimiterForm from "./forms/DelimiterForm";
+import StemForm from "./forms/StemForm";
+import NormForm from "./forms/NormForm";
+import NGramForm from "./forms/NGramForm";
+import TextForm from "./forms/TextForm";
+import AqlForm from "./forms/AqlForm";
+import GeoJsonForm from "./forms/GeoJsonForm";
+import GeoPointForm from "./forms/GeoPointForm";
 
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };
@@ -71,10 +84,58 @@ const DeleteButton = ({ analyzer }: ButtonProps) => {
 
 const ViewButton = ({ analyzer }: ButtonProps) => {
   const [show, setShow] = useState(false);
+  const [showJsonForm, setShowJsonForm] = useState(false);
+
+  const state: State = {
+    formState: pick(analyzer, 'name', 'type', 'features', 'properties') as FormState,
+    formCache: {},
+    show: false,
+    showJsonForm: false,
+    lockJsonForm: false,
+    renderKey: ''
+  };
 
   const handleClick = (event: MouseEvent<HTMLElement>) => {
     event.preventDefault();
     setShow(true);
+  };
+
+  const toggleJsonForm = () => {
+    setShowJsonForm(!showJsonForm);
+  };
+
+  const getForm = (state: State) => {
+    switch (state.formState.type) {
+      case 'identity':
+        return null;
+
+      case 'delimiter':
+        return <DelimiterForm state={state} dispatch={noop} disabled={true}/>;
+
+      case 'stem':
+        return <StemForm state={state} dispatch={noop} disabled={true}/>;
+
+      case 'norm':
+        return <NormForm state={state} dispatch={noop} disabled={true}/>;
+
+      case 'ngram':
+        return <NGramForm state={state} dispatch={noop} disabled={true}/>;
+
+      case 'text':
+        return <TextForm state={state} dispatch={noop} disabled={true}/>;
+
+      case 'aql':
+        return <AqlForm state={state} dispatch={noop} disabled={true}/>;
+
+      case 'geojson':
+        return <GeoJsonForm state={state} dispatch={noop} disabled={true}/>;
+
+      case 'geopoint':
+        return <GeoPointForm state={state} dispatch={noop} disabled={true}/>;
+
+      case 'pipeline':
+        return 'Pipeline';
+    }
   };
 
   return <>
@@ -82,9 +143,41 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
       <i className={'fa fa-eye'}/>
     </button>
     <Modal show={show} setShow={setShow}>
-      <ModalHeader title={analyzer.name}/>
+      <ModalHeader title={state.formState.name}>
+        <button className={'button-info'} onClick={toggleJsonForm} style={{ float: 'right' }}>
+          {showJsonForm ? 'Switch to form view' : 'Switch to code view'}
+        </button>
+      </ModalHeader>
       <ModalBody>
-        <Editor value={analyzer} mode={'view'}/>
+        <Grid>
+          {
+            showJsonForm
+              ? <Cell size={'1'}>
+                <Editor value={state.formState} mode={'view'}/>
+              </Cell>
+              : <>
+                <Cell size={'1'}>
+                  <BaseForm state={state} dispatch={noop} disabled={true}/>
+                </Cell>
+                <Cell size={'1'}>
+                  <fieldset>
+                    <legend style={{ fontSize: '12pt' }}>Features</legend>
+                    <FeatureForm state={state} dispatch={noop} disabled={true}/>
+                  </fieldset>
+                </Cell>
+
+                {
+                  state.formState.type === 'identity' ? null
+                    : <Cell size={'1'}>
+                      <fieldset>
+                        <legend style={{ fontSize: '12pt' }}>Configuration</legend>
+                        {getForm(state)}
+                      </fieldset>
+                    </Cell>
+                }
+              </>
+          }
+        </Grid>
       </ModalBody>
       <ModalFooter>
         <button className="button-close" onClick={() => setShow(false)}>Close</button>

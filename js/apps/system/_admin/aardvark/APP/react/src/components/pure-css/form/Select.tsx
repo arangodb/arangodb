@@ -13,17 +13,18 @@ type SelectProps = {
   id?: string;
   label: ReactNode;
   children: ReactNode;
+  disabled?: boolean;
   [key: string]: any;
 };
 
-const Select = ({ id, label, children, ...rest }: SelectProps) => {
+const Select = ({ id, label, children, disabled, ...rest }: SelectProps) => {
   if (!id) {
     id = uniqueId('textbox-');
   }
 
   return <>
     <PlainLabel htmlFor={id}>{label}</PlainLabel>
-    <StyledSelect id={id} {...rest}>{children}</StyledSelect>
+    <StyledSelect id={id} disabled={disabled} {...rest}>{children}</StyledSelect>
   </>;
 };
 

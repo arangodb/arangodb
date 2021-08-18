@@ -1,7 +1,7 @@
-import { FormProps, FormState, validateAndFix } from "../constants";
+import { FormProps, FormState, validateAndFix } from "../../constants";
 import React, { ChangeEvent, useEffect, useState } from "react";
 import { cloneDeep, find, sortBy } from "lodash";
-import { Cell, Grid } from "../../../components/pure-css/grid";
+import { Cell, Grid } from "../../../../components/pure-css/grid";
 
 type CopyFromInputProps = {
   analyzers: FormState[];

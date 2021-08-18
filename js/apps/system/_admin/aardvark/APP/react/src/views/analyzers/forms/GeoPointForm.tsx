@@ -1,11 +1,11 @@
 import React, { ChangeEvent } from "react";
 import { FormProps, GeoPointState } from "../constants";
 import { filter, get, isEmpty, negate } from 'lodash';
-import OptionsInput from "./OptionsInput";
+import OptionsInput from "./inputs/OptionsInput";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Textbox from "../../../components/pure-css/form/Textbox";
 
-const GeoPointForm = ({ state, dispatch }: FormProps) => {
+const GeoPointForm = ({ state, dispatch, disabled }: FormProps) => {
   const updateArray = (event: ChangeEvent<HTMLInputElement>, field: string) => {
     const items = event.target.value.split('.');
 
@@ -46,15 +46,17 @@ const GeoPointForm = ({ state, dispatch }: FormProps) => {
 
   return <Grid>
     <Cell size={'1-2'}>
-      <Textbox label={'Latitude Path'} type={'text'} value={getLatitude()} onChange={updateLatitude}/>
+      <Textbox label={'Latitude Path'} type={'text'} value={getLatitude()} onChange={updateLatitude}
+               disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-2'}>
-      <Textbox label={'Longitude Path'} type={'text'} value={getLongitude()} onChange={updateLongitude}/>
+      <Textbox label={'Longitude Path'} type={'text'} value={getLongitude()} onChange={updateLongitude}
+               disabled={disabled}/>
     </Cell>
 
     <Cell size={'1'}>
-      <OptionsInput state={state} dispatch={dispatch}/>
+      <OptionsInput state={state} dispatch={dispatch} disabled={disabled}/>
     </Cell>
   </Grid>;
 };

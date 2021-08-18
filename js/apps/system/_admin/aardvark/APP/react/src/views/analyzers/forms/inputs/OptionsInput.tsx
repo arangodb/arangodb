@@ -1,11 +1,11 @@
-import { FormProps, GeoOptionsState } from "../constants";
+import { FormProps, GeoOptionsState } from "../../constants";
 import React, { ChangeEvent } from "react";
 import { get } from "lodash";
-import { Cell, Grid } from "../../../components/pure-css/grid";
-import Fieldset from "../../../components/pure-css/form/Fieldset";
-import Textbox from "../../../components/pure-css/form/Textbox";
+import { Cell, Grid } from "../../../../components/pure-css/grid";
+import Fieldset from "../../../../components/pure-css/form/Fieldset";
+import Textbox from "../../../../components/pure-css/form/Textbox";
 
-const OptionsInput = ({ state, dispatch }: FormProps) => {
+const OptionsInput = ({ state, dispatch, disabled }: FormProps) => {
   const updateMaxCells = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -42,17 +42,17 @@ const OptionsInput = ({ state, dispatch }: FormProps) => {
     <Grid>
       <Cell size={'1-3'}>
         <Textbox label={'Max S2 Cells'} type={'number'} placeholder="20" onChange={updateMaxCells}
-                 value={get(options, 'maxCells', '')}/>
+                 value={get(options, 'maxCells', '')} disabled={disabled}/>
       </Cell>
 
       <Cell size={'1-3'}>
         <Textbox label={'Least Precise S2 Level'} type={'number'} placeholder="4" onChange={updateMinLevel}
-                 value={get(options, 'minLevel', '')}/>
+                 value={get(options, 'minLevel', '')} disabled={disabled}/>
       </Cell>
 
       <Cell size={'1-3'}>
         <Textbox label={'Most Precise S2 Level'} type={'number'} placeholder="23" onChange={updateMaxLevel}
-                 value={get(options, 'maxLevel', '')}/>
+                 value={get(options, 'maxLevel', '')} disabled={disabled}/>
       </Cell>
     </Grid>
   </Fieldset>;

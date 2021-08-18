@@ -4,7 +4,7 @@ import { Feature, FormProps } from "../constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Checkbox from "../../../components/pure-css/form/Checkbox";
 
-const FeatureForm = ({ state, dispatch }: FormProps) => {
+const FeatureForm = ({ state, dispatch, disabled }: FormProps) => {
   const features = state.formState.features;
   const frequency = features.includes('frequency');
   const norm = features.includes('norm');
@@ -32,16 +32,17 @@ const FeatureForm = ({ state, dispatch }: FormProps) => {
   return <Grid>
     <Cell size={'1-3'}>
       <Checkbox label={'Frequency'} onChange={getFeatureToggler('frequency')} inline={true}
-                checked={frequency}/>
+                checked={frequency} disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-3'}>
-      <Checkbox label={'Norm'} onChange={getFeatureToggler('norm')} inline={true} checked={norm}/>
+      <Checkbox label={'Norm'} onChange={getFeatureToggler('norm')} inline={true} checked={norm}
+                disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-3'}>
       <Checkbox label={'Position'} onChange={getFeatureToggler('position')} inline={true}
-                checked={position}/>
+                checked={position} disabled={disabled}/>
     </Cell>
   </Grid>;
 };
