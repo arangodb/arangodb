@@ -28,25 +28,18 @@ struct LogDemuxTest : ::testing::Test {
 };
 
 struct default_deserializer {
-  auto operator()(serializer_tag_t<int>, velocypack::Slice s) -> int {
-    return s.getNumericValue<int>();
-  }
-  auto operator()(serializer_tag_t<std::string>, velocypack::Slice s) -> std::string {
-    return s.copyString();
+  template <typename T>
+  auto operator()(serializer_tag_t<T>, velocypack::Slice s) -> T {
+    return s.extract<T>();
   }
 };
 
 struct default_serializer {
-
-  void operator()(serializer_tag_t<int>, int t, velocypack::Builder& b) {
-    b.add(velocypack::Value(t));
-  }
-  void operator()(serializer_tag_t<std::string>, std::string const& t,
-                  velocypack::Builder& b) {
+  template <typename T>
+  void operator()(serializer_tag_t<T>, T const& t, velocypack::Builder& b) {
     b.add(velocypack::Value(t));
   }
 };
-
 
 /* clang-format off */
 
@@ -69,35 +62,13 @@ using MyTestSpecification = stream_descriptor_set<
 /* clang-format on */
 
 #include <Replication2/LogMultiplexer.tpp>
-template struct streams::LogDemultiplexer2<MyTestSpecification>;
+template struct streams::LogDemultiplexer<MyTestSpecification>;
 template struct streams::LogMultiplexer<MyTestSpecification>;
 
-struct TestInsertInterfaceImpl : TestInsertInterface {
-  auto insert(LogPayload p) -> LogIndex override {
-    auto index = LogIndex{_logEntries.size() + 1};
-    _logEntries.push_back(std::move(p));
-    return index;
-  }
-
-  auto waitFor(LogIndex index) -> futures::Future<replicated_log::WaitForResult> override {
-    return _promises
-        .emplace(index, futures::Promise<replicated_log::WaitForResult>{})
-        ->second.getFuture();
-  }
-
-  auto resolvePromises(LogIndex index) {
-    auto const end = _promises.upper_bound(index);
-    for (auto it = _promises.begin(); it != end;) {
-      it->second.setValue(replicated_log::WaitForResult(index, nullptr));
-      it = _promises.erase(it);
-    }
-  }
-
-  std::vector<LogPayload> _logEntries;
-  std::multimap<LogIndex, futures::Promise<replicated_log::WaitForResult>> _promises;
-};
-
 TEST_F(LogDemuxTest, leader_follower_test) {
+  auto ints = {12, 13, 14, 15, 16};
+  auto strings = {"foo", "bar", "baz", "fuz"};
+
   auto leaderLog = createReplicatedLog();
   auto followerLog = createReplicatedLog();
 
@@ -106,20 +77,25 @@ TEST_F(LogDemuxTest, leader_follower_test) {
       leaderLog->becomeLeader(LogConfig(2, false), "leader", LogTerm{1}, {follower});
 
   auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
-  auto demux = LogDemultiplexer2<MyTestSpecification>::construct(follower);
+  auto demux = LogDemultiplexer<MyTestSpecification>::construct(follower);
 
-  auto leaderStreamA = mux->getStreamById<my_int_stream_id>();
-  auto leaderStreamB = mux->getStreamById<my_string_stream_id>();
+  auto leaderStreamA = mux->getStreamBaseById<my_int_stream_id>();
+  auto leaderStreamB = mux->getStreamBaseById<my_string_stream_id>();
 
-  leaderStreamA->insert(12);
-  leaderStreamB->insert("foo");
-  leaderStreamA->insert(13);
-  leaderStreamB->insert("bar");
-  leaderStreamA->insert(14);
-  leaderStreamB->insert("baz");
-  leaderStreamA->insert(15);
-  leaderStreamB->insert("fuz");
-  leaderStreamA->insert(16);
+  {
+    auto iterA = ints.begin();
+    auto iterB = strings.begin();
+    while (iterA != ints.end() || iterB != strings.end()) {
+      if (iterA != ints.end()) {
+        leaderStreamA->insert(*iterA);
+        ++iterA;
+      }
+      if (iterB != strings.end()) {
+        leaderStreamB->insert(*iterB);
+        ++iterB;
+      }
+    }
+  }
 
   auto followerStreamA = demux->getStreamBaseById<my_int_stream_id>();
   auto followerStreamB = demux->getStreamBaseById<my_string_stream_id>();
@@ -135,20 +111,22 @@ TEST_F(LogDemuxTest, leader_follower_test) {
 
   {
     auto iter = followerStreamA->getIterator();
-    for (auto x : {12, 13, 14, 15, 16}) {
+    for (auto x : ints) {
       auto entry = iter->next();
-      ASSERT_TRUE(entry.has_value());
+      ASSERT_TRUE(entry.has_value()) << "expected value " << x;
       EXPECT_EQ(entry->value, x);
     }
     EXPECT_EQ(iter->next(), std::nullopt);
   }
   {
     auto iter = followerStreamB->getIterator();
-    for (auto x : {"foo", "bar", "baz", "fuz"}) {
+    for (auto x : strings) {
       auto entry = iter->next();
       ASSERT_TRUE(entry.has_value());
       EXPECT_EQ(entry->value, x);
     }
     EXPECT_EQ(iter->next(), std::nullopt);
   }
+
+  LOG_DEVEL << leader->copyInMemoryLog().dump();
 }

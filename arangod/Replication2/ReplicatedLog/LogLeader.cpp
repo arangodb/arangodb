@@ -882,6 +882,10 @@ auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
   return Result();
 }
 
+auto replicated_log::LogLeader::copyInMemoryLog() const -> replicated_log::InMemoryLog {
+  return _guardedLeaderData.getLockedGuard()->_inMemoryLog;
+}
+
 replicated_log::LogLeader::LocalFollower::LocalFollower(
     replicated_log::LogLeader& self, LoggerContext logContext,
     std::unique_ptr<LogCore> logCore, [[maybe_unused]] TermIndexPair lastIndex)

@@ -125,6 +125,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
 
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
 
+  [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog;
+
  protected:
   // Use the named constructor construct() to create a leader!
   LogLeader(LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,

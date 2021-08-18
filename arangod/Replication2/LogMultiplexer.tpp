@@ -66,13 +66,21 @@ struct tag_stream_pair_list_from_spec<streams::stream_descriptor_set<Ds...>> {
 
 namespace arangodb::replication2::streams {
 
+template <typename T>
+struct StreamEntry {
+  LogIndex index;
+  T value;
+  auto intoView() const -> StreamEntryView<T> { return {index, value}; }
+};
+
+
 template <typename Self, typename Descriptor, template <typename> typename StreamTypeTemplate>
-struct StreamImplementationBase : virtual StreamBase<Descriptor, StreamTypeTemplate> {
+struct StreamImplementationBase : virtual StreamGenericBase<Descriptor, StreamTypeTemplate> {
   static_assert(is_stream_descriptor_v<Descriptor>);
 
   using ValueType = stream_descriptor_type_t<Descriptor>;
   using StreamType = streams::Stream<ValueType>;
-  using EntryViewType = typename StreamType::EntryViewType;
+  using EntryViewType = StreamEntryView<ValueType>;
   using Iterator = TypedLogRangeIterator<EntryViewType>;
 
   auto waitForIterator(LogIndex index) -> futures::Future<std::unique_ptr<Iterator>> final {
@@ -116,7 +124,7 @@ struct StreamInformationBlock;
 template <StreamId Id, typename Type, typename Tags>
 struct StreamInformationBlock<stream_descriptor<Id, Type, Tags>> {
   using StreamType = streams::Stream<Type>;
-  using EntryType = typename StreamType::EntryType;
+  using EntryType = StreamEntry<Type>;
   using Iterator = TypedLogRangeIterator<EntryType>;
 
   using ContainerType = ::immer::flex_vector<EntryType>;
@@ -156,14 +164,14 @@ struct StreamInformationBlock<stream_descriptor<Id, Type, Tags>> {
 
 template <typename Spec, typename Interface>
 struct LogDemultiplexerImplementation
-    : LogDemultiplexer2<Spec>,
+    : LogDemultiplexer<Spec>,
       StreamDispatcher<LogDemultiplexerImplementation<Spec, Interface>, Spec, Stream> {
   using SelfClass = LogDemultiplexerImplementation<Spec, Interface>;
   explicit LogDemultiplexerImplementation(std::shared_ptr<Interface> interface)
       : _interface(std::move(interface)) {}
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
-            typename E = typename Stream<T>::EntryViewType>
+            typename E = StreamEntryView<T>>
   auto waitForIteratorInternal(LogIndex)
       -> futures::Future<std::unique_ptr<TypedLogRangeIterator<E>>> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -187,7 +195,7 @@ struct LogDemultiplexerImplementation
   }
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
-            typename E = typename Stream<T>::EntryViewType>
+            typename E = StreamEntryView<T>>
   auto getIteratorInternal() -> std::unique_ptr<TypedLogRangeIterator<E>>;
 
   auto digestIterator(LogRangeIterator& iter) -> void override;
@@ -402,7 +410,7 @@ struct LogMultiplexerImplementation
       : _guarded(*this), _interface(std::move(interface)) {}
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
-            typename E = typename Stream<T>::EntryViewType>
+            typename E = StreamEntryView<T>>
   auto waitForIteratorInternal(LogIndex)
       -> futures::Future<std::unique_ptr<TypedLogRangeIterator<E>>> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -492,7 +500,7 @@ struct LogMultiplexerImplementation
   }
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
-            typename E = typename Stream<T>::EntryViewType>
+            typename E = StreamEntryView<T>>
   auto getIteratorInternal() -> std::unique_ptr<TypedLogRangeIterator<E>> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -550,8 +558,8 @@ struct LogMultiplexerImplementation
 }  // namespace arangodb::replication2::streams
 
 template <typename Spec>
-auto LogDemultiplexer2<Spec>::construct(std::shared_ptr<replicated_log::LogFollower> interface)
-    -> std::shared_ptr<LogDemultiplexer2> {
+auto LogDemultiplexer<Spec>::construct(std::shared_ptr<replicated_log::LogFollower> interface)
+    -> std::shared_ptr<LogDemultiplexer> {
   return std::make_shared<streams::LogDemultiplexerImplementation<Spec, replicated_log::LogFollower>>(
       std::move(interface));
 }
@@ -563,9 +571,3 @@ auto LogMultiplexer<Spec>::construct(std::shared_ptr<arangodb::replication2::rep
       std::move(leader));
 }
 
-template <typename Spec>
-auto LogMultiplexer<Spec>::construct(std::shared_ptr<TestInsertInterface> leader)
-    -> std::shared_ptr<LogMultiplexer> {
-  return std::make_shared<streams::LogMultiplexerImplementation<Spec, TestInsertInterface>>(
-      std::move(leader));
-}

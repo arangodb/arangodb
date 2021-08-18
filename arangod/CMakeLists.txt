@@ -566,7 +566,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/types.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
-        Replication2/ReplicatedState/AbstractStateMachine.tpp Replication2/ReplicatedState/AbstractStateMachine.h Replication2/LogMultiplexer.tpp Replication2/LogMultiplexer.h)
+        Replication2/ReplicatedState/AbstractStateMachine.tpp Replication2/ReplicatedState/AbstractStateMachine.h Replication2/LogMultiplexer.tpp Replication2/LogMultiplexer.h Replication2/Streams/StreamSpecification.h Replication2/Streams/Streams.h)
 
 set (LIB_ARANGO_METRICS_SOURCES
   RestServer/Metrics.cpp
