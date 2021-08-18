@@ -192,7 +192,8 @@ struct IResearchLinkMeta : public FieldMeta {
         _sort(mask),
         _storedValues(mask),
         _sortCompression(mask),
-        _collectionName(mask) {
+        _collectionName(mask),
+        _version(mask) {
     }
 
     bool _analyzerDefinitions;
@@ -200,12 +201,14 @@ struct IResearchLinkMeta : public FieldMeta {
     bool _storedValues;
     bool _sortCompression;
     bool _collectionName;
+    bool _version;
   };
 
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
   IResearchViewSort _sort; // sort condition associated with the link
   IResearchViewStoredValues _storedValues; // stored values associated with the link
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
+  uint32_t _version; // the version of the iresearch interface e.g. which how data is stored in iresearch (default == 0)
 
   /// @brief Linked collection name. Stored here for cluster deployment only.
   /// For sigle server collection could be renamed so can`t store it here or 
@@ -252,8 +255,8 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
   bool init(
-      arangodb::application_features::ApplicationServer& server,
-      arangodb::velocypack::Slice const& slice,
+      application_features::ApplicationServer& server,
+      VPackSlice slice,
       bool readAnalyzerDefinition,
       std::string& errorField,
       irs::string_ref const defaultVocbase = irs::string_ref::NIL,

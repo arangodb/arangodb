@@ -280,7 +280,8 @@ Result IResearchLink::init(
       if (!clusterWideLink) {
         // prepare data-store which can then update options
         // via the IResearchView::link(...) call
-        auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
+        auto const res = initDataStore(initCallback, meta._version,
+                                       sorted, storedValuesColumns, primarySortCompression);
 
         if (!res.ok()) {
           return res;
@@ -352,7 +353,8 @@ Result IResearchLink::init(
   } else if (ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options
     // via the IResearchView::link(...) call
-    auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
+    auto const res = initDataStore(initCallback, meta._version,
+                                   sorted, storedValuesColumns, primarySortCompression);
 
     if (!res.ok()) {
       return res;
@@ -486,6 +488,10 @@ Result IResearchLink::unload() {
   }
 
   return shutdownDataStore();
+}
+
+std::string_view IResearchLink::format() const noexcept {
+  return getFormat(LinkVersion{_meta._version});
 }
 
 ////////////////////////////////////////////////////////////////////////////////

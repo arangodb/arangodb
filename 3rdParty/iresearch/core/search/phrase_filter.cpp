@@ -315,8 +315,8 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
       return doc_iterator::empty();
     }
 
-    // get features required for query & order
-    auto features = ord.features() | by_phrase::required();
+    // get index features required for query & order
+    const IndexFeatures features = ord.features() | by_phrase::required();
 
     conjunction_t::doc_iterators_t itrs;
     itrs.reserve(phrase_state->terms.size());
@@ -401,7 +401,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     }
 
     // get features required for query & order
-    const auto features = ord.features() | by_phrase::required();
+    const IndexFeatures features = ord.features() | by_phrase::required();
 
     conjunction_t::doc_iterators_t conj_itrs;
     conj_itrs.reserve(phrase_state->terms.size());
@@ -484,11 +484,6 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
 // --SECTION--                                          by_phrase implementation
 // -----------------------------------------------------------------------------
 
-/* static */ const flags& by_phrase::required() {
-  static const flags req{ irs::type<frequency>::get(), irs::type<position>::get() };
-  return req;
-}
-
 DEFINE_FACTORY_DEFAULT(by_phrase)
 
 filter::prepared::ptr by_phrase::prepare(
@@ -551,7 +546,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     }
 
     // check required features
-    if (!by_phrase::required().is_subset_of(reader->meta().features)) {
+    if (required() != (reader->meta().index_features & required())) {
       continue;
     }
 
@@ -650,7 +645,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     }
 
     // check required features
-    if (!by_phrase::required().is_subset_of(reader->meta().features)) {
+    if (required() != (reader->meta().index_features & required())) {
       continue;
     }
 

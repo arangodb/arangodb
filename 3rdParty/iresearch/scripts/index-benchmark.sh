@@ -7,7 +7,7 @@ export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/bin"
 ulimit -c unlimited
 
 for i in `seq 1 1`; do
-    for j in 25 ; do
+    for j in 5 ; do
         MAX_LINES=${j}000000
 
         rm -r iresearch.data || {
@@ -15,7 +15,7 @@ for i in `seq 1 1`; do
         }
 
         # index
-        /usr/bin/time -v ./bin/iresearch-benchmarks -m put --in ${BENCHMARK_RESOURCES_ROOT}/benchmark.data --index-dir iresearch.data --max-lines=${MAX_LINES} --format 1_3simd --commit-period=10000 --batch-size=50000 --consolidation-threads 1 --threads=8 2> iresearch.stderr.${MAX_LINES}.index.log.$i 1> /dev/null &
+        /usr/bin/time -v ./bin/iresearch-benchmarks -m put --in ${BENCHMARK_RESOURCES_ROOT}/benchmark.data --index-dir iresearch.data --max-lines=${MAX_LINES} --format 1_3simd --commit-period=10000 --batch-size=50000 --consolidation-threads 1 --threads=8 --analyzer-type=segmentation --analyzer-options='{}'  2> iresearch.stderr.${MAX_LINES}.index.log.$i 1> /dev/null &
         IRESEARCH_PID=$!
         wait $IRESEARCH_PID
 

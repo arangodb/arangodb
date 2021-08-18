@@ -851,7 +851,7 @@ Result IResearchDataStore::shutdownDataStore() {
   return {};
 }
 
-Result IResearchDataStore::initDataStore(InitCallback const& initCallback, bool sorted,
+Result IResearchDataStore::initDataStore(InitCallback const& initCallback, uint32_t version, bool sorted,
                                     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
                                     irs::type_info::type_id primarySortCompression) {
   std::atomic_store(&_flushSubscription, {});  // reset together with '_asyncSelf'

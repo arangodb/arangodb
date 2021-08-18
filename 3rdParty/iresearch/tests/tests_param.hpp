@@ -115,12 +115,32 @@ std::pair<std::shared_ptr<irs::directory>, std::string> rot13_cipher_directory(c
 // --SECTION--                                          directory_test_case_base
 // -----------------------------------------------------------------------------
 
-class directory_test_case_base : public virtual test_param_base<tests::dir_factory_f> {
+template<typename... Args>
+class directory_test_case_base
+   : public virtual test_param_base<std::tuple<tests::dir_factory_f, Args...>> {
  public:
-  static std::string to_string(const testing::TestParamInfo<tests::dir_factory_f>& info);
+  static std::string to_string(
+      const testing::TestParamInfo<std::tuple<tests::dir_factory_f, Args...>>& info) {
+    auto& p = info.param;
+    return (*std::get<0>(p))(nullptr).second;
+  }
 
-  virtual void SetUp() override;
-  virtual void TearDown() override;
+  virtual void SetUp() override {
+    test_base::SetUp();
+
+    auto& p = test_param_base<std::tuple<tests::dir_factory_f, Args...>>::GetParam();
+
+    auto* factory = std::get<0>(p);
+    ASSERT_NE(nullptr, factory);
+
+    dir_ = (*factory)(this).first;
+    ASSERT_NE(nullptr, dir_);
+  }
+
+  virtual void TearDown() override {
+    dir_ = nullptr;
+    test_base::TearDown();
+  }
 
   irs::directory& dir() const noexcept { return *dir_; }
 

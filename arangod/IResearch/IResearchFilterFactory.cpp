@@ -1227,7 +1227,7 @@ Result fromGeoDistanceInterval(
     }
   }
 
-  double_t distance;
+  double_t distance{};
   ScopedAqlValue distanceValue(*node.value);
   if (filter || distanceValue.isConstant()) {
     if (!distanceValue.execute(ctx)) {
@@ -2973,7 +2973,6 @@ Result fromFuncPhraseLevenshteinMatch(char const* funcName,
       } collector(opts.max_terms);
 
       irs::visit(*ctx.index, filter->field(),
-                 irs::by_phrase::required(),
                  irs::by_edit_distance::visitor(opts),
                  collector);
 

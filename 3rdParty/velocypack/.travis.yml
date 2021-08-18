@@ -1,0 +1,126 @@
+os: linux
+dist: focal
+language: cpp
+
+env:
+    global:
+        secure: "Xtwlf0NPrlw6NpdLV1iIgs1f8aWK5lqGmfg1iCDQrsuYhHl7/3tldUIS/I1YMyxPOQHRuaBhFPBgv7YMcDl/1Hss001xm3ILbtgDNBCzUG6v4ZgZsB3qUaWWTegw/y9UwQbjqD720on9Wpqr6Rr8XqjaBxn+siWRN5io/sQj6w2o74xn2/+rIol+ei/XLtdmMHoayO24xN1dAAv14/0kCqH1L7Atij33grjyFIF3M6fyVlZzruoBTQVLfq/J19lkHtCf6ItjC2f2gorXYgGBfNQaWYz00U/fIHUgtLo/7QtvNsofb+J39jOeG97I4P0Nwu+2Jhn3O1wU0pnnCl99qLpDbYrzch/TaRWVau3khjLG2/1twLImdJn4nWXeBuX5S4Kazr3s0hGF2wBfFPDQU9izg/3nxC6gIT+o+BJvLcdJsio3SDdN2KorEuQrteRJsGXSAgOebBnsDaVkiKy/QDj6V4ZDYdkZ9G5OwsAAGpfDLDkRRwquCW83zUNBicReYOpervdtIDBQg2KbNdb6lIR+5b16+uggeoFV1O/+2dfKYj5MqXwtSRGRwCZ5ArFjWN1ARI3pObjrutsX6PoZdYL6Y4d6UYm7koI+25dkY3GCPCY5KB09ory6zIQ7vvfSHOs4LZZqdS6jDVtCjgWscwwgqEjmOA5uWGYWmf+yDs8="
+
+matrix:
+  include:
+    - name: "C++17 build g++-9, xxhash"
+      env:
+        - ARCH=amd64
+        #compiler
+        - CXX=g++-9
+        - CC=gcc-9
+        #build settings
+        - build_type=Release
+        - hash_type=xxhash
+        - SANITIZER=false
+        - CXX_STANDARD=17
+      addons:
+        apt:
+          packages: ['gcc-9', 'g++-9', 'cmake']
+    
+    - name: "C++17 build g++-9, fasthash"
+      env:
+        - ARCH=amd64
+        #compiler
+        - CXX=g++-9
+        - CC=gcc-9
+        #build settings
+        - build_type=Release
+        - hash_type=fasthash
+        - SANITIZER=false
+        - CXX_STANDARD=17
+      addons:
+        apt:
+          packages: ['gcc-9', 'g++-9', 'cmake']
+    
+    - name: "address sanitizer build, g++-8"
+      if: branch = main AND false #disabled
+      env:
+        - ARCH=amd64
+        #compiler
+        - CXX=g++-8
+        - CC=gcc-8
+        #build settings
+        - build_type=Release
+        - SANITIZER=true
+        - CXX_STANDARD=17
+      addons:
+        apt:
+          packages: ['gcc-8', 'g++-8', 'cmake']
+    
+    - name: "address sanitizer build, g++-9"
+      if: branch = main AND false #disabled
+      env:
+        - ARCH=amd64
+        #compiler
+        - CXX=g++-9
+        - CC=gcc-9
+        #build settings
+        - build_type=Release
+        - SANITIZER=true
+        - CXX_STANDARD=17
+      addons:
+        apt:
+          packages: ['gcc-9', 'g++-9', 'cmake']
+
+    - name: "coverage build, g++-9"
+      if: branch = main
+      env:
+        - ARCH=amd64
+        #compiler
+        - CXX=g++-9
+        - CC=gcc-9
+        #build settings
+        - build_type=Debug
+        - CXXFLAGS="-O0 -fno-inline --coverage"
+        - CXX_STANDARD=17
+      addons:
+        apt:
+          packages: ['gcc-9', 'g++-9', 'lcov', 'cmake']
+      script:
+        - ./scripts/travis-build.sh
+        - ./scripts/travis-after-success.sh
+
+    - name: "clang build, clang++-9"
+      if: branch = main AND false # disabled because of clang ICE
+      compiler: clang++-9
+      env:
+        - ARCH=amd64
+        #compiler
+        - COMPILER=clang++-9
+        - CXX=clang++-9
+        - CC=clang-9
+        #build settings
+        - build_type=Release
+        - CXX_STANDARD=17
+      addons:
+        apt:
+          sources:
+            - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main'
+              key_url: "https://apt.llvm.org/llvm-snapshot.gpg.key"
+          packages: ['clang-9', 'clang++-9', 'clang-format-9', 'clang-tools-9', 'cmake']
+
+    - name: "mac"
+      os: osx
+      osx_image: xcode11.2
+      compiler: clang
+      env:
+        - build_type=Release
+
+install:
+    - export CXX=$CXX
+    - export CC=$CC
+    - export CXX_STANDARD=${CXX_STANDARD:-17}
+    - export BUILD_TYPE=${build_type}
+    - export HASH_TYPE=${hash_type}
+    - cmake --version
+    - $CXX --version
+
+script:
+    - ./scripts/travis-build.sh
+    - ./scripts/travis-test.sh

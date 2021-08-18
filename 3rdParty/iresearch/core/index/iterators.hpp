@@ -28,6 +28,7 @@
 #include "utils/attribute_provider.hpp"
 #include "utils/iterator.hpp"
 #include "utils/memory.hpp"
+#include "index/index_features.hpp"
 
 namespace iresearch {
 
@@ -66,6 +67,10 @@ struct IRESEARCH_API doc_iterator
   //////////////////////////////////////////////////////////////////////////////
   virtual doc_id_t seek(doc_id_t target) = 0;
 }; // doc_iterator
+
+struct IRESEARCH_API resettable_doc_iterator : doc_iterator {
+  virtual void reset() = 0;
+};
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                  field iterators 
@@ -108,7 +113,7 @@ struct IRESEARCH_API term_iterator
 
   /* read attributes */
   virtual void read() = 0;
-  virtual doc_iterator::ptr postings(const flags& features) const = 0;
+  virtual doc_iterator::ptr postings(IndexFeatures features) const = 0;
 };
 
 enum class SeekResult {

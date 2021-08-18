@@ -257,7 +257,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     IResearchViewMetaState metaState;
 
     if (!meta.init(definition, error) // parse definition
-        || meta._version > LATEST_VERSION // ensure version is valid
+        || meta._version > static_cast<uint32_t>(ViewVersion::MAX) // ensure version is valid
         || (ServerState::instance()->isSingleServer() // init metaState for SingleServer
             && !metaState.init(definition, error))) {
       return arangodb::Result(
