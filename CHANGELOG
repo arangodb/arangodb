@@ -1,6 +1,11 @@
 devel
 -----
 
+* Remove old fixPrototypeChain agency migration, which was introduced in 3.2
+  and is no longer necessary. This will make it impossible to upgrade
+  directly from a version < 3.2 to a version >= 3.9, provided one has
+  a chain of `distributeShardsLike` collections.
+
 * Improve log messages for Pregel runs by giving them more context.
 
 * Add ReplicatedLogs column family.
