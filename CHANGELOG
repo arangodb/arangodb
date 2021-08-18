@@ -21,9 +21,6 @@ devel
   - `public`: everyone with access to `_system` database can access the
     support info API.
 
-* Bug-Fix: In more complex queries there was a code-path where a (Disjoint-) Smart
-  graph access was not properly optimized.
-
 * Send a keystroke to arangod's stdin when a shutdown command is received via
   the REST API `/_admin/shutdown` and the server is started with the
   `--console` argument. The keystroke will exit the blocking read loop that
@@ -56,7 +53,6 @@ devel
 
 * Bugfix: In more complex queries there was a code-path where a (Disjoint-) 
   Smart graph access was not properly optimized.
->>>>>>> 5eaf1d23514db50d4b0403f4f82a293ff89d42bf
 
 * Improve log messages for Pregel runs by giving them more context.
 
