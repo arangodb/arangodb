@@ -98,7 +98,7 @@ RestStatus RestShutdownHandler::execute() {
     builder.add(VPackValue(true));
     AgencyCommResult result = agency.setValue("Shutdown", builder.slice(), 0.0);
     if (!result.successful()) {
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
+      generateError(result.asResult());
       return RestStatus::DONE;
     }
     removeFromCluster = true;
