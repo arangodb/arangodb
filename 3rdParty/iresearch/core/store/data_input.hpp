@@ -71,17 +71,23 @@ struct IRESEARCH_API data_input {
 
   virtual size_t read_bytes(byte_type* b, size_t count) = 0;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief if supported, provides access to an internal buffer containing
+  ///        the requested 'count' of bytes
+  //////////////////////////////////////////////////////////////////////////////
   virtual const byte_type* read_buffer(size_t count, BufferHint hint) = 0;
 
   virtual size_t file_pointer() const = 0;
 
   virtual size_t length() const = 0;
 
+  //////////////////////////////////////////////////////////////////////////////
   /// @return EOF mark
   /// @note calling "read_byte()" on a stream in EOF state is undefined behavior
+  //////////////////////////////////////////////////////////////////////////////
   virtual bool eof() const = 0;
 
-  int16_t read_short() {
+  virtual int16_t read_short() {
     // important to read as unsigned
     return irs::read<uint16_t>(*this);
   }
@@ -120,8 +126,23 @@ struct IRESEARCH_API index_input : public data_input {
   virtual ptr reopen() const = 0; // thread-safe new low-level-fd (offset preserved)
   virtual void seek(size_t pos) = 0;
 
-  // returns checksum from the current position to a
-  // specified offset without changing current position
+  using data_input::read_bytes;
+  virtual size_t read_bytes(size_t offset, byte_type* b, size_t count) = 0;
+
+  using data_input::read_buffer;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief if supported, provides access to an internal buffer at the
+  ///        specified 'offset' containing the requested 'count' of bytes
+  /// @note operation is atomic
+  /// @note in case of failure stream state doesn't change
+  //////////////////////////////////////////////////////////////////////////////
+  virtual const byte_type* read_buffer(size_t offset, size_t count, BufferHint hint) = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return checksum from the current position to a
+  /// specified offset without changing current position
+  //////////////////////////////////////////////////////////////////////////////
   virtual int64_t checksum(size_t offset) const = 0;
 
  private:
@@ -163,7 +184,14 @@ class IRESEARCH_API buffered_index_input : public index_input {
 
   virtual size_t read_bytes(byte_type* b, size_t count) override final;
 
+  virtual size_t read_bytes(size_t offset, byte_type* b, size_t count) override final {
+    seek(offset);
+    return read_bytes(b, count);
+  }
+
   virtual const byte_type* read_buffer(size_t size, BufferHint hint) noexcept override final;
+
+  virtual const byte_type* read_buffer(size_t offset, size_t size, BufferHint hint) noexcept override final;
 
   virtual size_t file_pointer() const noexcept override final {
     return start_ + offset();
@@ -174,6 +202,8 @@ class IRESEARCH_API buffered_index_input : public index_input {
   }
 
   virtual void seek(size_t pos) override final;
+
+  virtual int16_t read_short() override final;
 
   virtual int32_t read_int() override final;
 
@@ -207,15 +237,22 @@ class IRESEARCH_API buffered_index_input : public index_input {
   buffered_index_input(const buffered_index_input&) = delete;
   buffered_index_input& operator=(const buffered_index_input&) = delete;
 
-  // returns number of bytes between begin_ & end_
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return number of bytes between begin_ & end_
+  //////////////////////////////////////////////////////////////////////////////
   size_t refill();
 
-  // returns number of elements between current position and beginning of the buffer
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return number of elements between current position and beginning of the
+  ///         buffer
+  //////////////////////////////////////////////////////////////////////////////
   FORCE_INLINE size_t offset() const noexcept {
     return std::distance(buf_, begin_);
   }
 
-  // returns number of valid bytes in the buffer 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return number of valid bytes in the buffer
+  //////////////////////////////////////////////////////////////////////////////
   FORCE_INLINE size_t size() const noexcept {
     return std::distance(buf_, end_);
   }

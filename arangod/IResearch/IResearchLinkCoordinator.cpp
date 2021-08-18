@@ -134,15 +134,13 @@ std::shared_ptr<arangodb::Index> IResearchLinkCoordinator::IndexFactory::instant
   return link;
 }
 
-arangodb::Result IResearchLinkCoordinator::IndexFactory::normalize(  // normalize definition
-    arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
-    arangodb::velocypack::Slice definition,  // source definition
-    bool isCreation,                         // definition for index creation
-    TRI_vocbase_t const& vocbase             // index vocbase
-    ) const {
-  return arangodb::iresearch::IResearchLinkHelper::normalize(  // normalize
-      normalized, definition, isCreation, vocbase              // args
-  );
+arangodb::Result IResearchLinkCoordinator::IndexFactory::normalize(
+    arangodb::velocypack::Builder& normalized,
+    arangodb::velocypack::Slice definition,
+    bool isCreation,
+    TRI_vocbase_t const& vocbase) const {
+  return arangodb::iresearch::IResearchLinkHelper::normalize(
+      normalized, definition, isCreation, vocbase);
 }
 
 std::shared_ptr<IResearchLinkCoordinator::IndexFactory> IResearchLinkCoordinator::createFactory(

@@ -44,16 +44,22 @@ enum class Version : int32_t {
   ////////////////////////////////////////////////////////////////////////////
   /// * encryption support
   /// * term dictionary stored on disk as fst::fstext::ImmutableFst<...>
+  /// * pluggable field features support
   ////////////////////////////////////////////////////////////////////////////
-  MAX = 2
-};
+  IMMUTABLE_FST = 2,
 
-irs::field_writer::ptr make_writer(
+  ////////////////////////////////////////////////////////////////////////////
+  /// max supported version
+  ////////////////////////////////////////////////////////////////////////////
+  MAX = IMMUTABLE_FST
+}; // Version
+
+IRESEARCH_API irs::field_writer::ptr make_writer(
   Version version,
   irs::postings_writer::ptr&& writer,
-  bool volatile_state);
+  bool consolidation);
 
-irs::field_reader::ptr make_reader(
+IRESEARCH_API irs::field_reader::ptr make_reader(
   irs::postings_reader::ptr&& reader);
 
 } // burst_trie

@@ -366,9 +366,8 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
   VPackBuilder normalized;
   StorageEngine& engine =
       collection->vocbase().server().getFeature<EngineSelectorFeature>().engine();
-  auto res = engine.indexFactory().enhanceIndexDefinition(  // normalize definition
-      input, normalized, create, collection->vocbase()      // args
-  );
+  auto res = engine.indexFactory().enhanceIndexDefinition(
+      input, normalized, create, collection->vocbase());
 
   if (res.fail()) {
     events::CreateIndex(collection->vocbase().name(), collection->name(), input,

@@ -63,7 +63,7 @@ int dump(
     return 1;
   }
 
-  auto reader = irs::directory_reader::open(*dir, irs::formats::get("1_0"));
+  auto reader = irs::directory_reader::open(*dir);
 
   stream << "Index" 
          << " segmentsCount=" << reader.size()

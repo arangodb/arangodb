@@ -45,9 +45,6 @@ struct IRESEARCH_API data_output {
 
   virtual ~data_output() = default;
 
-  // TODO: remove close method
-  virtual void close() = 0;
-
   virtual void write_byte(byte_type b) = 0;
 
   virtual void write_bytes(const byte_type* b, size_t len) = 0;
@@ -90,6 +87,8 @@ struct IRESEARCH_API index_output : public data_output {
   DEFINE_FACTORY_INLINE(index_output);
 
   virtual void flush() = 0;
+
+  virtual void close() = 0;
 
   virtual size_t file_pointer() const = 0;
 
