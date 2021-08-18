@@ -18,36 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GreetingsFeaturePhase.h"
+#pragma once
 
-#include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
-#include "Logger/LoggerFeature.h"
-#include "Random/RandomFeature.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-namespace application_features {
-
-GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server, bool isClient)
-    : ApplicationFeaturePhase(server, "GreetingsPhase") {
-  setOptional(false);
-
-  startsAfter<ConfigFeature>();
-  startsAfter<LoggerFeature>();
-  startsAfter<RandomFeature>();
-  startsAfter<ShellColorsFeature>();
-  startsAfter<VersionFeature>();
-
-  if (!isClient) {
-    // These are server only features
-    startsAfter<GreetingsFeature>();
-  }
+namespace velocypack {
+class Builder;
 }
 
-}  // namespace application_features
+class RestSupportInfoHandler : public arangodb::RestBaseHandler {
+ public:
+  RestSupportInfoHandler(application_features::ApplicationServer&, GeneralRequest*,
+                         GeneralResponse*);
+
+ public:
+  char const* name() const override final { return "RestSupportInfoHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RestStatus execute() override;
+
+ private:
+  void buildHostInfo(arangodb::velocypack::Builder& result);
+};
 }  // namespace arangodb
+

@@ -38,7 +38,6 @@
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/EnvironmentFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
@@ -54,6 +53,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/EnvironmentFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;

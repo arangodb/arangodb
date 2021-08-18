@@ -40,7 +40,7 @@ const {
   typeName,
   isEqual,
   compareStringIds,
-    } = require('@arangodb/test-helper-common');
+} = require('@arangodb/test-helper-common');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const _ = require('lodash');
