@@ -42,11 +42,7 @@ devel
 * Fixed: /_api/transaction/begin called on edge collections of disjoint
   SmartGraphs falsely returned CollectionNotFound errors.
 
-<<<<<<< HEAD
-* Bug-Fix: In more complex queries there was a code-path where a (Disjoint-) 
-=======
 * Bugfix: In more complex queries there was a code-path where a (Disjoint-) 
->>>>>>> 5eaf1d23514db50d4b0403f4f82a293ff89d42bf
   Smart graph access was not properly optimized.
 
 * Improve log messages for Pregel runs by giving them more context.
