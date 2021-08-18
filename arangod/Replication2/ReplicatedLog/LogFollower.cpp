@@ -275,7 +275,7 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<std::unique_ptr<LogC
     if (followerData._logCore == nullptr) {
       LOG_CTX("55a1d", WARN, _loggerContext)
           << "follower log core is already gone. Resign was called twice!";
-      ASSERT_OR_THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+      basics::abortOrThrow(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
     }
 
     // use a unique ptr because move constructor for multimaps is not noexcept

@@ -30,8 +30,7 @@
 /// So this thin macro wraps around the GTEST :: EXPECT_DEATH macro and disables coredumps
 /// only within the expected forked process
 
-#ifndef ARANGODB_TESTS_MOCKS_DEATH_TEST_CHANGER_H
-#define ARANGODB_TESTS_MOCKS_DEATH_TEST_CHANGER_H 1
+#pragma once
 
 #ifndef _WIN32
 
@@ -39,13 +38,24 @@
 
 // Enabled on Linux and Mac
 
+inline void disableCoredump() {
+  auto core_limit = rlimit{};
+  core_limit.rlim_cur = 0;
+  core_limit.rlim_max = 0;
+  setrlimit(RLIMIT_CORE, &core_limit);
+}
+
 #define EXPECT_DEATH_CORE_FREE(func, assertion) \
   EXPECT_DEATH(                                 \
       [&]() {                                   \
-        rlimit core_limit;                      \
-        core_limit.rlim_cur = 0;                \
-        core_limit.rlim_max = 0;                \
-        setrlimit(RLIMIT_CORE, &core_limit);    \
+        disableCoredump();                      \
+        func;                                   \
+      }(),                                      \
+      assertion)
+#define ASSERT_DEATH_CORE_FREE(func, assertion) \
+  ASSERT_DEATH(                                 \
+      [&]() {                                   \
+        disableCoredump();                      \
         func;                                   \
       }(),                                      \
       assertion)
@@ -57,7 +67,6 @@
 // please feel free to fix it here.
 
 #define EXPECT_DEATH_CORE_FREE(func, assertion) EXPECT_TRUE(true)
-
-#endif
+#define ASSERT_DEATH_CORE_FREE(func, assertion) ASSERT_TRUE(true)
 
 #endif
