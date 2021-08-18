@@ -137,7 +137,9 @@ auto DistributeExecutor::getClient(SharedAqlItemBlockPtr const& block, size_t ro
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "DistributeExecutor requires an object as input");
   }
   auto res = _infos.getResponsibleClient(input);
-  THROW_ARANGO_EXCEPTION_IF_FAIL(res.result());
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(std::move(res).result());
+  }
   return res.get();
 }
 
