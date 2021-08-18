@@ -1,12 +1,12 @@
 To do:
+- [ ] check arangosh -- Julia - TODO: add tests for indexes
+- [ ] check request forwarding in load-balancer, add tests -- Julia
 - [ ] add test for Foxx directory names -- Julia
-- [ ] check location headers / http redirects -- Jan
-- [ ] add tests for KeyGenerator::validateId -- Julia 
-- [ ] check request forwarding in load-balancer, add tests -- Jan
+- [ ] check location headers / http redirects
 - [ ] check web interface
-- [ ] check arangosh
 - [ ] check cluster and agency
 - [ ] check cluster-internal requests (using fuerte)
+
 - [ ] check arangosync
 - [ ] check arangojs compatibility
 - [ ] check arangodb-java-driver compatibility
@@ -14,6 +14,7 @@ To do:
 - [ ] check python driver compatibility
 - [ ] check arangodb-php compatibility
 
+- [x] add tests for KeyGenerator::validateId -- Julia 
 - [x] check arangobench, add tests -- Julia, Jan
 - [x] check arangoimport, add tests -- Jan
 - [x] check arangoexport, add tests -- Jan
