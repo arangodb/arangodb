@@ -213,12 +213,13 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         auto toBeResolved = std::optional<WaitForQueueResolve>{std::in_place, self->_waitForQueue.getLockedGuard(), self->_commitIndex};
         static_assert(std::is_nothrow_move_assignable_v<std::optional<WaitForQueueResolve>>);
         *toBeResolvedPtr = std::move(toBeResolved);
-        return DeferredAction([toBeResolved = std::move(toBeResolvedPtr)]() noexcept {
+        return DeferredAction([commitIndex = self->_commitIndex,
+                               toBeResolved = std::move(toBeResolvedPtr)]() noexcept {
           auto& resolve = toBeResolved->value();
           for (auto it = resolve.begin; it != resolve.end; it = resolve._guard->erase(it)) {
             if (!it->second.isFulfilled()) {
               // This only throws if promise was fulfilled earlier.
-              it->second.setValue(std::shared_ptr<QuorumData>{});
+              it->second.setValue(WaitForResult{commitIndex, std::shared_ptr<QuorumData>{}});
             }
           }
         });
@@ -320,8 +321,8 @@ auto replicated_log::LogFollower::waitFor(LogIndex idx)
     -> replicated_log::ILogParticipant::WaitForFuture {
   auto self = _guardedFollowerData.getLockedGuard();
   if (self->_commitIndex >= idx) {
-    return futures::Future<std::shared_ptr<QuorumData const>>{
-        std::in_place, std::make_shared<QuorumData>(idx, _currentTerm)};
+    return futures::Future<WaitForResult>{std::in_place, self->_commitIndex,
+                                          std::make_shared<QuorumData>(idx, _currentTerm)};
   }
   // emplace might throw a std::bad_alloc but the remainder is noexcept
   // so either you inserted it and or nothing happens

@@ -6,6 +6,12 @@
 #include <Replication2/ReplicatedLog/LogCommon.h>
 #include <Replication2/ReplicatedLog/types.h>
 
+namespace arangodb::replication2::replicated_log {
+class LogFollower;
+class LogLeader;
+struct ILogParticipant;
+}  // namespace arangodb::replication2::replicated_log
+
 namespace arangodb::replication2::streams {
 
 using StreamId = std::uint64_t;
@@ -157,20 +163,18 @@ struct stream_index_by_id<StreamId, stream_descriptor_set<Ds...>> {
 template <StreamId StreamId, typename Ds>
 inline constexpr auto stream_index_by_id_v = stream_index_by_id<StreamId, Ds>::value;
 
-template<typename T>
+template <typename T>
 struct StreamEntryView {
   LogIndex index;
   T const& value;
 };
 
-template<typename T>
+template <typename T>
 struct StreamEntry {
   LogIndex index;
   T value;
 
-  auto intoView() const -> StreamEntryView<T> {
-    return {index, value};
-  }
+  auto intoView() const -> StreamEntryView<T> { return {index, value}; }
 };
 
 template <typename T>
@@ -179,28 +183,30 @@ struct Stream {
   using EntryType = StreamEntry<T>;
   using Iterator = TypedLogRangeIterator<EntryViewType>;
 
+  struct WaitForResult {};
+
   virtual ~Stream() = default;
   virtual auto waitForIterator(LogIndex)
       -> futures::Future<std::unique_ptr<Iterator>> = 0;
-  virtual auto waitFor(LogIndex) -> futures::Future<futures::Unit> = 0;
+  virtual auto waitFor(LogIndex) -> futures::Future<WaitForResult> = 0;
   virtual auto release(LogIndex) -> void = 0;
 };
 
-template<typename T>
+template <typename T>
 struct ProducerStream : Stream<T> {
   virtual auto insert(T const&) -> LogIndex = 0;
 };
 
-template <typename Ds, template<typename> typename StreamType, typename Type = stream_descriptor_type_t<Ds>>
-    struct StreamBase : StreamType<Type> {
+template <typename Ds, template <typename> typename StreamType, typename Type = stream_descriptor_type_t<Ds>>
+struct StreamBase : StreamType<Type> {
   static_assert(is_stream_descriptor_v<Ds>);
   using Iterator = typename StreamType<Type>::Iterator;
   virtual auto getIterator() -> std::unique_ptr<Iterator> = 0;
 };
 
-template <typename, typename, template<typename> typename>
+template <typename, typename, template <typename> typename>
 struct StreamDispatcherBase;
-template <typename Self, typename... Streams, template<typename> typename StreamType>
+template <typename Self, typename... Streams, template <typename> typename StreamType>
 struct StreamDispatcherBase<Self, stream_descriptor_set<Streams...>, StreamType>
     : virtual StreamBase<Streams, StreamType>... {
  protected:
@@ -219,14 +225,13 @@ struct LogDemultiplexerBase : std::enable_shared_from_this<Self>,
                               StreamDispatcherBase<Self, Spec, StreamType> {
   template <StreamId Id, typename Descriptor = stream_descriptor_by_id_t<Id, Spec>,
             typename Type = stream_descriptor_type_t<Descriptor>>
-  auto getStreamBaseById()
-      -> std::shared_ptr<StreamBase<Descriptor, StreamType>> {
+  auto getStreamBaseById() -> std::shared_ptr<StreamBase<Descriptor, StreamType>> {
     return this->template getStreamByIdInternal<Descriptor>();
   }
 
   template <StreamId Id, typename Descriptor = stream_descriptor_by_id_t<Id, Spec>,
-      typename Type = stream_descriptor_type_t<Descriptor>>
-  auto getStreamById() -> std::shared_ptr<Stream<Type>> {
+            typename Type = stream_descriptor_type_t<Descriptor>>
+  auto getStreamById() -> std::shared_ptr<StreamType<Type>> {
     return this->template getStreamByIdInternal<Descriptor>();
   }
 };
@@ -237,9 +242,20 @@ struct LogDemultiplexer2 : LogDemultiplexerBase<LogDemultiplexer2<Spec>, Spec, S
   static auto construct() -> std::shared_ptr<LogDemultiplexer2>;
 };
 
+struct TestInsertInterface {
+  virtual ~TestInsertInterface() = default;
+  virtual auto insert(LogPayload) -> LogIndex = 0;
+  virtual auto waitFor(LogIndex index)
+      -> futures::Future<replicated_log::WaitForResult> = 0;
+};
+
 template <typename Spec>
-struct LogMultiplexer : LogDemultiplexerBase<LogMultiplexer<Spec>, Spec, ProducerStream> {
-  static auto construct() -> std::shared_ptr<LogMultiplexer>;
+struct LogMultiplexer
+    : LogDemultiplexerBase<LogMultiplexer<Spec>, Spec, ProducerStream> {
+  static auto construct(std::shared_ptr<arangodb::replication2::replicated_log::LogLeader> leader)
+      -> std::shared_ptr<LogMultiplexer>;
+  static auto construct(std::shared_ptr<TestInsertInterface> leader)
+      -> std::shared_ptr<LogMultiplexer>;
 };
 
 }  // namespace arangodb::replication2::streams

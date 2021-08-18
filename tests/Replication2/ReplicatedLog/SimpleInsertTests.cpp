@@ -170,10 +170,11 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     {
       // Expect the quorum to consist of the follower only
       ASSERT_TRUE(f.isReady());
-      auto quorum = f.get();
-      EXPECT_EQ(quorum->index, LogIndex{2});
-      EXPECT_EQ(quorum->term, LogTerm{1});
-      EXPECT_EQ(quorum->quorum, (std::vector<ParticipantId>{leaderId, followerId}));
+      auto result = f.get();
+      EXPECT_EQ(result.commitIndex, LogIndex{2});
+      EXPECT_EQ(result.quorum->index, LogIndex{2});
+      EXPECT_EQ(result.quorum->term, LogTerm{1});
+      EXPECT_EQ(result.quorum->quorum, (std::vector<ParticipantId>{leaderId, followerId}));
     }
 
     // Follower should have pending append entries
@@ -380,10 +381,11 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   // and update of commitIndex on both follower
   {
     ASSERT_TRUE(future.isReady());
-    auto quorum = future.get();
-    EXPECT_EQ(quorum->term, LogTerm{1});
-    EXPECT_EQ(quorum->index, LogIndex{2});
-    EXPECT_EQ(quorum->quorum, (std::vector{leaderId, followerId_1, followerId_2}));
+    auto result = future.get();
+    EXPECT_EQ(result.commitIndex, LogIndex{2});
+    EXPECT_EQ(result.quorum->term, LogTerm{1});
+    EXPECT_EQ(result.quorum->index, LogIndex{2});
+    EXPECT_EQ(result.quorum->quorum, (std::vector{leaderId, followerId_1, followerId_2}));
   }
 
   EXPECT_TRUE(follower_1->hasPendingAppendEntries());

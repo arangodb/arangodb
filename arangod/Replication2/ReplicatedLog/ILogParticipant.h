@@ -42,6 +42,19 @@ namespace arangodb::replication2::replicated_log {
 struct LogCore;
 struct LogStatus;
 
+struct WaitForResult {
+  /// @brief contains the _current_ commit index. (Not the index waited for)
+  LogIndex commitIndex;
+  /// @brief Quorum information
+  std::shared_ptr<QuorumData const> quorum;
+
+  WaitForResult(LogIndex index, std::shared_ptr<QuorumData const> quorum);
+  WaitForResult() = default;
+  WaitForResult(velocypack::Slice);
+
+  void toVelocyPack(velocypack::Builder&) const;
+};
+
 /**
 * @brief Interface for a log participant: That is, usually either a leader or a
 * follower (LogLeader and LogFollower). Can also be a LogUnconfiguredParticipant,
@@ -55,8 +68,8 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto resign() &&
       -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
 
-  using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData const>>;
-  using WaitForFuture = futures::Future<std::shared_ptr<QuorumData const>>;
+  using WaitForPromise = futures::Promise<WaitForResult>;
+  using WaitForFuture = futures::Future<WaitForResult>;
   using WaitForIteratorFuture = futures::Future<std::unique_ptr<LogRangeIterator>>;
   using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
 

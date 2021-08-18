@@ -87,17 +87,53 @@ using MyTestSpecification = stream_descriptor_set<
 template struct streams::LogDemultiplexer2<MyTestSpecification>;
 template struct streams::LogMultiplexer<MyTestSpecification>;
 
+struct TestInsertInterfaceImpl : TestInsertInterface {
+  auto insert(LogPayload p) -> LogIndex override {
+    auto index = LogIndex{_logEntries.size() + 1};
+    _logEntries.push_back(std::move(p));
+    return index;
+  }
 
+  auto waitFor(LogIndex index) -> futures::Future<replicated_log::WaitForResult> override {
+    return _promises
+        .emplace(index, futures::Promise<replicated_log::WaitForResult>{})
+        ->second.getFuture();
+  }
+
+  auto resolvePromises(LogIndex index) {
+    auto const end = _promises.upper_bound(index);
+    for (auto it = _promises.begin(); it != end;) {
+      it->second.setValue(replicated_log::WaitForResult(index, nullptr));
+      it = _promises.erase(it);
+    }
+  }
+
+  std::vector<LogPayload> _logEntries;
+  std::multimap<LogIndex, futures::Promise<replicated_log::WaitForResult>> _promises;
+};
 
 TEST_F(LogDemuxTest, simple_test) {
+  auto interface = std::make_shared<TestInsertInterfaceImpl>();
 
-  auto mux = streams::LogDemultiplexer2<MyTestSpecification>::construct();
-  auto streamA = mux->getStreamBaseById<my_stream_id>();
+  auto mux = streams::LogMultiplexer<MyTestSpecification>::construct(interface);
+  std::shared_ptr<ProducerStream<int>> streamA = mux->getStreamBaseById<my_stream_id>();
   auto streamB = mux->getStreamBaseById<my_foo_stream_id>();
 
+  auto index = streamA->insert(12);
+  EXPECT_EQ(interface->_promises.size(), 1);
 
-  auto iter = streamA->getIterator();
+  auto fA = streamA->waitFor(index);
+  ASSERT_FALSE(fA.isReady());
 
+  auto fB = streamB->waitFor(index + 1);
+  ASSERT_FALSE(fB.isReady());
 
+  interface->resolvePromises(index);
+  ASSERT_TRUE(fA.isReady());
+  ASSERT_FALSE(fB.isReady());
 
+  auto index2 = streamB->insert(MyEntryType{"hello world"});
+
+  interface->resolvePromises(index2);
+  ASSERT_TRUE(fB.isReady());
 }

@@ -191,7 +191,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
 
   struct ResolvedPromiseSet {
     WaitForQueue _set;
-    std::shared_ptr<QuorumData> _quorum;
+    WaitForResult result;
     ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy> _commitedLogEntries;
   };
 

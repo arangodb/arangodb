@@ -2,6 +2,11 @@
 // Created by lars on 16/08/2021.
 //
 
+#include <map>
+#include <memory>
+#include <tuple>
+#include <type_traits>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -10,6 +15,7 @@
 
 #include <Basics/Exceptions.h>
 #include <Basics/Guarded.h>
+#include <Basics/UnshackledMutex.h>
 #include <Basics/application-exit.h>
 
 #include "LogMultiplexer.h"
@@ -69,7 +75,7 @@ struct StreamImplementationBase : virtual StreamBase<Descriptor, StreamTypeTempl
   auto waitForIterator(LogIndex index) -> futures::Future<std::unique_ptr<Iterator>> final {
     return self().template waitForIteratorInternal<Descriptor>(index);
   }
-  auto waitFor(LogIndex index) -> futures::Future<futures::Unit> final {
+  auto waitFor(LogIndex index) -> futures::Future<typename StreamType::WaitForResult> final {
     return self().template waitForInternal<Descriptor>(index);
   }
   auto release(LogIndex index) -> void final {
@@ -102,6 +108,44 @@ template <typename Self, typename... Streams, template <typename> typename Strea
 struct StreamDispatcher<Self, stream_descriptor_set<Streams...>, StreamType>
     : StreamImplementation<Self, Streams, StreamType>... {};
 
+template <typename Descriptor>
+struct StreamInformationBlock;
+template <StreamId Id, typename Type, typename Tags>
+struct StreamInformationBlock<stream_descriptor<Id, Type, Tags>> {
+  using StreamType = streams::Stream<Type>;
+  using EntryType = typename StreamType::EntryType;
+  using Iterator = TypedLogRangeIterator<EntryType>;
+
+  using ContainerType = ::immer::flex_vector<EntryType>;
+  using TransientType = typename ContainerType::transient_type;
+  using VariantType = std::variant<ContainerType, TransientType>;
+
+  using WaitForResult = typename StreamType::WaitForResult;
+  using WaitForPromise = futures::Promise<WaitForResult>;
+  using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
+
+  LogIndex _releaseIndex{0};
+  VariantType _container;
+  WaitForQueue _waitForQueue;
+
+  auto getTransientContainer() -> TransientType&;
+  auto getPersistentContainer() -> ContainerType&;
+
+  auto appendEntry(LogIndex index, Type t);
+  template <StreamTag StreamTag, typename Deserializer, typename Serializer>
+  auto appendValueBySlice(tag_descriptor<StreamTag, Deserializer, Serializer>,
+                          LogIndex index, velocypack::Slice value);
+
+  auto getWaitForResolveSet(LogIndex commitIndex) -> WaitForQueue {
+    WaitForQueue toBeResolved;
+    auto const end = _waitForQueue.upper_bound(commitIndex);
+    for (auto it = _waitForQueue.begin(); it != end;) {
+      toBeResolved.insert(_waitForQueue.extract(it++));
+    }
+    return toBeResolved;
+  }
+};
+
 template <typename Spec>
 struct LogDemultiplexerImplementation
     : LogDemultiplexer2<Spec>,
@@ -113,8 +157,9 @@ struct LogDemultiplexerImplementation
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  template <typename StreamDescriptor>
-  auto waitForInternal(LogIndex) -> futures::Future<futures::Unit> {
+  template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
+            typename W = typename Stream<T>::WaitForResult>
+  auto waitForInternal(LogIndex) -> futures::Future<W> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -128,30 +173,6 @@ struct LogDemultiplexerImplementation
   auto getIteratorInternal() -> std::unique_ptr<TypedLogRangeIterator<E>>;
 
   auto digestIterator(LogRangeIterator& iter) -> void override;
-
-  template <typename Descriptor>
-  struct StreamInformationBlock;
-  template <StreamId Id, typename Type, typename Tags>
-  struct StreamInformationBlock<stream_descriptor<Id, Type, Tags>> {
-    using StreamType = streams::Stream<Type>;
-    using EntryType = typename StreamType::EntryType;
-    using Iterator = TypedLogRangeIterator<EntryType>;
-
-    using ContainerType = ::immer::flex_vector<EntryType>;
-    using TransientType = typename ContainerType::transient_type;
-    using VariantType = std::variant<ContainerType, TransientType>;
-
-    LogIndex _releaseIndex{0};
-    VariantType _container;
-
-    auto getTransientContainer() -> TransientType&;
-    auto getPersistentContainer() -> ContainerType&;
-
-    auto appendEntry(LogIndex index, Type t);
-    template <StreamTag StreamTag, typename Deserializer, typename Serializer>
-    auto appendValueBySlice(tag_descriptor<StreamTag, Deserializer, Serializer>,
-                            LogIndex index, velocypack::Slice value);
-  };
 
   template <typename>
   struct MultiplexerData;
@@ -171,9 +192,8 @@ struct LogDemultiplexerImplementation
   Guarded<MultiplexerData<Spec>, basics::UnshackledMutex> _guardedData{};
 };
 
-template <typename Spec>
 template <StreamId Id, typename Type, typename Tags>
-auto LogDemultiplexerImplementation<Spec>::StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getTransientContainer()
+auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getTransientContainer()
     -> TransientType& {
   if (!std::holds_alternative<TransientType>(_container)) {
     _container = std::get<ContainerType>(_container).transient();
@@ -181,9 +201,8 @@ auto LogDemultiplexerImplementation<Spec>::StreamInformationBlock<stream_descrip
   return std::get<TransientType>(_container);
 }
 
-template <typename Spec>
 template <StreamId Id, typename Type, typename Tags>
-auto LogDemultiplexerImplementation<Spec>::StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getPersistentContainer()
+auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getPersistentContainer()
     -> ContainerType& {
   if (!std::holds_alternative<ContainerType>(_container)) {
     _container = std::get<TransientType>(_container).persistent();
@@ -191,17 +210,15 @@ auto LogDemultiplexerImplementation<Spec>::StreamInformationBlock<stream_descrip
   return std::get<ContainerType>(_container);
 }
 
-template <typename Spec>
 template <StreamId Id, typename Type, typename Tags>
-auto LogDemultiplexerImplementation<Spec>::StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::appendEntry(
-    LogIndex index, Type t) {
+auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::appendEntry(LogIndex index,
+                                                                            Type t) {
   getTransientContainer().push_back(EntryType{index, std::move(t)});
 }
 
-template <typename Spec>
 template <StreamId Id, typename Type, typename Tags>
 template <StreamTag StreamTag, typename Deserializer, typename Serializer>
-auto LogDemultiplexerImplementation<Spec>::StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::appendValueBySlice(
+auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::appendValueBySlice(
     tag_descriptor<StreamTag, Deserializer, Serializer>, LogIndex index,
     velocypack::Slice value) {
   static_assert(std::is_invocable_r_v<Type, Deserializer, serializer_tag_t<Type>, velocypack::Slice>);
@@ -300,10 +317,15 @@ auto LogDemultiplexerImplementation<Spec>::getIteratorInternal()
   });
 }
 
-template <typename Spec>
+template <typename Spec, typename Interface>
 struct LogMultiplexerImplementation
     : LogMultiplexer<Spec>,
-      StreamDispatcher<LogMultiplexerImplementation<Spec>, Spec, ProducerStream> {
+      StreamDispatcher<LogMultiplexerImplementation<Spec, Interface>, Spec, ProducerStream> {
+  using SelfClass = LogMultiplexerImplementation<Spec, Interface>;
+
+  explicit LogMultiplexerImplementation(std::shared_ptr<Interface> interface)
+      : _guarded(*this), _interface(std::move(interface)) {}
+
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
             typename E = typename Stream<T>::EntryViewType>
   auto waitForIteratorInternal(LogIndex)
@@ -311,24 +333,33 @@ struct LogMultiplexerImplementation
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  template <typename StreamDescriptor>
-  auto waitForInternal(LogIndex) -> futures::Future<futures::Unit> {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
+            typename W = typename Stream<T>::WaitForResult>
+  auto waitForInternal(LogIndex index) -> futures::Future<W> {
+    return _guarded.doUnderLock([&](MultiplexerData<Spec>& self) {
+      if (self._commitIndex >= index) {
+        return futures::Future<W>{std::in_place};
+      }
+      auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
+      return block._waitForQueue.emplace(index, futures::Promise<W>{})->second.getFuture();
+    });
   }
 
   template <typename StreamDescriptor>
   auto releaseInternal(LogIndex) -> void {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>>
   auto insertInternal(T const& t) -> LogIndex {
     using PrimaryTag = stream_descriptor_primary_tag_t<StreamDescriptor>;
     using Serializer = typename PrimaryTag::serializer;
-    static_assert(std::is_invocable_r_v < void, Serializer, serializer_tag_t<T>,
-                  std::add_lvalue_reference_t<std::add_const_t<T>>,
-                  std::add_lvalue_reference_t<velocypack::Builder>>);
+    static_assert(
+        std::is_invocable_r_v<void, Serializer, serializer_tag_t<T>,
+                              std::add_lvalue_reference_t<std::add_const_t<T>>,
+                              std::add_lvalue_reference_t<velocypack::Builder>>);
 
-    auto serialized = std::invoke([&]{
+    auto serialized = std::invoke([&] {
       velocypack::UInt8Buffer buffer;
       {
         velocypack::Builder builder(buffer);
@@ -340,7 +371,49 @@ struct LogMultiplexerImplementation
       return buffer;
     });
 
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    // we have to lock before we insert, otherwise we could mess up the order
+    // or log entries for this stream
+    auto [index, waitForIndex] = _guarded.doUnderLock([&](MultiplexerData<Spec>& self) {
+      // First write to replicated log
+      auto index = _interface->insert(LogPayload(std::move(serialized)));
+      TRI_ASSERT(index > self._lastIndex);
+      self._lastIndex = index;
+
+      // Now we insert the value T into the StreamsLog,
+      // but it is not yet visible because of the commitIndex
+      auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
+      block.appendEntry(index, t);
+      return std::make_pair(index, self.checkWaitFor());
+    });
+
+    if (waitForIndex.has_value()) {
+      triggerWaitForIndex(*waitForIndex);
+    }
+    return index;
+  }
+
+  void triggerWaitForIndex(LogIndex waitForIndex) {
+    auto f = _interface->waitFor(waitForIndex);
+    std::move(f).thenValue([weak = this->weak_from_this()](replicated_log::WaitForResult&& result) {
+      // First lock the shared pointer
+      if (auto that = std::static_pointer_cast<SelfClass>(weak.lock()); that) {
+        // now acquire the mutex
+        auto [resolveSets, nextIndex] =
+            that->_guarded.doUnderLock([&](MultiplexerData<Spec>& self) {
+              self.pendingWaitFor = false;
+
+              // find out what the commit index is
+              self._commitIndex = result.commitIndex;
+              return std::make_pair(self.getWaitForResolveSetAll(result.commitIndex),
+                                    self.checkWaitFor());
+            });
+
+        resolvePromiseSets(Spec{}, resolveSets);
+        if (nextIndex.has_value()) {
+          that->triggerWaitForIndex(*nextIndex);
+        }
+      }
+    });
   }
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
@@ -348,6 +421,55 @@ struct LogMultiplexerImplementation
   auto getIteratorInternal() -> std::unique_ptr<TypedLogRangeIterator<E>> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+
+  template <typename... Descriptors, typename... Queues>
+  static auto resolvePromiseSets(stream_descriptor_set<Descriptors...>,
+                                 std::tuple<Queues...>& queues) {
+    (resolvePromiseSet<Descriptors>(std::get<Queues>(queues)), ...);
+  }
+
+  template <typename Descriptor, typename Block = StreamInformationBlock<Descriptor>, typename Queue = typename Block::WaitForQueue>
+  static auto resolvePromiseSet(Queue& q) {
+    using WaitForResult = typename Block::WaitForResult;
+    std::for_each(std::begin(q), std::end(q),
+                  [](auto& pair) { pair.second.setValue(WaitForResult{}); });
+  }
+
+  template <typename>
+  struct MultiplexerData;
+  template <typename... Descriptors>
+  struct MultiplexerData<stream_descriptor_set<Descriptors...>> {
+    explicit MultiplexerData(SelfClass& self) : _self(self) {}
+
+    SelfClass& _self;
+    std::tuple<StreamInformationBlock<Descriptors>...> _blocks;
+    bool pendingWaitFor{false};
+    LogIndex _lastIndex;
+    LogIndex _commitIndex;
+
+    // returns a LogIndex to wait for (if necessary)
+    auto checkWaitFor() -> std::optional<LogIndex> {
+      if (!pendingWaitFor && _lastIndex != _commitIndex) {
+        // we have to trigger a waitFor operation
+        // and wait for the next index
+        TRI_ASSERT(_lastIndex > _commitIndex);
+        auto waitForIndex = _commitIndex + 1;
+        pendingWaitFor = true;
+        return waitForIndex;
+      }
+      return std::nullopt;
+    }
+
+    auto getWaitForResolveSetAll(LogIndex commitIndex)
+        -> std::tuple<typename StreamInformationBlock<Descriptors>::WaitForQueue...> {
+      return std::make_tuple(
+          std::get<StreamInformationBlock<Descriptors>>(_blocks).getWaitForResolveSet(
+              commitIndex)...);
+    };
+  };
+
+  Guarded<MultiplexerData<Spec>, basics::UnshackledMutex> _guarded;
+  std::shared_ptr<Interface> const _interface;
 };
 
 }  // namespace arangodb::replication2::streams
@@ -358,6 +480,15 @@ auto LogDemultiplexer2<Spec>::construct() -> std::shared_ptr<LogDemultiplexer2> 
 }
 
 template <typename Spec>
-auto LogMultiplexer<Spec>::construct() -> std::shared_ptr<LogMultiplexer> {
-  return std::make_shared<streams::LogMultiplexerImplementation<Spec>>();
+auto LogMultiplexer<Spec>::construct(std::shared_ptr<arangodb::replication2::replicated_log::LogLeader> leader)
+-> std::shared_ptr<LogMultiplexer> {
+  return std::make_shared<streams::LogMultiplexerImplementation<Spec, replicated_log::LogLeader>>(
+      std::move(leader));
+}
+
+template <typename Spec>
+auto LogMultiplexer<Spec>::construct(std::shared_ptr<TestInsertInterface> leader)
+    -> std::shared_ptr<LogMultiplexer> {
+  return std::make_shared<streams::LogMultiplexerImplementation<Spec, TestInsertInterface>>(
+      std::move(leader));
 }

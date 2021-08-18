@@ -179,7 +179,7 @@ void replicated_log::LogLeader::handleResolvedPromiseSet(
 
   for (auto& promise : resolvedPromises._set) {
     TRI_ASSERT(promise.second.valid());
-    promise.second.setValue(resolvedPromises._quorum);
+    promise.second.setValue(resolvedPromises.result);
   }
 }
 
@@ -454,7 +454,7 @@ auto replicated_log::LogLeader::waitFor(LogIndex index) -> WaitForFuture {
       return promise.getFuture();
     }
     if (leaderData._commitIndex >= index) {
-      return futures::Future<std::shared_ptr<QuorumData const>>{std::in_place,
+      return futures::Future<WaitForResult>{std::in_place, leaderData._commitIndex,
                                                                 leaderData._lastQuorum};
     }
     auto it = leaderData._waitForQueue.emplace(index, WaitForPromise{});
@@ -497,7 +497,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
           << "resolving promise for index " << it->first;
       toBeResolved.insert(_waitForQueue.extract(it++));
     }
-    return ResolvedPromiseSet{std::move(toBeResolved), std::move(quorum),
+    return ResolvedPromiseSet{std::move(toBeResolved),
+                              WaitForResult(newIndex, std::move(quorum)),
                               _inMemoryLog.slice(oldIndex, newIndex + 1)};
   } catch (std::exception const& e) {
     // If those promises are not fulfilled we can not continue.
