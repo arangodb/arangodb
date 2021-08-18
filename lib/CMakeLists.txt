@@ -18,8 +18,6 @@ if (MSVC)
   )
 else ()
   set(LIB_ARANGO_POSIX
-    ApplicationFeatures/DaemonFeature.cpp
-    ApplicationFeatures/SupervisorFeature.cpp
     Basics/locks-posix.cpp
     Basics/memory-map-posix.cpp
     Basics/terminal-utils-posix.cpp
@@ -78,12 +76,10 @@ add_library(arango STATIC
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
   ApplicationFeatures/CpuUsageFeature.cpp
-  ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/GreetingsFeaturePhase.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/TimeZoneFeature.cpp
-  ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
   ApplicationFeatures/SharedPRNGFeature.cpp
@@ -165,7 +161,6 @@ add_library(arango STATIC
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
-  Logger/LogBufferFeature.cpp
   Logger/LogLevel.cpp
   Logger/LogThread.cpp
   Logger/LogTopic.cpp

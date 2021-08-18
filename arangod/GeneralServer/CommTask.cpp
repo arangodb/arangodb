@@ -191,6 +191,7 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
           !::startsWith(path, "/_admin/server/") &&
           !::startsWith(path, "/_admin/status") &&
           !::startsWith(path, "/_admin/statistics") &&
+          !::startsWith(path, "/_admin/support-info") &&
           !::startsWith(path, "/_api/agency/agency-callbacks") &&
           !(req.requestType() == RequestType::GET && ::startsWith(path, "/_api/collection")) &&
           !::startsWith(path, "/_api/cluster/") &&

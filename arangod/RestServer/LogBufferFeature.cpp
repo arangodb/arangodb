@@ -23,6 +23,7 @@
 
 #include "LogBufferFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
@@ -34,6 +35,8 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/Metrics.h"
+#include "RestServer/MetricsFeature.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -44,6 +47,9 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
+
+DECLARE_COUNTER(arangodb_logger_warnings_total, "Number of warnings logged.");
+DECLARE_COUNTER(arangodb_logger_errors_total, "Number of errors logged.");
 
 namespace arangodb {
 
@@ -204,6 +210,33 @@ class LogAppenderEventLog final : public LogAppender {
 };
 #endif
 
+/// @brief log appender that increases counters for warnings/errors
+/// in our metrics
+class LogAppenderMetricsCounter final : public LogAppender {
+ public:
+  LogAppenderMetricsCounter(application_features::ApplicationServer& server)
+      : LogAppender(),
+        _warningsCounter(server.getFeature<arangodb::MetricsFeature>().add(arangodb_logger_warnings_total{})),
+        _errorsCounter(server.getFeature<arangodb::MetricsFeature>().add(arangodb_logger_errors_total{})) {}
+
+  void logMessage(LogMessage const& message) override {
+    // only handle WARN and ERR log messages
+    if (message._level == LogLevel::WARN) {
+      ++_warningsCounter;
+    } else if (message._level == LogLevel::ERR) {
+      ++_errorsCounter;
+    }
+  }
+
+  std::string details() const override {
+    return std::string();
+  }
+
+ private:
+  Counter& _warningsCounter;
+  Counter& _errorsCounter;
+};
+
 LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "LogBuffer"),
       _minInMemoryLogLevel("info"),
@@ -217,6 +250,8 @@ LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& serv
   LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
                                  std::make_shared<LogAppenderEventLog>());
 #endif
+  LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
+                                 std::make_shared<LogAppenderMetricsCounter>(server));
 }
   
 void LogBufferFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
