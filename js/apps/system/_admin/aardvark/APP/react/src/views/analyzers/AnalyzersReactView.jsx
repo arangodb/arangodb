@@ -5,6 +5,7 @@ import minimatch from 'minimatch';
 import React, { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '../../components/modal/Modal';
+import { Cell, Grid } from '../../components/pure-css/grid';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { getChangeHandler } from '../../utils/helpers';
 import Actions from './Actions';
@@ -64,7 +65,6 @@ const FilterHelpModal = () => {
     </Modal>
   </>;
 };
-
 
 const AnalyzersReactView = () => {
   const {
@@ -147,21 +147,21 @@ const AnalyzersReactView = () => {
     }
 
     return <div className={'innerContent'} id={'analyzersContent'} style={{ paddingTop: 0 }}>
-      <div className={'pure-g'}>
-        <div className={'pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1'}>
-          <div className={'sectionHeader pure-g'}>
-            <div className={'pure-u-2-5'}>
+      <Grid>
+        <Cell size={'1'}>
+          <Grid className={'sectionHeader'}>
+            <Cell size={'2-5'}>
               <div className={'title'}><AddAnalyzer analyzers={analyzers}/></div>
-            </div>
-          </div>
-        </div>
-        <div className={'pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1'}>
-          <div className={'sectionHeader pure-g'}>
-            <div className={'pure-u-2-5'}>
+            </Cell>
+          </Grid>
+        </Cell>
+        <Cell size={'1'}>
+          <Grid className={'sectionHeader'}>
+            <Cell size={'2-5'}>
               <div className={'title'}>List of Analyzers</div>
-            </div>
+            </Cell>
 
-            <div className={'pure-u-3-5'}>
+            <Cell size={'3-5'}>
               <FilterHelpModal/>
               <label htmlFor={'filter-input'} style={{
                 color: '#fff',
@@ -196,8 +196,8 @@ const AnalyzersReactView = () => {
                   marginBottom: 7
                 }}/> Show In-built Analyzers
               </label>
-            </div>
-          </div>
+            </Cell>
+          </Grid>
           <table className={'arango-table'}>
             <thead>
             <tr>
@@ -228,9 +228,8 @@ const AnalyzersReactView = () => {
             }
             </tbody>
           </table>
-        </div>
-
-      </div>
+        </Cell>
+      </Grid>
     </div>;
   }
 

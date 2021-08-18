@@ -1,4 +1,5 @@
 import React, { ReactNode } from "react";
+import { Cell, Grid } from "styled-css-grid";
 
 interface ModalHeaderProps {
   title: string;
@@ -8,14 +9,14 @@ interface ModalHeaderProps {
 const ModalHeader = ({ title, children }: ModalHeaderProps) =>
   <>
     <div className="modal-header">
-      <div className={'pure-g'}>
-        <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
+      <Grid columns={3}>
+        <Cell width={1}>
           <span className="arangoHeader">{title}</span>
-        </div>
-        <div className={'pure-u-16-24 pure-u-md-16-24 pure-u-lg-16-24 pure-u-xl-16-24'}>
+        </Cell>
+        <Cell width={2}>
           {children}
-        </div>
-      </div>
+        </Cell>
+      </Grid>
     </div>
     <hr style={{ marginBottom: 0 }}/>
   </>;

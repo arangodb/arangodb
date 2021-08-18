@@ -3,6 +3,11 @@ import { FormProps, TextState } from "../constants";
 import CaseInput from "./CaseInput";
 import { filter, get, isEmpty, negate } from 'lodash';
 import LocaleInput from "./LocaleInput";
+import { Cell, Grid } from "../../../components/pure-css/grid";
+import Fieldset from "../../../components/pure-css/form/Fieldset";
+import Textbox from "../../../components/pure-css/form/Textbox";
+import Textarea from "../../../components/pure-css/form/Textarea";
+import Checkbox from "../../../components/pure-css/form/Checkbox";
 
 const EdgeNGramInput = ({ state, dispatch }: FormProps) => {
   const updateMinLength = (event: ChangeEvent<HTMLInputElement>) => {
@@ -37,45 +42,26 @@ const EdgeNGramInput = ({ state, dispatch }: FormProps) => {
     });
   };
 
-  return <fieldset>
-    <legend style={{
-      fontSize: '14px',
-      marginBottom: 12,
-      borderBottom: 'none',
-      lineHeight: 'normal',
-      color: 'inherit'
-    }}>
-      Edge N-Gram
-    </legend>
-    <div className={'pure-g'}>
-      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'min'} style={{ cursor: 'default' }}>Minimum N-Gram Length</label>
-        <input id="min" type="number" min={1} placeholder="2" required={true}
-               value={get(formState, ['properties', 'edgeNgram', 'min'], '')} onChange={updateMinLength}
-               style={{
-                 height: 'auto',
-                 width: '90%'
-               }}/>
-      </div>
+  return <Fieldset legend={'Edge N-Gram'}>
+    <Grid>
+      <Cell size={'1-3'}>
+        <Textbox label={'Minimum N-Gram Length'} type={'number'} min={1} placeholder="2" required={true}
+                 value={get(formState, ['properties', 'edgeNgram', 'min'], '')}
+                 onChange={updateMinLength}/>
+      </Cell>
 
-      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'max'} style={{ cursor: 'default' }}>Maximum N-Gram Length</label>
-        <input id="max" type="number" min={1} placeholder="3" required={true}
-               value={get(formState, ['properties', 'edgeNgram', 'max'], '')} onChange={updateMaxLength}
-               style={{
-                 height: 'auto',
-                 width: '90%'
-               }}/>
-      </div>
+      <Cell size={'1-3'}>
+        <Textbox label={'Maximum N-Gram Length'} type={'number'} min={1} placeholder="3" required={true}
+                 value={get(formState, ['properties', 'edgeNgram', 'max'], '')}
+                 onChange={updateMaxLength}/>
+      </Cell>
 
-      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'preserve'} className="pure-checkbox">Preserve Original</label>
-        <input id={'preserve'} type={'checkbox'}
-               checked={get(formState, ['properties', 'edgeNgram', 'preserveOriginal'], false)}
-               onChange={togglePreserve} style={{ width: 'auto' }}/>
-      </div>
-    </div>
-  </fieldset>;
+      <Cell size={'1-3'}>
+        <Checkbox onChange={togglePreserve} label={'Preserve Original'}
+                  checked={get(formState, ['properties', 'edgeNgram', 'preserveOriginal'], false)}/>
+      </Cell>
+    </Grid>
+  </Fieldset>;
 };
 
 const TextForm = ({ state, dispatch }: FormProps) => {
@@ -136,63 +122,48 @@ const TextForm = ({ state, dispatch }: FormProps) => {
     });
   };
 
-  return <div className={'pure-g'}>
-    <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-      <div className={'pure-g'}>
-        <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+  return <Grid>
+    <Cell size={'1-2'}>
+      <Grid>
+        <Cell size={'1'}>
           <LocaleInput formState={formState} dispatch={dispatch}/>
-        </div>
+        </Cell>
 
-        <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-          <label htmlFor={'stemming'} className="pure-checkbox">
-            <input id={'stemming'} type={'checkbox'}
-                   checked={formState.properties.stemming}
-                   onChange={toggleStemming} style={{ width: 'auto' }}/> Stemming
-          </label>
-        </div>
+        <Cell size={'1-2'}>
+          <Checkbox onChange={toggleStemming} label={'Stemming'} inline={true} checked={formState.properties.stemming}/>
+        </Cell>
 
-        <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-          <label htmlFor={'accent'} className="pure-checkbox">
-            <input id={'accent'} type={'checkbox'} checked={formState.properties.accent}
-                   onChange={toggleAccent} style={{ width: 'auto' }}/> Accent
-          </label>
-        </div>
+        <Cell size={'1-2'}>
+          <Checkbox onChange={toggleAccent} label={'Accent'} inline={true} checked={formState.properties.accent}/>
+        </Cell>
 
-        <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+        <Cell size={'1'}>
           <CaseInput state={state} dispatch={dispatch}/>
-        </div>
-      </div>
-    </div>
+        </Cell>
+      </Grid>
+    </Cell>
 
-    <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-      <div className={'pure-g'}>
-        <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <label htmlFor={'stopwordsPath'} style={{ cursor: 'default' }}>Stopwords Path</label>
-          <input id="stopwordsPath" type="text"
-                 value={formState.properties.stopwordsPath}
-                 onChange={updateStopwordsPath}
-                 style={{
-                   height: 'auto',
-                   width: '90%'
-                 }}/>
-        </div>
+    <Cell size={'1-2'}>
+      <Grid>
+        <Cell size={'1'}>
+          <Textbox label={'Stopwords Path'} type={'text'} value={formState.properties.stopwordsPath}
+                   onChange={updateStopwordsPath}/>
+        </Cell>
 
-        <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <label htmlFor={'stopwords'} style={{ cursor: 'default' }}>Stopwords (One per line)</label>
-          <textarea id="stopwords" value={getStopwords()} style={{ width: '90%' }}
-                    onChange={updateStopwords}/>
-        </div>
-      </div>
-    </div>
+        <Cell size={'1'}>
+          <Textarea label={'Stopwords (One per line)'} value={getStopwords()} onChange={updateStopwords}/>
+        </Cell>
+      </Grid>
+    </Cell>
 
-    <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+    <Cell size={'1'}>
       <hr/>
-    </div>
+    </Cell>
 
-    <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+    <Cell size={'1'}>
       <EdgeNGramInput state={state} dispatch={dispatch}/>
-    </div>
-  </div>;
+    </Cell>
+  </Grid>;
 };
 
 export default TextForm;

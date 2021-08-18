@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import Ajv from 'ajv';
 import { FormProps, formSchema, FormState } from "../constants";
 import { isArray } from "lodash";
+import { Cell, Grid } from "../../../components/pure-css/grid";
 
 const ajv = new Ajv({
   allErrors: true,
@@ -35,21 +36,21 @@ const JsonForm = ({ state, dispatch }: FormProps) => {
     }
   };
 
-  return <div className={'pure-g'}>
-    <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+  return <Grid>
+    <Cell size={'1'}>
       <Editor value={state.formState} onChange={changeHandler} mode={'code'} history={true}
               key={state.renderKey}/>
-    </div>
+    </Cell>
     {
       formErrors.length
-        ? <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'} style={{ marginTop: 35 }}>
+        ? <Cell size={'1'} style={{ marginTop: 35 }}>
           <ul style={{ color: 'red' }}>
             {formErrors.map((error, idx) => <li key={idx} style={{ marginBottom: 5 }}>{error}</li>)}
           </ul>
-        </div>
+        </Cell>
         : null
     }
-  </div>;
+  </Grid>;
 };
 
 export default JsonForm;

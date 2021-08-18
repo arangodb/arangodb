@@ -1,6 +1,9 @@
 import { FormProps, GeoOptionsState } from "../constants";
 import React, { ChangeEvent } from "react";
 import { get } from "lodash";
+import { Cell, Grid } from "../../../components/pure-css/grid";
+import Fieldset from "../../../components/pure-css/form/Fieldset";
+import Textbox from "../../../components/pure-css/form/Textbox";
 
 const OptionsInput = ({ state, dispatch }: FormProps) => {
   const updateMaxCells = (event: ChangeEvent<HTMLInputElement>) => {
@@ -35,48 +38,24 @@ const OptionsInput = ({ state, dispatch }: FormProps) => {
 
   const options = (state.formState as GeoOptionsState).properties.options;
 
-  return <fieldset>
-    <legend style={{
-      fontSize: '14px',
-      marginBottom: 12,
-      borderBottom: 'none',
-      lineHeight: 'normal',
-      color: 'inherit'
-    }}>
-      Options
-    </legend>
-    <div className={'pure-g'}>
-      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'maxCells'} style={{ cursor: 'default' }}>Max S2 Cells</label>
-        <input id="maxCells" type="number" placeholder="20"
-               value={get(options, 'maxCells', '')} onChange={updateMaxCells}
-               style={{
-                 height: 'auto',
-                 width: '90%'
-               }}/>
-      </div>
+  return <Fieldset legend={'Options'}>
+    <Grid>
+      <Cell size={'1-3'}>
+        <Textbox label={'Max S2 Cells'} type={'number'} placeholder="20" onChange={updateMaxCells}
+                 value={get(options, 'maxCells', '')}/>
+      </Cell>
 
-      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'minLevel'} style={{ cursor: 'default' }}>Least Precise S2 Level</label>
-        <input id="minLevel" type="number" placeholder="4"
-               value={get(options, 'minLevel', '')} onChange={updateMinLevel}
-               style={{
-                 height: 'auto',
-                 width: '90%'
-               }}/>
-      </div>
+      <Cell size={'1-3'}>
+        <Textbox label={'Least Precise S2 Level'} type={'number'} placeholder="4" onChange={updateMinLevel}
+                 value={get(options, 'minLevel', '')}/>
+      </Cell>
 
-      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'maxLevel'} style={{ cursor: 'default' }}>Most Precise S2 Level</label>
-        <input id="maxLevel" type="number" placeholder="23"
-               value={get(options, 'maxLevel', '')} onChange={updateMaxLevel}
-               style={{
-                 height: 'auto',
-                 width: '90%'
-               }}/>
-      </div>
-    </div>
-  </fieldset>;
+      <Cell size={'1-3'}>
+        <Textbox label={'Most Precise S2 Level'} type={'number'} placeholder="23" onChange={updateMaxLevel}
+                 value={get(options, 'maxLevel', '')}/>
+      </Cell>
+    </Grid>
+  </Fieldset>;
 };
 
 export default OptionsInput;

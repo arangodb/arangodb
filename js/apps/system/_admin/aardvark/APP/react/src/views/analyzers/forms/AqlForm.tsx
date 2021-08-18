@@ -1,5 +1,10 @@
 import React, { ChangeEvent } from "react";
 import { AqlState, FormProps } from "../constants";
+import Checkbox from "../../../components/pure-css/form/Checkbox";
+import RadioGroup from "../../../components/pure-css/form/RadioGroup";
+import Textbox from "../../../components/pure-css/form/Textbox";
+import Textarea from "../../../components/pure-css/form/Textarea";
+import { Cell, Grid } from "../../../components/pure-css/grid";
 
 const AqlForm = ({ state, dispatch }: FormProps) => {
   const updateBatchSize = (event: ChangeEvent<HTMLInputElement>) => {
@@ -64,101 +69,54 @@ const AqlForm = ({ state, dispatch }: FormProps) => {
     });
   };
 
-  const returnTypeProperty = formState.properties.returnType;
+  return <Grid>
+    <Cell size={'1-3'}>
+      <Textarea label={'Query String'} value={formState.properties.queryString} onChange={updateQueryString}
+                rows={4} required={true}/>
+    </Cell>
 
-  return <div className={'pure-g'}>
-    <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-      <label htmlFor={'queryString'} style={{ cursor: 'default' }}>Query String</label>
-      <textarea id="queryString" value={formState.properties.queryString}
-                style={{ width: '90%' }} onChange={updateQueryString} rows={4} required={true}/>
-    </div>
+    <Cell size={'1-3'}>
+      <Grid>
+        <Cell size={'1'}>
+          <Textbox label={'Batch Size'} type={'number'} min={1} placeholder="10" required={true}
+                   value={formState.properties.batchSize} onChange={updateBatchSize}/>
+        </Cell>
+        <Cell size={'1'}>
+          <Textbox label={'Memory Limit'} type={'number'} min={1} max={33554432} placeholder="1048576"
+                   required={true} value={formState.properties.memoryLimit} onChange={updateMemoryLimit}/>
+        </Cell>
+      </Grid>
+    </Cell>
 
-    <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-      <div className={'pure-g'}>
-        <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <label htmlFor={'batchSize'} style={{ cursor: 'default' }}>Batch Size</label>
-          <input id="batchSize" type="number" min={1} placeholder="10" required={true}
-                 value={formState.properties.batchSize} onChange={updateBatchSize}
-                 style={{
-                   height: 'auto',
-                   width: '90%'
-                 }}/>
-        </div>
-        <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <label htmlFor={'memoryLimit'} style={{ cursor: 'default' }}>Memory Limit</label>
-          <input id="memoryLimit" type="number" min={1} max={33554432} placeholder="1048576" required={true}
-                 value={formState.properties.memoryLimit} onChange={updateMemoryLimit}
-                 style={{
-                   height: 'auto',
-                   width: '90%'
-                 }}/>
-        </div>
-      </div>
-    </div>
-
-    <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-      <div className={'pure-g'}>
-        <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-          <label htmlFor={'collapsePositions'} className="pure-checkbox">Collapse Positions</label>
-          <input id={'collapsePositions'} type={'checkbox'}
-                 checked={formState.properties.collapsePositions}
-                 onChange={toggleCollapsePositions} style={{ width: 'auto' }}/>
-        </div>
-        <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-          <label htmlFor={'keepNull'} className="pure-checkbox">Keep Null</label>
-          <input id={'keepNull'} type={'checkbox'}
-                 checked={formState.properties.keepNull}
-                 onChange={toggleKeepNull} style={{ width: 'auto' }}/>
-        </div>
-        <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
-          <fieldset>
-            <legend style={{
-              fontSize: '14px',
-              marginBottom: 12,
-              marginTop: 14,
-              borderBottom: 'none',
-              lineHeight: 'normal',
-              color: 'inherit'
-            }}>
-              Return Type
-            </legend>
-            <div className={'pure-g'}>
-              <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-                <label htmlFor="string" className="pure-radio">
-                  <input type="radio" id="string" name="returnType" value="string" onChange={updateReturnType}
-                         style={{
-                           width: 'auto',
-                           marginBottom: 10
-                         }}
-                         checked={!returnTypeProperty || returnTypeProperty === 'string'}/> String
-                </label>
-              </div>
-              <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-                <label htmlFor="number" className="pure-radio">
-                  <input type="radio" id="number" name="returnType" value="number" onChange={updateReturnType}
-                         style={{
-                           width: 'auto',
-                           marginBottom: 10
-                         }}
-                         checked={returnTypeProperty === 'number'}/> Number
-                </label>
-              </div>
-              <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-                <label htmlFor="bool" className="pure-radio">
-                  <input type="radio" id="bool" name="returnType" value="bool" onChange={updateReturnType}
-                         style={{
-                           width: 'auto',
-                           marginBottom: 10
-                         }}
-                         checked={returnTypeProperty === 'bool'}/> Boolean
-                </label>
-              </div>
-            </div>
-          </fieldset>
-        </div>
-      </div>
-    </div>
-  </div>;
+    <Cell size={'1-3'}>
+      <Grid>
+        <Cell size={'1-2'}>
+          <Checkbox checked={formState.properties.collapsePositions} onChange={toggleCollapsePositions}
+                    id={'collapsePositions'} label={'Collapse Positions'}/>
+        </Cell>
+        <Cell size={'1-2'}>
+          <Checkbox checked={formState.properties.keepNull} onChange={toggleKeepNull} id={'keepNull'}
+                    label={'Keep Null'}/>
+        </Cell>
+        <Cell size={'1'}>
+          <RadioGroup legend={'Return Type'} onChange={updateReturnType} name={'returnType'} items={[
+            {
+              label: 'String',
+              value: 'string'
+            },
+            {
+              label: 'Number',
+              value: 'number'
+            },
+            {
+              label: 'Boolean',
+              value: 'bool'
+            }
+          ]} checked={formState.properties.returnType || 'string'}/>
+        </Cell>
+      </Grid>
+    </Cell>
+  </Grid>;
 };
 
 export default AqlForm;

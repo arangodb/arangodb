@@ -1,15 +1,16 @@
 import React from "react";
 import { FormProps, StemState } from "../constants";
 import LocaleInput from "./LocaleInput";
+import { Cell, Grid } from "../../../components/pure-css/grid";
 
 const StemForm = ({ state, dispatch }: FormProps) => {
   const formState = state.formState as StemState;
 
-  return <div className={'pure-g'}>
-    <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
+  return <Grid>
+    <Cell size={'1-2'}>
       <LocaleInput formState={formState} dispatch={dispatch}/>
-    </div>
-  </div>;
+    </Cell>
+  </Grid>;
 };
 
 export default StemForm;

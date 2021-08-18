@@ -1,5 +1,7 @@
 import React, { ChangeEvent } from "react";
 import { DelimiterState, FormProps } from "../constants";
+import { Cell, Grid } from "../../../components/pure-css/grid";
+import Textbox from "../../../components/pure-css/form/Textbox";
 
 const DelimiterForm = ({ state, dispatch }: FormProps) => {
   const updateDelimiter = (event: ChangeEvent<HTMLInputElement>) => {
@@ -14,23 +16,20 @@ const DelimiterForm = ({ state, dispatch }: FormProps) => {
 
   const formState = state.formState as DelimiterState;
 
-  return <div className={'pure-g'}>
-    <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-      <label htmlFor={'delimiter'} style={{ cursor: 'default' }}>
-        Delimiter (characters to split on)&nbsp;
-        <a target={'_blank'} href={'https://www.arangodb.com/docs/stable/analyzers.html#delimiter'}
-           rel="noreferrer">
-          <i className={'fa fa-question-circle'}/>
-        </a>
-      </label>
-      <input id="delimiter" type="text" placeholder="Delimiting Characters" required={true}
-             value={formState.properties.delimiter} onChange={updateDelimiter}
-             style={{
-               height: 'auto',
-               width: 'auto'
-             }}/>
-    </div>
-  </div>;
+  return <Grid>
+    <Cell size={'1-3'}>
+      <Textbox label={
+        <>
+          Delimiter (characters to split on)&nbsp;
+          <a target={'_blank'} href={'https://www.arangodb.com/docs/stable/analyzers.html#delimiter'}
+             rel="noreferrer">
+            <i className={'fa fa-question-circle'}/>
+          </a>
+        </>
+      } type={'text'} placeholder="Delimiting Characters" required={true} onChange={updateDelimiter}
+               value={formState.properties.delimiter}/>
+    </Cell>
+  </Grid>;
 };
 
 export default DelimiterForm;

@@ -16,6 +16,7 @@ import CopyFromInput from "./forms/CopyFromInput";
 import AqlForm from "./forms/AqlForm";
 import GeoJsonForm from "./forms/GeoJsonForm";
 import GeoPointForm from "./forms/GeoPointForm";
+import { Cell, Grid } from "../../components/pure-css/grid";
 
 declare var arangoHelper: { [key: string]: any };
 
@@ -158,50 +159,50 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
     </button>
     <Modal show={state.show} setShow={(show) => dispatch({ type: show ? 'show' : 'hide' })}>
       <ModalHeader title={'Create Analyzer'}>
-        <div className={'pure-g'}>
-          <div className={'pure-u-16-24 pure-u-md-16-24 pure-u-lg-16-24 pure-u-xl-16-24'}>
+        <Grid>
+          <Cell size={'2-3'}>
             <CopyFromInput analyzers={analyzers} dispatch={dispatch}/>
-          </div>
-          <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
+          </Cell>
+          <Cell size={'1-3'}>
             <button className={'button-info'} onClick={toggleJsonForm} disabled={state.lockJsonForm}
                     style={{
                       float: 'right'
                     }}>
               {state.showJsonForm ? 'Switch to form view' : 'Switch to code view'}
             </button>
-          </div>
-        </div>
+          </Cell>
+        </Grid>
       </ModalHeader>
       <ModalBody>
-        <div className={'pure-g'}>
+        <Grid>
           {
             state.showJsonForm
-              ? <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+              ? <Cell size={'1'}>
                 <JsonForm state={state} dispatch={dispatch}/>
-              </div>
+              </Cell>
               : <>
-                <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+                <Cell size={'1'}>
                   <BaseForm state={state} dispatch={dispatch}/>
-                </div>
-                <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+                </Cell>
+                <Cell size={'1'}>
                   <fieldset>
                     <legend style={{ fontSize: '12pt' }}>Features</legend>
                     <FeatureForm state={state} dispatch={dispatch}/>
                   </fieldset>
-                </div>
+                </Cell>
 
                 {
                   state.formState.type === 'identity' ? null
-                    : <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+                    : <Cell size={'1'}>
                       <fieldset>
                         <legend style={{ fontSize: '12pt' }}>Configuration</legend>
                         {forms[state.formState.type]}
                       </fieldset>
-                    </div>
+                    </Cell>
                 }
               </>
           }
-        </div>
+        </Grid>
       </ModalBody>
       <ModalFooter>
         <button className="button-close" onClick={() => dispatch({ type: 'hide' })}>Close</button>

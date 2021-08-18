@@ -1,5 +1,9 @@
 import React, { ChangeEvent } from "react";
 import { FormProps, NGramState } from "../constants";
+import { Cell, Grid } from "../../../components/pure-css/grid";
+import Textbox from "../../../components/pure-css/form/Textbox";
+import Checkbox from "../../../components/pure-css/form/Checkbox";
+import RadioGroup from "../../../components/pure-css/form/RadioGroup";
 
 const NGramForm = ({ state, dispatch }: FormProps) => {
   const updateMinLength = (event: ChangeEvent<HTMLInputElement>) => {
@@ -64,92 +68,45 @@ const NGramForm = ({ state, dispatch }: FormProps) => {
     });
   };
 
-  return <div className={'pure-g'}>
-      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'min'} style={{ cursor: 'default' }}>Minimum N-Gram Length</label>
-        <input id="min" type="number" min={1} placeholder="2" required={true}
-               value={formState.properties.min} onChange={updateMinLength}
-               style={{
-                 height: 'auto',
-                 width: '90%'
-               }}/>
-      </div>
+  return <Grid>
+    <Cell size={'1-3'}>
+      <Textbox label={'Minimum N-Gram Length'} type={'number'} min={1} placeholder="2" required={true}
+               value={formState.properties.min} onChange={updateMinLength}/>
+    </Cell>
 
-      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'max'} style={{ cursor: 'default' }}>Maximum N-Gram Length</label>
-        <input id="max" type="number" min={1} placeholder="3" required={true}
-               value={formState.properties.max} onChange={updateMaxLength}
-               style={{
-                 height: 'auto',
-                 width: '90%'
-               }}/>
-      </div>
+    <Cell size={'1-3'}>
+      <Textbox label={'Maximum N-Gram Length'} type={'number'} min={1} placeholder="3" required={true}
+               value={formState.properties.max} onChange={updateMaxLength}/>
+    </Cell>
 
-      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'preserve'} className="pure-checkbox">Preserve Original</label>
-        <input id={'preserve'} type={'checkbox'}
-               checked={formState.properties.preserveOriginal}
-               onChange={togglePreserve} style={{ width: 'auto' }}/>
-      </div>
+    <Cell size={'1-3'}>
+      <Checkbox onChange={togglePreserve} label={'Preserve Original'}
+                checked={formState.properties.preserveOriginal}/>
+    </Cell>
 
-      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'startMarker'} style={{ cursor: 'default' }}>Start Marker</label>
-        <input id="startMarker" type="text" placeholder={'^'}
-               value={formState.properties.startMarker}
-               onChange={updateStartMarker}
-               style={{
-                 height: 'auto',
-                 width: '90%'
-               }}/>
-      </div>
+    <Cell size={'1-3'}>
+      <Textbox label={'Start Marker'} type={'text'} placeholder={'^'} value={formState.properties.startMarker}
+               onChange={updateStartMarker}/>
+    </Cell>
 
-      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'endMarker'} style={{ cursor: 'default' }}>End Marker</label>
-        <input id="endMarker" type="text" placeholder={'$'}
-               value={formState.properties.endMarker}
-               onChange={updateEndMarker}
-               style={{
-                 height: 'auto',
-                 width: '90%'
-               }}/>
-      </div>
+    <Cell size={'1-3'}>
+      <Textbox label={'End Marker'} type={'text'} placeholder={'$'} value={formState.properties.endMarker}
+               onChange={updateEndMarker}/>
+    </Cell>
 
-      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <fieldset>
-          <legend style={{
-            fontSize: '14px',
-            marginBottom: 12,
-            borderBottom: 'none',
-            lineHeight: 'normal',
-            color: 'inherit'
-          }}>
-            Stream Type
-          </legend>
-          <div className={'pure-g'}>
-            <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-              <label htmlFor="binary" className="pure-radio">
-                <input type="radio" id="binary" name="streamType" value="binary" onChange={updateStreamType}
-                       style={{
-                         width: 'auto',
-                         marginBottom: 10
-                       }}
-                       checked={!formState.properties.streamType || formState.properties.streamType === 'binary'}/> Binary
-              </label>
-            </div>
-            <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-              <label htmlFor="utf8" className="pure-radio">
-                <input type="radio" id="utf8" name="streamType" value="utf8" onChange={updateStreamType}
-                       style={{
-                         width: 'auto',
-                         marginBottom: 10
-                       }}
-                       checked={formState.properties.streamType === 'utf8'}/> UTF8
-              </label>
-            </div>
-          </div>
-        </fieldset>
-      </div>
-    </div>;
+    <Cell size={'1-3'}>
+      <RadioGroup legend={'Stream Type'} onChange={updateStreamType} name={'streamType'} items={[
+        {
+          label: 'Binary',
+          value: 'binary'
+        },
+        {
+          label: 'UTF8',
+          value: 'utf8'
+        }
+      ]} checked={formState.properties.streamType || 'binary'}/>
+    </Cell>
+  </Grid>;
 };
 
 export default NGramForm;

@@ -1,6 +1,7 @@
 import { FormProps, FormState, validateAndFix } from "../constants";
 import React, { ChangeEvent, useEffect, useState } from "react";
 import { cloneDeep, find, sortBy } from "lodash";
+import { Cell, Grid } from "../../../components/pure-css/grid";
 
 type CopyFromInputProps = {
   analyzers: FormState[];
@@ -42,21 +43,21 @@ const CopyFromInput = ({ analyzers, dispatch }: CopyFromInputProps) => {
     setSelectedAnalyzer(tempSelectedAnalyzer);
   };
 
-  return <div className={'pure-g'}>
-    <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
+  return <Grid>
+    <Cell size={'1-3'}>
       <button className={'button-warning'} onClick={copyFormState}>
         Copy to form
       </button>
-    </div>
-    <div className={'pure-u-16-24 pure-u-md-16-24 pure-u-lg-16-24 pure-u-xl-16-24'}>
+    </Cell>
+    <Cell size={'2-3'}>
       <select value={selectedAnalyzer.name} style={{ width: 'auto' }} onChange={updateSelectedAnalyzer}>
         {
           sortedAnalyzers.map((analyzer, idx) =>
             <option key={idx} value={analyzer.name}>{analyzer.name} ({analyzer.type})</option>)
         }
       </select>
-    </div>
-  </div>;
+    </Cell>
+  </Grid>;
 };
 
 export default CopyFromInput;

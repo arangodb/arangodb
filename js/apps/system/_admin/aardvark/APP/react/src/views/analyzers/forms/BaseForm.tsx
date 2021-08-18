@@ -1,6 +1,9 @@
 import React, { ChangeEvent } from "react";
 import { map } from "lodash";
 import { FormProps, typeNameMap } from "../constants";
+import { Cell, Grid } from "../../../components/pure-css/grid";
+import Textbox from "../../../components/pure-css/form/Textbox";
+import Select from "../../../components/pure-css/form/Select";
 
 const BaseForm = ({ state, dispatch }: FormProps) => {
   const updateName = (event: ChangeEvent<HTMLInputElement>) => {
@@ -23,27 +26,20 @@ const BaseForm = ({ state, dispatch }: FormProps) => {
     });
   };
 
-  return <div className={'pure-g'}>
-    <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-      <label htmlFor={'analyzer-name'} style={{ cursor: 'default' }}>Analyzer Name:</label>
-      <input id="analyzer-name" type="text" placeholder="Analyzer Name" value={state.formState.name}
-             onChange={updateName} required={true} style={{
-        height: 'auto',
-        width: 'auto'
-      }}/>
-    </div>
+  return <Grid>
+    <Cell size={'1-2'}>
+      <Textbox label={'Analyzer Name'} type={'text'} placeholder="Analyzer Name" value={state.formState.name}
+               onChange={updateName} required={true}/>
+    </Cell>
 
-    <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-      <label htmlFor={'analyzer-type'} style={{ cursor: 'default' }}>Analyzer Type:</label>
-      <select id="analyzer-type" value={state.formState.type} style={{ width: 'auto' }}
-              onChange={updateType} required={true}>
+    <Cell size={'1-2'}>
+      <Select label={'Analyzer Type'} value={state.formState.type} onChange={updateType} required={true}>
         {
-          map(typeNameMap, (value, key) => <option key={key}
-                                                             value={key}>{value}</option>)
+          map(typeNameMap, (value, key) => <option key={key} value={key}>{value}</option>)
         }
-      </select>
-    </div>
-  </div>;
+      </Select>
+    </Cell>
+  </Grid>;
 };
 
 export default BaseForm;

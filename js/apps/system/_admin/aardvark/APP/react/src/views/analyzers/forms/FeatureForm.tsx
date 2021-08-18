@@ -1,6 +1,8 @@
 import React, { ChangeEvent } from "react";
 import { clone, pull } from "lodash";
 import { Feature, FormProps } from "../constants";
+import { Cell, Grid } from "../../../components/pure-css/grid";
+import Checkbox from "../../../components/pure-css/form/Checkbox";
 
 const FeatureForm = ({ state, dispatch }: FormProps) => {
   const features = state.formState.features;
@@ -27,28 +29,21 @@ const FeatureForm = ({ state, dispatch }: FormProps) => {
     };
   };
 
-  return <div className={'pure-g'}>
-    <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-      <label htmlFor={'frequency'} className="pure-checkbox">
-        <input id={'frequency'} type={'checkbox'} checked={frequency}
-               onChange={getFeatureToggler('frequency')} style={{ width: 'auto' }}/> Frequency
-      </label>
-    </div>
+  return <Grid>
+    <Cell size={'1-3'}>
+      <Checkbox label={'Frequency'} onChange={getFeatureToggler('frequency')} inline={true}
+                checked={frequency}/>
+    </Cell>
 
-    <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-      <label htmlFor={'norm'} className="pure-checkbox">
-        <input id={'norm'} type={'checkbox'} checked={norm} onChange={getFeatureToggler('norm')}
-               style={{ width: 'auto' }}/> Norm
-      </label>
-    </div>
+    <Cell size={'1-3'}>
+      <Checkbox label={'Norm'} onChange={getFeatureToggler('norm')} inline={true} checked={norm}/>
+    </Cell>
 
-    <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-      <label htmlFor={'position'} className="pure-checkbox">
-        <input id={'position'} type={'checkbox'} checked={position} onChange={getFeatureToggler('position')}
-               style={{ width: 'auto' }}/> Position
-      </label>
-    </div>
-  </div>;
+    <Cell size={'1-3'}>
+      <Checkbox label={'Position'} onChange={getFeatureToggler('position')} inline={true}
+                checked={position}/>
+    </Cell>
+  </Grid>;
 };
 
 export default FeatureForm;

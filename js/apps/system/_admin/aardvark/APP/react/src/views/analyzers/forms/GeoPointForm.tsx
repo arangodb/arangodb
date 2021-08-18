@@ -2,6 +2,8 @@ import React, { ChangeEvent } from "react";
 import { FormProps, GeoPointState } from "../constants";
 import { filter, get, isEmpty, negate } from 'lodash';
 import OptionsInput from "./OptionsInput";
+import { Cell, Grid } from "../../../components/pure-css/grid";
+import Textbox from "../../../components/pure-css/form/Textbox";
 
 const GeoPointForm = ({ state, dispatch }: FormProps) => {
   const updateArray = (event: ChangeEvent<HTMLInputElement>, field: string) => {
@@ -42,29 +44,19 @@ const GeoPointForm = ({ state, dispatch }: FormProps) => {
   const getLatitude = () => getArray(['properties', 'latitude']);
   const getLongitude = () => getArray(['properties', 'longitude']);
 
-  return <div className={'pure-g'}>
-    <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-      <label htmlFor={'latitude'} style={{ cursor: 'default' }}>Latitude Path (One segment per line)</label>
-      <input id="latitude" type="text" value={getLatitude()} onChange={updateLatitude}
-             style={{
-               height: 'auto',
-               width: '90%'
-             }}/>
-    </div>
+  return <Grid>
+    <Cell size={'1-2'}>
+      <Textbox label={'Latitude Path'} type={'text'} value={getLatitude()} onChange={updateLatitude}/>
+    </Cell>
 
-    <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-      <label htmlFor={'longitude'} style={{ cursor: 'default' }}>Longitude Path (One segment per line)</label>
-      <input id="longitude" type="text" value={getLongitude()} onChange={updateLongitude}
-             style={{
-               height: 'auto',
-               width: '90%'
-             }}/>
-    </div>
+    <Cell size={'1-2'}>
+      <Textbox label={'Longitude Path'} type={'text'} value={getLongitude()} onChange={updateLongitude}/>
+    </Cell>
 
-    <div className={'pure-u-1 pure-u-md-1 pure-u-lg-1 pure-u-xl-1'}>
+    <Cell size={'1'}>
       <OptionsInput state={state} dispatch={dispatch}/>
-    </div>
-  </div>;
+    </Cell>
+  </Grid>;
 };
 
 export default GeoPointForm;

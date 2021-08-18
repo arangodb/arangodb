@@ -1,5 +1,6 @@
 import React, { ChangeEvent } from "react";
 import { FormProps } from "../constants";
+import Textbox from "../../../components/pure-css/form/Textbox";
 
 type LocaleInputProps = {
   formState: {
@@ -20,20 +21,15 @@ const LocaleInput = ({ formState, dispatch }: LocaleInputProps) => {
     });
   };
 
-  return <>
-    <label htmlFor={'locale'} style={{ cursor: 'default' }}>
+  return <Textbox label={
+    <>
       Locale&nbsp;
       <a target={'_blank'} href={'https://www.arangodb.com/docs/stable/analyzers.html#stem'} rel="noreferrer">
         <i className={'fa fa-question-circle'}/>
       </a>
-    </label>
-    <input id="locale" type="text" placeholder="language[_COUNTRY][.encoding][@variant]"
-           value={formState.properties.locale} onChange={updateLocale} required={true}
-           style={{
-             height: 'auto',
-             width: '90%'
-           }}/>
-  </>;
+    </>
+  } type={'text'} placeholder="language[_COUNTRY][.encoding][@variant]" value={formState.properties.locale}
+                  onChange={updateLocale} required={true}/>;
 };
 
 export default LocaleInput;

@@ -2,6 +2,8 @@ import React from "react";
 import { FormProps, NormState } from "../constants";
 import CaseInput from "./CaseInput";
 import LocaleInput from "./LocaleInput";
+import { Cell, Grid } from "../../../components/pure-css/grid";
+import Checkbox from "../../../components/pure-css/form/Checkbox";
 
 const NormForm = ({ state, dispatch }: FormProps) => {
   const formState = state.formState as NormState;
@@ -16,23 +18,19 @@ const NormForm = ({ state, dispatch }: FormProps) => {
     });
   };
 
-  return <div className={'pure-g'}>
-      <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-        <LocaleInput formState={formState} dispatch={dispatch}/>
-      </div>
+  return <Grid>
+    <Cell size={'1-2'}>
+      <LocaleInput formState={formState} dispatch={dispatch}/>
+    </Cell>
 
-      <div className={'pure-u-12-24 pure-u-md-12-24 pure-u-lg-12-24 pure-u-xl-12-24'}>
-        <CaseInput state={state} dispatch={dispatch}/>
-      </div>
+    <Cell size={'1-2'}>
+      <CaseInput state={state} dispatch={dispatch}/>
+    </Cell>
 
-      <div className={'pure-u-8-24 pure-u-md-8-24 pure-u-lg-8-24 pure-u-xl-8-24'}>
-        <label htmlFor={'accent'} className="pure-checkbox">
-          <input id={'accent'} type={'checkbox'} checked={formState.properties.accent}
-                 onChange={toggleAccent} style={{ width: 'auto' }}/> Accent
-        </label>
-      </div>
-
-    </div>;
+    <Cell size={'1-3'}>
+      <Checkbox onChange={toggleAccent} label={'Accent'} inline={true} checked={formState.properties.accent}/>
+    </Cell>
+  </Grid>;
 };
 
 export default NormForm;

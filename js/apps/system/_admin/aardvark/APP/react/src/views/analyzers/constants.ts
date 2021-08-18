@@ -18,7 +18,7 @@ export const typeNameMap = {
 type CaseProperty = 'lower' | 'upper' | 'none';
 export type Feature = 'frequency' | 'norm' | 'position';
 type Features = Feature[];
-type Int = number & { __int__: void };
+export type Int = number & { __int__: void };
 export type GeoOptions = {
   maxCells?: Int;
   minLevel?: Int;
@@ -123,7 +123,7 @@ export type GeoPointState = GeoOptionsState & {
   };
 };
 
-type PipelineState = IdentityState
+export type PipelineState = IdentityState
   | DelimiterState
   | StemState
   | NormState
