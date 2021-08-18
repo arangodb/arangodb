@@ -19,7 +19,7 @@ the API is made available.
 @RESTRETURNCODE{200}
 
 @RESTREPLYBODY{date,string,required,}
-ISO 8601 datetime string of when the information was requested
+ISO 8601 datetime string of when the information was requested.
 
 @RESTREPLYBODY{deployment,object,required,}
 An object with at least a `type` attribute, indicating the deployment type.
@@ -36,6 +36,9 @@ There are additional attributes for the number of `agents`, `coordinators`,
 @RESTREPLYBODY{host,object,optional,}
 An object that holds information about the ArangoDB instance as well as the
 host machine. Only set in case of single servers.
+
+@RESTRETURNCODE{404}
+The support info API is turned off.
 
 @EXAMPLES
 
