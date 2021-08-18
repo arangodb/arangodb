@@ -844,6 +844,7 @@ bool KeyGenerator::validateId(char const* key, size_t len, bool extendedNames, s
   // look for split character
   char const* found = static_cast<char const*>(memchr(key, '/', len));
   if (found == nullptr) {
+    split = 0;
     return false;
   }
 
