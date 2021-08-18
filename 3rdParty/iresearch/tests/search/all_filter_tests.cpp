@@ -193,7 +193,7 @@ TEST_P(all_filter_test_case, all_order) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   all_filter_test,
   all_filter_test_case,
   ::testing::Combine(

@@ -1256,9 +1256,12 @@ TEST(concurrent_linked_list_test, concurrent_push) {
   stack list;
   ASSERT_TRUE(list.empty());
 
-  std::vector<std::vector<stack::node_type>> threads_data(
-    THREADS, std::vector<stack::node_type>{ NODES }
-  );
+  std::vector<std::vector<stack::node_type>> threads_data;
+  threads_data.reserve(THREADS);
+  for (size_t i = 0; i < THREADS; ++i) {
+    threads_data.emplace_back(NODES);
+  }
+
   std::vector<std::thread> threads;
   threads.reserve(THREADS);
 

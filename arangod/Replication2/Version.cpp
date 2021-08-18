@@ -64,8 +64,8 @@ auto replication::versionToString(replication::Version version) -> std::string_v
     case Version::TWO:
       return "2";
   }
-  ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      StringUtils::concatT("Unhandled replication version: ",
-                           static_cast<std::underlying_type_t<Version>>(version)));
+  abortOrThrow(TRI_ERROR_INTERNAL,
+               StringUtils::concatT("Unhandled replication version: ",
+                                    static_cast<std::underlying_type_t<Version>>(version)),
+               ADB_HERE);
 }

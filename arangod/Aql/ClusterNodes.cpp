@@ -601,6 +601,7 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
                                            std::move(writableOutputRegisters));
 
   auto executorInfos = SingleRemoteModificationInfos(
+      &engine,
       in, outputNew, outputOld, out, _plan->getAst()->query(), std::move(options),
       collection(), ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors),

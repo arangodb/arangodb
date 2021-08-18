@@ -222,7 +222,7 @@ TEST(ctr_encryption_test, create_header_stream) {
 // --SECTION--                                              encryption_test_case
 // -----------------------------------------------------------------------------
 
-class encryption_test_case : public tests::directory_test_case_base {
+class encryption_test_case : public tests::directory_test_case_base<> {
  protected:
   void assert_ecnrypted_streams(size_t block_size, size_t header_length, size_t buf_size) {
     std::vector<std::string> const data{
@@ -546,7 +546,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   encryption_test,
   encryption_test_case,
   ::testing::Values(
@@ -554,7 +554,7 @@ INSTANTIATE_TEST_CASE_P(
     &tests::fs_directory,
     &tests::mmap_directory
   ),
-  tests::directory_test_case_base::to_string
+  tests::directory_test_case_base<>::to_string
 );
 
 }

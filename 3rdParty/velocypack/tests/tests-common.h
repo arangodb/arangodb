@@ -532,8 +532,6 @@ static void checkBuild(Slice s, ValueType t, ValueLength byteSize) {
   }
 }
 
-#if __cplusplus >= 201703L
-
 template<typename T, typename U>
 bool haveSameOwnership(std::shared_ptr<T> const& left, std::shared_ptr<U> const& right) {
   static thread_local auto owner_less = std::owner_less<void>{};
@@ -545,5 +543,3 @@ inline bool haveSameOwnership(SharedSlice const& leftSlice, SharedSlice const& r
   auto const& right = rightSlice.buffer();
   return haveSameOwnership(left, right);
 }
-
-#endif

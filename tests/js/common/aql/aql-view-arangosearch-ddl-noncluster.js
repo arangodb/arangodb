@@ -1066,7 +1066,7 @@ function IResearchFeatureDDLTestSuite () {
         assertEqual(2, figures.numDocs);
         assertEqual(2, figures.numLiveDocs);
         assertEqual(0, figures.numBufferedDocs);
-        assertEqual(6, figures.numFiles);
+        assertEqual(7, figures.numFiles);
         assertEqual(1, figures.numSegments);
       }
 
@@ -1090,7 +1090,7 @@ function IResearchFeatureDDLTestSuite () {
         assertEqual(2, figures.numDocs);
         assertEqual(1, figures.numLiveDocs);
         assertEqual(0, figures.numBufferedDocs);
-        assertEqual(7, figures.numFiles);
+        assertEqual(8, figures.numFiles);
         assertEqual(1, figures.numSegments);
       }
 
