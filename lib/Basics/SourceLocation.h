@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,31 +17,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "GeneralServer/OperationMode.h"
-#include "RestServer/ConsoleThread.h"
+namespace arangodb::basics {
 
-#include <memory>
-
-namespace arangodb {
-
-class ConsoleFeature final : public application_features::ApplicationFeature {
- public:
-  explicit ConsoleFeature(application_features::ApplicationServer& server);
-
-  void start() override final;
-  void beginShutdown() override final;
-  void unprepare() override final;
-
+// Poor-man's replacement for std::source_location, until we get C++20.
+struct SourceLocation {
  private:
-  OperationMode _operationMode;
-  std::unique_ptr<ConsoleThread> _consoleThread;
+  const char* _file_name;
+  int _line;
+
+ public:
+  SourceLocation() = delete;
+  constexpr SourceLocation(decltype(_file_name) file, decltype(_line) line) noexcept
+      : _file_name(file), _line(line) {}
+
+  [[nodiscard]] constexpr auto file_name() const noexcept -> decltype(_file_name) {
+    return _file_name;
+  }
+  [[nodiscard]] constexpr auto line() const noexcept -> decltype(_line) {
+    return _line;
+  }
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::basics
 
+#define ADB_HERE (::arangodb::basics::SourceLocation(__FILE__, __LINE__))
