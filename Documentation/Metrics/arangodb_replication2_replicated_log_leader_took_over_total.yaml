@@ -1,0 +1,14 @@
+name: arangodb_replication2_replicated_log_leader_took_over_total
+introducedIn: "3.9.0"
+help: |
+  Number of leader takeovers.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Number of times this server took over the leadership of a replicated log
+  since server start.
