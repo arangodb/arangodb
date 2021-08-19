@@ -124,7 +124,7 @@ process(fuerte = "fuertethread") {
       or connectDone:    \* VERIFIED
         if (/\ Len(iocontext) >= 1
             /\ Head(iocontext) \in {"connect", "connectBAD"}) {
-          assert state \in {"Connecting", "Created", "Closed"};
+          assert state \in {"Connecting", "Closed"};
           alarm := "off";
           if (Head(iocontext) = "connect" /\ state = "Connecting") {
             assert active;
@@ -259,7 +259,7 @@ process(cancel = "cancelthread") {
 
 }
 *)
-\* BEGIN TRANSLATION - the hash of the PCal code: PCal-925ea62a5ed7f2fd7841f2836c7d799c
+\* BEGIN TRANSLATION - the hash of the PCal code: PCal-925ea62a5ed7f2fd7841f2836c7d799c (chksum(pcal) = "c5aa3da3" /\ chksum(tla) = "af7613cb")
 VARIABLES state, active, queueSize, alarm, asyncRunning, iocontext, reading, 
           writing, pc, stack
 
@@ -464,12 +464,12 @@ activate == /\ pc["fuertethread"] = "activate"
 connectDone == /\ pc["fuertethread"] = "connectDone"
                /\ IF /\ Len(iocontext) >= 1
                      /\ Head(iocontext) \in {"connect", "connectBAD"}
-                     THEN /\ Assert(state \in {"Connecting", "Created", "Closed"}, 
-                                    "Failure of assertion at line 127, column 11.")
+                     THEN /\ Assert(state \in {"Connecting", "Closed"}, 
+                                    "Failure of assertion at line 128, column 11.")
                           /\ alarm' = "off"
                           /\ IF Head(iocontext) = "connect" /\ state = "Connecting"
                                 THEN /\ Assert(active, 
-                                               "Failure of assertion at line 130, column 13.")
+                                               "Failure of assertion at line 131, column 13.")
                                      /\ iocontext' = Tail(iocontext)
                                      /\ state' = "Connected"
                                      /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "asyncWriteNextRequest",
@@ -492,7 +492,7 @@ writeDone == /\ pc["fuertethread"] = "writeDone"
                    /\ Head(iocontext) \in {"write", "writeBAD"}
                    THEN /\ Assert(/\ state \in {"Connected", "Closed"}
                                   /\ writing, 
-                                  "Failure of assertion at line 145, column 11.")
+                                  "Failure of assertion at line 146, column 11.")
                         /\ writing' = FALSE
                         /\ IF Head(iocontext) = "write" /\ state = "Connected"
                               THEN /\ iocontext' = Tail(iocontext)
@@ -517,7 +517,7 @@ readDone == /\ pc["fuertethread"] = "readDone"
             /\ IF /\ Len(iocontext) >= 1
                   /\ Head(iocontext) \in {"read", "readBAD"}
                   THEN /\ Assert(state \in {"Connected", "Closed"}, 
-                                 "Failure of assertion at line 163, column 11.")
+                                 "Failure of assertion at line 164, column 11.")
                        /\ alarm' = "off"
                        /\ reading' = FALSE
                        /\ IF Head(iocontext) = "read" /\ state = "Connected"
@@ -714,6 +714,6 @@ NoSleepingBarber == /\ NothingForgottenOnQueue
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 21 16:03:16 CEST 2020 by neunhoef
+\* Last modified Thu Aug 19 14:45:44 CEST 2021 by neunhoef
 \* Last modified Wed Jul 22 12:06:32 CEST 2020 by simon
 \* Created Mi 22. Apr 22:46:19 CEST 2020 by neunhoef
