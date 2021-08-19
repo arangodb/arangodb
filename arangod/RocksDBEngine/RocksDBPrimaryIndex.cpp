@@ -298,18 +298,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         _rangeBound(reverse ? _bounds.start() : _bounds.end()) {
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));
-
-    RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(trx);
-    _iterator = mthds->NewIterator(index->columnFamily(), [&](rocksdb::ReadOptions& options) {
-      TRI_ASSERT(options.prefix_same_as_start);
-      // we need to have a pointer to a slice for the upper bound
-      // so we need to assign the slice to an instance variable here
-      if constexpr (reverse) {
-        options.iterate_lower_bound = &_rangeBound;
-      } else {
-        options.iterate_upper_bound = &_rangeBound;
-      }
-    });
   }
 
  public:
