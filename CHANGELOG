@@ -1,6 +1,9 @@
 v3.7.14 (XXXX-XX-XX)
 --------------------
 
+* Fixed an assertion failure in unit tests for fuerte. There was a discrepancy
+  between the code and the associated TLA+ model for fuerte.
+
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented cases
   and numerically unstable behaviour. In particular, the case of the
   intersection of two polygons in which one is an S2LngLatRect is fixed
