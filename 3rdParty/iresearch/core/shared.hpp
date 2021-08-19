@@ -349,6 +349,13 @@
 
 namespace iresearch_absl { }
 namespace iresearch {
+constexpr bool is_big_endian() noexcept {
+#ifdef IRESEARCH_BIG_ENDIAN
+ return true;
+#else
+ return false;
+#endif
+}
 // we are using custom absl namespace (and also prefixed macros names)
 // as absl does not support side-by-side compiling in single project
 // with another target also using another version of absl. So with this custom

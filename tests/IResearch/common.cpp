@@ -177,8 +177,8 @@ struct BoostScorer : public irs::sort {
       // NOOP
     }
 
-    virtual irs::flags const& features() const override {
-      return irs::flags::empty_instance();
+    virtual irs::IndexFeatures features() const override {
+      return irs::IndexFeatures::NONE;
     }
 
     virtual bool less(irs::byte_type const* lhs, irs::byte_type const* rhs) const override {
@@ -244,8 +244,8 @@ struct CustomScorer : public irs::sort {
       // NOOP
     }
 
-    virtual irs::flags const& features() const override {
-      return irs::flags::empty_instance();
+    virtual irs::IndexFeatures features() const override {
+      return irs::IndexFeatures::NONE;
     }
 
     virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override {

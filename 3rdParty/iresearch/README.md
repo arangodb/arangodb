@@ -10,7 +10,7 @@
 -->
 
 # IResearch search engine
-### Version 1.0
+### Version 1.1
 
 ## Table of contents
 - [Overview](#overview)
@@ -59,16 +59,17 @@ A document is actually a collection of indexed/stored fields.
 In order to be processed each field should satisfy at least `IndexedField` or `StoredField` concept.
 
 #### IndexedField concept
-For type `T` to be `IndexedField`, the following conditions have to be satisfied for an object m of type `T`:
+For type `T` to be `IndexedField`, the following conditions have to be satisfied for an object `m` of type `T`:
 
 |Expression|Requires|Effects|
 |----|----|----|
 |`m.name()`|The output type must be convertible to `iresearch::string_ref`|A value uses as a key name.|
 |`m.get_tokens()`|The output type must be convertible to `iresearch::token_stream*`|A token stream uses for populating in invert procedure. If value is `nullptr` field is treated as non-indexed.|
-|`m.features()`|The output type must be convertible to `const iresearch::flags&`|A set of features requested for evaluation during indexing. E.g. it may contain request of processing positions and frequencies. Later the evaluated information can be used during querying.|
+|`m.index_features()`|The output type must be implicitly convertible to `iresearch::IndexFeatures`|A set of features requested for evaluation during indexing. E.g. it may contain request of processing positions and frequencies. Later the evaluated information can be used during querying and scoring.|
+|`m.features()`|The output type must be convertible to `const iresearch::flags&`|A set of user supplied features to be associated with a field. E.g. it may contain request of storing field norms. Later the stored information can be used during querying and scoring.|
 
 #### StoredField concept
-For type `T` to be `StoredField`, the following conditions have to be satisfied for an object m of type `T`:
+For type `T` to be `StoredField`, the following conditions have to be satisfied for an object `m` of type `T`:
 
 |Expression|Requires|Effects|
 |----|----|----|
@@ -218,7 +219,7 @@ via the distributions' package manager: libstemmer
 
 ```bash
 git clone https://github.com/snowballstem/snowball.git
-git reset --hard 5137019d68befd633ce8b1cd48065f41e77ed43e
+git reset --hard adc028f3ae646623bda2f99191fe9dc3287a909b
 mkdir build && cd build
 set PATH=%PATH%;<path-to>/build/Debug
 cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g "Visual studio 12" -Ax64 ..
@@ -238,6 +239,10 @@ point SNOWBALL_ROOT at the source directory to build together with IResearch
 ```bash
 SNOWBALL_ROOT=<path-to-snowball>
 ```
+
+### [VelocyPack](https://github.com/arangodb/velocypack)
+
+point VPACK_ROOT at the source directory to build together with IResearch
 
 ### [BFD](https://sourceware.org/binutils/) <optional>
 
@@ -435,6 +440,9 @@ matching of words from languages not supported by 'snowball' are done verbatim
 ### [Google Test](https://code.google.com/p/googletest)
 used for writing tests for the IResearch library
 
+### [VelocyPack](https://github.com/arangodb/velocypack)
+used for JSON serialization/deserialization
+
 ### Stopword list
 used by analysis::text_analyzer for filtering out noise words that should not impact text ranging
 e.g. for 'en' these are usualy 'a', 'the', etc...
@@ -458,6 +466,7 @@ the first whitespace is ignored), in the directory corresponding to its language
 |iresearch::by_range|for filtering of values within a given range, with the possibility of specifying open/closed ranges
 |iresearch::by_same_position|for term-insertion-order sensitive filtering of exact values
 |iresearch::by_term|for filtering of exact values
+|iresearch::by_terms|for filtering of exact values by a set of specified terms 
 |iresearch::by_wildcard|for filtering of values based on matching pattern
 |iresearch::And|boolean conjunction of multiple filters, influencing document ranks/scores as appropriate
 |iresearch::Or|boolean disjunction of multiple filters, influencing document ranks/scores as appropriate (including "minimum match" functionality)
@@ -578,7 +587,7 @@ The following grammar is currently defined via Bison (the root is <query>):
 - Apple Clang: 9
 
 ## License
-Copyright (c) 2017-2020 ArangoDB GmbH
+Copyright (c) 2017-2021 ArangoDB GmbH
 
 Copyright (c) 2016-2017 EMC Corporation
 

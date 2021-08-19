@@ -132,7 +132,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
     return;
   }
 
-  irs::flags features;
+  Features features;
 
   if (body.hasKey(StaticStrings::AnalyzerFeaturesField)) { // optional parameter
     auto featuresSlice = body.get(StaticStrings::AnalyzerFeaturesField);
@@ -153,9 +153,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
           return;
         }
 
-        const auto feature = irs::attributes::get(getStringRef(value), false);
-
-        if (!feature) {
+        if (!features.add(value.stringView())) {
           generateError(arangodb::Result(
             TRI_ERROR_BAD_PARAMETER,
             "unknown value in 'features', expecting body to be of the form { name: <string>, type: <string>[, properties: <object>[, features: <string-array>]] }"
@@ -163,8 +161,6 @@ void RestAnalyzerHandler::createAnalyzer( // create
 
           return;
         }
-
-        features.add(feature.id());
       }
     } else {
       generateError(arangodb::Result(

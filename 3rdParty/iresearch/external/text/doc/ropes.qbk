@@ -1,0 +1,170 @@
+[/ Copyright (C) 2020 T. Zachary Laine
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+[section A Bit About Ropes]
+
+In general, a _Rope_ is a heavyweight string; whereas a string is a simple
+array of contiguous storage, a _Rope_ is much more complicated and is
+typically a tree whose leaves are contiguous strings.
+
+_Text_ has three rope types: _segv_, _ur_, and _r_.  _segv_ is not a proper
+rope, in that it is intended for non-character element types.  _r_ is part of
+the _Text_'s _t_ layer, and so deals with Unicode quite a bit.  To keep things
+simple, the discussion below sticks to _ur_.  Everything described there
+applies to _segv_ and _r_ too, of course.
+
+The user's view of _Text_'s _ur_ is that it is a string that is inexpensive to
+insert into at any point -- even the middle or front -- no matter how large it
+is.  In addition, substrings within the _ur_ have copy-on-write semantics.
+This means that often a copy of a very large _ur_ is nearly free, and that a
+mutated copy of a _ur_ often shares much of its data with the _ur_ from which
+it was copied.
+
+_ur_'s implementation uses a tree structure similar to a B-tree, and each
+subtree is copy-on-write.  The tree consists of interior nodes that contain
+structural information, and leaf nodes which contain the data.  _ur_ only
+contains a single pointer to a root node.  Here is one of the simplest
+nonempty _urs_ you can have:
+
+[$../../doc/rope_text_leaf.svg]
+
+This _ur_ is just a single leaf node, containing the super-useful string
+`"text"`.  In this case, the leaf was a _s_ node, labeled here with `s`.
+There can also be nodes that are references to _s_ nodes, labeled as `ref`.
+More on that in a bit.
+
+If we copy the _ur_ above, we get something like this:
+
+[$../../doc/rope_text_leaf_extra_ref.svg]
+
+No copying was done, nor allocations performed.  Copying an entire tree only
+requires copying a pointer and incrementing a reference count.  The string in
+this _s_ leaf is only four elements, but let's suppose it was megabytes
+instead.  Inserting even a small sequence near the beginning of the string
+would be costly, since we'd have to copy all the elements after the insertion
+point.  And since the _s_ leaf may be shared, we would have to copy everything
+/before/ the insertion, too!  For large _s_ leaves, insertions into them
+result in something like this:
+
+[$../../doc/rope_text_refs_after_insert.svg]
+
+[note This is *not* what actually happens to small _s_ leaves with a reference
+count of 1!  Those are mutated in place.]
+
+Here, we see that we've made two new reference nodes, each of which refers to
+part of the original _s_, and we've put the inserted string in between,
+forming `"text text"`, the *best* string.
+
+And now we see our first interior node.  Each interior node has a key and a
+pointer for each child, and a fixed maximum number of children.  Each key `Ki`
+is the cumulative size of all children in the range `[0, i]`.
+
+To make the images smaller, each interior node in these diagrams has a maximum
+of four children (the actual number is an implementation detail, but it's a
+lot higher).
+
+Now let's take a look at a more complicated _ur_:
+
+[$../../doc/rope_tree_structure.svg]
+
+In this tree, we have three interior nodes: the root and its two children.  We
+also have at least one of each type of leaf node.
+
+Copying even this _ur_ is very cheap, requiring only copying a pointer and
+incriminating a reference count:
+
+[$../../doc/rope_copy_add_ref.svg]
+
+Let's say we wanted to erase part of this _ur_.  We'll erase a substring that
+matches a whole leaf exactly, to keep things simpler.  Let's erase the `ref`
+node on the left:
+
+[$../../doc/rope_erase.svg]
+
+Simple, right?  In this case, we did the erasure by creating a copy of each
+node on the path from the root to the erased `ref` leaf, and just referring to
+all the other nodes that did not change.  Again, most of the string data and
+even interior nodes are shared among the three ropes in the diagram.  This
+same principle applies to `insert()`, `erase()`, and `replace()`.
+
+[note We don't make new nodes every time we need to do an insert, erase, or
+other mutation.  If the reference counts on the root-to-leaf path are all `1`,
+we will mutate the tree in place.]
+
+Besides the segmented nature of _ur_, there are some other properties you need
+to know about.  A _ur_ as a whole is copy-on-write; it is also therefore
+thread-safe for reading and writing; it is not null-terminated.
+
+Insertions, erasures, and indexing each happen in `O(log_B(N))` time, where B
+is the branching factor (maximum number of children per interior node).  As
+mentioned before, B is an implementation detail, and thus subject to change,
+but it is unlikely to be less than 16.  That means very little pointer chasing
+is required to access an arbitrary element of a _ur_, because its tree is very
+shallow.
+
+In fact, with a branching factor of 16, the maximum depth of the tree is also
+16, since the `max_size()` of the tree is `PTRDIFF_MAX`.  This means that
+`O(log_B(N))` time has a fixed upper bound, making it `O(1)`!
+
+As mentioned previously, mutations to a _ur_ are done in-place if the mutations
+do not affect nodes that are shared with other _urs_.
+
+If a mutation can be done in place, and the point of mutation falls within a
+_s_ leaf, the _s_ object is directly mutated if: the inserted string fits
+within the `capacity()` of the _s_, *or*
+
+* the _s_ object is not too large (there is a maximum size that is an
+  implementation detail, but is likely to be hundreds or thousands, not tens
+  or tens of thousands), *and*
+
+* the inserted object would cause an allocation if copied (i.e. it is a
+  _s_).
+
+[important One more thing.  _urs_ are meant to be passed by value.  In
+particular, their thread-safety guarantees might not be fulfilled if they are
+*not* passed by value across thread boundaries.  If you do not care about
+thread-safe use of _ur_, you can pass _urs_ by `const &` at thread boundaries
+if you like.  If you care about thread-safety, *always* pass them by value at
+thread boundaries!]
+
+_ur_ contains logic like the pseudocode below to determine when to create a
+partial copy of a _ur_'s tree, or when to mutate the tree in-place when
+performing inserts or erases on a _ur_:
+
+    path = find_path_from_root_to_mutation_point()
+    in_place = true
+    for (node : path)
+        if (node.references() == 1)
+            in_place = false
+
+Let's call the _ur_ `R`, and the thread on which the operation is being
+performed `T`.  Also, assume that all references to `R`'s root node exist in
+copies of `R`, and no reference (C++ reference/pointer) to `R` or any of its
+copies exists.
+
+With this assumption, we know at the end of the pseudocode `for` loop above,
+that there is still exactly one reference to each node in `path`.  For this
+not to be true, we would need to either:
+
+# Create a copy of one of the nodes on thread `T`.  Clearly we cannot, since
+  we're currently executing `insert()` or `erase()` instead.
+
+# Create a copy of one of the nodes on a thread other than `T`.  We can't do
+  this either, since we have no reference to `R` that can be used by another
+  thread, and we know that there are no other copies on any other threads
+  either _emdash_ since each node's reference count is `1`.
+
+Were we to write references/pointers to `R` into our code, a thread other than
+`T` could create a copy of `R` between when we read the reference count of one
+of its nodes, and when we decided to mutate `R` in place or not.
+
+[important Therefore, if you care about using _urs_ in a thread-safe manner,
+always pass them by value across thread boundaries.]
+
+[note A major use case for _urs_ is for building undo/redo systems for text
+editing that are simple and performant.  See the example in the _seg_vec_docs_
+for details _emdash_ just imagine _urs_ instead of `segmented_vector<int>`s.]
+
+[endsect]

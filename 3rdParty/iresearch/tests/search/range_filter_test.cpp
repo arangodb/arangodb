@@ -1282,7 +1282,7 @@ TEST_P(range_filter_test_case, visit) {
   visitor.reset();
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   range_filter_test,
   range_filter_test_case,
   ::testing::Combine(

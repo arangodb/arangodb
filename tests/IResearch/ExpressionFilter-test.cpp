@@ -164,8 +164,8 @@ struct custom_sort : public irs::sort {
       }
     }
 
-    virtual const iresearch::flags& features() const override {
-      return iresearch::flags::empty_instance();
+    virtual irs::IndexFeatures features() const override {
+      return irs::IndexFeatures::NONE;
     }
 
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
