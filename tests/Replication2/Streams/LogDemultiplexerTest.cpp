@@ -78,6 +78,7 @@ TEST_F(LogDemuxTest, leader_follower_test) {
 
   auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
   auto demux = LogDemultiplexer<MyTestSpecification>::construct(follower);
+  demux->listen();
 
   auto leaderStreamA = mux->getStreamBaseById<my_int_stream_id>();
   auto leaderStreamB = mux->getStreamBaseById<my_string_stream_id>();
@@ -102,10 +103,6 @@ TEST_F(LogDemuxTest, leader_follower_test) {
 
   auto futureA = followerStreamA->waitFor(LogIndex{2});
   auto futureB = followerStreamB->waitFor(LogIndex{1});
-  ASSERT_FALSE(futureA.isReady());
-  ASSERT_FALSE(futureB.isReady());
-
-  demux->listen();
   ASSERT_TRUE(futureA.isReady());
   ASSERT_TRUE(futureB.isReady());
 
