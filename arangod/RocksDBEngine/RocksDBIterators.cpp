@@ -28,7 +28,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -182,15 +182,14 @@ void RocksDBAllIndexIterator::ensureIterator() {
   if (_iterator == nullptr) {
     // acquire rocksdb transaction
     auto* mthds = RocksDBTransactionState::toMethods(_trx);
-
-    rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
-    TRI_ASSERT(ro.snapshot != nullptr);
-    TRI_ASSERT(ro.prefix_same_as_start);
-    ro.verify_checksums = false;  // TODO evaluate
-    ro.iterate_upper_bound = &_upperBound;
-    // options.readahead_size = 4 * 1024 * 1024;
-
-    _iterator = mthds->NewIterator(ro, _bounds.columnFamily());
+    
+    _iterator = mthds->NewIterator(_bounds.columnFamily(), [&](rocksdb::ReadOptions& ro) {
+      TRI_ASSERT(ro.snapshot != nullptr);
+      TRI_ASSERT(ro.prefix_same_as_start);
+      ro.verify_checksums = false;  // TODO evaluate
+      ro.iterate_upper_bound = &_upperBound;
+      // ro.readahead_size = 4 * 1024 * 1024;
+    });
   }
 
   TRI_ASSERT(_iterator != nullptr);
@@ -212,12 +211,12 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
       _total(0),
       _returned(0) {
   auto* mthds = RocksDBTransactionState::toMethods(trx);
-  auto options = mthds->iteratorReadOptions();
-  TRI_ASSERT(options.snapshot != nullptr);
-  TRI_ASSERT(options.prefix_same_as_start);
-  options.fill_cache = AnyIteratorFillBlockCache;
-  options.verify_checksums = false;  // TODO evaluate
-  _iterator = mthds->NewIterator(options, _bounds.columnFamily());
+  _iterator = mthds->NewIterator(_bounds.columnFamily(), [](rocksdb::ReadOptions& options) {
+    TRI_ASSERT(options.snapshot != nullptr);
+    TRI_ASSERT(options.prefix_same_as_start);
+    options.fill_cache = AnyIteratorFillBlockCache;
+    options.verify_checksums = false;  // TODO evaluate
+  });
   TRI_ASSERT(_iterator != nullptr);
   if (_iterator == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBAnyIndexIterator");
@@ -248,38 +247,20 @@ bool RocksDBAnyIndexIterator::checkIter() {
 }
 
 bool RocksDBAnyIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t limit) {
-  TRI_ASSERT(_trx->state()->isRunning());
-
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
-    // No limit no data, or we are actually done. The last call should have
-    // returned false
-    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-    // validate that Iterator is in a good shape and hasn't failed
-    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-    return false;
-  }
-
-  while (limit > 0) {
+  return doNext(limit, [this, &cb]() {
     cb(RocksDBKey::documentId(_iterator->key()));
-    --limit;
-    _returned++;
-    _iterator->Next();
-    if (!_iterator->Valid() || outOfRange()) {
-      // validate that Iterator is in a good shape and hasn't failed
-      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
-
-      if (_returned < _total) {
-        _iterator->Seek(_bounds.start());
-        continue;
-      }
-      return false;
-    }
-  }
-  return true;
+  });
 }
 
 bool RocksDBAnyIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback const& cb,
                                                size_t limit) {
+  return doNext(limit, [this, &cb]() {
+    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
+  });
+}
+                                                 
+template <typename Func>
+bool RocksDBAnyIndexIterator::doNext(size_t limit, Func const& func) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -292,7 +273,7 @@ bool RocksDBAnyIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback c
   }
 
   while (limit > 0) {
-    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
+    func();
     --limit;
     _returned++;
     _iterator->Next();

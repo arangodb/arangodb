@@ -20,8 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_RESTSERVER_RESTARTACTION_H
-#define ARANGOD_RESTSERVER_RESTARTACTION_H
+#pragma once
 
 #include <functional>
 
@@ -30,5 +29,3 @@ namespace arangodb {
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 extern std::function<int()>* restartAction;
 }  // namespace arangodb
-
-#endif  // ARANGOD_RESTSERVER_RESTARTACTION_H

@@ -43,10 +43,10 @@ void abortTransactions(LogicalCollection& coll) {
   }
 
   bool didWork = mgr->abortManagedTrx(
-      [&coll](TransactionState const& state, std::string const & /*user*/) -> bool {
+      [&coll](TransactionState const& state, std::string const& /*user*/) -> bool {
     TransactionCollection* tcoll = state.collection(coll.id(), AccessMode::Type::NONE);
-        return tcoll != nullptr;
-      });
+    return tcoll != nullptr;
+  });
 
   LOG_TOPIC_IF("7eda2", INFO, Logger::TRANSACTIONS, didWork) 
       << "aborted leader transactions on shard " << coll.id() << "'";
@@ -58,7 +58,7 @@ void abortLeaderTransactionsOnShard(DataSourceId cid) {
   TRI_ASSERT(mgr != nullptr);
 
   bool didWork = mgr->abortManagedTrx(
-      [cid](TransactionState const& state, std::string const & /*user*/) -> bool {
+      [cid](TransactionState const& state, std::string const& /*user*/) -> bool {
         if (state.id().isLeaderTransactionId()) {
           TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
           return tcoll != nullptr;
@@ -76,7 +76,7 @@ void abortFollowerTransactionsOnShard(DataSourceId cid) {
   TRI_ASSERT(mgr != nullptr);
 
   bool didWork = mgr->abortManagedTrx(
-      [cid](TransactionState const& state, std::string const & /*user*/) -> bool {
+      [cid](TransactionState const& state, std::string const& /*user*/) -> bool {
         if (state.id().isFollowerTransactionId()) {
           TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
           return tcoll != nullptr;
@@ -120,7 +120,7 @@ void abortTransactionsWithFailedServers(ClusterInfo& ci) {
     
     // abort all transaction started by a certain coordinator
     didWork = mgr->abortManagedTrx(
-        [&](TransactionState const& state, std::string const & /*user*/) -> bool {
+        [&](TransactionState const& state, std::string const& /*user*/) -> bool {
           uint32_t serverId = state.id().serverId();
           if (serverId != 0) {
             ServerID coordId = ci.getCoordinatorByShortID(serverId);

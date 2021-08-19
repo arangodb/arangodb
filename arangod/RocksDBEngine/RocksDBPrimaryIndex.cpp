@@ -39,7 +39,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
@@ -294,16 +294,22 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         _cmp(index->comparator()),
         _mustSeek(true),
         _mustCheckBounds(RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds()),
-        _bounds(std::move(bounds)) {
+        _bounds(std::move(bounds)),
+        _rangeBound(reverse ? _bounds.start() : _bounds.end()) {
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));
-    
-    // determine the bounds once and for all
-    if constexpr (reverse) {
-      _rangeBound = _bounds.start();
-    } else {
-      _rangeBound = _bounds.end();
-    }
+
+    RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(trx);
+    _iterator = mthds->NewIterator(index->columnFamily(), [&](rocksdb::ReadOptions& options) {
+      TRI_ASSERT(options.prefix_same_as_start);
+      // we need to have a pointer to a slice for the upper bound
+      // so we need to assign the slice to an instance variable here
+      if constexpr (reverse) {
+        options.iterate_lower_bound = &_rangeBound;
+      } else {
+        options.iterate_upper_bound = &_rangeBound;
+      }
+    });
   }
 
  public:
@@ -448,18 +454,18 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
  private:
   void ensureIterator() {
     if (_iterator == nullptr) {
-      RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
-      rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-      // we need to have a pointer to a slice for the upper bound
-      // so we need to assign the slice to an instance variable here
-      if constexpr (reverse) {
-        options.iterate_lower_bound = &_rangeBound;
-      } else {
-        options.iterate_upper_bound = &_rangeBound;
-      }
-
-      TRI_ASSERT(options.prefix_same_as_start);
-      _iterator = mthds->NewIterator(options, _index->columnFamily());
+      auto state = RocksDBTransactionState::toState(_trx);
+      RocksDBTransactionMethods* mthds = state->rocksdbMethods();
+      _iterator = mthds->NewIterator(_index->columnFamily(), [&](rocksdb::ReadOptions& options) {
+        TRI_ASSERT(options.prefix_same_as_start);
+        // we need to have a pointer to a slice for the upper bound
+        // so we need to assign the slice to an instance variable here
+        if constexpr (reverse) {
+          options.iterate_lower_bound = &_rangeBound;
+        } else {
+          options.iterate_upper_bound = &_rangeBound;
+        }
+      });
     }
   
     TRI_ASSERT(_iterator != nullptr);
