@@ -1,6 +1,6 @@
 import React, { useReducer } from 'react';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
-import { cloneDeep, merge, set, uniqueId, unset } from 'lodash';
+import { cloneDeep, get, merge, set, uniqueId, unset } from 'lodash';
 import JsonForm from "./forms/JsonForm";
 import FeatureForm from "./forms/FeatureForm";
 import DelimiterForm from "./forms/DelimiterForm";
@@ -11,12 +11,13 @@ import BaseForm from "./forms/BaseForm";
 import TextForm from "./forms/TextForm";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
-import { DispatchArgs, FormState, State, validateAndFix } from "./constants";
+import { DispatchArgs, FormState, State } from "./constants";
 import CopyFromInput from "./forms/inputs/CopyFromInput";
 import AqlForm from "./forms/AqlForm";
 import GeoJsonForm from "./forms/GeoJsonForm";
 import GeoPointForm from "./forms/GeoPointForm";
 import { Cell, Grid } from "../../components/pure-css/grid";
+import { getPath, validateAndFix } from "./helpers";
 
 declare var arangoHelper: { [key: string]: any };
 
@@ -72,24 +73,34 @@ const reducer = (state: State, action: DispatchArgs): State => {
 
     case 'setField':
       if (action.field && action.field.value !== undefined) {
-        set(newState.formCache, action.field.path, action.field.value);
+        const path = getPath(action.basePath, action.field.path);
+
+        set(newState.formCache, path, action.field.value);
 
         if (action.field.path === 'type') {
-          const tempFormState = cloneDeep(newState.formCache);
-          validateAndFix(tempFormState);
-          newState.formState = tempFormState as FormState;
+          if (action.basePath) {
+            const tempFormState = cloneDeep(get(newState.formCache, action.basePath));
+            validateAndFix(tempFormState);
+            set(newState.formState, action.basePath, tempFormState);
+          } else {
+            const tempFormState = cloneDeep(newState.formCache);
+            validateAndFix(tempFormState);
+            newState.formState = tempFormState as FormState;
+          }
 
           merge(newState.formCache, newState.formState);
         } else {
-          set(newState.formState, action.field.path, action.field.value);
+          set(newState.formState, path, action.field.value);
         }
       }
       break;
 
     case 'unsetField':
       if (action.field) {
-        unset(newState.formState, action.field.path);
-        unset(newState.formCache, action.field.path);
+        const path = getPath(action.basePath, action.field.path);
+
+        unset(newState.formState, path);
+        unset(newState.formCache, path);
       }
       break;
 
@@ -114,9 +125,11 @@ interface AddAnalyzerProps {
 const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  const formState = state.formState;
+
   const handleAdd = async () => {
     try {
-      const result = await getApiRouteForCurrentDB().post('/analyzer/', state.formState);
+      const result = await getApiRouteForCurrentDB().post('/analyzer/', formState);
 
       if (result.body.error) {
         arangoHelper.arangoError('Failure', `Got unexpected server response: ${result.body.errorMessage}`);
@@ -137,14 +150,14 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
 
   const forms = {
     identity: null,
-    delimiter: <DelimiterForm state={state} dispatch={dispatch}/>,
-    stem: <StemForm state={state} dispatch={dispatch}/>,
-    norm: <NormForm state={state} dispatch={dispatch}/>,
-    ngram: <NGramForm state={state} dispatch={dispatch}/>,
-    text: <TextForm state={state} dispatch={dispatch}/>,
-    aql: <AqlForm state={state} dispatch={dispatch}/>,
-    geojson: <GeoJsonForm state={state} dispatch={dispatch}/>,
-    geopoint: <GeoPointForm state={state} dispatch={dispatch}/>,
+    delimiter: <DelimiterForm formState={formState} dispatch={dispatch}/>,
+    stem: <StemForm formState={formState} dispatch={dispatch}/>,
+    norm: <NormForm formState={formState} dispatch={dispatch}/>,
+    ngram: <NGramForm formState={formState} dispatch={dispatch}/>,
+    text: <TextForm formState={formState} dispatch={dispatch}/>,
+    aql: <AqlForm formState={formState} dispatch={dispatch}/>,
+    geojson: <GeoJsonForm formState={formState} dispatch={dispatch}/>,
+    geopoint: <GeoPointForm formState={formState} dispatch={dispatch}/>,
     pipeline: 'Pipeline'
   };
 
@@ -157,7 +170,8 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
     }}>
       <i className="fa fa-plus-circle"/> Add Analyzer
     </button>
-    <Modal show={state.show} setShow={(show) => dispatch({ type: show ? 'show' : 'hide' })}>
+    <Modal show={state.show} setShow={(show) => dispatch({ type: show ? 'show' : 'hide' })}
+           key={analyzers.length}>
       <ModalHeader title={'Create Analyzer'}>
         <Grid>
           <Cell size={'2-3'}>
@@ -178,25 +192,25 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
           {
             state.showJsonForm
               ? <Cell size={'1'}>
-                <JsonForm state={state} dispatch={dispatch}/>
+                <JsonForm formState={formState} dispatch={dispatch} renderKey={state.renderKey}/>
               </Cell>
               : <>
                 <Cell size={'1'}>
-                  <BaseForm state={state} dispatch={dispatch}/>
+                  <BaseForm formState={formState} dispatch={dispatch}/>
                 </Cell>
                 <Cell size={'1'}>
                   <fieldset>
                     <legend style={{ fontSize: '12pt' }}>Features</legend>
-                    <FeatureForm state={state} dispatch={dispatch}/>
+                    <FeatureForm formState={formState} dispatch={dispatch}/>
                   </fieldset>
                 </Cell>
 
                 {
-                  state.formState.type === 'identity' ? null
+                  formState.type === 'identity' ? null
                     : <Cell size={'1'}>
                       <fieldset>
                         <legend style={{ fontSize: '12pt' }}>Configuration</legend>
-                        {forms[state.formState.type]}
+                        {forms[formState.type]}
                       </fieldset>
                     </Cell>
                 }

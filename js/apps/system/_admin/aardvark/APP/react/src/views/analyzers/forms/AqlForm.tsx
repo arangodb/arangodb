@@ -6,14 +6,15 @@ import Textbox from "../../../components/pure-css/form/Textbox";
 import Textarea from "../../../components/pure-css/form/Textarea";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 
-const AqlForm = ({ state, dispatch, disabled }: FormProps) => {
+const AqlForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
   const updateBatchSize = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
       field: {
         path: 'properties.batchSize',
         value: parseInt(event.target.value)
-      }
+      },
+      basePath
     });
   };
 
@@ -23,7 +24,8 @@ const AqlForm = ({ state, dispatch, disabled }: FormProps) => {
       field: {
         path: 'properties.memoryLimit',
         value: parseInt(event.target.value)
-      }
+      },
+      basePath
     });
   };
 
@@ -33,7 +35,8 @@ const AqlForm = ({ state, dispatch, disabled }: FormProps) => {
       field: {
         path: 'properties.queryString',
         value: event.target.value
-      }
+      },
+      basePath
     });
   };
 
@@ -43,35 +46,38 @@ const AqlForm = ({ state, dispatch, disabled }: FormProps) => {
       field: {
         path: 'properties.returnType',
         value: event.target.value
-      }
+      },
+      basePath
     });
   };
 
-  const formState = state.formState as AqlState;
-
-  const toggleCollapsePositions = () => {
+  const updateCollapsePositions = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
       field: {
         path: 'properties.collapsePositions',
-        value: !formState.properties.collapsePositions
-      }
+        value: event.target.checked
+      },
+      basePath
     });
   };
 
-  const toggleKeepNull = () => {
+  const updateKeepNull = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
       field: {
         path: 'properties.keepNull',
-        value: !formState.properties.keepNull
-      }
+        value: event.target.checked
+      },
+      basePath
     });
   };
 
+  const aqlFormState = formState as AqlState;
+
   return <Grid>
     <Cell size={'1-3'}>
-      <Textarea label={'Query String'} value={formState.properties.queryString} onChange={updateQueryString}
+      <Textarea label={'Query String'} value={aqlFormState.properties.queryString} onChange={updateQueryString}
                 rows={4} required={true} disabled={disabled}/>
     </Cell>
 
@@ -79,11 +85,11 @@ const AqlForm = ({ state, dispatch, disabled }: FormProps) => {
       <Grid>
         <Cell size={'1'}>
           <Textbox label={'Batch Size'} type={'number'} min={1} placeholder="10" required={true}
-                   value={formState.properties.batchSize} onChange={updateBatchSize} disabled={disabled}/>
+                   value={aqlFormState.properties.batchSize} onChange={updateBatchSize} disabled={disabled}/>
         </Cell>
         <Cell size={'1'}>
           <Textbox label={'Memory Limit'} type={'number'} min={1} max={33554432} placeholder="1048576"
-                   required={true} value={formState.properties.memoryLimit} onChange={updateMemoryLimit}
+                   required={true} value={aqlFormState.properties.memoryLimit} onChange={updateMemoryLimit}
                    disabled={disabled}/>
         </Cell>
       </Grid>
@@ -92,11 +98,11 @@ const AqlForm = ({ state, dispatch, disabled }: FormProps) => {
     <Cell size={'1-3'}>
       <Grid>
         <Cell size={'1-2'}>
-          <Checkbox checked={formState.properties.collapsePositions} onChange={toggleCollapsePositions}
+          <Checkbox checked={aqlFormState.properties.collapsePositions} onChange={updateCollapsePositions}
                     label={'Collapse Positions'} disabled={disabled}/>
         </Cell>
         <Cell size={'1-2'}>
-          <Checkbox checked={formState.properties.keepNull} onChange={toggleKeepNull} disabled={disabled}
+          <Checkbox checked={aqlFormState.properties.keepNull} onChange={updateKeepNull} disabled={disabled}
                     label={'Keep Null'}/>
         </Cell>
         <Cell size={'1'}>
@@ -113,7 +119,7 @@ const AqlForm = ({ state, dispatch, disabled }: FormProps) => {
               label: 'Boolean',
               value: 'bool'
             }
-          ]} checked={formState.properties.returnType || 'string'} disabled={disabled}/>
+          ]} checked={aqlFormState.properties.returnType || 'string'} disabled={disabled}/>
         </Cell>
       </Grid>
     </Cell>

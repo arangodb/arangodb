@@ -4,8 +4,8 @@ import { Feature, FormProps } from "../constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Checkbox from "../../../components/pure-css/form/Checkbox";
 
-const FeatureForm = ({ state, dispatch, disabled }: FormProps) => {
-  const features = state.formState.features;
+const FeatureForm = ({ formState, dispatch, disabled }: FormProps) => {
+  const features = formState.features;
   const frequency = features.includes('frequency');
   const norm = features.includes('norm');
   const position = features.includes('position');

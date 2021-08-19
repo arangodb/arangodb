@@ -3,18 +3,19 @@ import { DelimiterState, FormProps } from "../constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Textbox from "../../../components/pure-css/form/Textbox";
 
-const DelimiterForm = ({ state, dispatch, disabled }: FormProps) => {
+const DelimiterForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
   const updateDelimiter = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
       field: {
         path: 'properties.delimiter',
         value: event.target.value
-      }
+      },
+      basePath
     });
   };
 
-  const formState = state.formState as DelimiterState;
+  const delimiterProperty = (formState as DelimiterState).properties.delimiter;
 
   return <Grid>
     <Cell size={'1-3'}>
@@ -27,7 +28,7 @@ const DelimiterForm = ({ state, dispatch, disabled }: FormProps) => {
           </a>
         </>
       } type={'text'} placeholder="Delimiting Characters" required={true} onChange={updateDelimiter}
-               value={formState.properties.delimiter} disabled={disabled}/>
+               value={delimiterProperty} disabled={disabled}/>
     </Cell>
   </Grid>;
 };

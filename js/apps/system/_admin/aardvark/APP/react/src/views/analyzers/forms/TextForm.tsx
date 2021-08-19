@@ -1,70 +1,17 @@
 import React, { ChangeEvent } from "react";
 import { FormProps, TextState } from "../constants";
 import CaseInput from "./inputs/CaseInput";
-import { filter, get, isEmpty, negate } from 'lodash';
+import { filter, isEmpty, negate } from 'lodash';
 import LocaleInput from "./inputs/LocaleInput";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Fieldset from "../../../components/pure-css/form/Fieldset";
 import Textbox from "../../../components/pure-css/form/Textbox";
 import Textarea from "../../../components/pure-css/form/Textarea";
 import Checkbox from "../../../components/pure-css/form/Checkbox";
+import NGramInput from "./inputs/NGramInput";
+import { getPath } from "../helpers";
 
-const EdgeNGramInput = ({ state, dispatch, disabled }: FormProps) => {
-  const updateMinLength = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.edgeNgram.min',
-        value: parseInt(event.target.value)
-      }
-    });
-  };
-
-  const updateMaxLength = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.edgeNgram.max',
-        value: parseInt(event.target.value)
-      }
-    });
-  };
-
-  const formState = state.formState as TextState;
-
-  const togglePreserve = () => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.edgeNgram.preserveOriginal',
-        value: !get(formState, ['properties', 'edgeNgram', 'preserveOriginal'])
-      }
-    });
-  };
-
-  return <Fieldset legend={'Edge N-Gram'}>
-    <Grid>
-      <Cell size={'1-3'}>
-        <Textbox label={'Minimum N-Gram Length'} type={'number'} min={1} placeholder="2" required={true}
-                 value={get(formState, ['properties', 'edgeNgram', 'min'], '')}
-                 onChange={updateMinLength} disabled={disabled}/>
-      </Cell>
-
-      <Cell size={'1-3'}>
-        <Textbox label={'Maximum N-Gram Length'} type={'number'} min={1} placeholder="3" required={true}
-                 value={get(formState, ['properties', 'edgeNgram', 'max'], '')}
-                 onChange={updateMaxLength} disabled={disabled}/>
-      </Cell>
-
-      <Cell size={'1-3'}>
-        <Checkbox onChange={togglePreserve} label={'Preserve Original'} disabled={disabled}
-                  checked={get(formState, ['properties', 'edgeNgram', 'preserveOriginal'], false)}/>
-      </Cell>
-    </Grid>
-  </Fieldset>;
-};
-
-const TextForm = ({ state, dispatch, disabled }: FormProps) => {
+const TextForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
   const updateStopwords = (event: ChangeEvent<HTMLTextAreaElement>) => {
     const stopwords = event.target.value.split('\n');
 
@@ -74,22 +21,24 @@ const TextForm = ({ state, dispatch, disabled }: FormProps) => {
         field: {
           path: 'properties.stopwords',
           value: stopwords
-        }
+        },
+        basePath
       });
     } else {
       dispatch({
         type: 'unsetField',
         field: {
           path: 'properties.stopwords'
-        }
+        },
+        basePath
       });
     }
   };
 
-  const formState = state.formState as TextState;
+  const textFormState = formState as TextState;
 
   const getStopwords = () => {
-    return get(formState, ['properties', 'stopwords'], []).join('\n');
+    return (textFormState.properties.stopwords || []).join('\n');
   };
 
   const updateStopwordsPath = (event: ChangeEvent<HTMLInputElement>) => {
@@ -98,49 +47,54 @@ const TextForm = ({ state, dispatch, disabled }: FormProps) => {
       field: {
         path: 'properties.stopwordsPath',
         value: event.target.value
-      }
+      },
+      basePath
     });
   };
 
-  const toggleAccent = () => {
+  const updateAccent = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
       field: {
         path: 'properties.accent',
-        value: !formState.properties.accent
-      }
+        value: event.target.checked
+      },
+      basePath
     });
   };
 
-  const toggleStemming = () => {
+  const updateStemming = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
       field: {
         path: 'properties.stemming',
-        value: !formState.properties.stemming
-      }
+        value: event.target.checked
+      },
+      basePath
     });
   };
+
+  const edgeNgramBasePath = getPath(basePath, 'properties.edgeNgram');
 
   return <Grid>
     <Cell size={'1-2'}>
       <Grid>
         <Cell size={'1'}>
-          <LocaleInput formState={formState} dispatch={dispatch} disabled={disabled}/>
+          <LocaleInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={basePath}/>
         </Cell>
 
         <Cell size={'1-2'}>
-          <Checkbox onChange={toggleStemming} label={'Stemming'} inline={true}
-                    checked={formState.properties.stemming} disabled={disabled}/>
+          <Checkbox onChange={updateStemming} label={'Stemming'} inline={true} disabled={disabled}
+                    checked={textFormState.properties.stemming}/>
         </Cell>
 
         <Cell size={'1-2'}>
-          <Checkbox onChange={toggleAccent} label={'Accent'} inline={true} disabled={disabled}
-                    checked={formState.properties.accent}/>
+          <Checkbox onChange={updateAccent} label={'Accent'} inline={true} disabled={disabled}
+                    checked={textFormState.properties.accent}/>
         </Cell>
 
         <Cell size={'1'}>
-          <CaseInput state={state} dispatch={dispatch} disabled={disabled}/>
+          <CaseInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={basePath}/>
         </Cell>
       </Grid>
     </Cell>
@@ -148,7 +102,7 @@ const TextForm = ({ state, dispatch, disabled }: FormProps) => {
     <Cell size={'1-2'}>
       <Grid>
         <Cell size={'1'}>
-          <Textbox label={'Stopwords Path'} type={'text'} value={formState.properties.stopwordsPath}
+          <Textbox label={'Stopwords Path'} type={'text'} value={textFormState.properties.stopwordsPath}
                    onChange={updateStopwordsPath} disabled={disabled}/>
         </Cell>
 
@@ -164,7 +118,9 @@ const TextForm = ({ state, dispatch, disabled }: FormProps) => {
     </Cell>
 
     <Cell size={'1'}>
-      <EdgeNGramInput state={state} dispatch={dispatch} disabled={disabled}/>
+      <Fieldset legend={'Edge N-Gram'}>
+        <NGramInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={edgeNgramBasePath}/>
+      </Fieldset>
     </Cell>
   </Grid>;
 };

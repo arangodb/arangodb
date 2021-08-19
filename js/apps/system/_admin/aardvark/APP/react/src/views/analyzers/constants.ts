@@ -1,4 +1,4 @@
-import Ajv, { JSONSchemaType } from 'ajv';
+import { JSONSchemaType } from 'ajv';
 import { Dispatch } from 'React';
 import _, { merge, partial } from 'lodash';
 
@@ -19,7 +19,7 @@ type CaseProperty = 'lower' | 'upper' | 'none';
 export type Feature = 'frequency' | 'norm' | 'position';
 type Features = Feature[];
 export type Int = number & { __int__: void };
-export type GeoOptions = {
+type GeoOptions = {
   maxCells?: Int;
   minLevel?: Int;
   maxLevel?: Int;
@@ -41,11 +41,14 @@ export type DelimiterState = {
   };
 };
 
-export type StemState = {
-  type: 'stem';
+export type LocaleState = {
   properties: {
     locale: string;
-  };
+  }
+};
+
+type StemState = LocaleState & {
+  type: 'stem';
 };
 
 export type CaseState = {
@@ -54,37 +57,34 @@ export type CaseState = {
   };
 };
 
-export type NormState = CaseState & {
+export type NormState = CaseState & LocaleState & {
   type: 'norm';
   properties: {
-    locale: string;
     accent?: boolean;
   };
 };
 
+export type NGramBase = {
+  max?: Int;
+  min?: Int;
+  preserveOriginal?: boolean;
+};
+
 export type NGramState = {
   type: 'ngram';
-  properties: {
-    min: Int;
-    max: Int;
-    preserveOriginal: boolean;
+  properties: NGramBase & {
     startMarker?: string;
     endMarker?: string;
     streamType?: 'binary' | 'utf8';
   };
 };
 
-export type TextState = CaseState & {
+export type TextState = CaseState & LocaleState & {
   type: 'text';
   properties: {
-    locale: string;
     accent?: boolean;
     stemming?: boolean;
-    edgeNgram?: {
-      max?: Int;
-      min?: Int;
-      preserveOriginal?: boolean;
-    };
+    edgeNgram?: NGramBase;
     stopwords?: string[];
     stopwordsPath?: string;
   };
@@ -123,14 +123,13 @@ export type GeoPointState = GeoOptionsState & {
   };
 };
 
-export type PipelineState = IdentityState
-  | DelimiterState
+type PipelineState = DelimiterState
   | StemState
   | NormState
   | NGramState
   | TextState
   | AqlState;
-export type PipelineStates = {
+type PipelineStates = {
   type: 'pipeline';
   properties: PipelineState[];
 };
@@ -305,19 +304,16 @@ const ngramSchema = mergeBase({
           type: 'integer',
           nullable: false,
           minimum: 1,
-          maximum: { $data: '1/max' },
-          default: 2
+          maximum: { $data: '1/max' }
         },
         max: {
           type: 'integer',
           nullable: false,
-          minimum: { $data: '1/min' },
-          default: 3
+          minimum: { $data: '1/min' }
         },
         preserveOriginal: {
           type: 'boolean',
-          nullable: false,
-          default: false
+          nullable: false
         },
         startMarker: {
           type: 'string',
@@ -517,6 +513,7 @@ const pipelineSchema = mergeBase({
       type: 'array',
       nullable: false,
       items: {
+        type: "object",
         discriminator: {
           propertyName: "type"
         },
@@ -556,14 +553,6 @@ export const formSchema: JSONSchemaType<FormState> = {
   required: ['name', 'features']
 };
 
-const ajv = new Ajv({
-  removeAdditional: 'failing',
-  useDefaults: true,
-  discriminator: true,
-  $data: true
-});
-export const validateAndFix = ajv.compile(formSchema);
-
 export type State = {
   formState: FormState;
   formCache: object;
@@ -579,11 +568,13 @@ export type DispatchArgs = {
     path: string;
     value?: any;
   };
+  basePath?: string | undefined;
   formState?: FormState;
 };
 
 export type FormProps = {
-  state: State;
+  formState: FormState;
   dispatch: Dispatch<DispatchArgs>;
-  disabled?: boolean
+  disabled?: boolean;
+  basePath?: string | undefined;
 };

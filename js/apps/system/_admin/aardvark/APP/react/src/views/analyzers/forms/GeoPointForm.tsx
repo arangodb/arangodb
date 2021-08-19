@@ -1,11 +1,11 @@
 import React, { ChangeEvent } from "react";
 import { FormProps, GeoPointState } from "../constants";
-import { filter, get, isEmpty, negate } from 'lodash';
+import { filter, isEmpty, negate } from 'lodash';
 import OptionsInput from "./inputs/OptionsInput";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Textbox from "../../../components/pure-css/form/Textbox";
 
-const GeoPointForm = ({ state, dispatch, disabled }: FormProps) => {
+const GeoPointForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
   const updateArray = (event: ChangeEvent<HTMLInputElement>, field: string) => {
     const items = event.target.value.split('.');
 
@@ -15,14 +15,16 @@ const GeoPointForm = ({ state, dispatch, disabled }: FormProps) => {
         field: {
           path: field,
           value: items
-        }
+        },
+        basePath
       });
     } else {
       dispatch({
         type: 'unsetField',
         field: {
           path: field
-        }
+        },
+        basePath
       });
     }
   };
@@ -35,14 +37,9 @@ const GeoPointForm = ({ state, dispatch, disabled }: FormProps) => {
     updateArray(event, 'properties.longitude');
   };
 
-  const formState = state.formState as GeoPointState;
-
-  const getArray = (field: string[]) => {
-    return get(formState, field, []).join('.');
-  };
-
-  const getLatitude = () => getArray(['properties', 'latitude']);
-  const getLongitude = () => getArray(['properties', 'longitude']);
+  const geoPointFormState = formState as GeoPointState;
+  const getLatitude = () => (geoPointFormState.properties.latitude || []).join('.');
+  const getLongitude = () => (geoPointFormState.properties.longitude || []).join('.');
 
   return <Grid>
     <Cell size={'1-2'}>
@@ -56,7 +53,7 @@ const GeoPointForm = ({ state, dispatch, disabled }: FormProps) => {
     </Cell>
 
     <Cell size={'1'}>
-      <OptionsInput state={state} dispatch={dispatch} disabled={disabled}/>
+      <OptionsInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={basePath}/>
     </Cell>
   </Grid>;
 };

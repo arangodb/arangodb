@@ -59,7 +59,8 @@ const RadioGroup = ({ legend, onChange, name, items, checked, disabled }: RadioG
       {
         items.map(item =>
           <RadioButton onChange={onChange} name={name} value={item.value} label={item.label} id={item.id}
-                       checked={checked === item.value} size={size} disabled={disabled}/>)
+                       checked={checked === item.value} size={size} disabled={disabled}
+                       key={`${item.value}-${checked}`}/>)
       }
     </Grid>
   </Fieldset>;

@@ -104,46 +104,48 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
     setShowJsonForm(!showJsonForm);
   };
 
-  const getForm = (state: State) => {
-    switch (state.formState.type) {
+  const getForm = (formState: FormState) => {
+    switch (formState.type) {
       case 'identity':
         return null;
 
       case 'delimiter':
-        return <DelimiterForm state={state} dispatch={noop} disabled={true}/>;
+        return <DelimiterForm formState={formState} dispatch={noop} disabled={true}/>;
 
       case 'stem':
-        return <StemForm state={state} dispatch={noop} disabled={true}/>;
+        return <StemForm formState={formState} dispatch={noop} disabled={true}/>;
 
       case 'norm':
-        return <NormForm state={state} dispatch={noop} disabled={true}/>;
+        return <NormForm formState={formState} dispatch={noop} disabled={true}/>;
 
       case 'ngram':
-        return <NGramForm state={state} dispatch={noop} disabled={true}/>;
+        return <NGramForm formState={formState} dispatch={noop} disabled={true}/>;
 
       case 'text':
-        return <TextForm state={state} dispatch={noop} disabled={true}/>;
+        return <TextForm formState={formState} dispatch={noop} disabled={true}/>;
 
       case 'aql':
-        return <AqlForm state={state} dispatch={noop} disabled={true}/>;
+        return <AqlForm formState={formState} dispatch={noop} disabled={true}/>;
 
       case 'geojson':
-        return <GeoJsonForm state={state} dispatch={noop} disabled={true}/>;
+        return <GeoJsonForm formState={formState} dispatch={noop} disabled={true}/>;
 
       case 'geopoint':
-        return <GeoPointForm state={state} dispatch={noop} disabled={true}/>;
+        return <GeoPointForm formState={formState} dispatch={noop} disabled={true}/>;
 
       case 'pipeline':
         return 'Pipeline';
     }
   };
 
+  const formState = state.formState;
+
   return <>
     <button className={'pure-button'} onClick={handleClick} style={{ background: 'transparent' }}>
       <i className={'fa fa-eye'}/>
     </button>
     <Modal show={show} setShow={setShow}>
-      <ModalHeader title={state.formState.name}>
+      <ModalHeader title={formState.name}>
         <button className={'button-info'} onClick={toggleJsonForm} style={{ float: 'right' }}>
           {showJsonForm ? 'Switch to form view' : 'Switch to code view'}
         </button>
@@ -153,25 +155,25 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
           {
             showJsonForm
               ? <Cell size={'1'}>
-                <Editor value={state.formState} mode={'view'}/>
+                <Editor value={formState} mode={'view'}/>
               </Cell>
               : <>
                 <Cell size={'1'}>
-                  <BaseForm state={state} dispatch={noop} disabled={true}/>
+                  <BaseForm formState={formState} dispatch={noop} disabled={true}/>
                 </Cell>
                 <Cell size={'1'}>
                   <fieldset>
                     <legend style={{ fontSize: '12pt' }}>Features</legend>
-                    <FeatureForm state={state} dispatch={noop} disabled={true}/>
+                    <FeatureForm formState={formState} dispatch={noop} disabled={true}/>
                   </fieldset>
                 </Cell>
 
                 {
-                  state.formState.type === 'identity' ? null
+                  formState.type === 'identity' ? null
                     : <Cell size={'1'}>
                       <fieldset>
                         <legend style={{ fontSize: '12pt' }}>Configuration</legend>
-                        {getForm(state)}
+                        {getForm(formState)}
                       </fieldset>
                     </Cell>
                 }

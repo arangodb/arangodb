@@ -1,7 +1,7 @@
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import React, { useState } from 'react';
 import Ajv from 'ajv';
-import { FormProps, formSchema, FormState } from "../constants";
+import { FormProps, formSchema, FormState, State } from "../constants";
 import { isArray } from "lodash";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 
@@ -13,7 +13,9 @@ const ajv = new Ajv({
 });
 const validate = ajv.compile(formSchema);
 
-const JsonForm = ({ state, dispatch }: FormProps) => {
+type JsonFormProps = Pick<FormProps, 'formState' | 'dispatch'> & Pick<State, 'renderKey'>;
+
+const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
   const [formErrors, setFormErrors] = useState<string[]>([]);
 
   const changeHandler = (json: FormState) => {
@@ -38,8 +40,7 @@ const JsonForm = ({ state, dispatch }: FormProps) => {
 
   return <Grid>
     <Cell size={'1'}>
-      <Editor value={state.formState} onChange={changeHandler} mode={'code'} history={true}
-              key={state.renderKey}/>
+      <Editor value={formState} onChange={changeHandler} mode={'code'} history={true} key={renderKey}/>
     </Cell>
     {
       formErrors.length
