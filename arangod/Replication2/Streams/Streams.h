@@ -32,10 +32,9 @@ namespace arangodb::replication2::streams {
  * @tparam T Object Type
  */
 template <typename T>
-struct StreamEntryView {
-  LogIndex index;
-  T const& value;
-};
+using StreamEntryView = std::pair<LogIndex, T const&>;
+template <typename T>
+using StreamEntry = std::pair<LogIndex, T>;
 
 /**
  * Consumer interface for a multiplexed object stream. Provides methods for

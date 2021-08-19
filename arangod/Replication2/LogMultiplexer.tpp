@@ -1,6 +1,25 @@
-//
-// Created by lars on 16/08/2021.
-//
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lars Maier
+////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
 #include <map>
 #include <memory>
@@ -23,321 +42,17 @@
 #include <Replication2/ReplicatedLog/LogFollower.h>
 #include <Replication2/ReplicatedLog/LogLeader.h>
 
-using namespace arangodb;
-using namespace arangodb::replication2;
-using namespace arangodb::replication2::streams;
+#include <Replication2/Streams/MultiplexedValues.h>
+#include <Replication2/Streams/StreamInformationBlock.h>
+#include <Replication2/Streams/Streams.h>
 
-namespace {
-
-template <StreamId Id, typename Type, typename... Tags>
-constexpr auto stream_descriptor_contains_tag(
-    stream_descriptor<Id, Type, tag_descriptor_set<Tags...>>, StreamTag wanted) -> bool {
-  return ((Tags::tag == wanted) || ...);
-}
-
-template <typename Tag, StreamId>
-struct tag_stream_pair {};
-
-template <typename...>
-struct tag_stream_pair_list {};
-
-template <typename...>
-struct tag_stream_pair_list_merge;
-template <typename... Ds, typename... Bs, typename... As>
-struct tag_stream_pair_list_merge<tag_stream_pair_list<Ds...>, tag_stream_pair_list<Bs...>, As...> {
-  using type =
-      typename tag_stream_pair_list_merge<tag_stream_pair_list<Ds..., Bs...>, As...>::type;
-};
-template <typename T>
-struct tag_stream_pair_list_merge<T> {
-  using type = T;
-};
-
-template <typename>
-struct tag_stream_pair_from_descriptor;
-template <StreamId Id, typename Type, typename... Tags>
-struct tag_stream_pair_from_descriptor<streams::stream_descriptor<Id, Type, streams::tag_descriptor_set<Tags...>>> {
-  using type = tag_stream_pair_list<tag_stream_pair<Tags, Id>...>;
-};
-
-template <typename>
-struct tag_stream_pair_list_from_spec;
-template <typename... Ds>
-struct tag_stream_pair_list_from_spec<streams::stream_descriptor_set<Ds...>> {
-  using type =
-      typename tag_stream_pair_list_merge<typename tag_stream_pair_from_descriptor<Ds>::type...>::type;
-};
-
-}  // namespace
+#include <Replication2/Streams/StreamInformationBlock.tpp>
+#include <Replication2/Streams/Streams.tpp>
 
 namespace arangodb::replication2::streams {
 
-template <typename Descriptor, typename Type = stream_descriptor_type_t<Descriptor>>
-struct DescriptorValueTag {
-  using DescriptorType = Descriptor;
-  explicit DescriptorValueTag(Type value) : value(std::move(value)) {}
-  Type value;
-};
-
-template <typename... Descriptors>
-struct MultiplexedVariant {
-  using VariantType = std::variant<DescriptorValueTag<Descriptors>...>;
-
-  auto variant() -> VariantType& { return _value; }
-  auto variant() const -> VariantType& { return _value; }
-
-  template <typename... Args>
-  explicit MultiplexedVariant(std::in_place_t, Args&&... args)
-      : _value(std::forward<Args>(args)...) {}
-
- private:
-  explicit MultiplexedVariant(VariantType value) : _value(std::move(value)) {}
-  VariantType _value;
-};
-
-struct MultiplexedValues {
-  template <typename Descriptor, typename Type = stream_descriptor_type_t<Descriptor>>
-  static void toVelocyPack(Type const& v, velocypack::Builder& builder) {
-    using PrimaryTag = stream_descriptor_primary_tag_t<Descriptor>;
-    using Serializer = typename PrimaryTag::serializer;
-    velocypack::ArrayBuilder ab(&builder);
-    builder.add(velocypack::Value(PrimaryTag::tag));
-    std::invoke(Serializer{}, serializer_tag<Type>, v, builder);
-  }
-
-  template <typename... Descriptors>
-  static auto fromVelocyPack(velocypack::Slice slice)
-      -> MultiplexedVariant<Descriptors...> {
-    TRI_ASSERT(slice.isArray());
-    auto [tag, valueSlice] = slice.unpackTuple<StreamTag, velocypack::Slice>();
-    // Now find the descriptor that fits this tag
-    return FromVelocyPackHelper<MultiplexedVariant<Descriptors...>, Descriptors...>::extract(tag, valueSlice);
-  }
-
- private:
-  template <typename ValueType, typename Descriptor, typename... Other>
-  struct FromVelocyPackHelper {
-    static auto extract(StreamTag tag, velocypack::Slice slice) -> ValueType {
-      return extractTags(stream_descriptor_tags_t<Descriptor>{}, tag, slice);
-    }
-
-    template <typename Tag, typename... Tags>
-    static auto extractTags(tag_descriptor_set<Tag, Tags...>, StreamTag tag,
-                            velocypack::Slice slice) -> ValueType {
-      if (Tag::tag == tag) {
-        return extractValue<typename Tag::deserializer>(slice);
-      } else if constexpr (sizeof...(Tags) > 0) {
-        return extractTags(tag_descriptor_set<Tags...>{}, tag, slice);
-      } else if constexpr (sizeof...(Other) > 0) {
-        return FromVelocyPackHelper<ValueType, Other...>::extract(tag, slice);
-      } else {
-        std::abort();
-      }
-    }
-
-    template <typename Deserializer, typename Type = stream_descriptor_type_t<Descriptor>>
-    static auto extractValue(velocypack::Slice slice) -> ValueType {
-      auto value = std::invoke(Deserializer{}, serializer_tag<Type>, slice);
-      return ValueType(std::in_place, std::in_place_type<DescriptorValueTag<Descriptor>>,
-                       std::move(value));
-    }
-  };
-};
-
-template <typename T>
-struct StreamEntry {
-  LogIndex index;
-  T value;
-  auto intoView() const -> StreamEntryView<T> { return {index, value}; }
-};
-
-/**
- * This is the implementation of the stream interfaces. They are just proxy
- * objects that static_cast the this pointer to the respective implementor and
- * forward the call, annotated with the stream descriptor.
- * @tparam Self Implementor Top Class
- * @tparam Descriptor Stream Descriptor
- * @tparam StreamTypeTemplate Stream<T> or ProducerStream<T>
- */
-template <typename Self, typename Descriptor, template <typename> typename StreamTypeTemplate>
-struct StreamGenericImplementationBase
-    : virtual StreamGenericBase<Descriptor, StreamTypeTemplate> {
-  static_assert(is_stream_descriptor_v<Descriptor>);
-
-  using ValueType = stream_descriptor_type_t<Descriptor>;
-  using StreamType = streams::Stream<ValueType>;
-  using EntryViewType = StreamEntryView<ValueType>;
-  using Iterator = TypedLogRangeIterator<EntryViewType>;
-  using WaitForResult = typename Stream<ValueType>::WaitForResult;
-
-  auto waitForIterator(LogIndex index) -> futures::Future<std::unique_ptr<Iterator>> final {
-    return self().template waitForIteratorInternal<Descriptor>(index);
-  }
-  auto waitFor(LogIndex index) -> futures::Future<WaitForResult> final {
-    return self().template waitForInternal<Descriptor>(index);
-  }
-  auto release(LogIndex index) -> void final {
-    return self().template releaseInternal<Descriptor>(index);
-  }
-  auto getIterator() -> std::unique_ptr<Iterator> final {
-    return self().template getIteratorInternal<Descriptor>();
-  }
-
- protected:
-  auto self() -> Self& { return static_cast<Self&>(*this); }
-};
-
-/**
- * Wrapper about StreamGenericImplementationBase, that adds depending on the
- * StreamType more methods. Is specialized for ProducerStream<T>.
- * @tparam Self Implementor Top Class
- * @tparam Descriptor Stream Descriptor
- * @tparam StreamTypeTemplate Stream<T> or ProducerStream<T>
- */
-template <typename Self, typename Descriptor, template <typename> typename StreamTypeTemplate>
-struct StreamGenericImplementation
-    : StreamGenericImplementationBase<Self, Descriptor, StreamTypeTemplate> {};
-template <typename Self, typename Descriptor>
-struct StreamGenericImplementation<Self, Descriptor, ProducerStream>
-    : StreamGenericImplementationBase<Self, Descriptor, ProducerStream> {
-  using ValueType = stream_descriptor_type_t<Descriptor>;
-  auto insert(ValueType const& t) -> LogIndex override {
-    return this->self().template insertInternal<Descriptor>(t);
-  }
-};
-
-template <typename Self, typename Descriptor>
-using StreamImplementation = StreamGenericImplementation<Self, Descriptor, Stream>;
-template <typename Self, typename Descriptor>
-using ProducerStreamImplementation =
-    StreamGenericImplementation<Self, Descriptor, ProducerStream>;
-
-template <typename, typename, template <typename> typename>
-struct StreamDispatcher;
-
-/**
- * Class that implements all streams as virtual base classes.
- * @tparam Self
- * @tparam Streams
- * @tparam StreamType
- */
-template <typename Self, typename... Streams, template <typename> typename StreamType>
-struct StreamDispatcher<Self, stream_descriptor_set<Streams...>, StreamType>
-    : StreamGenericImplementation<Self, Streams, StreamType>... {};
-
-template <typename Descriptor>
-struct StreamInformationBlock;
-template <StreamId Id, typename Type, typename Tags>
-struct StreamInformationBlock<stream_descriptor<Id, Type, Tags>> {
-  using StreamType = streams::Stream<Type>;
-  using EntryType = StreamEntry<Type>;
-  using Iterator = TypedLogRangeIterator<StreamEntryView<Type>>;
-
-  using ContainerType = ::immer::flex_vector<EntryType>;
-  using TransientType = typename ContainerType::transient_type;
-  using VariantType = std::variant<ContainerType, TransientType>;
-
-  using WaitForResult = typename StreamType::WaitForResult;
-  using WaitForPromise = futures::Promise<WaitForResult>;
-  using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
-
-  LogIndex _releaseIndex{0};
-  VariantType _container;
-  WaitForQueue _waitForQueue;
-
-  auto getTransientContainer() -> TransientType&;
-  auto getPersistentContainer() -> ContainerType&;
-
-  auto appendEntry(LogIndex index, Type t);
-  template <StreamTag StreamTag, typename Deserializer, typename Serializer>
-  auto appendValueBySlice(tag_descriptor<StreamTag, Deserializer, Serializer>,
-                          LogIndex index, velocypack::Slice value);
-
-  auto getWaitForResolveSet(LogIndex commitIndex) -> WaitForQueue;
-  auto registerWaitFor(LogIndex index) -> futures::Future<WaitForResult>;
-  auto getIterator() -> std::unique_ptr<Iterator>;
-};
-
-template <StreamId Id, typename Type, typename Tags>
-auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getTransientContainer()
-    -> TransientType& {
-  if (!std::holds_alternative<TransientType>(_container)) {
-    _container = std::get<ContainerType>(_container).transient();
-  }
-  return std::get<TransientType>(_container);
-}
-
-template <StreamId Id, typename Type, typename Tags>
-auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getPersistentContainer()
-    -> ContainerType& {
-  if (!std::holds_alternative<ContainerType>(_container)) {
-    _container = std::get<TransientType>(_container).persistent();
-  }
-  return std::get<ContainerType>(_container);
-}
-
-template <StreamId Id, typename Type, typename Tags>
-auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::appendEntry(LogIndex index,
-                                                                            Type t) {
-  getTransientContainer().push_back(EntryType{index, std::move(t)});
-}
-
-template <StreamId Id, typename Type, typename Tags>
-template <StreamTag StreamTag, typename Deserializer, typename Serializer>
-auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::appendValueBySlice(
-    tag_descriptor<StreamTag, Deserializer, Serializer>, LogIndex index,
-    velocypack::Slice value) {
-  static_assert(std::is_invocable_r_v<Type, Deserializer, serializer_tag_t<Type>, velocypack::Slice>);
-  appendEntry(index, std::invoke(Deserializer{}, serializer_tag<Type>, value));
-}
-
-template <StreamId Id, typename Type, typename Tags>
-auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getWaitForResolveSet(LogIndex commitIndex)
-    -> std::multimap<LogIndex, futures::Promise<WaitForResult>> {
-  WaitForQueue toBeResolved;
-  auto const end = _waitForQueue.upper_bound(commitIndex);
-  for (auto it = _waitForQueue.begin(); it != end;) {
-    toBeResolved.insert(_waitForQueue.extract(it++));
-  }
-  return toBeResolved;
-}
-
-template <StreamId Id, typename Type, typename Tags>
-auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::registerWaitFor(LogIndex index)
-    -> futures::Future<WaitForResult> {
-  return _waitForQueue.emplace(index, futures::Promise<WaitForResult>{})->second.getFuture();
-}
-
-template <StreamId Id, typename Type, typename Tags>
-auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIterator()
-    -> std::unique_ptr<Iterator> {
-  auto log = getPersistentContainer();
-
-  struct Iterator : TypedLogRangeIterator<StreamEntryView<Type>> {
-    ContainerType log;
-    typename ContainerType::iterator current;
-
-    auto next() -> std::optional<StreamEntryView<Type>> override {
-      if (current != std::end(log)) {
-        auto view = current->intoView();
-        ++current;
-        return view;
-      }
-      return std::nullopt;
-    }
-    auto range() const noexcept -> std::pair<LogIndex, LogIndex> override {
-      abort();
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-    }
-
-    explicit Iterator(ContainerType log)
-        : log(std::move(log)), current(this->log.begin()) {}
-  };
-
-  return std::make_unique<Iterator>(std::move(log));
-}
-
 namespace {
+
 template <typename Descriptor, typename Queue, typename Result, typename Block = StreamInformationBlock<Descriptor>>
 auto resolvePromiseSet(std::pair<Queue, Result>& q) {
   std::for_each(std::begin(q.first), std::end(q.first),
@@ -348,7 +63,6 @@ template <typename... Descriptors, typename... Pairs>
 auto resolvePromiseSets(stream_descriptor_set<Descriptors...>, std::tuple<Pairs...>& pairs) {
   (resolvePromiseSet<Descriptors>(std::get<Pairs>(pairs)), ...);
 }
-
 }  // namespace
 
 template <typename Spec, typename Store>
@@ -448,18 +162,12 @@ struct LogDemultiplexerImplementation
     bool _pendingWaitFor{false};
 
     void digestIterator(LogRangeIterator& iter);
-    void digestEntry(LogEntryView entry);
 
     auto getWaitForResolveSetAll(LogIndex commitIndex) {
       return std::make_tuple(std::make_pair(
           std::get<StreamInformationBlock<Descriptors>>(_blocks).getWaitForResolveSet(commitIndex),
           typename StreamInformationBlock<Descriptors>::WaitForResult{})...);
     };
-
-   private:
-    template <typename... TagDescriptors, StreamId... StreamIds>
-    void digestEntryInternal(tag_stream_pair_list<tag_stream_pair<TagDescriptors, StreamIds>...>,
-                             LogEntryView entry);
   };
 
   Guarded<MultiplexerData<Spec>, basics::UnshackledMutex> _guardedData{};
@@ -470,58 +178,17 @@ template <typename Spec, typename Interface>
 template <typename... Descriptors>
 void LogDemultiplexerImplementation<Spec, Interface>::MultiplexerData<
     stream_descriptor_set<Descriptors...>>::digestIterator(LogRangeIterator& iter) {
-      while (auto memtry = iter.next()) {
-        auto muxedValue =
-            MultiplexedValues::fromVelocyPack<Descriptors...>(memtry->logPayload());
-        std::visit(
-            [&](auto&& value) {
-              using ValueTag = std::decay_t<decltype(value)>;
-              using Descriptor = typename ValueTag::DescriptorType;
-              std::get<StreamInformationBlock<Descriptor>>(_blocks).appendEntry(
-                  memtry->logIndex(), std::move(value.value));
-              },
-              std::move(muxedValue.variant()));
-      }
-}
-
-template <typename Spec, typename Interface>
-template <typename... Descriptors>
-void LogDemultiplexerImplementation<Spec, Interface>::MultiplexerData<
-    stream_descriptor_set<Descriptors...>>::digestEntry(LogEntryView entry) {
-  using StreamTagPairs = typename tag_stream_pair_list_from_spec<Spec>::type;
-  digestEntryInternal(StreamTagPairs{}, entry);
-}
-
-template <typename Spec, typename Interface>
-template <typename... Descriptors>
-template <typename... TagDescriptors, StreamId... StreamIds>
-void LogDemultiplexerImplementation<Spec, Interface>::MultiplexerData<stream_descriptor_set<Descriptors...>>::digestEntryInternal(
-    tag_stream_pair_list<tag_stream_pair<TagDescriptors, StreamIds>...>, LogEntryView entry) {
-  // now lookup the tag in the pairs
-  // The compiler will translate this into a jump table
-  auto const dispatchEntryByTag = [this](StreamTag tag, LogIndex index,
-                                         velocypack::Slice slice) {
-    return ([&] {
-      constexpr const auto StreamIndex = stream_index_by_id_v<StreamIds, Spec>;
-
-      if (tag == TagDescriptors::tag) {
-        // This tag was recognised - now deserialize the entry
-        std::get<StreamIndex>(_blocks).appendValueBySlice(TagDescriptors{}, index, slice);
-        return true;
-      }
-      return false;
-    }() || ...);
-  };
-
-  auto const slice = entry.logPayload();
-  auto const entryTag = slice.get("tag").extract<StreamTag>();
-  auto const valueSlice = slice.get("value");
-
-  if (auto const wasDispatched = dispatchEntryByTag(entryTag, entry.logIndex(), valueSlice);
-      !wasDispatched) {
-    LOG_TOPIC("9b7ab", FATAL, Logger::REPLICATION2)
-        << "Log-Multiplexer could not dispatch value with tag (" << entryTag << ").";
-    FATAL_ERROR_EXIT();
+  while (auto memtry = iter.next()) {
+    auto muxedValue =
+        MultiplexedValues::fromVelocyPack<Descriptors...>(memtry->logPayload());
+    std::visit(
+        [&](auto&& value) {
+          using ValueTag = std::decay_t<decltype(value)>;
+          using Descriptor = typename ValueTag::DescriptorType;
+          std::get<StreamInformationBlock<Descriptor>>(_blocks).appendEntry(
+              memtry->logIndex(), std::move(value.value));
+        },
+        std::move(muxedValue.variant()));
   }
 }
 

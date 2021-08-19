@@ -114,7 +114,8 @@ TEST_F(LogDemuxTest, leader_follower_test) {
     for (auto x : ints) {
       auto entry = iter->next();
       ASSERT_TRUE(entry.has_value()) << "expected value " << x;
-      EXPECT_EQ(entry->value, x);
+      auto const &[index, value] = *entry;
+      EXPECT_EQ(value, x);
     }
     EXPECT_EQ(iter->next(), std::nullopt);
   }
@@ -123,7 +124,8 @@ TEST_F(LogDemuxTest, leader_follower_test) {
     for (auto x : strings) {
       auto entry = iter->next();
       ASSERT_TRUE(entry.has_value());
-      EXPECT_EQ(entry->value, x);
+      auto const &[index, value] = *entry;
+      EXPECT_EQ(value, x);
     }
     EXPECT_EQ(iter->next(), std::nullopt);
   }
