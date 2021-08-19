@@ -18,36 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GreetingsFeaturePhase.h"
+#pragma once
 
-#include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
-#include "Logger/LoggerFeature.h"
-#include "Random/RandomFeature.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 namespace application_features {
-
-GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server, bool isClient)
-    : ApplicationFeaturePhase(server, "GreetingsPhase") {
-  setOptional(false);
-
-  startsAfter<ConfigFeature>();
-  startsAfter<LoggerFeature>();
-  startsAfter<RandomFeature>();
-  startsAfter<ShellColorsFeature>();
-  startsAfter<VersionFeature>();
-
-  if (!isClient) {
-    // These are server only features
-    startsAfter<GreetingsFeature>();
-  }
+class ApplicationServer;
 }
 
-}  // namespace application_features
+class EnvironmentFeature final : public application_features::ApplicationFeature {
+ public:
+  explicit EnvironmentFeature(application_features::ApplicationServer& server);
+
+  void prepare() override final;
+
+  std::string const& operatingSystem() const noexcept { return _operatingSystem; }
+
+ private:
+  std::string _operatingSystem;
+};
+
 }  // namespace arangodb
+

@@ -695,7 +695,7 @@ k_paths_graph_info:
 for_statement:
     T_FOR for_output_variables T_IN expression {
       AstNode* variablesNode = static_cast<AstNode*>($2);
-      ::checkOutVariables(parser, variablesNode, 1, 1, "Collections and Views only have return variable", yyloc);
+      ::checkOutVariables(parser, variablesNode, 1, 1, "Collections and views FOR loops only allow a single return variable", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       // now create an out variable for the FOR statement
       // this prepares us to handle the optional SEARCH condition, which may
