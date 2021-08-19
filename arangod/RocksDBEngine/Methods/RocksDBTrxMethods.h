@@ -55,9 +55,6 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
                                                  ReadOptionsCallback) override;
 
-  std::unique_ptr<rocksdb::Iterator> NewReadOwnWritesIterator(rocksdb::ColumnFamilyHandle*,
-                                                              ReadOptionsCallback) override;
-
   bool iteratorMustCheckBounds() const override;
   
   void pushQuery(bool responsibleForCommit) override;

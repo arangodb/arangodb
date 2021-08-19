@@ -46,7 +46,7 @@ class RocksDBPrimaryIndex;
 /// basically sorted after LocalDocumentId
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
-  RocksDBAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx);
+  RocksDBAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx, ReadOwnWrites readOwnWrites);
   ~RocksDBAllIndexIterator() = default;
 
   char const* typeName() const override { return "all-index-iterator"; }

@@ -48,9 +48,9 @@ Result RocksDBReadOnlyBaseMethods::addOperation(DataSourceId collectionId, Revis
 }
 
 rocksdb::Status RocksDBReadOnlyBaseMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
-                                                     rocksdb::Slice const& key,
-                                                     rocksdb::PinnableSlice* val) {
-  return this->Get(cf, key, val);
+                                                         rocksdb::Slice const& key,
+                                                         rocksdb::PinnableSlice* val) {
+  return this->Get(cf, key, val, ReadOwnWrites::yes);
 }
 
 rocksdb::Status RocksDBReadOnlyBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,

@@ -51,7 +51,7 @@ class RDBNearIterator final : public IndexIterator {
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   RDBNearIterator(LogicalCollection* collection, transaction::Methods* trx,
                   RocksDBGeoIndex const* index, geo::QueryParams&& params)
-      : IndexIterator(collection, trx), _index(index), _near(std::move(params)) {
+      : IndexIterator(collection, trx, ReadOwnWrites::no), _index(index), _near(std::move(params)) {
     RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(trx);
     _iter = mthds->NewIterator(_index->columnFamily(), {});
     TRI_ASSERT(_index->columnFamily()->GetID() ==
@@ -109,7 +109,7 @@ class RDBNearIterator final : public IndexIterator {
                 cb(gdoc.token, doc);  // return document
                 result = true;
                 return true;
-              }).ok()) {
+              }, ReadOwnWrites::no).ok()) {
             return false;  // ignore document
           }
           return result;
@@ -136,7 +136,7 @@ class RDBNearIterator final : public IndexIterator {
                     return false;
                   }
                   return true;
-                }).ok()) {
+                }, ReadOwnWrites::no).ok()) {
               return false;
             }
             if (!result) {
@@ -337,9 +337,11 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 /// @brief creates an IndexIterator for the given Condition
 std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
+    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
+    ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);
 
   geo::QueryParams params;
   params.sorted = opts.sorted;

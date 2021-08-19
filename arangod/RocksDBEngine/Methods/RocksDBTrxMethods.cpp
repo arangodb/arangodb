@@ -100,7 +100,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   
-  rocksdb::ReadOptions opts = _readOptions;
+  ReadOptions opts = _readOptions;
   if (hasIntermediateCommitsEnabled()) {
     TRI_ASSERT(_iteratorReadSnapshot);
     opts.snapshot = _iteratorReadSnapshot;
@@ -109,6 +109,14 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
     readOptionsCallback(opts);
   }
   
+  if (opts.readOwnWrites) {
+    std::unique_ptr<rocksdb::Iterator> iterator(_rocksTransaction->GetIterator(opts, cf));
+    if (iterator == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBTrxMethods");
+    }
+    return iterator;
+  }
+
    std::unique_ptr<rocksdb::Iterator> iterator;
   if (!iteratorMustCheckBounds()) {
     // we are in a write transaction, but only run a single query in it. 
@@ -129,27 +137,6 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
     }
   }
 
-  if (iterator == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBTrxMethods");
-  }
-  return iterator;
-}
-
-std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewReadOwnWritesIterator(
-    rocksdb::ColumnFamilyHandle* cf, ReadOptionsCallback readOptionsCallback) {
-  TRI_ASSERT(cf != nullptr);
-  TRI_ASSERT(_rocksTransaction);
-
-  rocksdb::ReadOptions opts = _readOptions;
-  if (hasIntermediateCommitsEnabled()) {
-    TRI_ASSERT(_iteratorReadSnapshot);
-    opts.snapshot = _iteratorReadSnapshot;
-  }
-  if (readOptionsCallback) {
-    readOptionsCallback(opts);
-  }
-  
-  std::unique_ptr<rocksdb::Iterator> iterator(_rocksTransaction->GetIterator(opts, cf));
   if (iterator == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBTrxMethods");
   }

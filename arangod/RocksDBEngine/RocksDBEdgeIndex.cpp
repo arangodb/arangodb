@@ -89,8 +89,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   RocksDBEdgeIndexLookupIterator(LogicalCollection* collection, transaction::Methods* trx,
                                  arangodb::RocksDBEdgeIndex const* index,
                                  std::unique_ptr<VPackBuilder> keys,
-                                 std::shared_ptr<cache::Cache> cache)
-      : IndexIterator(collection, trx),
+                                 std::shared_ptr<cache::Cache> cache,
+                                 ReadOwnWrites readOwnWrites)
+      : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
         _cache(std::move(cache)),
         _keys(std::move(keys)),
@@ -329,8 +330,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     // edge lookups are normally using the in-memory edge cache, so we only hit this
     // method when connections are not yet in the cache.
     std::unique_ptr<rocksdb::Iterator> iterator =
-        mthds->NewIterator(_index->columnFamily(), [](rocksdb::ReadOptions& ro) {
+        mthds->NewIterator(_index->columnFamily(), [this](ReadOptions& ro) {
           ro.fill_cache = EdgeIndexFillBlockCache;
+          ro.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
         });
 
     TRI_ASSERT(iterator != nullptr);
@@ -553,20 +555,21 @@ Index::FilterCosts RocksDBEdgeIndex::supportsFilterCondition(
 /// @brief creates an IndexIterator for the given Condition
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
+    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-  TRI_ASSERT(node->numMembers() == 1);
+  //TRI_ASSERT(node->numMembers() == 1);
   AttributeAccessParts aap(node->getMember(0), reference);
 
   TRI_ASSERT(aap.attribute->stringEquals(_directionAttr));
 
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, aap.attribute, aap.value, opts.enableCache);
+    return createEqIterator(trx, aap.attribute, aap.value, opts.enableCache, readOwnWrites);
   } else if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);
     // a.b IN values
     if (aap.value->isArray()) {
       return createInIterator(trx, aap.attribute, aap.value, opts.enableCache);
@@ -782,7 +785,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
     }
     if (needsInsert) {
       LocalDocumentId const docId = RocksDBKey::edgeDocumentId(key);
-      if (!rocksColl->readDocument(trx, docId, mdr)) {
+      if (!rocksColl->readDocument(trx, docId, mdr, ReadOwnWrites::yes)) {
         // Data Inconsistency. revision id without a document...
         TRI_ASSERT(false);
         continue;
@@ -820,7 +823,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
 /// @brief create the iterator
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(
     transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
-    arangodb::aql::AstNode const* valNode, bool useCache) const {
+    arangodb::aql::AstNode const* valNode, bool useCache, ReadOwnWrites readOwnWrites) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
@@ -828,7 +831,8 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(
   fillLookupValue(*keys, valNode);
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx,
                                                           this, std::move(keys),
-                                                          useCache ? _cache : nullptr);
+                                                          useCache ? _cache : nullptr,
+                                                          readOwnWrites);
 }
 
 /// @brief create the iterator
@@ -842,7 +846,8 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(
   fillInLookupValues(trx, *(keys.get()), valNode);
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx,
                                                           this, std::move(keys),
-                                                          useCache ? _cache : nullptr);
+                                                          useCache ? _cache : nullptr,
+                                                          ReadOwnWrites::no);
 }
 
 void RocksDBEdgeIndex::fillLookupValue(VPackBuilder& keys,

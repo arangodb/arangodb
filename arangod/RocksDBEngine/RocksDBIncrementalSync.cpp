@@ -334,7 +334,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     } else {
       // see if key exists
       RevisionId currentRevisionId = RevisionId::none();
-      if (!physical->lookupRevision(trx, keySlice, currentRevisionId)) {
+      if (!physical->lookupRevision(trx, keySlice, currentRevisionId, ReadOwnWrites::yes)) {
         // key not found locally
         toFetch.emplace_back(i);
       } else {
@@ -514,7 +514,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
       // check if target _key already exists
       std::pair<LocalDocumentId, RevisionId> lookupResult;
-      bool mustInsert = physical->lookupKey(trx, keySlice.stringRef(), lookupResult).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      bool mustInsert = physical->lookupKey(trx, keySlice.stringRef(), lookupResult, ReadOwnWrites::yes).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
         
       TRI_ASSERT(options.indexOperationMode == IndexOperationMode::internal);
      
@@ -853,7 +853,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                            [&docRev](LocalDocumentId const&, VPackSlice doc) {
                              docRev = RevisionId::fromSlice(doc);
                              return true;
-                           });
+                           }, ReadOwnWrites::yes);
           }
           compareChunk(docKey, docRev);
           return true;

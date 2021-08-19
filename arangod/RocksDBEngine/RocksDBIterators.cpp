@@ -43,8 +43,9 @@ constexpr bool AnyIteratorFillBlockCache = false;
 // ================ All Iterator ==================
 
 RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
-                                                 transaction::Methods* trx) 
-    : IndexIterator(col, trx),
+                                                 transaction::Methods* trx,
+                                                 ReadOwnWrites readOwnWrites)
+    : IndexIterator(col, trx, readOwnWrites),
       _bounds(static_cast<RocksDBMetaCollection*>(col->getPhysical())->bounds()),
       _upperBound(_bounds.end()),
       _cmp(_bounds.columnFamily()->GetComparator()),
@@ -183,11 +184,12 @@ void RocksDBAllIndexIterator::ensureIterator() {
     // acquire rocksdb transaction
     auto* mthds = RocksDBTransactionState::toMethods(_trx);
     
-    _iterator = mthds->NewIterator(_bounds.columnFamily(), [&](rocksdb::ReadOptions& ro) {
+    _iterator = mthds->NewIterator(_bounds.columnFamily(), [&](ReadOptions& ro) {
       TRI_ASSERT(ro.snapshot != nullptr);
       TRI_ASSERT(ro.prefix_same_as_start);
       ro.verify_checksums = false;  // TODO evaluate
       ro.iterate_upper_bound = &_upperBound;
+      ro.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
       // ro.readahead_size = 4 * 1024 * 1024;
     });
   }
@@ -203,7 +205,7 @@ void RocksDBAllIndexIterator::ensureIterator() {
 // ================ Any Iterator ================
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
                                                  transaction::Methods* trx)
-    : IndexIterator(col, trx),
+    : IndexIterator(col, trx, ReadOwnWrites::no),
       _cmp(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
                ->GetComparator()),
       _objectId(static_cast<RocksDBMetaCollection*>(col->getPhysical())->objectId()),

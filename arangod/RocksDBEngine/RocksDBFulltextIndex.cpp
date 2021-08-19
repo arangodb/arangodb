@@ -56,7 +56,7 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
  public:
   RocksDBFulltextIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                                std::set<LocalDocumentId>&& docs)
-      : IndexIterator(collection, trx), _docs(std::move(docs)), _pos(_docs.begin()) {}
+      : IndexIterator(collection, trx, ReadOwnWrites::no), _docs(std::move(docs)), _pos(_docs.begin()) {}
 
   char const* typeName() const override { return "fulltext-index-iterator"; }
 
@@ -502,10 +502,11 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
 
 std::unique_ptr<IndexIterator> RocksDBFulltextIndex::iteratorForCondition(
     transaction::Methods* trx, aql::AstNode const* condNode,
-    aql::Variable const* var, IndexIteratorOptions const& opts) {
+    aql::Variable const* var, IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(condNode != nullptr);
   TRI_ASSERT(condNode->numMembers() == 1);  // should only be an FCALL
+  TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);
 
   aql::AstNode const* fcall = condNode->getMember(0);
   TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);

@@ -34,6 +34,10 @@ namespace arangodb {
 class RocksDBKey;
 class RocksDBTransactionState;
 
+struct ReadOptions : public rocksdb::ReadOptions {
+  bool readOwnWrites = false;
+};
+
 class RocksDBTransactionMethods : public RocksDBMethods {
  public:
   explicit RocksDBTransactionMethods(RocksDBTransactionState* state) : _state(state) {}
@@ -78,13 +82,10 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual Result addOperation(DataSourceId collectionId, RevisionId revisionId,
                               TRI_voc_document_operation_e opType) = 0;
 
-  using ReadOptionsCallback = std::function<void(rocksdb::ReadOptions&)>;
+  using ReadOptionsCallback = std::function<void(ReadOptions&)>;
   
   virtual std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
                                                          ReadOptionsCallback) = 0;
-
-  virtual std::unique_ptr<rocksdb::Iterator> NewReadOwnWritesIterator(rocksdb::ColumnFamilyHandle*,
-                                                                      ReadOptionsCallback) = 0;
                                                                       
   virtual bool iteratorMustCheckBounds() const = 0;
                    

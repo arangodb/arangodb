@@ -317,7 +317,7 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   }
 
   PregelShard sourceShard = (PregelShard)_config->shardId(vertexShard);
-  auto cursor = trx.indexScan(vertexShard, transaction::Methods::CursorType::ALL);
+  auto cursor = trx.indexScan(vertexShard, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   // tell the formatter the number of docs we are about to load
   LogicalCollection* coll = cursor->collection();

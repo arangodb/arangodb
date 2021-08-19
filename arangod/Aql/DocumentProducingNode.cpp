@@ -66,6 +66,7 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
   }
 
   _count = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "count", false);
+  _readOwnWrites = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "readOwnWrites", false) ? ReadOwnWrites::yes : ReadOwnWrites::no;
 }
   
 void DocumentProducingNode::cloneInto(ExecutionPlan* plan, DocumentProducingNode& c) const {
@@ -95,6 +96,7 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   } else {
     builder.add(::producesResultKey, VPackValue(_filter != nullptr || dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
   }
+  builder.add("readOwnWrites", VPackValue(_readOwnWrites == ReadOwnWrites::yes));
 }
 
 Variable const* DocumentProducingNode::outVariable() const {

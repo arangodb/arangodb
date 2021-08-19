@@ -48,7 +48,7 @@ class RocksDBMethods {
   virtual bool EnableIndexing() { return false; }
 
   virtual rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
-                              rocksdb::Slice const&, rocksdb::PinnableSlice*) = 0;
+                              rocksdb::Slice const&, rocksdb::PinnableSlice*, ReadOwnWrites) = 0;
   virtual rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
                                        rocksdb::Slice const&,
                                        rocksdb::PinnableSlice*) = 0;

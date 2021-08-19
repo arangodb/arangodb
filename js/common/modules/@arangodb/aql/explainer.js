@@ -1125,6 +1125,9 @@ function processQuery(query, explain, planIndex) {
 
   var iterateIndexes = function (idx, i, node, types, variable) {
     var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
+    if (node.readOwnWrites) {
+      what += "; read own writes";
+    }
     if (types.length === 0 || what !== types[types.length - 1]) {
       types.push(what);
     }

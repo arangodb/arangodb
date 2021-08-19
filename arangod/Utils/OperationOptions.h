@@ -34,6 +34,8 @@ class StringRef;
 }
 class ExecContext;
 
+enum class ReadOwnWrites : bool { no, yes, };
+
 /// @brief: mode to signal how operation should behave
 enum class IndexOperationMode : uint8_t { normal, internal, rollback };
 

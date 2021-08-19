@@ -148,12 +148,16 @@ Result RocksDBTrxBaseMethods::addOperation(DataSourceId cid, RevisionId revision
 
 rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                        rocksdb::Slice const& key,
-                                       rocksdb::PinnableSlice* val) {
+                                       rocksdb::PinnableSlice* val,
+                                       ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(cf != nullptr);
-  TRI_ASSERT(_rocksTransaction);
   rocksdb::ReadOptions const& ro = _readOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
-  return _rocksTransaction->Get(ro, cf, key, val);
+  if (readOwnWrites == ReadOwnWrites::yes) {
+    return _rocksTransaction->Get(ro, cf, key, val);
+  } else {
+    return _db->Get(ro, cf, key, val);
+  }
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,

@@ -7873,6 +7873,41 @@ void arangodb::aql::enableAsyncPrefetching(ExecutionPlan& plan) {
   plan.root()->walk(walker);
 }
 
+void arangodb::aql::enableReadOwnWritesForUpsertSubquery(ExecutionPlan& plan) {
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  plan.findNodesOfType(nodes, EN::UPSERT, true);
+
+  for (auto n : nodes) {
+    auto node = ExecutionNode::castTo<UpsertNode const*>(n);
+    auto inputVar = node->inDocVariable();
+    auto setter = plan.getVarSetBy(inputVar->id);
+    if (setter == nullptr) {
+      continue;
+    }
+    TRI_ASSERT(setter->getType() == EN::CALCULATION);
+    auto* exprNode = ExecutionNode::castTo<CalculationNode const*>(setter)->expression()->node();
+    TRI_ASSERT(exprNode->type == NODE_TYPE_INDEXED_ACCESS);
+    TRI_ASSERT(exprNode->getMember(0)->type == NODE_TYPE_REFERENCE);
+    Variable const* v = static_cast<Variable const*>(exprNode->getMember(0)->getData());
+    auto current = plan.getVarSetBy(v->id);
+    TRI_ASSERT(current->getType() == EN::SUBQUERY_END);
+    while (current != nullptr) {
+      if (current->getType() == EN::SUBQUERY_START) {
+        // we reached the subquery start without finding an Index or Enumerate node
+        // that should never happen!
+        TRI_ASSERT(false);
+        break;
+      }
+      if (current->getType() == EN::INDEX || current->getType() == EN::ENUMERATE_COLLECTION) {
+        ExecutionNode::castTo<DocumentProducingNode*>(current)->setCanReadOwnWrites(ReadOwnWrites::yes);
+        break;
+      }
+      current = current->getFirstDependency();
+    }
+  }
+}
+
 void arangodb::aql::activateCallstackSplit(ExecutionPlan& plan) {
   if (willUseV8(plan)) {
     // V8 requires thread local context configuration, so we cannot 

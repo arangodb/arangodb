@@ -31,7 +31,7 @@ std::size_t RocksDBTransactionMethods::countInBounds(RocksDBKeyBounds const& bou
   std::size_t count = 0;
 
   // iterator is from read only / trx / writebatch
-  std::unique_ptr<rocksdb::Iterator> iter = NewReadOwnWritesIterator(bounds.columnFamily(), {});
+  std::unique_ptr<rocksdb::Iterator> iter = NewIterator(bounds.columnFamily(), [](ReadOptions& opts) { opts.readOwnWrites = true; });
   iter->Seek(bounds.start());
   auto end = bounds.end();
   rocksdb::Comparator const* cmp = bounds.columnFamily()->GetComparator();
