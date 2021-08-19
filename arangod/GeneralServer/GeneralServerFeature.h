@@ -52,6 +52,7 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   Result reloadTLS();
   bool permanentRootRedirect() const;
   std::string redirectRootTo() const;
+  std::string const& supportInfoApiPolicy() const noexcept;
 
   rest::RestHandlerFactory& handlerFactory();
   rest::AsyncJobManager& jobManager();
@@ -69,6 +70,7 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
   std::string _redirectRootTo;
+  std::string _supportInfoApiPolicy;
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
