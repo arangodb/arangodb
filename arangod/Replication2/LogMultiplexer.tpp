@@ -29,6 +29,12 @@ using namespace arangodb::replication2::streams;
 
 namespace {
 
+template <StreamId Id, typename Type, typename... Tags>
+constexpr auto stream_descriptor_contains_tag(
+    stream_descriptor<Id, Type, tag_descriptor_set<Tags...>>, StreamTag wanted) -> bool {
+  return ((Tags::tag == wanted) || ...);
+}
+
 template <typename Tag, StreamId>
 struct tag_stream_pair {};
 
@@ -65,6 +71,78 @@ struct tag_stream_pair_list_from_spec<streams::stream_descriptor_set<Ds...>> {
 }  // namespace
 
 namespace arangodb::replication2::streams {
+
+template <typename Descriptor, typename Type = stream_descriptor_type_t<Descriptor>>
+struct DescriptorValueTag {
+  using DescriptorType = Descriptor;
+  explicit DescriptorValueTag(Type value) : value(std::move(value)) {}
+  Type value;
+};
+
+template <typename... Descriptors>
+struct MultiplexedVariant {
+  using VariantType = std::variant<DescriptorValueTag<Descriptors>...>;
+
+  auto variant() -> VariantType& { return _value; }
+  auto variant() const -> VariantType& { return _value; }
+
+  template <typename... Args>
+  explicit MultiplexedVariant(std::in_place_t, Args&&... args)
+      : _value(std::forward<Args>(args)...) {}
+
+ private:
+  explicit MultiplexedVariant(VariantType value) : _value(std::move(value)) {}
+  VariantType _value;
+};
+
+struct MultiplexedValues {
+  template <typename Descriptor, typename Type = stream_descriptor_type_t<Descriptor>>
+  static void toVelocyPack(Type const& v, velocypack::Builder& builder) {
+    using PrimaryTag = stream_descriptor_primary_tag_t<Descriptor>;
+    using Serializer = typename PrimaryTag::serializer;
+    velocypack::ArrayBuilder ab(&builder);
+    builder.add(velocypack::Value(PrimaryTag::tag));
+    std::invoke(Serializer{}, serializer_tag<Type>, v, builder);
+  }
+
+  template <typename... Descriptors>
+  static auto fromVelocyPack(velocypack::Slice slice)
+      -> MultiplexedVariant<Descriptors...> {
+    TRI_ASSERT(slice.isArray());
+    auto [tag, valueSlice] = slice.unpackTuple<StreamTag, velocypack::Slice>();
+    // Now find the descriptor that fits this tag
+    return FromVelocyPackHelper<MultiplexedVariant<Descriptors...>, Descriptors...>::extract(tag, valueSlice);
+  }
+
+ private:
+  template <typename ValueType, typename Descriptor, typename... Other>
+  struct FromVelocyPackHelper {
+    static auto extract(StreamTag tag, velocypack::Slice slice) -> ValueType {
+      return extractTags(stream_descriptor_tags_t<Descriptor>{}, tag, slice);
+    }
+
+    template <typename Tag, typename... Tags>
+    static auto extractTags(tag_descriptor_set<Tag, Tags...>, StreamTag tag,
+                            velocypack::Slice slice) -> ValueType {
+      if (Tag::tag == tag) {
+        return extractValue<typename Tag::deserializer>(slice);
+      } else if constexpr (sizeof...(Tags) > 0) {
+        return extractTags(tag_descriptor_set<Tags...>{}, tag, slice);
+      } else if constexpr (sizeof...(Other) > 0) {
+        return FromVelocyPackHelper<ValueType, Other...>::extract(tag, slice);
+      } else {
+        std::abort();
+      }
+    }
+
+    template <typename Deserializer, typename Type = stream_descriptor_type_t<Descriptor>>
+    static auto extractValue(velocypack::Slice slice) -> ValueType {
+      auto value = std::invoke(Deserializer{}, serializer_tag<Type>, slice);
+      return ValueType(std::in_place, std::in_place_type<DescriptorValueTag<Descriptor>>,
+                       std::move(value));
+    }
+  };
+};
 
 template <typename T>
 struct StreamEntry {
@@ -392,9 +470,18 @@ template <typename Spec, typename Interface>
 template <typename... Descriptors>
 void LogDemultiplexerImplementation<Spec, Interface>::MultiplexerData<
     stream_descriptor_set<Descriptors...>>::digestIterator(LogRangeIterator& iter) {
-  while (auto memtry = iter.next()) {
-    digestEntry(memtry.value());
-  }
+      while (auto memtry = iter.next()) {
+        auto muxedValue =
+            MultiplexedValues::fromVelocyPack<Descriptors...>(memtry->logPayload());
+        std::visit(
+            [&](auto&& value) {
+              using ValueTag = std::decay_t<decltype(value)>;
+              using Descriptor = typename ValueTag::DescriptorType;
+              std::get<StreamInformationBlock<Descriptor>>(_blocks).appendEntry(
+                  memtry->logIndex(), std::move(value.value));
+              },
+              std::move(muxedValue.variant()));
+      }
 }
 
 template <typename Spec, typename Interface>
@@ -490,22 +577,10 @@ struct LogMultiplexerImplementation
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>>
   auto insertInternal(T const& t) -> LogIndex {
-    using PrimaryTag = stream_descriptor_primary_tag_t<StreamDescriptor>;
-    using Serializer = typename PrimaryTag::serializer;
-    static_assert(
-        std::is_invocable_r_v<void, Serializer, serializer_tag_t<T>,
-                              std::add_lvalue_reference_t<std::add_const_t<T>>,
-                              std::add_lvalue_reference_t<velocypack::Builder>>);
-
     auto serialized = std::invoke([&] {
       velocypack::UInt8Buffer buffer;
-      {
-        velocypack::Builder builder(buffer);
-        velocypack::ObjectBuilder ob(&builder);
-        builder.add("tag", velocypack::Value(PrimaryTag::tag));
-        builder.add(velocypack::Value("value"));
-        std::invoke(Serializer{}, serializer_tag<T>, t, builder);
-      }
+      velocypack::Builder builder(buffer);
+      MultiplexedValues::toVelocyPack<StreamDescriptor>(t, builder);
       return buffer;
     });
 
