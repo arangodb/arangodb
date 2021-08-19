@@ -1,7 +1,6 @@
 devel
 -----
 
-
 * Error codes licsnsing
 
 * Added metrics for the number of errors and warnings logged:
