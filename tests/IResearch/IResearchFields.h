@@ -51,13 +51,18 @@ struct StringField final {
     return true;
   }
 
-  irs::flags const& features() const {
-    return irs::flags::empty_instance();
+  const irs::features_t& features() const noexcept {
+    return _featuresRange;
+  }
+
+  irs::IndexFeatures index_features() const noexcept {
+    return irs::IndexFeatures::NONE;
   }
 
   mutable irs::string_token_stream stream;
   irs::string_ref value;
   irs::string_ref fieldName;
+  irs::features_t _featuresRange{nullptr, 0};
 };
 
 struct GeoField final {
@@ -79,13 +84,18 @@ struct GeoField final {
     return true;
   }
 
-  irs::flags const& features() const {
-    return irs::flags::empty_instance();
+  const irs::features_t& features() const noexcept {
+    return _featuresRange;
+  }
+
+  irs::IndexFeatures index_features() const noexcept {
+    return irs::IndexFeatures::NONE;
   }
 
   mutable iresearch::GeoJSONAnalyzer stream{{}};
   VPackSlice shapeSlice;
   irs::string_ref fieldName;
+  irs::features_t _featuresRange{nullptr, 0};
 };
 
 } // arangodb

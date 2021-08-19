@@ -172,7 +172,6 @@ TEST_F(IResearchQueryAggregateTest, test) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-
     arangodb::velocypack::ArrayIterator itr(slice);
     ASSERT_EQ(expected.size(), itr.size());
 

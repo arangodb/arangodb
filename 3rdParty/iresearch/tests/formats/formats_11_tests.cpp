@@ -23,6 +23,7 @@
 
 #include "tests_shared.hpp"
 #include "formats_test_case_base.hpp"
+#include "index/norm.hpp"
 #include "store/directory_attributes.hpp"
 
 namespace {
@@ -31,8 +32,7 @@ namespace {
 // --SECTION--                                          format 11 specific tests
 // -----------------------------------------------------------------------------
 
-class format_11_test_case : public tests::directory_test_case_base {
-};
+class format_11_test_case : public tests::directory_test_case_base<> { };
 
 TEST_P(format_11_test_case, read_zero_block_encryption) {
   tests::json_doc_generator gen(
@@ -103,11 +103,12 @@ TEST_P(format_11_test_case, fields_read_write_wrong_encryption) {
 
   tests::json_doc_generator gen(
     resource("fst_prefixes.json"),
-    [&sorted_terms, &unsorted_terms] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [&sorted_terms, &unsorted_terms] (
+        tests::document& doc,
+        const std::string& name,
+        const tests::json_doc_generator::json_value& data) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-      ));
+        name, data.str));
 
       auto ref = irs::ref_cast<irs::byte_type>((doc.indexed.end() - 1).as<tests::templates::string_field>().value());
       sorted_terms.emplace(ref);
@@ -117,7 +118,7 @@ TEST_P(format_11_test_case, fields_read_write_wrong_encryption) {
   // define field
   irs::field_meta field;
   field.name = "field";
-  field.norm = 5;
+  field.features[irs::type<irs::norm>::id()] = 5;
 
   auto codec = irs::formats::get("1_1", "1_0");
   ASSERT_NE(nullptr, codec);
@@ -125,21 +126,22 @@ TEST_P(format_11_test_case, fields_read_write_wrong_encryption) {
 
   // write fields
   {
+    const irs::feature_set_t features{irs::type<irs::norm>::id()};
+
     irs::flush_state state;
     state.dir = &dir();
     state.doc_count = 100;
     state.name = "segment_name";
-    state.features = &field.features;
+    state.features = &features;
 
     // should use sorted terms on write
     tests::format_test_case::terms<sorted_terms_t::iterator> terms(
-      sorted_terms.begin(), sorted_terms.end()
-    );
+      sorted_terms.begin(), sorted_terms.end());
 
     auto writer = codec->get_field_writer(false);
     ASSERT_NE(nullptr, writer);
     writer->prepare(state);
-    writer->write(field.name, field.norm, field.features, terms);
+    writer->write(field.name, field.index_features, field.features, terms);
     writer->end();
   }
 
@@ -312,7 +314,7 @@ TEST_P(format_11_test_case, open_non_ecnrypted_with_encrypted) {
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
-    for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
@@ -371,7 +373,7 @@ TEST_P(format_11_test_case, open_10_with_11) {
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
-    for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
@@ -444,7 +446,7 @@ TEST_P(format_11_test_case, formats_10_11) {
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
-    for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
@@ -470,7 +472,7 @@ TEST_P(format_11_test_case, formats_10_11) {
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
-    for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
@@ -479,7 +481,7 @@ TEST_P(format_11_test_case, formats_10_11) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   format_11_test,
   format_11_test_case,
   ::testing::Values(
@@ -487,7 +489,7 @@ INSTANTIATE_TEST_CASE_P(
     &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
     &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
   ),
-  tests::directory_test_case_base::to_string
+  tests::directory_test_case_base<>::to_string
 );
 
 // -----------------------------------------------------------------------------
@@ -496,7 +498,7 @@ INSTANTIATE_TEST_CASE_P(
 
 using tests::format_test_case;
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   format_11_test,
   format_test_case,
   ::testing::Combine(

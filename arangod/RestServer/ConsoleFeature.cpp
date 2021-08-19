@@ -26,6 +26,7 @@
 #include "ConsoleFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/debugging.h"
 #include "Basics/messages.h"
 #include "FeaturePhases/AgencyFeaturePhase.h"
 #include "Logger/LogMacros.h"
@@ -39,6 +40,11 @@
 
 #include <iostream>
 
+#ifndef _WIN32
+#include <sys/ioctl.h>
+#include <unistd.h>
+#endif
+
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
@@ -46,8 +52,7 @@ namespace arangodb {
 
 ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Console"),
-      _operationMode(OperationMode::MODE_SERVER),
-      _consoleThread(nullptr) {
+      _operationMode(OperationMode::MODE_SERVER) {
   startsAfter<AgencyFeaturePhase>();
 }
 
@@ -65,8 +70,27 @@ void ConsoleFeature::start() {
   auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
   auto database = sysDbFeature.use();
 
-  _consoleThread.reset(new ConsoleThread(server(), database.get()));
+  _consoleThread = std::make_unique<ConsoleThread>(server(), database.get());
   _consoleThread->start();
+}
+
+void ConsoleFeature::beginShutdown() {
+  if (_operationMode != OperationMode::MODE_CONSOLE) {
+    return;
+  }
+
+  TRI_ASSERT(_consoleThread != nullptr);
+
+  _consoleThread->userAbort();
+
+#ifndef _WIN32
+  if (isatty(STDIN_FILENO)) {
+    char c = '\n';
+    // send ourselves a character, so that we can get out of the blocking
+    // linenoise function that reads a character from the terminal
+    [[maybe_unused]] int res = ioctl(STDIN_FILENO, TIOCSTI, &c);
+  }
+#endif
 }
 
 void ConsoleFeature::unprepare() {
