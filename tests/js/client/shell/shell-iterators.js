@@ -29,296 +29,87 @@
 const jsunity = require('jsunity');
 const internal = require('internal');
 const arangodb = require('@arangodb');
+const testHelper = require('@arangodb/test-helper');
+const deriveTestSuite = testHelper.deriveTestSuite;
 const db = arangodb.db;
-  
+
 const cn = 'UnitTestsIterators';
+const ecn = 'UnitTestsEdgeIterators';
 const pad = function(value) {
   value = String(value);
-  return Array(5 - value.length).join("0") + value;
+  return Array(6 - value.length).join("0") + value;
 };
 
-function StandaloneAqlIteratorSuite() {
-  'use strict';
-      
-  return {
-    setUp: function () {
-      db._drop(cn);
-      let c = db._create(cn, { numberOfShards: 3 });
-      let docs = [];
-      for (let i = 0; i < 5000; ++i) {
-        docs.push({ _key: "test" + pad(i), value1: i, value2: i % 113, value3: i });
-      }
-      c.insert(docs);
-      c.ensureIndex({ type: "persistent", fields: ["value1"] });
-      c.ensureIndex({ type: "persistent", fields: ["value2"] });
-    },
-
-    tearDown: function () {
-      db._drop(cn);
-    },
-    
-    testAqlForwardIterationReadOnly: function () {
-      const opts = {};
-
-      // full scan 
-      let result = db._query('FOR doc IN @@c SORT doc.value3 ASC RETURN doc', { '@c': cn }, opts).toArray();
-      assertEqual(5000, result.length);
-      result.forEach((doc, index) => {
-        assertEqual("test" + pad(index), doc._key);
-        assertEqual(index, doc.value1);
-        assertEqual(index % 113, doc.value2);
-      });
-      
-      // full scan over a filtered range
-      result = db._query('FOR doc IN @@c FILTER doc.value3 > 1 && doc.value3 <= 4995 SORT doc.value3 ASC RETURN doc', { '@c': cn }, opts).toArray();
-      assertEqual(4994, result.length);
-      result.forEach((doc, index) => {
-        index = index + 2;
-        assertEqual("test" + pad(index), doc._key);
-        assertEqual(index, doc.value1);
-        assertEqual(index % 113, doc.value2);
-      });
-     
-      // full scan using primary index 
-      result = db._query('FOR doc IN @@c SORT doc._key ASC RETURN doc._key', { '@c': cn }, opts).toArray();
-      assertEqual(5000, result.length);
-      result.forEach((value, index) => {
-        assertEqual("test" + pad(index), value);
-      });
-      
-      // full scan using primary index and a filter
-      result = db._query('FOR doc IN @@c FILTER doc._key > "test0001" && doc._key <= "test4995" SORT doc._key ASC RETURN doc._key', { '@c': cn }, opts).toArray();
-      assertEqual(4994, result.length);
-      result.forEach((value, index) => {
-        index = index + 2;
-        assertEqual("test" + pad(index), value);
-      });
-
-      // full scan using secondary index 
-      result = db._query('FOR doc IN @@c SORT doc.value1 ASC RETURN doc', { '@c': cn }, opts).toArray();
-      assertEqual(5000, result.length);
-      result.forEach((doc, index) => {
-        assertEqual("test" + pad(index), doc._key);
-        assertEqual(index, doc.value1);
-        assertEqual(index % 113, doc.value2);
-      });
-      
-      // full scan using secondary index and a filter
-      result = db._query('FOR doc IN @@c FILTER doc.value1 > 1 && doc.value1 <= 4995 SORT doc.value1 ASC RETURN doc', { '@c': cn }, opts).toArray();
-      assertEqual(4994, result.length);
-      result.forEach((doc, index) => {
-        index = index + 2;
-        assertEqual("test" + pad(index), doc._key);
-        assertEqual(index, doc.value1);
-        assertEqual(index % 113, doc.value2);
-      });
-    },
-    
-    testAqlReverseIterationReadOnly: function () {
-      const opts = {};
-
-      // full scan 
-      let result = db._query('FOR doc IN @@c SORT doc.value3 DESC RETURN doc', { '@c': cn }, opts).toArray();
-      assertEqual(5000, result.length);
-      result.forEach((doc, index) => {
-        index = 5000 - index - 1;
-        assertEqual("test" + pad(index), doc._key);
-        assertEqual(index, doc.value1);
-        assertEqual(index % 113, doc.value2);
-      });
-      
-      // full scan over a filtered range
-      result = db._query('FOR doc IN @@c FILTER doc.value3 > 1 && doc.value3 <= 4995 SORT doc.value3 DESC RETURN doc', { '@c': cn }, opts).toArray();
-      assertEqual(4994, result.length);
-      result.forEach((doc, index) => {
-        index = 4995 - index;
-        assertEqual("test" + pad(index), doc._key);
-        assertEqual(index, doc.value1);
-        assertEqual(index % 113, doc.value2);
-      });
-     
-      // full scan using primary index 
-      result = db._query('FOR doc IN @@c SORT doc._key DESC RETURN doc._key', { '@c': cn }, opts).toArray();
-      assertEqual(5000, result.length);
-      result.forEach((value, index) => {
-        index = 5000 - index - 1;
-        assertEqual("test" + pad(index), value);
-      });
-      
-      // full scan using primary index and a filter
-      result = db._query('FOR doc IN @@c FILTER doc._key > "test0001" && doc._key <= "test4995" SORT doc._key DESC RETURN doc._key', { '@c': cn }, opts).toArray();
-      assertEqual(4994, result.length);
-      result.forEach((value, index) => {
-        index = 4995 - index;
-        assertEqual("test" + pad(index), value);
-      });
-
-      // full scan using secondary index 
-      result = db._query('FOR doc IN @@c SORT doc.value1 DESC RETURN doc', { '@c': cn }, opts).toArray();
-      assertEqual(5000, result.length);
-      result.forEach((doc, index) => {
-        index = 5000 - index - 1;
-        assertEqual("test" + pad(index), doc._key);
-        assertEqual(index, doc.value1);
-        assertEqual(index % 113, doc.value2);
-      });
-      
-      // full scan using secondary index and a filter
-      result = db._query('FOR doc IN @@c FILTER doc.value1 > 1 && doc.value1 <= 4995 SORT doc.value1 DESC RETURN doc', { '@c': cn }, opts).toArray();
-      assertEqual(4994, result.length);
-      result.forEach((doc, index) => {
-        index = 4995 - index;
-        assertEqual("test" + pad(index), doc._key);
-        assertEqual(index, doc.value1);
-        assertEqual(index % 113, doc.value2);
-      });
-    },
-    
-    testAqlForwardIterationInsert1: function () {
-      const opts = { intermediateCommitCount: 127 };
-
-      // full scan 
-      let result = db._query('FOR doc IN @@c SORT doc.value3 ASC INSERT { _key: CONCAT("y", doc.value3) } INTO @@c RETURN doc', { '@c': cn }, opts).toArray();
-      assertEqual(5000 + 5000, db[cn].count());
-      assertEqual(5000, result.length);
-      result.forEach((doc, index) => {
-        assertEqual("test" + pad(index), doc._key);
-        assertEqual(index, doc.value1);
-        assertEqual(index % 113, doc.value2);
-      });
-    },
-      
-    testAqlForwardIterationInsert2: function () {
-      const opts = { intermediateCommitCount: 127 };
-
-      // full scan over a filtered range
-      let result = db._query('FOR doc IN @@c FILTER doc.value3 > 1 && doc.value3 <= 4995 SORT doc.value3 ASC INSERT { _key: CONCAT("y", doc.value3) } INTO @@c RETURN doc', { '@c': cn }, opts).toArray();
-      
-      assertEqual(5000 + 4994, db[cn].count());
-      assertEqual(4994, result.length);
-      result.forEach((doc, index) => {
-        index = index + 2;
-        assertEqual("test" + pad(index), doc._key);
-        assertEqual(index, doc.value1);
-        assertEqual(index % 113, doc.value2);
-      });
-    },
-     
-    testAqlForwardIterationInsert3: function () {
-      const opts = { intermediateCommitCount: 127 };
-
-      // full scan using primary index 
-      let result = db._query('FOR doc IN @@c SORT doc._key ASC INSERT { _key: CONCAT("y", doc._key) } INTO @@c RETURN doc._key', { '@c': cn }, opts).toArray();
-      assertEqual(5000 + 5000, db[cn].count());
-      assertEqual(5000, result.length);
-      result.forEach((value, index) => {
-        assertEqual("test" + pad(index), value);
-      });
-    },
-      
-    testAqlForwardIterationInsert4: function () {
-      const opts = { intermediateCommitCount: 127 };
-
-      // full scan using primary index and a filter
-      let result = db._query('FOR doc IN @@c FILTER doc._key > "test0001" && doc._key <= "test4995" SORT doc._key ASC INSERT { _key: CONCAT("y", doc._key) } INTO @@c RETURN doc._key', { '@c': cn }, opts).toArray();
-      assertEqual(5000 + 4994, db[cn].count());
-      assertEqual(4994, result.length);
-      result.forEach((value, index) => {
-        index = index + 2;
-        assertEqual("test" + pad(index), value);
-      });
-    },
-
-    testAqlForwardIterationInsert5: function () {
-      const opts = { intermediateCommitCount: 127 };
-
-      // full scan using secondary index 
-      let result = db._query('FOR doc IN @@c SORT doc.value1 ASC INSERT { _key: CONCAT("y", doc.value1) } INTO @@c RETURN doc', { '@c': cn }, opts).toArray();
-      assertEqual(5000 + 5000, db[cn].count());
-      assertEqual(5000, result.length);
-      result.forEach((doc, index) => {
-        assertEqual("test" + pad(index), doc._key);
-        assertEqual(index, doc.value1);
-        assertEqual(index % 113, doc.value2);
-      });
-    },
-      
-    testAqlForwardIterationInsert6: function () {
-      const opts = { intermediateCommitCount: 127 };
-
-      // full scan using secondary index and a filter
-      let result = db._query('FOR doc IN @@c FILTER doc.value1 > 1 && doc.value1 <= 4995 SORT doc.value1 ASC INSERT { _key: CONCAT("y", doc.value1) } INTO @@c RETURN doc', { '@c': cn }, opts).toArray();
-      assertEqual(5000 + 4994, db[cn].count());
-      assertEqual(4994, result.length);
-      result.forEach((doc, index) => {
-        index = index + 2;
-        assertEqual("test" + pad(index), doc._key);
-        assertEqual(index, doc.value1);
-        assertEqual(index % 113, doc.value2);
-      });
-    },
-
-  };
-}
-
-function TransactionIteratorSuite() {
+function IteratorSuite(permuteConfigs) {
   'use strict';
 
-  let prepareTransaction = function(opts) {
-    const trxOpts = {
-      collections: {
-        write: [cn]
-      },
-    };
-    const trx = internal.db._createTransaction(Object.assign(trxOpts, opts));
-    const tc = trx.collection(cn);
+  const prepare = function(ctx) {
+    const col = ctx.collection(cn);
     let docs = [];
     for (let i = 0; i < 5000; ++i) {
       docs.push({ _key: "test" + pad(i), value1: i, value2: i % 113, value3: i });
     }
-    tc.insert(docs);
-    return trx;
-  };
+    col.insert(docs);
 
-  let permute = function(test) {
-    [ {}, {intermediateCommitCount: 127} ].forEach((trxOpts) => {
-      [ {}, {intermediateCommitCount: 111} ].forEach((opts) => {
-        let trx = prepareTransaction(trxOpts);
-
-        try {
-          test(trx, opts);
-        } finally {
-          trx.abort();
-        }
+    let ecol = ctx.collection(ecn);
+    for (let i = 0; i < 5000; ++i) {
+      docs.push({
+        _from: cn + "/blubb",
+        _to: cn + "/test" + pad(i),
+        value1: i,
+        value2: i % 113,
+        value3: i,
+        uniqueValue: i,
       });
-    });
+    }
+    ecol.insert(docs);
   };
+
+  const permute = function(test) {
+    const run = function(ctx, opts) {
+      prepare(ctx);
+      try {
+        test(ctx, opts);
+      } finally {
+        ctx.abort();
+      }
       
+      db[cn].truncate();
+      db[ecn].truncate();
+    };
+    permuteConfigs(run);
+  };
+
   return {
     setUp: function () {
       db._drop(cn);
       let c = db._create(cn, { numberOfShards: 3 });
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
       c.ensureIndex({ type: "persistent", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["uniqueValue"], unique: true, sparse: true });
+
+      db._drop(ecn);
+      db._createEdgeCollection(ecn, { numberOfShards: 3 });
     },
 
     tearDown: function () {
       db._drop(cn);
+      db._drop(ecn);
     },
     
-    testTrxForwardIterationReadOnly: function () {
-      permute((trx, opts) => {
-        // full scan 
-        let result = trx.query('FOR doc IN @@c SORT doc.value3 ASC RETURN doc', { '@c': cn }, opts).toArray();
+    testForwardIterationReadOnly: function () {
+      permute((ctx, opts) => {
+        // full scan
+        let result = ctx.query('FOR doc IN @@c SORT doc.value3 ASC RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(5000, result.length);
         result.forEach((doc, index) => {
           assertEqual("test" + pad(index), doc._key);
           assertEqual(index, doc.value1);
           assertEqual(index % 113, doc.value2);
         });
-        
+
         // full scan over a filtered range
-        result = trx.query('FOR doc IN @@c FILTER doc.value3 > 1 && doc.value3 <= 4995 SORT doc.value3 ASC RETURN doc', { '@c': cn }, opts).toArray();
+        result = ctx.query('FOR doc IN @@c FILTER doc.value3 > 1 && doc.value3 <= 4995 SORT doc.value3 ASC RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(4994, result.length);
         result.forEach((doc, index) => {
           index = index + 2;
@@ -326,33 +117,33 @@ function TransactionIteratorSuite() {
           assertEqual(index, doc.value1);
           assertEqual(index % 113, doc.value2);
         });
-       
-        // full scan using primary index 
-        result = trx.query('FOR doc IN @@c SORT doc._key ASC RETURN doc._key', { '@c': cn }, opts).toArray();
+
+        // full scan using primary index
+        result = ctx.query('FOR doc IN @@c SORT doc._key ASC RETURN doc._key', { '@c': cn }, opts).toArray();
         assertEqual(5000, result.length);
         result.forEach((value, index) => {
           assertEqual("test" + pad(index), value);
         });
-        
+
         // full scan using primary index and a filter
-        result = trx.query('FOR doc IN @@c FILTER doc._key > "test0001" && doc._key <= "test4995" SORT doc._key ASC RETURN doc._key', { '@c': cn }, opts).toArray();
+        result = ctx.query('FOR doc IN @@c FILTER doc._key > "test00001" && doc._key <= "test04995" SORT doc._key ASC RETURN doc._key', { '@c': cn }, opts).toArray();
         assertEqual(4994, result.length);
         result.forEach((value, index) => {
           index = index + 2;
           assertEqual("test" + pad(index), value);
         });
 
-        // full scan using secondary index 
-        result = trx.query('FOR doc IN @@c SORT doc.value1 ASC RETURN doc', { '@c': cn }, opts).toArray();
+        // full scan using secondary index
+        result = ctx.query('FOR doc IN @@c SORT doc.value1 ASC RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(5000, result.length);
         result.forEach((doc, index) => {
           assertEqual("test" + pad(index), doc._key);
           assertEqual(index, doc.value1);
           assertEqual(index % 113, doc.value2);
         });
-        
+
         // full scan using secondary index and a filter
-        result = trx.query('FOR doc IN @@c FILTER doc.value1 > 1 && doc.value1 <= 4995 SORT doc.value1 ASC RETURN doc', { '@c': cn }, opts).toArray();
+        result = ctx.query('FOR doc IN @@c FILTER doc.value1 > 1 && doc.value1 <= 4995 SORT doc.value1 ASC RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(4994, result.length);
         result.forEach((doc, index) => {
           index = index + 2;
@@ -363,10 +154,10 @@ function TransactionIteratorSuite() {
       });
     },
 
-    testTrxReverseIterationReadOnly: function () {
-      permute((trx, opts) => {
-        // full scan 
-        let result = trx.query('FOR doc IN @@c SORT doc.value3 DESC RETURN doc', { '@c': cn }, opts).toArray();
+    testReverseIterationReadOnly: function () {
+      permute((ctx, opts) => {
+        // full scan
+        let result = ctx.query('FOR doc IN @@c SORT doc.value3 DESC RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(5000, result.length);
         result.forEach((doc, index) => {
           index = 5000 - index - 1;
@@ -374,9 +165,9 @@ function TransactionIteratorSuite() {
           assertEqual(index, doc.value1);
           assertEqual(index % 113, doc.value2);
         });
-        
+
         // full scan over a filtered range
-        result = trx.query('FOR doc IN @@c FILTER doc.value3 > 1 && doc.value3 <= 4995 SORT doc.value3 DESC RETURN doc', { '@c': cn }, opts).toArray();
+        result = ctx.query('FOR doc IN @@c FILTER doc.value3 > 1 && doc.value3 <= 4995 SORT doc.value3 DESC RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(4994, result.length);
         result.forEach((doc, index) => {
           index = 4995 - index;
@@ -384,25 +175,25 @@ function TransactionIteratorSuite() {
           assertEqual(index, doc.value1);
           assertEqual(index % 113, doc.value2);
         });
-       
-        // full scan using primary index 
-        result = trx.query('FOR doc IN @@c SORT doc._key DESC RETURN doc._key', { '@c': cn }, opts).toArray();
+
+        // full scan using primary index
+        result = ctx.query('FOR doc IN @@c SORT doc._key DESC RETURN doc._key', { '@c': cn }, opts).toArray();
         assertEqual(5000, result.length);
         result.forEach((value, index) => {
           index = 5000 - index - 1;
           assertEqual("test" + pad(index), value);
         });
-        
+
         // full scan using primary index and a filter
-        result = trx.query('FOR doc IN @@c FILTER doc._key > "test0001" && doc._key <= "test4995" SORT doc._key DESC RETURN doc._key', { '@c': cn }, opts).toArray();
+        result = ctx.query('FOR doc IN @@c FILTER doc._key > "test00001" && doc._key <= "test04995" SORT doc._key DESC RETURN doc._key', { '@c': cn }, opts).toArray();
         assertEqual(4994, result.length);
         result.forEach((value, index) => {
           index = 4995 - index;
           assertEqual("test" + pad(index), value);
         });
 
-        // full scan using secondary index 
-        result = trx.query('FOR doc IN @@c SORT doc.value1 DESC RETURN doc', { '@c': cn }, opts).toArray();
+        // full scan using secondary index
+        result = ctx.query('FOR doc IN @@c SORT doc.value1 DESC RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(5000, result.length);
         result.forEach((doc, index) => {
           index = 5000 - index - 1;
@@ -410,9 +201,9 @@ function TransactionIteratorSuite() {
           assertEqual(index, doc.value1);
           assertEqual(index % 113, doc.value2);
         });
-        
+
         // full scan using secondary index and a filter
-        result = trx.query('FOR doc IN @@c FILTER doc.value1 > 1 && doc.value1 <= 4995 SORT doc.value1 DESC RETURN doc', { '@c': cn }, opts).toArray();
+        result = ctx.query('FOR doc IN @@c FILTER doc.value1 > 1 && doc.value1 <= 4995 SORT doc.value1 DESC RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(4994, result.length);
         result.forEach((doc, index) => {
           index = 4995 - index;
@@ -422,12 +213,12 @@ function TransactionIteratorSuite() {
         });
       });
     },
-    
-    testTrxForwardIterationInsert1: function () {
-      permute((trx, opts) => {
-        // full scan 
-        const tc = trx.collection(cn);
-        let result = trx.query('FOR doc IN @@c SORT doc.value3 ASC INSERT { _key: CONCAT("y", doc.value3) } INTO @@c RETURN doc', { '@c': cn }, opts).toArray();
+
+    testForwardIterationInsertFullScan: function () {
+      permute((ctx, opts) => {
+        // full scan
+        const tc = ctx.collection(cn);
+        let result = ctx.query('FOR doc IN @@c SORT doc.value3 ASC INSERT { _key: CONCAT("y", doc.value3) } INTO @@c RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(5000 + 5000, tc.count());
         assertEqual(5000, result.length);
         result.forEach((doc, index) => {
@@ -437,13 +228,13 @@ function TransactionIteratorSuite() {
         });
       });
     },
-      
-    testTrxForwardIterationInsert2: function () {
-      permute((trx, opts) => {
+
+    testForwardIterationInsertFullScanFiltered: function () {
+      permute((ctx, opts) => {
         // full scan over a filtered range
-        const tc = trx.collection(cn);
-        let result = trx.query('FOR doc IN @@c FILTER doc.value3 > 1 && doc.value3 <= 4995 SORT doc.value3 ASC INSERT { _key: CONCAT("y", doc.value3) } INTO @@c RETURN doc', { '@c': cn }, opts).toArray();
-        
+        const tc = ctx.collection(cn);
+        let result = ctx.query('FOR doc IN @@c FILTER doc.value3 > 1 && doc.value3 <= 4995 SORT doc.value3 ASC INSERT { _key: CONCAT("y", doc.value3) } INTO @@c RETURN doc', { '@c': cn }, opts).toArray();
+
         assertEqual(5000 + 4994, tc.count());
         assertEqual(4994, result.length);
         result.forEach((doc, index) => {
@@ -454,12 +245,12 @@ function TransactionIteratorSuite() {
         });
       });
     },
-     
-    testTrxForwardIterationInsert3: function () {
-      permute((trx, opts) => {
-        const tc = trx.collection(cn);
-        // full scan using primary index 
-        let result = trx.query('FOR doc IN @@c SORT doc._key ASC INSERT { _key: CONCAT("y", doc._key) } INTO @@c RETURN doc._key', { '@c': cn }, opts).toArray();
+
+    testForwardIterationInsertPrimaryIndex: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(cn);
+        // full scan using primary index
+        let result = ctx.query('FOR doc IN @@c SORT doc._key ASC INSERT { _key: CONCAT("y", doc._key) } INTO @@c RETURN doc._key', { '@c': cn }, opts).toArray();
         assertEqual(5000 + 5000, tc.count());
         assertEqual(5000, result.length);
         result.forEach((value, index) => {
@@ -467,12 +258,12 @@ function TransactionIteratorSuite() {
         });
       });
     },
-    
-    testTrxForwardIterationInsert3Before: function () {
-      permute((trx, opts) => {
-        const tc = trx.collection(cn);
-        // full scan using primary index 
-        let result = trx.query('FOR doc IN @@c SORT doc._key ASC INSERT { _key: CONCAT("a", doc._key) } INTO @@c RETURN doc._key', { '@c': cn }, opts).toArray();
+
+    testForwardIterationInsertPrimaryIndexBefore: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(cn);
+        // full scan using primary index
+        let result = ctx.query('FOR doc IN @@c SORT doc._key ASC INSERT { _key: CONCAT("a", doc._key) } INTO @@c RETURN doc._key', { '@c': cn }, opts).toArray();
         assertEqual(5000 + 5000, tc.count());
         assertEqual(5000, result.length);
         result.forEach((value, index) => {
@@ -480,26 +271,12 @@ function TransactionIteratorSuite() {
         });
       });
     },
-      
-    testTrxForwardIterationInsert4: function () {
-      permute((trx, opts) => {
-        const tc = trx.collection(cn);
+
+    testForwardIterationInsertPrimaryIndexFiltered: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(cn);
         // full scan using primary index and a filter
-        let result = trx.query('FOR doc IN @@c FILTER doc._key > "test0001" && doc._key <= "test4995" SORT doc._key ASC INSERT { _key: CONCAT("y", doc._key) } INTO @@c RETURN doc._key', { '@c': cn }, opts).toArray();
-        assertEqual(5000 + 4994, tc.count());
-        assertEqual(4994, result.length);
-        result.forEach((value, index) => {
-          index = index + 2;
-          assertEqual("test" + pad(index), value);
-        });
-      });
-    },
-    
-    testTrxForwardIterationInsert4Before: function () {
-      permute((trx, opts) => {
-        const tc = trx.collection(cn);
-        // full scan using primary index and a filter
-        let result = trx.query('FOR doc IN @@c FILTER doc._key > "test0001" && doc._key <= "test4995" SORT doc._key ASC INSERT { _key: CONCAT("a", doc._key) } INTO @@c RETURN doc._key', { '@c': cn }, opts).toArray();
+        let result = ctx.query('FOR doc IN @@c FILTER doc._key > "test00001" && doc._key <= "test04995" SORT doc._key ASC INSERT { _key: CONCAT("y", doc._key) } INTO @@c RETURN doc._key', { '@c': cn }, opts).toArray();
         assertEqual(5000 + 4994, tc.count());
         assertEqual(4994, result.length);
         result.forEach((value, index) => {
@@ -509,11 +286,25 @@ function TransactionIteratorSuite() {
       });
     },
 
-    testTrxForwardIterationInsert5: function () {
-      permute((trx, opts) => {
-        const tc = trx.collection(cn);
-        // full scan using secondary index 
-        let result = trx.query('FOR doc IN @@c SORT doc.value1 ASC INSERT { _key: CONCAT("y", doc.value1) } INTO @@c RETURN doc', { '@c': cn }, opts).toArray();
+    testForwardIterationInsertPrimaryIndexFilteredBefore: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(cn);
+        // full scan using primary index and a filter
+        let result = ctx.query('FOR doc IN @@c FILTER doc._key > "test00001" && doc._key <= "test04995" SORT doc._key ASC INSERT { _key: CONCAT("a", doc._key) } INTO @@c RETURN doc._key', { '@c': cn }, opts).toArray();
+        assertEqual(5000 + 4994, tc.count());
+        assertEqual(4994, result.length);
+        result.forEach((value, index) => {
+          index = index + 2;
+          assertEqual("test" + pad(index), value);
+        });
+      });
+    },
+
+    testForwardIterationInsertSecondaryIndex: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(cn);
+        // full scan using secondary index
+        let result = ctx.query('FOR doc IN @@c SORT doc.value1 ASC INSERT { _key: CONCAT("y", doc.value1) } INTO @@c RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(5000 + 5000, tc.count());
         assertEqual(5000, result.length);
         result.forEach((doc, index) => {
@@ -523,12 +314,12 @@ function TransactionIteratorSuite() {
         });
       });
     },
-      
-    testTrxForwardIterationInsert6: function () {
-      permute((trx, opts) => {
-        const tc = trx.collection(cn);
+
+    testForwardIterationInsertSecondaryIndexFiltered: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(cn);
         // full scan using secondary index and a filter
-        let result = trx.query('FOR doc IN @@c FILTER doc.value1 > 1 && doc.value1 <= 4995 SORT doc.value1 ASC INSERT { _key: CONCAT("y", doc.value1) } INTO @@c RETURN doc', { '@c': cn }, opts).toArray();
+        let result = ctx.query('FOR doc IN @@c FILTER doc.value1 > 1 && doc.value1 <= 4995 SORT doc.value1 ASC INSERT { _key: CONCAT("y", doc.value1) } INTO @@c RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(5000 + 4994, tc.count());
         assertEqual(4994, result.length);
         result.forEach((doc, index) => {
@@ -540,8 +331,232 @@ function TransactionIteratorSuite() {
       });
     },
 
+    testForwardIterationInsertEdgeIndex: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(ecn);
+        // full scan using edge index
+        let result = ctx.query(`
+          FOR doc IN @@c
+            FILTER doc._from == "${cn}/blubb"
+            INSERT { _from: "${cn}/blubb", _to: CONCAT("y", doc._to) } INTO @@c
+            SORT doc._to ASC
+            RETURN doc`,
+          { '@c': ecn }, opts).toArray();
+        assertEqual(5000 + 5000, tc.count());
+        assertEqual(5000, result.length);
+        result.forEach((doc, index) => {
+          assertEqual(cn + "/test" + pad(index), doc._to);
+          assertEqual(index, doc.value1);
+          assertEqual(index % 113, doc.value2);
+        });
+      });
+    },
+
+    testForwardIterationInsertEdgeIndexFiltered: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(ecn);
+        // full scan using edge index and a filter
+        let result = ctx.query(`
+          FOR doc IN @@c
+          FILTER doc._from == "${cn}/blubb" AND doc._to > "${cn}/test00001" AND doc._to <= "${cn}/test04995"
+            INSERT { _from: "${cn}/blubb", _to: CONCAT("y", doc._to) } INTO @@c
+            SORT doc._to ASC
+            RETURN doc`,
+          { '@c': ecn }, opts).toArray();
+        assertEqual(5000 + 4994, tc.count());
+        assertEqual(4994, result.length);
+        result.forEach((doc, index) => {
+          index = index + 2;
+          assertEqual(cn + "/test" + pad(index), doc._to);
+          assertEqual(index, doc.value1);
+          assertEqual(index % 113, doc.value2);
+        });
+      });
+    },
+
+    testDocumentFunction: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(cn);
+        // lookup documents via DOCUMENT function
+        let q = `
+        FOR i in 1..2000
+          LET doc = (FOR j IN 0..0 RETURN DOCUMENT(@@col, "dummy"))[0]
+          LET unused = (FOR j in 1..(doc == null ? 1 : 0)
+            INSERT { _key: "dummy" } INTO @@col OPTIONS { ignoreErrors: true })
+          COLLECT isNull = doc == null WITH COUNT INTO cnt
+          RETURN {isNull, cnt}
+        `
+        let result = ctx.query(q, { '@col': cn }, opts).toArray();
+        assertEqual(5000 + 1, tc.count()); // only a single insert may succeed!
+        assertEqual(1, result.length);
+        assertEqual(2000, result[0].cnt);
+        
+        let values = db._query('FOR doc in @@c FILTER doc._key == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
+        assertEqual(1, values.length);
+      });
+    },
+    
+    testSubqueryWithPrimaryIndex: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(cn);
+        // lookup documents via subquery with primary index
+        let q = `
+        FOR i in 1..2000
+          LET doc = (FOR d IN @@col FILTER d._key == "dummy" RETURN d)[0]
+          LET unused = (FOR j in 1..(doc == null ? 1 : 0)
+            INSERT { _key: "dummy" } INTO @@col OPTIONS { ignoreErrors: true })
+          COLLECT isNull = doc == null WITH COUNT INTO cnt
+          RETURN {isNull, cnt}
+        `
+        let result = ctx.query(q, { '@col': cn }, opts).toArray();
+        assertEqual(5000 + 1, tc.count()); // only a single insert may succeed!
+        assertEqual(1, result.length);
+        assertEqual(2000, result[0].cnt);
+        
+        let values = db._query('FOR doc in @@c FILTER doc._key == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
+        assertEqual(1, values.length);
+      });
+    },
+
+    testSubqueryWithUniqueSecondaryIndex: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(cn);
+        // lookup documents via subquery with unique secondary index
+        let q = `
+        FOR i in 1..2000
+          LET doc = (FOR d IN @@col FILTER d.uniqueValue == "dummy" RETURN d)[0]
+          LET unused = (FOR j in 1..(doc == null ? 1 : 0)
+            INSERT { uniqueValue: "dummy" } INTO @@col OPTIONS { ignoreErrors: true })
+          COLLECT isNull = doc == null WITH COUNT INTO cnt
+          RETURN {isNull, cnt}
+        `
+        let result = ctx.query(q, { '@col': cn }, opts).toArray();
+        assertEqual(5000 + 1, tc.count()); // only a single insert may succeed!
+        assertEqual(1, result.length);
+        assertEqual(2000, result[0].cnt);
+        
+        let values = db._query('FOR doc in @@c FILTER doc.uniqueValue == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
+        assertEqual(1, values.length);
+      });
+    },
+
+    testUpsertFullScan: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(cn);
+        // full scan
+        let result = ctx.query(
+          'FOR i IN 1..2000 UPSERT { v: "dummy" } INSERT { v: "dummy", cnt: 1, idx: i } UPDATE { cnt: OLD.cnt + 1 } IN @@c RETURN OLD', { '@c': cn }, opts).toArray();
+        assertEqual(5000 + 1, tc.count());
+        assertEqual(2000, result.length);
+
+        let values = db._query('FOR doc in @@c FILTER doc.v == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
+        assertEqual(1, values.length);
+        assertEqual(2000, values[0].cnt);
+      });
+    },
+
+    testUpsertPrimaryIndex: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(cn);
+        // primary index
+        let q = 'FOR i IN 1..2000 UPSERT { _key: "key" } INSERT { _key: "key" , cnt: 1 } UPDATE { cnt: OLD.cnt + 1} IN @@c RETURN OLD';
+        let result = ctx.query(q, { '@c': cn }, opts).toArray();
+        assertEqual(5000 + 1, tc.count());
+        assertEqual(2000, result.length);
+
+        let values = ctx.query('FOR doc in @@c FILTER doc._key == "key" RETURN doc', { '@c': cn }, opts).toArray();
+        assertEqual(1, values.length);
+        assertEqual(2000, values[0].cnt);
+      });
+    },
+
+    testUpsertSecondaryIndex: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(cn);
+        // secondary index
+        const q = 'FOR i IN 1..2000 UPSERT { value1: "blubb" } INSERT { value1: "blubb" , cnt: 1 } UPDATE { cnt: OLD.cnt + 1} IN @@c RETURN OLD';
+        let result = ctx.query(q, { '@c': cn }, opts).toArray();
+        assertEqual(5000 + 1, tc.count());
+        assertEqual(2000, result.length);
+
+        let values = ctx.query('FOR doc in @@c FILTER doc.value1 == "blubb" RETURN doc', { '@c': cn }, opts).toArray();
+        assertEqual(1, values.length);
+        assertEqual(2000, values[0].cnt);
+      });
+    },
+
+    testUpsertUniqueSecondaryIndex: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(cn);
+        // secondary index
+        let result = ctx.query(
+          'FOR i IN 1..2000 UPSERT { uniqueValue: "blubb" } INSERT { uniqueValue: "blubb" , cnt: 1 } UPDATE { cnt: OLD.cnt + 1} IN @@c RETURN OLD', { '@c': cn }, opts).toArray();
+        assertEqual(5000 + 1, tc.count());
+        assertEqual(2000, result.length);
+
+        let values = ctx.query('FOR doc in @@c FILTER doc.uniqueValue == "blubb" RETURN doc', { '@c': cn }, opts).toArray();
+        assertEqual(1, values.length);
+        assertEqual(2000, values[0].cnt);
+      });
+    },
+    
+    testUpsertEdgeIndex: function () {
+      permute((ctx, opts) => {
+        const tc = ctx.collection(ecn);
+        // edge index
+        let result = ctx.query(
+          `FOR i IN 1..2000 UPSERT { _from: "${cn}/xyz" } INSERT { _from: "${cn}/xyz", _to: "${cn}/blubb", cnt: 1 } UPDATE { cnt: OLD.cnt + 1} IN @@c RETURN OLD`,
+          { '@c': ecn }, opts).toArray();
+        assertEqual(5000 + 1, tc.count());
+        assertEqual(2000, result.length);
+
+        let values = ctx.query(`FOR doc in @@c FILTER doc._from == "${cn}/xyz" RETURN doc`, { '@c': ecn }, opts).toArray();
+        assertEqual(1, values.length);
+        assertEqual(2000, values[0].cnt);
+      });
+    },
   };
-}    
+}
+
+function StandaloneAqlIteratorSuite() {
+  'use strict';
+
+  const ctx = {
+    query: (...args) => db._query(...args),
+    collection: (name) => db[name],
+    abort: () => {},
+  };
+  
+  let permute = function(run) {
+    [ {}, /*{intermediateCommitCount: 111}*/ ].forEach((opts) => {
+      run(ctx, opts);
+    });
+  };
+
+  let suite = {};
+  deriveTestSuite(IteratorSuite(permute), suite, '_StandaloneAql');
+  return suite;
+}
+
+function TransactionIteratorSuite() {
+  'use strict';
+  
+  let permute = function(run) {
+    [ {}, /*{intermediateCommitCount: 111}*/ ].forEach((opts) => {
+      const trxOpts = {
+        collections: {
+          write: [cn, ecn]
+        },
+      };
+      const ctx = db._createTransaction(Object.assign(trxOpts, opts));
+      run(ctx, opts);
+    });
+  };
+  
+  let suite = {};
+  deriveTestSuite(IteratorSuite(permute), suite, '_StreamingTrx');
+  return suite;
+}
 
 jsunity.run(StandaloneAqlIteratorSuite);
 jsunity.run(TransactionIteratorSuite);
