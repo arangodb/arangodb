@@ -109,7 +109,7 @@ irs::unbounded_object_pool<AnyFactory<irs::string_token_stream>> StringStreamPoo
 irs::unbounded_object_pool<AnyFactory<irs::null_token_stream>> NullStreamPool(DEFAULT_POOL_SIZE);
 irs::unbounded_object_pool<AnyFactory<irs::boolean_token_stream>> BoolStreamPool(DEFAULT_POOL_SIZE);
 irs::unbounded_object_pool<AnyFactory<irs::numeric_token_stream>> NumericStreamPool(DEFAULT_POOL_SIZE);
-irs::flags NumericStreamFeatures{irs::type<irs::granularity_prefix>::get()};
+std::initializer_list<irs::type_info::type_id> NumericStreamFeatures { irs::type<irs::granularity_prefix>::id() };
 
 // appends the specified 'value' to 'out'
 inline void append(std::string& out, size_t value) {
@@ -303,7 +303,8 @@ namespace iresearch {
 
 /*static*/ void Field::setPkValue(Field& field, LocalDocumentId::BaseType const& pk) {
   field._name = PK_COLUMN;
-  field._features = &irs::flags::empty_instance();
+  field._indexFeatures = irs::IndexFeatures::NONE;
+  field._fieldFeatures = {};
   field._storeValues = ValueStorage::VALUE;
   field._value =
       irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(&pk), sizeof(pk));
@@ -356,7 +357,8 @@ void FieldIterator::setBoolValue(VPackSlice const value) {
   // set field properties
   _value._name = _nameBuffer;
   _value._analyzer = stream.release();  // FIXME don't use shared_ptr
-  _value._features = &irs::flags::empty_instance();
+  _value._indexFeatures = irs::IndexFeatures::NONE;
+  _value._fieldFeatures = {};
 }
 
 void FieldIterator::setNumericValue(VPackSlice const value) {
@@ -371,7 +373,9 @@ void FieldIterator::setNumericValue(VPackSlice const value) {
   // set field properties
   _value._name = _nameBuffer;
   _value._analyzer = stream.release();  // FIXME don't use shared_ptr
-  _value._features = &NumericStreamFeatures;
+  _value._indexFeatures = irs::IndexFeatures::NONE;
+  _value._fieldFeatures = { NumericStreamFeatures.begin(),
+                            NumericStreamFeatures.size() };
 }
 
 void FieldIterator::setNullValue(VPackSlice const value) {
@@ -386,7 +390,8 @@ void FieldIterator::setNullValue(VPackSlice const value) {
   // set field properties
   _value._name = _nameBuffer;
   _value._analyzer = stream.release();  // FIXME don't use shared_ptr
-  _value._features = &irs::flags::empty_instance();
+  _value._indexFeatures = irs::IndexFeatures::NONE;
+  _value._fieldFeatures = {};
 }
 
 bool FieldIterator::setValue(VPackSlice const value,
@@ -505,12 +510,13 @@ bool FieldIterator::setValue(VPackSlice const value,
         };
       }
       break;
-    default:
+    default: {
       iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
       _value._analyzer = analyzer;
-      _value._features = &(pool->features());
+      _value._fieldFeatures = pool->fieldFeatures();
+      _value._indexFeatures = pool->indexFeatures();
       _value._name = _nameBuffer;
-      break;
+    } break;
   }
   auto* storeFunc = pool->storeFunc();
   if (storeFunc) {

@@ -1054,9 +1054,12 @@ bool IResearchFeature::queue(
       << std::to_string(std::underlying_type_t<ThreadGroup>(id)) << "'";
   }
 
-  LOG_TOPIC("c1b66", ERR, arangodb::iresearch::TOPIC)
-    << "Failed to submit a task to thread group '"
-    << std::to_string(std::underlying_type_t<ThreadGroup>(id)) << "'";
+  if (!server().isStopping()) {
+    // do not log error at shutdown
+    LOG_TOPIC("c1b66", ERR, arangodb::iresearch::TOPIC)
+      << "Failed to submit a task to thread group '"
+      << std::to_string(std::underlying_type_t<ThreadGroup>(id)) << "'";
+  }
 
   return false;
 }

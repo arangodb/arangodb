@@ -23,8 +23,8 @@
 #ifndef IRESEARCH_NGRAM_TOKEN_STREAM_H
 #define IRESEARCH_NGRAM_TOKEN_STREAM_H
 
-#include "analyzers.hpp"
-#include "token_attributes.hpp"
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
 
 namespace iresearch {

@@ -21,26 +21,27 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "index_writer.hpp"
+
+#include <sstream>
+
+#include <absl/container/flat_hash_map.h>
+
 #include "shared.hpp"
-#include "file_names.hpp"
-#include "merge_writer.hpp"
-#include "comparer.hpp"
 #include "formats/format_utils.hpp"
+#include "index/comparer.hpp"
+#include "index/file_names.hpp"
+#include "index/merge_writer.hpp"
 #include "search/exclusion.hpp"
 #include "utils/bitvector.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/index_utils.hpp"
+#include "utils/range.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/range.hpp"
-#include "index_writer.hpp"
 
-#include <absl/container/flat_hash_map.h>
-
-#include <list>
-#include <sstream>
 
 namespace {
 using namespace irs;
@@ -51,6 +52,11 @@ typedef range<irs::segment_writer::update_context> update_contexts_ref;
 const size_t NON_UPDATE_RECORD = std::numeric_limits<size_t>::max(); // non-update
 
 const irs::column_info_provider_t DEFAULT_COLUMN_INFO = [](const irs::string_ref&) {
+  // no compression, no encryption
+  return irs::column_info{ irs::type<irs::compression::none>::get(), {}, false };
+};
+
+const irs::feature_column_info_provider_t DEFAULT_FEATURE_COLUMN_INFO = [](irs::type_info::type_id) {
   // no compression, no encryption
   return irs::column_info{ irs::type<irs::compression::none>::get(), {}, false };
 };
@@ -632,8 +638,7 @@ index_writer::active_segment_context::~active_segment_context() {
 }
 
 index_writer::active_segment_context& index_writer::active_segment_context::operator=(
-    active_segment_context&& other
-) noexcept {
+    active_segment_context&& other) noexcept {
   if (this != &other) {
     if (ctx_) {
       --*segments_active_; // track here since garanteed to have 1 ref per active segment
@@ -1011,7 +1016,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
     assert(segment.ctx_.use_count() == 2); // +1 for 'active_segment_context::ctx_', +1 for 'pending_segment_context::segment_'
     auto& segments_active = *(segment.segments_active_);
     auto segments_active_decrement =
-      irs::make_finally([&segments_active]()->void { --segments_active; }); // release hold (delcare before aquisition since operator++() is noexcept)
+      irs::make_finally([&segments_active]()noexcept{ --segments_active; }); // release hold (delcare before aquisition since operator++() is noexcept)
 
     ++segments_active; // increment counter to hold reservation while segment_context is being released and added to the freelist
     segment = active_segment_context(); // reset before adding to freelist to garantee proper use_count() in get_segment_context(...)
@@ -1039,7 +1044,9 @@ void index_writer::flush_context::reset() noexcept {
 index_writer::segment_context::segment_context(
     directory& dir,
     segment_meta_generator_t&& meta_generator,
+    const field_features_t& field_features,
     const column_info_provider_t& column_info,
+    const feature_column_info_provider_t& feature_column_info,
     const comparer* comparator)
   : active_count_(0),
     buffered_docs_(0),
@@ -1049,7 +1056,8 @@ index_writer::segment_context::segment_context(
     uncomitted_doc_id_begin_(doc_limits::min()),
     uncomitted_generation_offset_(0),
     uncomitted_modification_queries_(0),
-    writer_(segment_writer::make(dir_, column_info, comparator)) {
+    writer_(segment_writer::make(dir_, field_features, column_info,
+                                 feature_column_info, comparator)) {
   assert(meta_generator_);
 }
 
@@ -1097,16 +1105,14 @@ uint64_t index_writer::segment_context::flush() {
 index_writer::segment_context::ptr index_writer::segment_context::make(
     directory& dir,
     segment_meta_generator_t&& meta_generator,
+    const field_features_t& field_features,
     const column_info_provider_t& column_info,
+    const feature_column_info_provider_t& feature_column_info,
     const comparer* comparator) {
-  return memory::make_shared<segment_context>(dir, std::move(meta_generator), column_info, comparator);
-}
-
-segment_writer::update_context index_writer::segment_context::make_update_context() {
-  return segment_writer::update_context {
-    uncomitted_generation_offset_, // current modification generation
-    NON_UPDATE_RECORD
-  };
+  return memory::make_shared<segment_context>(
+    dir, std::move(meta_generator),
+    field_features, column_info,
+    feature_column_info, comparator);
 }
 
 segment_writer::update_context index_writer::segment_context::make_update_context(
@@ -1116,10 +1122,7 @@ segment_writer::update_context index_writer::segment_context::make_update_contex
 
   modification_queries_.emplace_back(filter, generation - 1, true); // -1 for previous generation
 
-  return segment_writer::update_context {
-    generation, // current modification generation
-    update_id // entry in modification_queries_
-  };
+  return { generation, update_id };
 }
 
 segment_writer::update_context index_writer::segment_context::make_update_context(
@@ -1130,10 +1133,7 @@ segment_writer::update_context index_writer::segment_context::make_update_contex
 
   modification_queries_.emplace_back(filter, generation - 1, true); // -1 for previous generation
 
-  return segment_writer::update_context {
-    generation, // current modification generation
-    update_id // entry in modification_queries_
-  };
+  return { generation,  update_id };
 }
 
 segment_writer::update_context index_writer::segment_context::make_update_context(
@@ -1144,10 +1144,7 @@ segment_writer::update_context index_writer::segment_context::make_update_contex
 
   modification_queries_.emplace_back(std::move(filter), generation - 1, true); // -1 for previous generation
 
-  return segment_writer::update_context {
-    generation, // current modification generation
-    update_id // entry in modification_queries_
-  };
+  return { generation, update_id };
 }
 
 void index_writer::segment_context::prepare() {
@@ -1161,20 +1158,17 @@ void index_writer::segment_context::prepare() {
 
 void index_writer::segment_context::remove(const filter& filter) {
   modification_queries_.emplace_back(
-    filter, uncomitted_generation_offset_++, false
-  );
+    filter, uncomitted_generation_offset_++, false);
 }
 
 void index_writer::segment_context::remove(
-    const std::shared_ptr<filter>& filter
-) {
+    const std::shared_ptr<filter>& filter) {
   if (!filter) {
     return; // skip empty filters
   }
 
   modification_queries_.emplace_back(
-    filter, uncomitted_generation_offset_++, false
-  );
+    filter, uncomitted_generation_offset_++, false);
 }
 
 void index_writer::segment_context::remove(filter::ptr&& filter) {
@@ -1183,8 +1177,7 @@ void index_writer::segment_context::remove(filter::ptr&& filter) {
   }
 
   modification_queries_.emplace_back(
-    std::move(filter), uncomitted_generation_offset_++, false
-  );
+    std::move(filter), uncomitted_generation_offset_++, false);
 }
 
 void index_writer::segment_context::reset() noexcept {
@@ -1214,10 +1207,14 @@ index_writer::index_writer(
     const segment_options& segment_limits,
     const comparer* comparator,
     const column_info_provider_t& column_info,
+    const feature_column_info_provider_t& feature_column_info,
     const payload_provider_t& meta_payload_provider,
+    const field_features_t& field_features,
     index_meta&& meta,
     committed_state_t&& committed_state)
-  : column_info_(column_info),
+  : field_features_(field_features),
+    feature_column_info_(feature_column_info),
+    column_info_(column_info),
     meta_payload_provider_(meta_payload_provider),
     comparator_(comparator),
     cached_readers_(dir),
@@ -1233,6 +1230,7 @@ index_writer::index_writer(
     write_lock_(std::move(lock)),
     write_lock_file_ref_(std::move(lock_file_ref)) {
   assert(column_info); // ensured by 'make'
+  assert(feature_column_info); // ensured by 'make'
   assert(codec);
   flush_context_.store(&flush_context_pool_[0]);
 
@@ -1262,8 +1260,7 @@ void index_writer::clear(uint64_t tick) {
   auto pending_commit = memory::make_shared<committed_state_t::element_type>(
     std::piecewise_construct,
     std::forward_as_tuple(memory::make_shared<index_meta>()),
-    std::forward_as_tuple()
-  );
+    std::forward_as_tuple());
 
   auto& dir = *ctx->dir_;
   auto& pending_meta = *pending_commit->first;
@@ -1286,8 +1283,7 @@ void index_writer::clear(uint64_t tick) {
   }
 
   pending_refs.emplace_back(
-    directory_utils::reference(dir, writer_->filename(pending_meta), true)
-  );
+    directory_utils::reference(dir, writer_->filename(pending_meta), true));
 
   // 1st phase of the transaction successfully finished here
   meta_.update_generation(pending_meta); // ensure new generation reflected in 'meta_'
@@ -1361,8 +1357,7 @@ index_writer::ptr index_writer::make(
 
   auto comitted_state = memory::make_shared<committed_state_t::element_type>(
     memory::make_shared<index_meta>(meta),
-    std::move(file_refs)
-  );
+    std::move(file_refs));
 
   PTR_NAMED(
     index_writer,
@@ -1374,11 +1369,14 @@ index_writer::ptr index_writer::make(
     opts.segment_pool_size,
     segment_options(opts),
     opts.comparator,
-    opts.column_info ? opts.column_info : DEFAULT_COLUMN_INFO,
+    opts.column_info
+      ? opts.column_info : DEFAULT_COLUMN_INFO,
+    opts.feature_column_info
+      ? opts.feature_column_info : DEFAULT_FEATURE_COLUMN_INFO,
     opts.meta_payload_provider,
+    opts.features,
     std::move(meta),
-    std::move(comitted_state)
-  );
+    std::move(comitted_state));
 
   directory_utils::ensure_allocator(dir, opts.memory_pool_size); // ensure memory_allocator set in directory
   directory_utils::remove_all_unreferenced(dir); // remove non-index files from directory
@@ -1477,6 +1475,7 @@ index_writer::consolidation_result index_writer::consolidate(
 
   // unregisterer for all registered candidates
   auto unregister_segments = irs::make_finally([&candidates, this]() {
+    // FIXME make me noexcept as I'm begin called from within ~finally()
     if (candidates.empty()) {
       return;
     }
@@ -1531,7 +1530,7 @@ index_writer::consolidation_result index_writer::consolidate(
   consolidation_segment.meta.name = file_name(meta_.increment()); // increment active meta, not fn arg
 
   ref_tracking_directory dir(dir_); // track references for new segment
-  merge_writer merger(dir, column_info_, comparator_);
+  merge_writer merger(dir, column_info_, feature_column_info_, comparator_);
   merger.reserve(result.size);
 
   // add consolidated segments to the merge_writer
@@ -1560,25 +1559,26 @@ index_writer::consolidation_result index_writer::consolidate(
     const auto current_committed_meta = committed_state_->first;
     assert(current_committed_meta);
 
-    auto cleanup_cached_readers = [&current_committed_meta, &candidates, this]() {
-        if (!candidates.empty()) {
-          decltype(flush_context::segment_mask_) cached_mask;
-          // pointers are different so check by name
-          for (const auto* candidate : candidates) {
-            if (current_committed_meta->end() ==
-              std::find_if(current_committed_meta->begin(),
-                current_committed_meta->end(),
-                [&candidate](const index_meta::index_segment_t& s) {
-                  return candidate->name == s.meta.name; })) {
-              // found missing segment. Mask it!
-              cached_mask.insert(*candidate);
-            }
-          }
-          if (!cached_mask.empty()) {
-            cached_readers_.purge(cached_mask);
+    auto cleanup_cached_readers = [&current_committed_meta, &candidates, this](){
+      // FIXME make me noexcept as I'm begin called from within ~finally()
+      if (!candidates.empty()) {
+        decltype(flush_context::segment_mask_) cached_mask;
+        // pointers are different so check by name
+        for (const auto* candidate : candidates) {
+          if (current_committed_meta->end() ==
+            std::find_if(current_committed_meta->begin(),
+              current_committed_meta->end(),
+              [&candidate](const index_meta::index_segment_t& s) {
+                return candidate->name == s.meta.name; })) {
+            // found missing segment. Mask it!
+            cached_mask.insert(*candidate);
           }
         }
-      };
+        if (!cached_mask.empty()) {
+          cached_readers_.purge(cached_mask);
+        }
+      }
+    };
 
     if (pending_state_) {
       // we could possibly need cleanup
@@ -1780,7 +1780,7 @@ bool index_writer::import(
   segment.meta.name = file_name(meta_.increment());
   segment.meta.codec = codec;
 
-  merge_writer merger(dir, column_info_, comparator_);
+  merge_writer merger(dir, column_info_, feature_column_info_, comparator_);
   merger.reserve(reader.size());
 
   for (auto& segment : reader) {
@@ -1870,7 +1870,7 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
 index_writer::active_segment_context index_writer::get_segment_context(
     flush_context& ctx) {
   // release reservation (delcare before aquisition since operator++() is noexcept)
-  auto segments_active_decrement = irs::make_finally([this]()->void { --segments_active_; });
+  auto segments_active_decrement = irs::make_finally([this]()noexcept{ --segments_active_; });
   // increment counter to aquire reservation, if another thread
   // tries to reserve last context then it'll be over limit
   auto segments_active = ++segments_active_;
@@ -1906,14 +1906,16 @@ index_writer::active_segment_context index_writer::get_segment_context(
   };
   auto segment_ctx = segment_writer_pool_.emplace(
     dir_, std::move(meta_generator),
-    column_info_, comparator_
-  ).release();
+    field_features_, column_info_,
+    feature_column_info_, comparator_).release();
   auto segment_memory_max = segment_limits_.segment_memory_max.load();
 
   // recreate writer if it reserved more memory than allowed by current limits
   if (segment_memory_max &&
       segment_memory_max < segment_ctx->writer_->memory_reserved()) {
-    segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_, column_info_, comparator_);
+    segment_ctx->writer_ = segment_writer::make(
+      segment_ctx->dir_, field_features_,
+      column_info_,  feature_column_info_, comparator_);
   }
 
   return active_segment_context(segment_ctx, segments_active_);
@@ -1937,21 +1939,21 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   // register consolidating segments cleanup.
   // we need raw ptr as ctx may be moved
-  auto unregister_segments = irs::make_finally([ctx_raw = ctx.get(), this]()
-    {
-      assert(ctx_raw);
-      if (ctx_raw->pending_segments_.empty()) {
-        return;
-      }
-      auto lock = make_lock_guard(consolidation_lock_);
+  auto unregister_segments = irs::make_finally([ctx_raw = ctx.get(), this](){
+    // FIXME make me noexcept as I'm begin called from within ~finally()
+    assert(ctx_raw);
+    if (ctx_raw->pending_segments_.empty()) {
+      return;
+    }
+    auto lock = make_lock_guard(consolidation_lock_);
 
-      for (auto& pending_segment : ctx_raw->pending_segments_) {
-        auto& candidates = pending_segment.consolidation_ctx.candidates;
-        for (const auto* candidate : candidates) {
-          consolidating_segments_.erase(candidate);
-        }
+    for (auto& pending_segment : ctx_raw->pending_segments_) {
+      auto& candidates = pending_segment.consolidation_ctx.candidates;
+      for (const auto* candidate : candidates) {
+        consolidating_segments_.erase(candidate);
       }
-    });
+    }
+  });
   //////////////////////////////////////////////////////////////////////////////
   /// Stage 0
   /// wait for any outstanding segments to settle to ensure that any rollbacks

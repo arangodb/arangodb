@@ -1,0 +1,23 @@
+highway (0.11.1-1) UNRELEASED; urgency=medium
+
+  * Fix clang7 asan error, finish f16 conversions and add test
+
+ -- Jan Wassenberg <janwas@google.com>  Thu, 25 Feb 2021 16:00:00 +0200
+
+highway (0.11.0-1) UNRELEASED; urgency=medium
+
+  * Add RVV+mask logical ops, allow Shl/ShiftLeftSame on all targets, more math
+
+ -- Jan Wassenberg <janwas@google.com>  Thu, 18 Feb 2021 20:00:00 +0200
+
+highway (0.7.0-1) UNRELEASED; urgency=medium
+
+  * Added API stability notice, Compress[Store], contrib/, SignBit, CopySign
+
+ -- Jan Wassenberg <janwas@google.com>  Tue, 5 Jan 2021 17:00:00 +0200
+
+highway (0.1-1) UNRELEASED; urgency=medium
+
+  * Initial debian package.
+
+ -- Alex Deymo <deymo@google.com>  Mon, 19 Oct 2020 16:48:07 +0200

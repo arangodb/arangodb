@@ -23,22 +23,22 @@
 #ifndef IRESEARCH_FST_STRING_WEIGHT_H
 #define IRESEARCH_FST_STRING_WEIGHT_H
 
+#include <string>
+
 #if defined(_MSC_VER)
   #pragma warning(disable : 4267) // conversion from 'size_t' to 'uint32_t', possible loss of data
 #endif
 
-  #include <fst/string-weight.h>
+#include <fst/string-weight.h>
 
 #if defined(_MSC_VER)
   #pragma warning(default: 4267)
 #endif
 
 #include "shared.hpp"
+#include "utils/bytes_utils.hpp"
 #include "utils/string.hpp"
 #include "utils/std.hpp"
-#include "utils/bytes_utils.hpp"
-
-#include <string>
 
 namespace fst {
 

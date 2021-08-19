@@ -140,7 +140,7 @@ class IRESEARCH_API skip_reader: util::noncopyable {
   /// @param stream where level data resides 
   /// @returns readed key if stream is not exhausted, NO_MORE_DOCS otherwise
   //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<doc_id_t(size_t, index_input&)> read_f;
+  typedef std::function<doc_id_t(size_t, data_input&)> read_f;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -195,7 +195,7 @@ class IRESEARCH_API skip_reader: util::noncopyable {
   }
 
  private:
-  struct level final : public index_input {
+  struct level final : public data_input {
     level(
       index_input::ptr&& stream,
       size_t step,
@@ -207,18 +207,25 @@ class IRESEARCH_API skip_reader: util::noncopyable {
     level(level&&) = default;
     level& operator=(level&&) = delete;
 
-    ptr dup() const override;
-    uint8_t read_byte() override;
-    size_t read_bytes(byte_type* b, size_t count) override;
-    const byte_type* read_buffer(size_t size, BufferHint hint) override {
+    virtual uint8_t read_byte() override {
+      return stream->read_byte();
+    }
+    virtual size_t read_bytes(byte_type* b, size_t count) override {
+      static_assert(sizeof(size_t) >= sizeof(uint64_t));
+      return stream->read_bytes(b, std::min(size_t(end) - file_pointer(), count));
+    }
+    virtual const byte_type* read_buffer(size_t size, BufferHint hint) override {
       return stream->read_buffer(size, hint);
     }
-    ptr reopen() const override;
-    size_t file_pointer() const override;
-    size_t length() const override;
-    bool eof() const override;
-    void seek(size_t pos) override;
-    int64_t checksum(size_t offset) const override;
+    virtual size_t file_pointer() const override {
+      return stream->file_pointer() - begin;
+    }
+    virtual size_t length() const override {
+      return end - begin;
+    }
+    virtual bool eof() const override {
+      return stream->file_pointer() >= end;
+    }
 
     index_input::ptr stream; // level data stream
     uint64_t begin; // where current level starts
@@ -234,7 +241,7 @@ class IRESEARCH_API skip_reader: util::noncopyable {
   typedef std::vector<level> levels_t;
 
   static void load_level(levels_t& levels, index_input::ptr&& stream, size_t step);
-  static doc_id_t nop(size_t, index_input&) { return doc_limits::invalid(); }
+  static doc_id_t nop(size_t, data_input&) { return doc_limits::invalid(); }
   static void seek_skip(skip_reader::level& level, uint64_t ptr, size_t skipped);
 
   void read_skip(skip_reader::level& level);

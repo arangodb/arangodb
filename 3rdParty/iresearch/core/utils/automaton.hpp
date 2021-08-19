@@ -285,14 +285,10 @@ uint64 ComputeProperties(
 
     struct RangeLabelComparer {
       bool operator()(Label lhs, Label rhs) const noexcept {
-        if (lhs > rhs) {
-          std::swap(lhs, rhs);
-        }
-
         fsa::RangeLabel lhsRange{lhs};
         fsa::RangeLabel rhsRange{rhs};
 
-        return lhsRange.min < rhsRange.min && lhsRange.max < rhsRange.min;
+        return lhsRange.min < rhsRange.min && lhsRange.max < rhsRange.min; 
       }
     };
 
