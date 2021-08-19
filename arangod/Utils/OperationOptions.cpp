@@ -83,6 +83,7 @@ std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
      << ", returnNew : "  << ops.returnNew
      << ", isRestore : " << ops.isRestore
      << ", overwriteMode : " << OperationOptions::stringifyOverwriteMode(ops.overwriteMode)
+     << ", dontDisableIndexing : " << ops.dontDisableIndexing
      << " }" << std::endl;
   // clang-format on
   return os;

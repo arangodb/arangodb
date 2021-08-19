@@ -536,6 +536,7 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
 
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
+  options.dontDisableIndexing = true;
 
   auto executorInfos = ModificationExecutorInfos(
       inDoc, insert, update, outputNew, outputOld,
