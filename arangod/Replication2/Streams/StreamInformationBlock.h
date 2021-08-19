@@ -21,7 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <map>
 
+#include <immer/flex_vector.hpp>
+#include <immer/flex_vector_transient.hpp>
+
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/Streams/Streams.h"
 
 namespace arangodb::replication2::streams {
 
@@ -45,14 +51,15 @@ struct StreamInformationBlock<stream_descriptor<Id, Type, Tags>> {
   LogVariantType _container;
   WaitForQueue _waitForQueue;
 
-  auto getTransientContainer() -> TransientType&;
-  auto getPersistentContainer() -> ContainerType&;
-
   auto appendEntry(LogIndex index, Type t);
   auto getWaitForResolveSet(LogIndex commitIndex) -> WaitForQueue;
   auto registerWaitFor(LogIndex index) -> futures::Future<WaitForResult>;
   auto getIterator() -> std::unique_ptr<Iterator>;
   auto getIteratorRange(LogIndex start, LogIndex stop) -> std::unique_ptr<Iterator>;
+
+ private:
+  auto getTransientContainer() -> TransientType&;
+  auto getPersistentContainer() -> ContainerType&;
 };
 
-}
+}  // namespace arangodb::replication2::streams

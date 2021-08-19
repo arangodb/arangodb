@@ -52,7 +52,7 @@ struct StreamGenericImplementationBase
   auto release(LogIndex index) -> void final {
     return self().template releaseInternal<Descriptor>(index);
   }
-  auto getIterator() -> std::unique_ptr<Iterator> final {
+  auto getAllEntriesIterator() -> std::unique_ptr<Iterator> final {
     return self().template getIteratorInternal<Descriptor>();
   }
 

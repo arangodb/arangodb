@@ -74,7 +74,7 @@ struct LogMultiplexerImplementationBase {
 
     return _guardedData.template doUnderLock([](Store& self) {
       auto& block = std::get<BlockType>(self._blocks);
-      return block.getIterator();
+      return block.getAllEntriesIterator();
     });
   }
 

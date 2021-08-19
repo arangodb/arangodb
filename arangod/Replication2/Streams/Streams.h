@@ -79,7 +79,7 @@ struct StreamGenericBase : StreamType<Type> {
                 "Descriptor is not a valid stream descriptor");
 
   using Iterator = typename StreamType<Type>::Iterator;
-  virtual auto getIterator() -> std::unique_ptr<Iterator> = 0;
+  virtual auto getAllEntriesIterator() -> std::unique_ptr<Iterator> = 0;
 };
 
 template<typename Descriptor>

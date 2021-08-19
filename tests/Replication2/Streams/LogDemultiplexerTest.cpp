@@ -110,7 +110,7 @@ TEST_F(LogDemuxTest, leader_follower_test) {
   ASSERT_TRUE(futureB.isReady());
 
   {
-    auto iter = followerStreamA->getIterator();
+    auto iter = followerStreamA->getAllEntriesIterator();
     for (auto x : ints) {
       auto entry = iter->next();
       ASSERT_TRUE(entry.has_value()) << "expected value " << x;
@@ -120,7 +120,7 @@ TEST_F(LogDemuxTest, leader_follower_test) {
     EXPECT_EQ(iter->next(), std::nullopt);
   }
   {
-    auto iter = followerStreamB->getIterator();
+    auto iter = followerStreamB->getAllEntriesIterator();
     for (auto x : strings) {
       auto entry = iter->next();
       ASSERT_TRUE(entry.has_value());
