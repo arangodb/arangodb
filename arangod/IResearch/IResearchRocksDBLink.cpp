@@ -165,7 +165,7 @@ bool IResearchRocksDBLink::IndexFactory::equal(
 std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
     LogicalCollection& collection, VPackSlice const& definition,
     IndexId id, bool /*isClusterConstructor*/) const {
-  uint64_t objectId = basics::VelocyPackHelper::stringUInt64(definition, StaticStrings::ObjectId);
+  uint64_t objectId = basics::VelocyPackHelper::stringUInt64(definition, arangodb::StaticStrings::ObjectId);
   auto link = std::make_shared<IResearchRocksDBLink>(id, collection, objectId);
 
   auto const res = link->init(definition, [this](irs::directory& dir) {

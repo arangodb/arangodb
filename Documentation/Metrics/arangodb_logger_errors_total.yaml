@@ -1,0 +1,25 @@
+name: arangodb_logger_errors_total
+introducedIn: "3.9.0"
+help: |
+  Total number of errors logged.
+unit: number
+type: counter
+category: Errors
+complexity: simple
+exposedBy:
+  - agent
+  - coordinator
+  - dbserver
+  - single
+description: |
+  Total number of errors (ERR messages) logged by the logger. 
+
+  If a problem is encountered which is fatal to some operation, but not for
+  the service or the application as a whole, then an _error is logged.
+
+  Reasons for log entries of this severity are for example include missing
+  data, inability to open required files, incorrect connection strings,
+  missing services.
+
+  If an error is logged then it should be taken seriously as it may require 
+  user intervention to solve.

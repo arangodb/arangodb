@@ -89,7 +89,6 @@ class test_base : public test_env, public ::testing::Test {
 }; // test_info
 
 template<typename T>
-class test_param_base : public test_base, public ::testing::WithParamInterface<T> {
-};
+class test_param_base : public test_base, public ::testing::WithParamInterface<T> { };
 
 #endif

@@ -45,7 +45,7 @@ TEST_P(empty_filter_test_case, empty) {
    check_query(irs::empty(), docs_t{}, cost, rdr);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   empty_filter_test,
   empty_filter_test_case,
   ::testing::Combine(
