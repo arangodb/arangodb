@@ -388,7 +388,7 @@ Result IResearchInvertedIndex::init(IResearchDataStore::InitCallback const& init
   auto const primarySortCompression = _meta._sortCompression
       ? _meta._sortCompression
       : getDefaultCompression();
-  auto const res = initDataStore(initCallback, isSorted(), storedValuesColumns, primarySortCompression);
+  auto const res = initDataStore(initCallback, _meta._version, isSorted(), storedValuesColumns, primarySortCompression);
 
   if (!res.ok()) {
     return res;

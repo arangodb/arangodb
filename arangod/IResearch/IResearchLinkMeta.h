@@ -336,6 +336,7 @@ struct InvertedIndexFieldMeta {
   IResearchViewStoredValues _storedValues; // stored values associated with the link
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
   irs::string_ref _collectionName;
+  uint32_t _version; // the version of the iresearch interface e.g. which how data is stored in iresearch (default == 0)
 }; // InvertedIndexFieldMeta
 
 }  // namespace iresearch

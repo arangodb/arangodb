@@ -511,13 +511,15 @@ bool FieldIterator::setValue(VPackSlice const value,
         };
       }
       break;
-    default:
-      iresearch::kludge::mangleField(_nameBuffer, true, valueAnalyzer);
-      _value._analyzer = analyzer;
-      _value._fieldFeatures = pool->fieldFeatures();
-      _value._indexFeatures = pool->indexFeatures();
-      _value._name = _nameBuffer;
-    } break;
+    default: 
+      {
+        iresearch::kludge::mangleField(_nameBuffer, true, valueAnalyzer);
+        _value._analyzer = analyzer;
+        _value._fieldFeatures = pool->fieldFeatures();
+        _value._indexFeatures = pool->indexFeatures();
+        _value._name = _nameBuffer;
+      } 
+      break;
   }
   auto* storeFunc = pool->storeFunc();
   if (storeFunc) {
@@ -825,7 +827,8 @@ void InvertedIndexFieldIterator::setBoolValue(VPackSlice const value) {
   // set field properties
   _value._name = _nameBuffer;
   _value._analyzer = stream.release();  // FIXME don't use shared_ptr
-  _value._features = &irs::flags::empty_instance();
+  _value._indexFeatures = irs::IndexFeatures::NONE;
+  _value._fieldFeatures = {};
 }
 
 void InvertedIndexFieldIterator::setNumericValue(VPackSlice const value) {
@@ -840,7 +843,9 @@ void InvertedIndexFieldIterator::setNumericValue(VPackSlice const value) {
   // set field properties
   _value._name = _nameBuffer;
   _value._analyzer = stream.release();  // FIXME don't use shared_ptr
-  _value._features = &NumericStreamFeatures;
+  _value._indexFeatures = irs::IndexFeatures::NONE;
+  _value._fieldFeatures = { NumericStreamFeatures.begin(),
+                            NumericStreamFeatures.size() };
 }
 
 void InvertedIndexFieldIterator::setNullValue(VPackSlice const value) {
@@ -855,7 +860,8 @@ void InvertedIndexFieldIterator::setNullValue(VPackSlice const value) {
   // set field properties
   _value._name = _nameBuffer;
   _value._analyzer = stream.release();  // FIXME don't use shared_ptr
-  _value._features = &irs::flags::empty_instance();
+  _value._indexFeatures = irs::IndexFeatures::NONE;
+  _value._fieldFeatures = {};
 }
 
 bool InvertedIndexFieldIterator::setValue(VPackSlice const value,
@@ -956,7 +962,8 @@ bool InvertedIndexFieldIterator::setValue(VPackSlice const value,
     default:
       iresearch::kludge::mangleField(_nameBuffer, false, valueAnalyzer);
       _value._analyzer = analyzer;
-      _value._features = &(pool->features());
+      _value._fieldFeatures = pool->fieldFeatures();
+      _value._indexFeatures = pool->indexFeatures();
       _value._name = _nameBuffer;
       break;
   }

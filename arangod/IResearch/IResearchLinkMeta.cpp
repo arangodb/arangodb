@@ -902,6 +902,23 @@ bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationSer
     }
   }
   {
+    // optional version
+    VPackStringRef constexpr fieldName("version");
+    auto const field = slice.get(fieldName);
+    if (field.isNumber()) {
+      _version = field.getNumber<uint32_t>();
+      if (_version > static_cast<uint32_t>(LinkVersion::MAX)) {
+        errorField = fieldName;
+        return false;
+      }
+    } else if (field.isNone()) {
+      _version = static_cast<uint32_t>(LinkVersion::MAX);  // not present -> last version
+    } else {
+      errorField = fieldName;
+      return false;
+    }
+  }
+  {
     // clear existing definitions
     _analyzerDefinitions.clear();
 
@@ -980,9 +997,7 @@ bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationSer
             properties = subField;
           }
         }
-
-        irs::flags features;
-
+        Features features;
         {
           // optional string list
           static const std::string subFieldName("features");
@@ -1008,16 +1023,12 @@ bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationSer
               }
 
               const auto featureName = getStringRef(subValue);
-              const auto feature = irs::attributes::get(featureName);
-
-              if (!feature) {
+              if (!features.add(featureName)) {
                 errorField = fieldName + "[" + std::to_string(itr.index()) +
                              "]." + subFieldName + "." + std::string(featureName);
 
                 return false;
               }
-
-              features.add(feature.id());
             }
           }
         }
@@ -1036,7 +1047,7 @@ bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationSer
         AnalyzerPool::ptr analyzer;
         auto const res =
             IResearchAnalyzerFeature::createAnalyzerPool(analyzer, name, type, properties,
-                                                         revision, features);
+                                                         revision, features, LinkVersion{_version});
 
         if (res.fail() || !analyzer) {
           errorField = fieldName + "[" + std::to_string(itr.index()) + "]";
@@ -1202,6 +1213,10 @@ bool  InvertedIndexFieldMeta::json(arangodb::application_features::ApplicationSe
     if (!_storedValues.toVelocyPack(builder)) {
       return false;
     }
+  }
+
+  if (writeAnalyzerDefinition) {
+    builder.add("version", VPackValue(_version));
   }
 
   if (writeAnalyzerDefinition && _sortCompression) {

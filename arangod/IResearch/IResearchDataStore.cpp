@@ -872,11 +872,12 @@ Result IResearchDataStore::initDataStore(InitCallback const& initCallback, uint3
   auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
   auto& flushFeature = server.getFeature<FlushFeature>();
 
-  auto format = irs::formats::get(LATEST_FORMAT);
+  auto const formatId = getFormat(LinkVersion{version});
+  auto format = irs::formats::get(formatId);
 
   if (!format) {
     return {TRI_ERROR_INTERNAL,
-            "failed to get data store codec '"s + LATEST_FORMAT.data() +
+            "failed to get data store codec '"s + formatId.data() +
                 "' while initializing link '" + std::to_string(_id.id()) + "'"};
   }
 
@@ -950,6 +951,12 @@ Result IResearchDataStore::initDataStore(InitCallback const& initCallback, uint3
   irs::index_writer::init_options options;
   options.lock_repository = false;  // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr;  // set comparator if requested
+  options.features[irs::type<irs::granularity_prefix>::id()] = nullptr;
+  if (LinkVersion(version) < LinkVersion::MAX) {
+    options.features[irs::type<irs::norm>::id()] = &irs::norm::compute;
+  } else {
+    options.features[irs::type<irs::norm2>::id()] = &irs::norm2::compute;
+  }
   // initialize commit callback
   options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
     _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t(tick));  // update last tick
