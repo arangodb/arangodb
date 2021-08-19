@@ -87,16 +87,12 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
                                                          ReadOptionsCallback) = 0;
                                                                       
-  virtual bool iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const = 0;
+  virtual bool iteratorMustCheckBounds(ReadOwnWrites) const = 0;
                    
   virtual void SetSavePoint() = 0;
   virtual rocksdb::Status RollbackToSavePoint() = 0;
   virtual rocksdb::Status RollbackToWriteBatchSavePoint() = 0;
   virtual void PopSavePoint() = 0;
-
-  virtual void pushQuery(bool responsibleForCommit) {}
-
-  virtual void popQuery() noexcept {}
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::size_t countInBounds(RocksDBKeyBounds const& bounds, bool isElementInRange = false);

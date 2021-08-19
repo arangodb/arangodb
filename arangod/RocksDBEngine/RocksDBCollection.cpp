@@ -781,9 +781,9 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
 
   // push our current transaction on the stack
-  state->pushQuery(trx.isMainTransaction());
+  state->beginQuery(true);
   auto stateGuard = scopeGuard([state]() {
-    state->popQuery();
+    state->endQuery(true);
   });
 
   uint64_t found = 0;

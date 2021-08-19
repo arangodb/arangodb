@@ -77,14 +77,9 @@ AqlTransaction::AqlTransaction(
   });
   
   TRI_ASSERT(state() != nullptr);
-  // register ourselves in the TransactionState
-  state()->pushQuery(isMainTransaction());
 }
 
-AqlTransaction::~AqlTransaction() {
-  // unregister ourselves in the TransactionState
-  state()->popQuery();
-}
+AqlTransaction::~AqlTransaction() = default;
 
 /// @brief add a collection to the transaction
 Result AqlTransaction::processCollection(aql::Collection& collection) {

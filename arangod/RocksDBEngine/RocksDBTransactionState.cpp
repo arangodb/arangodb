@@ -65,7 +65,9 @@
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
+#include <atomic>
 #include <cstddef>
+#include <memory>
 
 using namespace arangodb;
 
@@ -160,9 +162,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     } else {
       _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, db);
     }
-  }
-  for (std::size_t i = 0; i < _numQueries; ++i) {
-    _rocksMethods->pushQuery(i == _queryResponsibleForCommit);
   }
   
   res = _rocksMethods->beginTransaction();
@@ -302,22 +301,18 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
   return result;
 }
 
-void RocksDBTransactionState::pushQuery(bool responsibleForCommit) {
-  if (responsibleForCommit) {
-    TRI_ASSERT(_queryResponsibleForCommit > _numQueries);
-    _queryResponsibleForCommit = _numQueries;
-  }
-  ++_numQueries;
-  if (_rocksMethods) {
-    _rocksMethods->pushQuery(responsibleForCommit);
+void RocksDBTransactionState::beginQuery(bool isModificationQuery) {
+  auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
+  if (trxMethods) {
+    trxMethods->beginQuery(isModificationQuery);
   }
 }
 
-void RocksDBTransactionState::popQuery() noexcept {
-  if (_rocksMethods) {
-    _rocksMethods->popQuery();
+void RocksDBTransactionState::endQuery(bool isModificationQuery) noexcept {
+  auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
+  if (trxMethods) {
+    trxMethods->endQuery(isModificationQuery);
   }
-  --_numQueries;
 }
 
 /// @brief whether or not a RocksDB iterator in this transaction must check its

@@ -52,24 +52,22 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// performed
   Result checkIntermediateCommit(bool& hasPerformedIntermediateCommit) override;
 
+  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
+                      rocksdb::Slice const&, rocksdb::PinnableSlice*, ReadOwnWrites) override;
+
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
                                                  ReadOptionsCallback) override;
 
   bool iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const override;
 
-  void pushQuery(bool responsibleForCommit) override;
-
-  void popQuery() noexcept override;
-  
   /// @brief a counter value that gets increase after every intermediate commit
   uint64_t intermediateCommitId() const { return _intermediateCommitId; } 
   
- private:
-  /// @brief copies the current WriteBatchWithIndex of a running (write)
-  /// transaction, and returns a pointer to it
-  rocksdb::WriteBatchWithIndex* ensureWriteBatch();
+  void beginQuery(bool isModificationQuery);
+  void endQuery(bool isModificationQuery) noexcept;
   
-  std::unique_ptr<rocksdb::WriteBatchWithIndex> copyWriteBatch() const;
+ private:
+  friend class RocksDBStreamingTrxMethods;
   
   bool hasIntermediateCommitsEnabled() const noexcept;
   
@@ -89,6 +87,9 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// performed
   Result checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit);
 
+  void initializeReadWriteBatch();
+  void releaseReadWriteBatch();
+
   /// @brief used for read-only trx and intermediate commits
   /// For intermediate commits this MUST ONLY be used for iterators
   rocksdb::Snapshot const* _iteratorReadSnapshot{nullptr};
@@ -96,9 +97,27 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// @brief a counter value that gets increase after every intermediate commit
   uint64_t _intermediateCommitId{0};
   
-  /// @brief LIFO stack of running queries. the booleans indicate whether
-  /// the query is responsible for the commit.
-  std::vector<std::pair<bool, std::unique_ptr<rocksdb::WriteBatchWithIndex>>> _queries;
+  /// @brief this WriteBatch can be used to satisfy read operations in a streamin trx.
+  /// _readWriteBatch can have three different states:
+  ///   - nullptr
+  ///   - pointing to a copy (__ownsReadWriteBatch == true)
+  ///   - pointing to _rockTransaction's underlying WriteBatch (__ownsReadWriteBatch == false)
+  ///
+  /// If _readWriteBatch is null, read operations without read-own-writes semantic are
+  /// performed directly on the DB using the snapshot, otherwise on _rocksTransaction. 
+  /// When a modification query is started, the current WriteBatch from _rocksTransaction
+  /// is copied and stored in _readWriteBatch.
+  /// Once the modification query is finished, the copy is released and _readWriteBatch
+  /// is set to point to the trx's underlying WriteBatch. This is necessary to ensure
+  /// that subsequent read operations within the same streaming transaction see the
+  /// previously performed writes.
+  /// If _readWriteBatch is not null, read-operations without read-own-writes semantic
+  /// are performed on _readWriteBatch, otherwise on _rocksTransaction.
+  rocksdb::WriteBatchWithIndex* _readWriteBatch{nullptr};
+  bool _ownsReadWriteBatch{false};
+
+  std::atomic<std::size_t> _numActiveReadOnlyQueries{0};
+  std::atomic<bool> _hasActiveModificationQuery{false};
 };
 
 }  // namespace arangodb

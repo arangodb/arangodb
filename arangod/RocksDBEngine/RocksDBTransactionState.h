@@ -93,9 +93,8 @@ class RocksDBTransactionState final : public TransactionState {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
 
-  void pushQuery(bool responsibleForCommit) override;
-  
-  void popQuery() noexcept override;
+  void beginQuery(bool isModificationQuery) override;
+  void endQuery(bool isModificationQuery) noexcept override;
 
   bool iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const;
 
@@ -192,10 +191,6 @@ class RocksDBTransactionState final : public TransactionState {
 
   /// @brief if true there key buffers will no longer be shared
   bool _parallel;
-  
-  std::size_t _numQueries{0};
-  
-  std::size_t _queryResponsibleForCommit{std::numeric_limits<std::size_t>::max()};
 };
 
 /// @brief a struct that makes sure that the same RocksDBTransactionState

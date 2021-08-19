@@ -296,6 +296,9 @@ void Query::prepareQuery(SerializationFormat format) {
     if (_queryProfile) {
       _queryProfile->registerInQueryList();
     }
+    // register ourselves in the TransactionState
+    _trx->state()->beginQuery(isModificationQuery());
+    _registeredQueryInTrx = true;
 
     enterState(QueryExecutionState::ValueType::EXECUTION);
   } catch (arangodb::basics::Exception const& ex) {
@@ -1340,6 +1343,15 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 } // namespace
 
 aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
+  ScopeGuard endQueryGuard([this](){
+    if (_registeredQueryInTrx) {
+      TRI_ASSERT(_trx != nullptr && _trx->state() != nullptr);
+      // unregister ourselves in the TransactionState
+      _trx->state()->endQuery(isModificationQuery());
+      _registeredQueryInTrx = false;
+    }
+  });
+
   ShutdownState exp = _shutdownState.load(std::memory_order_relaxed);
   if (exp == ShutdownState::Done) {
     return ExecutionState::DONE;

@@ -341,6 +341,8 @@ class Query : public QueryContext {
   /// @brief user that started the query
   std::string _user;
 
+  bool _registeredQueryInTrx{false};
+
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // Intentionally initialized here to not
   // be present in production constructors

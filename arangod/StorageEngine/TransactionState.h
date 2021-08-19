@@ -193,9 +193,9 @@ class TransactionState {
   virtual uint64_t numCommits() const = 0;
 
   virtual bool hasFailedOperations() const = 0;
-  
-  virtual void pushQuery(bool /*responsibleForCommit*/) {}
-  virtual void popQuery() noexcept {}
+
+  virtual void beginQuery(bool /*isModificationQuery*/) {}
+  virtual void endQuery(bool /*isModificationQuery*/) noexcept {}
 
   TransactionCollection* findCollection(DataSourceId cid) const;
 
