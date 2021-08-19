@@ -201,8 +201,10 @@ void H1Connection<ST>::finishConnect() {
   } else {
     FUERTE_LOG_ERROR << "finishConnect: found state other than 'Connecting': "
                      << static_cast<int>(exp);
-    FUERTE_ASSERT(false);
-    // If this happens, we probably have a sleeping barber
+    FUERTE_ASSERT(exp == Connection::State::Closed);
+    // If this happens, then the connection has been shut down before
+    // it could be fully connected, but the completion handler of the
+    // connect call was still scheduled. No more work to do.
   }
 }
 
