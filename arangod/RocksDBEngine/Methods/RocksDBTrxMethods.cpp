@@ -118,7 +118,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
   }
 
    std::unique_ptr<rocksdb::Iterator> iterator;
-  if (!iteratorMustCheckBounds()) {
+  if (!iteratorMustCheckBounds(opts.readOwnWrites ? ReadOwnWrites::yes : ReadOwnWrites::no)) {
     // we are in a write transaction, but only run a single query in it. 
     // in this case, we can get away with the DB snapshot iterator
     iterator.reset(_db->NewIterator(opts, cf));
@@ -247,8 +247,8 @@ void RocksDBTrxMethods::popQuery() noexcept {
 /// iterate_upper_bound. this is currently true for all iterators that are based
 /// on in-flight writes of the current transaction. it is never necessary to
 /// check bounds for read-only transactions
-bool RocksDBTrxMethods::iteratorMustCheckBounds() const {
-  if (_queries.size() == 1 && _queries[0].first) {
+bool RocksDBTrxMethods::iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const {
+  if (_queries.size() == 1 && _queries[0].first && readOwnWrites == ReadOwnWrites::no) {
     // only one query, and it is the main query!
     // in this case, the iterator should always be based on the db snapshot
     return false;

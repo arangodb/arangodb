@@ -42,7 +42,7 @@ class RocksDBSingleOperationTrxMethods : public RocksDBTrxBaseMethods {
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
                                                  ReadOptionsCallback readOptionsCallback) override;
                                                               
-  bool iteratorMustCheckBounds() const override;
+  bool iteratorMustCheckBounds(ReadOwnWrites) const override;
 };
 
 }  // namespace arangodb

@@ -71,7 +71,7 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
   }
   void PopSavePoint() override {}
   
-  bool iteratorMustCheckBounds() const override {
+  bool iteratorMustCheckBounds(ReadOwnWrites) const override {
     // we never have to check the bounds for read-only iterators
     return false;
   }

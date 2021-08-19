@@ -97,7 +97,7 @@ class RocksDBTransactionState final : public TransactionState {
   
   void popQuery() noexcept override;
 
-  bool iteratorMustCheckBounds() const;
+  bool iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const;
 
   void prepareOperation(DataSourceId cid, RevisionId rid,
                         TRI_voc_document_operation_e operationType);

@@ -105,7 +105,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBSingleOperationTrxMethods::NewIterator
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "should not call NewIterator for single operation methods");
 }
 
-bool RocksDBSingleOperationTrxMethods::iteratorMustCheckBounds() const {
+bool RocksDBSingleOperationTrxMethods::iteratorMustCheckBounds(ReadOwnWrites) const {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
   return false;

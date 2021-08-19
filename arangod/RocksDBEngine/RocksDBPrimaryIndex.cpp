@@ -294,7 +294,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         _index(index),
         _cmp(index->comparator()),
         _mustSeek(true),
-        _mustCheckBounds(RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds()),
+        _mustCheckBounds(RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(readOwnWrites)),
         _bounds(std::move(bounds)),
         _rangeBound(reverse ? _bounds.start() : _bounds.end()) {
     TRI_ASSERT(index->columnFamily() ==
