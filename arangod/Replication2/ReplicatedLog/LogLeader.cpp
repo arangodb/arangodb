@@ -22,16 +22,6 @@
 
 #include "LogLeader.h"
 
-#include "Replication2/ReplicatedLog/InMemoryLog.h"
-#include "Replication2/ReplicatedLog/LogContextKeys.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
-#include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "RestServer/Metrics.h"
-#include "Scheduler/SchedulerFeature.h"
-
 #include <Basics/Exceptions.h>
 #include <Basics/Guarded.h>
 #include <Basics/StringUtils.h>
@@ -45,12 +35,35 @@
 #include <Logger/LogMacros.h>
 #include <Logger/Logger.h>
 #include <Logger/LoggerStream.h>
-
 #include <chrono>
-#include <cstdlib>
 #include <functional>
-#include <thread>
 #include <type_traits>
+#include <algorithm>
+#include <cstdint>
+#include <exception>
+#include <iterator>
+#include <ratio>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/LogContextKeys.h"
+#include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "RestServer/Metrics.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Basics/ErrorCode.h"
+#include "Futures/Promise-inl.h"
+#include "Futures/Promise.h"
+#include "Futures/Unit.h"
+#include "Replication2/DeferredExecution.h"
+#include "Scheduler/SupervisedScheduler.h"
+#include "immer/detail/iterator_facade.hpp"
+#include "immer/detail/rbts/rrbtree_iterator.hpp"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:

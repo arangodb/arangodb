@@ -22,17 +22,8 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/ILogParticipant.h"
-#include "Replication2/ReplicatedLog/InMemoryLog.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/NetworkMessages.h"
-#include "Replication2/ReplicatedLog/types.h"
-
-#include "Replication2/LoggerContext.h"
-
 #include <Basics/Guarded.h>
 #include <Containers/ImmerMemoryPolicy.h>
-
 #include <cstddef>
 #include <map>
 #include <memory>
@@ -40,6 +31,23 @@
 #include <optional>
 #include <utility>
 #include <vector>
+#include <chrono>
+#include <tuple>
+
+#include "Replication2/ReplicatedLog/ILogParticipant.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/NetworkMessages.h"
+#include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/LoggerContext.h"
+#include "Basics/Result.h"
+#include "Futures/Future.h"
+#include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedLog/LogStatus.h"
+
+namespace arangodb {
+struct DeferredAction;
+}  // namespace arangodb
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -65,6 +73,7 @@ struct ReplicatedLogMetrics;
 }  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb::replication2::replicated_log {
+struct PersistedLogIterator;
 
 /**
  * @brief Leader instance of a replicated log.
@@ -134,6 +143,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
 
  private:
   struct GuardedLeaderData;
+
   using Guard = MutexGuard<GuardedLeaderData, std::unique_lock<std::mutex>>;
   using ConstGuard = MutexGuard<GuardedLeaderData const, std::unique_lock<std::mutex>>;
 
