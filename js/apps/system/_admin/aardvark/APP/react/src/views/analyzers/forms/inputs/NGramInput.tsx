@@ -5,7 +5,7 @@ import Textbox from "../../../../components/pure-css/form/Textbox";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
 import { get } from "lodash";
 
-const NGramInput = ({ formState, dispatch, disabled, basePath = 'properties' }: FormProps) => {
+const NGramInput = ({ formState, dispatch, disabled, basePath }: FormProps) => {
   const updateMinLength = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -39,7 +39,7 @@ const NGramInput = ({ formState, dispatch, disabled, basePath = 'properties' }: 
     });
   };
 
-  const ngramBase = get(formState, basePath, {}) as NGramBase;
+  const ngramBase = get(formState, basePath as string, {}) as NGramBase;
 
   return <Grid>
     <Cell size={'1-3'}>

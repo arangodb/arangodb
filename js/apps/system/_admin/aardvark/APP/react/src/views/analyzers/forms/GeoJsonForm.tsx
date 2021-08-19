@@ -1,6 +1,6 @@
 import React, { ChangeEvent } from "react";
 import { FormProps, GeoJsonState } from "../constants";
-import OptionsInput from "./inputs/OptionsInput";
+import GeoOptionsInput from "./inputs/GeoOptionsInput";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import RadioGroup from "../../../components/pure-css/form/RadioGroup";
 
@@ -36,7 +36,7 @@ const GeoJsonForm = ({ formState, dispatch, disabled, basePath }: FormProps) => 
       ]} checked={typeProperty || 'shape'} disabled={disabled}/>
     </Cell>
     <Cell size={'1'}>
-      <OptionsInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={basePath}/>
+      <GeoOptionsInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={basePath}/>
     </Cell>
   </Grid>;
 };

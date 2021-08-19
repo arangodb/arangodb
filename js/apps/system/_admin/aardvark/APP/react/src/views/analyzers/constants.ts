@@ -19,11 +19,6 @@ type CaseProperty = 'lower' | 'upper' | 'none';
 export type Feature = 'frequency' | 'norm' | 'position';
 type Features = Feature[];
 export type Int = number & { __int__: void };
-type GeoOptions = {
-  maxCells?: Int;
-  minLevel?: Int;
-  maxLevel?: Int;
-};
 
 export type BaseFormState = {
   name: string;
@@ -41,26 +36,19 @@ export type DelimiterState = {
   };
 };
 
-export type LocaleState = {
+type StemState = {
+  type: 'stem';
   properties: {
     locale: string;
-  }
-};
-
-type StemState = LocaleState & {
-  type: 'stem';
-};
-
-export type CaseState = {
-  properties: {
-    case?: CaseProperty;
   };
 };
 
-export type NormState = CaseState & LocaleState & {
+export type NormState = {
   type: 'norm';
   properties: {
     accent?: boolean;
+    case?: CaseProperty;
+    locale: string;
   };
 };
 
@@ -79,9 +67,11 @@ export type NGramState = {
   };
 };
 
-export type TextState = CaseState & LocaleState & {
+export type TextState = {
   type: 'text';
   properties: {
+    case?: CaseProperty;
+    locale: string;
     accent?: boolean;
     stemming?: boolean;
     edgeNgram?: NGramBase;
@@ -102,24 +92,26 @@ export type AqlState = {
   };
 };
 
-export type GeoOptionsState = {
+export type GeoOptions = {
+  maxCells?: Int;
+  minLevel?: Int;
+  maxLevel?: Int;
+};
+
+export type GeoJsonState = {
+  type: 'geojson';
   properties: {
+    type?: 'shape' | 'centroid' | 'point';
     options?: GeoOptions;
   };
 };
 
-export type GeoJsonState = GeoOptionsState & {
-  type: 'geojson';
-  properties: {
-    type?: 'shape' | 'centroid' | 'point';
-  };
-};
-
-export type GeoPointState = GeoOptionsState & {
+export type GeoPointState = {
   type: 'geopoint';
   properties: {
     latitude?: string[];
     longitude?: string[];
+    options?: GeoOptions;
   };
 };
 

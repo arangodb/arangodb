@@ -1,20 +1,22 @@
 import React, { ChangeEvent } from "react";
-import { FormProps, LocaleState } from "../../constants";
+import { FormProps } from "../../constants";
 import Textbox from "../../../../components/pure-css/form/Textbox";
+import { getPath } from "../../helpers";
+import { get } from "lodash";
 
 const LocaleInput = ({ formState, dispatch, disabled, basePath }: FormProps) => {
   const updateLocale = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
       field: {
-        path: 'properties.locale',
+        path: 'locale',
         value: event.target.value
       },
       basePath
     });
   };
 
-  const localeProperty = (formState as LocaleState).properties.locale;
+  const localeProperty = get(formState, getPath(basePath, 'locale'));
 
   return <Textbox label={
     <>

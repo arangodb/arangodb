@@ -1,7 +1,7 @@
 import React, { ChangeEvent } from "react";
 import { FormProps, GeoPointState } from "../constants";
 import { filter, isEmpty, negate } from 'lodash';
-import OptionsInput from "./inputs/OptionsInput";
+import GeoOptionsInput from "./inputs/GeoOptionsInput";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Textbox from "../../../components/pure-css/form/Textbox";
 
@@ -53,7 +53,7 @@ const GeoPointForm = ({ formState, dispatch, disabled, basePath }: FormProps) =>
     </Cell>
 
     <Cell size={'1'}>
-      <OptionsInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={basePath}/>
+      <GeoOptionsInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={basePath}/>
     </Cell>
   </Grid>;
 };

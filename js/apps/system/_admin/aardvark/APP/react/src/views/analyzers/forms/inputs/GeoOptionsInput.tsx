@@ -1,15 +1,17 @@
-import { FormProps, GeoOptionsState } from "../../constants";
+import { FormProps, GeoOptions } from "../../constants";
 import React, { ChangeEvent } from "react";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Fieldset from "../../../../components/pure-css/form/Fieldset";
 import Textbox from "../../../../components/pure-css/form/Textbox";
+import { get } from "lodash";
+import { getPath } from "../../helpers";
 
-const OptionsInput = ({ formState, dispatch, disabled, basePath }: FormProps) => {
+const GeoOptionsInput = ({ formState, dispatch, disabled, basePath }: FormProps) => {
   const updateMaxCells = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
       field: {
-        path: 'properties.options.maxCells',
+        path: 'options.maxCells',
         value: parseInt(event.target.value)
       },
       basePath
@@ -20,7 +22,7 @@ const OptionsInput = ({ formState, dispatch, disabled, basePath }: FormProps) =>
     dispatch({
       type: 'setField',
       field: {
-        path: 'properties.options.minLevel',
+        path: 'options.minLevel',
         value: parseInt(event.target.value)
       },
       basePath
@@ -31,14 +33,14 @@ const OptionsInput = ({ formState, dispatch, disabled, basePath }: FormProps) =>
     dispatch({
       type: 'setField',
       field: {
-        path: 'properties.options.maxLevel',
+        path: 'options.maxLevel',
         value: parseInt(event.target.value)
       },
       basePath
     });
   };
 
-  const geoOptions = (formState as GeoOptionsState).properties.options || {};
+  const geoOptions = get(formState, getPath(basePath, 'options'), {}) as GeoOptions;
 
   return <Fieldset legend={'Options'}>
     <Grid>
@@ -60,4 +62,4 @@ const OptionsInput = ({ formState, dispatch, disabled, basePath }: FormProps) =>
   </Fieldset>;
 };
 
-export default OptionsInput;
+export default GeoOptionsInput;

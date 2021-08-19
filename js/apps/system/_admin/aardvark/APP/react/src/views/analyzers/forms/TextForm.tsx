@@ -10,6 +10,7 @@ import Textarea from "../../../components/pure-css/form/Textarea";
 import Checkbox from "../../../components/pure-css/form/Checkbox";
 import NGramInput from "./inputs/NGramInput";
 import { getPath } from "../helpers";
+import AccentInput from "./inputs/AccentInput";
 
 const TextForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
   const updateStopwords = (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -52,17 +53,6 @@ const TextForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
     });
   };
 
-  const updateAccent = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.accent',
-        value: event.target.checked
-      },
-      basePath
-    });
-  };
-
   const updateStemming = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -74,13 +64,14 @@ const TextForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
     });
   };
 
-  const edgeNgramBasePath = getPath(basePath, 'properties.edgeNgram');
+  const propertiesBasePath = getPath(basePath, 'properties');
+  const edgeNgramBasePath = getPath(propertiesBasePath, 'edgeNgram');
 
   return <Grid>
     <Cell size={'1-2'}>
       <Grid>
         <Cell size={'1'}>
-          <LocaleInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={basePath}/>
+          <LocaleInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={propertiesBasePath}/>
         </Cell>
 
         <Cell size={'1-2'}>
@@ -89,12 +80,11 @@ const TextForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
         </Cell>
 
         <Cell size={'1-2'}>
-          <Checkbox onChange={updateAccent} label={'Accent'} inline={true} disabled={disabled}
-                    checked={textFormState.properties.accent}/>
+          <AccentInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={propertiesBasePath}/>
         </Cell>
 
         <Cell size={'1'}>
-          <CaseInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={basePath}/>
+          <CaseInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={propertiesBasePath}/>
         </Cell>
       </Grid>
     </Cell>

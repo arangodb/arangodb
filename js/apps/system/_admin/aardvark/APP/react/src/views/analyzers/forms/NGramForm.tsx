@@ -41,11 +41,11 @@ const NGramForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
   };
 
   const ngramFormState = formState as NGramState;
-  const ngramInputBasePath = getPath(basePath, 'properties');
+  const propertiesBasePath = getPath(basePath, 'properties');
 
   return <Grid>
     <Cell size={'1'}>
-      <NGramInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={ngramInputBasePath}/>
+      <NGramInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={propertiesBasePath}/>
     </Cell>
 
     <Cell size={'1-3'}>
