@@ -391,7 +391,7 @@ function IteratorSuite(permuteConfigs) {
         assertEqual(1, result.length);
         assertEqual(2000, result[0].cnt);
         
-        let values = db._query('FOR doc in @@c FILTER doc._key == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
+        let values = ctx.query('FOR doc in @@c FILTER doc._key == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(1, values.length);
       });
     },
@@ -413,7 +413,7 @@ function IteratorSuite(permuteConfigs) {
         assertEqual(1, result.length);
         assertEqual(2000, result[0].cnt);
         
-        let values = db._query('FOR doc in @@c FILTER doc._key == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
+        let values = ctx.query('FOR doc in @@c FILTER doc._key == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(1, values.length);
       });
     },
@@ -435,7 +435,7 @@ function IteratorSuite(permuteConfigs) {
         assertEqual(1, result.length);
         assertEqual(2000, result[0].cnt);
         
-        let values = db._query('FOR doc in @@c FILTER doc.uniqueValue == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
+        let values = ctx.query('FOR doc in @@c FILTER doc.uniqueValue == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(1, values.length);
       });
     },
@@ -449,7 +449,7 @@ function IteratorSuite(permuteConfigs) {
         assertEqual(5000 + 1, tc.count());
         assertEqual(2000, result.length);
 
-        let values = db._query('FOR doc in @@c FILTER doc.v == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
+        let values = ctx.query('FOR doc in @@c FILTER doc.v == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(1, values.length);
         assertEqual(2000, values[0].cnt);
       });
