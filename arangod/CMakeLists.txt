@@ -421,6 +421,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SubqueryStartExecutor.cpp
   Aql/Timing.cpp
   Aql/TraversalConditionFinder.cpp
+  Aql/TraverserEngineShardLists.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
   Aql/UnsortedGatherExecutor.cpp
