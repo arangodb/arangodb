@@ -80,12 +80,11 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
                                                     definition);
   }
 
-  virtual arangodb::Result normalize( // normalize definition
-      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
-      arangodb::velocypack::Slice definition, // source definition
-      bool isCreation, // definition for index creation
-      TRI_vocbase_t const& vocbase // index vocbase
-  ) const override {
+  virtual arangodb::Result normalize(
+      arangodb::velocypack::Builder& normalized,
+      arangodb::velocypack::Slice definition,
+      bool isCreation,
+      TRI_vocbase_t const& vocbase) const override {
     auto& clusterEngine =
         _server.getFeature<arangodb::EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
     auto* engine = clusterEngine.actualEngine();
@@ -96,9 +95,8 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
           "cannot find storage engine while normalizing index");
     }
 
-    return engine->indexFactory().factory(_type).normalize( // normalize definition
-      normalized, definition, isCreation, vocbase // args
-    );
+    return engine->indexFactory().factory(_type).normalize(
+      normalized, definition, isCreation, vocbase);
   }
 };
 
@@ -191,12 +189,11 @@ std::unordered_map<std::string, std::string> ClusterIndexFactory::indexAliases()
   return ae->indexFactory().indexAliases();
 }
 
-Result ClusterIndexFactory::enhanceIndexDefinition( // normalize definition
-    velocypack::Slice const definition, // source definition
-    velocypack::Builder& normalized, // normalized definition (out-param)
-    bool isCreation, // definition for index creation
-    TRI_vocbase_t const& vocbase // index vocbase
-) const {
+Result ClusterIndexFactory::enhanceIndexDefinition(
+    velocypack::Slice const definition,
+    velocypack::Builder& normalized,
+    bool isCreation,
+    TRI_vocbase_t const& vocbase) const {
   auto& ce = _server.getFeature<EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
 
   auto* ae = ce.actualEngine();
@@ -205,9 +202,8 @@ Result ClusterIndexFactory::enhanceIndexDefinition( // normalize definition
     return TRI_ERROR_INTERNAL;
   }
 
-  return ae->indexFactory().enhanceIndexDefinition( // normalize definition
-    definition, normalized, isCreation, vocbase // args
-  );
+  return ae->indexFactory().enhanceIndexDefinition(
+    definition, normalized, isCreation, vocbase);
 }
 
 void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,

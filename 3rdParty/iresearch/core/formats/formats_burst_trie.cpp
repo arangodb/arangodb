@@ -73,15 +73,15 @@
 #include "format_utils.hpp"
 #include "analysis/token_attributes.hpp"
 #include "formats/formats_10_attributes.hpp"
-#include "index/iterators.hpp"
 #include "index/index_meta.hpp"
 #include "index/field_meta.hpp"
 #include "index/file_names.hpp"
+#include "index/iterators.hpp"
 #include "index/index_meta.hpp"
+#include "index/norm.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/automaton.hpp"
-#include "utils/buffers.hpp"
 #include "utils/encryption.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/memory.hpp"
@@ -105,6 +105,94 @@
 namespace  {
 
 using namespace irs;
+
+template<
+  typename Elem,
+  typename Traits = std::char_traits<Elem>,
+  typename Alloc = std::allocator<Elem>
+> class basic_str_builder : public basic_string_ref<Elem, Traits>,
+                            private Alloc,
+                            private util::noncopyable {
+ public:
+  typedef basic_string_ref<Elem, Traits> ref_type;
+  typedef Alloc allocator_type;
+  typedef typename ref_type::traits_type traits_type;
+  typedef typename traits_type::char_type char_type;
+
+  static constexpr size_t DEF_ALIGN = 8;
+
+  explicit basic_str_builder(
+      const allocator_type& alloc = allocator_type())
+    : Alloc{alloc},
+      capacity_{0} {
+  }
+
+  virtual ~basic_str_builder() {
+    destroy();
+  }
+
+  char_type* data() noexcept {
+    return const_cast<char_type*>(this->data_);
+  }
+
+  void reset(size_t size) noexcept {
+    assert(size <= capacity_);
+    this->size_ = size;
+  }
+
+  void reset() noexcept {
+    this->size_ = 0;
+  }
+
+  void append(char_type b, size_t chunk = DEF_ALIGN) {
+    if (this->size_ == capacity_) {
+      reserve<true>(string_utils::oversize(chunk, capacity_, this->size_ + 1));
+    }
+    assert(this->size_ < capacity_);
+    data()[this->size_++] = b;
+  }
+
+  void assign(const char_type* b, size_t size, size_t chunk = DEF_ALIGN) {
+    oversize<false>(this->size() + size, chunk);
+    traits_type::copy(data(), b, size);
+    this->size_ = size;
+  }
+
+  template<bool PreserveContent = true>
+  void oversize(size_t minsize, size_t chunk = DEF_ALIGN) {
+    if (minsize > capacity_) {
+      reserve<PreserveContent>(string_utils::oversize(chunk, capacity_, minsize));
+    }
+  }
+
+  template<bool PreserveContent = true>
+  void reserve(size_t size) {
+    assert(this->capacity_ >= this->size());
+
+    if (size > capacity_) {
+      char_type* newdata = allocator().allocate(size);
+      if constexpr (PreserveContent) {
+        traits_type::copy(newdata, this->data_, this->size());
+      }
+      destroy();
+      this->data_ = newdata;
+      this->capacity_ = size;
+    }
+  }
+
+ private:
+  allocator_type& allocator() noexcept {
+    return static_cast<allocator_type&>(*this);
+  }
+
+  void destroy() noexcept {
+    allocator().deallocate(data(), capacity_);
+  }
+
+  size_t capacity_;
+}; // basic_str_builder
+
+using bytes_builder = basic_str_builder<byte_type>;
 
 template<typename Char>
 class volatile_ref : util::noncopyable {
@@ -179,8 +267,6 @@ struct block_t : private util::noncopyable {
     explicit prefixed_output(volatile_byte_ref&& prefix) noexcept
      : prefix(std::move(prefix)) {
     }
-
-    virtual void close() override {}
 
     virtual void write_byte(byte_type b) override final {
       weight.PushBack(b);
@@ -408,14 +494,52 @@ struct block_meta {
 // --SECTION--                                                           Helpers
 // -----------------------------------------------------------------------------
 
-void read_segment_features(
+template<typename FeatureMap>
+void write_segment_features_legacy(
+    FeatureMap& feature_map,
+    data_output& out,
+    const flush_state& state) {
+  const auto* features = state.features;
+  const auto index_features = state.index_features;
+
+  const size_t count = (features ? features->size() : 0) +
+                       math::math_traits<uint32_t>::pop(static_cast<uint32_t>(index_features));
+
+  feature_map.clear();
+  feature_map.reserve(count);
+
+  out.write_vlong(count);
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::FREQ)) {
+    write_string(out, irs::type<frequency>::name());
+    feature_map.emplace(irs::type<frequency>::id(), feature_map.size());
+  }
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::POS)) {
+    write_string(out, irs::type<position>::name());
+    feature_map.emplace(irs::type<position>::id(), feature_map.size());
+  }
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::OFFS)) {
+    write_string(out, irs::type<offset>::name());
+    feature_map.emplace(irs::type<offset>::id(), feature_map.size());
+  }
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::PAY)) {
+    write_string(out, irs::type<payload>::name());
+    feature_map.emplace(irs::type<payload>::id(), feature_map.size());
+  }
+
+  if (features) {
+    for (const irs::type_info::type_id feature : *features) {
+      write_string(out, feature().name());
+      feature_map.emplace(feature, feature_map.size());
+    }
+  }
+}
+
+void read_segment_features_legacy(
     data_input& in,
-    feature_map_t& feature_map,
-    flags& features) {
+    IndexFeatures& features,
+    feature_map_t& feature_map) {
   feature_map.clear();
   feature_map.reserve(in.read_vlong());
-
-  features.reserve(feature_map.capacity());
 
   for (size_t count = feature_map.capacity(); count; --count) {
     const auto name = read_string<std::string>(in); // read feature name
@@ -424,28 +548,223 @@ void read_segment_features(
     if (!feature) {
       throw irs::index_error(irs::string_utils::to_string(
         "unknown feature name '%s'",
-        name.c_str()
-      ));
+        name.c_str()));
     }
 
     feature_map.emplace_back(feature.id());
-    features.add(feature.id());
+
+    if (feature.id() == type<frequency>::id()) {
+      features |= IndexFeatures::FREQ;
+    } else if (feature.id() == type<position>::id()) {
+      features |= IndexFeatures::POS;
+    } else if (feature.id() == type<offset>::id()) {
+      features |= IndexFeatures::OFFS;
+    } else if (feature.id() == type<payload>::id()) {
+      features |= IndexFeatures::PAY;
+    }
+  }
+}
+
+template<typename FeatureMap>
+void write_field_features_legacy(
+    FeatureMap& feature_map,
+    data_output& out,
+    IndexFeatures index_features,
+    const irs::feature_map_t& features) {
+  auto write_feature = [&out, &feature_map](irs::type_info::type_id feature){
+    const auto it = feature_map.find(feature);
+    assert(it != feature_map.end());
+
+    if (feature_map.end() == it) {
+      // should not happen in reality
+      throw irs::index_error(string_utils::to_string(
+        "feature '%s' is not listed in segment features",
+        feature().name().c_str()));
+    }
+
+    out.write_vlong(it->second);
+  };
+
+  const size_t count = features.size() +
+                       math::math_traits<uint32_t>::pop(static_cast<uint32_t>(index_features));
+
+  out.write_vlong(count);
+
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::FREQ)) {
+    write_feature(irs::type<frequency>::id());
+  }
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::POS)) {
+    write_feature(irs::type<position>::id());
+  }
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::OFFS)) {
+    write_feature(irs::type<offset>::id());
+  }
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::PAY)) {
+    write_feature(irs::type<payload>::id());
+  }
+  for (const auto& feature : features) {
+    write_feature(feature.first);
+  }
+
+  const auto norm = features.find(irs::type<irs::norm>::id());
+  write_zvlong(out, norm == features.end() ? field_limits::invalid() : norm->second);
+}
+
+void read_field_features_legacy(
+    data_input& in,
+    const feature_map_t& feature_map,
+    field_meta& field) {
+  auto& index_features = field.index_features;
+  auto& features = field.features;
+
+  for (size_t count = in.read_vlong(); count; --count) {
+    const size_t id = in.read_vlong(); // feature id
+
+    if (id < feature_map.size()) {
+      const auto feature = feature_map[id];
+
+      if (feature == irs::type<frequency>::id()) {
+        index_features |= IndexFeatures::FREQ;
+      } else if (feature == irs::type<position>::id()) {
+        index_features |= IndexFeatures::POS;
+      } else if (feature == irs::type<offset>::id()) {
+        index_features |= IndexFeatures::OFFS;
+      } else if (feature == irs::type<payload>::id()) {
+        index_features |= IndexFeatures::PAY;
+      } else {
+        features[feature] = field_limits::invalid();
+      }
+    } else {
+      throw irs::index_error(irs::string_utils::to_string(
+        "unknown feature id '" IR_SIZE_T_SPECIFIER "'", id));
+    }
+  }
+
+  const field_id norm = static_cast<field_id>(read_zvlong(in));
+
+  if (field_limits::valid(norm)) {
+    const auto it = features.find(irs::type<irs::norm>::id());
+    if (IRS_LIKELY(it != features.end())) {
+      it->second = norm;
+    } else {
+      throw irs::index_error(irs::string_utils::to_string(
+        "'norm' feature is not registered with the field '%s'", field.name.c_str()));
+    }
+  }
+}
+
+template<typename FeatureMap>
+void write_segment_features(
+    FeatureMap& feature_map,
+    data_output& out,
+    const flush_state& state) {
+  auto* features = state.features;
+
+  const size_t count = (features ? features->size() : 0);
+
+  feature_map.clear();
+  feature_map.reserve(count);
+
+  out.write_int(static_cast<uint32_t>(state.index_features));
+  out.write_vlong(count);
+
+  if (features) {
+    for (const irs::type_info::type_id feature : *features) {
+      write_string(out, feature().name());
+      feature_map.emplace(feature, feature_map.size());
+    }
+  }
+}
+
+template<typename FeatureMap>
+void write_field_features(
+    FeatureMap& feature_map,
+    data_output& out,
+    IndexFeatures index_features,
+    const irs::feature_map_t& features) {
+  auto write_feature = [&out, feature_map](irs::type_info::type_id feature){
+    const auto it = feature_map.find(feature);
+    assert(it != feature_map.end());
+
+    if (feature_map.end() == it) {
+      // should not happen in reality
+      throw irs::index_error(string_utils::to_string(
+        "feature '%s' is not listed in segment features",
+        feature().name().c_str()));
+    }
+
+    out.write_vlong(it->second);
+  };
+
+  const size_t count = features.size();
+
+  out.write_int(static_cast<uint32_t>(index_features));
+  out.write_vlong(count);
+  for (const auto& feature : features) {
+    write_feature(feature.first);
+    out.write_vlong(feature.second + 1);
+  }
+}
+
+IndexFeatures read_index_features(data_input& in) {
+  const uint32_t index_features = in.read_int();
+
+  if (index_features > static_cast<uint32_t>(IndexFeatures::ALL)) {
+    throw irs::index_error{irs::string_utils::to_string(
+      "invalid segment index features %u",
+      index_features )};
+  }
+
+  return static_cast<IndexFeatures>(index_features);
+}
+
+void read_segment_features(
+    data_input& in,
+    IndexFeatures& features,
+    feature_map_t& feature_map) {
+  features = read_index_features(in);
+
+  feature_map.clear();
+  feature_map.reserve(in.read_vlong());
+
+  for (size_t count = feature_map.capacity(); count; --count) {
+    const auto name = read_string<std::string>(in); // read feature name
+    const irs::type_info feature = attributes::get(name);
+
+    if (!feature) {
+      throw irs::index_error(irs::string_utils::to_string(
+        "unknown feature name '%s'",
+        name.c_str()));
+    }
+
+    feature_map.emplace_back(feature.id());
   }
 }
 
 void read_field_features(
     data_input& in,
     const feature_map_t& feature_map,
-    flags& features) {
+    field_meta& field) {
+  field.index_features = read_index_features(in);
+
+  auto& features = field.features;
   for (size_t count = in.read_vlong(); count; --count) {
     const size_t id = in.read_vlong(); // feature id
 
     if (id < feature_map.size()) {
-      features.add(feature_map[id]);
+      const auto feature = feature_map[id];
+      const field_id id = in.read_vlong() - 1;
+
+      const auto [it, is_new] = features.emplace(feature, id);
+      UNUSED(it);
+
+      if (!is_new) {
+        throw irs::index_error(irs::string_utils::to_string(
+          "duplicate feature '%s'", feature().name().c_str()));
+      }
     } else {
       throw irs::index_error(irs::string_utils::to_string(
-        "unknown feature id '" IR_SIZE_T_SPECIFIER "'", id
-      ));
+        "unknown feature id '" IR_SIZE_T_SPECIFIER "'", id));
     }
   }
 }
@@ -653,7 +972,7 @@ class field_writer final : public irs::field_writer {
 
   field_writer(
     irs::postings_writer::ptr&& pw,
-    bool volatile_state,
+    bool consolidation,
     burst_trie::Version version = burst_trie::Version::MAX,
     uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
     uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE);
@@ -666,23 +985,19 @@ class field_writer final : public irs::field_writer {
 
   virtual void write(
     const std::string& name,
-    irs::field_id norm,
-    const irs::flags& features,
-    irs::term_iterator& terms) override;
+    IndexFeatures index_features,
+    const irs::feature_map_t& features,
+    term_iterator& terms) override;
 
  private:
   static constexpr size_t DEFAULT_SIZE = 8;
 
-  void write_segment_features(data_output& out, const flags& features);
-
-  void write_field_features(data_output& out, const flags& features) const;
-
-  void begin_field(const irs::flags& field);
+  void begin_field(IndexFeatures field);
 
   void end_field(
     const std::string& name,
-    irs::field_id norm,
-    const irs::flags& features,
+    IndexFeatures index_features,
+    const irs::feature_map_t& features,
     uint64_t total_doc_freq,
     uint64_t total_term_freq,
     size_t doc_count);
@@ -726,7 +1041,7 @@ class field_writer final : public irs::field_writer {
   const burst_trie::Version version_;
   const uint32_t min_block_size_;
   const uint32_t max_block_size_;
-  const bool volatile_state_;
+  const bool consolidation_;
 }; // field_writer
 
 void field_writer::write_block(
@@ -834,7 +1149,7 @@ void field_writer::write_block(
     block_start,
     meta,
     label,
-    volatile_state_);
+    consolidation_);
 
   if (!index.empty()) {
     blocks_.back().block().index = std::move(index);
@@ -932,12 +1247,12 @@ void field_writer::push( const bytes_ref& term ) {
 
   prefixes_.resize(term.size());
   std::fill(prefixes_.begin() + pos, prefixes_.end(), stack_.size());
-  last_term_.assign(term, volatile_state_);
+  last_term_.assign(term, consolidation_);
 }
 
 field_writer::field_writer(
     irs::postings_writer::ptr&& pw,
-    bool volatile_state,
+    bool consolidation,
     burst_trie::Version version /* = Format::MAX */,
     uint32_t min_block_size /* = DEFAULT_MIN_BLOCK_SIZE */,
     uint32_t max_block_size /* = DEFAULT_MAX_BLOCK_SIZE */)
@@ -954,7 +1269,7 @@ field_writer::field_writer(
     version_(version),
     min_block_size_(min_block_size),
     max_block_size_(max_block_size),
-    volatile_state_(volatile_state) {
+    consolidation_(consolidation) {
   assert(this->pw_);
   assert(min_block_size > 1);
   assert(min_block_size <= max_block_size);
@@ -1020,7 +1335,11 @@ void field_writer::prepare(const irs::flush_state& state) {
     }
   }
 
-  write_segment_features(*index_out_, *state.features);
+  if (IRS_LIKELY(version_ >= burst_trie::Version::IMMUTABLE_FST)) {
+    write_segment_features(feature_map_, *index_out_, state);
+  } else {
+    write_segment_features_legacy(feature_map_, *index_out_, state);
+  }
 
   // prepare postings writer
   pw_->prepare(*terms_out_, state);
@@ -1033,21 +1352,23 @@ void field_writer::prepare(const irs::flush_state& state) {
 
 void field_writer::write(
     const std::string& name,
-    irs::field_id norm,
-    const irs::flags& features,
-    irs::term_iterator& terms) {
+    IndexFeatures index_features,
+    const irs::feature_map_t& features,
+    term_iterator& terms) {
   REGISTER_TIMER_DETAILED();
-  begin_field(features);
+  begin_field(index_features);
 
   uint64_t sum_dfreq = 0;
   uint64_t sum_tfreq = 0;
 
-  const bool freq_exists = features.check<frequency>();
+  const bool freq_exists =
+    IndexFeatures::NONE != (index_features & IndexFeatures::FREQ);
+
   auto* docs = irs::get<version10::documents>(*pw_);
   assert(docs);
 
   for (; terms.next();) {
-    auto postings = terms.postings(features);
+    auto postings = terms.postings(index_features);
     auto meta = pw_->write(*postings);
 
     if (freq_exists) {
@@ -1061,24 +1382,24 @@ void field_writer::write(
       push(term);
 
       // push term to the top of the stack
-      stack_.emplace_back(term, std::move(meta), volatile_state_);
+      stack_.emplace_back(term, std::move(meta), consolidation_);
 
       if (!min_term_.first) {
         min_term_.first = true;
-        min_term_.second.assign(term, volatile_state_);
+        min_term_.second.assign(term, consolidation_);
       }
 
-      max_term_.assign(term, volatile_state_);
+      max_term_.assign(term, consolidation_);
 
       // increase processed term count
       ++term_count_;
     }
   }
 
-  end_field(name, norm, features, sum_dfreq, sum_tfreq, docs->value.count());
+  end_field(name, index_features, features, sum_dfreq, sum_tfreq, docs->value.count());
 }
 
-void field_writer::begin_field(const irs::flags& field) {
+void field_writer::begin_field(IndexFeatures features) {
   assert(terms_out_);
   assert(index_out_);
 
@@ -1092,40 +1413,13 @@ void field_writer::begin_field(const irs::flags& field) {
   min_term_.second.clear();
   term_count_ = 0;
 
-  pw_->begin_field(field);
-}
-
-void field_writer::write_segment_features(data_output& out, const flags& features) {
-  out.write_vlong(features.size());
-  feature_map_.clear();
-  feature_map_.reserve(features.size());
-  for (const irs::type_info::type_id feature : features) {
-    write_string(out, feature().name());
-    feature_map_.emplace(feature, feature_map_.size());
-  }
-}
-
-void field_writer::write_field_features(data_output& out, const flags& features) const {
-  out.write_vlong(features.size());
-  for (auto feature : features) {
-    const auto it = feature_map_.find(feature);
-    assert(it != feature_map_.end());
-
-    if (feature_map_.end() == it) {
-      // should not happen in reality
-      throw irs::index_error(string_utils::to_string(
-        "feature '%s' is not listed in segment features",
-        feature().name().c_str()));
-    }
-
-    out.write_vlong(it->second);
-  }
+  pw_->begin_field(features);
 }
 
 void field_writer::end_field(
     const std::string& name,
-    field_id norm,
-    const irs::flags& features,
+    IndexFeatures index_features,
+    const irs::feature_map_t& features,
     uint64_t total_doc_freq,
     uint64_t total_term_freq,
     size_t doc_count) {
@@ -1145,14 +1439,17 @@ void field_writer::end_field(
 
   // write field meta
   write_string(*index_out_, name);
-  write_field_features(*index_out_, features);
-  write_zvlong(*index_out_, norm);
+  if (IRS_LIKELY(version_ >= burst_trie::Version::IMMUTABLE_FST)) {
+    write_field_features(feature_map_, *index_out_, index_features, features);
+  } else {
+    write_field_features_legacy(feature_map_, *index_out_, index_features, features);
+  }
   index_out_->write_vlong(term_count_);
   index_out_->write_vlong(doc_count);
   index_out_->write_vlong(total_doc_freq);
   write_string<irs::bytes_ref>(*index_out_, min_term_.second);
   write_string<irs::bytes_ref>(*index_out_, max_term_);
-  if (features.check<frequency>()) {
+  if (IndexFeatures::NONE != (index_features & IndexFeatures::FREQ)) {
     index_out_->write_vlong(total_term_freq);
   }
 
@@ -1229,7 +1526,7 @@ class term_reader_base : public irs::term_reader,
   virtual const bytes_ref& max() const noexcept override { return max_term_ref_; }
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override;
 
-  virtual void prepare(index_input& in, const feature_map_t& features);
+  virtual void prepare(burst_trie::Version version, index_input& in, const feature_map_t& features);
 
  private:
   bstring min_term_;
@@ -1245,14 +1542,18 @@ class term_reader_base : public irs::term_reader,
 }; // term_reader_base
 
 void term_reader_base::prepare(
+    burst_trie::Version version,
     index_input& in,
     const feature_map_t& feature_map) {
   // read field metadata
   field_.name = read_string<std::string>(in);
 
-  read_field_features(in, feature_map, field_.features);
+  if (IRS_LIKELY(version >= burst_trie::Version::IMMUTABLE_FST)) {
+    read_field_features(in, feature_map, field_);
+  } else {
+    read_field_features_legacy(in, feature_map, field_);
+  }
 
-  field_.norm = static_cast<field_id>(read_zvlong(in));
   terms_count_ = in.read_vlong();
   doc_count_ = in.read_vlong();
   doc_freq_ = in.read_vlong();
@@ -1261,7 +1562,7 @@ void term_reader_base::prepare(
   max_term_ = read_string<bstring>(in);
   max_term_ref_ = max_term_;
 
-  if (field_.features.check<frequency>()) {
+  if (IndexFeatures::NONE != (field_.index_features & IndexFeatures::FREQ)) {
     freq_.value = in.read_vlong();
     pfreq_ = &freq_;
   }
@@ -1308,10 +1609,13 @@ class block_iterator : util::noncopyable {
       if constexpr (ReadHeader) {
         vskip<uint64_t>(header_.begin);
         cur_meta_ = *header_.begin++;
-        next_label_ = *header_.begin++;
+        if (sub_count_) {
+          next_label_ = *header_.begin++;
+        }
       }
     }
     dirty_ = true;
+    header_.assert_block_boundaries();
     return true;
   }
 
@@ -1371,13 +1675,16 @@ class block_iterator : util::noncopyable {
                  irs::postings_reader& pr);
 
  private:
-  struct data_block {
+  struct data_block : util::noncopyable {
+    using block_type = bstring;
+
     data_block() = default;
-    data_block(bstring&& block) noexcept
-      : block(std::move(block)),
-        begin(this->block.c_str()) {
+    data_block(block_type&& block) noexcept
+      : block{std::move(block)},
+        begin{this->block.c_str()} {
   #ifdef IRESEARCH_DEBUG
       end = begin + this->block.size();
+      assert_block_boundaries();
   #endif
     }
     data_block(data_block&& rhs) noexcept {
@@ -1387,27 +1694,33 @@ class block_iterator : util::noncopyable {
       if (this != &rhs) {
         if (rhs.block.empty()) {
           begin = rhs.begin;
+#ifdef IRESEARCH_DEBUG
+          end = rhs.end;
+#endif
         } else {
           const size_t offset = std::distance(rhs.block.c_str(), rhs.begin);
           block = std::move(rhs.block);
           begin = block.c_str() + offset;
+#ifdef IRESEARCH_DEBUG
+          end = block.c_str() + block.size();
+#endif
         }
-  #ifdef IRESEARCH_DEBUG
-        end = block.empty()
-          ? rhs.end
-          : block.c_str() + block.size();
-  #endif
       }
+      assert_block_boundaries();
       return *this;
     }
 
     [[maybe_unused]] void assert_block_boundaries() {
 #ifdef IRESEARCH_DEBUG
       assert(begin <= end);
+      if (!block.empty()) {
+        assert(end <= (block.c_str() + block.size()));
+        assert(block.c_str() <= begin);
+      }
 #endif
     }
 
-    bstring block;
+    block_type block;
     const byte_type* begin{block.c_str()};
   #ifdef IRESEARCH_DEBUG
     const byte_type* end{begin};
@@ -1494,20 +1807,21 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
 
   // for non-encrypted index try direct buffer access first
   suffix_.begin = cipher ? nullptr : in.read_buffer(block_size, BufferHint::PERSISTENT);
+  suffix_.block.clear();
 
   if (!suffix_.begin) {
-    string_utils::oversize(suffix_.block, block_size);
+    suffix_.block.resize(block_size);
 #ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(&(suffix_.block[0]), block_size);
+    const auto read = in.read_bytes(suffix_.block.data(), block_size);
     assert(read == block_size);
     UNUSED(read);
 #else
-    in.read_bytes(&(suffix_.block[0]), block_size);
+    in.read_bytes(suffix_.block.data(), block_size);
 #endif // IRESEARCH_DEBUG
     suffix_.begin = suffix_.block.c_str();
 
     if (cipher) {
-      cipher->decrypt(cur_start_, &(suffix_.block[0]), block_size);
+      cipher->decrypt(cur_start_, suffix_.block.data(), block_size);
     }
   }
 #ifdef IRESEARCH_DEBUG
@@ -1520,15 +1834,16 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
 
   // try direct buffer access first
   stats_.begin = in.read_buffer(block_size, BufferHint::PERSISTENT);
+  stats_.block.clear();
 
   if (!stats_.begin) {
-    string_utils::oversize(stats_.block, block_size);
+    stats_.block.resize(block_size);
 #ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(&(stats_.block[0]), block_size);
+    const auto read = in.read_bytes(stats_.block.data(), block_size);
     assert(read == block_size);
     UNUSED(read);
 #else
-    in.read_bytes(&(stats_.block[0]), block_size);
+    in.read_bytes(stats_.block.data(), block_size);
 #endif // IRESEARCH_DEBUG
     stats_.begin = stats_.block.c_str();
   }
@@ -1831,7 +2146,7 @@ void block_iterator::load_data(const field_meta& meta,
   }
 
   for (; cur_stats_ent_ < term_count_; ++cur_stats_ent_) {
-    stats_.begin += pr.decode(stats_.begin, meta.features, state);
+    stats_.begin += pr.decode(stats_.begin, meta.index_features, state);
     stats_.assert_block_boundaries();
   }
 
@@ -1893,7 +2208,7 @@ class term_iterator_base : public seek_term_iterator {
 #endif // IRESEARCH_DEBUG
 
     std::get<version10::term_meta>(attrs_) = state.meta;
-    term_ = term;
+    term_.assign(term.c_str(), term.size());
 
     return true;
   }
@@ -1913,13 +2228,13 @@ class term_iterator_base : public seek_term_iterator {
     it.load_data(*field_, std::get<version10::term_meta>(attrs_), *postings_);
   }
 
-  doc_iterator::ptr postings_impl(block_iterator* it, const flags& features) const {
+  doc_iterator::ptr postings_impl(block_iterator* it, IndexFeatures features) const {
     auto& meta = std::get<version10::term_meta>(attrs_);
 
     if (it) {
       it->load_data(*field_, meta, *postings_);
     }
-    return postings_->iterator(field_->features, features, meta);
+    return postings_->iterator(field_->index_features, features, meta);
   }
 
   void copy(const byte_type* suffix, size_t prefix_size, size_t suffix_size) {
@@ -1989,7 +2304,7 @@ class term_iterator final : public term_iterator_base {
     read_impl(*cur_block_);
   }
 
-  virtual doc_iterator::ptr postings(const flags& features) const override {
+  virtual doc_iterator::ptr postings(IndexFeatures features) const override {
     return postings_impl(cur_block_, features);
   }
 
@@ -2246,7 +2561,7 @@ bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
 
     const auto& arc = matcher_.Value();
 
-    term_ += byte_type(arc.ilabel); // aggregate arc label
+    term_.append(byte_type(arc.ilabel)); // aggregate arc label
     weight_.PushBack(arc.weight.begin(), arc.weight.end()); // aggregate arc weight
     ++prefix;
 
@@ -2488,7 +2803,7 @@ class automaton_term_iterator final : public term_iterator_base {
     read_impl(*cur_block_);
   }
 
-  virtual doc_iterator::ptr postings(const flags& features) const override {
+  virtual doc_iterator::ptr postings(IndexFeatures features) const override {
     return postings_impl(cur_block_, features);
   }
 
@@ -2685,12 +3000,12 @@ bool automaton_term_iterator<FST>::next() {
         assert(!weight.Empty() || fst_buffer::fst_byte_builder::final == fst_state);
         const auto weight_prefix = weight_.Size();
         weight_.PushBack(weight.begin(), weight.end());
-
         block_stack_.emplace_back(
           static_cast<bytes_ref>(weight_), *fst_, term_.size(), weight_prefix,
           state, fst_state, data.arcs, data.narcs);
-        assert(cur_block_->block_start() == block_stack_.back().start());
         cur_block_ = &block_stack_.back();
+        
+        assert(block_stack_.size() < 2 ||  (++block_stack_.rbegin())->block_start() == cur_block_->start());
 
         if (!acceptor_->Final(state))  {
           cur_block_->scan_to_sub_block(data.arcs->min);
@@ -2822,8 +3137,11 @@ class field_reader final : public irs::field_reader {
     term_reader(term_reader&& rhs) = default;
     term_reader& operator=(term_reader&& rhs) = delete;
 
-    virtual void prepare(index_input& in, const feature_map_t& features) override {
-      term_reader_base::prepare(in, features);
+    virtual void prepare(
+        burst_trie::Version version,
+        index_input& in,
+        const feature_map_t& features) override {
+      term_reader_base::prepare(version, in, features);
 
       // read FST
       input_buf isb(&in);
@@ -2860,7 +3178,7 @@ class field_reader final : public irs::field_reader {
         return nullptr;
       };
 
-      return owner_->pr_->bit_union(meta().features, term_provider, set);
+      return owner_->pr_->bit_union(meta().index_features, term_provider, set);
     }
 
     virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const override {
@@ -2933,7 +3251,7 @@ void field_reader::prepare(
   //-----------------------------------------------------------------
 
   feature_map_t feature_map;
-  flags features;
+  IndexFeatures features{IndexFeatures::NONE};
   reader_state state;
 
   state.dir = &dir;
@@ -2991,7 +3309,11 @@ void field_reader::prepare(
     }
   }
 
-  read_segment_features(*index_in, feature_map, features);
+  if (IRS_LIKELY(term_index_version >= burst_trie::Version::IMMUTABLE_FST)) {
+    read_segment_features(*index_in, features, feature_map);
+  } else {
+    read_segment_features_legacy(*index_in, features, feature_map);
+  }
 
   // read terms for each indexed field
   if (term_index_version <= burst_trie::Version::ENCRYPTION_MIN) {
@@ -3004,7 +3326,7 @@ void field_reader::prepare(
 
     for (string_ref previous_field_name = string_ref::EMPTY; fields_count; --fields_count) {
       auto& field = fields.emplace_back(*this);
-      field.prepare(*index_in, feature_map);
+      field.prepare(term_index_version, *index_in, feature_map);
 
       const auto& name = field.meta().name;
 
@@ -3239,8 +3561,8 @@ namespace burst_trie {
 irs::field_writer::ptr make_writer(
     Version version,
     irs::postings_writer::ptr&& writer,
-    bool volatile_state) {
-  return memory::make_unique<::field_writer>(std::move(writer), volatile_state, version);
+    bool consolidation) {
+  return memory::make_unique<::field_writer>(std::move(writer), consolidation, version);
 }
 
 irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader) {

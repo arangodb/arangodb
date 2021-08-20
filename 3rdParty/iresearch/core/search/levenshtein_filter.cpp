@@ -155,7 +155,7 @@ void visit(
     const byte_type no_distance,
     const uint32_t utf8_target_size,
     automaton_table_matcher& matcher,
-    Visitor& visitor) {
+    Visitor&& visitor) {
   assert(fst::kError != matcher.Properties(0));
   auto terms = reader.iterator(matcher);
 
@@ -300,7 +300,6 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
         automaton_table_matcher matcher;
       };
 
-      // FIXME
       auto ctx = memory::make_shared<automaton_context>(d, prefix, term);
 
       if (!validate(ctx->acceptor)) {
@@ -311,7 +310,7 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
                                                             utf8_utils::utf8_length(term)));
       const byte_type max_distance = d.max_distance() + 1;
 
-      return [ctx, utf8_term_size, max_distance](
+      return [ctx = std::move(ctx), utf8_term_size, max_distance](
           const sub_reader& segment,
           const term_reader& field,
           filter_visitor& visitor) mutable {

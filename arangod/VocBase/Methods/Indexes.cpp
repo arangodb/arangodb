@@ -361,9 +361,8 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
   VPackBuilder normalized;
   StorageEngine& engine =
       collection->vocbase().server().getFeature<EngineSelectorFeature>().engine();
-  auto res = engine.indexFactory().enhanceIndexDefinition(  // normalize definition
-      input, normalized, create, collection->vocbase()      // args
-  );
+  auto res = engine.indexFactory().enhanceIndexDefinition(
+      input, normalized, create, collection->vocbase());
 
   if (res.fail()) {
     ensureIndexResult = res.errorNumber();
