@@ -108,8 +108,12 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId destination,
 
 /// @brief send a request to a given destination, retry under certain conditions
 /// a retry will be triggered if the connection was lost our could not be
-/// established optionally a retry will be performed in the case of until
-/// timeout is exceeded This method must not throw under penalty of ...
+/// established optionally a retry will be performed in the case of a "not
+/// found" response until timeout is exceeded. This method must not throw
+/// under penalty of ...
+/// Note that we cannot automatically retry if the connection broke in
+/// the middle of the request or if a timeout has happened, since then
+/// we cannot know if the request has been sent and executed or not.
 FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
                            arangodb::fuerte::RestVerb type, std::string path,
                            velocypack::Buffer<uint8_t> payload = {},

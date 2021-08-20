@@ -892,7 +892,7 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
   std::vector<futures::Future<network::Response>> responses;
   
   for (auto const& server : _dbServers) {
-    responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
+    responses.emplace_back(network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Post,
                                                 base + path, buffer, reqOpts));
   }
   

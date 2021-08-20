@@ -282,6 +282,7 @@ velocypack::Options const& transaction::Methods::vpackOptions() const {
 }
 
 /// @brief Find out if any of the given requests has ended in a refusal
+/// by a leader.
 static bool findRefusal(std::vector<futures::Try<network::Response>> const& responses) {
   for (auto const& it : responses) {
     if (it.hasValue() && it.get().ok() &&
@@ -1777,7 +1778,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
     std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
-      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
     }
   }
 
@@ -1912,7 +1913,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
         // change it in the loop!
         network::Headers headers;
         ClusterTrxMethods::addTransactionHeader(*this, f, headers);
-        auto future = network::sendRequest(pool, "server:" + f, fuerte::RestVerb::Put,
+        auto future = network::sendRequestRetry(pool, "server:" + f, fuerte::RestVerb::Put,
                                            path, body, reqOpts, std::move(headers));
         futures.emplace_back(std::move(future));
       }

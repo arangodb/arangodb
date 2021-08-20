@@ -843,7 +843,7 @@ arangodb::Result visitAnalyzers(
     }
 
     for (auto const& coord : coords) {
-      auto f = arangodb::network::sendRequest(
+      auto f = arangodb::network::sendRequestRetry(
             pool,
             "server:" + coord,
             arangodb::fuerte::RestVerb::Post,

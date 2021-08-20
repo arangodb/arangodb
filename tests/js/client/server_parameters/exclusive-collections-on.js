@@ -87,7 +87,7 @@ function OptionsTestSuite () {
             collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
             action: function () {
               let db = require("internal").db;
-              for (let i = 0; i < 100000; ++i) {
+              for (let i = 0; i < 10000; ++i) {
                 db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner1" });
               }
               db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
@@ -105,7 +105,7 @@ function OptionsTestSuite () {
         collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
         action: function () {
           let db = require("internal").db;
-          for (let i = 0; i < 100000; ++i) {
+          for (let i = 0; i < 10000; ++i) {
             db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
           }
           db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
