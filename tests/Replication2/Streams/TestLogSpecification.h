@@ -22,20 +22,41 @@
 
 #pragma once
 
+#include <gtest/gtest.h>
+
 #include <velocypack/Slice.h>
 #include <velocypack/Builder.h>
 
 #include <Replication2/Streams/StreamSpecification.h>
 #include <Replication2/Streams/LogMultiplexer.h>
 
+#include <Replication2/Mocks/FakeReplicatedLog.h>
+#include <Replication2/Mocks/PersistedLog.h>
+#include <Replication2/Mocks/ReplicatedLogMetricsMock.h>
+
 namespace arangodb::replication2::test {
 
-inline constexpr auto my_int_stream_tag = streams::StreamTag{12};
-inline constexpr auto my_string_stream_id = streams::StreamId{8};
+struct LogMultiplexerTestBase : ::testing::Test {
+  static auto createReplicatedLog(LogId id = LogId{0})
+  -> std::shared_ptr<replication2::replicated_log::ReplicatedLog> {
+    return createReplicatedLogImpl<replicated_log::ReplicatedLog>(id);
+  }
 
-inline constexpr auto my_string_stream_tag = streams::StreamTag{55};
-inline constexpr auto my_int_stream_id = streams::StreamId{1};
+  static auto createFakeReplicatedLog(LogId id = LogId{0})
+  -> std::shared_ptr<replication2::test::TestReplicatedLog> {
+    return createReplicatedLogImpl<replication2::test::TestReplicatedLog>(id);
+  }
 
+ private:
+  template <typename Impl>
+  static auto createReplicatedLogImpl(LogId id) -> std::shared_ptr<Impl> {
+    auto persisted = std::make_shared<test::MockLog>(id);
+    auto core = std::make_unique<replicated_log::LogCore>(persisted);
+    auto metrics = std::make_shared<ReplicatedLogMetricsMock>();
+    return std::make_shared<Impl>(std::move(core), metrics,
+        LoggerContext(Logger::REPLICATION2));
+  }
+};
 
 struct default_deserializer {
   template <typename T>
@@ -52,15 +73,28 @@ struct default_serializer {
 };
 
 
+inline constexpr auto my_int_stream_id = streams::StreamId{1};
+inline constexpr auto my_string_stream_id = streams::StreamId{8};
+inline constexpr auto my_string2_stream_id = streams::StreamId{9};
+
+inline constexpr auto my_int_stream_tag = streams::StreamTag{12};
+inline constexpr auto my_string_stream_tag = streams::StreamTag{55};
+inline constexpr auto my_string2_stream_tag = streams::StreamTag{56};
+inline constexpr auto my_string2_stream_tag2 = streams::StreamTag{58};
+
 /* clang-format off */
 
 using MyTestSpecification = streams::stream_descriptor_set<
-    streams::stream_descriptor<my_int_stream_id, int, streams::tag_descriptor_set<
-    streams::tag_descriptor<my_int_stream_tag, default_deserializer, default_serializer>
-    >>,
-    streams::stream_descriptor<my_string_stream_id, std::string, streams::tag_descriptor_set<
-    streams::tag_descriptor<my_string_stream_tag, default_deserializer, default_serializer>
-    >>
+      streams::stream_descriptor<my_int_stream_id, int, streams::tag_descriptor_set<
+        streams::tag_descriptor<my_int_stream_tag, default_deserializer, default_serializer>
+      >>,
+      streams::stream_descriptor<my_string_stream_id, std::string, streams::tag_descriptor_set<
+        streams::tag_descriptor<my_string_stream_tag, default_deserializer, default_serializer>
+      >>,
+      streams::stream_descriptor<my_string2_stream_id, std::string, streams::tag_descriptor_set<
+        streams::tag_descriptor<my_string2_stream_tag, default_deserializer, default_serializer>,
+        streams::tag_descriptor<my_string2_stream_tag2, default_deserializer, default_serializer>
+      >>
     >;
 
 /* clang-format on */

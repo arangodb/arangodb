@@ -103,7 +103,11 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIteratorRange
   TRI_ASSERT(stop >= start);
 
   auto const log = getPersistentContainer();
-  auto lowerBound = std::lower_bound(std::begin(log), std::end(log), start);
+  auto lowerBound =
+      std::lower_bound(std::begin(log), std::end(log), start,
+                       [](StreamEntry<Type> const& left, LogIndex index) {
+                         return left.first < index;
+                       });
 
   using ContainerIterator = typename ContainerType::iterator;
 

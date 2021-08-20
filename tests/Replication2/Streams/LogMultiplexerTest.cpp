@@ -36,29 +36,9 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::streams;
 using namespace arangodb::replication2::test;
 
-struct LogDemuxTest : ::testing::Test {
-  static auto createReplicatedLog(LogId id = LogId{0})
-      -> std::shared_ptr<replication2::replicated_log::ReplicatedLog> {
-    return createReplicatedLogImpl<replicated_log::ReplicatedLog>(id);
-  }
+struct LogMultiplexerTest : LogMultiplexerTestBase {};
 
-  static auto createFakeReplicatedLog(LogId id = LogId{0})
-      -> std::shared_ptr<replication2::test::TestReplicatedLog> {
-    return createReplicatedLogImpl<replication2::test::TestReplicatedLog>(id);
-  }
-
- private:
-  template <typename Impl>
-  static auto createReplicatedLogImpl(LogId id) -> std::shared_ptr<Impl> {
-    auto persisted = std::make_shared<test::MockLog>(id);
-    auto core = std::make_unique<replicated_log::LogCore>(persisted);
-    auto metrics = std::make_shared<ReplicatedLogMetricsMock>();
-    return std::make_shared<Impl>(std::move(core), metrics,
-                                  LoggerContext(Logger::REPLICATION2));
-  }
-};
-
-TEST_F(LogDemuxTest, leader_follower_test) {
+TEST_F(LogMultiplexerTest, leader_follower_test) {
   auto ints = {12, 13, 14, 15, 16};
   auto strings = {"foo", "bar", "baz", "fuz"};
 
@@ -121,7 +101,7 @@ TEST_F(LogDemuxTest, leader_follower_test) {
   }
 }
 
-TEST_F(LogDemuxTest, leader_wait_for) {
+TEST_F(LogMultiplexerTest, leader_wait_for) {
   auto leaderLog = createReplicatedLog();
   auto followerLog = createFakeReplicatedLog();
 
@@ -148,7 +128,7 @@ TEST_F(LogDemuxTest, leader_wait_for) {
   ASSERT_TRUE(f.isReady());
 }
 
-TEST_F(LogDemuxTest, leader_wait_for_multiple) {
+TEST_F(LogMultiplexerTest, leader_wait_for_multiple) {
   auto leaderLog = createReplicatedLog();
   auto followerLog = createFakeReplicatedLog();
 
@@ -189,7 +169,7 @@ TEST_F(LogDemuxTest, leader_wait_for_multiple) {
   EXPECT_TRUE(fB.isReady());
 }
 
-TEST_F(LogDemuxTest, follower_wait_for) {
+TEST_F(LogMultiplexerTest, follower_wait_for) {
   auto leaderLog = createReplicatedLog(LogId{1});
   auto followerLog = createFakeReplicatedLog(LogId{2});
 

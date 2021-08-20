@@ -75,9 +75,15 @@ struct LogDemultiplexerImplementation
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
             typename E = StreamEntryView<T>>
-  auto waitForIteratorInternal(LogIndex)
+  auto waitForIteratorInternal(LogIndex first)
       -> futures::Future<std::unique_ptr<TypedLogRangeIterator<E>>> {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    return waitForInternal<StreamDescriptor>(first).thenValue(
+        [that = std::static_pointer_cast<SelfClass>(this->shared_from_this()), first](auto&&) {
+          return that->_guardedData.doUnderLock([&](MultiplexerData<Spec>& self) {
+            auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
+            return block.getIteratorRange(first, self._nextIndex);
+          });
+        });
   }
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
@@ -147,16 +153,21 @@ struct LogDemultiplexerImplementation
 
     void digestIterator(LogRangeIterator& iter);
 
-    auto getWaitForResolveSetAll(LogIndex commitIndex) {
-      return std::make_tuple(std::make_pair(
-          std::get<StreamInformationBlock<Descriptors>>(_blocks).getWaitForResolveSet(commitIndex),
-          typename StreamInformationBlock<Descriptors>::WaitForResult{})...);
-    };
+    auto getWaitForResolveSetAll(LogIndex commitIndex);
   };
 
   Guarded<MultiplexerData<Spec>, basics::UnshackledMutex> _guardedData{};
   std::shared_ptr<Interface> const _interface;
 };
+
+template <typename Spec, typename Interface>
+template <typename... Descriptors>
+auto LogDemultiplexerImplementation<Spec, Interface>::MultiplexerData<
+    stream_descriptor_set<Descriptors...>>::getWaitForResolveSetAll(LogIndex commitIndex) {
+  return std::make_tuple(std::make_pair(
+      std::get<StreamInformationBlock<Descriptors>>(_blocks).getWaitForResolveSet(commitIndex),
+      typename StreamInformationBlock<Descriptors>::WaitForResult{})...);
+}
 
 template <typename Spec, typename Interface>
 template <typename... Descriptors>
@@ -204,9 +215,15 @@ struct LogMultiplexerImplementation
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
             typename E = StreamEntryView<T>>
-  auto waitForIteratorInternal(LogIndex)
+  auto waitForIteratorInternal(LogIndex first)
       -> futures::Future<std::unique_ptr<TypedLogRangeIterator<E>>> {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    return waitForInternal<StreamDescriptor>(first).thenValue(
+        [that = std::static_pointer_cast<SelfClass>(this->shared_from_this()), first](auto&&) {
+          return that->_guarded.doUnderLock([&](MultiplexerData<Spec>& self) {
+            auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
+            return block.getIteratorRange(first, self._commitIndex);
+          });
+        });
   }
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
@@ -239,15 +256,15 @@ struct LogMultiplexerImplementation
     // or log entries for this stream
     auto [index, waitForIndex] = _guarded.doUnderLock([&](MultiplexerData<Spec>& self) {
       // First write to replicated log
-      auto index = _interface->insert(LogPayload(std::move(serialized)));
-      TRI_ASSERT(index > self._lastIndex);
-      self._lastIndex = index;
+      auto insertIndex = _interface->insert(LogPayload(std::move(serialized)));
+      TRI_ASSERT(insertIndex > self._lastIndex);
+      self._lastIndex = insertIndex;
 
       // Now we insert the value T into the StreamsLog,
       // but it is not yet visible because of the commitIndex
       auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
-      block.appendEntry(index, t);
-      return std::make_pair(index, self.checkWaitFor());
+      block.appendEntry(insertIndex, t);
+      return std::make_pair(insertIndex, self.checkWaitFor());
     });
 
     if (waitForIndex.has_value()) {
@@ -260,7 +277,8 @@ struct LogMultiplexerImplementation
     auto f = _interface->waitFor(waitForIndex);
     std::move(f).thenValue([weak = this->weak_from_this()](replicated_log::WaitForResult&& result) {
       // First lock the shared pointer
-      if (auto that = std::static_pointer_cast<SelfClass>(weak.lock()); that) {
+      if (auto locked = weak.lock(); locked) {
+        auto that = std::static_pointer_cast<SelfClass>(locked);
         // now acquire the mutex
         auto [resolveSets, nextIndex] =
             that->_guarded.doUnderLock([&](MultiplexerData<Spec>& self) {
