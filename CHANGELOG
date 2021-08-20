@@ -6,7 +6,7 @@ v3.8.2 (XXXX-XX-XX)
   because it allows other write operations on the collection to proceed.
 
 * Do not block a scheduler thread on the coordinator while an index is being 
-  created. Instead, start a background thread for being the actual index 
+  created. Instead, start a background thread for the actual index 
   fill-up work. The original thread can then be relinquished until the index
   is completely filled or index creation has failed. This also allows
   obsoleting the startup option `--cluster.index-create-timeout`, which from
