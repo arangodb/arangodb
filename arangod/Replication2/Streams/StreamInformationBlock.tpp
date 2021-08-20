@@ -21,14 +21,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#include "Replication2/Streams/Streams.h"
 #include "Replication2/Streams/StreamInformationBlock.h"
+#include "Replication2/Streams/Streams.h"
 
 namespace arangodb::replication2::streams {
 
 template <StreamId Id, typename Type, typename Tags>
 auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getTransientContainer()
--> TransientType& {
+    -> TransientType& {
   if (!std::holds_alternative<TransientType>(_container)) {
     _container = std::get<ContainerType>(_container).transient();
   }
@@ -37,7 +37,7 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getTransientCont
 
 template <StreamId Id, typename Type, typename Tags>
 auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getPersistentContainer()
--> ContainerType& {
+    -> ContainerType& {
   if (!std::holds_alternative<ContainerType>(_container)) {
     _container = std::get<TransientType>(_container).persistent();
   }
@@ -46,13 +46,13 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getPersistentCon
 
 template <StreamId Id, typename Type, typename Tags>
 auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::appendEntry(LogIndex index,
-    Type t) {
+                                                                            Type t) {
   getTransientContainer().push_back(EntryType{index, std::move(t)});
 }
 
 template <StreamId Id, typename Type, typename Tags>
 auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getWaitForResolveSet(LogIndex commitIndex)
--> std::multimap<LogIndex, futures::Promise<WaitForResult>> {
+    -> std::multimap<LogIndex, futures::Promise<WaitForResult>> {
   WaitForQueue toBeResolved;
   auto const end = _waitForQueue.upper_bound(commitIndex);
   for (auto it = _waitForQueue.begin(); it != end;) {
@@ -63,13 +63,13 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getWaitForResolv
 
 template <StreamId Id, typename Type, typename Tags>
 auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::registerWaitFor(LogIndex index)
--> futures::Future<WaitForResult> {
+    -> futures::Future<WaitForResult> {
   return _waitForQueue.emplace(index, futures::Promise<WaitForResult>{})->second.getFuture();
 }
 
 template <StreamId Id, typename Type, typename Tags>
 auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIterator()
--> std::unique_ptr<Iterator> {
+    -> std::unique_ptr<Iterator> {
   auto log = getPersistentContainer();
 
   struct Iterator : TypedLogRangeIterator<StreamEntryView<Type>> {
@@ -91,7 +91,7 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIterator()
     }
 
     explicit Iterator(ContainerType log)
-    : log(std::move(log)), current(this->log.begin()) {}
+        : log(std::move(log)), current(this->log.begin()) {}
   };
 
   return std::make_unique<Iterator>(std::move(log));
@@ -99,25 +99,20 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIterator()
 
 template <StreamId Id, typename Type, typename Tags>
 auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIteratorRange(LogIndex start, LogIndex stop)
--> std::unique_ptr<Iterator> {
+    -> std::unique_ptr<Iterator> {
   TRI_ASSERT(stop >= start);
 
   auto const log = getPersistentContainer();
-  auto lowerBound =
-      std::lower_bound(std::begin(log), std::end(log), start,
-                       [](StreamEntry<Type> const& left, LogIndex index) {
-                         return left.first < index;
-                       });
 
   using ContainerIterator = typename ContainerType::iterator;
 
   struct Iterator : TypedLogRangeIterator<StreamEntryView<Type>> {
-    ContainerType log;
+    ContainerType _log;
     ContainerIterator current;
     LogIndex start, stop;
 
     auto next() -> std::optional<StreamEntryView<Type>> override {
-      if (current != std::end(log) && current->first < stop) {
+      if (current != std::end(_log) && current->first < stop) {
         auto view = std::make_pair(current->first, std::cref(current->second));
         ++current;
         return view;
@@ -128,12 +123,16 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIteratorRange
       return {start, stop};
     }
 
-    explicit Iterator(ContainerType log, ContainerIterator begin, LogIndex start, LogIndex stop)
-    : log(std::move(log)), current(begin), start(start), stop(stop) {}
+    explicit Iterator(ContainerType log, LogIndex start, LogIndex stop)
+        : _log(std::move(log)),
+          current(std::lower_bound(std::begin(_log), std::end(_log), start,
+                                   [](StreamEntry<Type> const& left, LogIndex index) {
+                                     return left.first < index;
+                                   })),
+          start(start),
+          stop(stop) {}
   };
-
-  return std::make_unique<Iterator>(std::move(log), lowerBound, start, stop);
+  return std::make_unique<Iterator>(std::move(log), start, stop);
 }
 
-}
-
+}  // namespace arangodb::replication2::streams

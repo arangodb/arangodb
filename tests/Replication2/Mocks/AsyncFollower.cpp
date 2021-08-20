@@ -84,7 +84,6 @@ void AsyncFollower::runWorker() {
     }
 
     for (auto& req : requests) {
-      LOG_DEVEL << "resolve request with " << req.request.entries.size();
       _follower->appendEntries(req.request).thenFinal([promise = std::move(req.promise)](auto&& res) mutable {
         promise.setValue(std::forward<decltype(res)>(res));
       });

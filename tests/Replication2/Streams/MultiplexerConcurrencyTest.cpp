@@ -44,7 +44,9 @@ struct LogMultiplexerConcurrencyTest : LogMultiplexerTestBase {
     using ValueType = streams::stream_type_by_id_t<StreamId, Spec>;
 
     explicit StateMachine(std::shared_ptr<streams::Stream<ValueType>> stream)
-        : _stream(std::move(stream)) {
+        : _stream(std::move(stream)) {}
+
+    void start() {
       waitForStream(LogIndex{1});
     }
 
@@ -52,10 +54,13 @@ struct LogMultiplexerConcurrencyTest : LogMultiplexerTestBase {
       _stream->waitForIterator(next).thenValue([weak = this->weak_from_this()](auto&& iter) {
         if (auto self = weak.lock(); self) {
           auto [start, stop] = iter->range();
+          TRI_ASSERT(start != stop);
           while (auto memtry = iter->next()) {
             self->_state.emplace(*memtry);
           }
           self->waitForStream(stop);
+        } else {
+          TRI_ASSERT(false);
         }
       });
     }
@@ -73,7 +78,9 @@ struct LogMultiplexerConcurrencyTest : LogMultiplexerTestBase {
     template <typename Mux>
     explicit StateCombiner(std::shared_ptr<Mux> const& demux)
         : _states(std::make_shared<StateMachine<Descriptors::id>>(
-              demux->template getStreamById<Descriptors::id>())...) {}
+              demux->template getStreamById<Descriptors::id>())...) {
+          ((std::get<std::shared_ptr<StateMachine<Descriptors::id>>>(_states)->start()), ...);
+    }
   };
 
   struct FollowerInstance {

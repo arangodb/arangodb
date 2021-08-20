@@ -221,7 +221,7 @@ struct LogMultiplexerImplementation
         [that = std::static_pointer_cast<SelfClass>(this->shared_from_this()), first](auto&&) {
           return that->_guarded.doUnderLock([&](MultiplexerData<Spec>& self) {
             auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
-            return block.getIteratorRange(first, self._commitIndex);
+            return block.getIteratorRange(first, self._commitIndex + 1);
           });
         });
   }
