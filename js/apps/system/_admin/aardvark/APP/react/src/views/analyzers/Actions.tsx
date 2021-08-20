@@ -2,13 +2,13 @@ import React, { MouseEvent, useState } from 'react';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { mutate } from "swr";
-import { JsonEditor as Editor } from "jsoneditor-react";
 import { noop, pick } from 'lodash';
 import { FormState, State } from "./constants";
 import { Cell, Grid } from "../../components/pure-css/grid";
 import BaseForm from "./forms/BaseForm";
 import FeatureForm from "./forms/FeatureForm";
 import { getForm } from "./helpers";
+import Textarea from "../../components/pure-css/form/Textarea";
 
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };
@@ -98,6 +98,12 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
   };
 
   const formState = state.formState;
+  let jsonFormState = '';
+  let jsonRows = 1;
+  if (showJsonForm) {
+    jsonFormState = JSON.stringify(formState, null, 4);
+    jsonRows = jsonFormState.split('\n').length;
+  }
 
   return <>
     <button className={'pure-button'} onClick={handleClick} style={{ background: 'transparent' }}>
@@ -114,7 +120,7 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
           {
             showJsonForm
               ? <Cell size={'1'}>
-                <Editor value={formState} mode={'view'}/>
+                <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState} rows={jsonRows}/>
               </Cell>
               : <>
                 <Cell size={'1'}>
