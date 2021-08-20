@@ -113,6 +113,19 @@ function EvilDatabaseNamesSuite () {
     testIndexCreationDeletion: function () {
       dbs.forEach((database) => {
         db._useDatabase(database);
+        db._create("collection123");
+        assertNotNull(db._collection("collection123"));
+        db["collection123"].ensureIndex({type: 'persistent', name: 'test123', fields: ['value']});
+        assertEqual(db["collection123"].indexes().length, 2);
+        assertEqual(db["collection123"].index("test123").name, "test123");
+        db["collection123"].dropIndex("test123");
+        assertEqual(db["collection123"].indexes().length, 1);
+        try{
+          assertEqual(db["collection123"].index("test123"));
+          fail();
+        } catch(err) {
+          assertEqual(err.errorNum, arangodb.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code);
+        }
 
       });
     },
