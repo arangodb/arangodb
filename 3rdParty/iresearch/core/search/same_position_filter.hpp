@@ -70,7 +70,9 @@ class IRESEARCH_API by_same_position
   //////////////////////////////////////////////////////////////////////////////
   /// @returns features required for filter
   //////////////////////////////////////////////////////////////////////////////
-  static const flags& required();
+  static constexpr IndexFeatures required() noexcept {
+    return IndexFeatures::FREQ | IndexFeatures::POS;
+  }
 
   using filter::prepare;
 

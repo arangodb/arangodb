@@ -27,6 +27,7 @@
 #include "store/store_utils.hpp"
 #include "store/fs_directory.hpp"
 #include "store/memory_directory.hpp"
+#include "store/mmap_directory.hpp"
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
 #include "utils/async_utils.hpp"
@@ -50,7 +51,7 @@ using namespace iresearch;
 // --SECTION--                                               directory_test_case
 // -----------------------------------------------------------------------------
 
-class directory_test_case : public tests::directory_test_case_base {
+class directory_test_case : public tests::directory_test_case_base<> {
  public:
   static void smoke_store(directory& dir) {
     std::vector<std::string> names{
@@ -107,7 +108,7 @@ class directory_test_case : public tests::directory_test_case_base {
 
     // Read contents
     it = names.end();
-    bstring buf;
+    bstring buf, buf1;
 
     for (const auto& name : names) {
       --it;
@@ -136,11 +137,120 @@ class directory_test_case : public tests::directory_test_case_base {
       EXPECT_EQ(reopened_file->length(), it->size());
 
       const auto checksum = file->checksum(file->length());
+      ASSERT_EQ(0, file->file_pointer());
 
       buf.resize(it->size());
-      const auto read = file->read_bytes(&(buf[0]), it->size());
+      const auto read = file->read_bytes(buf.data(), it->size());
       ASSERT_EQ(read, it->size());
       ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+
+      // random access
+      {
+        const auto fp = file->file_pointer();
+        buf1.resize(it->size());
+        const auto read = file->read_bytes(fp - it->size(), buf1.data(), it->size());
+        ASSERT_EQ(read, it->size());
+        ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf1);
+        ASSERT_EQ(fp, file->file_pointer());
+      }
+
+      // failed direct buffer access doesn't move file pointer
+      {
+        const auto fp = file->file_pointer();
+        ASSERT_GT(file->length(), 1);
+        ASSERT_EQ(nullptr, file->read_buffer(file->length() - 1, file->length(), BufferHint::NORMAL));
+        ASSERT_EQ(fp, file->file_pointer());
+      }
+
+      // failed direct buffer access doesn't move file pointer
+      {
+        const auto fp = file->file_pointer();
+        auto cleanup = make_finally([fp, &file]() noexcept {
+          try {
+            file->seek(fp);
+          } catch (...) {
+            ASSERT_TRUE(false);
+          }
+        });
+
+        ASSERT_GT(file->length(), 1);
+        file->seek(file->length()-1);
+        ASSERT_EQ(nullptr, file->read_buffer(file->length(), BufferHint::NORMAL));
+        ASSERT_EQ(file->length()-1, file->file_pointer());
+      }
+
+      if (dynamic_cast<mmap_directory*>(&dir) ||
+          dynamic_cast<memory_directory*>(&dir) ||
+          dynamic_cast<fs_directory*>(&dir)) {
+        const auto fp = file->file_pointer();
+        auto cleanup = make_finally([fp, &file]() noexcept {
+          try {
+            file->seek(fp);
+          } catch (...) {
+            ASSERT_FALSE(true);
+          }
+        });
+
+        // sequential direct access
+        {
+          file->seek(0);
+          ASSERT_EQ(0, file->file_pointer());
+          const byte_type* internal_buf = file->read_buffer(1, BufferHint::NORMAL);
+          ASSERT_NE(nullptr, internal_buf);
+          ASSERT_EQ(1, file->file_pointer());
+          ASSERT_EQ(it->at(0), *internal_buf);
+        }
+
+        // random direct access
+        {
+          const byte_type* internal_buf = file->read_buffer(0, 1, BufferHint::NORMAL);
+          ASSERT_NE(nullptr, internal_buf);
+          ASSERT_EQ(1, file->file_pointer());
+          ASSERT_EQ(it->at(0), *internal_buf);
+        }
+      }
+
+      // mmap direct buffer access
+      if (dynamic_cast<mmap_directory*>(&dir)) {
+        const auto fp = file->file_pointer();
+
+        // sequential direct access
+        {
+          file->seek(fp - it->size());
+          const byte_type* internal_buf = file->read_buffer(
+            fp - it->size(), it->size(), BufferHint::PERSISTENT);
+          ASSERT_NE(nullptr, internal_buf);
+          ASSERT_EQ(file->file_pointer(), fp);
+          ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+        }
+
+        {
+          file->seek(fp - it->size());
+          const byte_type* internal_buf = file->read_buffer(
+            fp - it->size(), it->size(), BufferHint::NORMAL);
+          ASSERT_NE(nullptr, internal_buf);
+          ASSERT_EQ(file->file_pointer(), fp);
+          ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+        }
+
+        // random direct access
+        {
+          const byte_type* internal_buf = file->read_buffer(
+            fp - it->size(), it->size(), BufferHint::PERSISTENT);
+          ASSERT_NE(nullptr, internal_buf);
+          ASSERT_EQ(file->file_pointer(), fp);
+          ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+        }
+
+        // random direct access
+        {
+          const byte_type* internal_buf = file->read_buffer(
+            fp - it->size(), it->size(), BufferHint::NORMAL);
+          ASSERT_NE(nullptr, internal_buf);
+          ASSERT_EQ(file->file_pointer(), fp);
+          ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+        }
+      }
 
       {
         buf.clear();
@@ -1230,7 +1340,7 @@ TEST_P(directory_test_case, directory_size) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   directory_test,
   directory_test_case,
   ::testing::Values(
@@ -1238,7 +1348,7 @@ INSTANTIATE_TEST_CASE_P(
     &tests::fs_directory,
     &tests::mmap_directory
   ),
-  tests::directory_test_case_base::to_string
+  tests::directory_test_case_base<>::to_string
 );
 
 // -----------------------------------------------------------------------------
@@ -1534,6 +1644,32 @@ TEST(memory_directory_test, file_reset_allocator) {
   ASSERT_EQ(256, buf1.size);
 
   ASSERT_NE(buf0.data, buf1.data);
+}
+
+TEST(memory_directory_test, rewrite) {
+  using namespace irs;
+
+  const string_ref str0{"quick brown fowx jumps over the lazy dog"};
+  const string_ref str1{"hund"};
+  const string_ref expected{"quick brown fowx jumps over the lazy hund"};
+  const bytes_ref payload0{ref_cast<byte_type>(str0)};
+  const bytes_ref payload1{ref_cast<byte_type>(str1)};
+
+  memory_output out{irs::memory_allocator::global()};
+  out.stream.write_bytes(payload0.c_str(), payload0.size());
+  ASSERT_EQ(payload0.size(), out.stream.file_pointer());
+  out.stream.seek(out.stream.file_pointer() - 3);
+  ASSERT_EQ(payload0.size() - 3, out.stream.file_pointer());
+  out.stream.write_bytes(payload1.c_str(), payload1.size());
+  ASSERT_EQ(payload0.size() - 3 + payload1.size(), out.stream.file_pointer());
+  out.stream.flush();
+
+  memory_index_input in{out.file};
+  ASSERT_EQ(payload0.size() - 3 + payload1.size(), in.length());
+
+  std::string value(expected.size(), 0);
+  in.read_bytes(reinterpret_cast<irs::byte_type*>(value.data()), value.size());
+  ASSERT_EQ(expected, value);
 }
 
 }

@@ -28,6 +28,7 @@
 #include "Aql/ModificationExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "AqlItemMatrix.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationResult.h"
 
@@ -36,13 +37,14 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <memory>
 #include <optional>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 struct AqlCall;
 class AqlItemBlockInputRange;
+class AqlItemBlockInputMatrix;
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class RegisterInfos;
@@ -171,25 +173,60 @@ class ModificationExecutor {
   ~ModificationExecutor() = default;
 
   [[nodiscard]] auto produceRows(typename FetcherType::DataRange& input, OutputAqlItemRow& output)
-      -> std::tuple<ExecutorState, Stats, AqlCall>;
+      -> std::tuple<ExecutionState, Stats, AqlCall>;
 
   [[nodiscard]] auto skipRowsRange(typename FetcherType::DataRange& inputRange, AqlCall& call)
-      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+      -> std::tuple<ExecutionState, Stats, size_t, AqlCall>;
 
  protected:
-  void doCollect(AqlItemBlockInputRange& input, size_t maxOutputs);
-  void doOutput(OutputAqlItemRow& output, Stats& stats);
-  
+  // Interface of the data structure that is passed by produceRows() and
+  // skipRowsRange() to produceOrSkip(), which does the actual work.
+  // The interface isn't technically necessary (as produceOrSkip is a template),
+  // but I kept it for the overview it provides.
+  struct IProduceOrSkipData {
+    virtual ~IProduceOrSkipData() = default;
+    virtual void doOutput() = 0;
+    virtual auto maxOutputRows() -> std::size_t = 0;
+    virtual auto needMoreOutput() -> bool = 0;
+  };
+
+  template <typename ProduceOrSkipData>
+  std::tuple<ExecutionState, Stats, AqlCall> produceOrSkip(typename FetcherType::DataRange& input,
+                                                           ProduceOrSkipData& produceOrSkipData);
+
   transaction::Methods _trx;
 
-  // The state that was returned on the last call to produceRows. For us
-  // this is relevant because we might have collected some documents in the
-  // modifier's accumulator, but not written them yet, because we ran into
-  // WAITING
-  ExecutionState _lastState;
   ModificationExecutorInfos& _infos;
-  ModifierType _modifier;
+  std::shared_ptr<ModifierType> _modifier;
+
+  // Used to unify input consumption of both AqlItemBlockInputRange and
+  // AqlItemBlockInputMatrix.
+  struct RangeHandler {
+    constexpr static bool inputIsMatrix =
+        std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>;
+
+    // init must be called at least once with any input. It's a no-op for
+    // AqlItemBlockInputRange, and initializes an iterator for a
+    // AqlItemBlockInputMatrix.
+    // Returns false if the input isn't yet in a state in which it can be used
+    // for initialization (i.e. the matrix isn't there yet).
+    bool init(typename FetcherType::DataRange& input);
+
+    // Returns true iff we may currently call nextDataRow() on this input;
+    // might return true on the next input.
+    [[nodiscard]] auto hasDataRow(typename FetcherType::DataRange& input) const noexcept
+        -> bool;
+    // Returns the next data row and moves the internal iterator
+    [[nodiscard]] auto nextDataRow(typename FetcherType::DataRange& input)
+        -> arangodb::aql::InputAqlItemRow;
+
+    auto upstreamState(typename FetcherType::DataRange& input) const noexcept -> ExecutorState;
+
+    AqlItemMatrix::RowIterator _iterator{};
+  } _rangeHandler{};
+
+  std::size_t _skipCount{};
+  Stats _stats{};
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

@@ -107,7 +107,9 @@ struct DocIdScorer: public irs::sort {
 
   struct Prepared: public irs::prepared_sort_base<uint64_t, void> {
     virtual void collect(irs::byte_type*, const irs::index_reader& index, const irs::sort::field_collector* field, const irs::sort::term_collector* term) const override {}
-    virtual irs::flags const& features() const override { return irs::flags::empty_instance(); }
+    virtual irs::IndexFeatures features() const override {
+      return irs::IndexFeatures::NONE;
+    }
     virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override { return traits_t::score_cast(lhs) < traits_t::score_cast(rhs); }
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override { return nullptr; }
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override { return nullptr; }
@@ -667,7 +669,7 @@ TEST_F(IResearchViewTest, test_properties) {
       EXPECT_EQ(1, tmpSlice.length());
       tmpSlice2 = tmpSlice.get("testCollection");
       EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(9, tmpSlice2.length());
+      EXPECT_EQ(10, tmpSlice2.length());
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -675,6 +677,8 @@ TEST_F(IResearchViewTest, test_properties) {
       EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
       EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
       EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_TRUE(tmpSlice2.get("version").isNumber());
+      EXPECT_EQ(1, tmpSlice2.get("version").getNumber<uint32_t>());
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
       ASSERT_TRUE(tmpSlice2.isArray());

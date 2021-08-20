@@ -66,7 +66,7 @@ TEST_F(segment_writer_tests, invalid_actions) {
     irs::token_stream& token_stream;
     field_t(irs::token_stream& stream): token_stream(stream) {}
     float_t boost() const { return 1.f; }
-    const irs::flags& features() const { return irs::flags::empty_instance(); }
+    irs::features_t features() const { return {}; }
     irs::token_stream& get_tokens() { return token_stream; }
     irs::string_ref& name() const { static irs::string_ref value("test_field"); return value; }
     bool write(irs::data_output& out) {
@@ -83,8 +83,13 @@ TEST_F(segment_writer_tests, invalid_actions) {
     return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
   };
 
+  irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+    return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
+  };
+
+  irs::field_features_t features;
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir, column_info, nullptr);
+  auto writer = irs::segment_writer::make(dir, features, column_info, feature_column_info, nullptr);
   ASSERT_EQ(0, writer->memory_active());
 
   // store + store sorted
@@ -139,10 +144,16 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
     return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
   };
 
+  irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+    return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
+  };
+
   irs::memory_directory dir;
-  auto writer_sorted = irs::segment_writer::make(dir, column_info, &less);
+  irs::field_features_t field_features;
+
+  auto writer_sorted = irs::segment_writer::make(dir, field_features, column_info, feature_column_info, &less);
   ASSERT_EQ(0, writer_sorted->memory_active());
-  auto writer_unsorted = irs::segment_writer::make(dir, column_info, nullptr);
+  auto writer_unsorted = irs::segment_writer::make(dir, field_features, column_info, feature_column_info, nullptr);
   ASSERT_EQ(0, writer_unsorted->memory_active());
 
   irs::segment_meta segment;
@@ -195,11 +206,19 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
   } field;
 
   irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info( irs::type<irs::compression::lz4>::get(), irs::compression::options(irs::compression::options::Hint::SPEED), true );
+    return irs::column_info{
+      irs::type<irs::compression::lz4>::get(),
+      irs::compression::options(irs::compression::options::Hint::SPEED),
+      true };
   };
 
+  irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+    return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
+  };
+
+  irs::field_features_t field_features;
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir, column_info, nullptr);
+  auto writer = irs::segment_writer::make(dir, field_features, column_info, feature_column_info, nullptr);
   ASSERT_EQ(0, writer->memory_active());
 
   irs::segment_meta segment;
@@ -248,8 +267,13 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
     return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true);
   };
 
+  irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+    return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
+  };
+
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir, column_info, &less);
+  irs::field_features_t field_features;
+  auto writer = irs::segment_writer::make(dir, field_features, column_info, feature_column_info, &less);
   ASSERT_EQ(0, writer->memory_active());
 
   irs::segment_meta segment;
@@ -298,8 +322,13 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
     return irs::column_info( irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
   };
 
+  irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+    return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
+  };
+
+  irs::field_features_t field_features;
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir, column_info, &less);
+  auto writer = irs::segment_writer::make(dir, field_features, column_info, feature_column_info, &less);
   ASSERT_EQ(0, writer->memory_active());
 
   irs::segment_meta segment;
@@ -342,8 +371,13 @@ TEST_F(segment_writer_tests, memory_store_field_unsorted) {
     return irs::column_info( irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
   };
 
+  irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+    return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
+  };
+
+  irs::field_features_t field_features;
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir, column_info, nullptr);
+  auto writer = irs::segment_writer::make(dir, field_features, column_info, feature_column_info, nullptr);
   ASSERT_EQ(0, writer->memory_active());
 
   irs::segment_meta segment;
@@ -372,8 +406,8 @@ TEST_F(segment_writer_tests, memory_index_field) {
   struct field_t {
     irs::token_stream& token_stream;
     field_t(irs::token_stream& stream): token_stream(stream) {}
-    float_t boost() const { return 1.f; }
-    const irs::flags& features() const { return irs::flags::empty_instance(); }
+    irs::features_t features() const { return {}; }
+    irs::IndexFeatures index_features() const { return irs::IndexFeatures::NONE; }
     irs::token_stream& get_tokens() { return token_stream; }
     irs::string_ref& name() const { static irs::string_ref value("test_field"); return value; }
   };
@@ -386,8 +420,20 @@ TEST_F(segment_writer_tests, memory_index_field) {
     return irs::column_info( irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
   };
 
+  irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+    return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
+  };
+
+  irs::segment_meta segment;
+  segment.name = "tmp";
+  segment.codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, segment.codec);
+
+  irs::field_features_t features;
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir, column_info, nullptr);
+  auto writer = irs::segment_writer::make(dir, features, column_info, feature_column_info, nullptr);
+  writer->reset(segment);
+
   ASSERT_EQ(0, writer->memory_active());
 
   for (size_t i = 0; i < 100; ++i) {
@@ -411,7 +457,8 @@ TEST_F(segment_writer_tests, index_field) {
     irs::token_stream& token_stream;
     field_t(irs::token_stream& stream): token_stream(stream) {}
     float_t boost() const { return 1.f; }
-    const irs::flags& features() const { return irs::flags::empty_instance(); }
+    irs::IndexFeatures index_features() const { return irs::IndexFeatures::NONE; }
+    irs::features_t features() const { return {}; }
     irs::token_stream& get_tokens() { return token_stream; }
     irs::string_ref& name() const { static irs::string_ref value("test_field"); return value; }
   };
@@ -422,8 +469,20 @@ TEST_F(segment_writer_tests, index_field) {
       return irs::column_info( irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
     };
 
+    irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+      return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
+    };
+
+    irs::segment_meta segment;
+    segment.name = "tmp";
+    segment.codec = irs::formats::get("1_0");
+    ASSERT_NE(nullptr, segment.codec);
+
+    irs::field_features_t features;
     irs::memory_directory dir;
-    auto writer = irs::segment_writer::make(dir, column_info, nullptr);
+    auto writer = irs::segment_writer::make(dir, features, column_info, feature_column_info, nullptr);
+    writer->reset(segment);
+
     irs::segment_writer::update_context ctx;
     token_stream_mock stream;
     field_t field(stream);
@@ -445,8 +504,20 @@ TEST_F(segment_writer_tests, index_field) {
       return irs::column_info( irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
     };
 
+    irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+      return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
+    };
+
+    irs::segment_meta segment;
+    segment.name = "tmp";
+    segment.codec = irs::formats::get("1_0");
+    ASSERT_NE(nullptr, segment.codec);
+
+    irs::field_features_t features;
     irs::memory_directory dir;
-    auto writer = irs::segment_writer::make(dir, column_info, nullptr);
+    auto writer = irs::segment_writer::make(dir, features, column_info, feature_column_info, nullptr);
+    writer->reset(segment);
+
     irs::segment_writer::update_context ctx;
     token_stream_mock stream;
     field_t field(stream);

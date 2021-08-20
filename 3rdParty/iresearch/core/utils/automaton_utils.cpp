@@ -327,7 +327,7 @@ void utf8_transitions_builder::insert(
 
 void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
 #ifdef IRESEARCH_DEBUG
-  auto ensure_empty = make_finally([this]() {
+  auto ensure_empty = make_finally([this]() noexcept {
     // ensure everything is cleaned up
     assert(std::all_of(
       std::begin(states_), std::end(states_), [](const state& s) noexcept {

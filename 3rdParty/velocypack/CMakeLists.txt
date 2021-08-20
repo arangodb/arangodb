@@ -60,7 +60,7 @@ set(VELOCY_SOURCE
     src/string-functions.cpp
 )
 
-#Use xxhash or fasthash?
+#Use xxhash, fasthash?
 if(HashType STREQUAL "xxhash")
     list(APPEND VELOCY_SOURCE src/xxhash.cpp)
     add_definitions("-DVELOCYPACK_XXHASH=1")

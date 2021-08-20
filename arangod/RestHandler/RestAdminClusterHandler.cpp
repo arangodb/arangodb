@@ -1521,7 +1521,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
                             AsyncAgencyComm::RequestType::READ, VPackBuffer<uint8_t>())
           .thenValue([self](AsyncAgencyCommResult&& result) {
             // this lambda has to capture self since collect returns early on an
-            // exception and the RestHandle might be freed too early otherwise
+            // exception and the RestHandler might be freed too early otherwise
 
             if (result.fail() || result.statusCode() != fuerte::StatusOK) {
               THROW_ARANGO_EXCEPTION(result.asResult());
