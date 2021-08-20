@@ -489,15 +489,17 @@ Result Manager::lockCollections(TRI_vocbase_t& vocbase,
               if (res.fail()) {
                 return false;
               }
-              res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname,
-                                             mode, /*lockUsage*/ false));
-              if (res.fail()) {
-                return false;
-              }
-              res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname,
-                                             mode, /*lockUsage*/ false));
-              if (res.fail()) {
-                return false;
+              if (!col->isDisjoint()) {
+                res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname,
+                                               mode, /*lockUsage*/ false));
+                if (res.fail()) {
+                  return false;
+                }
+                res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname,
+                                               mode, /*lockUsage*/ false));
+                if (res.fail()) {
+                  return false;
+                }
               }
             }
           } catch (basics::Exception const& ex) {
