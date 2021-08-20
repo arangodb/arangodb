@@ -161,11 +161,9 @@ bool BreadthFirstEnumerator::next() {
           }
         }
 
-#ifdef USE_ENTERPRISE
         if (!validDisjointPath(nextIdx, vId)) {
           return;
         }
-#endif
 
         growStorage();
         TRI_ASSERT(_schreier.capacity() > _schreier.size());

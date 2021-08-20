@@ -296,11 +296,9 @@ bool DepthFirstEnumerator::next() {
           }
         }
 
-#ifdef USE_ENTERPRISE
         if (!validDisjointPath()) {
           return;
         }
-#endif
 
         _enumeratedPath.pushEdge(eid);
         foundPath = true;
