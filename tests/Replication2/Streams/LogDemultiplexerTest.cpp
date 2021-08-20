@@ -1,21 +1,40 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lars Maier
+////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
+#include <Replication2/ReplicatedLog/ReplicatedLog.h>
+#include <Replication2/Streams/LogMultiplexer.h>
 
 #include <Replication2/Mocks/FakeReplicatedLog.h>
 #include <Replication2/Mocks/PersistedLog.h>
 #include <Replication2/Mocks/ReplicatedLogMetricsMock.h>
 
-#include <Replication2/ReplicatedLog/ReplicatedLog.h>
-
-#include <Basics/Exceptions.h>
-#include <Replication2/LogMultiplexer.h>
+#include <Replication2/Streams/TestLogSpecification.h>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::streams;
+using namespace arangodb::replication2::test;
 
 struct LogDemuxTest : ::testing::Test {
   static auto createReplicatedLog(LogId id = LogId{0})
@@ -38,44 +57,6 @@ struct LogDemuxTest : ::testing::Test {
                                   LoggerContext(Logger::REPLICATION2));
   }
 };
-
-struct default_deserializer {
-  template <typename T>
-  auto operator()(serializer_tag_t<T>, velocypack::Slice s) -> T {
-    return s.extract<T>();
-  }
-};
-
-struct default_serializer {
-  template <typename T>
-  void operator()(serializer_tag_t<T>, T const& t, velocypack::Builder& b) {
-    b.add(velocypack::Value(t));
-  }
-};
-
-/* clang-format off */
-
-inline constexpr auto my_int_stream_id = StreamId{1};
-inline constexpr auto my_int_stream_tag = StreamTag{12};
-
-inline constexpr auto my_string_stream_id = StreamId{8};
-inline constexpr auto my_string_stream_tag = StreamTag{55};
-
-
-using MyTestSpecification = stream_descriptor_set<
-  stream_descriptor<my_int_stream_id, int, tag_descriptor_set<
-    tag_descriptor<my_int_stream_tag, default_deserializer, default_serializer>
-  >>,
-  stream_descriptor<my_string_stream_id, std::string, tag_descriptor_set<
-    tag_descriptor<my_string_stream_tag, default_deserializer, default_serializer>
-  >>
->;
-
-/* clang-format on */
-
-#include <Replication2/LogMultiplexer.tpp>
-template struct streams::LogDemultiplexer<MyTestSpecification>;
-template struct streams::LogMultiplexer<MyTestSpecification>;
 
 TEST_F(LogDemuxTest, leader_follower_test) {
   auto ints = {12, 13, 14, 15, 16};
@@ -138,8 +119,6 @@ TEST_F(LogDemuxTest, leader_follower_test) {
     }
     EXPECT_EQ(iter->next(), std::nullopt);
   }
-
-  LOG_DEVEL << leader->copyInMemoryLog().dump();
 }
 
 TEST_F(LogDemuxTest, leader_wait_for) {

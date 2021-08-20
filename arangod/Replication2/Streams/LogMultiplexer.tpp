@@ -327,8 +327,6 @@ struct LogMultiplexerImplementation
   std::shared_ptr<Interface> const _interface;
 };
 
-}  // namespace arangodb::replication2::streams
-
 template <typename Spec>
 auto LogDemultiplexer<Spec>::construct(std::shared_ptr<replicated_log::ILogParticipant> interface)
     -> std::shared_ptr<LogDemultiplexer> {
@@ -342,3 +340,5 @@ auto LogMultiplexer<Spec>::construct(std::shared_ptr<arangodb::replication2::rep
   return std::make_shared<streams::LogMultiplexerImplementation<Spec, replicated_log::LogLeader>>(
       std::move(leader));
 }
+
+}  // namespace arangodb::replication2::streams

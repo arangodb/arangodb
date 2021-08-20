@@ -313,7 +313,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
         Replication2/Mocks/PersistedLog.h
         Replication2/ReplicatedLog/InMemoryLogTest.cpp
         Replication2/Streams/LogDemultiplexerTest.cpp
-        Replication2/Mocks/FakeReplicatedLog.cpp Replication2/Mocks/FakeReplicatedLog.h)
+        Replication2/Mocks/FakeReplicatedLog.cpp Replication2/Mocks/FakeReplicatedLog.h Replication2/Streams/TestLogSpecification.cpp Replication2/Streams/TestLogSpecification.h)
 
 
 if (LINUX)

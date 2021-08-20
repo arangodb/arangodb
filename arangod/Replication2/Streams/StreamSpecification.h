@@ -22,6 +22,10 @@
 
 #pragma once
 #include <type_traits>
+#include <cstdint>
+
+#include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
 
 namespace arangodb::replication2::streams {
 
