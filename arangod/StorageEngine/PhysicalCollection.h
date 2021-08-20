@@ -109,7 +109,7 @@ class PhysicalCollection {
                               const std::shared_ptr<Index>& right) const;
   };
 
-  using IndexContainerType = std::set<std::shared_ptr<Index>, IndexOrder> ;
+  using IndexContainerType = std::set<std::shared_ptr<Index>, IndexOrder>;
   /// @brief find index by definition
   static std::shared_ptr<Index> findIndex(velocypack::Slice const&,
                                           IndexContainerType const&);

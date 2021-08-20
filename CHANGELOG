@@ -1,6 +1,17 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Preselect "create index in background" option when creating indexes in the web
+  UI. The "create index in background" option can be less intrusive because it
+  allows other write operations on the collection to proceed.
+
+* Do not block a scheduler thread on the coordinator while an index is being
+  created. Instead, start a background thread for the actual index fill-up work.
+  The original thread can then be relinquished until the index is completely
+  filled or index creation has failed. This also allows obsoleting the startup
+  option `--cluster.index-create-timeout`, which from now on is ignored when
+  set.
+
 * Fixed: getResponsibleShard call on disjoint Smart Graphs if you asked for the
   responsible shard on a disjoint edge collection where the _from and _to differ
   (invalid), the server would respond with "DATASOURCE_NOT_FOUND". This is now
