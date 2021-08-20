@@ -22,7 +22,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Transaction/Methods.h>
+#include "Transaction/Methods.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
