@@ -147,7 +147,7 @@ struct NetworkMethodsTest
   void assertIsPositiveResponse(network::Response const& res) {
     ASSERT_EQ(res.destination, "tcp://example.org:80");
     ASSERT_EQ(res.error, fuerte::Error::NoError) << "Got " << fuerte::to_string(res.error) << " expected " << fuerte::to_string(fuerte::Error::NoError);
-    ASSERT_TRUE(res.hasResponse());
+    ASSERT_NE(res.response, nullptr);
     ASSERT_EQ(res.statusCode(), fuerte::StatusAccepted);
   }
 
@@ -265,12 +265,12 @@ TEST_F(NetworkMethodsTest, request_failure_on_status_not_acceptable) {
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
-  ASSERT_TRUE(res.hasResponse());
+  ASSERT_NE(res.response, nullptr);
   ASSERT_EQ(res.statusCode(), fuerte::StatusNotAcceptable);
 }
 
 TEST_F(NetworkMethodsTest, request_failure_on_timeout) {
-  pool->_conn->_err = fuerte::Error::RequestTimeout;
+  pool->_conn->_err = fuerte::Error::Timeout;
 
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(60.0);
@@ -281,8 +281,8 @@ TEST_F(NetworkMethodsTest, request_failure_on_timeout) {
 
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
-  ASSERT_EQ(res.error, fuerte::Error::RequestTimeout);
-  ASSERT_FALSE(res.hasResponse());
+  ASSERT_EQ(res.error, fuerte::Error::Timeout);
+  ASSERT_EQ(res.response, nullptr);
 }
 
 TEST_F(NetworkMethodsTest, request_failure_on_connection_closed) {
@@ -298,7 +298,7 @@ TEST_F(NetworkMethodsTest, request_failure_on_connection_closed) {
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::ConnectionClosed);
-  ASSERT_FALSE(res.hasResponse());
+  ASSERT_EQ(res.response, nullptr);
 }
 
 TEST_F(NetworkMethodsTest, request_automatic_retry_connection_closed_when_from_pool) {
@@ -411,46 +411,8 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_421) {
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
-  ASSERT_TRUE(res.hasResponse());
+  ASSERT_NE(res.response, nullptr);
   ASSERT_EQ(res.statusCode(), fuerte::StatusAccepted);
-}
-
-TEST_F(NetworkMethodsTest, request_with_retry_after_conn_canceled) {
-  // Step 1: Provoke a ConnectionCanceled
-  pool->_conn->_err = fuerte::Error::ConnectionCanceled;
-
-  network::RequestOptions reqOpts;
-  reqOpts.timeout = network::Timeout(5.0);
-
-  VPackBuffer<uint8_t> buffer;
-  auto f = network::sendRequestRetry(pool.get(), "tcp://example.org:80",
-                                     fuerte::RestVerb::Get, "/", buffer,
-                                     reqOpts);
-
-  // the default behaviour should be to retry after 200 ms
-  std::this_thread::sleep_for(std::chrono::milliseconds(5));
-  ASSERT_FALSE(f.isReady());
-  ASSERT_EQ(pool->_conn->_sendRequestNum, 1);
-
-  // Step 2: Now respond with no error
-  fuerte::ResponseHeader header;
-  header.contentType(fuerte::ContentType::VPack);
-  header.responseCode = fuerte::StatusOK;
-  header.contentType(fuerte::ContentType::VPack);
-  pool->_conn->_response = std::make_unique<fuerte::Response>(std::move(header));
-  auto b = VPackParser::fromJson("{\"error\":false}");
-  auto resBuffer = b->steal();
-  pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
-  pool->_conn->_err = fuerte::Error::NoError;
-
-  auto status = f.wait_for(std::chrono::milliseconds(350));
-  ASSERT_EQ(futures::FutureStatus::Ready, status);
-
-  network::Response res = std::move(f).get();
-  ASSERT_EQ(res.destination, "tcp://example.org:80");
-  ASSERT_EQ(res.error, fuerte::Error::NoError);
-  ASSERT_TRUE(res.hasResponse());
-  ASSERT_EQ(res.statusCode(), fuerte::StatusOK);
 }
 
 TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
