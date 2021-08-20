@@ -1118,7 +1118,8 @@ Result IResearchLink::init(
       if (!clusterWideLink) {
         // prepare data-store which can then update options
         // via the IResearchView::link(...) call
-        auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
+        auto const res = initDataStore(initCallback, meta._version,
+                                       sorted, storedValuesColumns, primarySortCompression);
 
         if (!res.ok()) {
           return res;
@@ -1190,7 +1191,8 @@ Result IResearchLink::init(
   } else if (ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options
     // via the IResearchView::link(...) call
-    auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
+    auto const res = initDataStore(initCallback, meta._version,
+                                   sorted, storedValuesColumns, primarySortCompression);
 
     if (!res.ok()) {
       return res;
@@ -1238,7 +1240,9 @@ Result IResearchLink::init(
 }
 
 Result IResearchLink::initDataStore(
-    InitCallback const& initCallback, bool sorted,
+    InitCallback const& initCallback,
+    uint32_t version,
+    bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
     irs::type_info::type_id primarySortCompression) {
   std::atomic_store(&_flushSubscription, {}); // reset together with '_asyncSelf'
@@ -1259,12 +1263,13 @@ Result IResearchLink::initDataStore(
   auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
   auto& flushFeature = server.getFeature<FlushFeature>();
 
-  auto format = irs::formats::get(LATEST_FORMAT);
+  auto const formatId = getFormat(LinkVersion{version});
+  auto format = irs::formats::get(formatId);
 
   if (!format) {
     return {TRI_ERROR_INTERNAL,
-            "failed to get data store codec '"s + LATEST_FORMAT.data() +
-                "' while initializing link '" + std::to_string(_id.id()) + "'"};
+            "failed to get data store codec '"s + formatId.data() +
+             "' while initializing link '" + std::to_string(_id.id()) + "'"};
   }
 
   _engine = &server.getFeature<EngineSelectorFeature>().engine();
@@ -1343,6 +1348,12 @@ Result IResearchLink::initDataStore(
   irs::index_writer::init_options options;
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
+  options.features[irs::type<irs::granularity_prefix>::id()] = nullptr;
+  if (LinkVersion(version) < LinkVersion::MAX) {
+    options.features[irs::type<irs::norm>::id()] = &irs::norm::compute;
+  } else {
+    options.features[irs::type<irs::norm2>::id()] = &irs::norm2::compute;
+  }
   // initialize commit callback
   options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
     _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t(tick)); // update last tick
@@ -1957,6 +1968,10 @@ void IResearchLink::toVelocyPackStats(VPackBuilder& builder) const {
   builder.add("numSegments", VPackValue(stats.numSegments));
   builder.add("numFiles", VPackValue(stats.numFiles));
   builder.add("indexSize", VPackValue(stats.indexSize));
+}
+
+std::string_view IResearchLink::format() const noexcept {
+  return getFormat(LinkVersion{_meta._version});
 }
 
 IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {

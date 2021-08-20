@@ -156,16 +156,18 @@ class IRESEARCH_API numeric_token_stream final
       decltype(val_) val;
 
       val.i32 = value;
+      buf.resize(numeric_utils::numeric_traits<decltype(value)>::size());
 
-      return numeric_term::value(buf, NT_INT, val, 0);
+      return numeric_term::value(buf.data(), NT_INT, val, 0);
     }
 
     static bytes_ref value(bstring& buf, int64_t value) {
       decltype(val_) val;
 
       val.i64 = value;
+      buf.resize(numeric_utils::numeric_traits<decltype(value)>::size());
 
-      return numeric_term::value(buf, NT_LONG, val, 0);
+      return numeric_term::value(buf.data(), NT_LONG, val, 0);
     }
 
 #ifndef FLOAT_T_IS_DOUBLE_T
@@ -173,8 +175,9 @@ class IRESEARCH_API numeric_token_stream final
       decltype(val_) val;
 
       val.i32 = numeric_utils::numeric_traits<float_t>::integral(value);
+      buf.resize(numeric_utils::numeric_traits<decltype(value)>::size());
 
-      return numeric_term::value(buf, NT_FLOAT, val, 0);
+      return numeric_term::value(buf.data(), NT_FLOAT, val, 0);
     }
 #endif
 
@@ -182,8 +185,9 @@ class IRESEARCH_API numeric_token_stream final
       decltype(val_) val;
 
       val.i64 = numeric_utils::numeric_traits<double_t>::integral(value);
+      buf.resize(numeric_utils::numeric_traits<decltype(value)>::size());
 
-      return numeric_term::value(buf, NT_DBL, val, 0);
+      return numeric_term::value(buf.data(), NT_DBL, val, 0);
     }
 
     bool next(increment& inc, bytes_ref& out);
@@ -227,18 +231,16 @@ class IRESEARCH_API numeric_token_stream final
     };
 
     static irs::bytes_ref value(
-      bstring& buf,
+      byte_type* buf,
       NumericType type,
       value_t val,
       uint32_t shift);
 
-    IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-    bstring data_;
+    byte_type data_[numeric_utils::numeric_traits<double_t>::size()];
     value_t val_;
     NumericType type_;
     uint32_t step_;
     uint32_t shift_;
-    IRESEARCH_API_PRIVATE_VARIABLES_END
   }; // numeric_term
 
   numeric_term num_;

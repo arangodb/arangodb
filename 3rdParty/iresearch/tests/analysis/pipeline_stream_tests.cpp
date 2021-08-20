@@ -36,8 +36,8 @@
 #include "utils/locale_utils.hpp"
 #include "utils/runtime_utils.hpp"
 #include "utils/utf8_path.hpp"
-
-#include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
 #ifndef IRESEARCH_DLL
 namespace {
@@ -184,7 +184,21 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data, con
   ASSERT_EQ(expected_token, expected_tokens.end());
 }
 
+void assert_pipeline_members(irs::analysis::pipeline_token_stream& pipe, std::vector<irs::type_info::type_id> const& expected) {
+  size_t i{0};
+  auto visitor = [&expected, &i](irs::analysis::analyzer const& a) {
+    EXPECT_LT(i, expected.size());
+    if (i >= expected.size()) {
+      return false; // save ourselves from crash
+    }
+    EXPECT_EQ(a.type(), expected[i++]);
+    return true;
+  };
+  ASSERT_TRUE(pipe.visit_members(visitor));
+  ASSERT_EQ(i, expected.size());
 }
+
+} // namespace
 
 TEST(pipeline_token_stream_test, consts) {
   static_assert("pipeline" == irs::type<irs::analysis::pipeline_token_stream>::name());
@@ -614,21 +628,21 @@ TEST(pipeline_token_stream_test, normalize_json) {
     std::string config = "{ \"unknown_parameter\":123,  \"pipeline\":[{\"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}}]}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}")->toString(), actual);
   }
   //with unknown parameter in pipeline member
   {
     std::string config = "{\"pipeline\":[{\"unknown_parameter\":123, \"type\":\"delimiter\", \"properties\": {\"delimiter\":\"A\"}}]}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}")->toString(), actual);
   }
   //with unknown parameter in analyzer properties
   {
     std::string config = "{\"pipeline\":[{\"type\":\"delimiter\", \"properties\": {\"unknown_paramater\":123, \"delimiter\":\"A\"}}]}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "pipeline", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"pipeline\":[{\"type\":\"delimiter\",\"properties\":{\"delimiter\":\"A\"}}]}")->toString(), actual);
   }
 
   //with unknown analyzer
@@ -650,8 +664,8 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
   // store as separate arrays to make asan happy
   iresearch::byte_type p1[] = { 0x1, 0x2, 0x3 };
   iresearch::byte_type p2[] = { 0x11, 0x22, 0x33 };
-  pipeline_test_analyzer payload_offset(true, p1);
-  pipeline_test_analyzer only_payload(false, p2);
+  pipeline_test_analyzer payload_offset(true, {p1, IRESEARCH_COUNTOF(p1)});
+  pipeline_test_analyzer only_payload(false, {p2, IRESEARCH_COUNTOF(p2)});
   pipeline_test_analyzer only_offset(true, irs::bytes_ref::NIL);
   pipeline_test_analyzer no_payload_no_offset(false, irs::bytes_ref::NIL);
 
@@ -740,6 +754,45 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pipe.next());
     ASSERT_EQ(p2, pay->value.c_str());
   }
+}
+
+TEST(pipeline_token_stream_test, members_visitor) {
+  auto delimiter = irs::analysis::analyzers::get("delimiter",
+    irs::type<irs::text_format::json>::get(),
+    "{\"delimiter\":\",\"}");
+
+  auto text = irs::analysis::analyzers::get("text",
+    irs::type<irs::text_format::json>::get(),
+    "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"none\", \"stemming\":false }");
+
+  auto ngram = irs::analysis::analyzers::get("ngram",
+    irs::type<irs::text_format::json>::get(),
+    "{\"min\":2, \"max\":2, \"preserveOriginal\":true }");
+
+  auto norm = irs::analysis::analyzers::get("norm",
+    irs::type<irs::text_format::json>::get(),
+    "{\"locale\":\"en\", \"case\":\"upper\"}");
+
+  std::vector<irs::type_info::type_id> expected{ delimiter->type(), norm->type() };
+  std::vector<irs::type_info::type_id> expected_nested{ delimiter->type(), norm->type(),
+                                                 text->type(), ngram->type() };
+  irs::analysis::pipeline_token_stream::options_t pipeline_options;
+  pipeline_options.push_back(delimiter);
+  pipeline_options.push_back(norm);
+  irs::analysis::pipeline_token_stream pipe(std::move(pipeline_options));
+  assert_pipeline_members(pipe, expected);
+
+  irs::analysis::pipeline_token_stream::options_t pipeline_options2;
+  pipeline_options2.push_back(text);
+
+  irs::analysis::pipeline_token_stream pipe2(std::move(pipeline_options2));
+
+  irs::analysis::pipeline_token_stream::options_t pipeline_options3;
+  pipeline_options3.push_back(std::shared_ptr<irs::analysis::analyzer>(irs::analysis::analyzer::ptr(), &pipe));
+  pipeline_options3.push_back(std::shared_ptr<irs::analysis::analyzer>(irs::analysis::analyzer::ptr(), &pipe2));
+  pipeline_options3.push_back(ngram);
+  irs::analysis::pipeline_token_stream pipe3(std::move(pipeline_options3));
+  assert_pipeline_members(pipe3, expected_nested);
 }
 
 #endif

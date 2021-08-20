@@ -113,8 +113,8 @@ struct sort : irs::sort {
         const irs::sort::term_collector* term) const {
     }
 
-    virtual const irs::flags& features() const {
-      return irs::flags::empty_instance();
+    virtual irs::IndexFeatures features() const override {
+      return irs::IndexFeatures::NONE;
     }
 
     virtual irs::sort::field_collector::ptr prepare_field_collector() const {
@@ -206,7 +206,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
 
   virtual void read() override { }
 
-  virtual irs::doc_iterator::ptr postings(const irs::flags& /*features*/) const override {
+  virtual irs::doc_iterator::ptr postings(irs::IndexFeatures /*features*/) const override {
     return irs::doc_iterator::empty();
   }
 

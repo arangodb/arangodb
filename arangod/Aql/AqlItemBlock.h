@@ -298,7 +298,7 @@ class AqlItemBlock {
 
   /// @brief test if the given row is a shadow row and conveys subquery
   /// information only. It should not be handed to any non-subquery executor.
-  bool isShadowRow(size_t row) const;
+  bool isShadowRow(size_t row) const noexcept;
 
   /// @brief get the ShadowRowDepth 
   /// Does only work if this row is a shadow row

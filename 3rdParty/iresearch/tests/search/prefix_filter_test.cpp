@@ -346,7 +346,7 @@ TEST_P(prefix_filter_test_case, visit) {
   visitor.reset();
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   prefix_filter_test,
   prefix_filter_test_case,
   ::testing::Combine(

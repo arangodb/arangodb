@@ -290,31 +290,28 @@ function Run (testsuite) {
   PASSED += result.passed;
   FAILED += result.failed;
   DURATION += result.duration;
-  COMPLETE[suite.suiteName] = COMPLETE[suite.suiteName] || {};
 
   let duplicates = [];
-  // Reference will be modified within complete
-  let cmpl = COMPLETE[suite.suiteName];
   for (var attrname in RESULTS) {
     if (typeof(RESULTS[attrname]) === 'number') {
-      if (!cmpl.hasOwnProperty(attrname)) {
-        cmpl[attrname] = { };
+      if (!COMPLETE.hasOwnProperty(attrname)) {
+        COMPLETE[attrname] = { };
       }
-      cmpl[attrname] = RESULTS[attrname];
+      COMPLETE[attrname][suite.suiteName] = RESULTS[attrname];
     } else if (RESULTS.hasOwnProperty(attrname)) {
-      if (cmpl.hasOwnProperty(attrname)) {
+      if (COMPLETE.hasOwnProperty(attrname)) {
         if (attrname === 'message') {
-          cmpl[attrname] += "\n\n" + RESULTS[attrname];
+          COMPLETE[attrname] += "\n\n" + RESULTS[attrname];
           continue;
         }
-        print("Duplicate testcase '" + suite.suiteName + "::" + attrname + "' - already have: " + JSON.stringify(cmpl[attrname]) + "");
+        print("Duplicate testsuite '" + attrname + "' - already have: " + JSON.stringify(COMPLETE[attrname]) + "");
         duplicates.push(attrname);
       }
-      cmpl[attrname] = RESULTS[attrname];
+      COMPLETE[attrname] = RESULTS[attrname];
     }
   }
   if (duplicates.length !== 0) {
-    throw("Duplicate testcase '" + duplicates + "'");
+    throw("Duplicate testsuite '" + duplicates + "'");
   }
   return result;
 }
