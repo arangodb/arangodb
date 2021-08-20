@@ -116,7 +116,6 @@ Graph::Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefault
   TRI_ASSERT(!_rev.empty());
 
   if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
-    // TODO Feature HybridSmartGraphs: Check why we're landing here and not in SmartGraphEE - Cleanup!
     if (slice.isObject()) {
       if (slice.hasKey(StaticStrings::GraphSatellites) &&
           slice.get(StaticStrings::GraphSatellites).isArray()) {
@@ -159,7 +158,6 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
   TRI_ASSERT(_rev.empty());
 
   if (info.hasKey(StaticStrings::GraphEdgeDefinitions)) {
-    // TODO Feature HybridSmartGraphs: Check why we're landing here and not in SmartGraphEE - Cleanup!
     if (options.isObject()) {
       if (options.hasKey(StaticStrings::GraphSatellites) &&
           options.get(StaticStrings::GraphSatellites).isArray()) {
