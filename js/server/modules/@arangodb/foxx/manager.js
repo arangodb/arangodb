@@ -31,6 +31,7 @@
 const fs = require('fs');
 const path = require('path');
 const dd = require('dedent');
+const parseUrl = require('url').parse;
 const utils = require('@arangodb/foxx/manager-utils');
 const store = require('@arangodb/foxx/store');
 const FoxxService = require('@arangodb/foxx/service');
@@ -761,8 +762,21 @@ function createServiceBundle (mount, bundlePath = FoxxService.bundlePath(mount))
   utils.zipDirectory(servicePath, bundlePath);
 }
 
+function isLocalhost(hostname) {
+  if (hostname === "localhost") return true;
+  if (hostname.endsWith(".localhost")) return true;
+  if (hostname.match(/^127\.\d+\.\d+\.\d+$/)) return true;
+  if (hostname.match(/^(0:){7}1$/)) return true;
+  if (hostname === "::1") return true;
+  return false;
+}
+
 function downloadServiceBundleFromRemote (url) {
   try {
+    const parsed = parseUrl(url);
+    if (isLocalhost(parsed.hostname)) {
+      throw new Error("Hostname not allowed.");
+    }
     const res = request.get(url, {encoding: null});
     if (res.json && res.json.errorNum) {
       throw new ArangoError(res.json);
