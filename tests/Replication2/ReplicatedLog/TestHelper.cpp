@@ -28,32 +28,3 @@
 #include "Replication2/ReplicatedLog/types.h"
 
 #include <utility>
-
-using namespace arangodb;
-using namespace arangodb::replication2;
-using namespace arangodb::replication2::replicated_log;
-using namespace arangodb::replication2::test;
-
-
-auto TestReplicatedLog::becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId)
-    -> std::shared_ptr<DelayedFollowerLog> {
-  auto ptr = ReplicatedLog::becomeFollower(id, term, std::move(leaderId));
-  return std::make_shared<DelayedFollowerLog>(ptr);
-}
-
-auto TestReplicatedLog::becomeLeader(LogConfig config, ParticipantId id, LogTerm term,
-                                     std::vector<std::shared_ptr<AbstractFollower>> const& follower)
-    -> std::shared_ptr<LogLeader> {
-  return ReplicatedLog::becomeLeader(config, std::move(id), term, follower);
-}
-
-auto TestReplicatedLog::becomeLeader(ParticipantId const& id, LogTerm term,
-                                     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-                                     std::size_t writeConcern)
-    -> std::shared_ptr<LogLeader> {
-  LogConfig config;
-  config.writeConcern = writeConcern;
-  config.waitForSync = false;
-
-  return becomeLeader(config, id, term, follower);
-}

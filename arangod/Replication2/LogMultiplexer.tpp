@@ -65,22 +65,6 @@ auto resolvePromiseSets(stream_descriptor_set<Descriptors...>, std::tuple<Pairs.
 }
 }  // namespace
 
-template <typename Spec, typename Store>
-struct LogMultiplexerImplementationBase {
-  template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
-            typename E = StreamEntryView<T>>
-  auto getIteratorInternal() -> std::unique_ptr<TypedLogRangeIterator<E>> {
-    using BlockType = StreamInformationBlock<StreamDescriptor>;
-
-    return _guardedData.template doUnderLock([](Store& self) {
-      auto& block = std::get<BlockType>(self._blocks);
-      return block.getAllEntriesIterator();
-    });
-  }
-
-  Guarded<Store, basics::UnshackledMutex> _guardedData;
-};
-
 template <typename Spec, typename Interface>
 struct LogDemultiplexerImplementation
     : LogDemultiplexer<Spec>,
@@ -346,9 +330,9 @@ struct LogMultiplexerImplementation
 }  // namespace arangodb::replication2::streams
 
 template <typename Spec>
-auto LogDemultiplexer<Spec>::construct(std::shared_ptr<replicated_log::LogFollower> interface)
+auto LogDemultiplexer<Spec>::construct(std::shared_ptr<replicated_log::ILogParticipant> interface)
     -> std::shared_ptr<LogDemultiplexer> {
-  return std::make_shared<streams::LogDemultiplexerImplementation<Spec, replicated_log::LogFollower>>(
+  return std::make_shared<streams::LogDemultiplexerImplementation<Spec, replicated_log::ILogParticipant>>(
       std::move(interface));
 }
 

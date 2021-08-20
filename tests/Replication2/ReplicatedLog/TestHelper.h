@@ -40,106 +40,12 @@
 #include <memory>
 #include <utility>
 
-#include "../Mocks/PersistedLog.h"
+#include "Replication2/Mocks/PersistedLog.h"
+#include "Replication2/Mocks/FakeReplicatedLog.h"
 
 namespace arangodb::replication2::test {
 
 using namespace replicated_log;
-
-
-
-struct DelayedFollowerLog : AbstractFollower {
-  explicit DelayedFollowerLog(std::shared_ptr<LogFollower> follower)
-      : _follower(std::move(follower)) {}
-
-  DelayedFollowerLog(LoggerContext const& logContext,
-                     std::shared_ptr<ReplicatedLogMetricsMock> logMetricsMock,
-                     ParticipantId const& id, std::unique_ptr<LogCore> logCore,
-                     LogTerm term, ParticipantId leaderId)
-      : DelayedFollowerLog([&] {
-          auto inMemoryLog = InMemoryLog{*logCore};
-          return std::make_shared<LogFollower>(logContext, std::move(logMetricsMock),
-                                               id, std::move(logCore), term,
-                                               std::move(leaderId),
-                                               std::move(inMemoryLog));
-        }()) {}
-
-  auto appendEntries(AppendEntriesRequest req)
-      -> arangodb::futures::Future<AppendEntriesResult> override {
-    auto future = _asyncQueue.doUnderLock([&](auto& queue) {
-      return queue.emplace_back(std::make_shared<AsyncRequest>(std::move(req)))
-          ->promise.getFuture();
-    });
-    return std::move(future).thenValue(
-        [this](auto&& result) mutable {
-          return _follower->appendEntries(std::forward<decltype(result)>(result));
-        });
-  }
-
-  void runAsyncAppendEntries() {
-    auto asyncQueue = _asyncQueue.doUnderLock([](auto& _queue) {
-      auto queue = std::move(_queue);
-      _queue.clear();
-      return queue;
-    });
-
-    for (auto& p : asyncQueue) {
-      p->promise.setValue(std::move(p->request));
-    }
-  }
-
-  using WaitForAsyncPromise = futures::Promise<AppendEntriesRequest>;
-
-  struct AsyncRequest {
-    explicit AsyncRequest(AppendEntriesRequest request)
-        : request(std::move(request)) {}
-    AppendEntriesRequest request;
-    WaitForAsyncPromise promise;
-  };
-  [[nodiscard]] auto pendingAppendEntries() const
-  -> std::deque<std::shared_ptr<AsyncRequest>> {
-    return _asyncQueue.copy();
-  }
-  [[nodiscard]] auto hasPendingAppendEntries() const -> bool {
-    return _asyncQueue.doUnderLock(
-        [](auto const& queue) { return !queue.empty(); });
-  }
-
-  auto getParticipantId() const noexcept -> ParticipantId const& override {
-    return _follower->getParticipantId();
-  }
-
-  auto getStatus() const -> LogStatus {
-    return _follower->getStatus();
-  }
-
-  auto resign() && {
-    return std::move(*_follower).resign();
-  }
-
-  auto waitFor(LogIndex index) {
-    return _follower->waitFor(index);
-  }
-
-  auto waitForIterator(LogIndex index) {
-    return _follower->waitForIterator(index);
-  }
- private:
-  Guarded<std::deque<std::shared_ptr<AsyncRequest>>> _asyncQueue;
-  std::shared_ptr<LogFollower> _follower;
-};
-
-struct TestReplicatedLog : ReplicatedLog {
-  using ReplicatedLog::ReplicatedLog;
-  auto becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId)
-      -> std::shared_ptr<DelayedFollowerLog>;
-  auto becomeLeader(ParticipantId const& id, LogTerm term,
-                    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-                    std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
-  auto becomeLeader(LogConfig config, ParticipantId id, LogTerm term,
-                    std::vector<std::shared_ptr<AbstractFollower>> const& follower)
-      -> std::shared_ptr<LogLeader>;
-};
 
 struct ReplicatedLogTest : ::testing::Test {
 

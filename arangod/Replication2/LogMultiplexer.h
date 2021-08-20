@@ -59,7 +59,7 @@ struct LogDemultiplexer
   virtual auto listen() -> void = 0;
 
 
-  static auto construct(std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>)
+  static auto construct(std::shared_ptr<arangodb::replication2::replicated_log::ILogParticipant>)
       -> std::shared_ptr<LogDemultiplexer>;
 
  protected:
