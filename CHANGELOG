@@ -12,6 +12,22 @@ v3.8.1 (XXXX-XX-XX)
   option `--cluster.index-create-timeout`, which from now on is ignored when
   set.
 
+* Fixed: getResponsibleShard call on disjoint Smart Graphs if you asked for the
+  responsible shard on a disjoint edge collection where the _from and _to differ
+  (invalid), the server would respond with "DATASOURCE_NOT_FOUND". This is now
+  fixed to "BAD_PARAMETER" to emphasize that the collection is fine but the
+  input is invalid.
+
+* Fixed: _api/transaction/begin called on edge collections of disjoint
+  SmartGraphs falsely returned CollectionNotFound errors.
+
+* Bug-Fix: In more complex queries there was a code-path where a (Disjoint-)
+  Smart graph access was not properly optimized.
+
+* Fix wrong assertion in fuerte and move it to where the TLA+ model says i
+  should be. This fixes a unit test failure occurring on newer Macs with a
+  certain clang version.
+
 * When creating Pregel memory-mapped files, create them with O_TMPFILE attribute
   on Linux so that files are guaranteed to vanish even if a process dies.
 
