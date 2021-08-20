@@ -1,3 +1,26 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Tobias Gödderz
+/// @author Lars Maier
+////////////////////////////////////////////////////////////////////////////////
 #include "ZkdHelper.h"
 
 #include "Basics/ScopeGuard.h"
@@ -227,12 +250,12 @@ auto zkd::transpose(byte_string_view bs, std::size_t dimensions) -> std::vector<
     for (auto& w : writer) {
       auto b = reader.next();
       if (!b.has_value()) {
-        goto fuckoff_cxx;
+        goto break_loops;
       }
       w.append(b.value());
     }
   }
-  fuckoff_cxx:
+  break_loops:
 
   std::vector<zkd::byte_string> result;
   std::transform(writer.begin(), writer.end(), std::back_inserter(result), [](auto& bs) {
@@ -273,8 +296,8 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min, byte_st
     return result[dim].saveMax != CompareResult::max;
   };
 
-  unsigned step = 0;
-  unsigned dim = 0;
+  std::size_t step = 0;
+  std::size_t dim = 0;
 
   for (std::size_t i = 0; i < 8 * max_size; i++) {
     TRI_ASSERT(step == i / dimensions);
@@ -437,7 +460,7 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min, byte_string_
     return result;
   };
 
-  for (unsigned dim = 0; dim < dims; dim++) {
+  for (std::size_t dim = 0; dim < dims; dim++) {
     auto& cmpRes = cmpResult[dim];
     if (cmpRes.flag >= 0) {
       auto bp = dims * cmpRes.saveMin + dim;

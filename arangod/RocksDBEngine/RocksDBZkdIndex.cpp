@@ -363,7 +363,7 @@ auto zkd::supportsFilterCondition(
   extractBoundsFromCondition(index, node, reference, extractedBounds, unusedExpressions);
 
   if (extractedBounds.empty()) {
-    return Index::FilterCosts();
+    return {};
   }
 
   // TODO -- actually return costs
@@ -441,7 +441,7 @@ arangodb::Result arangodb::RocksDBZkdIndexBase::insert(
     return rocksutils::convertStatus(s);
   }
 
-  return Result();
+  return {};
 }
 
 arangodb::Result arangodb::RocksDBZkdIndexBase::remove(arangodb::transaction::Methods& trx,
@@ -456,13 +456,12 @@ arangodb::Result arangodb::RocksDBZkdIndexBase::remove(arangodb::transaction::Me
   RocksDBKey rocks_key;
   rocks_key.constructZkdIndexValue(objectId(), key_value, documentId);
 
-  auto value = RocksDBValue::ZkdIndexValue();
   auto s = methods->SingleDelete(_cf, rocks_key);
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
   }
 
-  return Result();
+  return {};
 }
 
 arangodb::RocksDBZkdIndexBase::RocksDBZkdIndexBase(arangodb::IndexId iid,
@@ -532,7 +531,7 @@ arangodb::Result arangodb::RocksDBUniqueZkdIndex::insert(
     transaction::StringLeaser leased(&trx);
     rocksdb::PinnableSlice existing(leased.get());
     if (auto s = methods->GetForUpdate(_cf, rocks_key.string(), &existing); s.ok()) {  // detected conflicting index entry
-      return Result(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+      return {TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED};
     } else if (!s.IsNotFound()) {
       return Result(rocksutils::convertStatus(s));
     }
@@ -544,7 +543,7 @@ arangodb::Result arangodb::RocksDBUniqueZkdIndex::insert(
     return rocksutils::convertStatus(s);
   }
 
-  return Result();
+  return {};
 }
 
 arangodb::Result arangodb::RocksDBUniqueZkdIndex::remove(
@@ -559,11 +558,10 @@ arangodb::Result arangodb::RocksDBUniqueZkdIndex::remove(
   RocksDBKey rocks_key;
   rocks_key.constructZkdIndexValue(objectId(), key_value);
 
-  auto value = RocksDBValue::ZkdIndexValue();
   auto s = methods->SingleDelete(_cf, rocks_key);
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
   }
 
-  return Result();
+  return {};
 }
