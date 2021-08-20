@@ -56,7 +56,9 @@ struct IndexAccessor {
   aql::AstNode* _indexCondition;
   std::optional<size_t> _memberToUpdate;
 
-  // TODO: This needs to be changed BEFORE merge
+  // Note: We would prefer to have this a unique_ptr here.
+  // However the IndexAccessor is used in std::vector<IndexAccessor>
+  // which then refuses to compile (deleted copy constructor)
   std::shared_ptr<arangodb::aql::Expression> _expression;
   size_t _cursorId;
 };
