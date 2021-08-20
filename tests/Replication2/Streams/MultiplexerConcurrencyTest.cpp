@@ -109,8 +109,8 @@ struct LogMultiplexerConcurrencyTest : LogMultiplexerTestBase {
 };
 
 TEST_F(LogMultiplexerConcurrencyTest, test) {
-  auto followerLog = createReplicatedLog(LogId{1});
-  auto leaderLog = createReplicatedLog(LogId{2});
+  auto followerLog = createAsyncReplicatedLog(LogId{1});
+  auto leaderLog = createAsyncReplicatedLog(LogId{2});
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
   auto asyncFollower = std::make_shared<AsyncFollower>(follower);
