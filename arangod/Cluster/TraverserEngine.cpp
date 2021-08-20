@@ -411,6 +411,6 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
 
 TraverserEngine::~TraverserEngine() = default;
 
-void TraverserEngine::smartSearchNew(VPackSlice, VPackBuilder&) {
+void TraverserEngine::smartSearch(VPackSlice, VPackBuilder&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
 }
