@@ -686,19 +686,12 @@ auto QuerySnippet::prepareFirstBranch(
         }
       }
 
-      // TODO: We need to exclude DBServers which only do have Satellite
-      // collections only This server is not allowed to receive a setup call
-
-      // 1.) Satellites: 1x shard exists (681) -> not landing in myExpFinal
-      // => 2x shards vertex collections -> DB1 v: [s1, s2] , DB2 []
-      // 2.)
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // additional verification checks for Disjoint SmartGraphs
       if (localGraphNode->isDisjoint()) {
         if (!myExpFinal.empty()) {
           size_t numberOfShards = myExpFinal.begin()->second.size();
-          // We need one expansion for every collection in the Graph (-1 per satellite)
+          // We need one expansion for every non-satellite collection in the Graph
           size_t amountOfNonSatellites = 0;
           for (auto const& col : localGraphNode->collections()) {
             if (!col->isSatellite()) {
