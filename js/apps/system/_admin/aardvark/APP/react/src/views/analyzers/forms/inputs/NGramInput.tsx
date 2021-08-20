@@ -5,7 +5,11 @@ import Textbox from "../../../../components/pure-css/form/Textbox";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
 import { get } from "lodash";
 
-const NGramInput = ({ formState, dispatch, disabled, basePath }: FormProps) => {
+type NGramInputProps = FormProps & {
+  basePath: string;
+};
+
+const NGramInput = ({ formState, dispatch, disabled, basePath }: NGramInputProps) => {
   const updateMinLength = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -39,22 +43,22 @@ const NGramInput = ({ formState, dispatch, disabled, basePath }: FormProps) => {
     });
   };
 
-  const ngramBase = get(formState, basePath as string, {}) as NGramBase;
+  const ngramBase = get(formState, basePath, {}) as NGramBase;
 
   return <Grid>
     <Cell size={'1-3'}>
       <Textbox label={'Minimum N-Gram Length'} type={'number'} min={1} placeholder="2" required={true}
-               value={ngramBase.min} onChange={updateMinLength} disabled={disabled}/>
+               value={ngramBase.min || ''} onChange={updateMinLength} disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-3'}>
       <Textbox label={'Maximum N-Gram Length'} type={'number'} min={1} placeholder="3" required={true}
-               value={ngramBase.max} onChange={updateMaxLength} disabled={disabled}/>
+               value={ngramBase.max || ''} onChange={updateMaxLength} disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-3'}>
       <Checkbox onChange={updatePreserve} label={'Preserve Original'} disabled={disabled}
-                checked={ngramBase.preserveOriginal}/>
+                checked={ngramBase.preserveOriginal || false}/>
     </Cell>
   </Grid>;
 };

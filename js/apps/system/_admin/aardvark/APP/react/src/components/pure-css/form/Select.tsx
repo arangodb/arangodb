@@ -14,12 +14,20 @@ type SelectProps = {
   label: ReactNode;
   children: ReactNode;
   disabled?: boolean;
+  inline?: boolean;
   [key: string]: any;
 };
 
-const Select = ({ id, label, children, disabled, ...rest }: SelectProps) => {
+const Select = ({ id, label, children, disabled, inline, ...rest }: SelectProps) => {
   if (!id) {
     id = uniqueId('textbox-');
+  }
+
+  if (inline) {
+    return <PlainLabel htmlFor={id}>
+      {label}:&nbsp;
+      <StyledSelect id={id} disabled={disabled} {...rest}>{children}</StyledSelect>
+    </PlainLabel>;
   }
 
   return <>

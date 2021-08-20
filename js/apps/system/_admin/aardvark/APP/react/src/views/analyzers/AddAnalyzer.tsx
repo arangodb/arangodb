@@ -1,23 +1,15 @@
 import React, { useReducer } from 'react';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
-import { cloneDeep, get, merge, set, uniqueId, unset } from 'lodash';
+import { cloneDeep, merge, set, uniqueId, unset } from 'lodash';
 import JsonForm from "./forms/JsonForm";
 import FeatureForm from "./forms/FeatureForm";
-import DelimiterForm from "./forms/DelimiterForm";
-import StemForm from "./forms/StemForm";
-import NormForm from "./forms/NormForm";
-import NGramForm from "./forms/NGramForm";
 import BaseForm from "./forms/BaseForm";
-import TextForm from "./forms/TextForm";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { DispatchArgs, FormState, State } from "./constants";
 import CopyFromInput from "./forms/inputs/CopyFromInput";
-import AqlForm from "./forms/AqlForm";
-import GeoJsonForm from "./forms/GeoJsonForm";
-import GeoPointForm from "./forms/GeoPointForm";
 import { Cell, Grid } from "../../components/pure-css/grid";
-import { getPath, validateAndFix } from "./helpers";
+import { getForm, getPath, validateAndFix } from "./helpers";
 
 declare var arangoHelper: { [key: string]: any };
 
@@ -78,15 +70,9 @@ const reducer = (state: State, action: DispatchArgs): State => {
         set(newState.formCache, path, action.field.value);
 
         if (action.field.path === 'type') {
-          if (action.basePath) {
-            const tempFormState = cloneDeep(get(newState.formCache, action.basePath));
-            validateAndFix(tempFormState);
-            set(newState.formState, action.basePath, tempFormState);
-          } else {
-            const tempFormState = cloneDeep(newState.formCache);
-            validateAndFix(tempFormState);
-            newState.formState = tempFormState as FormState;
-          }
+          const tempFormState = cloneDeep(newState.formCache);
+          validateAndFix(tempFormState);
+          newState.formState = tempFormState as FormState;
 
           merge(newState.formCache, newState.formState);
         } else {
@@ -148,19 +134,6 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
     dispatch({ type: state.showJsonForm ? 'hideJsonForm' : 'showJsonForm' });
   };
 
-  const forms = {
-    identity: null,
-    delimiter: <DelimiterForm formState={formState} dispatch={dispatch}/>,
-    stem: <StemForm formState={formState} dispatch={dispatch}/>,
-    norm: <NormForm formState={formState} dispatch={dispatch}/>,
-    ngram: <NGramForm formState={formState} dispatch={dispatch}/>,
-    text: <TextForm formState={formState} dispatch={dispatch}/>,
-    aql: <AqlForm formState={formState} dispatch={dispatch}/>,
-    geojson: <GeoJsonForm formState={formState} dispatch={dispatch}/>,
-    geopoint: <GeoPointForm formState={formState} dispatch={dispatch}/>,
-    pipeline: 'Pipeline'
-  };
-
   return <>
     <button className={'pure-button'} onClick={() => dispatch({ type: 'show' })} style={{
       background: 'transparent',
@@ -210,7 +183,13 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
                     : <Cell size={'1'}>
                       <fieldset>
                         <legend style={{ fontSize: '12pt' }}>Configuration</legend>
-                        {forms[formState.type]}
+                        {
+                          getForm({
+                            formState,
+                            dispatch,
+                            disabled: false
+                          })
+                        }
                       </fieldset>
                     </Cell>
                 }

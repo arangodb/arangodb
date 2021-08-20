@@ -8,14 +8,7 @@ import { FormState, State } from "./constants";
 import { Cell, Grid } from "../../components/pure-css/grid";
 import BaseForm from "./forms/BaseForm";
 import FeatureForm from "./forms/FeatureForm";
-import DelimiterForm from "./forms/DelimiterForm";
-import StemForm from "./forms/StemForm";
-import NormForm from "./forms/NormForm";
-import NGramForm from "./forms/NGramForm";
-import TextForm from "./forms/TextForm";
-import AqlForm from "./forms/AqlForm";
-import GeoJsonForm from "./forms/GeoJsonForm";
-import GeoPointForm from "./forms/GeoPointForm";
+import { getForm } from "./helpers";
 
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };
@@ -104,40 +97,6 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
     setShowJsonForm(!showJsonForm);
   };
 
-  const getForm = (formState: FormState) => {
-    switch (formState.type) {
-      case 'identity':
-        return null;
-
-      case 'delimiter':
-        return <DelimiterForm formState={formState} dispatch={noop} disabled={true}/>;
-
-      case 'stem':
-        return <StemForm formState={formState} dispatch={noop} disabled={true}/>;
-
-      case 'norm':
-        return <NormForm formState={formState} dispatch={noop} disabled={true}/>;
-
-      case 'ngram':
-        return <NGramForm formState={formState} dispatch={noop} disabled={true}/>;
-
-      case 'text':
-        return <TextForm formState={formState} dispatch={noop} disabled={true}/>;
-
-      case 'aql':
-        return <AqlForm formState={formState} dispatch={noop} disabled={true}/>;
-
-      case 'geojson':
-        return <GeoJsonForm formState={formState} dispatch={noop} disabled={true}/>;
-
-      case 'geopoint':
-        return <GeoPointForm formState={formState} dispatch={noop} disabled={true}/>;
-
-      case 'pipeline':
-        return 'Pipeline';
-    }
-  };
-
   const formState = state.formState;
 
   return <>
@@ -173,7 +132,10 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
                     : <Cell size={'1'}>
                       <fieldset>
                         <legend style={{ fontSize: '12pt' }}>Configuration</legend>
-                        {getForm(formState)}
+                        {getForm({
+                          formState,
+                          dispatch: noop
+                        })}
                       </fieldset>
                     </Cell>
                 }

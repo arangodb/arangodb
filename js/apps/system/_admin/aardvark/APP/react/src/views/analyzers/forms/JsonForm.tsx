@@ -2,7 +2,6 @@ import { JsonEditor as Editor } from 'jsoneditor-react';
 import React, { useState } from 'react';
 import Ajv from 'ajv';
 import { FormProps, formSchema, FormState, State } from "../constants";
-import { isArray } from "lodash";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 
 const ajv = new Ajv({
@@ -26,7 +25,7 @@ const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
       });
       dispatch({ type: 'unlockJsonForm' });
       setFormErrors([]);
-    } else if (isArray(validate.errors)) {
+    } else if (Array.isArray(validate.errors)) {
       dispatch({ type: 'lockJsonForm' });
 
       setFormErrors(validate.errors.map(error =>

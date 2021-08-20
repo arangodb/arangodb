@@ -9,10 +9,9 @@ import Textbox from "../../../components/pure-css/form/Textbox";
 import Textarea from "../../../components/pure-css/form/Textarea";
 import Checkbox from "../../../components/pure-css/form/Checkbox";
 import NGramInput from "./inputs/NGramInput";
-import { getPath } from "../helpers";
 import AccentInput from "./inputs/AccentInput";
 
-const TextForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
+const TextForm = ({ formState, dispatch, disabled }: FormProps) => {
   const updateStopwords = (event: ChangeEvent<HTMLTextAreaElement>) => {
     const stopwords = event.target.value.split('\n');
 
@@ -22,16 +21,14 @@ const TextForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
         field: {
           path: 'properties.stopwords',
           value: stopwords
-        },
-        basePath
+        }
       });
     } else {
       dispatch({
         type: 'unsetField',
         field: {
           path: 'properties.stopwords'
-        },
-        basePath
+        }
       });
     }
   };
@@ -48,8 +45,7 @@ const TextForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
       field: {
         path: 'properties.stopwordsPath',
         value: event.target.value
-      },
-      basePath
+      }
     });
   };
 
@@ -59,32 +55,28 @@ const TextForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
       field: {
         path: 'properties.stemming',
         value: event.target.checked
-      },
-      basePath
+      }
     });
   };
-
-  const propertiesBasePath = getPath(basePath, 'properties');
-  const edgeNgramBasePath = getPath(propertiesBasePath, 'edgeNgram');
 
   return <Grid>
     <Cell size={'1-2'}>
       <Grid>
         <Cell size={'1'}>
-          <LocaleInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={propertiesBasePath}/>
+          <LocaleInput formState={formState} dispatch={dispatch} disabled={disabled}/>
         </Cell>
 
         <Cell size={'1-2'}>
           <Checkbox onChange={updateStemming} label={'Stemming'} inline={true} disabled={disabled}
-                    checked={textFormState.properties.stemming}/>
+                    checked={textFormState.properties.stemming || false}/>
         </Cell>
 
         <Cell size={'1-2'}>
-          <AccentInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={propertiesBasePath}/>
+          <AccentInput formState={formState} dispatch={dispatch} disabled={disabled}/>
         </Cell>
 
         <Cell size={'1'}>
-          <CaseInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={propertiesBasePath}/>
+          <CaseInput formState={formState} dispatch={dispatch} disabled={disabled}/>
         </Cell>
       </Grid>
     </Cell>
@@ -92,7 +84,7 @@ const TextForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
     <Cell size={'1-2'}>
       <Grid>
         <Cell size={'1'}>
-          <Textbox label={'Stopwords Path'} type={'text'} value={textFormState.properties.stopwordsPath}
+          <Textbox label={'Stopwords Path'} type={'text'} value={textFormState.properties.stopwordsPath || ''}
                    onChange={updateStopwordsPath} disabled={disabled}/>
         </Cell>
 
@@ -109,7 +101,8 @@ const TextForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
 
     <Cell size={'1'}>
       <Fieldset legend={'Edge N-Gram'}>
-        <NGramInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={edgeNgramBasePath}/>
+        <NGramInput formState={formState} dispatch={dispatch} disabled={disabled}
+                    basePath={'properties.edgeNgram'}/>
       </Fieldset>
     </Cell>
   </Grid>;

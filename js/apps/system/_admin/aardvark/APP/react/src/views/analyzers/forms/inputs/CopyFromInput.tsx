@@ -46,9 +46,7 @@ const CopyFromInput = ({ analyzers, dispatch }: CopyFromInputProps) => {
 
   return <Grid>
     <Cell size={'1-3'}>
-      <button className={'button-warning'} onClick={copyFormState}>
-        Copy to form
-      </button>
+      <button className={'button-warning'} onClick={copyFormState}>Copy to form</button>
     </Cell>
     <Cell size={'2-3'}>
       <select value={selectedAnalyzer.name} style={{ width: 'auto' }} onChange={updateSelectedAnalyzer}>

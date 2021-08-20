@@ -4,17 +4,15 @@ import { Cell, Grid } from "../../../components/pure-css/grid";
 import Textbox from "../../../components/pure-css/form/Textbox";
 import RadioGroup from "../../../components/pure-css/form/RadioGroup";
 import NGramInput from "./inputs/NGramInput";
-import { getPath } from "../helpers";
 
-const NGramForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
+const NGramForm = ({ formState, dispatch, disabled }: FormProps) => {
   const updateStartMarker = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
       field: {
         path: 'properties.startMarker',
         value: event.target.value
-      },
-      basePath
+      }
     });
   };
 
@@ -24,8 +22,7 @@ const NGramForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
       field: {
         path: 'properties.endMarker',
         value: event.target.value
-      },
-      basePath
+      }
     });
   };
 
@@ -35,27 +32,25 @@ const NGramForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
       field: {
         path: 'properties.streamType',
         value: event.target.value
-      },
-      basePath
+      }
     });
   };
 
   const ngramFormState = formState as NGramState;
-  const propertiesBasePath = getPath(basePath, 'properties');
 
   return <Grid>
     <Cell size={'1'}>
-      <NGramInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={propertiesBasePath}/>
+      <NGramInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={'properties'}/>
     </Cell>
 
     <Cell size={'1-3'}>
-      <Textbox label={'Start Marker'} type={'text'} placeholder={'^'} onChange={updateStartMarker}
-               value={ngramFormState.properties.startMarker} disabled={disabled}/>
+      <Textbox label={'Start Marker'} type={'text'} placeholder={disabled ? '' : '^'} disabled={disabled}
+               onChange={updateStartMarker} value={ngramFormState.properties.startMarker || ''}/>
     </Cell>
 
     <Cell size={'1-3'}>
-      <Textbox label={'End Marker'} type={'text'} placeholder={'$'} onChange={updateEndMarker}
-               value={ngramFormState.properties.endMarker} disabled={disabled}/>
+      <Textbox label={'End Marker'} type={'text'} placeholder={disabled ? '' : '$'} onChange={updateEndMarker}
+               value={ngramFormState.properties.endMarker || ''} disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-3'}>

@@ -4,15 +4,14 @@ import GeoOptionsInput from "./inputs/GeoOptionsInput";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import RadioGroup from "../../../components/pure-css/form/RadioGroup";
 
-const GeoJsonForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
+const GeoJsonForm = ({ formState, dispatch, disabled }: FormProps) => {
   const updateType = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
       field: {
         path: 'properties.type',
         value: event.target.value
-      },
-      basePath
+      }
     });
   };
 
@@ -36,7 +35,7 @@ const GeoJsonForm = ({ formState, dispatch, disabled, basePath }: FormProps) => 
       ]} checked={typeProperty || 'shape'} disabled={disabled}/>
     </Cell>
     <Cell size={'1'}>
-      <GeoOptionsInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={basePath}/>
+      <GeoOptionsInput formState={formState} dispatch={dispatch} disabled={disabled}/>
     </Cell>
   </Grid>;
 };

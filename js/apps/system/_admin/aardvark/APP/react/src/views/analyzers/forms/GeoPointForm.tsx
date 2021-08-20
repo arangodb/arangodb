@@ -5,7 +5,7 @@ import GeoOptionsInput from "./inputs/GeoOptionsInput";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Textbox from "../../../components/pure-css/form/Textbox";
 
-const GeoPointForm = ({ formState, dispatch, disabled, basePath }: FormProps) => {
+const GeoPointForm = ({ formState, dispatch, disabled }: FormProps) => {
   const updateArray = (event: ChangeEvent<HTMLInputElement>, field: string) => {
     const items = event.target.value.split('.');
 
@@ -15,16 +15,14 @@ const GeoPointForm = ({ formState, dispatch, disabled, basePath }: FormProps) =>
         field: {
           path: field,
           value: items
-        },
-        basePath
+        }
       });
     } else {
       dispatch({
         type: 'unsetField',
         field: {
           path: field
-        },
-        basePath
+        }
       });
     }
   };
@@ -53,7 +51,7 @@ const GeoPointForm = ({ formState, dispatch, disabled, basePath }: FormProps) =>
     </Cell>
 
     <Cell size={'1'}>
-      <GeoOptionsInput formState={formState} dispatch={dispatch} disabled={disabled} basePath={basePath}/>
+      <GeoOptionsInput formState={formState} dispatch={dispatch} disabled={disabled}/>
     </Cell>
   </Grid>;
 };

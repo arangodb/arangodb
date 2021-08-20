@@ -115,18 +115,20 @@ export type GeoPointState = {
   };
 };
 
-type PipelineState = DelimiterState
+export type PipelineState = DelimiterState
   | StemState
   | NormState
   | NGramState
   | TextState
   | AqlState;
-type PipelineStates = {
+export type PipelineStates = {
   type: 'pipeline';
-  properties: PipelineState[];
+  properties: {
+    pipeline: PipelineState[]
+  };
 };
 
-type AnalyzerTypeState = IdentityState
+export type AnalyzerTypeState = IdentityState
   | DelimiterState
   | StemState
   | NormState
@@ -143,8 +145,7 @@ const baseSchema = {
   properties: {
     name: {
       nullable: false,
-      type: 'string',
-      default: ''
+      type: 'string'
     },
     features: {
       type: 'array',
@@ -155,8 +156,7 @@ const baseSchema = {
         type: 'string',
         nullable: false,
         enum: ['frequency', 'norm', 'position']
-      },
-      default: []
+      }
     }
   },
   additionalProperties: false
@@ -296,16 +296,19 @@ const ngramSchema = mergeBase({
           type: 'integer',
           nullable: false,
           minimum: 1,
-          maximum: { $data: '1/max' }
+          maximum: { $data: '1/max' },
+          default: 2
         },
         max: {
           type: 'integer',
           nullable: false,
-          minimum: { $data: '1/min' }
+          minimum: { $data: '1/min' },
+          default: 3
         },
         preserveOriginal: {
           type: 'boolean',
-          nullable: false
+          nullable: false,
+          default: false
         },
         startMarker: {
           type: 'string',
@@ -502,24 +505,34 @@ const pipelineSchema = mergeBase({
       const: 'pipeline'
     },
     'properties': {
-      type: 'array',
+      type: 'object',
       nullable: false,
-      items: {
-        type: "object",
-        discriminator: {
-          propertyName: "type"
-        },
-        oneOf: [
-          identitySchema,
-          delimiterSchema,
-          stemSchema,
-          normSchema,
-          ngramSchema,
-          textSchema,
-          aqlSchema
-        ]
+      properties: {
+        pipeline: {
+          type: 'array',
+          nullable: false,
+          items: {
+            type: "object",
+            discriminator: {
+              propertyName: "type"
+            },
+            oneOf: [
+              delimiterSchema,
+              stemSchema,
+              normSchema,
+              ngramSchema,
+              textSchema,
+              aqlSchema
+            ]
+          },
+          default: []
+        }
       },
-      default: []
+      additionalProperties: false,
+      required: ['pipeline'],
+      default: {
+        pipeline: []
+      }
     }
   },
   required: ['type', 'properties']
@@ -560,13 +573,12 @@ export type DispatchArgs = {
     path: string;
     value?: any;
   };
-  basePath?: string | undefined;
+  basePath?: string;
   formState?: FormState;
 };
 
 export type FormProps = {
-  formState: FormState;
+  formState: BaseFormState | AnalyzerTypeState | FormState;
   dispatch: Dispatch<DispatchArgs>;
   disabled?: boolean;
-  basePath?: string | undefined;
 };
