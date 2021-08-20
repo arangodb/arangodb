@@ -120,7 +120,8 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
           {
             showJsonForm
               ? <Cell size={'1'}>
-                <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState} rows={jsonRows}/>
+                <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState} rows={jsonRows}
+                          style={{ cursor: 'text' }}/>
               </Cell>
               : <>
                 <Cell size={'1'}>
