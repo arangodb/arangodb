@@ -63,13 +63,9 @@ AsyncFollower::AsyncFollower(std::shared_ptr<replicated_log::LogFollower> follow
     : _follower(std::move(follower)), _asyncWorker([this] { this->runWorker(); }) {}
 
 AsyncFollower::~AsyncFollower() noexcept {
-  {
-    std::unique_lock guard(_mutex);
-    _stopping = true;
-    _cv.notify_all();
+  if (!_stopping) {
+    stop();
   }
-
-  _asyncWorker.join();
 }
 
 void AsyncFollower::runWorker() {
@@ -88,11 +84,23 @@ void AsyncFollower::runWorker() {
     }
 
     for (auto& req : requests) {
+      LOG_DEVEL << "resolve request with " << req.request.entries.size();
       _follower->appendEntries(req.request).thenFinal([promise = std::move(req.promise)](auto&& res) mutable {
         promise.setValue(std::forward<decltype(res)>(res));
       });
     }
   }
+}
+
+void AsyncFollower::stop() noexcept {
+  {
+    std::unique_lock guard(_mutex);
+    _stopping = true;
+    _cv.notify_all();
+  }
+
+  TRI_ASSERT(_asyncWorker.joinable());
+  _asyncWorker.join();
 }
 
 AsyncFollower::AsyncRequest::AsyncRequest(AppendEntriesRequest request)

@@ -42,6 +42,7 @@ struct AsyncFollower : replicated_log::ILogParticipant, replicated_log::Abstract
   auto appendEntries(replicated_log::AppendEntriesRequest request)
       -> futures::Future<replicated_log::AppendEntriesResult> override;
 
+  void stop() noexcept;
  private:
   void runWorker();
 

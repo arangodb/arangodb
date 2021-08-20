@@ -22,6 +22,7 @@
 
 #include <gtest/gtest.h>
 
+#include <Replication2/Mocks/AsyncFollower.h>
 #include <utility>
 
 #include "Replication2/ReplicatedLog/LogFollower.h"
@@ -105,14 +106,20 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
   auto leaderLog = createReplicatedLog(LogId{2});
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader = followerLog->becomeLeader(LogConfig(2, false), "leader",
-                                          LogTerm{1}, {follower});
+  auto asyncFollower = std::make_shared<AsyncFollower>(follower);
+
+  auto leader = leaderLog->becomeLeader(LogConfig(2, false), "leader",
+                                        LogTerm{1}, {asyncFollower});
 
   auto followerInstance = std::make_shared<FollowerInstance>(follower);
   auto leaderInstance = std::make_shared<LeaderInstance>(leader);
 
   auto producer = leaderInstance->_mux->getStreamById<test::my_int_stream_id>();
-  for (std::size_t i = 0; i < 1000; i++) {
-    producer->insert(i);
+  auto index = LogIndex{0};
+  for (std::size_t i = 0; i < 100000; i++) {
+    index = producer->insert(i);
   }
+
+  leader->waitFor(index).wait();
+  asyncFollower->stop();
 }
