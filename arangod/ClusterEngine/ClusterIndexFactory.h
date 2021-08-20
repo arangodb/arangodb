@@ -29,7 +29,7 @@ namespace arangodb {
 
 class ClusterIndexFactory final : public IndexFactory {
  public:
-  static void LinkIndexFactories(application_features::ApplicationServer& server,
+  static void linkIndexFactories(application_features::ApplicationServer& server,
                                  IndexFactory& factory);
   explicit ClusterIndexFactory(application_features::ApplicationServer&);
   ~ClusterIndexFactory() = default;

@@ -154,7 +154,7 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
 namespace arangodb {
 
-void ClusterIndexFactory::LinkIndexFactories(application_features::ApplicationServer& server,
+void ClusterIndexFactory::linkIndexFactories(application_features::ApplicationServer& server,
                                              IndexFactory& factory) {
   static const EdgeIndexFactory edgeIndexFactory(server, "edge");
   static const DefaultIndexFactory fulltextIndexFactory(server, "fulltext");
@@ -181,7 +181,7 @@ void ClusterIndexFactory::LinkIndexFactories(application_features::ApplicationSe
 
 ClusterIndexFactory::ClusterIndexFactory(application_features::ApplicationServer& server)
     : IndexFactory(server) {
-  LinkIndexFactories(server, *this);
+  linkIndexFactories(server, *this);
 }
 
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
