@@ -140,7 +140,6 @@ class ClusterProvider {
     Vertex _vertex;
     Edge _edge;
     bool _fetched;
-    size_t _localSchreierIndex = std::numeric_limits<size_t>::max();  // to be removed later
   };
 
  public:
