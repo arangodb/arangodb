@@ -18,20 +18,20 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::streams;
 
 struct LogDemuxTest : ::testing::Test {
-  static auto createReplicatedLog()
+  static auto createReplicatedLog(LogId id = LogId{0})
       -> std::shared_ptr<replication2::replicated_log::ReplicatedLog> {
-    return createReplicatedLogImpl<replicated_log::ReplicatedLog>();
+    return createReplicatedLogImpl<replicated_log::ReplicatedLog>(id);
   }
 
-  static auto createFakeReplicatedLog()
+  static auto createFakeReplicatedLog(LogId id = LogId{0})
       -> std::shared_ptr<replication2::test::TestReplicatedLog> {
-    return createReplicatedLogImpl<replication2::test::TestReplicatedLog>();
+    return createReplicatedLogImpl<replication2::test::TestReplicatedLog>(id);
   }
 
  private:
   template <typename Impl>
-  static auto createReplicatedLogImpl() -> std::shared_ptr<Impl> {
-    auto persisted = std::make_shared<test::MockLog>(LogId{0});
+  static auto createReplicatedLogImpl(LogId id) -> std::shared_ptr<Impl> {
+    auto persisted = std::make_shared<test::MockLog>(id);
     auto core = std::make_unique<replicated_log::LogCore>(persisted);
     auto metrics = std::make_shared<ReplicatedLogMetricsMock>();
     return std::make_shared<Impl>(std::move(core), metrics,
@@ -208,4 +208,39 @@ TEST_F(LogDemuxTest, leader_wait_for_multiple) {
     follower->runAsyncAppendEntries();
   }
   EXPECT_TRUE(fB.isReady());
+}
+
+TEST_F(LogDemuxTest, follower_wait_for) {
+  auto leaderLog = createReplicatedLog(LogId{1});
+  auto followerLog = createFakeReplicatedLog(LogId{2});
+
+  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+  auto leader =
+      leaderLog->becomeLeader(LogConfig(2, false), "leader", LogTerm{1}, {follower});
+  // handle first leader log entry (empty)
+  leader->triggerAsyncReplication();
+  while (follower->hasPendingAppendEntries()) {
+    follower->runAsyncAppendEntries();
+  }
+
+  auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
+  auto demux = LogDemultiplexer<MyTestSpecification>::construct(follower);
+  demux->listen();
+
+  auto inStream = mux->getStreamById<my_int_stream_id>();
+  auto outStream = demux->getStreamById<my_int_stream_id>();
+
+  auto idx = inStream->insert(17);
+  auto f = outStream->waitFor(idx);
+  EXPECT_FALSE(f.isReady());
+  EXPECT_TRUE(follower->hasPendingAppendEntries());
+
+  // Handle append request, entry not yet committed on follower
+  follower->runAsyncAppendEntries();
+  EXPECT_FALSE(f.isReady());
+  EXPECT_TRUE(follower->hasPendingAppendEntries());
+
+  // Receive commit update
+  follower->runAsyncAppendEntries();
+  EXPECT_TRUE(f.isReady());
 }

@@ -559,7 +559,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerIn
   if (follower.lastAckedEntry.index == lastAvailableIndex.index &&
       _commitIndex == follower.lastAckedCommitIndex &&
       _largestCommonIndex == follower.lastAckedLCI) {
-    LOG_CTX("74b71", TRACE, _self._logContext) << "up to date";
+    LOG_CTX("74b71", TRACE, follower.logContext) << "up to date";
     return std::nullopt;  // nothing to replicate
   }
 
