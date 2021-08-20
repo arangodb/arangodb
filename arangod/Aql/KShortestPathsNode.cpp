@@ -344,13 +344,11 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
       // be changed in the future) create BaseProviderOptions
 
-      // TODO FIXME START - only tmp workaround - we'll provide an empty depth based index info (also add an alias for large type)
       std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> usedIndexes{};
       usedIndexes.first = buildUsedIndexes();
 
       std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> reversedUsedIndexes{};
       reversedUsedIndexes.first = buildReverseUsedIndexes();
-      // TODO FIXME END
 
       BaseProviderOptions forwardProviderOptions(opts->tmpVar(), usedIndexes,
                                                  opts->getExpressionCtx(),
