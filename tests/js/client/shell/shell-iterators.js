@@ -385,7 +385,7 @@ function IteratorSuite(permuteConfigs) {
             INSERT { _key: "dummy" } INTO @@col OPTIONS { ignoreErrors: true })
           COLLECT isNull = doc == null WITH COUNT INTO cnt
           RETURN {isNull, cnt}
-        `
+        `;
         let result = ctx.query(q, { '@col': cn }, opts).toArray();
         assertEqual(5000 + 1, tc.count()); // only a single insert may succeed!
         assertEqual(1, result.length);
@@ -407,7 +407,7 @@ function IteratorSuite(permuteConfigs) {
             INSERT { _key: "dummy" } INTO @@col OPTIONS { ignoreErrors: true })
           COLLECT isNull = doc == null WITH COUNT INTO cnt
           RETURN {isNull, cnt}
-        `
+        `;
         let result = ctx.query(q, { '@col': cn }, opts).toArray();
         assertEqual(5000 + 1, tc.count()); // only a single insert may succeed!
         assertEqual(1, result.length);
@@ -429,7 +429,7 @@ function IteratorSuite(permuteConfigs) {
             INSERT { uniqueValue: "dummy" } INTO @@col OPTIONS { ignoreErrors: true })
           COLLECT isNull = doc == null WITH COUNT INTO cnt
           RETURN {isNull, cnt}
-        `
+        `;
         let result = ctx.query(q, { '@col': cn }, opts).toArray();
         assertEqual(5000 + 1, tc.count()); // only a single insert may succeed!
         assertEqual(1, result.length);
