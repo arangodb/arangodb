@@ -1,6 +1,7 @@
 v3.7.15 (XXXX-XX-XX)
-
 --------------------
+
+* Improve log messages for Pregel runs by giving them more context.
 
 * Append physical compaction of log collection to every Raft log compaction.
   Restrict agent RocksDB block cache and write buffer sizes (BTS-542).
