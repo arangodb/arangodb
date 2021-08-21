@@ -19,7 +19,7 @@ const GeoJsonForm = ({ formState, dispatch, disabled }: FormProps) => {
 
   return <Grid>
     <Cell size={'1-2'}>
-      <RadioGroup legend={'Type'} onChange={updateType} name={'type'} items={[
+      <RadioGroup legend={'Type'} onChange={updateType} items={[
         {
           label: 'Shape',
           value: 'shape'

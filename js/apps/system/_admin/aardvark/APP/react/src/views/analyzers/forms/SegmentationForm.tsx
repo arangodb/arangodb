@@ -19,7 +19,7 @@ const SegmentationForm = ({ formState, dispatch, disabled }: FormProps) => {
 
   return <Grid>
     <Cell size={'1-2'}>
-      <RadioGroup legend={'Break'} onChange={updateBreak} name={'break'} items={[
+      <RadioGroup legend={'Break'} onChange={updateBreak} items={[
         {
           label: 'All',
           value: 'all'

@@ -18,7 +18,7 @@ const CaseInput = ({ formState, dispatch, disabled, defaultValue = 'none' }: Cas
     });
   };
 
-  return <RadioGroup legend={'Case'} onChange={updateCase} name={'case'} items={[
+  return <RadioGroup legend={'Case'} onChange={updateCase} items={[
     {
       label: 'Lower',
       value: 'lower'

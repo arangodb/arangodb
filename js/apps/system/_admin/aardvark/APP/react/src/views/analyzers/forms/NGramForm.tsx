@@ -54,7 +54,7 @@ const NGramForm = ({ formState, dispatch, disabled }: FormProps) => {
     </Cell>
 
     <Cell size={'1-3'}>
-      <RadioGroup legend={'Stream Type'} onChange={updateStreamType} name={'streamType'} items={[
+      <RadioGroup legend={'Stream Type'} onChange={updateStreamType} items={[
         {
           label: 'Binary',
           value: 'binary'

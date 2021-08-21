@@ -101,7 +101,7 @@ const AqlForm = ({ formState, dispatch, disabled }: FormProps) => {
                     disabled={disabled} label={'Keep Null'}/>
         </Cell>
         <Cell size={'1'}>
-          <RadioGroup legend={'Return Type'} onChange={updateReturnType} name={'returnType'} items={[
+          <RadioGroup legend={'Return Type'} onChange={updateReturnType} items={[
             {
               label: 'String',
               value: 'string'

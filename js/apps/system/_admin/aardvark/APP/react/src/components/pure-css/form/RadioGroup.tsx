@@ -16,7 +16,6 @@ const StyledRadioButton = styled.input.attrs(() => ({
 type RadioButtonProps = {
   checked?: boolean;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
-  name: string;
   value: string;
   label: ReactNode;
   id?: string;
@@ -24,14 +23,14 @@ type RadioButtonProps = {
   disabled?: boolean;
 };
 
-const RadioButton = ({ id, checked, onChange, name, value, label, size, disabled }: RadioButtonProps) => {
+const RadioButton = ({ id, checked, onChange, value, label, size, disabled }: RadioButtonProps) => {
   if (!id) {
     id = uniqueId(`radio-${value}-`);
   }
 
   return <Cell size={size}>
     <label htmlFor={id} className="pure-radio">
-      <StyledRadioButton id={id} name={name} value={value} onChange={onChange} checked={checked}
+      <StyledRadioButton id={id} value={value} onChange={onChange} checked={checked}
                          disabled={disabled}/>
       &nbsp;{label}
     </label>
@@ -41,7 +40,6 @@ const RadioButton = ({ id, checked, onChange, name, value, label, size, disabled
 type RadioGroupProps = {
   legend: string;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
-  name: string;
   items: {
     label: ReactNode;
     value: string;
@@ -51,16 +49,16 @@ type RadioGroupProps = {
   checked?: string;
 };
 
-const RadioGroup = ({ legend, onChange, name, items, checked, disabled }: RadioGroupProps) => {
+const RadioGroup = ({ legend, onChange, items, checked, disabled }: RadioGroupProps) => {
   const size = `${24 / items.length}-24` as CellSize;
 
   return <Fieldset legend={legend}>
     <Grid>
       {
         items.map(item =>
-          <RadioButton onChange={onChange} name={name} value={item.value} label={item.label} id={item.id}
+          <RadioButton onChange={onChange} value={item.value} label={item.label} id={item.id}
                        checked={checked === item.value} size={size} disabled={disabled}
-                       key={`${item.value}-${checked}`}/>)
+                       key={`${item.value}`}/>)
       }
     </Grid>
   </Fieldset>;
