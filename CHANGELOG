@@ -1,12 +1,19 @@
 v3.7.15 (XXXX-XX-XX)
+
 --------------------
 
-* Append physical compaction of log collection to every Raft log
-  compaction. Restrict agent RocksDB block cache and write buffer sizes 
-  (BTS-542).
+* Append physical compaction of log collection to every Raft log compaction.
+  Restrict agent RocksDB block cache and write buffer sizes (BTS-542).
 
-v3.7.14 (XXXX-XX-XX)
---------------------
+* Fixed issue #14592: IS_NULL(@x) isn't recognized as a constant expression.
+
+* Fix response when isBuilding could not be removed from newly created
+  collection, when agency precondition fails. This can happen, when own rebootId
+  increment has triggered plan entry to be removed (BTS-370).
+
+
+v3.7.14 (2021-08-07)
+-------------------
 
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented cases
   and numerically unstable behaviour. In particular, the case of the
