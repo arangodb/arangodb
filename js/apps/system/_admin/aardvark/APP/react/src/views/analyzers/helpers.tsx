@@ -11,6 +11,9 @@ import GeoPointForm from "./forms/GeoPointForm";
 import React from "react";
 import PipelineForm from "./forms/PipelineForm";
 import { compact } from "lodash";
+import StopwordsForm from "./forms/StopwordsForm";
+import CollationForm from "./forms/CollationForm";
+import SegmentationForm from "./forms/SegmentationForm";
 
 const ajv = new Ajv({
   removeAdditional: 'failing',
@@ -23,7 +26,9 @@ export const validateAndFix = ajv.compile(formSchema);
 export const getPath = (basePath: string | undefined, path: string | undefined) => compact([basePath, path]).join('.');
 
 export const getForm = ({ formState, dispatch, disabled = true }: FormProps) => {
-  switch ((formState as AnalyzerTypeState).type) {
+  const typeName = (formState as AnalyzerTypeState).type;
+
+  switch (typeName) {
     case 'identity':
       return null;
 
@@ -45,13 +50,22 @@ export const getForm = ({ formState, dispatch, disabled = true }: FormProps) => 
     case 'aql':
       return <AqlForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
 
+    case 'stopwords':
+      return <StopwordsForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+
+    case 'collation':
+      return <CollationForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+
+    case 'segmentation':
+      return <SegmentationForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+
+    case 'pipeline':
+      return <PipelineForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+
     case 'geojson':
       return <GeoJsonForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
 
     case 'geopoint':
       return <GeoPointForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
-
-    case 'pipeline':
-      return <PipelineForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
   }
 };

@@ -3,7 +3,11 @@ import { FormProps } from "../../constants";
 import RadioGroup from "../../../../components/pure-css/form/RadioGroup";
 import { get } from "lodash";
 
-const CaseInput = ({ formState, dispatch, disabled }: FormProps) => {
+type CaseInputProps = FormProps & {
+  defaultValue?: string;
+};
+
+const CaseInput = ({ formState, dispatch, disabled, defaultValue = 'none' }: CaseInputProps) => {
   const updateCase = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -27,7 +31,7 @@ const CaseInput = ({ formState, dispatch, disabled }: FormProps) => {
       label: 'None',
       value: 'none'
     }
-  ]} checked={get(formState, 'properties.case', 'none')} disabled={disabled}/>;
+  ]} checked={get(formState, 'properties.case', defaultValue)} disabled={disabled}/>;
 };
 
 export default CaseInput;

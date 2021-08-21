@@ -1,5 +1,5 @@
 import { JSONSchemaType } from 'ajv';
-import { Dispatch } from 'React';
+import { Dispatch } from 'react';
 import _, { merge, partial } from 'lodash';
 
 export const typeNameMap = {
@@ -10,12 +10,14 @@ export const typeNameMap = {
   ngram: 'N-Gram',
   text: 'Text',
   aql: 'AQL',
+  stopwords: 'Stopwords',
+  collation: 'Collation',
+  segmentation: 'Segmentation',
+  pipeline: 'Pipeline',
   geojson: 'GeoJSON',
-  geopoint: 'GeoPoint',
-  pipeline: 'Pipeline'
+  geopoint: 'GeoPoint'
 };
 
-type CaseProperty = 'lower' | 'upper' | 'none';
 export type Feature = 'frequency' | 'norm' | 'position';
 type Features = Feature[];
 export type Int = number & { __int__: void };
@@ -43,7 +45,9 @@ type StemState = {
   };
 };
 
-export type NormState = {
+type CaseProperty = 'lower' | 'upper' | 'none';
+
+type NormState = {
   type: 'norm';
   properties: {
     accent?: boolean;
@@ -92,6 +96,46 @@ export type AqlState = {
   };
 };
 
+export type StopwordsState = {
+  type: 'stopwords',
+  properties: {
+    stopwords: string[];
+    hex?: boolean;
+  }
+};
+
+export type CollationState = {
+  type: 'collation';
+  properties: {
+    locale: string;
+  };
+};
+
+export type SegmentationState = {
+  type: 'segmentation',
+  properties: {
+    break?: 'all' | 'alpha' | 'graphic';
+    case?: CaseProperty;
+  };
+};
+
+type PipelineState = DelimiterState
+  | StemState
+  | NormState
+  | NGramState
+  | TextState
+  | AqlState
+  | StopwordsState
+  | CollationState
+  | SegmentationState;
+
+export type PipelineStates = {
+  type: 'pipeline';
+  properties: {
+    pipeline: PipelineState[]
+  };
+};
+
 export type GeoOptions = {
   maxCells?: Int;
   minLevel?: Int;
@@ -115,19 +159,6 @@ export type GeoPointState = {
   };
 };
 
-export type PipelineState = DelimiterState
-  | StemState
-  | NormState
-  | NGramState
-  | TextState
-  | AqlState;
-export type PipelineStates = {
-  type: 'pipeline';
-  properties: {
-    pipeline: PipelineState[]
-  };
-};
-
 export type AnalyzerTypeState = IdentityState
   | DelimiterState
   | StemState
@@ -135,9 +166,12 @@ export type AnalyzerTypeState = IdentityState
   | NGramState
   | TextState
   | AqlState
+  | StopwordsState
+  | CollationState
+  | SegmentationState
+  | PipelineStates
   | GeoJsonState
-  | GeoPointState
-  | PipelineStates;
+  | GeoPointState;
 
 export type FormState = BaseFormState & AnalyzerTypeState;
 
@@ -444,6 +478,124 @@ const aqlSchema = mergeBase({
   required: ['type', 'properties']
 });
 
+const stopwordsSchema = mergeBase({
+  properties: {
+    type: {
+      const: 'stopwords'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
+        stopwords: {
+          type: 'array',
+          nullable: false,
+          items: {
+            type: 'string'
+          },
+          default: []
+        },
+        hex: {
+          type: 'boolean',
+          nullable: false
+        }
+      },
+      required: ['stopwords'],
+      additionalProperties: false,
+      default: {
+        stopwords: []
+      }
+    }
+  },
+  required: ['type', 'properties']
+});
+
+const collationSchema = mergeBase({
+  properties: {
+    type: {
+      const: 'collation'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
+        locale: localeSchema
+      },
+      required: ['locale'],
+      additionalProperties: false,
+      default: {
+        locale: ''
+      }
+    }
+  },
+  required: ['type', 'properties']
+});
+
+const segmentationSchema = mergeBase({
+  properties: {
+    type: {
+      const: 'segmentation'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
+        break: {
+          type: 'string',
+          nullable: false,
+          enum: ['all', 'aplha', 'graphic']
+        },
+        case: caseSchema
+      },
+      additionalProperties: false,
+      default: {}
+    }
+  },
+  required: ['type', 'properties']
+});
+
+const pipelineSchema = mergeBase({
+  properties: {
+    type: {
+      const: 'pipeline'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
+        pipeline: {
+          type: 'array',
+          nullable: false,
+          items: {
+            type: "object",
+            discriminator: {
+              propertyName: "type"
+            },
+            oneOf: [
+              delimiterSchema,
+              stemSchema,
+              normSchema,
+              ngramSchema,
+              textSchema,
+              aqlSchema,
+              stopwordsSchema,
+              collationSchema,
+              segmentationSchema
+            ]
+          },
+          default: []
+        }
+      },
+      additionalProperties: false,
+      required: ['pipeline'],
+      default: {
+        pipeline: []
+      }
+    }
+  },
+  required: ['type', 'properties']
+});
+
 const geojsonSchema = mergeBase({
   properties: {
     type: {
@@ -499,45 +651,6 @@ const geopointSchema = mergeBase({
   required: ['type', 'properties']
 });
 
-const pipelineSchema = mergeBase({
-  properties: {
-    type: {
-      const: 'pipeline'
-    },
-    'properties': {
-      type: 'object',
-      nullable: false,
-      properties: {
-        pipeline: {
-          type: 'array',
-          nullable: false,
-          items: {
-            type: "object",
-            discriminator: {
-              propertyName: "type"
-            },
-            oneOf: [
-              delimiterSchema,
-              stemSchema,
-              normSchema,
-              ngramSchema,
-              textSchema,
-              aqlSchema
-            ]
-          },
-          default: []
-        }
-      },
-      additionalProperties: false,
-      required: ['pipeline'],
-      default: {
-        pipeline: []
-      }
-    }
-  },
-  required: ['type', 'properties']
-});
-
 export const formSchema: JSONSchemaType<FormState> = {
   type: 'object',
   discriminator: {
@@ -551,9 +664,12 @@ export const formSchema: JSONSchemaType<FormState> = {
     ngramSchema,
     textSchema,
     aqlSchema,
+    stopwordsSchema,
+    collationSchema,
+    segmentationSchema,
+    pipelineSchema,
     geojsonSchema,
-    geopointSchema,
-    pipelineSchema
+    geopointSchema
   ],
   required: ['name', 'features']
 };

@@ -2,7 +2,7 @@ import React from "react";
 import { DispatchArgs, FormProps, Int, PipelineStates, typeNameMap } from "../constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import { getForm, getPath } from "../helpers";
-import { pick } from "lodash";
+import { omit } from "lodash";
 import TypeInput from "./inputs/TypeInput";
 import styled from 'styled-components';
 
@@ -16,7 +16,7 @@ const StyledIcon = styled.i`
     margin-left: auto;
   }
 `;
-const restrictedTypeNameMap = pick(typeNameMap, 'delimiter', 'stem', 'norm', 'ngram', 'text', 'aql');
+const restrictedTypeNameMap = omit(typeNameMap, 'geojson', 'geopoint', 'pipeline');
 
 const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
   const items = (formState as PipelineStates).properties.pipeline;

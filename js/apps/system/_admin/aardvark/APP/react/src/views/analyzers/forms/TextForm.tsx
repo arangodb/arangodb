@@ -1,44 +1,16 @@
 import React, { ChangeEvent } from "react";
 import { FormProps, TextState } from "../constants";
 import CaseInput from "./inputs/CaseInput";
-import { filter, isEmpty, negate } from 'lodash';
 import LocaleInput from "./inputs/LocaleInput";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Fieldset from "../../../components/pure-css/form/Fieldset";
 import Textbox from "../../../components/pure-css/form/Textbox";
-import Textarea from "../../../components/pure-css/form/Textarea";
 import Checkbox from "../../../components/pure-css/form/Checkbox";
 import NGramInput from "./inputs/NGramInput";
 import AccentInput from "./inputs/AccentInput";
+import StopwordsInput from "./inputs/StopwordsInput";
 
 const TextForm = ({ formState, dispatch, disabled }: FormProps) => {
-  const updateStopwords = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    const stopwords = event.target.value.split('\n');
-
-    if (filter(stopwords, negate(isEmpty)).length) {
-      dispatch({
-        type: 'setField',
-        field: {
-          path: 'properties.stopwords',
-          value: stopwords
-        }
-      });
-    } else {
-      dispatch({
-        type: 'unsetField',
-        field: {
-          path: 'properties.stopwords'
-        }
-      });
-    }
-  };
-
-  const textFormState = formState as TextState;
-
-  const getStopwords = () => {
-    return (textFormState.properties.stopwords || []).join('\n');
-  };
-
   const updateStopwordsPath = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -58,6 +30,8 @@ const TextForm = ({ formState, dispatch, disabled }: FormProps) => {
       }
     });
   };
+
+  const textFormState = formState as TextState;
 
   return <Grid>
     <Cell size={'1-2'}>
@@ -89,8 +63,7 @@ const TextForm = ({ formState, dispatch, disabled }: FormProps) => {
         </Cell>
 
         <Cell size={'1'}>
-          <Textarea label={'Stopwords (One per line)'} value={getStopwords()} onChange={updateStopwords}
-                    disabled={disabled}/>
+          <StopwordsInput formState={formState} dispatch={dispatch} disabled={disabled}/>
         </Cell>
       </Grid>
     </Cell>

@@ -14,7 +14,7 @@ const DelimiterForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const delimiterProperty = (formState as DelimiterState).properties.delimiter || '';
+  const delimiterProperty = (formState as DelimiterState).properties.delimiter;
 
   return <Grid>
     <Cell size={'1-3'}>
@@ -27,7 +27,7 @@ const DelimiterForm = ({ formState, dispatch, disabled }: FormProps) => {
           </a>
         </>
       } type={'text'} placeholder="Delimiting Characters" required={true} onChange={updateDelimiter}
-               value={delimiterProperty} disabled={disabled}/>
+               value={delimiterProperty || ''} disabled={disabled}/>
     </Cell>
   </Grid>;
 };
