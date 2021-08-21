@@ -1,5 +1,9 @@
 v3.7.15 (XXXX-XX-XX)
+
 --------------------
+
+* Append physical compaction of log collection to every Raft log compaction.
+  Restrict agent RocksDB block cache and write buffer sizes (BTS-542).
 
 * Fixed issue #14592: IS_NULL(@x) isn't recognized as a constant expression.
 
