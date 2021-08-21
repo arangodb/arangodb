@@ -1,6 +1,8 @@
 v3.7.15 (XXXX-XX-XX)
 --------------------
 
+* Fixed issue #14592: IS_NULL(@x) isn't recognized as a constant expression.
+
 * Fix response when isBuilding could not be removed from newly created
   collection, when agency precondition fails. This can happen, when own rebootId
   increment has triggered plan entry to be removed (BTS-370).
