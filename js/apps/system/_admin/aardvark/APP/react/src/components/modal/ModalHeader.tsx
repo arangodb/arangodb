@@ -1,5 +1,5 @@
 import React, { ReactNode } from "react";
-import { Cell, Grid } from "styled-css-grid";
+import { Cell, Grid } from "../pure-css/grid";
 
 interface ModalHeaderProps {
   title: string;
@@ -8,12 +8,12 @@ interface ModalHeaderProps {
 
 const ModalHeader = ({ title, children }: ModalHeaderProps) =>
   <>
-    <div className="modal-header">
-      <Grid columns={3}>
-        <Cell width={1}>
+    <div className="modal-header" style={{ minWidth: '50vw' }}>
+      <Grid>
+        <Cell size={'1-4'}>
           <span className="arangoHeader">{title}</span>
         </Cell>
-        <Cell width={2}>
+        <Cell size={'3-4'}>
           {children}
         </Cell>
       </Grid>
