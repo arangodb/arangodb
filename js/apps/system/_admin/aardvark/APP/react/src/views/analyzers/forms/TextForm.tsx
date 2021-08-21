@@ -40,6 +40,10 @@ const TextForm = ({ formState, dispatch, disabled }: FormProps) => {
           <LocaleInput formState={formState} dispatch={dispatch} disabled={disabled}/>
         </Cell>
 
+        <Cell size={'1'}>
+          <CaseInput formState={formState} dispatch={dispatch} disabled={disabled}/>
+        </Cell>
+
         <Cell size={'1-2'}>
           <Checkbox onChange={updateStemming} label={'Stemming'} inline={true} disabled={disabled}
                     checked={textFormState.properties.stemming || false}/>
@@ -47,10 +51,6 @@ const TextForm = ({ formState, dispatch, disabled }: FormProps) => {
 
         <Cell size={'1-2'}>
           <AccentInput formState={formState} dispatch={dispatch} disabled={disabled}/>
-        </Cell>
-
-        <Cell size={'1'}>
-          <CaseInput formState={formState} dispatch={dispatch} disabled={disabled}/>
         </Cell>
       </Grid>
     </Cell>

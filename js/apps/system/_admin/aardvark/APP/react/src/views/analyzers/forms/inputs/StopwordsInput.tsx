@@ -34,7 +34,7 @@ const StopwordsInput = ({ formState, dispatch, disabled, required = false }: Sto
   };
 
   return <Textarea label={'Stopwords (One per line)'} value={getStopwords()} onChange={updateStopwords}
-                   disabled={disabled} required={required}/>;
+                   disabled={disabled} required={required} rows={3}/>;
 };
 
 export default StopwordsInput;

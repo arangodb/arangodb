@@ -16,7 +16,7 @@ const StyledIcon = styled.i`
     margin-left: auto;
   }
 `;
-const restrictedTypeNameMap = omit(typeNameMap, 'geojson', 'geopoint', 'pipeline');
+const restrictedTypeNameMap = omit(typeNameMap, 'geojson', 'geopoint', 'pipeline', 'identity');
 
 const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
   const items = (formState as PipelineStates).properties.pipeline;

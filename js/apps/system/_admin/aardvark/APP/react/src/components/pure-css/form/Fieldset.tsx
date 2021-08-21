@@ -4,7 +4,6 @@ import styled from 'styled-components';
 const StyledLegend = styled.legend`
   font-size: 14px;
   margin-bottom: 12px;
-  margin-top: 14px;
   border-bottom: none;
   line-height: normal;
   color: inherit;
