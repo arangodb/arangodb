@@ -6,7 +6,7 @@ v3.7.15 (XXXX-XX-XX)
   increment has triggered plan entry to be removed (BTS-370).
 
 
-v3.7.14 (XXXX-XX-XX)
+v3.7.14 (2021-08-07)
 -------------------
 
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented cases
