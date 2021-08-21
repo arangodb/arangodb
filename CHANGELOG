@@ -1,9 +1,13 @@
-v3.7.14 (XXXX-XX-XX)
+v3.7.15 (XXXX-XX-XX)
 --------------------
 
 * Fix response when isBuilding could not be removed from newly created
-  collection, when agency precondition fails. This can happen, when own
-  rebootId increment has triggered plan entry to be removed (BTS-370).
+  collection, when agency precondition fails. This can happen, when own rebootId
+  increment has triggered plan entry to be removed (BTS-370).
+
+
+v3.7.14 (XXXX-XX-XX)
+-------------------
 
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented cases
   and numerically unstable behaviour. In particular, the case of the
