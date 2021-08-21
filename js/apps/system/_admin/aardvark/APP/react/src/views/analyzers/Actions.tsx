@@ -167,7 +167,7 @@ const Actions = ({ analyzer, permission }: ActionProps) => {
   const isSameDB = isUserDefined
     ? analyzer.name.split('::')[0] === frontendConfig.db
     : frontendConfig.db === '_system';
-  const isAdminUser = permission === 'rw';
+  const isAdminUser = permission === 'rw' || !frontendConfig.authenticationEnabled;
   const canDelete = isUserDefined && isSameDB && isAdminUser;
 
   return <>
