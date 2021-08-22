@@ -45,16 +45,19 @@ const CopyFromInput = ({ analyzers, dispatch }: CopyFromInputProps) => {
   };
 
   return <Grid>
-    <Cell size={'1-3'}>
-      <button className={'button-warning'} onClick={copyFormState}>Copy to form</button>
-    </Cell>
     <Cell size={'2-3'}>
-      <select value={selectedAnalyzer.name} style={{ width: 'auto' }} onChange={updateSelectedAnalyzer}>
+      <select value={selectedAnalyzer.name} style={{
+        width: 'auto',
+        float: 'right'
+      }} onChange={updateSelectedAnalyzer}>
         {
           sortedAnalyzers.map((analyzer, idx) =>
             <option key={idx} value={analyzer.name}>{analyzer.name} ({analyzer.type})</option>)
         }
       </select>
+    </Cell>
+    <Cell size={'1-3'}>
+      <button className={'button-warning'} onClick={copyFormState}>Copy to form</button>
     </Cell>
   </Grid>;
 };

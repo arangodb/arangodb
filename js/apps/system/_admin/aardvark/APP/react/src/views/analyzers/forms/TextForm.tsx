@@ -74,7 +74,7 @@ const TextForm = ({ formState, dispatch, disabled }: FormProps) => {
 
     <Cell size={'1'}>
       <Fieldset legend={'Edge N-Gram'}>
-        <NGramInput formState={formState} dispatch={dispatch} disabled={disabled}
+        <NGramInput formState={formState} dispatch={dispatch} disabled={disabled} required={false}
                     basePath={'properties.edgeNgram'}/>
       </Fieldset>
     </Cell>

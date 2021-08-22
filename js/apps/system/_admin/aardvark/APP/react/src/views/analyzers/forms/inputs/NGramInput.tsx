@@ -7,9 +7,10 @@ import { get } from "lodash";
 
 type NGramInputProps = FormProps & {
   basePath: string;
+  required?: boolean
 };
 
-const NGramInput = ({ formState, dispatch, disabled, basePath }: NGramInputProps) => {
+const NGramInput = ({ formState, dispatch, disabled, basePath, required = true }: NGramInputProps) => {
   const updateMinLength = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -47,13 +48,15 @@ const NGramInput = ({ formState, dispatch, disabled, basePath }: NGramInputProps
 
   return <Grid>
     <Cell size={'1-3'}>
-      <Textbox label={'Minimum N-Gram Length'} type={'number'} min={1} placeholder="2" required={true}
-               value={ngramBase.min || ''} onChange={updateMinLength} disabled={disabled}/>
+      <Textbox label={'Minimum N-Gram Length'} type={'number'} min={1} placeholder={disabled ? '' : '2'}
+               required={required} value={ngramBase.min || ''} onChange={updateMinLength}
+               disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-3'}>
-      <Textbox label={'Maximum N-Gram Length'} type={'number'} min={1} placeholder="3" required={true}
-               value={ngramBase.max || ''} onChange={updateMaxLength} disabled={disabled}/>
+      <Textbox label={'Maximum N-Gram Length'} type={'number'} min={1} placeholder={disabled ? '' : '3'}
+               required={required} value={ngramBase.max || ''} onChange={updateMaxLength}
+               disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-3'}>
