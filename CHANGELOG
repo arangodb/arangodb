@@ -1,6 +1,9 @@
 v3.7.15 (XXXX-XX-XX)
 --------------------
 
+* Fixed an assertion failure in unit tests for fuerte. There was a discrepancy
+  between the code and the associated TLA+ model for fuerte.
+
 * Improve log messages for Pregel runs by giving them more context.
 
 * Append physical compaction of log collection to every Raft log compaction.

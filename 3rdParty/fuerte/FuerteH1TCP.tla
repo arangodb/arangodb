@@ -100,7 +100,7 @@ process(fuerte = "fuertethread") {
       or connectDone:    \* VERIFIED
         if (/\ Len(iocontext) >= 1
             /\ Head(iocontext) \in {"connect", "connectBAD"}) {
-          assert active /\ state \in {"Connecting", "Disconnected", "Failed"};
+          assert active /\ state \in {"Connecting", "Failed"};
           alarm := "off";
           if (Head(iocontext) = "connect" /\ state = "Connecting") {
             iocontext := Tail(iocontext);
@@ -260,7 +260,7 @@ process(cancel = "cancelthread") {
 
 }
 *)
-\* BEGIN TRANSLATION
+\* BEGIN TRANSLATION (chksum(pcal) = "69db5ce3" /\ chksum(tla) = "cd90c6ff")
 VARIABLES state, active, queueSize, alarm, asyncRunning, iocontext, reading, 
           writing, pc, stack
 
@@ -410,7 +410,7 @@ activate == /\ pc["fuertethread"] = "activate"
 connectDone == /\ pc["fuertethread"] = "connectDone"
                /\ IF /\ Len(iocontext) >= 1
                      /\ Head(iocontext) \in {"connect", "connectBAD"}
-                     THEN /\ Assert(active /\ state \in {"Connecting", "Disconnected", "Failed"}, 
+                     THEN /\ Assert(active /\ state \in {"Connecting", "Failed"}, 
                                     "Failure of assertion at line 103, column 11.")
                           /\ alarm' = "off"
                           /\ IF Head(iocontext) = "connect" /\ state = "Connecting"
@@ -672,5 +672,5 @@ NoSleepingBarber == /\ NothingForgottenOnQueue
 
 =============================================================================
 \* Modification History
-\* Last modified Mon May 04 22:05:04 CEST 2020 by neunhoef
+\* Last modified Thu Aug 19 15:23:00 CEST 2021 by neunhoef
 \* Created Mi 22. Apr 22:46:19 CEST 2020 by neunhoef
