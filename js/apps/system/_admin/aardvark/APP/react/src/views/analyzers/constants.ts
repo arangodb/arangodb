@@ -543,7 +543,7 @@ const segmentationSchema = mergeBase({
         break: {
           type: 'string',
           nullable: false,
-          enum: ['all', 'aplha', 'graphic']
+          enum: ['all', 'alpha', 'graphic']
         },
         case: caseSchema
       },

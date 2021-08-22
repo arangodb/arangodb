@@ -160,7 +160,7 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
           </Cell>
         </Grid>
       </ModalHeader>
-      <ModalBody>
+      <ModalBody maximize={true}>
         <Grid>
           {
             state.showJsonForm
