@@ -63,7 +63,8 @@ struct GraphFormat;
 template <typename V, typename E>
 class GraphStore final {
  public:
-  GraphStore(TRI_vocbase_t& vocbase, GraphFormat<V, E>* graphFormat);
+  GraphStore(TRI_vocbase_t& vocbase, uint64_t executionNumber,
+             GraphFormat<V, E>* graphFormat);
 
   uint64_t numberVertexSegments() const {
     return _vertices.size();
@@ -99,7 +100,8 @@ class GraphStore final {
                  uint64_t numVertices, traverser::EdgeCollectionInfo& info);
   
   void storeVertices(std::vector<ShardID> const& globalShards,
-                     RangeIterator<Vertex<V,E>>& it);
+                     RangeIterator<Vertex<V,E>>& it,
+                     size_t threadNumber);
 
   uint64_t determineVertexIdRangeStart(uint64_t numVertices);
   
@@ -113,6 +115,7 @@ class GraphStore final {
   
  private:
   DatabaseGuard _vocbaseGuard;
+  uint64_t const _executionNumber;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
   WorkerConfig* _config = nullptr;
 
