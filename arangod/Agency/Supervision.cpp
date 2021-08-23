@@ -329,7 +329,6 @@ void Supervision::upgradeAgency() {
   {
     VPackArrayBuilder trxs(&builder);
     upgradeZero(builder);
-    fixPrototypeChain(builder);
     upgradeOne(builder);
     upgradeHealthRecords(builder);
     upgradeMaintenance(builder);
@@ -2576,56 +2575,6 @@ void Supervision::enforceReplication() {
   }
 }
 
-
-void Supervision::fixPrototypeChain(Builder& migrate) {
-  _lock.assertLockedByCurrentThread();
-
-  auto const& snap = snapshot();
-
-  std::function<std::string(std::string const&, std::string const&)> resolve;
-  resolve = [&](std::string const& db, std::string const& col) {
-    std::string s;
-    auto const& tmp_n = snap.hasAsNode(planColPrefix + db + "/" + col);
-    if (tmp_n) {
-      Node const& n = tmp_n->get();
-      s = n.hasAsString("distributeShardsLike").value();
-    }
-    return (s.empty()) ? col : resolve(db, s);
-  };
-
-  for (auto const& database : snapshot().hasAsChildren(planColPrefix).value().get()) {
-    for (auto const& collection : database.second->children()) {
-      if (collection.second->has("distributeShardsLike")) {
-        auto prototype =
-            (*collection.second).hasAsString("distributeShardsLike").value();
-        if (!prototype.empty()) {
-          std::string u;
-          try {
-            u = resolve(database.first, prototype);
-          } catch (...) {
-          }
-          if (u != prototype) {
-            {
-              VPackArrayBuilder trx(&migrate);
-              {
-                VPackObjectBuilder oper(&migrate);
-                migrate.add(planColPrefix + database.first + "/" +
-                                collection.first + "/" + "distributeShardsLike",
-                            VPackValue(u));
-              }
-              {
-                VPackObjectBuilder prec(&migrate);
-                migrate.add(planColPrefix + database.first + "/" +
-                                collection.first + "/" + "distributeShardsLike",
-                            VPackValue(prototype));
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
 
 // Shrink cluster if applicable, guarded by caller
 void Supervision::shrinkCluster() {
