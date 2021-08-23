@@ -22,6 +22,7 @@
 
 #include <gtest/gtest.h>
 
+#include <Basics/VelocyPackHelper.h>
 #include <Replication2/Mocks/AsyncFollower.h>
 #include <utility>
 
@@ -56,7 +57,7 @@ struct LogMultiplexerConcurrencyTest : LogMultiplexerTestBase {
           auto [start, stop] = iter->range();
           TRI_ASSERT(start != stop);
           while (auto memtry = iter->next()) {
-            self->_state.emplace(*memtry);
+            self->_observedLog.emplace(*memtry);
           }
           self->waitForStream(stop);
         } else {
@@ -65,7 +66,7 @@ struct LogMultiplexerConcurrencyTest : LogMultiplexerTestBase {
       });
     }
 
-    std::map<LogIndex, ValueType> _state;
+    std::map<LogIndex, ValueType> _observedLog;
     std::shared_ptr<streams::Stream<ValueType>> _stream;
   };
 
@@ -122,11 +123,37 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
   auto leaderInstance = std::make_shared<LeaderInstance>(leader);
 
   auto producer = leaderInstance->_mux->getStreamById<test::my_int_stream_id>();
-  auto index = LogIndex{0};
-  for (std::size_t i = 0; i < 100000; i++) {
-    index = producer->insert(i);
-  }
 
-  leader->waitFor(index).wait();
+  constexpr std::size_t num_threads = 5;
+  constexpr std::size_t num_inserts_per_thread = 10000;
+
+  std::vector<std::thread> threads;
+  std::generate_n(std::back_inserter(threads), num_threads, [&]{
+    return std::thread([producer]{
+      auto index = LogIndex{0};
+      for (std::size_t i = 0; i < num_inserts_per_thread; i++) {
+        index = producer->insert(i);
+      }
+      producer->waitFor(index).wait();
+    });
+  });
+
+  std::for_each(std::begin(threads), std::end(threads), [](std::thread& t) {
+    t.join();
+  });
+  asyncFollower->waitFor(LogIndex{num_threads * num_inserts_per_thread + 1}).wait();
   asyncFollower->stop();
+
+  auto iterA = follower->waitForIterator(LogIndex{1}).get();
+  auto iterB = leader->waitForIterator(LogIndex{1}).get();
+
+  EXPECT_EQ(iterA->range(), iterB->range());
+  while (auto A = iterA->next()) {
+    auto B = iterB->next();
+    ASSERT_TRUE(B.has_value());
+    EXPECT_EQ(A->logIndex(), B->logIndex());
+    bool equal = basics::VelocyPackHelper::equal(A->logPayload(), B->logPayload(), true);
+    EXPECT_TRUE(equal) << A->logPayload().toJson() << " " << B->logPayload().toJson();
+  }
+  EXPECT_FALSE(iterB->next().has_value());
 }

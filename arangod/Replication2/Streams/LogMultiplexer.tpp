@@ -52,16 +52,32 @@
 namespace arangodb::replication2::streams {
 
 namespace {
-
+template <typename Descriptor, typename Queue, typename Result, typename Block = StreamInformationBlock<Descriptor>>
+auto allUnresolved(std::pair<Queue, Result>& q) {
+  return std::all_of(std::begin(q.first), std::end(q.first),
+                     [&](auto const& pair) { return !pair.second.isFulfilled(); });
+}
 template <typename Descriptor, typename Queue, typename Result, typename Block = StreamInformationBlock<Descriptor>>
 auto resolvePromiseSet(std::pair<Queue, Result>& q) {
-  std::for_each(std::begin(q.first), std::end(q.first),
-                [&](auto& pair) { pair.second.setValue(q.second); });
+  TRI_ASSERT(allUnresolved<Descriptor>(q));
+  std::for_each(std::begin(q.first), std::end(q.first), [&](auto& pair) {
+    TRI_ASSERT(!pair.second.isFulfilled());
+    if (!pair.second.isFulfilled()) {
+      pair.second.setValue(q.second);
+    }
+  });
+}
+
+template <typename... Descriptors, typename... Pairs, std::size_t... Idxs>
+auto resolvePromiseSets(stream_descriptor_set<Descriptors...>, std::index_sequence<Idxs...>, std::tuple<Pairs...>& pairs) {
+  (resolvePromiseSet<Descriptors>(std::get<Idxs>(pairs)), ...);
 }
 
 template <typename... Descriptors, typename... Pairs>
 auto resolvePromiseSets(stream_descriptor_set<Descriptors...>, std::tuple<Pairs...>& pairs) {
-  (resolvePromiseSet<Descriptors>(std::get<Pairs>(pairs)), ...);
+  TRI_ASSERT((allUnresolved<Descriptors>(std::get<Pairs>(pairs)) && ...));
+  resolvePromiseSets(stream_descriptor_set<Descriptors...>{}, std::index_sequence_for<Descriptors...>{}, pairs);
+
 }
 }  // namespace
 
@@ -234,7 +250,9 @@ struct LogMultiplexerImplementation
         return futures::Future<W>{std::in_place};
       }
       auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
-      return block.registerWaitFor(index);
+      return block.registerWaitFor(index).thenValue([index](auto&& value) {
+        return std::forward<decltype(value)>(value);
+      });
     });
   }
 
@@ -275,7 +293,8 @@ struct LogMultiplexerImplementation
 
   void triggerWaitForIndex(LogIndex waitForIndex) {
     auto f = _interface->waitFor(waitForIndex);
-    std::move(f).thenValue([weak = this->weak_from_this()](replicated_log::WaitForResult&& result) {
+    std::move(f).thenValue([weak = this->weak_from_this()](
+                               replicated_log::WaitForResult&& result) noexcept {
       // First lock the shared pointer
       if (auto locked = weak.lock(); locked) {
         auto that = std::static_pointer_cast<SelfClass>(locked);
