@@ -28,74 +28,72 @@ namespace arangodb::replication2::streams {
  * This is the implementation of the stream interfaces. They are just proxy
  * objects that static_cast the this pointer to the respective implementor and
  * forward the call, annotated with the stream descriptor.
- * @tparam Self Implementor Top Class
+ * @tparam Implementation Implementor Top Class
  * @tparam Descriptor Stream Descriptor
- * @tparam StreamTypeTemplate Stream<T> or ProducerStream<T>
+ * @tparam StreamInterface Stream<T> or ProducerStream<T>
  */
-template <typename Self, typename Descriptor, template <typename> typename StreamTypeTemplate>
+template <typename Implementation, typename Descriptor, template <typename> typename StreamInterface>
 struct StreamGenericImplementationBase
-    : virtual StreamGenericBase<Descriptor, StreamTypeTemplate> {
+    : virtual StreamGenericBase<Descriptor, StreamInterface> {
   static_assert(is_stream_descriptor_v<Descriptor>);
 
   using ValueType = stream_descriptor_type_t<Descriptor>;
-  using StreamType = streams::Stream<ValueType>;
-  using EntryViewType = StreamEntryView<ValueType>;
-  using Iterator = TypedLogRangeIterator<EntryViewType>;
-  using WaitForResult = typename Stream<ValueType>::WaitForResult;
+  using Iterator = TypedLogRangeIterator<StreamEntryView<ValueType>>;
+  using WaitForResult = typename StreamInterface<ValueType>::WaitForResult;
 
   auto waitForIterator(LogIndex index) -> futures::Future<std::unique_ptr<Iterator>> final {
-    return self().template waitForIteratorInternal<Descriptor>(index);
+    return implementation().template waitForIteratorInternal<Descriptor>(index);
   }
   auto waitFor(LogIndex index) -> futures::Future<WaitForResult> final {
-    return self().template waitForInternal<Descriptor>(index);
+    return implementation().template waitForInternal<Descriptor>(index);
   }
   auto release(LogIndex index) -> void final {
-    return self().template releaseInternal<Descriptor>(index);
+    return implementation().template releaseInternal<Descriptor>(index);
   }
   auto getAllEntriesIterator() -> std::unique_ptr<Iterator> final {
-    return self().template getIteratorInternal<Descriptor>();
+    return implementation().template getIteratorInternal<Descriptor>();
   }
 
- protected:
-  auto self() -> Self& { return static_cast<Self&>(*this); }
+ private:
+  auto implementation() -> Implementation& { return static_cast<Implementation&>(*this); }
 };
 
 /**
  * Wrapper about StreamGenericImplementationBase, that adds depending on the
- * StreamType more methods. Is specialized for ProducerStream<T>.
- * @tparam Self Implementor Top Class
+ * StreamInterface more methods. Is specialized for ProducerStream<T>.
+ * @tparam Implementation Implementor Top Class
  * @tparam Descriptor Stream Descriptor
- * @tparam StreamTypeTemplate Stream<T> or ProducerStream<T>
+ * @tparam StreamInterface Stream<T> or ProducerStream<T>
  */
-template <typename Self, typename Descriptor, template <typename> typename StreamTypeTemplate>
+template <typename Implementation, typename Descriptor, template <typename> typename StreamInterface>
 struct StreamGenericImplementation
-    : StreamGenericImplementationBase<Self, Descriptor, StreamTypeTemplate> {};
-template <typename Self, typename Descriptor>
-struct StreamGenericImplementation<Self, Descriptor, ProducerStream>
-    : StreamGenericImplementationBase<Self, Descriptor, ProducerStream> {
+    : StreamGenericImplementationBase<Implementation, Descriptor, StreamInterface> {};
+template <typename Implementation, typename Descriptor>
+struct StreamGenericImplementation<Implementation, Descriptor, ProducerStream>
+    : StreamGenericImplementationBase<Implementation, Descriptor, ProducerStream> {
   using ValueType = stream_descriptor_type_t<Descriptor>;
   auto insert(ValueType const& t) -> LogIndex override {
-    return this->self().template insertInternal<Descriptor>(t);
+    return static_cast<Implementation*>(this)->template insertInternal<Descriptor>(t);
   }
 };
 
-template <typename Self, typename Descriptor>
-using StreamImplementation = StreamGenericImplementation<Self, Descriptor, Stream>;
-template <typename Self, typename Descriptor>
+template <typename Implementation, typename Descriptor>
+using StreamImplementation = StreamGenericImplementation<Implementation, Descriptor, Stream>;
+template <typename Implementation, typename Descriptor>
 using ProducerStreamImplementation =
-    StreamGenericImplementation<Self, Descriptor, ProducerStream>;
+    StreamGenericImplementation<Implementation, Descriptor, ProducerStream>;
 
 template <typename, typename, template <typename> typename>
-struct StreamDispatcher;
+struct ProxyStreamDispatcher;
 
 /**
  * Class that implements all streams as virtual base classes.
- * @tparam Self
+ * @tparam Implementation
  * @tparam Streams
- * @tparam StreamType
+ * @tparam StreamInterface
  */
-template <typename Self, typename... Streams, template <typename> typename StreamType>
-struct StreamDispatcher<Self, stream_descriptor_set<Streams...>, StreamType>
-    : StreamGenericImplementation<Self, Streams, StreamType>... {};
+template <typename Implementation, typename... Streams, template <typename> typename StreamInterface>
+struct ProxyStreamDispatcher<Implementation, stream_descriptor_set<Streams...>, StreamInterface>
+    : StreamGenericImplementation<Implementation, Streams, StreamInterface>... {};
 
-}
+}  // namespace arangodb::replication2::streams
