@@ -302,7 +302,7 @@ RestStatus RestIndexHandler::createIndex() {
     return RestStatus::DONE;
   }
   if (!suffixes.empty()) {
-    events::CreateIndex(_vocbase.name(), "(unknown)", body, TRI_ERROR_BAD_PARAMETER);
+    events::CreateIndexEnd(_vocbase.name(), "(unknown)", body, TRI_ERROR_BAD_PARAMETER);
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST " + _request->requestPath() +
                       "?collection=<collection-name>");
@@ -312,7 +312,7 @@ RestStatus RestIndexHandler::createIndex() {
   bool found = false;
   std::string cName = _request->value("collection", found);
   if (!found) {
-    events::CreateIndex(_vocbase.name(), "(unknown)", body,
+    events::CreateIndexEnd(_vocbase.name(), "(unknown)", body,
                         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
@@ -320,7 +320,7 @@ RestStatus RestIndexHandler::createIndex() {
 
   auto coll = collection(cName);
   if (coll == nullptr) {
-    events::CreateIndex(_vocbase.name(), cName, body, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+    events::CreateIndexEnd(_vocbase.name(), cName, body, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }

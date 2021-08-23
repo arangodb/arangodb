@@ -41,10 +41,10 @@ void TruncateCollection(std::string const& db, std::string const& name,
 void CreateDatabase(std::string const&, Result const&, ExecContext const&) {}
 void DropDatabase(std::string const&, Result const&, ExecContext const&) {}
 // index creation start
-void CreateIndex(std::string const& db, std::string const& col, VPackSlice slice) {}
+void CreateIndexStart(std::string const& db, std::string const& col, VPackSlice slice) {}
 // index creation result
-void CreateIndex(std::string const& db, std::string const& col,
-                 VPackSlice slice, ErrorCode result) {}
+void CreateIndexEnd(std::string const& db, std::string const& col,
+                    VPackSlice slice, ErrorCode result) {}
 void DropIndex(std::string const& db, std::string const& col,
                std::string const& idx, ErrorCode result) {}
 void CreateView(std::string const& db, std::string const& name, ErrorCode result) {}

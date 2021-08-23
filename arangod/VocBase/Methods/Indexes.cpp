@@ -337,8 +337,8 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
   // always log a message at the end of index creation
   auto logResultToAuditLog = scopeGuard([&]() {
     try {
-      events::CreateIndex(collection->vocbase().name(), collection->name(),
-                          input, ensureIndexResult);
+      events::CreateIndexEnd(collection->vocbase().name(), collection->name(),
+                             input, ensureIndexResult);
     } catch (...) {
       // nothing we can do
     }
@@ -430,7 +430,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
 
   TRI_ASSERT(!indexDef.isNone());
   // log a message for index creation start
-  events::CreateIndex(collection->vocbase().name(), collection->name(), indexDef);
+  events::CreateIndexStart(collection->vocbase().name(), collection->name(), indexDef);
 
   TRI_ASSERT(res.ok());
 
