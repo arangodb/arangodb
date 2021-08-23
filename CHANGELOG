@@ -1,6 +1,9 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* Append physical compaction of log collection to every Raft log compaction
+  (BTS-542).
+
 * Preselect "create index in background" option when creating indexes in the web
   UI. The "create index in background" option can be less intrusive because it
   allows other write operations on the collection to proceed.
