@@ -112,8 +112,29 @@ struct LogMultiplexerImplementationBase {
   }
 
   template <typename StreamDescriptor>
-  auto releaseInternal(LogIndex) -> void {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto releaseInternal(LogIndex index) -> void {
+    // update the release index for the given stream
+    // then compute the minimum and forward it to the
+    // actual log implementation
+    auto globalReleaseIndex = _guardedData.doUnderLock(
+        [&](MultiplexerData<Spec>& self) -> std::optional<LogIndex> {
+          {
+            auto& block = self.template getBlockForDescriptor<StreamDescriptor>();
+            auto newIndex = std::max(block._releaseIndex, index);
+            if (newIndex == block._releaseIndex) {
+              return std::nullopt;
+            }
+            TRI_ASSERT(newIndex > block._releaseIndex);
+            block._releaseIndex = newIndex;
+          }
+
+          return self.minReleaseIndex();
+        });
+
+    if (globalReleaseIndex) {
+      // TODO handle return value
+      std::ignore = _interface->release(*globalReleaseIndex);
+    }
   }
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
@@ -157,7 +178,7 @@ struct LogMultiplexerImplementationBase {
 
     auto getWaitForResolveSetAll(LogIndex commitIndex) {
       return std::make_tuple(std::make_pair(
-          std::get<StreamInformationBlock<Descriptors>>(_blocks).getWaitForResolveSet(commitIndex),
+          getBlockForDescriptor<Descriptors>().getWaitForResolveSet(commitIndex),
           typename StreamInformationBlock<Descriptors>::WaitForResult{})...);
     }
 
@@ -170,6 +191,15 @@ struct LogMultiplexerImplementationBase {
         return _firstUncommittedIndex;
       }
       return std::nullopt;
+    }
+
+    auto minReleaseIndex() -> LogIndex {
+      return std::min({getBlockForDescriptor<Descriptors>()._releaseIndex...});
+    }
+
+    template <typename Descriptor>
+    auto getBlockForDescriptor() -> StreamInformationBlock<Descriptor>& {
+      return std::get<StreamInformationBlock<Descriptor>>(_blocks);
     }
   };
 
@@ -260,7 +290,7 @@ struct LogMultiplexerImplementation
 
       // Now we insert the value T into the StreamsLog,
       // but it is not yet visible because of the commitIndex
-      auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
+      auto& block = self.template getBlockForDescriptor<StreamDescriptor>();
       block.appendEntry(insertIndex, t);
       return std::make_pair(insertIndex, self.checkWaitFor());
     });
