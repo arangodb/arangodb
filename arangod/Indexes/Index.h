@@ -370,7 +370,6 @@ class Index {
       std::underlying_type<Serialize>::type flags) const;
 
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
   virtual void load() = 0;
   virtual void unload() = 0;
