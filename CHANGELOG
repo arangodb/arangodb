@@ -4,6 +4,16 @@ devel
 * Fix internal iterator states after intermediate commits in write
   transactions. Iterators could point to invalid data after an
   intermediate commit, producing undefined behavior.
+  
+* Fix read-own-write behavior in different scenarios:
+    - in some case writes performed by an AQL query could be observed within
+      the same query. This was not intended and is fixed now.
+    - AQL queries in streaming transactions could observe their own writes in
+      even more cases, which could potentially result in an endless loops when
+      the query iterates over the same collection that it is inserting documents
+      into.
+    - UPSERT did not find documents inserted by a previous iteration if the
+      subquery relied on a non-unique secondary index.
 
 * Add ReplicatedLogs column family.
 
