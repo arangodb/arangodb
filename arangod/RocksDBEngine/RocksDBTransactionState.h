@@ -77,6 +77,8 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
 
+  void disableIntermediateCommits() override;
+
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
   ///       transaction is committed

@@ -59,6 +59,7 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
@@ -299,6 +300,13 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
   ++statistics()._transactionsAborted;
 
   return result;
+}
+
+void RocksDBTransactionState::disableIntermediateCommits() {
+  TransactionState::disableIntermediateCommits();
+  if (_rocksMethods) {
+    _rocksMethods->disableIntermediateCommits();
+  }
 }
 
 void RocksDBTransactionState::beginQuery(bool isModificationQuery) {

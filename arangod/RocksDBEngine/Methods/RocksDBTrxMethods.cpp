@@ -66,6 +66,14 @@ Result RocksDBTrxMethods::beginTransaction() {
   return result;
 }
 
+void RocksDBTrxMethods::disableIntermediateCommits() {
+  TRI_ASSERT(!hasIntermediateCommitsEnabled());
+  if (_iteratorReadSnapshot) {
+    _db->ReleaseSnapshot(_iteratorReadSnapshot);
+    _iteratorReadSnapshot = nullptr;
+  }
+}
+
 rocksdb::ReadOptions RocksDBTrxMethods::iteratorReadOptions() const {
   if (hasIntermediateCommitsEnabled()) {
     rocksdb::ReadOptions ro = _readOptions;
@@ -133,8 +141,8 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
   }
 
   std::unique_ptr<rocksdb::Iterator> iterator;
-  // TODO - does this prevent iterator invalidation in case of intermediate commits?
   if (opts.readOwnWrites) {
+    TRI_ASSERT(!opts.checkIntermediateCommits || !hasIntermediateCommitsEnabled());
     iterator.reset(_rocksTransaction->GetIterator(opts, cf));
   } else {
     if (iteratorMustCheckBounds(ReadOwnWrites::no)) {

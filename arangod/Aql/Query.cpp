@@ -376,6 +376,10 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   TRI_ASSERT(plan != nullptr);
 
+  if (!plan->isIntermediateCommitAllowed()) {
+    _trx->state()->disableIntermediateCommits();
+  }
+
   // return the V8 context if we are in one
   exitV8Context();
 

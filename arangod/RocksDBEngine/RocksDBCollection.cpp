@@ -789,10 +789,11 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   uint64_t found = 0;
 
   VPackBuilder docBuffer;
-  auto iter = mthds->NewIterator(documentBounds.columnFamily(), [&](rocksdb::ReadOptions& ro) {
+  auto iter = mthds->NewIterator(documentBounds.columnFamily(), [&](ReadOptions& ro) {
     ro.iterate_upper_bound = &end;
     // we are going to blow away all data anyway. no need to blow up the cache
     ro.fill_cache = false;
+    ro.readOwnWrites = false;
     TRI_ASSERT(ro.snapshot);
   });
   for (iter->Seek(documentBounds.start());

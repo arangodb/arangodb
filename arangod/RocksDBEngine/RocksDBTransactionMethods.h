@@ -36,6 +36,11 @@ class RocksDBTransactionState;
 
 struct ReadOptions : public rocksdb::ReadOptions {
   bool readOwnWrites = false;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // only used to control whether we verify in NewIterator that we do not
+  // create a read-own-write iterator with intermediate commits enabled.
+  bool checkIntermediateCommits = true;
+#endif
 };
 
 class RocksDBTransactionMethods : public RocksDBMethods {
@@ -49,6 +54,8 @@ class RocksDBTransactionMethods : public RocksDBMethods {
 
   virtual Result abortTransaction() = 0;
   
+  virtual void disableIntermediateCommits() {}
+
   // Only relevant for RocksDBTrxMethods
   virtual Result checkIntermediateCommit(bool& hasPerformedIntermediateCommit) { return {}; }
   

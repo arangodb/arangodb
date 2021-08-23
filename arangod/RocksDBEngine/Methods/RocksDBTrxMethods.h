@@ -40,6 +40,8 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
 
   Result beginTransaction() override;
 
+  void disableIntermediateCommits() override;
+
   rocksdb::ReadOptions iteratorReadOptions() const override;
   
   void prepareOperation(DataSourceId cid, RevisionId rid, TRI_voc_document_operation_e operationType) override;
@@ -100,8 +102,8 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// @brief this WriteBatch can be used to satisfy read operations in a streamin trx.
   /// _readWriteBatch can have three different states:
   ///   - nullptr
-  ///   - pointing to a copy (__ownsReadWriteBatch == true)
-  ///   - pointing to _rockTransaction's underlying WriteBatch (__ownsReadWriteBatch == false)
+  ///   - pointing to a copy (_ownsReadWriteBatch == true)
+  ///   - pointing to _rockTransaction's underlying WriteBatch (_ownsReadWriteBatch == false)
   ///
   /// If _readWriteBatch is null, read operations without read-own-writes semantic are
   /// performed directly on the DB using the snapshot, otherwise on _rocksTransaction. 

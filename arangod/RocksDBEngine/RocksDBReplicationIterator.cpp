@@ -79,11 +79,12 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
   rocksdb::ColumnFamilyHandle* cf = _bounds.columnFamily();
   _cmp = cf->GetComparator();
 
-  _iter = methods->NewIterator(cf, [this](rocksdb::ReadOptions& ro) {
+  _iter = methods->NewIterator(cf, [this](ReadOptions& ro) {
     ro.verify_checksums = false;
     ro.fill_cache = false;
     ro.prefix_same_as_start = true;
     ro.iterate_upper_bound = &_rangeBound;
+    ro.readOwnWrites = false;
   });
   if (_iter == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to build RocksDBRevisionReplicationIterator for transaction");
@@ -92,6 +93,8 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
 }
 
 bool RocksDBRevisionReplicationIterator::hasMore() const {
+  // TODO - check if the comparator is still necessary (thus the assertion)
+  TRI_ASSERT(!_iter->Valid() || _cmp->Compare(_iter->key(), _bounds.end()) <= 0);
   return _iter->Valid() && _cmp->Compare(_iter->key(), _bounds.end()) <= 0;
 }
 
