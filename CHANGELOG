@@ -1,8 +1,49 @@
-v3.7.14 (XXXX-XX-XX)
+v3.7.15 (XXXX-XX-XX)
 --------------------
 
 * When creating Pregel memory-mapped files, create them with O_TMPFILE attribute
   on Linux so that files are guaranteed to vanish even if a process dies.
+
+* Preselect "create index in background" option when creating indexes in the web
+  UI. The "create index in background" option can be less intrusive because it
+  allows other write operations on the collection to proceed.
+
+* Do not block a scheduler thread on the coordinator while an index is being 
+  created. Instead, start a background thread for the actual index 
+  fill-up work. The original thread can then be relinquished until the index
+  is completely filled or index creation has failed. This also allows
+  obsoleting the startup option `--cluster.index-create-timeout`, which from
+  now on is ignored when set.
+
+* Fixed: getResponsibleShard call on disjoint Smart Graphs if you asked for the
+  responsible shard on a disjoint edge collection where the _from and _to differ
+  (invalid), the server would respond with "DATASOURCE_NOT_FOUND". This is now
+  fixed to "BAD_PARAMETER" to emphasize that the collection is fine but the
+  input is invalid.
+
+* Fixed: _api/transaction/begin called on edge collections of disjoint
+  SmartGraphs falsely returned CollectionNotFound errors.
+
+* Bug-Fix: In more complex queries there was a code-path where a (Disjoint-)
+  Smart graph access was not properly optimized.
+
+* Fixed an assertion failure in unit tests for fuerte. There was a discrepancy
+  between the code and the associated TLA+ model for fuerte.
+
+* Improve log messages for Pregel runs by giving them more context.
+
+* Append physical compaction of log collection to every Raft log compaction.
+  Restrict agent RocksDB block cache and write buffer sizes (BTS-542).
+
+* Fixed issue #14592: IS_NULL(@x) isn't recognized as a constant expression.
+
+* Fix response when isBuilding could not be removed from newly created
+  collection, when agency precondition fails. This can happen, when own rebootId
+  increment has triggered plan entry to be removed (BTS-370).
+
+
+v3.7.14 (2021-08-07)
+-------------------
 
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented cases
   and numerically unstable behaviour. In particular, the case of the

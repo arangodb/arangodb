@@ -41,7 +41,7 @@ namespace methods {
 /// Common code for ensureIndexes and api-index.js
 struct Indexes {
   static arangodb::Result getIndex(LogicalCollection const* collection,
-                                   velocypack::Slice const& indexId, velocypack::Builder&,
+                                   velocypack::Slice indexId, velocypack::Builder&,
                                    transaction::Methods* trx = nullptr);
 
   /// @brief get all indexes, skips view links
@@ -55,7 +55,7 @@ struct Indexes {
                                       bool unique, bool sparse);
 
   static arangodb::Result ensureIndex(LogicalCollection* collection,
-                                      velocypack::Slice const& definition,
+                                      velocypack::Slice definition,
                                       bool create, velocypack::Builder& output);
 
   static arangodb::Result drop(LogicalCollection* collection,

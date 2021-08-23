@@ -466,6 +466,8 @@
         type = $('#newIndexType').children().first().attr('value');
         $('#newIndexType').val(arangoHelper.escapeHtml(type));
       }
+      // select "create in background" by default
+      $('#new' + type + 'Background').prop('checked', true);
       $('#newIndexType' + type).show();
     },
 
