@@ -406,8 +406,14 @@ bool RestAqlHandler::registerSnippets(
       query.release();
       answerBuilder.add(it.key);
       answerBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(qId)));
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("366b8", WARN, arangodb::Logger::AQL)
+          << "could not keep query in registry: " << ex.what();
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+                    std::string("could not keep query in registry: ") + ex.what());
+      return false;
     } catch (...) {
-      LOG_TOPIC("e7ea6", ERR, arangodb::Logger::AQL)
+      LOG_TOPIC("e7ea6", WARN, arangodb::Logger::AQL)
           << "could not keep query in registry";
       generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                     "could not keep query in registry");

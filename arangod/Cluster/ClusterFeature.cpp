@@ -93,6 +93,9 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                              "path to log directory for the cluster", true);
   options->addObsoleteOption("--cluster.arangod-path",
                              "path to the arangod for the cluster", true);
+  options->addObsoleteOption("--cluster.index-create-timeout",
+      "amount of time (in seconds) the coordinator will wait for an index to "
+      "be created before giving up", true);
 
   options->addOption(
       "--cluster.require-persisted-id",
@@ -160,13 +163,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--cluster.create-waits-for-sync-replication",
       "active coordinator will wait for all replicas to create collection",
       new BooleanParameter(&_createWaitsForSyncReplication),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
-
-  options->addOption(
-      "--cluster.index-create-timeout",
-      "amount of time (in seconds) the coordinator will wait for an index to "
-      "be created before giving up",
-      new DoubleParameter(&_indexCreationTimeout),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 

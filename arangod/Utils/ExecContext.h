@@ -38,7 +38,7 @@ class Methods;
 /// context in which this thread is executed.
 /// We should strive to have it always accessible
 /// from ExecContext::CURRENT. Inherits from request
-/// context for convencience
+/// context for convenience
 class ExecContext : public RequestContext {
   friend struct ExecContextScope;
   friend struct ExecContextSuperuserScope;
