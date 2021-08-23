@@ -318,7 +318,7 @@ function BaseChaosSuite(testOpts) {
 }
 
 // truncate is disabled because it does not work reliably ATM
-const params = ["IntermediateCommits", "FailurePoints", "Delays", /*"Truncate",*/ "VaryingOverwriteMode", "StreamingTransactions"];
+const params = ["IntermediateCommits", "FailurePoints", "Delays", "Truncate", "VaryingOverwriteMode", "StreamingTransactions"];
 
 const makeConfig = (paramValues) => {
   let suffix = "";
