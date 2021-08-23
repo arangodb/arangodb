@@ -154,7 +154,7 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase,
         continue;
       }
 
-      auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Get,
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator, fuerte::RestVerb::Get,
                                     url, body, options, buildHeaders());
       futures.emplace_back(std::move(f));
     }
