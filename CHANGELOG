@@ -1,6 +1,13 @@
 devel
 -----
 
+* Change the default value for the `--threads` startup parameter of the
+  following client tools from previously 2 to the maximum of 2 and the
+  number of available CPU cores:
+  - arangodump
+  - arangoimport
+  - arangorestore
+
 * Fix wrong assertion in fuerte and move it to where the TLA+ model says
   it should be. This fixes a unit test failure occurring on newer Macs
   with a certain clang version.
