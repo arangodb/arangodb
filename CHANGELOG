@@ -1,6 +1,15 @@
 devel
 -----
 
+* Fix wrong assertion in fuerte and move it to where the TLA+ model says
+  it should be. This fixes a unit test failure occurring on newer Macs
+  with a certain clang version.
+
+* Remove old fixPrototypeChain agency migration, which was introduced in 3.2
+  and is no longer necessary. This will make it impossible to upgrade
+  directly from a version < 3.2 to a version >= 3.9, provided one has
+  a chain of `distributeShardsLike` collections.
+
 * Added metrics for the number of errors and warnings logged:
   - `arangodb_logger_warnings_total`: total number of warnings (WARN messages)
     logged since server start.
