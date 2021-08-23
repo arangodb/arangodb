@@ -99,6 +99,7 @@ void TRI_TerminateDebugging(char const* message) {
     // the program but continues.
     auto f = []() noexcept {
       // intentionally crashes the program!
+      // cppcheck-suppress *
       return std::string(nullptr);
     };
     f();
@@ -107,7 +108,9 @@ void TRI_TerminateDebugging(char const* message) {
   } else if (s == "CRASH-HANDLER-TEST-SEGFAULT") {
     std::unique_ptr<int> x;
     // intentionally crashes the program!
+    // cppcheck-suppress *
     int a = *x;
+    // cppcheck-suppress *
     *x = 2;
     TRI_ASSERT(a == 1);
   } else if (s == "CRASH-HANDLER-TEST-ASSERT") {
