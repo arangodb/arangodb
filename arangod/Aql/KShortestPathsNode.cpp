@@ -341,6 +341,7 @@ ExecutionNode* KShortestPathsNode::clone(ExecutionPlan* plan, bool withDependenc
 void KShortestPathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan,
                                                    KShortestPathsNode& c,
                                                    bool withProperties) const {
+  graphCloneHelper(plan, c, withProperties);
   if (usesPathOutVariable()) {
     auto pathOutVariable = _pathOutVariable;
     if (withProperties) {
