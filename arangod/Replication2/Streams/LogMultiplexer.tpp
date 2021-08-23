@@ -81,6 +81,72 @@ auto resolvePromiseSets(stream_descriptor_set<Descriptors...>, std::tuple<Pairs.
 }
 }  // namespace
 
+template <typename Derived, typename Base, typename Spec, template <typename> typename StreamInterface, typename Interface>
+struct LogMultiplexerBase : Base, StreamDispatcher<Derived, Spec, StreamInterface> {
+  explicit LogMultiplexerBase(std::shared_ptr<Interface> const& interface)
+      : _interface(interface) {}
+
+  template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
+            typename E = StreamEntryView<T>>
+  auto waitForIteratorInternal(LogIndex first)
+      -> futures::Future<std::unique_ptr<TypedLogRangeIterator<E>>> {
+    return waitForInternal<StreamDescriptor>(first).thenValue(
+        [that = std::static_pointer_cast<Derived>(this->shared_from_this()), first](auto&&) {
+          return that->_guardedData.doUnderLock([&](MultiplexerData<Spec>& self) {
+            auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
+            return block.getIteratorRange(first, self._firstUncommittedIndex);
+          });
+        });
+  }
+
+  template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
+            typename W = typename Stream<T>::WaitForResult>
+  auto waitForInternal(LogIndex index) -> futures::Future<W> {
+    return _guardedData.doUnderLock([&](MultiplexerData<Spec>& self) {
+      if (self._firstUncommittedIndex > index) {
+        return futures::Future<W>{std::in_place};
+      }
+      auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
+      return block.registerWaitFor(index);
+    });
+  }
+
+  template <typename StreamDescriptor>
+  auto releaseInternal(LogIndex) -> void {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
+            typename E = StreamEntryView<T>>
+  auto getIteratorInternal() -> std::unique_ptr<TypedLogRangeIterator<E>> {
+    using BlockType = StreamInformationBlock<StreamDescriptor>;
+
+    return _guardedData.template doUnderLock([](MultiplexerData<Spec>& self) {
+      auto& block = std::get<BlockType>(self._blocks);
+      return block.getIterator();
+    });
+  }
+
+ private:
+  template <typename>
+  struct MultiplexerData;
+  template <typename... Descriptors>
+  struct MultiplexerData<stream_descriptor_set<Descriptors...>> {
+    std::tuple<StreamInformationBlock<Descriptors>...> _blocks;
+    LogIndex _firstUncommittedIndex{1};
+    bool _pendingWaitFor{false};
+
+    void digestIterator(LogRangeIterator& iter);
+
+    auto getWaitForResolveSetAll(LogIndex commitIndex);
+  };
+
+  Guarded<MultiplexerData<Spec>, basics::UnshackledMutex> _guardedData{};
+  std::shared_ptr<Interface> const _interface;
+
+  auto self() -> Derived& { return static_cast<Derived&>(*this); }
+};
+
 template <typename Spec, typename Interface>
 struct LogDemultiplexerImplementation
     : LogDemultiplexer<Spec>,
@@ -92,15 +158,7 @@ struct LogDemultiplexerImplementation
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
             typename E = StreamEntryView<T>>
   auto waitForIteratorInternal(LogIndex first)
-      -> futures::Future<std::unique_ptr<TypedLogRangeIterator<E>>> {
-    return waitForInternal<StreamDescriptor>(first).thenValue(
-        [that = std::static_pointer_cast<SelfClass>(this->shared_from_this()), first](auto&&) {
-          return that->_guardedData.doUnderLock([&](MultiplexerData<Spec>& self) {
-            auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
-            return block.getIteratorRange(first, self._nextIndex);
-          });
-        });
-  }
+      -> futures::Future<std::unique_ptr<TypedLogRangeIterator<E>>>;
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
             typename W = typename Stream<T>::WaitForResult>
@@ -232,15 +290,7 @@ struct LogMultiplexerImplementation
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
             typename E = StreamEntryView<T>>
   auto waitForIteratorInternal(LogIndex first)
-      -> futures::Future<std::unique_ptr<TypedLogRangeIterator<E>>> {
-    return waitForInternal<StreamDescriptor>(first).thenValue(
-        [that = std::static_pointer_cast<SelfClass>(this->shared_from_this()), first](auto&&) {
-          return that->_guarded.doUnderLock([&](MultiplexerData<Spec>& self) {
-            auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
-            return block.getIteratorRange(first, self._commitIndex + 1);
-          });
-        });
-  }
+      -> futures::Future<std::unique_ptr<TypedLogRangeIterator<E>>>;
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
             typename W = typename Stream<T>::WaitForResult>
@@ -250,7 +300,7 @@ struct LogMultiplexerImplementation
         return futures::Future<W>{std::in_place};
       }
       auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
-      return block.registerWaitFor(index).thenValue([index](auto&& value) {
+      return block.registerWaitFor(index).thenValue([](auto&& value) {
         return std::forward<decltype(value)>(value);
       });
     });
@@ -363,6 +413,32 @@ struct LogMultiplexerImplementation
   Guarded<MultiplexerData<Spec>, basics::UnshackledMutex> _guarded;
   std::shared_ptr<Interface> const _interface;
 };
+
+template <typename Spec, typename Interface>
+template <typename StreamDescriptor, typename T, typename E>
+auto LogDemultiplexerImplementation<Spec, Interface>::waitForIteratorInternal(LogIndex first)
+    -> futures::Future<std::unique_ptr<TypedLogRangeIterator<E>>> {
+  return waitForInternal<StreamDescriptor>(first).thenValue(
+      [that = std::static_pointer_cast<SelfClass>(this->shared_from_this()), first](auto&&) {
+        return that->_guardedData.doUnderLock([&](MultiplexerData<Spec>& self) {
+          auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
+          return block.getIteratorRange(first, self._nextIndex);
+        });
+      });
+}
+
+template <typename Spec, typename Interface>
+template <typename StreamDescriptor, typename T, typename E>
+auto LogMultiplexerImplementation<Spec, Interface>::waitForIteratorInternal(LogIndex first)
+    -> futures::Future<std::unique_ptr<TypedLogRangeIterator<E>>> {
+  return waitForInternal<StreamDescriptor>(first).thenValue(
+      [that = std::static_pointer_cast<SelfClass>(this->shared_from_this()), first](auto&&) {
+        return that->_guarded.doUnderLock([&](MultiplexerData<Spec>& self) {
+          auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
+          return block.getIteratorRange(first, self._commitIndex + 1);
+        });
+      });
+}
 
 template <typename Spec>
 auto LogDemultiplexer<Spec>::construct(std::shared_ptr<replicated_log::ILogParticipant> interface)
