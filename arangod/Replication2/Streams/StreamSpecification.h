@@ -99,6 +99,11 @@ struct stream_descriptor_set {
   static_assert((is_stream_descriptor_v<Descriptors> && ...));
 
   static constexpr auto length = sizeof...(Descriptors);
+
+  template<typename F, typename... Args>
+  static void for_each_descriptor(F&& f, Args&&... args) {
+    (std::invoke(std::forward<F>(f), Descriptors{}, std::forward<Args>(args)...), ...);
+  }
 };
 
 template <typename>

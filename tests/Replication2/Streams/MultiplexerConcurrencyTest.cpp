@@ -124,8 +124,9 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
 
   auto producer = leaderInstance->_mux->getStreamById<test::my_int_stream_id>();
 
-  constexpr std::size_t num_threads = 5;
+  constexpr std::size_t num_threads = 8;
   constexpr std::size_t num_inserts_per_thread = 10000;
+  constexpr auto lastIndex = LogIndex{num_threads * num_inserts_per_thread + 1};
 
   std::vector<std::thread> threads;
   std::generate_n(std::back_inserter(threads), num_threads, [&]{
@@ -141,7 +142,7 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
   std::for_each(std::begin(threads), std::end(threads), [](std::thread& t) {
     t.join();
   });
-  asyncFollower->waitFor(LogIndex{num_threads * num_inserts_per_thread + 1}).wait();
+  asyncFollower->waitFor(lastIndex).wait();
   asyncFollower->stop();
 
   auto iterA = follower->waitForIterator(LogIndex{1}).get();
@@ -156,4 +157,19 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
     EXPECT_TRUE(equal) << A->logPayload().toJson() << " " << B->logPayload().toJson();
   }
   EXPECT_FALSE(iterB->next().has_value());
+
+  MyTestSpecification::for_each_descriptor([&](auto p) {
+    using Descriptor = decltype(p);
+    auto streamA = leaderInstance->_mux->getStreamByDescriptor<Descriptor >();
+    auto streamB = followerInstance->_demux->getStreamByDescriptor<Descriptor >();
+
+    auto iterA = streamA->waitForIterator(LogIndex{1}).get();
+    auto iterB = streamB->waitForIterator(LogIndex{1}).get();
+
+    EXPECT_EQ(iterA->range(), iterB->range());
+    while (auto A = iterA->next()) {
+      ASSERT_EQ(A, iterB->next());
+    }
+    EXPECT_FALSE(iterB->next().has_value());
+  });
 }

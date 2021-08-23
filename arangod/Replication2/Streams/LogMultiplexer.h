@@ -34,10 +34,9 @@ struct LogMultiplexerStreamDispatcher : std::enable_shared_from_this<Self>,
     return getStreamByDescriptor<Descriptor>();
   }
 
-  template <StreamId Id, typename Descriptor = stream_descriptor_by_id_t<Id, Spec>,
-            typename Type = stream_descriptor_type_t<Descriptor>>
-  auto getStreamById() -> std::shared_ptr<StreamType<Type>> {
-    return getStreamByDescriptor<Descriptor>();
+  template <StreamId Id>
+  auto getStreamById() -> std::shared_ptr<StreamType<stream_type_by_id_t<Id, Spec>>> {
+    return getStreamByDescriptor<stream_descriptor_by_id_t<Id, Spec>>();
   }
 
   template <typename Descriptor>
@@ -55,10 +54,8 @@ struct LogMultiplexerStreamDispatcher : std::enable_shared_from_this<Self>,
 template <typename Spec>
 struct LogDemultiplexer
     : LogMultiplexerStreamDispatcher<LogDemultiplexer<Spec>, Spec, Stream> {
-
   virtual auto digestIterator(LogRangeIterator& iter) -> void = 0;
   virtual auto listen() -> void = 0;
-
 
   static auto construct(std::shared_ptr<arangodb::replication2::replicated_log::ILogParticipant>)
       -> std::shared_ptr<LogDemultiplexer>;
@@ -74,7 +71,6 @@ struct LogDemultiplexer
 template <typename Spec>
 struct LogMultiplexer
     : LogMultiplexerStreamDispatcher<LogMultiplexer<Spec>, Spec, ProducerStream> {
-
   static auto construct(std::shared_ptr<arangodb::replication2::replicated_log::LogLeader> leader)
       -> std::shared_ptr<LogMultiplexer>;
 

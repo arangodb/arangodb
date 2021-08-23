@@ -52,14 +52,14 @@
 namespace arangodb::replication2::streams {
 
 namespace {
-template <typename Descriptor, typename Queue, typename Result, typename Block = StreamInformationBlock<Descriptor>>
+template <typename Queue, typename Result>
 auto allUnresolved(std::pair<Queue, Result>& q) {
   return std::all_of(std::begin(q.first), std::end(q.first),
                      [&](auto const& pair) { return !pair.second.isFulfilled(); });
 }
 template <typename Descriptor, typename Queue, typename Result, typename Block = StreamInformationBlock<Descriptor>>
 auto resolvePromiseSet(std::pair<Queue, Result>& q) {
-  TRI_ASSERT(allUnresolved<Descriptor>(q));
+  TRI_ASSERT(allUnresolved(q));
   std::for_each(std::begin(q.first), std::end(q.first), [&](auto& pair) {
     TRI_ASSERT(!pair.second.isFulfilled());
     if (!pair.second.isFulfilled()) {
@@ -69,15 +69,15 @@ auto resolvePromiseSet(std::pair<Queue, Result>& q) {
 }
 
 template <typename... Descriptors, typename... Pairs, std::size_t... Idxs>
-auto resolvePromiseSets(stream_descriptor_set<Descriptors...>, std::index_sequence<Idxs...>, std::tuple<Pairs...>& pairs) {
+auto resolvePromiseSets(stream_descriptor_set<Descriptors...>,
+                        std::index_sequence<Idxs...>, std::tuple<Pairs...>& pairs) {
   (resolvePromiseSet<Descriptors>(std::get<Idxs>(pairs)), ...);
 }
 
 template <typename... Descriptors, typename... Pairs>
 auto resolvePromiseSets(stream_descriptor_set<Descriptors...>, std::tuple<Pairs...>& pairs) {
-  TRI_ASSERT((allUnresolved<Descriptors>(std::get<Pairs>(pairs)) && ...));
-  resolvePromiseSets(stream_descriptor_set<Descriptors...>{}, std::index_sequence_for<Descriptors...>{}, pairs);
-
+  resolvePromiseSets(stream_descriptor_set<Descriptors...>{},
+                     std::index_sequence_for<Descriptors...>{}, pairs);
 }
 }  // namespace
 
