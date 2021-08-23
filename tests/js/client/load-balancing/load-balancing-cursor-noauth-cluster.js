@@ -92,14 +92,17 @@ function CursorSyncSuite (databaseName) {
   }
 
   return {
-    setUp: function() {
-      db._createDatabase(databaseName);
-      db._useDatabase(databaseName);
+    
+    setUpAll: function() {
       coordinators = getCoordinators();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
+    },
 
+    setUp: function() {
+      db._createDatabase(databaseName);
+      db._useDatabase(databaseName);
       cs = [];
       for (let i = 0; i < cns.length; i++) {
         db._drop(cns[i]);
@@ -117,7 +120,6 @@ function CursorSyncSuite (databaseName) {
       db._drop(cns[0]);
       db._drop(cns[1]);
       cs = [];
-      coordinators = [];
       db._useDatabase("_system");
       if(databaseName !== "_system") {
         db._dropDatabase(databaseName);
