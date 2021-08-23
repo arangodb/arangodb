@@ -252,6 +252,7 @@ class AnalyzerPool : private irs::util::noncopyable {
   AnalyzerValueType _inputType{ AnalyzerValueType::Undefined };
   AnalyzerValueType _returnType{ AnalyzerValueType::Undefined };
   AnalyzersRevision::Revision _revision{ AnalyzersRevision::MIN };
+  bool _requireMangling{false}; // analyzer pool requires field name mangling even in non-link usage
 }; // AnalyzerPool
 
 ////////////////////////////////////////////////////////////////////////////////
