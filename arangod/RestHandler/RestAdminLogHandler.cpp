@@ -425,8 +425,15 @@ void RestAdminLogHandler::handleLogLevel() {
     if (slice.isString()) {
       Logger::setLogLevel(slice.copyString());
     } else if (slice.isObject()) {
+      if (VPackSlice all = slice.get("all"); all.isString()) {
+        // handle "all" first, so we can do
+        // {"all":"info","requests":"debug"} or such
+        std::string const l = "all=" + all.copyString();
+        Logger::setLogLevel(l);
+      }
+      // now process all log topics except "all"
       for (auto it : VPackObjectIterator(slice)) {
-        if (it.value.isString()) {
+        if (it.value.isString() && !it.key.isEqualString("all")) {
           std::string const l = it.key.copyString() + "=" + it.value.copyString();
           Logger::setLogLevel(l);
         }
