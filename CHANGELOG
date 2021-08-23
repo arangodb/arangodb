@@ -1,6 +1,9 @@
 v3.7.15 (XXXX-XX-XX)
 --------------------
 
+* When creating Pregel memory-mapped files, create them with O_TMPFILE attribute
+  on Linux so that files are guaranteed to vanish even if a process dies.
+
 * Preselect "create index in background" option when creating indexes in the web
   UI. The "create index in background" option can be less intrusive because it
   allows other write operations on the collection to proceed.

@@ -115,8 +115,8 @@ struct PRMasterContext : public MasterContext {
   }
 
   void preApplication() override {
-    LOG_TOPIC("e0598", DEBUG, Logger::PREGEL) << "Using threshold " << _threshold;
-  };
+    LOG_TOPIC("e0598", DEBUG, Logger::PREGEL) << "Using threshold " << _threshold << " for pagerank";
+  }
 
   bool postGlobalSuperstep() override {
     float const* diff = getAggregatedValue<float>(kConvergence);
