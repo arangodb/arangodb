@@ -8427,5 +8427,6 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
     distributeNode->setVariable(variable);
     plan.insertBefore(distributeNode, calcNode);
     plan.clearVarUsageComputed();
+    plan.findVarUsage();
   }
 }
