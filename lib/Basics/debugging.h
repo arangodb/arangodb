@@ -209,19 +209,26 @@ struct NoOpStream {
   }
 };
 
+struct StringStreamWrapper {
+  template <typename T>
+  auto operator<<(T const& v) -> StringStreamWrapper& {
+    _stream << v;
+    return *this;
+  }
+
+  std::stringstream _stream;
+};
+
 struct AssertionLogger {
-  void operator&(std::stringstream const& str) {
-    std::string message = str.str();
+  void operator&(StringStreamWrapper const& wrapper) {
+    std::string message = wrapper._stream.str();
     arangodb::CrashHandler::assertionFailure(file, line, function, expr,
                                              message.empty() ? nullptr : message.c_str());
   }
-  void operator&(std::ostream const& os) {
-    operator&(static_cast<std::stringstream const&>(os));
-  }
-
+  void operator&(NoOpStream const&) {}
   const char* file;
   int line;
-  const char *function;
+  const char* function;
   const char* expr;
 };
 
@@ -234,16 +241,17 @@ struct AssertionLogger {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                        \
-  (!(ADB_LIKELY(expr)))                                                             \
-      ? (void)nullptr                                                               \
-      : arangodb::debug::AssertionLogger{__FILE__, __LINE__, __FUNCTION__, #expr} & \
-            (std::stringstream{})
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                          \
+  (ADB_LIKELY(expr))                                                                  \
+      ? (void)nullptr                                                                 \
+      : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__, __FUNCTION__, #expr} & \
+            (::arangodb::debug::StringStreamWrapper{})
 
 #else
 
 #define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/ \
-  (false) ? (void)(expr) : arangodb::debug::AssertionLogger{} & (NoOpStream{})
+  (false) ? (void)(expr)                     \
+          : ::arangodb::debug::AssertionLogger{} & (::arangodb::debug::NoOpStream{})
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 

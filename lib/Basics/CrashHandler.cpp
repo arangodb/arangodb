@@ -602,7 +602,7 @@ void CrashHandler::assertionFailure(char const* file, int line, char const* func
   appendNullTerminatedString(": ", p);
   appendNullTerminatedString(context, 256, p);
   if (message != nullptr) {
-    appendNullTerminatedString(" - ", p);
+    appendNullTerminatedString(" ; ", p);
     appendNullTerminatedString(message, p);
   }
 
