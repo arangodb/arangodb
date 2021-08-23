@@ -1,6 +1,9 @@
 v3.7.15 (XXXX-XX-XX)
 --------------------
 
+* Bug-Fix: In more complex queries there was a code-path where a (Disjoint-)
+  Smart graph access was not properly optimized.
+
 * Fixed an assertion failure in unit tests for fuerte. There was a discrepancy
   between the code and the associated TLA+ model for fuerte.
 
