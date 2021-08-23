@@ -707,9 +707,14 @@ module.exports =
     }
 
     static get _appPath () {
+      let dirName = internal.db._name();
+      if (!internal.isAllowedDatabaseName(dirName, false)) {
+        dirName = internal.db._id();
+      } 
       return APP_PATH ? (
-        path.join(APP_PATH, '_db', internal.db._name())
-        ) : undefined;
+        path.join(APP_PATH, '_db', dirName)
+      ) : undefined;
+
     }
 
     static get _systemAppPath () {

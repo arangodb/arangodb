@@ -1,6 +1,4 @@
 To do:
-- [ ] check request forwarding in load-balancer, add tests -- Julia
-- [ ] add test for Foxx directory names -- Julia
 - [ ] check location headers / http redirects
 - [ ] check web interface
 - [ ] check cluster and agency
@@ -22,3 +20,5 @@ To do:
 - [x] check arangorestore, add tests -- Julia 
 - [x] add tests for NameValidator(s) -- Julia
 - [x] check arangosh -- Julia
+- [x] check request forwarding in load-balancer, add tests -- Julia
+- [x] add test for Foxx directory names -- Julia
