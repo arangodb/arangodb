@@ -324,7 +324,7 @@ class fs_index_input : public buffered_index_input {
 
  protected:
   virtual void seek_internal(size_t pos) override final {
-    if (pos >= handle_->size) {
+    if (pos > handle_->size) {
       throw io_error(string_utils::to_string(
         "seek out of range for input file, length '" IR_SIZE_T_SPECIFIER "', position '" IR_SIZE_T_SPECIFIER "'",
         handle_->size, pos));

@@ -124,6 +124,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/InputRangeTest.cpp
   Aql/InsertExecutorTest.cpp
   Aql/KShortestPathsExecutorTest.cpp
+  Aql/KShortestPathNodeTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MockTypedNode.cpp
   Aql/NgramMatchFunctionTest.cpp
@@ -142,6 +143,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/RowFetcherHelper.cpp
   Aql/ScatterExecutorTest.cpp
   Aql/ShortestPathExecutorTest.cpp
+  Aql/ShortestPathNodeTest.cpp
   Aql/SkipResultTest.cpp
   Aql/SortedCollectExecutorTest.cpp
   Aql/SortExecutorTest.cpp
@@ -153,6 +155,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestLambdaExecutor.cpp
   Aql/TraversalExecutorTest.cpp
+  Aql/TraversalNodeTest.cpp
   Aql/UpdateExecutorTest.cpp
   Aql/UpsertExecutorTest.cpp
   Aql/VelocyPackHelper.cpp

@@ -270,15 +270,13 @@ class GeoQuery final : public irs::filter::prepared {
     typename Disjunction::doc_iterators_t itrs;
     itrs.reserve(state->states.size());
 
-    const auto& features = irs::flags::empty_instance();
-
     for (auto& entry : state->states) {
       assert(entry);
       if (!terms->seek(irs::bytes_ref::NIL, *entry)) {
         return irs::doc_iterator::empty(); // internal error
       }
 
-      auto docs = terms->postings(features);
+      auto docs = terms->postings(irs::IndexFeatures::NONE);
 
       itrs.emplace_back(std::move(docs));
 

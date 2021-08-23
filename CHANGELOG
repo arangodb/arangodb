@@ -1,6 +1,78 @@
 devel
 -----
 
+* Fix wrong assertion in fuerte and move it to where the TLA+ model says
+  it should be. This fixes a unit test failure occurring on newer Macs
+  with a certain clang version.
+
+* Remove old fixPrototypeChain agency migration, which was introduced in 3.2
+  and is no longer necessary. This will make it impossible to upgrade
+  directly from a version < 3.2 to a version >= 3.9, provided one has
+  a chain of `distributeShardsLike` collections.
+
+* Added metrics for the number of errors and warnings logged:
+  - `arangodb_logger_warnings_total`: total number of warnings (WARN messages)
+    logged since server start.
+  - `arangodb_logger_errors_total`: total number of errors (ERR messages)
+    logged since server start.
+
+* Added REST API `/_admin/support-info` to retrieve deployment information.
+  As this API may reveal sensitive data about the deployment, it can only 
+  be accessed from inside the system database. In addition, there is a
+  policy control startup option `--server.support-info-api` that 
+  determines if and to whom the API is made available. This option can
+  have the following values:
+  - `disabled`: support info API is disabled.
+  - `jwt`: support info API can only be accessed via superuser JWT.
+  - `hardened`: if `--server.harden` is set, the support info API can
+     only be accessed via superuser JWT. Otherwise it can be accessed
+     by admin users only.
+  - `public`: everyone with access to `_system` database can access the
+    support info API.
+
+* Fixes a bug in the maintenance's error-handling code. A shard error would
+  result in log messages like
+
+      WARNING [ceb1a] {maintenance} caught exception in Maintenance shards 
+      error reporting: Expecting Object
+      ERROR [c9a75] {maintenance} Error reporting in current: Expecting Object
+
+  and also prevent the maintenance from reporting the current state to the
+  agency, which in turn can prevent cluster-wide progress of various actions.
+
+* Send a keystroke to arangod's stdin when a shutdown command is received via
+  the REST API `/_admin/shutdown` and the server is started with the
+  `--console` argument. The keystroke will exit the blocking read loop that
+  is waiting on console input and that otherwise blocks the shutdown.
+  The implementation is based on ioctl and is thus only present on Linux and
+  MacOS.
+
+* Some AQL queries erroneously reported the "access after data-modification" 
+  error for queries in which there was a read attempt from a collection
+  _before_ a data-modification operation. Such access is legal and should not
+  trigger said error anymore. Accessing a collection _after_ in a query a 
+  data-modification in the same query is still disallowed.
+
+* Make AQL modification operations in a cluster asynchronous. This allows to
+  free the thread for other work until both the write and synchronous
+  replication are complete.
+
+* When creating Pregel memory-mapped files, create them with O_TMPFILE
+  attribute on Linux so that files are guaranteed to vanish even if a 
+  process dies.
+
+* Fixed: getResponsibleShard call on disjoint Smart Graphs
+  if you asked for the responsible shard on a disjoint edge collection
+  where the _from and _to differ (invalid), the server would respond with
+  "DATASOURCE_NOT_FOUND". This is now fixed to "BAD_PARAMETER"
+  to emphasize that the collection is fine but the input is invalid.
+
+* Fixed: /_api/transaction/begin called on edge collections of disjoint
+  SmartGraphs falsely returned CollectionNotFound errors.
+
+* Bugfix: In more complex queries there was a code-path where a (Disjoint-) 
+  Smart graph access was not properly optimized.
+
 * Improve log messages for Pregel runs by giving them more context.
 
 * Add ReplicatedLogs column family.

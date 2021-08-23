@@ -22,10 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
+
+extern "C" {
+#include <simdbitpacking.h>
+}
+
 #include "store/store_utils.hpp"
-#ifdef IRESEARCH_SSE2
-#include "store/store_utils_simd.hpp"
-#endif
 #include "utils/bytes_utils.hpp"
 
 using namespace irs;
@@ -220,7 +222,7 @@ void delta_encode_decode_core(size_t step, size_t count) {
 }
 
 void packed_read_write_core(const std::vector<uint32_t> &src) {
-  const size_t BLOCK_SIZE = 128;
+  static constexpr size_t BLOCK_SIZE = 128;
   uint32_t encoded[BLOCK_SIZE];
   const auto blocks = src.size() / BLOCK_SIZE;
   assert(blocks);
@@ -229,11 +231,19 @@ void packed_read_write_core(const std::vector<uint32_t> &src) {
   irs::bstring buf;
   irs::bytes_output out(buf);
 
+  auto pack = [](const uint32_t* decoded, uint32_t* encoded, const uint32_t bits) {
+    irs::packed::pack(decoded, decoded + BLOCK_SIZE, encoded, bits);
+  };
+
+  auto unpack = [](uint32_t* decoded, const uint32_t* encoded, const uint32_t bits) {
+    irs::packed::unpack(decoded, decoded + BLOCK_SIZE, encoded, bits);
+  };
+
   // write first n compressed blocks
   {
     auto begin = src.data();
     for (size_t i = 0; i < blocks; ++i) {
-      irs::encode::bitpack::write_block(out, begin, BLOCK_SIZE, encoded);
+      irs::bitpack::write_block32<BLOCK_SIZE>(pack, out, begin, encoded);
       begin += BLOCK_SIZE;
     }
   }
@@ -246,7 +256,7 @@ void packed_read_write_core(const std::vector<uint32_t> &src) {
   {
     auto begin = read.data();
     for (size_t i = 0; i < blocks; ++i) {
-      irs::encode::bitpack::read_block(in, BLOCK_SIZE, encoded, begin);
+      irs::bitpack::read_block32<BLOCK_SIZE>(unpack, in, encoded, begin);
       begin += BLOCK_SIZE;
     }
   }
@@ -255,18 +265,26 @@ void packed_read_write_core(const std::vector<uint32_t> &src) {
 }
 
 void packed_read_write_block_core(const std::vector<uint32_t> &src) {
-  const size_t BLOCK_SIZE = 128;
+  static constexpr size_t BLOCK_SIZE = 128;
   uint32_t encoded[BLOCK_SIZE];
+
+  auto pack = [](const uint32_t* decoded, uint32_t* encoded, size_t size, const uint32_t bits) {
+    irs::packed::pack(decoded, decoded + size, encoded, bits);
+  };
+
+  auto unpack = [](uint32_t* decoded, const uint32_t* encoded, size_t size, const uint32_t bits) {
+    irs::packed::unpack(decoded, decoded + size, encoded, bits);
+  };
 
   // compress data to stream
   irs::bstring buf;
   irs::bytes_output out(buf);
-  irs::encode::bitpack::write_block(out, src.data(), encoded);
+  irs::bitpack::write_block32(pack, out, src.data(), BLOCK_SIZE, encoded);
 
   // decompress data from stream
   std::vector<uint32_t> read(src.size());
   irs::bytes_ref_input in(buf);
-  irs::encode::bitpack::read_block(in, encoded, read.data());
+  irs::bitpack::read_block32(unpack, in, encoded, BLOCK_SIZE, read.data());
 
   ASSERT_EQ(src, read);
 }
@@ -323,15 +341,23 @@ void read_write_core_container(
 }
 
 void read_write_block(const std::vector<uint32_t>& source, std::vector<uint32_t>& enc_dec_buf) {
+  auto pack = [](const uint32_t* decoded, uint32_t* encoded, size_t size, const uint32_t bits) {
+    irs::packed::pack(decoded, decoded + size, encoded, bits);
+  };
+
+  auto unpack = [](uint32_t* decoded, const uint32_t* encoded, size_t size, const uint32_t bits) {
+    irs::packed::unpack(decoded, decoded + size, encoded, bits);
+  };
+
   // write block
   irs::bstring buf;
   irs::bytes_output out(buf);
-  irs::encode::bitpack::write_block(out, &source[0], source.size(), &enc_dec_buf[0]);
+  irs::bitpack::write_block32(pack, out, &source[0], source.size(), &enc_dec_buf[0]);
 
   // read block
   bytes_input in(buf);
   std::vector<uint32_t> read(source.size());
-  irs::encode::bitpack::read_block(in, source.size(), &enc_dec_buf[0], read.data());
+  irs::bitpack::read_block32(unpack, in, &enc_dec_buf[0], source.size(), read.data());
 
   ASSERT_EQ(source, read);
 }
@@ -386,46 +412,36 @@ void vencode_from_array(T expected_value, size_t expected_length) {
 
 #ifdef IRESEARCH_SSE2
 
-void read_write_optimized(const std::vector<uint32_t>& source, std::vector<uint32_t>& enc_dec_buf) {
+template<size_t N>
+void read_write_block_optimized(const std::array<uint32_t, N>& source) {
+  static_assert(128 == N);
+  std::array<uint32_t, N> enc_dec_buf;
+  std::fill_n(enc_dec_buf.data(), N, std::numeric_limits<uint32_t>::max());
+
+  auto pack_block = [](
+      const uint32_t* RESTRICT decoded,
+      uint32_t* RESTRICT encoded,
+      const uint32_t bits) noexcept {
+    ::simdpackwithoutmask(decoded, reinterpret_cast<__m128i*>(encoded), bits);
+    return bits;
+  };
+
+  auto unpack_block = [](
+      uint32_t* decoded, const uint32_t* encoded, const uint32_t bits) noexcept {
+    ::simdunpack(reinterpret_cast<const __m128i*>(encoded), decoded, bits);
+  };
+
   // write block
   irs::bstring buf;
   irs::bytes_output out(buf);
-  irs::encode::bitpack::write_block_simd(out, &source[0], source.size(), &enc_dec_buf[0]);
+  irs::bitpack::write_block32<N>(pack_block, out, source.data(), enc_dec_buf.data());
 
   // read block
   bytes_input in(buf);
-  std::vector<uint32_t> read(source.size());
-  irs::encode::bitpack::read_block_simd(in, source.size(), &enc_dec_buf[0], read.data());
+  std::array<uint32_t, N> read;
+  irs::bitpack::read_block32<N>(unpack_block, in, enc_dec_buf.data(), read.data());
 
   ASSERT_EQ(source, read);
-}
-
-void read_write_block_optimized(const std::vector<uint32_t>& source, std::vector<uint32_t>& enc_dec_buf) {
-  // write block
-  ASSERT_EQ(128, source.size());
-  irs::bstring buf;
-  irs::bytes_output out(buf);
-  irs::encode::bitpack::write_block_simd(out, &source[0], &enc_dec_buf[0]);
-
-  // read block
-  bytes_input in(buf);
-  std::vector<uint32_t> read(source.size());
-  irs::encode::bitpack::read_block_simd(in, &enc_dec_buf[0], read.data());
-
-  ASSERT_EQ(source, read);
-}
-
-void read_write_optimized(const std::vector<uint32_t>& source) {
-  // intermediate buffer for encoding/decoding
-  std::vector<uint32_t> enc_dec_buf(source.size());
-  read_write_optimized(source, enc_dec_buf);
-}
-
-void read_write_block_optimized(const std::vector<uint32_t>& source) {
-  // intermediate buffer for encoding/decoding
-  ASSERT_EQ(128, source.size());
-  std::vector<uint32_t> enc_dec_buf(source.size());
-  read_write_block_optimized(source, enc_dec_buf);
 }
 
 #endif
@@ -872,6 +888,10 @@ TEST(store_utils_tests, avg_encode_decode) {
 }
 
 TEST(store_utils_tests, avg_encode_block_read_write) {
+  auto pack = [](auto, auto, auto, auto) {
+    ASSERT_TRUE(false); // must not be called
+  };
+
   // rl case
   {
     const size_t count = 1024; // 1024 % packed::BLOCK_SIZE_64 == 0
@@ -896,20 +916,21 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
     irs::bstring out_buf;
     irs::bytes_output out(out_buf);
     irs::encode::avg::write_block(
-      out, stats.first, stats.second, avg_encoded.data(), avg_encoded.size(), buf.data()
-    );
+      pack, out, stats.first, stats.second, avg_encoded.data(), avg_encoded.size(), buf.data());
 
     ASSERT_EQ(
-      irs::bytes_io<uint64_t>::vsize(step) + irs::bytes_io<uint64_t>::vsize(step) + irs::bytes_io<uint32_t>::vsize(irs::encode::bitpack::ALL_EQUAL) + irs::bytes_io<uint64_t>::vsize(0), // base + avg + bits + single value
-      out_buf.size()
-    );
+      irs::bytes_io<uint64_t>::vsize(step) +
+      irs::bytes_io<uint64_t>::vsize(step) +
+      irs::bytes_io<uint32_t>::vsize(irs::bitpack::ALL_EQUAL) +
+      irs::bytes_io<uint64_t>::vsize(0), // base + avg + bits + single value
+      out_buf.size());
 
     {
       tests::detail::bytes_input in(out_buf);
       const uint64_t base = in.read_vlong();
       const uint64_t avg= in.read_vlong();
       const uint64_t bits = in.read_vint();
-      ASSERT_EQ(uint32_t(irs::encode::bitpack::ALL_EQUAL), bits);
+      ASSERT_EQ(uint32_t(irs::bitpack::ALL_EQUAL), bits);
       ASSERT_EQ(step, base);
       ASSERT_EQ(step, avg);
     }
@@ -933,7 +954,7 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
       const uint64_t base = in.read_vlong();
       const uint64_t avg = in.read_vlong();
       const uint32_t bits = in.read_vint();
-      ASSERT_EQ(uint32_t(irs::encode::bitpack::ALL_EQUAL), bits);
+      ASSERT_EQ(uint32_t(irs::bitpack::ALL_EQUAL), bits);
 
       bool success = true;
       auto begin = values.begin();
@@ -952,48 +973,54 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
 #ifdef IRESEARCH_SSE2
 
 TEST(store_utils_tests, read_write_block32_optimized) {
-  // block_size = 128
-  const size_t block_size = 128;
+  constexpr size_t BLOCK_SIZE = 128;
+
   // distinct values
-  std::vector<uint32_t> data = {
-    867377632,	904649657,	354461109,	576026921,	406163632,
-    168409093,	33485512 , 611136354 , 140275004 , 654422173,
-    405770063,	390577167,	780047069,	438362754,	469076575,
-    916930378,	291775422,	169687154,	834852341,	811869909,
-    250897257,	852383167,	478986610,	257699679,	112290896,
-    648885334,	897578972,	235499871,	368212067,	20494714,
-    321165319,	993744046,	334855956,	339418651,	23411270,
-    486634346,	258313717,	319757878,	608722518,	331995880,
-    116102182,	801348392,	256163092,	332114117,	304988840,
-    917258980,	686173811,	948343613,	786828070,	319530963,
-    578518934,	881904875,	144381596,	948206742,	876042799,
-    636018099,	941670974,	795607349,	487169927,	365985618,
-    883623659,	853001164,	723334064,	582408314,	570539073,
-    863140586,	99184400 , 621307734 , 404880591 , 544074242,
-    395871575,	383432524,	469395010,	462667762,	721641738,
-    306107286,	379618512,	17517346 , 735771377 , 147846584,
-    858436879,	499675853,	539719264,	842602895,	870115838,
-    236179208,	927978513,	657234182,	205163278,	100358377,
-    970958186,	277229354,	952603794,	234804978,	489958521,
-    378864765,	482550401,	587171069,	368374855,	835303649,
-    113016087,	220060336,	205821727,	794302091,	393689790,
-    18366964 , 835940475 , 988552545 , 976790514 , 736784554,
-    332759224,	951688629,	413866856,	245001983,	839481147,
-    575871539,	536021091,	313731186,	553136314,	291903625,
-    916491807,	629745928,	217677834,	787133498,	167330024,
-    793647012,	474689745,	228759450
-  };
-  tests::detail::read_write_optimized(data);
-  tests::detail::read_write_block_optimized(data);
-  // all equals
-  tests::detail::read_write_optimized(std::vector<uint32_t>(block_size, 5));
-  tests::detail::read_write_block_optimized(std::vector<uint32_t>(block_size, 5));
+  {
+    constexpr std::array<uint32_t, BLOCK_SIZE> data = {
+      867377632,	904649657,	354461109,	576026921,	406163632,
+      168409093,	33485512 , 611136354 , 140275004 , 654422173,
+      405770063,	390577167,	780047069,	438362754,	469076575,
+      916930378,	291775422,	169687154,	834852341,	811869909,
+      250897257,	852383167,	478986610,	257699679,	112290896,
+      648885334,	897578972,	235499871,	368212067,	20494714,
+      321165319,	993744046,	334855956,	339418651,	23411270,
+      486634346,	258313717,	319757878,	608722518,	331995880,
+      116102182,	801348392,	256163092,	332114117,	304988840,
+      917258980,	686173811,	948343613,	786828070,	319530963,
+      578518934,	881904875,	144381596,	948206742,	876042799,
+      636018099,	941670974,	795607349,	487169927,	365985618,
+      883623659,	853001164,	723334064,	582408314,	570539073,
+      863140586,	99184400 , 621307734 , 404880591 , 544074242,
+      395871575,	383432524,	469395010,	462667762,	721641738,
+      306107286,	379618512,	17517346 , 735771377 , 147846584,
+      858436879,	499675853,	539719264,	842602895,	870115838,
+      236179208,	927978513,	657234182,	205163278,	100358377,
+      970958186,	277229354,	952603794,	234804978,	489958521,
+      378864765,	482550401,	587171069,	368374855,	835303649,
+      113016087,	220060336,	205821727,	794302091,	393689790,
+      18366964 , 835940475 , 988552545 , 976790514 , 736784554,
+      332759224,	951688629,	413866856,	245001983,	839481147,
+      575871539,	536021091,	313731186,	553136314,	291903625,
+      916491807,	629745928,	217677834,	787133498,	167330024,
+      793647012,	474689745,	228759450
+    };
+    tests::detail::read_write_block_optimized(data);
+  }
+
+  // all equal
+  {
+    std::array<uint32_t, BLOCK_SIZE> data;
+    std::fill_n(data.data(), BLOCK_SIZE, 5);
+    tests::detail::read_write_block_optimized(data);
+  }
+
   // all except first are equal, dirty buffer
   {
-    std::vector<uint32_t> end_dec_buf(block_size, std::numeric_limits<uint32_t>::max());
-    std::vector<uint32_t> src(block_size, 1); src[0] = 0;
-    tests::detail::read_write_optimized(src, end_dec_buf);
-    tests::detail::read_write_block_optimized(src);
+    std::array<uint32_t, BLOCK_SIZE> data;
+    std::fill_n(data.data(), BLOCK_SIZE, 1);
+    data[0] = 1;
+    tests::detail::read_write_block_optimized(data);
   }
 }
 

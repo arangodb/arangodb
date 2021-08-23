@@ -22,6 +22,7 @@
 
 #include "tests_shared.hpp"
 #include "analysis/token_attributes.hpp"
+#include "index/norm.hpp"
 
 TEST(token_attributes_test, offset) {
   static_assert("offset" == irs::type<irs::offset>::name());
