@@ -24,18 +24,14 @@ attributes:
 - *name*: The name of the collection.
 
 - *status*: The status of the collection as number.
-  - 1: new born collection
-  - 2: unloaded
   - 3: loaded
-  - 4: in the process of being unloaded
   - 5: deleted
-  - 6: loading
 
 Every other status indicates a corrupted collection.
 
 - *type*: The type of the collection as number.
   - 2: document collection (normal case)
-  - 3: edges collection
+  - 3: edge collection
 
 - *isSystem*: If *true* then the collection is a system collection.
 
