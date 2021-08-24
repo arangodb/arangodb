@@ -358,7 +358,7 @@ function IteratorSuite(permuteConfigs) {
         // full scan using edge index and a filter
         let result = ctx.query(`
           FOR doc IN @@c
-          FILTER doc._from == "${cn}/blubb" AND doc._to > "${cn}/test00001" AND doc._to <= "${cn}/test04995"
+            FILTER doc._from == "${cn}/blubb" AND doc._to > "${cn}/test00001" AND doc._to <= "${cn}/test04995"
             INSERT { _from: "${cn}/blubb", _to: CONCAT("y", doc._to) } INTO @@c
             SORT doc._to ASC
             RETURN doc`,
