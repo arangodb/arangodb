@@ -64,13 +64,14 @@ enum class RequestLane {
 
   // For requests from the DBserver to the Coordinator or
   // from the Coordinator to the DBserver. Using AQL
-  // these have Medium priority.
+  // these have low priority.
   CLUSTER_AQL,
 
-  // For future continuations initiated as part of an AQL request from the
-  // DBserver to the Coordinator or from the Coordinator to the DBserver.
-  // These have High priority.
-  CLUSTER_AQL_CONTINUATION,
+  // For requests from the DBserver to the Coordinator.
+  // These have medium priority, because client requests made against the
+  // RestCursorHandler (with lane CLIENT_AQL) might block and need these to
+  // finish.
+  CLUSTER_AQL_INTERNAL_COORDINATOR,
 
   // For requests from the from the Coordinator to the
   // DBserver using V8.
@@ -142,9 +143,9 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
     case RequestLane::CLUSTER_INTERNAL:
       return RequestPriority::HIGH;
     case RequestLane::CLUSTER_AQL:
+      return RequestPriority::LOW;
+    case RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR:
       return RequestPriority::MED;
-    case RequestLane::CLUSTER_AQL_CONTINUATION:
-      return RequestPriority::HIGH;
     case RequestLane::CLUSTER_V8:
       return RequestPriority::LOW;
     case RequestLane::CLUSTER_ADMIN:
