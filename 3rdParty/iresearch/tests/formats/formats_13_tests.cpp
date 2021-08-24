@@ -297,7 +297,7 @@ TEST_P(format_13_test_case, open_non_ecnrypted_with_encrypted) {
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
@@ -354,7 +354,7 @@ TEST_P(format_13_test_case, open_10_with_13) {
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
@@ -424,7 +424,7 @@ TEST_P(format_13_test_case, formats_10_13) {
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
@@ -450,7 +450,7 @@ TEST_P(format_13_test_case, formats_10_13) {
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;

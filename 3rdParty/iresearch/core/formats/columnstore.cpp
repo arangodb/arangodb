@@ -337,7 +337,7 @@ class index_block {
       const auto stats = encode::avg::encode(offsets_, offset_);
       const auto bits = encode::avg::write_block(
         &format_traits::pack64,
-        out, stats.first, stats.second,
+        out, std::get<0>(stats), std::get<1>(stats),
         offsets_, block_size, buf);
 
       if (0 == offsets_[0] && bitpack::rl(bits)) {
