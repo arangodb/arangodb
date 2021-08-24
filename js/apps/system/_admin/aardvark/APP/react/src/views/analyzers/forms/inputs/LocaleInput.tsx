@@ -14,15 +14,9 @@ const LocaleInput = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  return <Textbox label={
-    <>
-      Locale&nbsp;
-      <a target={'_blank'} href={'https://www.arangodb.com/docs/stable/analyzers.html#stem'} rel="noreferrer">
-        <i className={'fa fa-question-circle'}/>
-      </a>
-    </>
-  } type={'text'} placeholder="language[_COUNTRY][.encoding][@variant]" required={true} disabled={disabled}
-                  value={get(formState, 'properties.locale', '')} onChange={updateLocale}/>;
+  return <Textbox label={'Locale'} type={'text'} placeholder="language[_COUNTRY][.encoding][@variant]"
+                  required={true} disabled={disabled} value={get(formState, 'properties.locale', '')}
+                  onChange={updateLocale}/>;
 };
 
 export default LocaleInput;

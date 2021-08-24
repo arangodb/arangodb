@@ -47,10 +47,6 @@ const reducer = (state: State, action: DispatchArgs): State => {
       newState.show = true;
       break;
 
-    case 'hide':
-      newState.show = false;
-      break;
-
     case 'showJsonForm':
       newState.showJsonForm = true;
       break;
@@ -143,8 +139,8 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
     }}>
       <i className="fa fa-plus-circle"/> Add Analyzer
     </button>
-    <Modal show={state.show} setShow={(show) => dispatch({ type: show ? 'show' : 'hide' })}
-           key={analyzers.length}>
+    <Modal show={state.show} setShow={(show) => dispatch({ type: show ? 'show' : 'reset' })}
+           key={`${analyzers.length}-${state.show}`}>
       <ModalHeader title={'Create Analyzer'}>
         <Grid>
           <Cell size={'2-3'}>
@@ -168,10 +164,14 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
                 <JsonForm formState={formState} dispatch={dispatch} renderKey={state.renderKey}/>
               </Cell>
               : <>
-                <Cell size={'1'}>
-                  <BaseForm formState={formState} dispatch={dispatch}/>
+                <Cell size={'11-24'}>
+                  <fieldset>
+                    <legend style={{ fontSize: '12pt' }}>Basic</legend>
+                    <BaseForm formState={formState} dispatch={dispatch}/>
+                  </fieldset>
                 </Cell>
-                <Cell size={'1'}>
+                <Cell size={'1-12'}/>
+                <Cell size={'11-24'}>
                   <fieldset>
                     <legend style={{ fontSize: '12pt' }}>Features</legend>
                     <FeatureForm formState={formState} dispatch={dispatch}/>
@@ -198,7 +198,7 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
         </Grid>
       </ModalBody>
       <ModalFooter>
-        <button className="button-close" onClick={() => dispatch({ type: 'hide' })}>Close</button>
+        <button className="button-close" onClick={() => dispatch({ type: 'reset' })}>Close</button>
         <button className="button-success" style={{ float: 'right' }} onClick={handleAdd}>Create</button>
       </ModalFooter>
     </Modal>

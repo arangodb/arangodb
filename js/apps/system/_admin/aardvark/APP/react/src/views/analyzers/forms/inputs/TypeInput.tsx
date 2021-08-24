@@ -21,7 +21,14 @@ const TypeInput = ({ formState, dispatch, disabled, typeNameMap, inline }: TypeI
     });
   };
 
-  return <Select label={'Analyzer Type'} value={(formState as AnalyzerTypeState).type} onChange={updateType}
+  return <Select label={
+    <>
+      Analyzer Type&nbsp;
+      <a target={'_blank'} href={'https://www.arangodb.com/docs/stable/analyzers.html'} rel="noreferrer">
+        <i className={'fa fa-question-circle'}/>
+      </a>
+    </>
+  } value={(formState as AnalyzerTypeState).type} onChange={updateType}
                  required={true} disabled={disabled} inline={inline}>
     {
       map(typeNameMap, (value, key) => <option key={key} value={key}>{value}</option>)

@@ -2,10 +2,10 @@ import React, { ChangeEvent } from "react";
 import { FormProps, GeoJsonState } from "../constants";
 import GeoOptionsInput from "./inputs/GeoOptionsInput";
 import { Cell, Grid } from "../../../components/pure-css/grid";
-import RadioGroup from "../../../components/pure-css/form/RadioGroup";
+import Select from "../../../components/pure-css/form/Select";
 
 const GeoJsonForm = ({ formState, dispatch, disabled }: FormProps) => {
-  const updateType = (event: ChangeEvent<HTMLInputElement>) => {
+  const updateType = (event: ChangeEvent<HTMLSelectElement>) => {
     dispatch({
       type: 'setField',
       field: {
@@ -19,20 +19,11 @@ const GeoJsonForm = ({ formState, dispatch, disabled }: FormProps) => {
 
   return <Grid>
     <Cell size={'1-2'}>
-      <RadioGroup legend={'Type'} onChange={updateType} items={[
-        {
-          label: 'Shape',
-          value: 'shape'
-        },
-        {
-          label: 'Centroid',
-          value: 'centroid'
-        },
-        {
-          label: 'Point',
-          value: 'point'
-        }
-      ]} checked={typeProperty || 'shape'} disabled={disabled}/>
+      <Select label={'Type'} value={typeProperty || 'shape'} onChange={updateType} disabled={disabled}>
+        <option value={'shape'}>Shape</option>
+        <option value={'centroid'}>Centroid</option>
+        <option value={'point'}>point</option>
+      </Select>
     </Cell>
     <Cell size={'1'}>
       <GeoOptionsInput formState={formState} dispatch={dispatch} disabled={disabled}/>

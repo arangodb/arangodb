@@ -18,16 +18,9 @@ const DelimiterForm = ({ formState, dispatch, disabled }: FormProps) => {
 
   return <Grid>
     <Cell size={'1-3'}>
-      <Textbox label={
-        <>
-          Delimiter (characters to split on)&nbsp;
-          <a target={'_blank'} href={'https://www.arangodb.com/docs/stable/analyzers.html#delimiter'}
-             rel="noreferrer">
-            <i className={'fa fa-question-circle'}/>
-          </a>
-        </>
-      } type={'text'} placeholder="Delimiting Characters" required={true} onChange={updateDelimiter}
-               value={delimiterProperty || ''} disabled={disabled}/>
+      <Textbox label={'Delimiter (characters to split on)'} type={'text'} value={delimiterProperty || ''}
+               placeholder="Delimiting Characters" required={true} onChange={updateDelimiter}
+               disabled={disabled}/>
     </Cell>
   </Grid>;
 };

@@ -2,8 +2,8 @@ import React, { ChangeEvent } from "react";
 import { FormProps, NGramState } from "../constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Textbox from "../../../components/pure-css/form/Textbox";
-import RadioGroup from "../../../components/pure-css/form/RadioGroup";
 import NGramInput from "./inputs/NGramInput";
+import Select from "../../../components/pure-css/form/Select";
 
 const NGramForm = ({ formState, dispatch, disabled }: FormProps) => {
   const updateStartMarker = (event: ChangeEvent<HTMLInputElement>) => {
@@ -26,7 +26,7 @@ const NGramForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const updateStreamType = (event: ChangeEvent<HTMLInputElement>) => {
+  const updateStreamType = (event: ChangeEvent<HTMLSelectElement>) => {
     dispatch({
       type: 'setField',
       field: {
@@ -54,16 +54,11 @@ const NGramForm = ({ formState, dispatch, disabled }: FormProps) => {
     </Cell>
 
     <Cell size={'1-3'}>
-      <RadioGroup legend={'Stream Type'} onChange={updateStreamType} items={[
-        {
-          label: 'Binary',
-          value: 'binary'
-        },
-        {
-          label: 'UTF8',
-          value: 'utf8'
-        }
-      ]} checked={ngramFormState.properties.streamType || 'binary'} disabled={disabled}/>
+      <Select label={'Stream Type'} value={ngramFormState.properties.streamType || 'binary'}
+              onChange={updateStreamType} disabled={disabled}>
+        <option value={'binary'}>Binary</option>
+        <option value={'utf8'}>UTF8</option>
+      </Select>
     </Cell>
   </Grid>;
 };

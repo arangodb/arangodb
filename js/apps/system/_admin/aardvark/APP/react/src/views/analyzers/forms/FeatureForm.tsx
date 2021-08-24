@@ -31,18 +31,18 @@ const FeatureForm = ({ formState, dispatch, disabled }: FormProps) => {
 
   return <Grid>
     <Cell size={'1-3'}>
-      <Checkbox label={'Frequency'} onChange={getFeatureToggler('frequency')} inline={true}
-                checked={frequency} disabled={disabled}/>
-    </Cell>
-
-    <Cell size={'1-3'}>
-      <Checkbox label={'Norm'} onChange={getFeatureToggler('norm')} inline={true} checked={norm}
+      <Checkbox label={'Frequency'} onChange={getFeatureToggler('frequency')} checked={frequency}
                 disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-3'}>
-      <Checkbox label={'Position'} onChange={getFeatureToggler('position')} inline={true}
-                checked={position} disabled={disabled}/>
+      <Checkbox label={'Norm'} onChange={getFeatureToggler('norm')} checked={norm}
+                disabled={disabled}/>
+    </Cell>
+
+    <Cell size={'1-3'}>
+      <Checkbox label={'Position'} onChange={getFeatureToggler('position')} checked={position}
+                disabled={disabled}/>
     </Cell>
   </Grid>;
 };

@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef } from "react";
+import { CSSProperties, ReactNode, useEffect, useRef } from "react";
 import { createPortal, render, unmountComponentAtNode } from "react-dom";
 import picoModal from 'picomodal';
 import { uniqueId } from 'lodash';
@@ -19,7 +19,13 @@ const Modal = ({ show, setShow, children }: ModalProps) => {
   const contentDivId = useRef(uniqueId('modal-content-'));
   const modal = useRef(picoModal({
     content: `<div id='${contentDivId.current}'></div>`,
-    closeButton: false
+    closeButton: false,
+    modalStyles: (styles: CSSProperties) => {
+      styles.zIndex = 9000;
+    },
+    overlayStyles: (styles: CSSProperties) => {
+      styles.zIndex = 8999;
+    }
   })
     .afterCreate(() => {
       renderChildren(children, contentDivId.current); // First render of children.

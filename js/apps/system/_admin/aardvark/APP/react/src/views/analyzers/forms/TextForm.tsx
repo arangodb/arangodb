@@ -41,16 +41,7 @@ const TextForm = ({ formState, dispatch, disabled }: FormProps) => {
         </Cell>
 
         <Cell size={'1'}>
-          <CaseInput formState={formState} dispatch={dispatch} disabled={disabled}/>
-        </Cell>
-
-        <Cell size={'1-2'}>
-          <Checkbox onChange={updateStemming} label={'Stemming'} inline={true} disabled={disabled}
-                    checked={textFormState.properties.stemming || false}/>
-        </Cell>
-
-        <Cell size={'1-2'}>
-          <AccentInput formState={formState} dispatch={dispatch} disabled={disabled}/>
+          <StopwordsInput formState={formState} dispatch={dispatch} disabled={disabled}/>
         </Cell>
       </Grid>
     </Cell>
@@ -62,8 +53,17 @@ const TextForm = ({ formState, dispatch, disabled }: FormProps) => {
                    onChange={updateStopwordsPath} disabled={disabled}/>
         </Cell>
 
-        <Cell size={'1'}>
-          <StopwordsInput formState={formState} dispatch={dispatch} disabled={disabled}/>
+        <Cell size={'1-3'}>
+          <CaseInput formState={formState} dispatch={dispatch} disabled={disabled}/>
+        </Cell>
+
+        <Cell size={'1-3'}>
+          <Checkbox onChange={updateStemming} label={'Stemming'} disabled={disabled}
+                    checked={textFormState.properties.stemming || false}/>
+        </Cell>
+
+        <Cell size={'1-3'}>
+          <AccentInput formState={formState} dispatch={dispatch} disabled={disabled} inline={false}/>
         </Cell>
       </Grid>
     </Cell>

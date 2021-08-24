@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
 
 type ChildProp = {
-  children: ReactNode;
+  children?: ReactNode;
   [key: string]: any;
 };
 

@@ -124,10 +124,14 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
                           style={{ cursor: 'text' }}/>
               </Cell>
               : <>
-                <Cell size={'1'}>
-                  <BaseForm formState={formState} dispatch={noop} disabled={true}/>
+                <Cell size={'11-24'}>
+                  <fieldset>
+                    <legend style={{ fontSize: '12pt' }}>Basic</legend>
+                    <BaseForm formState={formState} dispatch={noop} disabled={true}/>
+                  </fieldset>
                 </Cell>
-                <Cell size={'1'}>
+                <Cell size={'1-12'}/>
+                <Cell size={'11-24'}>
                   <fieldset>
                     <legend style={{ fontSize: '12pt' }}>Features</legend>
                     <FeatureForm formState={formState} dispatch={noop} disabled={true}/>

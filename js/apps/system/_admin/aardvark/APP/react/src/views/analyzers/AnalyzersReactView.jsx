@@ -1,6 +1,6 @@
 /* global arangoHelper, frontendConfig */
 
-import { compact, get, isEqual, sortBy } from 'lodash';
+import { isEqual, sortBy } from 'lodash';
 import minimatch from 'minimatch';
 import React, { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
@@ -67,16 +67,11 @@ const FilterHelpModal = () => {
 };
 
 const AnalyzersReactView = () => {
-  const {
-    data,
-    error
-  } = useSWR('/analyzer', (path) => getApiRouteForCurrentDB().get(path));
-
-  const {
-    data: permData,
-    error: permError
-  } = useSWR(`/user/${arangoHelper.getCurrentJwtUsername()}/database/${frontendConfig.db}`,
-    (path) => getApiRouteForCurrentDB().get(path));
+  const { data } = useSWR('/analyzer', (path) => getApiRouteForCurrentDB().get(path));
+  const { data: permData } = useSWR(
+    `/user/${arangoHelper.getCurrentJwtUsername()}/database/${frontendConfig.db}`,
+    (path) => getApiRouteForCurrentDB().get(path)
+  );
 
   const [filterExpr, setFilterExpr] = useState('');
   const [filteredAnalyzers, setFilteredAnalyzers] = useState([]);
@@ -127,18 +122,7 @@ const AnalyzersReactView = () => {
     processAndSetFilteredAnalyzers(tempFilteredAnalyzers);
   }, [analyzers, filterExpr, processAndSetFilteredAnalyzers]);
 
-  const errMsgs = compact([
-    get(error, 'message'),
-    get(permError, 'message'),
-    get(data, ['body', 'errorMessage']),
-    get(permData, ['body', 'errorMessage'])
-  ]);
-
-  for (const emsg in errMsgs) {
-    arangoHelper.arangoError('Failure', `Got unexpected server response: ${emsg}`);
-  }
-
-  if (!errMsgs.length && data && permData) {
+  if (data && permData) {
     const permission = permData.body.result;
 
     if (!isEqual(data.body.result, analyzers)) {
@@ -152,13 +136,6 @@ const AnalyzersReactView = () => {
           <Grid className={'sectionHeader'}>
             <Cell size={'2-5'}>
               <div className={'title'}><AddAnalyzer analyzers={analyzers}/></div>
-            </Cell>
-          </Grid>
-        </Cell>
-        <Cell size={'1'}>
-          <Grid className={'sectionHeader'}>
-            <Cell size={'2-5'}>
-              <div className={'title'}>List of Analyzers</div>
             </Cell>
 
             <Cell size={'3-5'}>

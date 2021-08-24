@@ -202,7 +202,7 @@
       ],
       analyzers: [
         {
-          name: 'Add / View Analyzers',
+          name: 'Analyzers',
           route: 'analyzers',
           active: true
         }

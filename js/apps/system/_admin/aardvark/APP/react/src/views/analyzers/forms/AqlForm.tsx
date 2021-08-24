@@ -1,11 +1,11 @@
 import React, { ChangeEvent } from "react";
 import { AqlState, FormProps } from "../constants";
 import Checkbox from "../../../components/pure-css/form/Checkbox";
-import RadioGroup from "../../../components/pure-css/form/RadioGroup";
 import Textbox from "../../../components/pure-css/form/Textbox";
 import Textarea from "../../../components/pure-css/form/Textarea";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import { setIntegerField } from "../helpers";
+import Select from "../../../components/pure-css/form/Select";
 
 const AqlForm = ({ formState, dispatch, disabled }: FormProps) => {
   const getNumericFieldSetter = (field: string) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -22,7 +22,7 @@ const AqlForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const updateReturnType = (event: ChangeEvent<HTMLInputElement>) => {
+  const updateReturnType = (event: ChangeEvent<HTMLSelectElement>) => {
     dispatch({
       type: 'setField',
       field: {
@@ -86,20 +86,12 @@ const AqlForm = ({ formState, dispatch, disabled }: FormProps) => {
                     disabled={disabled} label={'Keep Null'}/>
         </Cell>
         <Cell size={'1'}>
-          <RadioGroup legend={'Return Type'} onChange={updateReturnType} items={[
-            {
-              label: 'String',
-              value: 'string'
-            },
-            {
-              label: 'Number',
-              value: 'number'
-            },
-            {
-              label: 'Boolean',
-              value: 'bool'
-            }
-          ]} checked={aqlFormState.properties.returnType || 'string'} disabled={disabled}/>
+          <Select label={'Return Type'} value={aqlFormState.properties.returnType || 'string'}
+                  onChange={updateReturnType} required={true} disabled={disabled}>
+            <option value={'string'}>String</option>
+            <option value={'number'}>Number</option>
+            <option value={'bool'}>Boolean</option>
+          </Select>
         </Cell>
       </Grid>
     </Cell>

@@ -11,12 +11,12 @@ const NormForm = ({ formState, dispatch, disabled }: FormProps) =>
       <LocaleInput formState={formState} dispatch={dispatch} disabled={disabled}/>
     </Cell>
 
-    <Cell size={'1-2'}>
+    <Cell size={'1-8'}>
       <CaseInput formState={formState} dispatch={dispatch} disabled={disabled}/>
     </Cell>
 
-    <Cell size={'1-3'}>
-      <AccentInput formState={formState} dispatch={dispatch} disabled={disabled}/>
+    <Cell size={'1-8'}>
+      <AccentInput formState={formState} dispatch={dispatch} disabled={disabled} inline={false}/>
     </Cell>
   </Grid>;
 

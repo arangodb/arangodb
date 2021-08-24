@@ -8,7 +8,7 @@ interface ModalHeaderProps {
 
 const ModalHeader = ({ title, children }: ModalHeaderProps) =>
   <>
-    <div className="modal-header" style={{ minWidth: '50vw' }}>
+    <div className="modal-header" style={{ minWidth: '60vw' }}>
       <Grid>
         <Cell size={'1-4'}>
           <span className="arangoHeader">{title}</span>
