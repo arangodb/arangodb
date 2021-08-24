@@ -245,12 +245,12 @@ void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
 std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slice const& info,
                                                       bool restore, bool& created) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
+
   // prevent concurrent dropping
   WRITE_LOCKER(guard, _exclusiveLock);
-  std::shared_ptr<Index> idx;
 
   RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  idx = lookupIndex(info);
+  std::shared_ptr<Index> idx = lookupIndex(info);
   if (idx) {
     created = false;
     // We already have this index.
