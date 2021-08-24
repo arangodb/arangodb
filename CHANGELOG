@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix a potential multi-threading issue in index creation on coordinators,
+  when an agency callback was triggered at the same time the method
+  `ensureIndexCoordinatorInner` was left.
+
 * Add pseudo log topic "all" to set the log levels for all log topics at
   once. For example, this can be used when starting a server with trace or
   debug logging enabled for all log topics, e.g.
