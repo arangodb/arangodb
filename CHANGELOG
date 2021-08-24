@@ -1,6 +1,13 @@
 devel
 -----
 
+* Change the default value for the `--threads` startup parameter of the
+  following client tools from previously 2 to the maximum of 2 and the
+  number of available CPU cores:
+  - arangodump
+  - arangoimport
+  - arangorestore
+
 * Preselect "create index in background" option when creating indexes in
   the web UI. The "create index in background" option can be less intrusive
   because it allows other write operations on the collection to proceed.
@@ -11,12 +18,6 @@ devel
   is completely filled or index creation has failed. This also allows
   obsoleting the startup option `--cluster.index-create-timeout`, which from
   now on is ignored when set.
-
-* Fixes a bug in the maintenance's error-handling code. A shard error would
-  result in log messages like
-      WARNING [ceb1a] {maintenance} caught exception in Maintenance shards 
-      error reporting: Expecting Object
-      ERROR [c9a75] {maintenance} Error reporting in current: Expecting Object
 
 * Fix wrong assertion in fuerte and move it to where the TLA+ model says
   it should be. This fixes a unit test failure occurring on newer Macs
