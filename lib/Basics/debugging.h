@@ -203,7 +203,7 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T
 namespace debug {
 struct NoOpStream {
   template <typename T>
-  auto operator<<(T const&) -> NoOpStream& {
+  auto operator<<(T const&) noexcept -> NoOpStream& {
     return *this;
   }
 };
@@ -237,10 +237,11 @@ struct AssertionLogger {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                          \
-  (ADB_LIKELY(expr))                                                                  \
-      ? (void)nullptr                                                                 \
-      : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__, __FUNCTION__, #expr} & \
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                  \
+  (ADB_LIKELY(expr))                                                          \
+      ? (void)nullptr                                                         \
+      : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
+                                           ARANGODB_PRETTY_FUNCTION, #expr} & \
             std::ostringstream {}
 
 #else
