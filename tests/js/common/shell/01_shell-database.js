@@ -97,8 +97,14 @@ function DatabaseSuite () {
       assertTrue(internal.db._createDatabase(name));
       assertTrue(internal.db._dropDatabase(name));
 
-      name += 'x';
-      assertEqual(65, name.length);
+      name += name; // 128 chars
+      assertEqual(128, name.length);
+      
+      assertTrue(internal.db._createDatabase(name));
+      assertTrue(internal.db._dropDatabase(name));
+
+      name += 'x'; // 129 chars
+      assertEqual(129, name.length);
 
       try {
         internal.db._createDatabase(name);
@@ -415,12 +421,12 @@ function DatabaseSuite () {
     testCreateDatabaseInvalidName : function () {
       assertEqual("_system", internal.db._name());
 
-      [ "", " ", "-", "0", "99999", ":::", "fox::", "test!" ].forEach (function (d) {
+      [ "", " ", "/", "0", "99999", ":::", "fox::", "test/abc" ].forEach (function (d) {
         try {
           internal.db._createDatabase(d);
           fail();
         } catch (err) {
-          assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
+          assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum, d);
         }
       });
     },
