@@ -209,21 +209,15 @@ struct NoOpStream {
   }
 };
 
-struct StringStreamWrapper {
-  template <typename T>
-  auto operator<<(T const& v) -> StringStreamWrapper& {
-    _stream << v;
-    return *this;
-  }
-
-  std::stringstream _stream;
-};
-
 struct AssertionLogger {
-  void operator&(StringStreamWrapper const& wrapper) {
-    std::string message = wrapper._stream.str();
+  void operator&(std::ostringstream const& stream) const {
+    std::string message = stream.str();
     arangodb::CrashHandler::assertionFailure(file, line, function, expr,
                                              message.empty() ? nullptr : message.c_str());
+  }
+  // can be removed in C++20 because of LWG 1203
+  void operator&(std::ostream const& stream) const {
+    operator&(static_cast<std::ostringstream const&>(stream));
   }
   void operator&(NoOpStream const&) {}
   const char* file;
@@ -245,7 +239,7 @@ struct AssertionLogger {
   (ADB_LIKELY(expr))                                                                  \
       ? (void)nullptr                                                                 \
       : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__, __FUNCTION__, #expr} & \
-            (::arangodb::debug::StringStreamWrapper{})
+            std::ostringstream{}
 
 #else
 
