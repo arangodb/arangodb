@@ -55,7 +55,9 @@ AqlTransaction::AqlTransaction(
     std::shared_ptr<transaction::Context> const& transactionContext,
     transaction::Options const& options)
     : transaction::Methods(transactionContext, options) {
-  addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  if (options.isIntermediateCommitEnabled()) {
+    addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  }
 }
 
   /// protected so we can create different subclasses
@@ -64,7 +66,9 @@ AqlTransaction::AqlTransaction(
     aql::Collections const& collections,
     transaction::Options const& options)
     : transaction::Methods(transactionContext, options) { 
-  addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  if (options.isIntermediateCommitEnabled()) {
+    addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  }
 
   collections.visit([this](std::string const&, aql::Collection& collection) {
     Result res = processCollection(collection);

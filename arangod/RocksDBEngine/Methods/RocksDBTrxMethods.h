@@ -40,8 +40,6 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
 
   Result beginTransaction() override;
 
-  void disableIntermediateCommits() override;
-
   rocksdb::ReadOptions iteratorReadOptions() const override;
   
   void prepareOperation(DataSourceId cid, RevisionId rid, TRI_voc_document_operation_e operationType) override;

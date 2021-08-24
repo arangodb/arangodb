@@ -562,6 +562,8 @@ AstNode* Ast::createNodeUpsert(AstNodeType type, AstNode const* docVariable,
   node->addMember(createNodeReference(Variable::NAME_OLD));
   node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_NEW), false));
 
+  this->setContainsUpsertNode();
+
   return node;
 }
 
@@ -4182,6 +4184,12 @@ bool Ast::containsModificationNode() const noexcept { return _containsModificati
 
 void Ast::setContainsModificationNode() noexcept {
   _containsModificationNode = true;
+}
+
+bool Ast::containsUpsertNode() const noexcept { return _containsUpsertNode; }
+
+void Ast::setContainsUpsertNode() noexcept {
+  _containsUpsertNode = true;
 }
 
 void Ast::setContainsParallelNode() noexcept {

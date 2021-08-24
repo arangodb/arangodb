@@ -173,10 +173,6 @@ class ExecutionPlan {
   void enableAsyncPrefetching() noexcept { _isAsyncPrefetchEnabled = true; }
   
   bool isAsyncPrefetchEnabled() const noexcept { return _isAsyncPrefetchEnabled; }
-  
-  void disableIntermediateCommits() noexcept { _isIntermediateCommitAllowed = false; }
-
-  bool isIntermediateCommitAllowed() const noexcept { return _isIntermediateCommitAllowed; }
 
   /// @brief get the node where variable with id <id> is introduced . . .
   ExecutionNode* getVarSetBy(VariableId id) const {
@@ -420,8 +416,6 @@ class ExecutionPlan {
   /// @brief flag to indicate whether the postprocessing step to enable async
   /// prefetching on the node level should be executed.
   bool _isAsyncPrefetchEnabled{false};
-  
-  bool _isIntermediateCommitAllowed{true};
 
   /// @brief current nesting level while building the plan
   int _nestingLevel;

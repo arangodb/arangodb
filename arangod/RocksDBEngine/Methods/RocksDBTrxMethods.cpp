@@ -66,14 +66,6 @@ Result RocksDBTrxMethods::beginTransaction() {
   return result;
 }
 
-void RocksDBTrxMethods::disableIntermediateCommits() {
-  TRI_ASSERT(!hasIntermediateCommitsEnabled());
-  if (_iteratorReadSnapshot) {
-    _db->ReleaseSnapshot(_iteratorReadSnapshot);
-    _iteratorReadSnapshot = nullptr;
-  }
-}
-
 rocksdb::ReadOptions RocksDBTrxMethods::iteratorReadOptions() const {
   if (hasIntermediateCommitsEnabled()) {
     rocksdb::ReadOptions ro = _readOptions;

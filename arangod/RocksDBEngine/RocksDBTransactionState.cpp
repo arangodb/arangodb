@@ -302,13 +302,6 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
   return result;
 }
 
-void RocksDBTransactionState::disableIntermediateCommits() {
-  TransactionState::disableIntermediateCommits();
-  if (_rocksMethods) {
-    _rocksMethods->disableIntermediateCommits();
-  }
-}
-
 void RocksDBTransactionState::beginQuery(bool isModificationQuery) {
   auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
   if (trxMethods) {

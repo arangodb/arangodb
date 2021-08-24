@@ -330,6 +330,15 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // put in bind parameters
   parser.ast()->injectBindParameters(_bindParameters, this->resolver());
 
+  if (parser.ast()->containsUpsertNode()) {
+    // UPSERTs and intermediate commits do not play nice together, because the
+    // intermediate commit invalidates the read-own-write iterator required by
+    // the subquery. Setting intermediateCommitSize and intermediateCommitCount
+    // to UINT64_MAX allows us to disable intermediate commits.
+    _queryOptions.transactionOptions.intermediateCommitSize = UINT64_MAX;
+    _queryOptions.transactionOptions.intermediateCommitCount = UINT64_MAX;
+  }
+
   TRI_ASSERT(_trx == nullptr);
   // needs to be created after the AST collected all collections
   std::unordered_set<std::string> inaccessibleCollections;
@@ -375,10 +384,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   plan = opt.stealBest();  // Now we own the best one again
 
   TRI_ASSERT(plan != nullptr);
-
-  if (!plan->isIntermediateCommitAllowed()) {
-    _trx->state()->disableIntermediateCommits();
-  }
 
   // return the V8 context if we are in one
   exitV8Context();

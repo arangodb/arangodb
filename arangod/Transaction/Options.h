@@ -57,6 +57,8 @@ struct Options {
   static void adjustIntermediateCommitCount(Options& options);
 #endif
 
+  bool isIntermediateCommitEnabled() const noexcept;
+
   static constexpr double defaultLockTimeout = 900.0;
   static uint64_t defaultMaxTransactionSize;
   static uint64_t defaultIntermediateCommitSize;

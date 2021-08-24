@@ -177,8 +177,6 @@ class TransactionState {
   /// @brief whether or not a specific hint is set for the transaction
   bool hasHint(transaction::Hints::Hint hint) const { return _hints.has(hint); }
 
-  virtual void disableIntermediateCommits() { _hints.unset(transaction::Hints::Hint::INTERMEDIATE_COMMITS); }
-
   /// @brief begin a transaction
   virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
 

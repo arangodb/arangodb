@@ -53,8 +53,6 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual Result commitTransaction() = 0;
 
   virtual Result abortTransaction() = 0;
-  
-  virtual void disableIntermediateCommits() {}
 
   // Only relevant for RocksDBTrxMethods
   virtual Result checkIntermediateCommit(bool& hasPerformedIntermediateCommit) { return {}; }

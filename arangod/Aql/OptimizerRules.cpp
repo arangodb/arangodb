@@ -7878,13 +7878,6 @@ void arangodb::aql::enableReadOwnWritesForUpsertSubquery(ExecutionPlan& plan) {
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan.findNodesOfType(nodes, EN::UPSERT, true);
 
-  if (!nodes.empty()) {
-    // UPSERTs and intermediate commits do not play nice together, because the
-    // intermediate commit invalidates the read-own-write iterator required by
-    // the subquery, so we simply disable them.
-    plan.disableIntermediateCommits();
-  }
-
   for (auto n : nodes) {
     auto node = ExecutionNode::castTo<UpsertNode const*>(n);
     auto inputVar = node->inDocVariable();
