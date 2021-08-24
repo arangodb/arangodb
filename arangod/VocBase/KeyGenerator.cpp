@@ -853,9 +853,25 @@ bool KeyGenerator::validateId(char const* key, size_t len, bool extendedNames, s
     return false;
   }
 
-  if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames,
-                                              arangodb::velocypack::StringRef(key, split))) {
-    return false;
+  TRI_ASSERT(found != nullptr && split > 0);
+  // check for numeric collection id
+  char const* p = key;
+  char const* e = key + split;
+  TRI_ASSERT(p != e);
+  while (p < e && *p >= '0' && *p <= '9') {
+    ++p;
+  }
+  if (p == key) {
+    // non-numeric id
+    if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames,
+                                                arangodb::velocypack::StringRef(key, split))) {
+      return false;
+    }
+  } else {
+    // numeric id. now check if it is all-numeric
+    if (p != key + split) {
+      return false;
+    }
   }
 
   // validate document key
