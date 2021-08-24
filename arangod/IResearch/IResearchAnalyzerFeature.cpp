@@ -95,7 +95,6 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 namespace StringUtils = arangodb::basics::StringUtils;
 
-static const Features EMPTY_FEATURES_INSTANCE;
 char constexpr ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars)
 size_t constexpr ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
 size_t constexpr DEFAULT_POOL_SIZE = 8;  // arbitrary value
