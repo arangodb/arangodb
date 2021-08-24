@@ -142,7 +142,12 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
 
   std::unique_ptr<rocksdb::Iterator> iterator;
   if (opts.readOwnWrites) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // Even though the assertion is only evaluated in maintainer mode, it must at
+    // least compile. But since checkIntermediateCommits is only defined in maintainer
+    // mode, we have to wrap this assert in another ifdef.
     TRI_ASSERT(!opts.checkIntermediateCommits || !hasIntermediateCommitsEnabled());
+#endif
     iterator.reset(_rocksTransaction->GetIterator(opts, cf));
   } else {
     if (iteratorMustCheckBounds(ReadOwnWrites::no)) {
