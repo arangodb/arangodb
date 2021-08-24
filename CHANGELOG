@@ -1,6 +1,15 @@
 devel
 -----
 
+* Add pseudo log topic "all" to set the log levels for all log topics at
+  once. For example, this can be used when starting a server with trace or
+  debug logging enabled for all log topics, e.g.
+
+  `--log.level all=debug`.
+  `--log.level all=trace`.
+
+  This is very coarse and should only be used for such use cases.
+
 * Change the default value for the `--threads` startup parameter of the
   following client tools from previously 2 to the maximum of 2 and the
   number of available CPU cores:
