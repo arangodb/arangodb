@@ -121,7 +121,10 @@ TEST(DatabaseNameValidatorTest, test_isAllowedName_extendedNames) {
   }
   
   // special characters
-  EXPECT_TRUE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef(" a + & ? = abc ")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef(" a + & ? = abc ")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef(" a + & ? = abc")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("a + & ? = abc ")));
+  EXPECT_TRUE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("a + & ? = abc")));
   EXPECT_TRUE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("<script>alert(1);")));
   EXPECT_TRUE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("a b c")));
   EXPECT_TRUE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("test123 & ' \" < > abc")));

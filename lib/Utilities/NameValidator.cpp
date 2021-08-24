@@ -28,6 +28,7 @@
 #include <velocypack/Utf8Helper.h>
 
 #include <cstdint>
+#include <string>
 
 namespace arangodb {
 
@@ -43,26 +44,26 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
+    unsigned char c = static_cast<unsigned char>(*ptr);
     bool ok = true;
 
     if (extendedNames) {
       // forward slashes are disallowed inside database names because we use the forward
       // slash for splitting _everywhere_
-      ok &= (*ptr != '/');
+      ok &= (c != '/');
       
       // colons are disallowed inside database names. they are used to separate database names
       // from analyzer names in some analyzer keys
-      ok &= (*ptr != ':');
+      ok &= (c != ':');
 
       // non visible characters below ASCII code 32 (control characters) not allowed, including '\0'
-      ok &= (*ptr >= 32);
-
+      ok &= (c >= 32U);
     } else {
       if (length == 0) {
-        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || (allowSystem && *ptr == '_');
+        ok &= (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (allowSystem && c == '_');
       } else {
-        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || 
-              (*ptr == '_') || (*ptr == '-') || (*ptr >= '0' && *ptr <= '9');
+        ok &= (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+              (c == '_') || (c == '-') || (c >= '0' && c <= '9');
       }
     }
 
@@ -72,7 +73,7 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
   }
 
   if (extendedNames && !name.empty()) {
-    char c = name[0];
+    unsigned char c = static_cast<unsigned char>(name[0]);
     // a database name must not start with a digit, because then it can be confused with
     // numeric database ids
     bool ok = (c < '0' || c > '9');
@@ -86,21 +87,20 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
   
     // leading spaces are not allowed 
     ok &= (c != ' '); 
-
-    c = name.back();
+      
     // trailing spaces are not allowed
+    c = static_cast<unsigned char>(name.back());
     ok &= (c != ' ');
-    if(!ok) {
+    
+    // new naming convention allows Unicode characters. we need to
+    // make sure everything is valid UTF-8 now.
+    ok &= velocypack::Utf8Helper::isValidUtf8(reinterpret_cast<std::uint8_t const*>(name.data()), name.size());
+    
+    if (!ok) {
       return false;
     }
   }
 
-  if (extendedNames && 
-      !velocypack::Utf8Helper::isValidUtf8(reinterpret_cast<std::uint8_t const*>(name.data()), name.size())) {
-    // new naming convention allows Unicode characters. we need to
-    // make sure everything is valid UTF-8 now.
-    return false;
-  }
 
   // database names must be within the expected length limits
   return (length > 0 && length <= maxNameLength(extendedNames)); 
