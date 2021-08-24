@@ -175,7 +175,7 @@ const benchTodos = [{
   'custom-query': 'RETURN 1',
   'keep-alive': 'true',
   // test with Unicode database name
-  'server.database': ' c\\1234 @!§$ имя базы данных юникода!\'',
+  'server.database': 'c\\1234 @!§$ имя базы данных юникода!\'',
   'create-database': true
 },{
   'requests': '100',
@@ -183,7 +183,7 @@ const benchTodos = [{
   'test-case': 'version',
   'keep-alive': 'true',
   // test with Unicode database name
-  'server.database': ' 이것은 테스트입니까 ! @abc " mötör ',
+  'server.database': '이것은 테스트입니까 ! @abc " mötör',
   'create-database': true
 }];
 
