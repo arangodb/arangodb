@@ -30,6 +30,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -64,6 +65,10 @@
 using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
+
+std::string Databases::normalizeName(std::string const& name) {
+  return normalizeUtf8ToNFC(basics::StringUtils::trim(name, " \n\r\t\f\b"));
+}
 
 std::vector<std::string> Databases::list(application_features::ApplicationServer& server,
                                          std::string const& user) {
@@ -344,13 +349,11 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
       LOG_TOPIC("1964a", ERR, Logger::FIXME)
           << "Could not create database: " << res.errorMessage();
     }
-    events::CreateDatabase(dbName, res, exec);
-    return res;
   }
 
   events::CreateDatabase(dbName, res, exec);
 
-  return Result();
+  return res;
 }
 
 namespace {

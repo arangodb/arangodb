@@ -54,23 +54,9 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
       // from analyzer names in some analyzer keys
       ok &= (*ptr != ':');
 
-      // the NUL byte is not allowed in database names, as it may cause trouble in several
-      // places
-      ok &= (*ptr != '\0');
+      // non visible characters below ASCII code 32 (control characters) not allowed, including '\0'
+      ok &= (*ptr >= 32);
 
-      if (length == 0) {
-        // a database name must not start with a digit, because then it can be confused with
-        // numeric database ids
-        ok &= (*ptr < '0' || *ptr > '9');
-        
-        // a database name must not start with an underscore unless it is the system database 
-        // (which is not created via any checked API)
-        ok &= (*ptr != '_' || allowSystem);
-
-        // a database name must not start with a dot, because this is used for hidden
-        // agency entries
-        ok &= (*ptr != '.');
-      }
     } else {
       if (length == 0) {
         ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || (allowSystem && *ptr == '_');
@@ -81,6 +67,30 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
     }
 
     if (!ok) {
+      return false;
+    }
+  }
+
+  if (extendedNames && !name.empty()) {
+    char c = name[0];
+    // a database name must not start with a digit, because then it can be confused with
+    // numeric database ids
+    bool ok = (c < '0' || c > '9');
+    // a database name must not start with an underscore unless it is the system database 
+    // (which is not created via any checked API)
+    ok &= (c != '_' || allowSystem);
+
+    // a database name must not start with a dot, because this is used for hidden
+    // agency entries
+    ok &= (c != '.');
+  
+    // leading spaces are not allowed 
+    ok &= (c != ' '); 
+
+    c = name.back();
+    // trailing spaces are not allowed
+    ok &= (c != ' ');
+    if(!ok) {
       return false;
     }
   }

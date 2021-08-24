@@ -35,6 +35,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/Events.h"
 #include "Utilities/NameValidator.h"
+#include "VocBase/Methods/Databases.h"
 
 namespace arangodb {
 
@@ -54,9 +55,7 @@ void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
 }
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
-  Result res;
-
-  _name = name;
+  _name = methods::Databases::normalizeName(name);
   _id = id;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -106,7 +105,7 @@ Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options,
 
 Result CreateDatabaseInfo::load(std::string const& name, VPackSlice const& options,
                                 VPackSlice const& users) {
-  _name = name;
+  _name = methods::Databases::normalizeName(name);
 
   Result res = extractOptions(options, true /*getId*/, false /*getName*/);
   if (!res.ok()) {
@@ -127,7 +126,7 @@ Result CreateDatabaseInfo::load(std::string const& name, VPackSlice const& optio
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id,
                                 VPackSlice const& options, VPackSlice const& users) {
-  _name = name;
+  _name = methods::Databases::normalizeName(name);
   _id = id;
 
   Result res = extractOptions(options, false /*getId*/, false /*getUser*/);
@@ -265,7 +264,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
     if (!nameSlice.isString()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "no valid id given");
     }
-    _name = nameSlice.copyString();
+    _name = methods::Databases::normalizeName(nameSlice.copyString());
   }
   if (extractId) {
     auto idSlice = options.get(StaticStrings::DatabaseId);
