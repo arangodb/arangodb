@@ -340,7 +340,7 @@ static void handlePlanShard(
       auto difference = compareIndexes(engine, dbname, colname, shname,
                                        pindexes, lindexes, errors, indis);
 
-      // Index errors are checked in `compareIndexes`. THe loop below only
+      // Index errors are checked in `compareIndexes`. The loop below only
       // cares about those indexes that have no error.
       if (difference.slice().isArray()) {
         for (auto&& index : VPackArrayIterator(difference.slice())) {

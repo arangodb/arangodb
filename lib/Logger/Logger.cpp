@@ -196,11 +196,21 @@ void Logger::setLogLevel(std::string const& levelName) {
   }
 
   if (isGeneral) {
+    // set the log level globally (e.g. `--log.level info`). note that
+    // this does not set the log level for all log topics, but only the
+    // log level for the "general" log topic.
     Logger::setLogLevel(level);
     // setting the log level for topic "general" is required here, too,
     // as "fixme" is the previous general log topic...
     LogTopic::setLogLevel(std::string("general"), level);
+  } else if (v[0] == LogTopic::ALL) {
+    // handle pseudo log-topic "all": this will set the log level for
+    // all existing topics
+    for (auto const& it : logLevelTopics()) {
+      LogTopic::setLogLevel(it.first, level);
+    }
   } else {
+    // handle a topic-specific request (e.g. `--log.level requests=info`).
     LogTopic::setLogLevel(v[0], level);
   }
 }
