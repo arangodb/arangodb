@@ -1,7 +1,7 @@
 name: rocksdb_total_inodes
 introducedIn: "3.8.0"
 help: |
-  Number of used inodes on the volume used by RocksDB
+  Number of used inodes on the volume used by RocksDB.
 unit: number
 type: gauge
 category: RocksDB

@@ -1,7 +1,7 @@
 name: arangodb_client_connection_statistics_client_connections
 introducedIn: "3.6.1"
 help: |
-  The number of client connections that are currently open
+  The number of client connections that are currently open.
 unit: number
 type: gauge
 category: Statistics
