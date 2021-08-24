@@ -37,6 +37,7 @@
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LogTopic.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -433,7 +434,7 @@ void RestAdminLogHandler::handleLogLevel() {
       }
       // now process all log topics except "all"
       for (auto it : VPackObjectIterator(slice)) {
-        if (it.value.isString() && !it.key.isEqualString("all")) {
+        if (it.value.isString() && !it.key.isEqualString(LogTopic::ALL)) {
           std::string const l = it.key.copyString() + "=" + it.value.copyString();
           Logger::setLogLevel(l);
         }

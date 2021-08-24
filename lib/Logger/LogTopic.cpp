@@ -109,6 +109,9 @@ class Topics {
 
 }  // namespace
 
+// pseudo-topic to address all log topics
+std::string const LogTopic::ALL("all");
+
 LogTopic Logger::AGENCY("agency", LogLevel::INFO);
 LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::INFO);
 LogTopic Logger::AGENCYSTORE("agencystore", LogLevel::WARN);
