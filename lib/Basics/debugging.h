@@ -244,9 +244,9 @@ struct AssertionLogger {
 
 #else
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/ \
-  (false) ? (void)(expr)                     \
-          : ::arangodb::debug::AssertionLogger{} & ::arangodb::debug::NoOpStream {}
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/        \
+  (true) ? ((false) ? (void)(expr) : (void)nullptr) \
+         : ::arangodb::debug::AssertionLogger{} & ::arangodb::debug::NoOpStream {}
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
