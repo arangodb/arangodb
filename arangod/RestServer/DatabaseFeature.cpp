@@ -335,25 +335,25 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--database.extended-names-databases",
                      "allow extended characters in database names",
                      new BooleanParameter(&_extendedNamesForDatabases),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Experimental))
                      .setIntroducedIn(30900);
   
   options->addOption("--database.extended-names-collections",
                      "allow extended characters in collection names",
                      new BooleanParameter(&_extendedNamesForCollections),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Experimental))
                      .setIntroducedIn(30900);
   
   options->addOption("--database.extended-names-views",
                      "allow extended characters in view names",
                      new BooleanParameter(&_extendedNamesForViews),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Experimental))
                      .setIntroducedIn(30900);
   
   options->addOption("--database.extended-names-analyzers",
                      "allow extended characters in analyzer names",
                      new BooleanParameter(&_extendedNamesForAnalyzers),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Experimental))
                      .setIntroducedIn(30900);
   
   // the following option was obsoleted in 3.9
@@ -429,7 +429,7 @@ void DatabaseFeature::start() {
   if (_extendedNamesForDatabases) {
     LOG_TOPIC("2c0c6", WARN, arangodb::Logger::FIXME)
         << "Extended name for databases are an experimental feature which can "
-        << "cause incompatibility issues with client tools, drivers and applications - do not use in production!";
+        << "cause incompatibility issues with not-yet-prepared drivers and applications - do not use in production!";
   }
 
   verifyAppPaths();

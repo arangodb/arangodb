@@ -70,6 +70,9 @@ enum class Flags : uint16_t {
   
   DefaultNoOs = Default & ~OsAll,         // default, but not specifying any OSes
   DefaultNoComponents = Default & ~OnAll, // default, but not specifying any components
+
+  // experimental flag
+  Experimental = 8192,
 };
 
 static constexpr inline std::underlying_type<Flags>::type makeFlags() {
