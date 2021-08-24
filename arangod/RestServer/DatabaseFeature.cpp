@@ -289,7 +289,7 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _isInitiallyEmpty(false),
       _checkVersion(false),
       _upgrade(false),
-      _extendedNamesForDatabases(true),
+      _extendedNamesForDatabases(false),
       _extendedNamesForCollections(false),
       _extendedNamesForViews(false),
       _extendedNamesForAnalyzers(false),
