@@ -11,9 +11,10 @@ v3.8.1 (XXXX-XX-XX)
 * Do not block a scheduler thread on the coordinator while an index is being
   created. Instead, start a background thread for the actual index fill-up work.
   The original thread can then be relinquished until the index is completely
-  filled or index creation has failed. This also allows obsoleting the startup
-  option `--cluster.index-create-timeout`, which from now on is ignored when
-  set.
+  filled or index creation has failed.
+  The default index creation timeout on coordinators has also been extended from
+  1 hour to 4 days, but it is still configurable via the startup parameter
+  `--cluster.index-create-timeout` in case this is necessary.
 
 * Fixed: getResponsibleShard call on disjoint Smart Graphs if you asked for the
   responsible shard on a disjoint edge collection where the _from and _to differ

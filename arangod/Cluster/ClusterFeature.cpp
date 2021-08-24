@@ -115,11 +115,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addObsoleteOption("--cluster.agency-prefix", "agency prefix", false);
   
-  options->addObsoleteOption("--cluster.index-create-timeout",
-      "amount of time (in seconds) the coordinator will wait for an index to "
-      "be created before giving up", true);
-
-
   options->addOption(
       "--cluster.require-persisted-id",
       "if set to true, then the instance will only start if a UUID file is "
@@ -221,6 +216,15 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                                    arangodb::options::Flags::OnCoordinator,
                                    arangodb::options::Flags::OnDBServer,
+                                   arangodb::options::Flags::Hidden));
+
+  options->addOption(
+      "--cluster.index-create-timeout",
+      "amount of time (in seconds) the coordinator will wait for an index to "
+      "be created before giving up",
+      new DoubleParameter(&_indexCreationTimeout),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnCoordinator,
                                    arangodb::options::Flags::Hidden));
 
   options
