@@ -113,35 +113,35 @@ bool CollectionNameValidator::isAllowedName(bool allowSystem, bool extendedNames
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
+    unsigned char c = static_cast<unsigned char>(*ptr);
     bool ok = true;
 
     if (extendedNames) {
       // forward slashes are disallowed inside collection names because we use the forward
       // slash for splitting _everywhere_
-      ok &= (*ptr != '/');
+      ok &= (c != '/');
       
-      // the NUL byte is not allowed in collection names, as it may cause trouble in several
-      // places
-      ok &= (*ptr != '\0');
+      // non visible characters below ASCII code 32 (control characters) not allowed, including '\0'
+      ok &= (c >= 32U);
 
       if (length == 0) {
         // a collection name must not start with a digit, because then it can be confused with
         // numeric collection ids
-        ok &= (*ptr < '0' || *ptr > '9');
+        ok &= (c < '0' || c > '9');
         
         // a collection name must not start with an underscore unless it is the system collection
-        ok &= (*ptr != '_' || allowSystem);
+        ok &= (c != '_' || allowSystem);
 
         // finally, a collection name must not start with a dot, because this is used for hidden
         // agency entries
-        ok &= (*ptr != '.');
+        ok &= (c != '.');
       }
     } else {
       if (length == 0) {
-        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || (allowSystem && *ptr == '_');
+        ok &= (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (allowSystem && c == '_');
       } else {
-        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || 
-              (*ptr == '_') || (*ptr == '-') || (*ptr >= '0' && *ptr <= '9');
+        ok &= (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+              (c == '_') || (c == '-') || (c >= '0' && c <= '9');
       }
     }
 
@@ -168,35 +168,35 @@ bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
+    unsigned char c = static_cast<unsigned char>(*ptr);
     bool ok = true;
 
     if (extendedNames) {
       // forward slashes are disallowed inside view names because we use the forward
       // slash for splitting _everywhere_
-      ok &= (*ptr != '/');
+      ok &= (c != '/');
       
-      // the NUL byte is not allowed in view names, as it may cause trouble in several
-      // places
-      ok &= (*ptr != '\0');
+      // non visible characters below ASCII code 32 (control characters) not allowed, including '\0'
+      ok &= (c >= 32U);
 
       if (length == 0) {
         // a view name must not start with a digit, because then it can be confused with
         // numeric view ids
-        ok &= (*ptr < '0' || *ptr > '9');
+        ok &= (c < '0' || c > '9');
         
         // a view name must not start with an underscore (unless it is a system view)
-        ok &= (*ptr != '_' || allowSystem);
+        ok &= (c != '_' || allowSystem);
 
         // finally, a view name must not start with a dot, because this is used for hidden
         // agency entries
-        ok &= (*ptr != '.');
+        ok &= (c != '.');
       }
     } else {
       if (length == 0) {
-        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || (allowSystem && *ptr == '_');
+        ok &= (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (allowSystem && c == '_');
       } else {
-        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || 
-              (*ptr == '_') || (*ptr == '-') || (*ptr >= '0' && *ptr <= '9');
+        ok &= (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+              (c == '_') || (c == '-') || (c >= '0' && c <= '9');
       }
     }
 
@@ -223,28 +223,28 @@ bool IndexNameValidator::isAllowedName(bool extendedNames,
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
+    unsigned char c = static_cast<unsigned char>(*ptr);
     bool ok = true;
 
     if (extendedNames) {
       // forward slashes are disallowed inside index names because we use the forward
       // slash for splitting _everywhere_
-      ok &= (*ptr != '/');
+      ok &= (c != '/');
       
-      // the NUL byte is not allowed in index names, as it may cause trouble in several
-      // places
-      ok &= (*ptr != '\0');
+      // non visible characters below ASCII code 32 (control characters) not allowed, including '\0'
+      ok &= (c >= 32U);
 
       if (length == 0) {
         // an index name must not start with a digit, because then it can be confused with
         // numeric index ids
-        ok &= (*ptr < '0' || *ptr > '9');
+        ok &= (c < '0' || c > '9');
       }
     } else {
       if (length == 0) {
-        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z');
+        ok &= (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
       } else {
-        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || 
-              (*ptr == '_') || (*ptr == '-') || (*ptr >= '0' && *ptr <= '9');
+        ok &= (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+              (c == '_') || (c == '-') || (c >= '0' && c <= '9');
       }
     }
 
@@ -271,28 +271,30 @@ bool AnalyzerNameValidator::isAllowedName(bool extendedNames,
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
+    unsigned char c = static_cast<unsigned char>(*ptr);
     bool ok = true;
 
     if (extendedNames) {
       // forward slashes are disallowed inside analyzer names because we use the forward
       // slash for splitting _everywhere_
-      ok &= (*ptr != '/');
+      ok &= (c != '/');
       
       // the NUL byte is not allowed in analyzer names, as it may cause trouble in several
       // places
-      ok &= (*ptr != '\0');
+      // non visible characters below ASCII code 32 (control characters) not allowed, including '\0'
+      ok &= (c >= 32U);
 
       if (length == 0) {
         // an analyzer name must not start with a digit, because then it can be confused with
         // numeric ids
-        ok &= (*ptr < '0' || *ptr > '9');
+        ok &= (c < '0' || c > '9');
       }
     } else {
       if (length == 0) {
-        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z');
+        ok &= (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
       } else {
-        ok &= (*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z') || 
-              (*ptr == '_') || (*ptr == '-') || (*ptr >= '0' && *ptr <= '9');
+        ok &= (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+              (c == '_') || (c == '-') || (c >= '0' && c <= '9');
       }
     }
 
