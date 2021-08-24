@@ -1,7 +1,7 @@
 name: arangodb_vst_connections_total
 introducedIn: "3.7.15"
 help: |
-  Total number of VST connections accepted
+  Total number of VST connections accepted.
 unit: number
 type: counter
 category: Connectivity
