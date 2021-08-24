@@ -1,7 +1,7 @@
 name: arangodb_client_connection_statistics_bytes_sent
 introducedIn: "3.8.0"
 help: |
-  Bytes sent for a request
+  Bytes sent for a request.
 unit: bytes
 type: histogram
 category: Statistics
