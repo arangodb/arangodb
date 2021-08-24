@@ -1,4 +1,6 @@
 To do:
+- [ ] add server_parameters test
+- [ ] add recovery test
 - [ ] add tests for replication - leader/follower
 - [ ] add tests for replication - cluster
 - [ ] check location headers / http redirects
