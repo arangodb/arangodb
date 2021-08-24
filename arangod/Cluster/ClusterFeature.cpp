@@ -114,6 +114,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addObsoleteOption("--cluster.my-id", "this server's id", false);
 
   options->addObsoleteOption("--cluster.agency-prefix", "agency prefix", false);
+  
+  options->addObsoleteOption("--cluster.index-create-timeout",
+      "amount of time (in seconds) the coordinator will wait for an index to "
+      "be created before giving up", true);
 
 
   options->addOption(
@@ -219,15 +223,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                                    arangodb::options::Flags::OnDBServer,
                                    arangodb::options::Flags::Hidden));
 
-  options->addOption(
-      "--cluster.index-create-timeout",
-      "amount of time (in seconds) the coordinator will wait for an index to "
-      "be created before giving up",
-      new DoubleParameter(&_indexCreationTimeout),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                   arangodb::options::Flags::OnCoordinator,
-                                   arangodb::options::Flags::Hidden));
-  
   options
       ->addOption("--cluster.api-jwt-policy",
                   "access permissions required for accessing /_admin/cluster REST APIs "
