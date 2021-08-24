@@ -167,9 +167,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "amount of time (in seconds) the coordinator will wait for an index to "
       "be created before giving up",
       new DoubleParameter(&_indexCreationTimeout),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                   arangodb::options::Flags::OnCoordinator,
-                                   arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
