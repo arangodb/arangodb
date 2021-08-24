@@ -23,7 +23,7 @@
 #ifndef IRESEARCH_TOKEN_STREAMS_H
 #define IRESEARCH_TOKEN_STREAMS_H
 
-#include "token_stream.hpp"
+#include "analyzer.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
 #include "utils/numeric_utils.hpp"
@@ -35,10 +35,17 @@ namespace iresearch {
 /// @brief convenient helper implementation providing access to "increment"
 ///        and "term_attributes" attributes
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API basic_token_stream : public token_stream {
+class IRESEARCH_API basic_token_stream : public analysis::analyzer {
  public:
+
+  explicit basic_token_stream(const type_info& type) : analysis::analyzer(type) {}
+
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
+  }
+
+  bool reset(const string_ref&) override {
+    return false;
   }
 
  protected:
@@ -53,6 +60,7 @@ class IRESEARCH_API boolean_token_stream final
     : public basic_token_stream,
       private util::noncopyable {
  public:
+
   static constexpr string_ref value_true() noexcept {
     return { "\xFF", 1 };
   }
@@ -74,6 +82,10 @@ class IRESEARCH_API boolean_token_stream final
     in_use_ = false;
   }
 
+  static constexpr irs::string_ref type_name() noexcept {
+    return "boolean_token_stream";
+  }
+
  private:
   bool in_use_;
   bool value_;
@@ -86,7 +98,7 @@ class IRESEARCH_API boolean_token_stream final
 ///        on initial string length 
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API string_token_stream final
-    : public token_stream,
+    : public analysis::analyzer,
       private util::noncopyable {
  public:
   string_token_stream() noexcept;
@@ -102,9 +114,14 @@ class IRESEARCH_API string_token_stream final
     in_use_ = false; 
   }
 
-  void reset(const string_ref& value) noexcept {
+  bool reset(const string_ref& value) noexcept override {
     value_ = ref_cast<byte_type>(value);
     in_use_ = false;
+    return true;
+  }
+
+  static constexpr irs::string_ref type_name() noexcept {
+    return "string_token_stream";
   }
 
  private:
@@ -123,6 +140,10 @@ class IRESEARCH_API numeric_token_stream final
     : public basic_token_stream,
       private util::noncopyable {
  public:
+
+  explicit numeric_token_stream()
+    : basic_token_stream(irs::type<numeric_token_stream>::get()) {}
+
   static constexpr uint32_t PRECISION_STEP_DEF = 16;
   static constexpr uint32_t PRECISION_STEP_32 = 8;
 
@@ -144,6 +165,10 @@ class IRESEARCH_API numeric_token_stream final
   #endif
 
   static bytes_ref value(bstring& buf, double_t value);
+
+  static constexpr irs::string_ref type_name() noexcept {
+    return "numeric_token_stream";
+  }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -254,6 +279,10 @@ class IRESEARCH_API null_token_stream final
     : public basic_token_stream,
       private util::noncopyable {
  public:
+
+  explicit null_token_stream()
+    : basic_token_stream(irs::type<null_token_stream>::get()) {}
+
   static constexpr string_ref value_null() noexcept {
     // data pointer != nullptr or assert failure in bytes_hash::insert(...)
     return { "\x00", 0 };
@@ -263,6 +292,10 @@ class IRESEARCH_API null_token_stream final
 
   void reset() noexcept {
     in_use_ = false; 
+  }
+
+  static constexpr irs::string_ref type_name() noexcept {
+    return "null_token_stream";
   }
 
  private:

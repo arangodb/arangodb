@@ -250,8 +250,8 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
                                  builder.toJson(), "': ", rv.errorMessage()));
       }
     } else {
-      TRI_ASSERT(condition.numMembers() > _mutableConditionIdx);
-      if (ADB_UNLIKELY(condition.numMembers() <= _mutableConditionIdx)) {
+      TRI_ASSERT(static_cast<int64_t>(condition.numMembers()) > _mutableConditionIdx);
+      if (ADB_UNLIKELY(static_cast<int64_t>(condition.numMembers()) <= _mutableConditionIdx)) {
         arangodb::velocypack::Builder builder;
         condition.toVelocyPack(builder, true);
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -468,7 +468,7 @@ std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iter
   if (node) {
     std::string_view extraFieldName(nullptr, 0);
     if (opts.mutableConditionIdx >= 0) {
-      TRI_ASSERT(opts.mutableConditionIdx < node->numMembers());
+      TRI_ASSERT(opts.mutableConditionIdx < static_cast<int64_t>(node->numMembers()));
       // we are in traversal. So try to find extra. If we are searching for '_to' then
       // "next" step (and our extra) is '_from' and vice versa
       auto mutableCondition = node->getMember(opts.mutableConditionIdx);
