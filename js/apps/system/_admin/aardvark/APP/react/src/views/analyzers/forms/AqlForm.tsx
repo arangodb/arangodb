@@ -5,26 +5,11 @@ import RadioGroup from "../../../components/pure-css/form/RadioGroup";
 import Textbox from "../../../components/pure-css/form/Textbox";
 import Textarea from "../../../components/pure-css/form/Textarea";
 import { Cell, Grid } from "../../../components/pure-css/grid";
+import { setIntegerField } from "../helpers";
 
 const AqlForm = ({ formState, dispatch, disabled }: FormProps) => {
-  const updateBatchSize = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.batchSize',
-        value: parseInt(event.target.value)
-      }
-    });
-  };
-
-  const updateMemoryLimit = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.memoryLimit',
-        value: parseInt(event.target.value)
-      }
-    });
+  const getNumericFieldSetter = (field: string) => (event: ChangeEvent<HTMLInputElement>) => {
+    setIntegerField(field, event.target.value, dispatch);
   };
 
   const updateQueryString = (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -79,13 +64,13 @@ const AqlForm = ({ formState, dispatch, disabled }: FormProps) => {
       <Grid>
         <Cell size={'1'}>
           <Textbox label={'Batch Size'} type={'number'} min={1} placeholder={'10'} required={true}
-                   value={aqlFormState.properties.batchSize || ''} onChange={updateBatchSize}
-                   disabled={disabled}/>
+                   value={aqlFormState.properties.batchSize || ''} disabled={disabled}
+                   onChange={getNumericFieldSetter('properties.batchSize')}/>
         </Cell>
         <Cell size={'1'}>
           <Textbox label={'Memory Limit'} type={'number'} min={1} max={33554432} required={true}
                    placeholder={'1048576'} value={aqlFormState.properties.memoryLimit || ''}
-                   disabled={disabled} onChange={updateMemoryLimit}/>
+                   disabled={disabled} onChange={getNumericFieldSetter('properties.memoryLimit')}/>
         </Cell>
       </Grid>
     </Cell>

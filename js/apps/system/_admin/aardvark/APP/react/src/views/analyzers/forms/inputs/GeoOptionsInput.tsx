@@ -4,36 +4,11 @@ import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Fieldset from "../../../../components/pure-css/form/Fieldset";
 import Textbox from "../../../../components/pure-css/form/Textbox";
 import { get } from "lodash";
+import { setIntegerField } from "../../helpers";
 
 const GeoOptionsInput = ({ formState, dispatch, disabled }: FormProps) => {
-  const updateMaxCells = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.options.maxCells',
-        value: parseInt(event.target.value)
-      }
-    });
-  };
-
-  const updateMinLevel = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.options.minLevel',
-        value: parseInt(event.target.value)
-      }
-    });
-  };
-
-  const updateMaxLevel = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.options.maxLevel',
-        value: parseInt(event.target.value)
-      }
-    });
+  const getNumericFieldSetter = (field: string) => (event: ChangeEvent<HTMLInputElement>) => {
+    setIntegerField(field, event.target.value, dispatch);
   };
 
   const geoOptions = get(formState, 'properties.options', {}) as GeoOptions;
@@ -41,18 +16,21 @@ const GeoOptionsInput = ({ formState, dispatch, disabled }: FormProps) => {
   return <Fieldset legend={'Options'}>
     <Grid>
       <Cell size={'1-3'}>
-        <Textbox label={'Max S2 Cells'} type={'number'} placeholder={disabled ? '' : '20'}
-                 onChange={updateMaxCells} value={geoOptions.maxCells || ''} disabled={disabled}/>
+        <Textbox label={'Max S2 Cells'} type={'number'} placeholder={disabled ? '' : '20'} disabled={disabled}
+                 onChange={getNumericFieldSetter('properties.options.maxCells')}
+                 value={geoOptions.maxCells || ''}/>
       </Cell>
 
       <Cell size={'1-3'}>
         <Textbox label={'Least Precise S2 Level'} type={'number'} placeholder={disabled ? '' : '4'}
-                 onChange={updateMinLevel} value={geoOptions.minLevel || ''} disabled={disabled}/>
+                 onChange={getNumericFieldSetter('properties.options.minLevel')}
+                 value={geoOptions.minLevel || ''} disabled={disabled}/>
       </Cell>
 
       <Cell size={'1-3'}>
         <Textbox label={'Most Precise S2 Level'} type={'number'} placeholder={disabled ? '' : '23'}
-                 onChange={updateMaxLevel} value={geoOptions.maxLevel || ''} disabled={disabled}/>
+                 onChange={getNumericFieldSetter('properties.options.maxLevel')}
+                 value={geoOptions.maxLevel || ''} disabled={disabled}/>
       </Cell>
     </Grid>
   </Fieldset>;

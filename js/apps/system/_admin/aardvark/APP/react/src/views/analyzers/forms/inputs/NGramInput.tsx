@@ -4,6 +4,7 @@ import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Textbox from "../../../../components/pure-css/form/Textbox";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
 import { get } from "lodash";
+import { setIntegerField } from "../../helpers";
 
 type NGramInputProps = FormProps & {
   basePath: string;
@@ -11,26 +12,8 @@ type NGramInputProps = FormProps & {
 };
 
 const NGramInput = ({ formState, dispatch, disabled, basePath, required = true }: NGramInputProps) => {
-  const updateMinLength = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'min',
-        value: parseInt(event.target.value)
-      },
-      basePath
-    });
-  };
-
-  const updateMaxLength = (event: ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'max',
-        value: parseInt(event.target.value)
-      },
-      basePath
-    });
+  const getNumericFieldSetter = (field: string) => (event: ChangeEvent<HTMLInputElement>) => {
+    setIntegerField(field, event.target.value, dispatch, basePath);
   };
 
   const updatePreserve = (event: ChangeEvent<HTMLInputElement>) => {
@@ -49,13 +32,13 @@ const NGramInput = ({ formState, dispatch, disabled, basePath, required = true }
   return <Grid>
     <Cell size={'1-3'}>
       <Textbox label={'Minimum N-Gram Length'} type={'number'} min={1} placeholder={disabled ? '' : '2'}
-               required={required} value={ngramBase.min || ''} onChange={updateMinLength}
+               required={required} value={ngramBase.min || ''} onChange={getNumericFieldSetter('min')}
                disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-3'}>
       <Textbox label={'Maximum N-Gram Length'} type={'number'} min={1} placeholder={disabled ? '' : '3'}
-               required={required} value={ngramBase.max || ''} onChange={updateMaxLength}
+               required={required} value={ngramBase.max || ''} onChange={getNumericFieldSetter('max')}
                disabled={disabled}/>
     </Cell>
 

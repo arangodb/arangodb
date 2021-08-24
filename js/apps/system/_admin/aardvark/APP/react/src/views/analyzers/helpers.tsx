@@ -1,5 +1,5 @@
 import Ajv from "ajv";
-import { AnalyzerTypeState, FormProps, formSchema } from "./constants";
+import { AnalyzerTypeState, DispatchArgs, FormProps, formSchema } from "./constants";
 import DelimiterForm from "./forms/DelimiterForm";
 import StemForm from "./forms/StemForm";
 import NormForm from "./forms/NormForm";
@@ -8,9 +8,9 @@ import TextForm from "./forms/TextForm";
 import AqlForm from "./forms/AqlForm";
 import GeoJsonForm from "./forms/GeoJsonForm";
 import GeoPointForm from "./forms/GeoPointForm";
-import React from "react";
+import React, { Dispatch } from "react";
 import PipelineForm from "./forms/PipelineForm";
-import { compact } from "lodash";
+import { compact, parseInt } from "lodash";
 import StopwordsForm from "./forms/StopwordsForm";
 import CollationForm from "./forms/CollationForm";
 import SegmentationForm from "./forms/SegmentationForm";
@@ -67,5 +67,28 @@ export const getForm = ({ formState, dispatch, disabled = true }: FormProps) => 
 
     case 'geopoint':
       return <GeoPointForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+  }
+};
+
+export const setIntegerField = (field: string, value: string, dispatch: Dispatch<DispatchArgs>, basePath?: string) => {
+  const numValue = parseInt(value);
+
+  if (numValue) {
+    dispatch({
+      type: 'setField',
+      field: {
+        path: field,
+        value: numValue
+      },
+      basePath
+    });
+  } else {
+    dispatch({
+      type: 'unsetField',
+      field: {
+        path: field
+      },
+      basePath
+    });
   }
 };
