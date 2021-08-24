@@ -95,6 +95,14 @@ The following values for *type* are valid:<br>
 - *2*: document collection
 - *3*: edge collection
 
+@RESTBODYPARAM{cacheEnabled,boolean,optional,}
+Whether the in-memory hash cache for documents should be enabled for this
+collection (default: *true*). Can be controlled globally with the `--cache.size`
+startup option. The cache can speed up repeated reads of the same documents via
+their document keys. If the same documents are not fetched often or are
+modified frequently, then you may disable the cache to avoid the maintenance
+costs.
+
 @RESTBODYPARAM{numberOfShards,integer,optional,int64}
 (The default is *1*): in a cluster, this value determines the
 number of shards to create for the collection. In a single

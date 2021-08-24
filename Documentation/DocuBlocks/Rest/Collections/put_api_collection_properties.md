@@ -25,6 +25,14 @@ the rename endpoint (but not in clusters).
 If *true* then the data is synchronized to disk before returning from a
 document create, update, replace or removal operation. (default: false)
 
+@RESTBODYPARAM{cacheEnabled,boolean,optional,}
+Whether the in-memory hash cache for documents should be enabled for this
+collection (default: *true*). Can be controlled globally with the `--cache.size`
+startup option. The cache can speed up repeated reads of the same documents via
+their document keys. If the same documents are not fetched often or are
+modified frequently, then you may disable the cache to avoid the maintenance
+costs.
+
 @RESTBODYPARAM{schema,object,optional,}
 Optional object that specifies the collection level schema for
 documents. The attribute keys `rule`, `level` and `message` must follow the
