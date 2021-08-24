@@ -1,6 +1,10 @@
 v3.6.16 (XXXX-XX-XX)
 --------------------
 
+* Fix a potential multi-threading issue in index creation on coordinators,
+  when an agency callback was triggered at the same time the method
+  `ensureIndexCoordinatorInner` was left.
+
 * Preselect "create index in background" option when creating indexes in the web
   UI. The "create index in background" option can be less intrusive because it
   allows other write operations on the collection to proceed.
