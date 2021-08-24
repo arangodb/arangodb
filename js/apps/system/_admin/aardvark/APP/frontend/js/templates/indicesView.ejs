@@ -39,15 +39,15 @@
                 <th class="collectionTh">Type:</th>
                 <th class="">
                   <select id="newIndexType">
-                    <option style="display: none" disabled selected value="unknown"> -- select an index -- </option>
+                    <option style="display: none" disabled selected value="unknown"> -- select an index type -- </option>
+                    <% if (supported.indexOf('persistent') > -1) { %> 
+                      <option value="Persistent">Persistent Index</option>
+                    <% } %> 
                     <% if (supported.indexOf('geo') > -1) { %> 
                       <option value="Geo">Geo Index</option>
                     <% } %> 
                     <% if (supported.indexOf('hash') > -1) { %> 
                       <option value="Hash">Hash Index</option>
-                    <% } %> 
-                    <% if (supported.indexOf('persistent') > -1) { %> 
-                      <option value="Persistent">Persistent Index</option>
                     <% } %> 
                     <% if (supported.indexOf('fulltext') > -1) { %> 
                       <option value="Fulltext">Fulltext Index</option>
