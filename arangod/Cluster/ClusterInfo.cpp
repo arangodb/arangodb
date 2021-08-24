@@ -6087,7 +6087,7 @@ CollectionWatcher::CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegis
       [self = weak_from_this()](VPackSlice const& result) {
         auto watcher = self.lock();
         if (result.isNone() && watcher) {
-          _present.store(false);
+          watcher->_present.store(false);
         }
         return true;
       },
