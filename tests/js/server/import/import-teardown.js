@@ -60,7 +60,7 @@
   db._drop("UnitTestsImportIgnore");
   db._drop("UnitTestsImportUniqueConstraints");
   
-  let dbs = ["maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", " abc mötor !\" ' & <>", "UnitTestImportCreateDatabase"];
+  let dbs = ["maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "abc mötor !\" ' & <>", "UnitTestImportCreateDatabase"];
   dbs.forEach((name) => {
     try {
       db._dropDatabase(name);

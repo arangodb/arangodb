@@ -278,7 +278,7 @@ const impTodos = [{
   coll: 'UnitTestsImportJson1',
   type: 'json',
   create: 'true',
-  database: ' abc mötor !" \' & <>',
+  database: 'abc mötor !" \' & <>',
   createDatabase: 'true'
 }];
 

@@ -643,7 +643,7 @@ function importTestSuite () {
     
     testCreateDatabaseUnicode : function () {
       let db = require("@arangodb").db;
-      let dbs = ['ﻚﻠﺑ ﻞﻄﻴﻓ', ' abc mötor !" \' & <>'];
+      let dbs = ['ﻚﻠﺑ ﻞﻄﻴﻓ', 'abc mötor !" \' & <>'];
       try {
         dbs.forEach((name) => {
           let testdb = db._useDatabase(name);

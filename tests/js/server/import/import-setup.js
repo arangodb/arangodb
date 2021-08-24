@@ -66,7 +66,7 @@
     "maçã": true, 
     "😀": true,
     "ﻚﻠﺑ ﻞﻄﻴﻓ": false, 
-    " abc mötor !\" ' & <>": false, 
+    "abc mötor !\" ' & <>": false, 
     "UnitTestImportCreateDatabase": false
   };
   Object.keys(dbs).forEach((name) => {
