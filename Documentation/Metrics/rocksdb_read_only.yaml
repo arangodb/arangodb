@@ -1,7 +1,7 @@
 name: rocksdb_read_only
 introducedIn: "3.8.1"
 help: |
-  RocksDB metric "background-errors"
+  RocksDB metric "background-errors".
 unit: number
 type: gauge
 category: RocksDB
