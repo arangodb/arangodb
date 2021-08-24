@@ -21,7 +21,7 @@ specifies the type of the key generator. The currently
 available generators are *traditional*, *autoincrement*, *uuid*
 and *padded*.
 
-@RESTSTRUCT{cacheEnabled,boolean,required,}
+@RESTSTRUCT{cacheEnabled,collection_info,boolean,required,}
 Whether the in-memory hash cache for documents is enabled for this
 collection.
 
