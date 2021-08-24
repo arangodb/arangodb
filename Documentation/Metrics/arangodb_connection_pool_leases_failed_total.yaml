@@ -2,7 +2,7 @@ name: arangodb_connection_pool_leases_failed_total
 renamedFrom: arangodb_connection_pool_leases_failed
 introducedIn: "3.8.0"
 help: |
-  Total number of failed connection leases
+  Total number of failed connection leases.
 unit: number
 type: counter
 category: Connectivity
