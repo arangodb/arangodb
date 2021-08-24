@@ -32,12 +32,11 @@ class ClusterIndexFactory final : public IndexFactory {
   explicit ClusterIndexFactory(application_features::ApplicationServer&);
   ~ClusterIndexFactory() = default;
 
-  Result enhanceIndexDefinition( // normalize definition
-    velocypack::Slice const definition, // source definition
-    velocypack::Builder& normalized, // normalized definition (out-param)
-    bool isCreation, // definition for index creation
-    TRI_vocbase_t const& vocbase // index vocbase
-  ) const override;
+  Result enhanceIndexDefinition(
+    velocypack::Slice const definition,
+    velocypack::Builder& normalized,
+    bool isCreation,
+    TRI_vocbase_t const& vocbase) const override;
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" => "hash")
   /// used to display storage engine capabilities

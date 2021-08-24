@@ -126,12 +126,11 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
                                                  IndexId id,
                                                  bool isClusterConstructor) const override;
 
-    virtual arangodb::Result normalize(             // normalize definition
-        arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
-        arangodb::velocypack::Slice definition,  // source definition
-        bool isCreation,              // definition for index creation
-        TRI_vocbase_t const& vocbase  // index vocbase
-        ) const override;
+    virtual arangodb::Result normalize(
+        arangodb::velocypack::Builder& normalized,
+        arangodb::velocypack::Slice definition,
+        bool isCreation,
+        TRI_vocbase_t const& vocbase) const override;
   };
 
   static std::shared_ptr<IndexFactory> createFactory(application_features::ApplicationServer&);

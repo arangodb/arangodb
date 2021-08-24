@@ -27,6 +27,7 @@
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "index/norm.hpp"
 #include "utils/utf8_path.hpp"
 
 #include "IResearch/RestHandlerMock.h"
@@ -362,11 +363,11 @@ REGISTER_ANALYZER_VPACK(TestTokensTypedAnalyzer, TestTokensTypedAnalyzer::make,
 struct Analyzer {
   irs::string_ref type;
   VPackSlice properties;
-  irs::flags features;
+  arangodb::iresearch::Features features;
 
   Analyzer() = default;
   Analyzer(irs::string_ref const t, irs::string_ref const p,
-           irs::flags const& f = irs::flags::empty_instance())
+           arangodb::iresearch::Features f = {})
       : type(t), features(f) {
     if (p.null()) {
       properties = VPackSlice::nullSlice();
@@ -384,67 +385,67 @@ struct Analyzer {
 std::map<irs::string_ref, Analyzer> const& staticAnalyzers() {
   static const std::map<irs::string_ref, Analyzer> analyzers = {
       {"identity",
-       {"identity", irs::string_ref::NIL, {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()}}},
+       {"identity", irs::string_ref::NIL, {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ}}},
       {"text_de",
        {"text",
         "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_en",
        {"text",
         "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_es",
        {"text",
         "{ \"locale\": \"es.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_fi",
        {"text",
         "{ \"locale\": \"fi.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_fr",
        {"text",
         "{ \"locale\": \"fr.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_it",
        {"text",
         "{ \"locale\": \"it.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_nl",
        {"text",
         "{ \"locale\": \"nl.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_no",
        {"text",
         "{ \"locale\": \"no.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_pt",
        {"text",
         "{ \"locale\": \"pt.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_ru",
        {"text",
         "{ \"locale\": \"ru.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_sv",
        {"text",
         "{ \"locale\": \"sv.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
       {"text_zh",
        {"text",
         "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()}}},
+        {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS}}},
   };
 
   return analyzers;
@@ -657,7 +658,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_valid) {
   }
   auto pool = feature.get(analyzerName(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags(), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_valid) {
@@ -667,19 +668,19 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_valid) {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
                                VPackParser::fromJson("\"abcd\"")->slice(),
-                               irs::flags{irs::type<irs::frequency>::get()});
+                               arangodb::iresearch::Features(irs::IndexFeatures::FREQ));
     EXPECT_TRUE(res.ok());
     EXPECT_NE(result.first, nullptr);
   }
   auto pool = feature.get(analyzerName(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags({irs::type<irs::frequency>::get()}), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features(irs::IndexFeatures::FREQ), pool->features());
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     EXPECT_TRUE(feature
                     .emplace(result, analyzerName(), "TestAnalyzer",
                              VPackParser::fromJson("\"abcd\"")->slice(),
-                             irs::flags{irs::type<irs::frequency>::get()})
+                             arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
                     .ok());
     EXPECT_NE(result.first, nullptr);
   }
@@ -701,7 +702,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_invalid_properties) 
   }
   auto pool = feature.get(analyzerName(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags(), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
   // Emplace should fail
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -730,14 +731,14 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_invalid_features) {
   }
   auto pool = feature.get(analyzerName(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags(), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
   {
     // Emplace should fail
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     EXPECT_FALSE(feature
                      .emplace(result, analyzerName(), "TestAnalyzer",
                               VPackParser::fromJson("\"abc\"")->slice(),
-                              irs::flags{irs::type<irs::frequency>::get()})
+                              arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
                      .ok());
     EXPECT_EQ(result.first, nullptr);
   }
@@ -760,14 +761,14 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_invalid_type) {
   }
   auto pool = feature.get(analyzerName(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags(), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
   {
     // Emplace should fail
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     EXPECT_FALSE(feature
                      .emplace(result, analyzerName(), "invalid",
                               VPackParser::fromJson("\"abc\"")->slice(),
-                              irs::flags{irs::type<irs::frequency>::get()})
+                              arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
                      .ok());
     EXPECT_EQ(result.first, nullptr);
   }
@@ -827,25 +828,14 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_during_recovery) {
   EXPECT_EQ(nullptr, ptr);
 }
 
-TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_unsupported_type) {
-  // add invalid (unsupported feature)
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
-  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
-                             VPackParser::fromJson("\"abc\"")->slice(),
-                             {irs::type<irs::document>::get()});
-  EXPECT_FALSE(res.ok());
-  EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
-  EXPECT_EQ(feature.get(analyzerName(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST), nullptr);
-}
-
 TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_position_without_frequency) {
   // add invalid ('position' without 'frequency')
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
                              VPackParser::fromJson("\"abc\"")->slice(),
-                             {irs::type<irs::position>::get()});
+                             arangodb::iresearch::Features(
+                               {}, irs::IndexFeatures::POS));
   EXPECT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   EXPECT_EQ(feature.get(analyzerName(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST), nullptr);
@@ -855,9 +845,14 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_properties_too_large)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   std::string properties(1024 * 1024 + 1, 'x');  // +1 char longer then limit
+  VPackBuilder prop;
+  prop.openObject();
+  prop.add("value", VPackValue(properties));
+  prop.close();
   auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
-                             VPackParser::fromJson("\"abc\"")->slice(),
-                             {irs::type<irs::position>::get()});
+                             prop.slice(),
+                             arangodb::iresearch::Features(
+                               {}, irs::IndexFeatures::FREQ));
   EXPECT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   EXPECT_EQ(feature.get(analyzerName(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST), nullptr);
@@ -879,12 +874,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_add_static_analyzer) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   feature.prepare();  // add static analyzers
   auto res = feature.emplace(result, "identity", "identity", VPackSlice::noneSlice(),
-                             irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()});
+                             arangodb::iresearch::Features(arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ));
   EXPECT_TRUE(res.ok());
   EXPECT_NE(result.first, nullptr);
   auto pool = feature.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features(arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ), pool->features());
   auto analyzer = pool->get();
   ASSERT_NE(analyzer, nullptr);
   feature.unprepare();
@@ -928,7 +923,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_valid) {
   auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd", 
                           arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags(), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
   EXPECT_EQ("identity", pool->type());
 }
 
@@ -936,28 +931,27 @@ TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_valid) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
-  EXPECT_TRUE(feature
-                .bulkEmplace(*vocbase, VPackParser::fromJson(
-                                        "[{\"name\":\"b_abcd\", \"type\":\"identity\"},"
-                                           "{\"name\":\"b_abcd2\", \"type\":\"TestAnalyzer\"," 
-                                            "\"properties\":{\"args\":\"abc\"}," 
-                                            "\"features\":[\"frequency\", \"position\", \"norm\"]}"
-                                        "]")->slice())
-                .ok());
+  EXPECT_TRUE(feature.bulkEmplace(
+    *vocbase, VPackParser::fromJson(
+      R"([{"name":"b_abcd", "type":"identity"},
+          {"name":"b_abcd2", "type":"TestAnalyzer",
+                             "properties":{"args":"abc"},
+                             "features":["frequency", "position", "norm"]}])")->slice()).ok());
   {
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd",
-      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     ASSERT_NE(pool, nullptr);
-    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
     EXPECT_EQ("identity", pool->type());
   }
   {
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd2",
-      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     ASSERT_NE(pool, nullptr);
-    EXPECT_EQ(irs::flags({irs::type<irs::norm>::get(),
-                          irs::type<irs::frequency>::get(),
-                          irs::type<irs::position>::get()}), pool->features());
+    EXPECT_EQ(arangodb::iresearch::Features(
+                arangodb::iresearch::FieldFeatures::NORM,
+                irs::IndexFeatures::FREQ | irs::IndexFeatures::POS),
+              pool->features());
     EXPECT_EQ("TestAnalyzer", pool->type());
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(), pool->properties());
   }
@@ -980,7 +974,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_skip_invalid_fea
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd",
       arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     ASSERT_NE(pool, nullptr);
-    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
     EXPECT_EQ("identity", pool->type());
   }
   {
@@ -992,7 +986,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_skip_invalid_fea
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd3",
       arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     ASSERT_NE(pool, nullptr);
-    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
     EXPECT_EQ("identity", pool->type());
   }
 }
@@ -1012,7 +1006,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_skip_invalid_nam
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd",
       arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     ASSERT_NE(pool, nullptr);
-    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
     EXPECT_EQ("identity", pool->type());
   }
   {
@@ -1024,7 +1018,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_skip_invalid_nam
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd3",
       arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     ASSERT_NE(pool, nullptr);
-    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
     EXPECT_EQ("identity", pool->type());
   }
 }
@@ -1044,7 +1038,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_skip_invalid_typ
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd",
       arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     ASSERT_NE(pool, nullptr);
-    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
     EXPECT_EQ("identity", pool->type());
   }
   {
@@ -1056,7 +1050,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_skip_invalid_typ
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd3",
       arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     ASSERT_NE(pool, nullptr);
-    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
     EXPECT_EQ("identity", pool->type());
   }
 }
@@ -1078,7 +1072,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_skip_invalid_pro
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd",
       arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     ASSERT_NE(pool, nullptr);
-    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
     EXPECT_EQ("identity", pool->type());
   }
   {
@@ -1090,7 +1084,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_skip_invalid_pro
     auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd3",
       arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     ASSERT_NE(pool, nullptr);
-    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
     EXPECT_EQ("identity", pool->type());
   }
 }
@@ -1175,7 +1169,7 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_valid) {
   auto pool = feature().get(analyzerName(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags(), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
   EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(),
                       pool->properties());
   auto analyzer = pool.get();
@@ -1187,7 +1181,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_system) {
   ASSERT_NE(sysVocbase, nullptr);
   auto pool = feature().get(analyzerName(), *sysVocbase, arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags(), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
   EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(),
                       pool->properties());
   auto analyzer = pool.get();
@@ -1199,7 +1193,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_specific) {
   ASSERT_NE(vocbase, nullptr);
   auto pool = feature().get(analyzerName(), *vocbase, arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags(), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
   EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(),
                       pool->properties());
   auto analyzer = pool.get();
@@ -1211,7 +1205,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_specific_analyzer_name_o
   ASSERT_NE(vocbase, nullptr);
   auto pool = feature().get(shortName(), *vocbase, arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags(), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
   EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(),
                       pool->properties());
   auto analyzer = pool.get();
@@ -1223,7 +1217,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_local_system_analyzer_no_colons
   ASSERT_NE(vocbase, nullptr);
   auto pool = feature().get("test_analyzer", *vocbase, arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags(), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
   EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"def\"}")->slice(),
                       pool->properties());
   auto analyzer = pool.get();
@@ -1235,7 +1229,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_local_including_collection_name
   ASSERT_NE(vocbase, nullptr);
   auto pool = feature().get(specificName(), *vocbase, arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags(), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features{}, pool->features());
   EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"def\"}")->slice(),
                       pool->properties());
   auto analyzer = pool.get();
@@ -1282,7 +1276,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_failure_invalid_type_adding_voc
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_static_analyzer) {
   auto pool = feature().get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features(arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ), pool->features());
   auto analyzer = pool->get();
   ASSERT_NE(analyzer, nullptr);
 }
@@ -1292,7 +1286,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_static_analyzer_adding_vocbases
   ASSERT_NE(sysVocbase, nullptr);
   auto pool = feature().get("identity", *sysVocbase, arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features(arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ), pool->features());
   auto analyzer = pool->get();
   ASSERT_NE(analyzer, nullptr);
 }
@@ -1462,7 +1456,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
 TEST_F(IResearchAnalyzerFeatureTest, test_identity_static) {
   auto pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
   ASSERT_NE(nullptr, pool);
-  EXPECT_EQ(irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features(arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ), pool->features());
   EXPECT_EQ("identity", pool->name());
   auto analyzer = pool->get();
   ASSERT_NE(nullptr, analyzer);
@@ -1484,7 +1478,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_registered) {
   EXPECT_FALSE(!feature.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
   auto pool = feature.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(nullptr, pool);
-  EXPECT_EQ(irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}), pool->features());
+  EXPECT_EQ(arangodb::iresearch::Features(arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ), pool->features());
   EXPECT_EQ("identity", pool->name());
   auto analyzer = pool->get();
   ASSERT_NE(nullptr, analyzer);
@@ -2082,7 +2076,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_emplace_on_single_server) 
     EXPECT_TRUE(feature
                     .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzerA",
                              "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice(),
-                             {irs::type<irs::frequency>::get()})
+                             {{}, irs::IndexFeatures::FREQ})
                     .ok());
     EXPECT_TRUE(result.first);
     EXPECT_TRUE(feature.get(arangodb::StaticStrings::SystemDatabase +
@@ -2118,12 +2112,93 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_emplace_on_single_server) 
   }
 }
 
+TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
+  {
+    arangodb::iresearch::AnalyzerPool::ptr pool;
+    ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+                    pool, "db::test", "TestAnalyzer",
+                    VPackParser::fromJson("\"abc\"")->slice(),
+                    arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::Features{},
+                    arangodb::iresearch::LinkVersion::MIN).ok());
+    ASSERT_NE(nullptr, pool);
+    ASSERT_EQ(arangodb::iresearch::Features{}, pool->features());
+    ASSERT_EQ(irs::IndexFeatures::NONE, pool->indexFeatures());
+    ASSERT_TRUE(pool->fieldFeatures().empty());
+  }
+
+  {
+    arangodb::iresearch::AnalyzerPool::ptr pool;
+    ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+                    pool, "db::test", "TestAnalyzer",
+                    VPackParser::fromJson("\"abc\"")->slice(),
+                    arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::Features{irs::IndexFeatures::FREQ},
+                    arangodb::iresearch::LinkVersion::MIN).ok());
+    ASSERT_NE(nullptr, pool);
+    ASSERT_EQ(arangodb::iresearch::Features{irs::IndexFeatures::FREQ}, pool->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
+    ASSERT_TRUE(pool->fieldFeatures().empty());
+  }
+
+  // norm, version 0
+  {
+    arangodb::iresearch::AnalyzerPool::ptr pool;
+    ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+                    pool, "db::test", "TestAnalyzer",
+                    VPackParser::fromJson("\"abc\"")->slice(),
+                    arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::Features{arangodb::iresearch::FieldFeatures::NORM,
+                                                  irs::IndexFeatures::FREQ},
+                    arangodb::iresearch::LinkVersion::MIN).ok());
+    ASSERT_NE(nullptr, pool);
+    ASSERT_EQ((arangodb::iresearch::Features{
+                arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ}),
+              pool->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
+    irs::type_info::type_id const expectedFeatures[] {irs::type<irs::norm>::id()};
+    ASSERT_EQ((irs::features_t{expectedFeatures, 1}), pool->fieldFeatures());
+  }
+
+  // norm, version 1
+  {
+    arangodb::iresearch::AnalyzerPool::ptr pool;
+    ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+                    pool, "db::test", "TestAnalyzer",
+                    VPackParser::fromJson("\"abc\"")->slice(),
+                    arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::Features{arangodb::iresearch::FieldFeatures::NORM,
+                                                  irs::IndexFeatures::FREQ},
+                    arangodb::iresearch::LinkVersion::MAX).ok());
+    ASSERT_NE(nullptr, pool);
+    ASSERT_EQ((arangodb::iresearch::Features{
+                arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ}),
+              pool->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
+    irs::type_info::type_id const expectedFeatures[] {irs::type<irs::norm2>::id()};
+    ASSERT_EQ((irs::features_t{expectedFeatures, 1}), pool->fieldFeatures());
+  }
+
+  // frequency is not set
+  {
+    arangodb::iresearch::AnalyzerPool::ptr pool;
+    ASSERT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+                    pool, "db::test", "TestAnalyzer",
+                    VPackParser::fromJson("\"abc\"")->slice(),
+                    arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::Features{irs::IndexFeatures::POS},
+                    arangodb::iresearch::LinkVersion::MIN).ok());
+    ASSERT_EQ(nullptr, pool);
+  }
+}
+
 TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
   arangodb::iresearch::AnalyzerPool::ptr lhs;
   ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                   lhs, "db::test", "TestAnalyzer",
-                  VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN, irs::flags())
-                  .ok());
+                  VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN,
+                  arangodb::iresearch::Features{},
+                  arangodb::iresearch::LinkVersion::MIN).ok());
   ASSERT_NE(nullptr, lhs);
   ASSERT_EQ(*lhs, *lhs);
 
@@ -2132,8 +2207,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
     arangodb::iresearch::AnalyzerPool::ptr rhs;
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                     rhs, "db::test1", "TestAnalyzer",
-                    VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN, irs::flags())
-                    .ok());
+                    VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::Features{},
+                    arangodb::iresearch::LinkVersion::MIN).ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
   }
@@ -2143,8 +2219,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
     arangodb::iresearch::AnalyzerPool::ptr rhs;
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                     rhs, "db::test", "ReNormalizingAnalyzer",
-                    VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN, irs::flags())
-                    .ok());
+                    VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::Features{},
+                    arangodb::iresearch::LinkVersion::MIN).ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
   }
@@ -2154,8 +2231,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
     arangodb::iresearch::AnalyzerPool::ptr rhs;
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                     rhs, "db::test", "TestAnalyzer",
-                    VPackParser::fromJson("\"abcd\"")->slice(), arangodb::AnalyzersRevision::MIN, irs::flags())
-                    .ok());
+                    VPackParser::fromJson("\"abcd\"")->slice(), arangodb::AnalyzersRevision::MIN,
+                    arangodb::iresearch::Features{},
+                    arangodb::iresearch::LinkVersion::MIN).ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
   }
@@ -2167,8 +2245,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
                     rhs, "db::test", "TestAnalyzer",
                     VPackParser::fromJson("\"abcd\"")->slice(),
                     arangodb::AnalyzersRevision::MIN,
-                    irs::flags{irs::type<irs::frequency>::get()})
-                    .ok());
+                    arangodb::iresearch::Features(irs::IndexFeatures::FREQ),
+                    arangodb::iresearch::LinkVersion::MIN).ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(*lhs, *rhs);
   }
@@ -2180,7 +2258,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
       rhs, "db::test", "TestAnalyzer",
       VPackParser::fromJson("\"abc\"")->slice(),
       arangodb::AnalyzersRevision::MIN + 1,
-      irs::flags{})
+      arangodb::iresearch::Features{},
+      arangodb::iresearch::LinkVersion::MIN)
       .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_EQ(*lhs, *rhs);
@@ -2506,8 +2585,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
 
     EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
                         analyzer->properties());
-    EXPECT_TRUE(
-        (itr->second.features.is_subset_of(feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features())));
+    EXPECT_EQ(itr->second.features,
+              feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features());
     expected.erase(itr);
     return true;
   });
@@ -2558,8 +2637,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
                           analyzer->properties());
-      EXPECT_TRUE((itr->second.features.is_subset_of(
-          feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features())));
+      EXPECT_EQ(itr->second.features, feature.get(analyzer->name(),
+                arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features());
       expected.erase(itr);
       return true;
     });
@@ -2620,8 +2699,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
                           analyzer->properties());
-      EXPECT_TRUE((itr->second.features.is_subset_of(
-          feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features())));
+      EXPECT_EQ(itr->second.features,
+              feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features());
       expected.erase(itr);
       return true;
     });
@@ -2662,8 +2741,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
                           analyzer->properties());
-      EXPECT_TRUE((itr->second.features.is_subset_of(
-          feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features())));
+      EXPECT_EQ(itr->second.features,
+              feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features());
       expected.erase(itr);
       return true;
     });
@@ -2720,8 +2799,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedproperties),
                           analyzer->properties());
-      EXPECT_TRUE((itr->second.features.is_subset_of(
-          feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features())));
+      EXPECT_EQ(itr->second.features,
+              feature.get(analyzer->name(), arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features());
       expected.erase(itr);
       return true;
     });
@@ -3649,12 +3728,12 @@ std::set<typename Container::value_type> makeVPackPropExpectedSet(const Containe
 
 TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   struct ExpectedType {
-    irs::flags _features;
+    arangodb::iresearch::Features _features;
     std::string _name;
     std::string _properties;
     std::string _type;
     ExpectedType(irs::string_ref const& name, irs::string_ref const& properties,
-                 irs::flags const& features, irs::string_ref const& type)
+                 arangodb::iresearch::Features const& features, irs::string_ref const& type)
         : _features(features), _name(name), _properties(properties), _type(type) {}
 
     bool operator<(ExpectedType const& other) const {
@@ -3674,11 +3753,24 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
         return false;
       }
 
-      if (_features.size() < other._features.size()) {
+      if (_features.indexFeatures() < other._features.indexFeatures()) {
         return true;
       }
 
-      if (_features.size() > other._features.size()) {
+      if (_features.indexFeatures() > other._features.indexFeatures()) {
+        return false;
+      }
+
+      const auto fieldFeatures = _features.fieldFeatures(
+        arangodb::iresearch::LinkVersion::MIN);
+      const auto otherFieldFeatures = other._features.fieldFeatures(
+        arangodb::iresearch::LinkVersion::MIN);
+
+      if (fieldFeatures.size() < otherFieldFeatures.size()) {
+        return true;
+      }
+
+      if (fieldFeatures.size() > otherFieldFeatures.size()) {
         return false;
       }
 
@@ -3899,67 +3991,67 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     std::vector<ExpectedType> expected = {
         {"identity",
          "{}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()},
+         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ},
          "identity"},
         {"text_de",
          "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_en",
          "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_es",
          "{ \"locale\": \"es.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_fi",
          "{ \"locale\": \"fi.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_fr",
          "{ \"locale\": \"fr.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_it",
          "{ \"locale\": \"it.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_nl",
          "{ \"locale\": \"nl.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_no",
          "{ \"locale\": \"no.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_pt",
          "{ \"locale\": \"pt.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_ru",
          "{ \"locale\": \"ru.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_sv",
          "{ \"locale\": \"sv.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
         {"text_zh",
          "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
+         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS},
          "text"},
     };
 
@@ -4419,5 +4511,101 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
                      .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_norm_analyzer5",
                               "norm", vpack->slice())
                      .ok());
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     Features test
+// -----------------------------------------------------------------------------
+
+TEST(FeaturesTest, construct) {
+  arangodb::iresearch::Features f;
+  ASSERT_TRUE(f.validate().ok());
+  ASSERT_EQ(irs::IndexFeatures::NONE, f.indexFeatures());
+  ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
+  ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
+  ASSERT_EQ(arangodb::iresearch::Features{}, f);
+  ASSERT_FALSE(arangodb::iresearch::Features{} != f);
+}
+
+TEST(FeaturesTest, add_invalid) {
+  arangodb::iresearch::Features f;
+  ASSERT_TRUE(f.validate().ok());
+
+  {
+    ASSERT_TRUE(f.add(irs::type<irs::position>::name()));
+    ASSERT_EQ(irs::IndexFeatures::POS, f.indexFeatures());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
+    ASSERT_TRUE(f.validate().fail());
+  }
+}
+
+TEST(FeaturesTest, add_validate) {
+  arangodb::iresearch::Features f;
+  ASSERT_TRUE(f.validate().ok());
+
+  {
+    ASSERT_FALSE(f.add("invalidFeature"));
+    ASSERT_EQ(irs::IndexFeatures::NONE, f.indexFeatures());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
+    ASSERT_TRUE(f.validate().ok());
+  }
+
+  {
+    ASSERT_TRUE(f.add(irs::type<irs::frequency>::name()));
+    ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
+    ASSERT_TRUE(f.validate().ok());
+  }
+
+  {
+    ASSERT_TRUE(f.add(irs::type<irs::frequency>::name()));
+    ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN).empty());
+    ASSERT_TRUE(f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX).empty());
+    ASSERT_TRUE(f.validate().ok());
+  }
+
+  {
+    ASSERT_TRUE(f.add(irs::type<irs::norm>::name()));
+    ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
+    ASSERT_TRUE(f.validate().ok());
+  }
+
+  {
+    ASSERT_TRUE(f.add(irs::type<irs::norm>::name()));
+    ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
+    ASSERT_TRUE(f.validate().ok());
+  }
+
+  {
+    ASSERT_TRUE(f.add(irs::type<irs::position>::name()));
+    ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, f.indexFeatures());
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
+    ASSERT_TRUE(f.validate().ok());
+  }
+
+  {
+    ASSERT_FALSE(f.add(irs::type<irs::norm2>::name()));
+    ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, f.indexFeatures());
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
+              f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
+    ASSERT_TRUE(f.validate().ok());
   }
 }

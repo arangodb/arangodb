@@ -136,7 +136,7 @@ void Version::initialize() {
 #else
   Values["pie"] = "none";
 #endif
-  Values["platform"] = TRI_PLATFORM;
+  Values["platform"] = getPlatform();
   Values["reactor-type"] = getBoostReactorType();
   Values["server-version"] = getServerVersion();
   Values["sizeof int"] = arangodb::basics::StringUtils::itoa(sizeof(int));
@@ -432,6 +432,10 @@ std::string Version::getEndianness() {
     return "little";
   }
   return "unknown";
+}
+  
+std::string Version::getPlatform() {
+  return TRI_PLATFORM;
 }
 
 // get build date
