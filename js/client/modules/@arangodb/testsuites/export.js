@@ -36,12 +36,8 @@ const tu = require('@arangodb/testutils/test-utils');
 const xmldom = require('xmldom');
 const zlib = require('zlib');
 
-// const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
-// const GREEN = require('internal').COLORS.COLOR_GREEN;
-// const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
-// const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const toArgv = require('internal').toArgv;
 
@@ -118,7 +114,7 @@ function exportTest (options) {
   let databases = [
     "UnitTestsExport",
     "اسم قاعدة بيانات يونيكود",
-    " имя базы данных юникода !\"23 ää "
+    "имя базы данных юникода !\"23 ää"
   ];
 
   // loop over different databases
