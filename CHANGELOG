@@ -6,9 +6,10 @@ devel
 
   This feature allows toggling the naming convention for database names
   from the previous strict mode, which only allowed selected ASCII characters
-  in database names to a more relaxed mode, which allows additional ASCII
-  characters as well as non-ASCII UTF-8 characters.
-  The feature can be enabled by setting the new startup option 
+  in database names, to an extended, more relaxed mode. The extended mode 
+  allows additional ASCII characters in database names as well as non-ASCII 
+  UTF-8 characters.
+  The extended mode can be enabled by setting the new startup option 
   `--database.extended-names-databases` to true. It is turned off by default 
   and requires an explicit opt-in, simply because some drivers and client
   applications may not be ready for it yet. The arangod server, the 
@@ -32,6 +33,12 @@ devel
   extended database names. Finally, it should not be turned on in environments
   in which drivers are in use that haven't been prepared to work with the
   extended naming convention.
+
+  Warning: turning on the `--database.extended-names-databases` option for a
+  deployment requires it to stay enabled permanently, because otherwise any 
+  existing databases that were created with extended names will become
+  inaccessible and may cause follow-up problems when the extended mode is
+  turned off.
 
   The extended names for databases will be enabled by default in one of the
   future releases of ArangoDB, once enough drivers and other client tools
