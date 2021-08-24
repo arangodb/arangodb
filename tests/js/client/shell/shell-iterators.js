@@ -528,7 +528,7 @@ function StandaloneAqlIteratorSuite() {
   };
   
   let permute = function(run) {
-    [ {}, /*{intermediateCommitCount: 111}*/ ].forEach((opts) => {
+    [ {}, {intermediateCommitCount: 111} ].forEach((opts) => {
       run(ctx, opts);
     });
   };
