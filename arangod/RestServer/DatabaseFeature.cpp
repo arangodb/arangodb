@@ -428,7 +428,7 @@ void DatabaseFeature::initCalculationVocbase(application_features::ApplicationSe
 void DatabaseFeature::start() {
   if (_extendedNamesForDatabases) {
     LOG_TOPIC("2c0c6", WARN, arangodb::Logger::FIXME)
-        << "Extended name for databases are an experimental feature which can "
+        << "Extended names for databases are an experimental feature which can "
         << "cause incompatibility issues with not-yet-prepared drivers and applications - do not use in production!";
   }
 
