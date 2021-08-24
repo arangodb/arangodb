@@ -219,12 +219,13 @@ struct AssertionLogger {
   void operator&(std::ostream const& stream) const {
     operator&(static_cast<std::ostringstream const&>(stream));
   }
-#endif
-  void operator&(NoOpStream const&) {}
+
   const char* file;
   int line;
   const char* function;
   const char* expr;
+#endif
+  void operator&(NoOpStream const&) const noexcept {}
 };
 
 }  // namespace debug
