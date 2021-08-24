@@ -63,7 +63,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
     if (errorCode != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(errorCode);
     }
-    restrictedShards.emplace(shardId);
+    restrictedShards.emplace(std::move(shardId));
   };
 
   // If we have ever accessed the server lists,
@@ -342,6 +342,7 @@ std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
     // We have at least one shard, otherwise we would not have snippets!
     TRI_ASSERT(!shardIds.empty());
     _shardMapping = ci.getResponsibleServers(shardIds);
+
     TRI_ASSERT(_shardMapping.size() == shardIds.size());
     for (auto const& lockInfo : _collectionLocking) {
       for (auto const& sid : lockInfo.second.allShards) {
@@ -352,6 +353,7 @@ std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
       }
     }
   }
+  
   return _shardMapping;
 }
 
