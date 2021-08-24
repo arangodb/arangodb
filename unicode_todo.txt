@@ -1,4 +1,6 @@
 To do:
+- [ ] add tests for replication - leader/follower
+- [ ] add tests for replication - cluster
 - [ ] check location headers / http redirects
 - [ ] check web interface
 - [ ] check cluster and agency
@@ -11,6 +13,7 @@ To do:
 - [ ] check python driver compatibility
 - [ ] check arangodb-php compatibility
 
+- [x] add CHANGELOG entry -- Jan
 - [x] add tests for KeyGenerator::validateId -- Julia 
 - [x] check arangobench, add tests -- Julia, Jan
 - [x] check arangoimport, add tests -- Jan
