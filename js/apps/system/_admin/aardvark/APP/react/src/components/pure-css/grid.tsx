@@ -5,7 +5,8 @@ type ChildProp = {
   [key: string]: any;
 };
 
-export const Grid = ({ children, ...rest }: ChildProp) => <div className={'pure-g'} {...rest}>{children}</div>;
+export const Grid = ({ children, ...rest }: ChildProp) => <div
+  className={'pure-g'} {...rest}>{children}</div>;
 
 export type CellSize =
   '1-5'
@@ -55,17 +56,40 @@ export type CellSize =
   | '23-24'
   | '24-24';
 
+const smSizeMap: { [key: string]: CellSize } = {
+  '1-5': '2-5',
+  '2-5': '4-5',
+  '1-24': '1-12',
+  '1-12': '1-6',
+  '2-24': '1-6',
+  '3-24': '1-4',
+  '4-24': '1-3',
+  '5-24': '5-12',
+  '1-4': '1-2',
+  '6-24': '1-2',
+  '7-24': '7-12',
+  '1-3': '2-3',
+  '8-24': '2-3',
+  '3-8': '3-4',
+  '9-24': '3-4',
+  '5-12': '5-6',
+  '10-24': '5-6',
+  '11-24': '11-12'
+};
+
 type CellProps = ({
   size: CellSize;
   [key: string]: any;
 }) & ChildProp;
 
 export const Cell = ({ size, children, ...rest }: CellProps) => {
+  const smSize: CellSize = smSizeMap[size] || '1';
   const sizes = [
     `pure-u-${size}`,
     `pure-u-md-${size}`,
     `pure-u-lg-${size}`,
-    `pure-u-xl-${size}`
+    `pure-u-xl-${size}`,
+    `pure-u-sm-${smSize}`
   ];
   const classes = sizes.join(' ');
 
