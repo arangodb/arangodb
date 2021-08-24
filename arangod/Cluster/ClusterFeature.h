@@ -87,7 +87,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   bool forceOneShard() const { return _forceOneShard; }
   /// @brief index creation timeout in seconds. note: this used to be
   /// a configurable parameter in previous versions, but is now hard-coded.
-  double indexCreationTimeout() const noexcept { return 72.0 * 3600.0; }
+  double indexCreationTimeout() const { return _indexCreationTimeout; }
 
   std::shared_ptr<HeartbeatThread> heartbeatThread();
 
@@ -160,6 +160,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
   bool _unregisterOnShutdown = false;
   bool _enableCluster = false;
   bool _requirePersistedId = false;
+  /// @brief coordinator timeout for index creation. defaults to 4 days
+  double _indexCreationTimeout = 72.0 * 3600.0;
   std::unique_ptr<ClusterInfo> _clusterInfo;
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
   std::unique_ptr<AgencyCache> _agencyCache;
