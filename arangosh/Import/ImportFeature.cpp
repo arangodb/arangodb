@@ -76,6 +76,7 @@ ImportFeature::ImportFeature(application_features::ApplicationServer& server, in
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
+  _threadCount = std::max(uint32_t(_threadCount), static_cast<uint32_t>(NumberOfCores::getValue()));
 }
 
 void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -99,7 +100,8 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption(
       "--threads",
       "Number of parallel import threads",
-      new UInt32Parameter(&_threadCount));
+      new UInt32Parameter(&_threadCount),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--collection", "collection name", new StringParameter(&_collectionName));
 
