@@ -50,7 +50,13 @@ RestStatus RestDebugHandler::execute() {
     switch (type) {
       case rest::RequestType::GET: {
         VPackBuilder result;
-        result.add(VPackValue(TRI_CanUseFailurePointsDebugging()));
+        if (len == 2 && suffixes[1] == "all") {
+          // return all currently set failure points
+          TRI_GetFailurePointsDebugging(result);
+        } else {
+          // return whether we can use failure points or not
+          result.add(VPackValue(TRI_CanUseFailurePointsDebugging()));
+        }
         generateResult(rest::ResponseCode::OK, result.slice());
         return RestStatus::DONE;
       }

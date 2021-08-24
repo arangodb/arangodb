@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added REST API endpoint `/_admin/debug/failat/all` to retrieve the list
+  of currently enabled failure points. This API is available only if 
+  failure testing is enabled, but not in production.
+
 * Change the default value for the `--threads` startup parameter of the
   following client tools from previously 2 to the maximum of 2 and the
   number of available CPU cores:
