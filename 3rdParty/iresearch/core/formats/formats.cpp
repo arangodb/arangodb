@@ -178,31 +178,23 @@ format_registrar::format_registrar(
         "type name collision detected while registering format, ignoring: type '%s' from %s, previously from %s",
         type.name().c_str(),
         source,
-        registered_source->c_str()
-      );
+        registered_source->c_str());
     } else if (source) {
       IR_FRMT_WARN(
         "type name collision detected while registering format, ignoring: type '%s' from %s",
         type.name().c_str(),
-        source
-      );
+        source);
     } else if (registered_source) {
       IR_FRMT_WARN(
         "type name collision detected while registering format, ignoring: type '%s', previously from %s",
         type.name().c_str(),
-        registered_source->c_str()
-      );
+        registered_source->c_str());
     } else {
       IR_FRMT_WARN(
         "type name collision detected while registering format, ignoring: type '%s'",
-        type.name().c_str()
-      );
+        type.name().c_str());
     }
   }
-}
-
-format_registrar::operator bool() const noexcept {
-  return registered_;
 }
 
 }

@@ -2,7 +2,7 @@ name: arangodb_v8_context_entered_total
 renamedFrom: arangodb_v8_context_entered
 introducedIn: "3.8.0"
 help: |
-  Total number of V8 context enter events
+  Total number of V8 context enter events.
 unit: number
 type: counter
 category: V8

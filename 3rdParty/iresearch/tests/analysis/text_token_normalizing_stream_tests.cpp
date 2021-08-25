@@ -21,9 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
 #include "analysis/text_token_normalizing_stream.hpp"
+
+#include "gtest/gtest.h"
 #include "utils/locale_utils.hpp"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
 namespace {
 
@@ -322,7 +325,19 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"invalid_parameter\":true,\"accent\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}")->toString(), actual);
+  }
+
+  // test vpack
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"invalid_parameter\":true,\"accent\":true}";
+    auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
+    std::string in_str;
+    in_str.assign(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
+    std::string out_str;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "norm", irs::type<irs::text_format::vpack>::get(), in_str));
+    VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
+    ASSERT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}")->toString(), out_slice.toString());
   }
 
   // no case convert in creation. Default value shown
@@ -330,7 +345,7 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"accent\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"none\",\"accent\":true}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"none\",\"accent\":true}")->toString(), actual);
   }
 
   // no accent in creation. Default value shown
@@ -338,7 +353,7 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\"}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}")->toString(), actual);
   }
 
   
@@ -347,7 +362,7 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
     std::string config = "{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\",\"accent\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ(config, actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\",\"accent\":true}")->toString(), actual);
   }
 }
 

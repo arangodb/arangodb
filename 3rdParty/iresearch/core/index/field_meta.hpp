@@ -24,10 +24,31 @@
 #ifndef IRESEARCH_FIELD_META_H
 #define IRESEARCH_FIELD_META_H
 
+#include "index/index_features.hpp"
+#include "utils/range.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/attributes.hpp"
 
 namespace iresearch {
+
+//////////////////////////////////////////////////////////////////////////////
+/// @struct field_stats
+//////////////////////////////////////////////////////////////////////////////
+struct field_stats {
+  /// @brief total number of terms
+  uint32_t len{};
+  /// @brief number of overlapped terms
+  uint32_t num_overlap{};
+  /// @brief maximum number of terms in a field
+  uint32_t max_term_freq{};
+  /// @brief number of unique terms
+  uint32_t num_unique{};
+}; // field_stats
+
+
+using feature_map_t = std::map<type_info::type_id, field_id>;
+using feature_set_t = std::set<type_info::type_id>;
+using features_t = range<const type_info::type_id>;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct field_meta 
@@ -40,11 +61,7 @@ struct IRESEARCH_API field_meta {
   field_meta() = default;
   field_meta(const field_meta&) = default;
   field_meta(field_meta&& rhs) noexcept;
-  field_meta(
-    const string_ref& field, 
-    const flags& features, 
-    field_id norm = field_limits::invalid()
-  );
+  field_meta(const string_ref& field, IndexFeatures index_features);
 
   field_meta& operator=(field_meta&& rhs) noexcept;
   field_meta& operator=(const field_meta&) = default;
@@ -54,9 +71,9 @@ struct IRESEARCH_API field_meta {
     return !(*this == rhs);
   }
 
-  flags features;
+  feature_map_t features;
   std::string name;
-  field_id norm{ field_limits::invalid() };
+  IndexFeatures index_features{IndexFeatures::NONE};
 }; // field_meta
 
 static_assert(std::is_move_constructible<field_meta>::value,

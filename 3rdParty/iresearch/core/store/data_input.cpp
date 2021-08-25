@@ -79,6 +79,12 @@ byte_type buffered_index_input::read_byte() {
   return *begin_++;
 }
 
+int16_t buffered_index_input::read_short() {
+  return remain() < sizeof(uint16_t)
+    ? data_input::read_short()
+    : irs::read<uint16_t>(begin_);
+}
+
 int32_t buffered_index_input::read_int() {
   return remain() < sizeof(uint32_t)
     ? data_input::read_int()
@@ -109,14 +115,36 @@ const byte_type* buffered_index_input::read_buffer(size_t size, BufferHint hint)
     return nullptr;
   }
 
-  auto* begin = begin_ + size;
+  if (size <= remain()) {
+    auto begin = begin_;
+    begin_ += size;
+    return begin;
+  }
 
-  if (begin > end_) {
+  if (size <= std::min(buf_size_, length() - file_pointer())) {
+    seek_internal(file_pointer());
+    refill();
+
+    auto begin = begin_;
+    begin_ += size;
+    return begin;
+  }
+
+  return nullptr;
+}
+
+const byte_type* buffered_index_input::read_buffer(size_t offset, size_t size, BufferHint hint) noexcept {
+  if (hint == BufferHint::PERSISTENT) {
+    // don't support persistent buffers
     return nullptr;
   }
 
-  std::swap(begin, begin_);
-  return begin;
+  if (size <= buf_size_ && offset + size <= length()) {
+    seek(offset);
+    return read_buffer(size, hint);
+  }
+
+  return nullptr;
 }
 
 size_t buffered_index_input::read_bytes(byte_type* b, size_t count) {

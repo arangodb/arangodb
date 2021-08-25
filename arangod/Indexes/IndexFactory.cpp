@@ -62,12 +62,11 @@ struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid index type '" + type + "'");
   }
 
-  arangodb::Result normalize(          // normalize definition
-      arangodb::velocypack::Builder&,  // normalized definition (out-param)
-      arangodb::velocypack::Slice definition,  // source definition
-      bool,                                    // definition for index creation
-      TRI_vocbase_t const&                     // index vocbase
-      ) const override {
+  arangodb::Result normalize(
+      arangodb::velocypack::Builder&,
+      arangodb::velocypack::Slice definition,
+      bool,
+      TRI_vocbase_t const&) const override {
     std::string type = arangodb::basics::VelocyPackHelper::getStringValue(
         definition, arangodb::StaticStrings::IndexType, "");
     return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
@@ -204,7 +203,7 @@ Result IndexFactory::emplace(std::string const& type, IndexTypeFactory const& fa
   return arangodb::Result();
 }
 
-Result IndexFactory::enhanceIndexDefinition(  // normalizze deefinition
+Result IndexFactory::enhanceIndexDefinition(  // normalize definition
     velocypack::Slice const definition,       // source definition
     velocypack::Builder& normalized,  // normalized definition (out-param)
     bool isCreation,                  // definition for index creation

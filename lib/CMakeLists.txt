@@ -18,8 +18,6 @@ if (MSVC)
   )
 else ()
   set(LIB_ARANGO_POSIX
-    ApplicationFeatures/DaemonFeature.cpp
-    ApplicationFeatures/SupervisorFeature.cpp
     Basics/locks-posix.cpp
     Basics/memory-map-posix.cpp
     Basics/terminal-utils-posix.cpp
@@ -78,12 +76,10 @@ add_library(arango STATIC
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
   ApplicationFeatures/CpuUsageFeature.cpp
-  ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/GreetingsFeaturePhase.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/TimeZoneFeature.cpp
-  ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
   ApplicationFeatures/SharedPRNGFeature.cpp
@@ -102,6 +98,7 @@ add_library(arango STATIC
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
   Basics/ErrorCode.cpp
+  Basics/FeatureFlags.cpp
   Basics/ResultError.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
@@ -121,6 +118,7 @@ add_library(arango STATIC
   Basics/Result.cpp
   Basics/FileResult.cpp
   Basics/Identifier.cpp
+  Basics/IndexIter.h
   Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
@@ -129,6 +127,7 @@ add_library(arango STATIC
   Basics/StringHeap.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp
+  Basics/UnshackledMutex.cpp
   Basics/Utf8Helper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/application-exit.cpp
@@ -152,6 +151,7 @@ add_library(arango STATIC
   Basics/tri-strings.cpp
   Basics/tri-zip.cpp
   Containers/MerkleTree.cpp
+  Containers/ImmerMemoryPolicy.h
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
@@ -161,7 +161,6 @@ add_library(arango STATIC
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
-  Logger/LogBufferFeature.cpp
   Logger/LogLevel.cpp
   Logger/LogThread.cpp
   Logger/LogTopic.cpp
@@ -225,6 +224,7 @@ set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen
 target_include_directories(arango PRIVATE ${FROZEN_INCLUDE_DIR})
 
 add_dependencies(arango snappy)
+target_link_libraries(arango snappy)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 include_directories(${SNAPPY_INCLUDE_DIR})
