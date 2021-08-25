@@ -4008,7 +4008,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   // This object watches whether the collection is still present in Plan
   // It assumes that the collection *is* present and only changes state
   // if the collection disappears
-  CollectionWatcher collectionWatcher(_agencyCallbackRegistry, collection);
+  auto collectionWatcher = std::make_shared<CollectionWatcher>(_agencyCallbackRegistry, collection);
 
   if (!result.successful()) {
     if (result.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
@@ -4111,7 +4111,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
           }
         }
 
-        if (!collectionWatcher.isPresent()) {
+        if (!collectionWatcher->isPresent()) {
           return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
                         "Collection " + collectionID +
                             " has gone from database " + databaseName +
@@ -4198,7 +4198,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         // when we wanted to roll back the index creation.
       }
 
-      if (!collectionWatcher.isPresent()) {
+      if (!collectionWatcher->isPresent()) {
         return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                       "collection " + collectionID +
                           "appears to have been dropped from database " +
