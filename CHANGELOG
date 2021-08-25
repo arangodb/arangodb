@@ -8,11 +8,10 @@ v3.6.16 (XXXX-XX-XX)
 * Do not block a scheduler thread on the coordinator while an index is being
   created. Instead, start a background thread for the actual index fill-up work.
   The original thread can then be relinquished until the index is completely
-  filled or index creation has failed. 
-  The default index creation timeout on coordinators has also been 
-  extended from 1 hour to 4 days, but it is still configurable via the
-  startup parameter `--cluster.index-create-timeout` in case this is
-  necessary.
+  filled or index creation has failed.
+  The default index creation timeout on coordinators has also been extended from
+  1 hour to 4 days, but it is still configurable via the startup parameter
+  `--cluster.index-create-timeout` in case this is necessary.
 
 * Make `--javascript.copy-installation` also copy the `node_modules`
   subdirectory. This is required so we have a full copy of the JavaScript
