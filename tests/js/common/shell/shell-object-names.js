@@ -24,17 +24,26 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-let jsunity = require("jsunity");
-let arangodb = require("@arangodb");
-let internal = require("internal");
-let db = arangodb.db;
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const internal = require("internal");
+const console = require("console");
+const db = arangodb.db;
 
 function DatabaseNamesSuite() {
   return {
+    setUp : function () {
+      db._useDatabase("_system");
+    },
+    
+    tearDown : function () {
+      db._useDatabase("_system");
+    },
     
     testInvalidPunctuationDatabaseNames : function () {
       const names = [
         "",
+        " ",
         "_",
         ".",
         ":",
@@ -86,50 +95,43 @@ function DatabaseNamesSuite() {
         "a quick brown fox",
         "(foo|bar|baz)",
         "-.-.-.,",
-        "-",
-        ",",
-        ";",
-        "!",
+        "-,;!",
         "!!",
         "\"",
         "\\",
         "'",
-        "$",
-        "#",
-        "%",
-        "&",
-        "(",
-        ")",
+        "$#%&",
+        "()",
         "=",
-        "[",
-        "]",
-        "{",
-        "}",
+        "[]{}<>|",
         "?",
-        "´",
-        "`",
-        "+",
-        "-",
-        "*",
-        "#",
-        "<",
-        ">",
-        "|",
+        "´`",
+        "+-*#",
       ];
       
       names.forEach((name) => {
+        console.warn("creating database '" + name + "'");
         db._useDatabase("_system");
         let d = db._createDatabase(name);
-        assertTrue(d);
+        try {
+          assertTrue(d);
 
-        assertNotEqual(-1, db._databases().indexOf(name), name);
+          assertNotEqual(-1, db._databases().indexOf(name), name);
 
-        db._useDatabase(name);
-        assertEqual(db._name(), name);
+          db._useDatabase(name);
+          assertEqual(db._name(), name);
         
-        db._useDatabase("_system");
-        db._dropDatabase(name);
-        assertEqual(-1, db._databases().indexOf(name), name);
+          db._useDatabase("_system");
+          db._dropDatabase(name);
+          assertEqual(-1, db._databases().indexOf(name), name);
+        } catch (err) {
+          db._useDatabase("_system");
+          try {
+            db._dropDatabase(name);
+          } catch (err2) {}
+          // must rethrow to not swallow errors
+          throw err;
+        }
       });
     },
 
@@ -156,77 +158,45 @@ function DatabaseNamesSuite() {
         "ᚻᛖ ᚳᚹᚫᚦ ᚦᚫᛏ ᚻᛖ ᛒᚢᛞᛖ ᚩᚾ ᚦᚫᛗ",
         "ᛚᚪᚾᛞᛖ ᚾᚩᚱᚦᚹᛖᚪᚱᛞᚢᛗ ᚹᛁᚦ ᚦᚪ ᚹᛖᛥᚫ",
         "⡌⠁⠧⠑ ⠼⠁⠒  ⡍⠜⠇⠑⠹⠰⠎ ⡣⠕⠌",
-        "£",
-        "ß",
-        "ó",
-        "ę",
-        "Я",
-        "λ",
-        "💩",
-        "🍺",
-        "🌧",
-        "⛈",
-        "🌩",
-        "⚡",
-        "🔥",
-        "💥",
-        "🌨",
-        "😀 *grinning*",
-        "😬 *grimacing*",
-        "😁 *grin*",
-        "😂 *joy*",
-        "😃 *smiley*",
-        "😄 *smile*",
-        "😅 *sweat_smile*",
-        "😆 *laughing*",
-        "😇 *innocent*",
-        "😉 *wink*",
-        "😊 *blush*",
-        "🙂 *slight_smile*",
-        "🙃 *upside_down*",
-        "😋 *yum*",
-        "😌 *relieved*",
-        "😍 *heart_eyes*",
-        "😘 *kissing_heart*",
-        "😗 *kissing*",
-        "😙 *kissing_smiling_eyes*",
-        "😚 *kissing_closed_eyes*",
-        "😜 *stuck_out_tongue_winking_eye*",
-        "😝 *stuck_out_tongue_closed_eyes*",
-        "😛 *stuck_out_tongue*",
-        "🤑 *money_mouth*",
-        "🤓 *nerd*",
-        "😎 *sunglasses*",
-        "🤗 *hugging*",
-        "😏 *smirk*",
-        "😶 *no_mouth*",
-        "😐 *neutral_face*",
-        "😑 *expressionless*",
-        "😒 *unamused*",
-        "🙄 *rolling_eyes*",
-        "🤔 *thinking*",
-        "😳 *flushed*",
-        "😞 *disappointed*",
-        "😟 *worried*",
-        "😠 *angry*",
-        "😡 *rage*",
-        "😔 *pensive*",
-        "😕 *confused*", 
+        "£ ß ó ę Я λ",
+        "💩🍺🌧⛈🌩⚡🔥💥🌨",
+        "😀 *grinning* 😬 *grimacing* 😅 *sweat_smile* 😆 *laughing*",
+        "😁 *grin* 😂 *joy* 😃 *smiley* 😄 *smile*",
+        "😇 *innocent* 😉 *wink* 😊 *blush* 🙂 *slight_smile*",
+        "🙃 *upside_down* 😋 *yum* 😌 *relieved* 😍 *heart_eyes*",
+        "😘 *kissing_heart* 😗 *kissing* 😙 *kissing_smiling_eyes* 😚 *kissing_closed_eyes*",
+        "😜 *stuck_out_tongue_winking_eye* 😝 *stuck_out_tongue_closed_eyes*",
+        "😛 *stuck_out_tongue* 🤑 *money_mouth*",
+        "🤓 *nerd* 😎 *sunglasses* 🤗 *hugging* 😏 *smirk*",
+        "😶 *no_mouth* 😐 *neutral_face*",
+        "😑 *expressionless* 😒 *unamused* 🙄 *rolling_eyes* 🤔 *thinking*",
+        "😳 *flushed* 😞 *disappointed* 😟 *worried* 😠 *angry*",
+        "😡 *rage* 😔 *pensive* 😕 *confused*", 
       ];
 
       names.forEach((name) => {
+        console.warn("creating database '" + name + "'");
         db._useDatabase("_system");
         let d = db._createDatabase(name);
-        assertTrue(d);
+        try {
+          assertTrue(d);
 
-        assertNotEqual(-1, db._databases().indexOf(NORMALIZE_STRING(name)), NORMALIZE_STRING(name));
+          assertNotEqual(-1, db._databases().indexOf(NORMALIZE_STRING(name)), NORMALIZE_STRING(name));
 
-        db._useDatabase(name);
-        assertEqual(NORMALIZE_STRING(db._name()), NORMALIZE_STRING(name));
-        
-        db._useDatabase("_system");
-        db._dropDatabase(name);
-        assertEqual(-1, db._databases().indexOf(name), NORMALIZE_STRING(name));
+          db._useDatabase(name);
+          assertEqual(NORMALIZE_STRING(db._name()), NORMALIZE_STRING(name));
+          
+          db._useDatabase("_system");
+          db._dropDatabase(name);
+          assertEqual(-1, db._databases().indexOf(name), NORMALIZE_STRING(name));
+        } catch (err) {
+          db._useDatabase("_system");
+          try {
+            db._dropDatabase(name);
+          } catch (err2) {}
+          // must rethrow to not swallow errors
+          throw err;
+        }
       });
     },
 
