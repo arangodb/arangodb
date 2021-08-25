@@ -1956,16 +1956,10 @@ function ReplicationSuite () {
 // / @brief test suite on other database
 // //////////////////////////////////////////////////////////////////////////////
 
-function ReplicationOtherDBSuite () {
+function ReplicationOtherDBSuiteBase (dbName) {
   'use strict';
 
-  const dbName = 'UnitTestDB';
-
   let suite = {
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       connectToLeader();
@@ -1984,10 +1978,6 @@ function ReplicationOtherDBSuite () {
       connectToLeader();
     },
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
-
     tearDown: function () {
       db._useDatabase('_system');
       connectToLeader();
@@ -2004,8 +1994,16 @@ function ReplicationOtherDBSuite () {
     }
   };
 
-  deriveTestSuite(BaseTestConfig(), suite, '_OtherRepl');
+  deriveTestSuite(BaseTestConfig(), suite, '_' + dbName);
   return suite;
+}
+
+function ReplicationOtherDBTraditionalNameSuite () {
+  return ReplicationOtherDBSuiteBase('UnitTestDB');
+}
+
+function ReplicationOtherDBExtendedNameSuite () {
+  return ReplicationOtherDBSuiteBase("Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨");
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2492,12 +2490,9 @@ function ReplicationNonIncrementalKeyConflict () {
   };
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes the test suite
-// //////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(ReplicationSuite);
-jsunity.run(ReplicationOtherDBSuite);
+jsunity.run(ReplicationOtherDBTraditionalNameSuite);
+jsunity.run(ReplicationOtherDBExtendedNameSuite);
 jsunity.run(ReplicationIncrementalKeyConflict);
 jsunity.run(ReplicationNonIncrementalKeyConflict);
 
