@@ -13,12 +13,8 @@ import Textarea from "../../components/pure-css/form/Textarea";
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };
 
-interface Analyzer {
-  name: string;
-}
-
-interface ButtonProps {
-  analyzer: Analyzer;
+type ButtonProps = {
+  analyzer: FormState;
 }
 
 const DeleteButton = ({ analyzer }: ButtonProps) => {
@@ -162,7 +158,7 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
 };
 
 interface ActionProps {
-  analyzer: Analyzer;
+  analyzer: FormState;
   permission: string;
 }
 
