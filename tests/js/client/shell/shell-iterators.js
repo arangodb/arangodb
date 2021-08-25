@@ -358,9 +358,14 @@ function IteratorSuite(permuteConfigs) {
       permute((ctx, opts) => {
         const tc = ctx.collection(ecn);
         // full scan using edge index and a filter
+        // we have to wrap the range scan on _to with a NOOPT to prevent the optimizer
+        // from picking an index for it. Edge indexes are not fully ordered and therefore
+        // do not support range scans, but we currently have a bug that does not prevent
+        // this, which can potential produce incorrect results.
         let result = ctx.query(`
           FOR doc IN @@c
-            FILTER doc._from == "${cn}/blubb" AND doc._to > "${cn}/test00001" AND doc._to <= "${cn}/test04995"
+            FILTER doc._from == "${cn}/blubb"
+            FILTER NOOPT(doc._to > "${cn}/test00001" AND doc._to <= "${cn}/test04995")
             INSERT { _from: "${cn}/blubb", _to: CONCAT("y", doc._to) } INTO @@c
             SORT doc._to ASC
             RETURN doc`,
