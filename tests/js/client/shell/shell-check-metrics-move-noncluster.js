@@ -42,6 +42,10 @@ function checkMetricsMoveSuite() {
   return {
     
     testByProtocol: function () {
+      // Note that this test is "-noncluster", since in the cluster
+      // all sorts of requests constantly arrive and we can never be
+      // sure that nothing happens. In a single server, this is OK, 
+      // only our own requests should arrive at the server.
       let http1ReqCount = getMetric("arangodb_request_body_size_http1_count");
       let http1ReqSum = getMetric("arangodb_request_body_size_http1_sum");
       let http2ReqCount = getMetric("arangodb_request_body_size_http2_count");
