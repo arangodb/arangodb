@@ -47,6 +47,9 @@ class token_stream;
 class numeric_token_stream;
 class boolean_token_stream;
 
+namespace analysis {
+class analyzer;
+}  // namespace analysis
 }  // namespace iresearch
 
 namespace arangodb {
@@ -122,7 +125,7 @@ struct Field {
     return true;
   }
 
-  std::shared_ptr<irs::token_stream> _analyzer;
+  irs::unbounded_object_pool<AnalyzerPool::Builder>::ptr _analyzer;
   irs::string_ref _name;
   irs::bytes_ref _value;
   ValueStorage _storeValues;

@@ -38,7 +38,6 @@
 #include "Misc.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "analysis/token_streams.hpp"
 
 #include "search/term_filter.hpp"
 
@@ -104,11 +103,11 @@ struct AnyFactory {
   }
 };  // AnyFactory
 
-size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
-irs::unbounded_object_pool<AnyFactory<irs::string_token_stream>> StringStreamPool(DEFAULT_POOL_SIZE);
-irs::unbounded_object_pool<AnyFactory<irs::null_token_stream>> NullStreamPool(DEFAULT_POOL_SIZE);
-irs::unbounded_object_pool<AnyFactory<irs::boolean_token_stream>> BoolStreamPool(DEFAULT_POOL_SIZE);
-irs::unbounded_object_pool<AnyFactory<irs::numeric_token_stream>> NumericStreamPool(DEFAULT_POOL_SIZE);
+size_t constexpr DEFAULT_POOL_SIZE = 8;  // arbitrary value
+irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder> StringStreamPool(DEFAULT_POOL_SIZE);
+irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder> NullStreamPool(DEFAULT_POOL_SIZE);
+irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>  BoolStreamPool(DEFAULT_POOL_SIZE);
+irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>  NumericStreamPool(DEFAULT_POOL_SIZE);
 std::initializer_list<irs::type_info::type_id> NumericStreamFeatures { irs::type<irs::granularity_prefix>::id() };
 
 // appends the specified 'value' to 'out'
@@ -308,11 +307,11 @@ namespace iresearch {
   field._storeValues = ValueStorage::VALUE;
   field._value =
       irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(&pk), sizeof(pk));
-  field._analyzer = StringStreamPool.emplace().release();  // FIXME don't use shared_ptr
+  field._analyzer = StringStreamPool.emplace(AnalyzerPool::string_stream_tag());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer);
+  auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer.get());
 #else
-  auto& sstream = static_cast<irs::string_token_stream&>(*field._analyzer);
+  auto& sstream = static_cast<irs::string_token_stream&>(*field._analyzer.get());
 #endif
   sstream.reset(field._value);
 }
@@ -351,12 +350,12 @@ void FieldIterator::setBoolValue(VPackSlice const value) {
   arangodb::iresearch::kludge::mangleBool(_nameBuffer);
 
   // init stream
-  auto stream = BoolStreamPool.emplace();
-  stream->reset(value.getBool());
+  auto stream = BoolStreamPool.emplace(AnalyzerPool::boolean_stream_tag());
+  static_cast<irs::boolean_token_stream*>(stream.get())->reset(value.getBool());
 
   // set field properties
   _value._name = _nameBuffer;
-  _value._analyzer = stream.release();  // FIXME don't use shared_ptr
+  _value._analyzer = std::move(stream);
   _value._indexFeatures = irs::IndexFeatures::NONE;
   _value._fieldFeatures = {};
 }
@@ -367,12 +366,12 @@ void FieldIterator::setNumericValue(VPackSlice const value) {
   arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
 
   // init stream
-  auto stream = NumericStreamPool.emplace();
-  stream->reset(value.getNumber<double>());
+  auto stream = NumericStreamPool.emplace(AnalyzerPool::numeric_stream_tag());
+  static_cast<irs::numeric_token_stream*>(stream.get())->reset(value.getNumber<double>());
 
   // set field properties
   _value._name = _nameBuffer;
-  _value._analyzer = stream.release();  // FIXME don't use shared_ptr
+  _value._analyzer = std::move(stream);
   _value._indexFeatures = irs::IndexFeatures::NONE;
   _value._fieldFeatures = { NumericStreamFeatures.begin(),
                             NumericStreamFeatures.size() };
@@ -384,12 +383,12 @@ void FieldIterator::setNullValue(VPackSlice const value) {
   arangodb::iresearch::kludge::mangleNull(_nameBuffer);
 
   // init stream
-  auto stream = NullStreamPool.emplace();
-  stream->reset();
+  auto stream = NullStreamPool.emplace(AnalyzerPool::null_stream_tag());
+  static_cast<irs::null_token_stream*>(stream.get())->reset();
 
   // set field properties
   _value._name = _nameBuffer;
-  _value._analyzer = stream.release();  // FIXME don't use shared_ptr
+  _value._analyzer = std::move(stream);
   _value._indexFeatures = irs::IndexFeatures::NONE;
   _value._fieldFeatures = {};
 }
@@ -512,7 +511,7 @@ bool FieldIterator::setValue(VPackSlice const value,
       break;
     default: {
       iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
-      _value._analyzer = analyzer;
+      _value._analyzer = std::move(analyzer);
       _value._fieldFeatures = pool->fieldFeatures();
       _value._indexFeatures = pool->indexFeatures();
       _value._name = _nameBuffer;
