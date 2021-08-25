@@ -125,7 +125,7 @@ struct Field {
     return true;
   }
 
-  irs::unbounded_object_pool<AnalyzerPool::Builder>::ptr _analyzer;
+  AnalyzerPool::CacheType::ptr _analyzer;
   irs::string_ref _name;
   irs::bytes_ref _value;
   ValueStorage _storeValues;

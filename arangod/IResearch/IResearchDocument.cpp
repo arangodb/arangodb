@@ -307,7 +307,7 @@ namespace iresearch {
   field._storeValues = ValueStorage::VALUE;
   field._value =
       irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(&pk), sizeof(pk));
-  field._analyzer = StringStreamPool.emplace(AnalyzerPool::string_stream_tag());
+  field._analyzer = StringStreamPool.emplace(AnalyzerPool::StringStreamTag());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer.get());
 #else
@@ -350,7 +350,7 @@ void FieldIterator::setBoolValue(VPackSlice const value) {
   arangodb::iresearch::kludge::mangleBool(_nameBuffer);
 
   // init stream
-  auto stream = BoolStreamPool.emplace(AnalyzerPool::boolean_stream_tag());
+  auto stream = BoolStreamPool.emplace(AnalyzerPool::BooleanStreamTag());
   static_cast<irs::boolean_token_stream*>(stream.get())->reset(value.getBool());
 
   // set field properties
@@ -366,7 +366,7 @@ void FieldIterator::setNumericValue(VPackSlice const value) {
   arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
 
   // init stream
-  auto stream = NumericStreamPool.emplace(AnalyzerPool::numeric_stream_tag());
+  auto stream = NumericStreamPool.emplace(AnalyzerPool::NumericStreamTag());
   static_cast<irs::numeric_token_stream*>(stream.get())->reset(value.getNumber<double>());
 
   // set field properties
@@ -383,7 +383,7 @@ void FieldIterator::setNullValue(VPackSlice const value) {
   arangodb::iresearch::kludge::mangleNull(_nameBuffer);
 
   // init stream
-  auto stream = NullStreamPool.emplace(AnalyzerPool::null_stream_tag());
+  auto stream = NullStreamPool.emplace(AnalyzerPool::NullStreamTag());
   static_cast<irs::null_token_stream*>(stream.get())->reset();
 
   // set field properties
