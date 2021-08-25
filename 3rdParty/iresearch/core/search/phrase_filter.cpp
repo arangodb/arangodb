@@ -324,20 +324,17 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
     std::vector<fixed_phrase_frequency::term_position_t> positions;
     positions.reserve(phrase_state->terms.size());
 
-    // find term using cached state
-    auto terms = phrase_state->reader->iterator();
+    auto* reader = phrase_state->reader;
+    assert(reader);
+
     auto position = positions_.begin();
 
     for (const auto& term_state : phrase_state->terms) {
       assert(term_state.first);
 
-      // use bytes_ref::blank here since we do not need just to "jump"
-      // to cached state, and we are not interested in term value itself
-      if (!terms->seek(bytes_ref::NIL, *term_state.first)) {
-        return doc_iterator::empty();
-      }
-
-      auto docs = terms->postings(features); // postings
+      // get postings using cached state
+      auto docs = reader->postings(*term_state.first, features);
+      assert(docs);
 
       auto* pos = irs::get_mutable<irs::position>(docs.get());
 
@@ -412,7 +409,9 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     positions.resize(phrase_size);
 
     // find term using cached state
-    auto terms = phrase_state->reader->iterator();
+    auto* reader = phrase_state->reader;
+    assert(reader);
+
     auto position = positions_.begin();
 
     auto term_state = phrase_state->terms.begin();
@@ -425,13 +424,8 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       disj_itrs.reserve(num_terms);
       for (const auto end = term_state + num_terms; term_state != end; ++term_state) {
         assert(term_state->first);
-        // use bytes_ref::NIL here since we do not need just to "jump"
-        // to cached state, and we are not interested in term value itself
-        if (!terms->seek(bytes_ref::NIL, *term_state->first)) {
-          continue;
-        }
 
-        disjunction_t::adapter docs(terms->postings(features),
+        disjunction_t::adapter docs(reader->postings(*term_state->first, features),
                                     term_state->second);
 
         if (!docs.position) {

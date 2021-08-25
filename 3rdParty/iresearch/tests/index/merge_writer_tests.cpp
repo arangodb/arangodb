@@ -74,7 +74,7 @@ void validate_terms(
     ASSERT_EQ(1, terms.meta().features.count(feature));
   }
 
-  for (auto term_itr = terms.iterator(); term_itr->next();) {
+  for (auto term_itr = terms.iterator(irs::SeekMode::NORMAL); term_itr->next();) {
     auto itr = expected_terms.find(static_cast<T>(term_itr->value()));
 
     ASSERT_NE(expected_terms.end(), itr);

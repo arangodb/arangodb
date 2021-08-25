@@ -91,7 +91,6 @@ struct aggregated_stats_visitor : util::noncopyable {
   void operator()(const irs::sub_reader& segment,
                   const irs::term_reader& field,
                   uint32_t docs_count) const {
-    it = field.iterator();
     this->segment = &segment;
     this->field = &field;
     state = &states.insert(segment);
@@ -100,21 +99,14 @@ struct aggregated_stats_visitor : util::noncopyable {
   }
 
   void operator()(seek_term_iterator::cookie_ptr& cookie) const {
-    assert(it);
-
-    if (!it->seek(irs::bytes_ref::NIL, *cookie)) {
-      return;
-    }
-
     assert(segment);
     assert(field);
-    term_stats.collect(*segment, *field, 0, *it);
+    term_stats.collect(*segment, *field, 0, *cookie);
     state->scored_states.emplace_back(std::move(cookie), 0, boost);
   }
 
   const term_collectors& term_stats;
   StatesType& states;
-  mutable seek_term_iterator::ptr it;
   mutable typename StatesType::state_type* state{};
   mutable const sub_reader* segment{};
   mutable const term_reader* field{};

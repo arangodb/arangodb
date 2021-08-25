@@ -828,7 +828,7 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
@@ -922,7 +922,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
@@ -942,7 +942,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
@@ -978,7 +978,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
@@ -1078,7 +1078,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
@@ -1098,7 +1098,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
@@ -1133,7 +1133,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
       auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
@@ -1150,7 +1150,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
       auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
@@ -1186,7 +1186,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
@@ -1280,7 +1280,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
@@ -1300,7 +1300,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
@@ -1336,7 +1336,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator();
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());

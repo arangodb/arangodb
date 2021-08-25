@@ -568,7 +568,7 @@ void compound_term_iterator::add(
     const term_reader& reader,
     const doc_map_f& doc_id_map) {
   term_iterator_mask_.emplace_back(term_iterators_.size()); // mark as used to trigger next()
-  term_iterators_.emplace_back(reader.iterator(), &doc_id_map);
+  term_iterators_.emplace_back(reader.iterator(SeekMode::NORMAL), &doc_id_map);
 }
 
 bool compound_term_iterator::next() {
@@ -625,6 +625,7 @@ doc_iterator::ptr compound_term_iterator::postings(IndexFeatures /*features*/) c
       auto& term_itr = term_iterators_[itr_id];
 
       itrs.emplace_back(term_itr.first->postings(meta().index_features), term_itr.second);
+      assert(itrs.back().first);
     }
 
     return true;
