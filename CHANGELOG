@@ -4,6 +4,10 @@ v3.8.1 (XXXX-XX-XX)
 * Added protocol specific metrics: histogram about request body size, total
   number of HTTP/2 connections and total number of VST connections.
 
+* Fix a potential multi-threading issue in index creation on coordinators, when
+  an agency callback was triggered at the same time the method
+  `ensureIndexCoordinatorInner` was left.
+
 * Append physical compaction of log collection to every Raft log compaction
   (BTS-542).
 
