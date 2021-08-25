@@ -880,7 +880,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_add_static_analyzer) {
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(arangodb::iresearch::Features(arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ), pool->features());
   auto analyzer = pool->get();
-  ASSERT_NE(analyzer, nullptr);
+  ASSERT_NE(analyzer.get(), nullptr);
   feature.unprepare();
 }
 
@@ -1277,7 +1277,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_static_analyzer) {
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(arangodb::iresearch::Features(arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ), pool->features());
   auto analyzer = pool->get();
-  ASSERT_NE(analyzer, nullptr);
+  ASSERT_NE(analyzer.get(), nullptr);
 }
 
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_static_analyzer_adding_vocbases) {
@@ -1287,7 +1287,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_static_analyzer_adding_vocbases
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(arangodb::iresearch::Features(arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ), pool->features());
   auto analyzer = pool->get();
-  ASSERT_NE(analyzer, nullptr);
+  ASSERT_NE(analyzer.get(), nullptr);
 }
 
 // -----------------------------------------------------------------------------
@@ -1458,7 +1458,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_static) {
   EXPECT_EQ(arangodb::iresearch::Features(arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ), pool->features());
   EXPECT_EQ("identity", pool->name());
   auto analyzer = pool->get();
-  ASSERT_NE(nullptr, analyzer);
+  ASSERT_NE(nullptr, analyzer.get());
   auto* term = irs::get<irs::term_attribute>(*analyzer);
   ASSERT_NE(nullptr, term);
   EXPECT_FALSE(analyzer->next());
@@ -1480,7 +1480,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_registered) {
   EXPECT_EQ(arangodb::iresearch::Features(arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ), pool->features());
   EXPECT_EQ("identity", pool->name());
   auto analyzer = pool->get();
-  ASSERT_NE(nullptr, analyzer);
+  ASSERT_NE(nullptr, analyzer.get());
   auto* term = irs::get<irs::term_attribute>(*analyzer);
   ASSERT_NE(nullptr, term);
   EXPECT_FALSE(analyzer->next());
