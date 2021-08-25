@@ -58,9 +58,8 @@ struct ClusterCollectionCreationInfo;
 // make sure a collection is still in Plan
 // we are only going from *assuming* that it is present
 // to it being changed to not present.
-class CollectionWatcher
-{
-public:
+class CollectionWatcher : public std::enable_shared_from_this<CollectionWatcher> {
+ public:
   CollectionWatcher(CollectionWatcher const&) = delete;
   CollectionWatcher(AgencyCallbackRegistry *agencyCallbackRegistry, LogicalCollection const& collection)
     : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
@@ -72,24 +71,27 @@ public:
 
     _agencyCallback = std::make_shared<AgencyCallback>(
         ac, where,
-        [this](VPackSlice const& result) {
-          if (result.isNone()) {
-            _present.store(false);
+        [self = weak_from_this()](VPackSlice const& result) {
+          auto watcher = self.lock();
+          if (result.isNone() && watcher) {
+            watcher->_present.store(false);
           }
           return true;
         },
         true, false);
+
     _agencyCallbackRegistry->registerCallback(_agencyCallback);
-  };
+  }
+
   ~CollectionWatcher();
 
   bool isPresent() {
     // Make sure we did not miss a callback
     _agencyCallback->refetchAndUpdate(true, false);
     return _present.load();
-  };
+  }
 
-private:
+ private:
   AgencyCallbackRegistry *_agencyCallbackRegistry;
   std::shared_ptr<AgencyCallback> _agencyCallback;
 
