@@ -492,6 +492,7 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream& stream) {
         << HttpRequest::translateMethod(req->requestType()) << "\",\"" << url(req.get()) << "\"";
 
     VPackStringRef body = req->rawPayload();
+    this->_server.feature().countHttp2Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
       LOG_TOPIC("b6dc3", TRACE, Logger::REQUESTS)

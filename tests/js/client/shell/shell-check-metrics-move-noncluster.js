@@ -24,7 +24,7 @@
 const jsunity = require('jsunity');
 
 function getMetric(name) {
-  let res = arango.GET_RAW( '/_admin/metrics/v2');
+  let res = arango.GET_RAW( '/_admin/metrics');
   if (res.code !== 200) {
     throw "error fetching metric";
   }
@@ -47,11 +47,8 @@ function checkMetricsMoveSuite() {
       // sure that nothing happens. In a single server, this is OK,
       // only our own requests should arrive at the server.
       let http1ReqCount = getMetric("arangodb_request_body_size_http1_count");
-      let http1ReqSum = getMetric("arangodb_request_body_size_http1_sum");
       let http2ReqCount = getMetric("arangodb_request_body_size_http2_count");
-      let http2ReqSum = getMetric("arangodb_request_body_size_http2_sum");
       let vstReqCount = getMetric("arangodb_request_body_size_vst_count");
-      let vstReqSum = getMetric("arangodb_request_body_size_vst_sum");
       // Do a few requests:
       for (let i = 0; i < 10; ++i) {
         let res = arango.GET_RAW("/_api/version");
@@ -64,31 +61,22 @@ function checkMetricsMoveSuite() {
       assertEqual(200, res.code);
       // And get the values again:
       let http1ReqCount2 = getMetric("arangodb_request_body_size_http1_count");
-      let http1ReqSum2 = getMetric("arangodb_request_body_size_http1_sum");
       let http2ReqCount2 = getMetric("arangodb_request_body_size_http2_count");
-      let http2ReqSum2 = getMetric("arangodb_request_body_size_http2_sum");
       let vstReqCount2 = getMetric("arangodb_request_body_size_vst_count");
-      let vstReqSum2 = getMetric("arangodb_request_body_size_vst_sum");
       if (arango.protocol() === "vst") {
         assertNotEqual(vstReqCount, vstReqCount2);
-        assertNotEqual(vstReqSum, vstReqSum2);
       } else {
         assertEqual(vstReqCount, vstReqCount2);
-        assertEqual(vstReqSum, vstReqSum2);
       }
       if (arango.protocol() === "http") {
         assertNotEqual(http1ReqCount, http1ReqCount2);
-        assertNotEqual(http1ReqSum, http1ReqSum2);
       } else {
         assertEqual(http1ReqCount, http1ReqCount2);
-        assertEqual(http1ReqSum, http1ReqSum2);
       }
       if (arango.protocol() === "http2") {
         assertNotEqual(http2ReqCount, http2ReqCount2);
-        assertNotEqual(http2ReqSum, http2ReqSum2);
       } else {
         assertEqual(http2ReqCount, http2ReqCount2);
-        assertEqual(http2ReqSum, http2ReqSum2);
       }
     },
 
