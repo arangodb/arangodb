@@ -2,7 +2,7 @@ name: arangodb_replication_initial_chunks_requests_time_total
 renamedFrom: arangodb_replication_initial_chunks_requests_time
 introducedIn: "3.8.0"
 help: |
-  Accumulated wait time for replication key chunks determination requests
+  Accumulated wait time for replication key chunks determination requests.
 unit: ms
 type: counter
 category: Replication

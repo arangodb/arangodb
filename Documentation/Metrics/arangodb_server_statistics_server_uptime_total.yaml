@@ -2,7 +2,7 @@ name: arangodb_server_statistics_server_uptime_total
 renamedFrom: arangodb_server_statistics_server_uptime
 introducedIn: "3.8.0"
 help: |
-  Number of seconds elapsed since server start
+  Number of seconds elapsed since server start.
 unit: s
 type: counter
 category: Statistics
