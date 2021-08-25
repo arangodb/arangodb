@@ -90,6 +90,7 @@ describe('User Rights Management', () => {
             };
 
             const rootDropDB = () => {
+              db._useDatabase('_system');
               if (rootTestDB(false)) {
                 db._dropDatabase(testDBName);
               }

@@ -155,6 +155,7 @@ describe('User Rights Management', () => {
             });
 
             after(() => {
+              db._useDatabase('_system');
               rootDropDB();
             });
 

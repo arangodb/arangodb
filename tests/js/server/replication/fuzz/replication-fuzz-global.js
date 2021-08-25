@@ -188,6 +188,17 @@ function ReplicationSuite() {
         print("deleting replication");
         replication.globalApplier.forget();
       }
+      
+      db._useDatabase("_system");
+      db._databases().filter((name) => name !== '_system').forEach((name) => {
+        db._dropDatabase(name);
+      });
+      
+      connectToLeader();
+      db._useDatabase("_system");
+      db._databases().filter((name) => name !== '_system').forEach((name) => {
+        db._dropDatabase(name);
+      });
     },
     
     testFuzzGlobal: function() {

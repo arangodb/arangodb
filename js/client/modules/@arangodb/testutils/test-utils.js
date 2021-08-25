@@ -271,7 +271,10 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             healthCheck(options, serverOptions, instanceInfo, customInstanceInfos, startStopHandlers)) {
           continueTesting = true;
 
-          let databasesAfter = db._databases();
+          // TODO: we are currently filtering out the UnitTestDB here because it is 
+          // created and not cleaned up by a lot of the `authentication` tests. This
+          // should be fixed eventually
+          let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
           if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
             results[te] = {
               status: false,
