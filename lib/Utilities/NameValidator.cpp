@@ -278,9 +278,10 @@ bool AnalyzerNameValidator::isAllowedName(bool extendedNames,
       // forward slashes are disallowed inside analyzer names because we use the forward
       // slash for splitting _everywhere_
       ok &= (c != '/');
+
+      // colons are used to separate database names from analyzer names
+      ok &= (c != ':');
       
-      // the NUL byte is not allowed in analyzer names, as it may cause trouble in several
-      // places
       // non visible characters below ASCII code 32 (control characters) not allowed, including '\0'
       ok &= (c >= 32U);
 

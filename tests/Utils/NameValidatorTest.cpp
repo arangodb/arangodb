@@ -374,6 +374,11 @@ TEST(AnalyzerNameValidatorTest, test_isAllowedName_traditionalNames) {
   EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("a/b")));
   EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("//")));
   EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("/\\")));
+  EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("a:b")));
+  EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(false, arangodb::velocypack::StringRef(":")));
+  EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("aaaa::")));
+  EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(false, arangodb::velocypack::StringRef(":aaaa")));
+  EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("abcdef::gghh")));
   
   // unicode 
   EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(false, arangodb::velocypack::StringRef("mötör")));
@@ -407,7 +412,6 @@ TEST(AnalyzerNameValidatorTest, test_isAllowedName_extendedNames) {
   EXPECT_TRUE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("<script>alert(1);")));
   EXPECT_TRUE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("a b c")));
   EXPECT_TRUE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("test123 & ' \" < > abc")));
-  EXPECT_TRUE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("abc:cde")));
   EXPECT_TRUE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef(".abc")));
   EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("a\0b", 3)));
   EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("/")));
@@ -416,6 +420,12 @@ TEST(AnalyzerNameValidatorTest, test_isAllowedName_extendedNames) {
   EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("a/b")));
   EXPECT_TRUE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("a\\b")));
   EXPECT_TRUE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("a.b.c")));
+  EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("a:b")));
+  EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef(":")));
+  EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("abc:cde")));
+  EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("aaaa::")));
+  EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef(":aaaa")));
+  EXPECT_FALSE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("abcdef::gghh")));
   
   // unicode 
   EXPECT_TRUE(arangodb::AnalyzerNameValidator::isAllowedName(true, arangodb::velocypack::StringRef("mötör")));
