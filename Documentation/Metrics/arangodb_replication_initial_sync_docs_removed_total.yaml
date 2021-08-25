@@ -2,7 +2,7 @@ name: arangodb_replication_initial_sync_docs_removed_total
 renamedFrom: arangodb_replication_initial_sync_docs_removed
 introducedIn: "3.8.0"
 help: |
-  Number of documents removed by replication initial sync
+  Number of documents removed by replication initial sync.
 unit: number
 type: counter
 category: Replication

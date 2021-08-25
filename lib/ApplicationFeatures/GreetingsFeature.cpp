@@ -64,7 +64,6 @@ void GreetingsFeature::prepare() {
       << "🥑 This is a maintainer version intended for debugging. DO NOT USE IN PRODUCTION! 🔥";
     LOG_TOPIC("bd666", WARN, arangodb::Logger::FIXME)
       << "===================================================================================";
-
   }
 }
 
