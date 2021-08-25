@@ -213,7 +213,7 @@ class FieldIterator {
   IndexId _linkId;
 
   // Support for outputting primitive type from analyzer
-  irs::analysis::analyzer* _currentTypedAnalyzer{nullptr};
+  AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
   VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
 

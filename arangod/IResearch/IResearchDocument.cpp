@@ -331,7 +331,7 @@ void FieldIterator::reset(VPackSlice doc, FieldMeta const& linkMeta) {
   _slice = doc;
   _begin = nullptr;
   _end = nullptr;
-  _currentTypedAnalyzer = nullptr;
+  _currentTypedAnalyzer.reset();
   _currentTypedAnalyzerValue = nullptr;
   _primitiveTypeResetter = nullptr;
   _stack.clear();
@@ -472,8 +472,8 @@ bool FieldIterator::setValue(VPackSlice const value,
         if (!analyzer->next()) {
           return false;
         }
-        _currentTypedAnalyzer = analyzer.get();
-        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
+        _currentTypedAnalyzer = std::move(analyzer);
+        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
         TRI_ASSERT(_currentTypedAnalyzerValue);
         setBoolValue(_currentTypedAnalyzerValue->value);
         _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
@@ -493,8 +493,8 @@ bool FieldIterator::setValue(VPackSlice const value,
         if (!analyzer->next()) {
           return false;
         }
-        _currentTypedAnalyzer = analyzer.get();
-        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
+        _currentTypedAnalyzer = std::move(analyzer);
+        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
         TRI_ASSERT(_currentTypedAnalyzerValue);
         setNumericValue(_currentTypedAnalyzerValue->value);
         _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
@@ -519,7 +519,9 @@ bool FieldIterator::setValue(VPackSlice const value,
   }
   auto* storeFunc = pool->storeFunc();
   if (storeFunc) {
-    auto const valueSlice = storeFunc(_value._analyzer.get(), value, _buffer);
+    auto const valueSlice = storeFunc(
+      _currentTypedAnalyzer ? _currentTypedAnalyzer.get() : _value._analyzer.get(),
+      value, _buffer);
 
     if (!value.isNone()) {
       _value._value = iresearch::ref<irs::byte_type>(valueSlice);
@@ -541,7 +543,7 @@ void FieldIterator::next() {
        _primitiveTypeResetter(_value._analyzer.get(), _currentTypedAnalyzerValue->value);
        return;
      } else {
-       _currentTypedAnalyzer = nullptr;
+       _currentTypedAnalyzer.reset();
      }
   }
 
