@@ -86,7 +86,9 @@ function IteratorSuite(permuteConfigs) {
       let c = db._create(cn, { numberOfShards: 3 });
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
       c.ensureIndex({ type: "persistent", fields: ["value2"] });
-      c.ensureIndex({ type: "persistent", fields: ["uniqueValue"], unique: true, sparse: true });
+      if (!internal.isCluster()) {
+        c.ensureIndex({ type: "persistent", fields: ["uniqueValue"], unique: true, sparse: true });
+      }
 
       db._drop(ecn);
       db._createEdgeCollection(ecn, { numberOfShards: 3 });
@@ -419,6 +421,10 @@ function IteratorSuite(permuteConfigs) {
     },
 
     testSubqueryWithUniqueSecondaryIndex: function () {
+      if (internal.isCluster()) {
+        return;
+      }
+
       permute((ctx, opts) => {
         const tc = ctx.collection(cn);
         // lookup documents via subquery with unique secondary index
@@ -486,6 +492,10 @@ function IteratorSuite(permuteConfigs) {
     },
 
     testUpsertUniqueSecondaryIndex: function () {
+      if (internal.isCluster()) {
+        return;
+      }
+
       permute((ctx, opts) => {
         const tc = ctx.collection(cn);
         // secondary index
