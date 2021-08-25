@@ -406,16 +406,12 @@ class ngram_similarity_query : public filter::prepared {
       if (term_state == nullptr) {
         continue;
       }
-      auto term = query_state.field->iterator();
 
-      // use bytes_ref::blank here since we do not need just to "jump"
-      // to cached state, and we are not interested in term value itself */
-      if (!term->seek(bytes_ref::NIL, *term_state)) {
-        continue;
-      }
+      auto* field = query_state.field;
+      assert(field);
 
       // get postings
-      auto docs = term->postings(IndexFeatures::NONE);
+      auto docs = field->postings(*term_state, IndexFeatures::NONE);
       assert(docs);
 
       // add iterator
@@ -440,16 +436,12 @@ class ngram_similarity_query : public filter::prepared {
       if (term_state == nullptr) {
         continue;
       }
-      auto term = query_state.field->iterator();
 
-      // use bytes_ref::blank here since we do not need just to "jump"
-      // to cached state, and we are not interested in term value itself */
-      if (!term->seek(bytes_ref::NIL, *term_state)) {
-        continue;
-      }
+      auto* field = query_state.field;
+      assert(field);
 
       // get postings
-      auto docs = term->postings(features);
+      auto docs = field->postings(*term_state, features);
       assert(docs);
 
       // add iterator
@@ -522,7 +514,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     field_stats.collect(segment, *field); // collect field statistics once per segment
     size_t term_idx = 0;
     size_t count_terms = 0;
-    seek_term_iterator::ptr term = field->iterator();
+    seek_term_iterator::ptr term = field->iterator(SeekMode::NORMAL);
     for (const auto& ngram : ngrams) {
       term_states.emplace_back();
       auto& state = term_states.back();
