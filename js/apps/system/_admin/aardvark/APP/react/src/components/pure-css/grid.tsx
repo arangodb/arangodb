@@ -56,7 +56,7 @@ export type CellSize =
   | '23-24'
   | '24-24';
 
-const smSizeMap: { [key: string]: CellSize } = {
+const smSizeMap: { [key: string]: CellSize } = { // TODO: Consider using a mapped type.
   '1-5': '2-5',
   '2-5': '4-5',
   '1-24': '1-12',

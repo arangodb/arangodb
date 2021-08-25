@@ -68,7 +68,7 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const getShifter = (direction: string, index: Int) => {
+  const getShifter = (direction: 'up' | 'down', index: Int) => {
     switch (direction) {
       case 'up':
         return () => {
