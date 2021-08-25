@@ -209,7 +209,7 @@ function multipleDatabasesSuite () {
           assertEqual(404, res.code);
           assertEqual(404, res.errorNum);
           const dirName = arango.POST("/_admin/execute", "return require('internal').appPath;");
-          if(dbs[databaseName]) {
+          if (dbs[databaseName]) {
             assertTrue(fs.isDirectory(fs.join(dirName, "_db", db._id())));
           } else {
             assertTrue(fs.isDirectory(fs.join(dirName, "_db", databaseName)));
@@ -217,6 +217,7 @@ function multipleDatabasesSuite () {
         } finally {
           FoxxManager.uninstall(mount3, {force: true});
           db._useDatabase("_system");
+          db._dropDatabase(databaseName);
         }
       });
     }
