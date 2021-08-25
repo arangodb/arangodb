@@ -63,6 +63,7 @@ class GeneralCommTask : public CommTask {
   static constexpr double WriteTimeout = 300.0;
     
   std::unique_ptr<AsioSocket<T>> _protocol;
+  
   bool _reading;
   bool _writing;
   
