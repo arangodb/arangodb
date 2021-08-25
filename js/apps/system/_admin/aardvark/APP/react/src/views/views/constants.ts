@@ -3,177 +3,61 @@ import { Dispatch } from 'react';
 import _, { merge, partial } from 'lodash';
 import { Int } from "../../utils/constants";
 
-export const typeNameMap = {
-  identity: 'Identity',
-  delimiter: 'Delimiter',
-  stem: 'Stem',
-  norm: 'Norm',
-  ngram: 'N-Gram',
-  text: 'Text',
-  aql: 'AQL',
-  stopwords: 'Stopwords',
-  collation: 'Collation',
-  segmentation: 'Segmentation',
-  pipeline: 'Pipeline',
-  geojson: 'GeoJSON',
-  geopoint: 'GeoPoint'
+type Compression = 'lz4' | 'none';
+
+type StoredValue = {
+  fields: string[];
+  compression: Compression;
 };
 
-export type Feature = 'frequency' | 'norm' | 'position';
-type Features = Feature[];
+type BytesAccumConsolidationPolicy = {
+  type: 'bytes_accum';
+  threshold?: number;
+};
 
-export type BaseFormState = {
+type TierConsolidationPolicy = {
+  type: 'tier';
+  segmentsMin?: Int;
+  segmentsMax?: Int;
+  segmentsBytesMax?: Int;
+  segmentsBytesFloor?: Int;
+};
+
+type ConsolidationPolicy = BytesAccumConsolidationPolicy | TierConsolidationPolicy;
+
+type ViewProperties = {
+  primarySort?: string[];
+  primarySortCompression?: Compression;
+  storedValues?: StoredValue[];
+  cleanupIntervalStep?: Int;
+  commitIntervalMsec?: Int;
+  consolidationIntervalMsec?: Int;
+  writebufferIdle?: Int;
+  writebufferActive?: Int;
+  writebufferSizeMax?: Int;
+  consolidationPolicy?: ConsolidationPolicy;
+};
+
+type LinkProperties = {
+  analyzers?: string[];
+  fields?: {
+    [attributeName: string]: LinkProperties;
+  };
+  includeAllFields?: boolean;
+  trackListPositions?: boolean;
+  storeValues?: 'none' | 'id';
+  inBackground?: boolean;
+};
+
+type BaseFormState = {
   name: string;
-  features: Features;
-};
-
-type IdentityState = {
-  type: 'identity'
-};
-
-export type DelimiterState = {
-  type: 'delimiter';
-  properties: {
-    delimiter: string;
+  type: 'arangosearch';
+  links?: {
+    [key: string]: LinkProperties | null;
   };
 };
 
-type StemState = {
-  type: 'stem';
-  properties: {
-    locale: string;
-  };
-};
-
-type CaseProperty = 'lower' | 'upper' | 'none';
-
-type NormState = {
-  type: 'norm';
-  properties: {
-    accent?: boolean;
-    case?: CaseProperty;
-    locale: string;
-  };
-};
-
-export type NGramBase = {
-  max?: Int;
-  min?: Int;
-  preserveOriginal?: boolean;
-};
-
-export type NGramState = {
-  type: 'ngram';
-  properties: NGramBase & {
-    startMarker?: string;
-    endMarker?: string;
-    streamType?: 'binary' | 'utf8';
-  };
-};
-
-export type TextState = {
-  type: 'text';
-  properties: {
-    case?: CaseProperty;
-    locale: string;
-    accent?: boolean;
-    stemming?: boolean;
-    edgeNgram?: NGramBase;
-    stopwords?: string[];
-    stopwordsPath?: string;
-  };
-};
-
-export type AqlState = {
-  type: 'aql';
-  properties: {
-    queryString: string;
-    collapsePositions?: boolean;
-    keepNull?: boolean;
-    batchSize?: Int;
-    memoryLimit?: Int;
-    returnType?: 'string' | 'number' | 'bool';
-  };
-};
-
-export type StopwordsState = {
-  type: 'stopwords',
-  properties: {
-    stopwords: string[];
-    hex?: boolean;
-  }
-};
-
-export type CollationState = {
-  type: 'collation';
-  properties: {
-    locale: string;
-  };
-};
-
-export type SegmentationState = {
-  type: 'segmentation',
-  properties: {
-    break?: 'all' | 'alpha' | 'graphic';
-    case?: CaseProperty;
-  };
-};
-
-type PipelineState = DelimiterState
-  | StemState
-  | NormState
-  | NGramState
-  | TextState
-  | AqlState
-  | StopwordsState
-  | CollationState
-  | SegmentationState;
-
-export type PipelineStates = {
-  type: 'pipeline';
-  properties: {
-    pipeline: PipelineState[]
-  };
-};
-
-export type GeoOptions = {
-  maxCells?: Int;
-  minLevel?: Int;
-  maxLevel?: Int;
-};
-
-export type GeoJsonState = {
-  type: 'geojson';
-  properties: {
-    type?: 'shape' | 'centroid' | 'point';
-    options?: GeoOptions;
-  };
-};
-
-export type GeoPointState = {
-  type: 'geopoint';
-  properties: {
-    latitude?: string[];
-    longitude?: string[];
-    options?: GeoOptions;
-  };
-};
-
-export type AnalyzerTypeState = IdentityState
-  | DelimiterState
-  | StemState
-  | NormState
-  | NGramState
-  | TextState
-  | AqlState
-  | StopwordsState
-  | CollationState
-  | SegmentationState
-  | PipelineStates
-  | GeoJsonState
-  | GeoPointState;
-
-export type FormState = BaseFormState & AnalyzerTypeState;
+export type FormState = BaseFormState & ViewProperties;
 
 const baseSchema = {
   properties: {

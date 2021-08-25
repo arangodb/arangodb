@@ -1247,16 +1247,19 @@
     views: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        if (this.viewsView) {
-          this.viewsView.remove();
-        }
+      // this.init.then(() => {
+      //   if (this.viewsView) {
+      //     this.viewsView.remove();
+      //   }
+      //
+      //   this.viewsView = new window.ViewsView({
+      //     collection: this.arangoViewsStore
+      //   });
+      //   this.viewsView.render();
+      // });
 
-        this.viewsView = new window.ViewsView({
-          collection: this.arangoViewsStore
-        });
-        this.viewsView.render();
-      });
+      this.init.then(() => ReactDOM.render(React.createElement(window.ViewsReactView),
+        document.getElementById('content')));
     },
 
     fetchDBS: function (callback) {

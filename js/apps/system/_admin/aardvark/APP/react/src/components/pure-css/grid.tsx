@@ -1,11 +1,11 @@
-import React, { ReactNode } from 'react';
+import React from 'react';
+import { ChildProp } from "../../utils/constants";
 
-type ChildProp = {
-  children?: ReactNode;
+type GridProp = ChildProp & {
   [key: string]: any;
 };
 
-export const Grid = ({ children, ...rest }: ChildProp) => <div
+export const Grid = ({ children, ...rest }: GridProp) => <div
   className={'pure-g'} {...rest}>{children}</div>;
 
 export type CellSize =

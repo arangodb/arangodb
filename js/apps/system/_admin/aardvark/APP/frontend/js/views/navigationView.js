@@ -207,6 +207,13 @@
           active: true
         }
       ],
+      views: [
+        {
+          name: 'Views',
+          route: 'views',
+          active: true
+        }
+      ],
       queries: [
         {
           name: 'Editor',
