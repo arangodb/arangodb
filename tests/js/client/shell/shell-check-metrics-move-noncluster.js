@@ -95,14 +95,12 @@ function checkMetricsMoveSuite() {
     testConnectionCountByProtocol: function () {
       let http2ConnCount = getMetric("arangodb_http2_connections_total");
       let vstConnCount = getMetric("arangodb_vst_connections_total");
-      let allConnCount = getMetric("arangodb_client_connection_statistics_connection_time_count");
       // I have not found a reliable way to trigger a new connection from
       // `arangosh`. `arango.reconnect` does not work since it is caching
       // connections and the request timeout is not honoured for HTTP/2
       // and VST by fuerte. The idle timeout runs into an assertion failure.
       // Therefore, we must be content here to check that the connection
       // count is non-zero for the currently underlying protocol:
-      //assertNotEqual(0, allConnCount);
       if (arango.protocol() === "http2") {
         assertNotEqual(0, http2ConnCount);
       } else if (arango.protocol() === "vst") {
