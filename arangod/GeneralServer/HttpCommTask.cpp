@@ -464,6 +464,7 @@ void HttpCommTask<T>::doProcessRequest() {
         << HttpRequest::translateMethod(_request->requestType()) << "\",\"" << url() << "\"";
 
     VPackStringRef body = _request->rawPayload();
+    this->_generalServerFeature.countHttp1Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
       LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)
