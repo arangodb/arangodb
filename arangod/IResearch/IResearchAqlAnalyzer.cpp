@@ -463,7 +463,7 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
         validateQuery(options.queryString,
                       arangodb::DatabaseFeature::getCalculationVocbase());
     if (validationRes.ok()) {
-      return std::make_shared<arangodb::iresearch::AqlAnalyzer>(options);
+      return std::make_unique<arangodb::iresearch::AqlAnalyzer>(options);
     } else {
       LOG_TOPIC("f775e", WARN, arangodb::iresearch::TOPIC)
           << "error validating calculation query: " << validationRes.errorMessage();

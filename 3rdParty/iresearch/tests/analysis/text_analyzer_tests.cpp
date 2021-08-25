@@ -683,7 +683,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
     auto locale = "en_US.UTF-8";
     std::string sDataASCII = "A E I O U";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer::ptr pStream) {
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
       auto* pOffset = irs::get<irs::offset>(*pStream);
       ASSERT_NE(nullptr, pOffset);
@@ -710,21 +710,21 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
     {
       auto stream = text_token_stream::make(locale);
       ASSERT_NE(nullptr, stream);
-      testFunc(sDataASCII, stream);
+      testFunc(sDataASCII, stream.get());
     }
 
     // valid custom stopwords path -> ok
     {
       auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en_US.UTF-8\"}");
       ASSERT_NE(nullptr, stream);
-      testFunc(sDataASCII, stream);
+      testFunc(sDataASCII, stream.get());
     }
 
     // empty \"edgeNgram\" object
     {
       auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en_US.UTF-8\", \"edgeNgram\": {}}");
       ASSERT_NE(nullptr, stream);
-      testFunc(sDataASCII, stream);
+      testFunc(sDataASCII, stream.get());
     }
   }
 
@@ -743,12 +743,15 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
       ASSERT_EQ(nullptr, pStream);
     }
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"C\"}");
+      auto stream = irs::analysis::analyzers::get(
+        "text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"C\"}");
       ASSERT_EQ(nullptr, stream);
     }
     {
       // min > max
-      auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"edgeNgram\" : {\"min\":2, \"max\":1, \"preserveOriginal\":false}}");
+      auto stream = irs::analysis::analyzers::get(
+        "text", irs::type<irs::text_format::json>::get(),
+        "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"edgeNgram\" : {\"min\":2, \"max\":1, \"preserveOriginal\":false}}");
       ASSERT_EQ(nullptr, stream);
     }
   }
@@ -760,7 +763,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_no_default_stopwords) {
   {
     const std::string sDataASCII = "A E I O U";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer::ptr pStream) {
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
       auto* pOffset = irs::get<irs::offset>(*pStream);
       ASSERT_NE(nullptr, pOffset);
@@ -800,9 +803,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_no_default_stopwords) {
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en_US.UTF-8\"}");
+      auto stream = irs::analysis::analyzers::get(
+        "text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en_US.UTF-8\"}");
       ASSERT_NE(nullptr, stream);
-      testFunc(sDataASCII, stream);
+      testFunc(sDataASCII, stream.get());
     }
   }
 }
@@ -821,7 +825,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_no_default_stopwords_fallback_cwd)
   {
     const std::string sDataASCII = "A E I O U";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer::ptr pStream) {
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
       auto* pOffset = irs::get<irs::offset>(*pStream);
       ASSERT_NE(nullptr, pOffset);
@@ -846,9 +850,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_no_default_stopwords_fallback_cwd)
     };
 
     {
-      auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en_US.UTF-8\"}");
+      auto stream = irs::analysis::analyzers::get(
+        "text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en_US.UTF-8\"}");
       ASSERT_NE(nullptr, stream);
-      testFunc(sDataASCII, stream);
+      testFunc(sDataASCII, stream.get());
     }
   }
 }
@@ -858,7 +863,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override) {
 
   std::string sDataASCII = "A E I O U";
 
-  auto testFunc = [](const irs::string_ref& data, analyzer::ptr pStream) {
+  auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
     ASSERT_TRUE(pStream->reset(data));
     auto* pOffset = irs::get<irs::offset>(*pStream);
     ASSERT_NE(nullptr, pOffset);
@@ -883,9 +888,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override) {
   };
 
   // overriding ignored words path
-  auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en_US.UTF-8\", \"stopwordsPath\":\"" IResearch_test_resource_dir "\"}");
+  auto stream = irs::analysis::analyzers::get(
+    "text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en_US.UTF-8\", \"stopwordsPath\":\"" IResearch_test_resource_dir "\"}");
   ASSERT_NE(nullptr, stream);
-  testFunc(sDataASCII, stream);
+  testFunc(sDataASCII, stream.get());
 }
 
 TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override_emptypath) {

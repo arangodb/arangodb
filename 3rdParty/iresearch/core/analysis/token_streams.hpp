@@ -1,4 +1,4 @@
-﻿////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -87,6 +87,8 @@ class IRESEARCH_API boolean_token_stream final
   }
 
  private:
+  using basic_token_stream::reset;
+
   bool in_use_;
   bool value_;
 }; // boolean_token_stream
@@ -171,6 +173,8 @@ class IRESEARCH_API numeric_token_stream final
   }
 
  private:
+  using basic_token_stream::reset;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @class numeric_term
   /// @brief term_attribute implementation for numeric_token_stream
@@ -299,6 +303,8 @@ class IRESEARCH_API null_token_stream final
   }
 
  private:
+  using basic_token_stream::reset;
+
   bool in_use_{false};
 }; // null_token_stream
 

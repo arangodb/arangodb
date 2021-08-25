@@ -93,7 +93,7 @@ TEST(ngram_token_stream_test, construct) {
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>::id(), stream->type());
 
-    auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>(stream);
+    auto impl = dynamic_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>*>(stream.get());
     ASSERT_NE(nullptr, impl);
     ASSERT_EQ(2, impl->min_gram());
     ASSERT_EQ(2, impl->max_gram());
@@ -119,7 +119,7 @@ TEST(ngram_token_stream_test, construct) {
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>::id(), stream->type());
 
-    auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>(stream);
+    auto impl = dynamic_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>*>(stream.get());
     ASSERT_NE(nullptr, impl);
     ASSERT_EQ(1, impl->min_gram());
     ASSERT_EQ(2, impl->max_gram());
@@ -145,7 +145,7 @@ TEST(ngram_token_stream_test, construct) {
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::type<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>::id(), stream->type());
 
-    auto impl = std::dynamic_pointer_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>>(stream);
+    auto impl = dynamic_cast<irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>*>(stream.get());
     ASSERT_NE(nullptr, impl);
     ASSERT_EQ(std::numeric_limits<size_t>::max(), impl->min_gram());
     ASSERT_EQ(std::numeric_limits<size_t>::max(), impl->max_gram());
