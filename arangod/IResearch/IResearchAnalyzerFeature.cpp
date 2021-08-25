@@ -1057,7 +1057,7 @@ void AnalyzerPool::setKey(irs::string_ref const& key) {
   _key = irs::string_ref(_config.c_str() + keyOffset, key.size());
 }
 
-AnalyzerPool::CacheType AnalyzerPool::get() const noexcept {
+AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
   try {
     return _cache.emplace(_type, _properties);
   } catch (basics::Exception const& e) {
