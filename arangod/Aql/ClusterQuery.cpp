@@ -150,6 +150,11 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
       TRI_ASSERT(_trx->state()->isCoordinator());
       QueryRegistryFeature::registry()->registerSnippets(_snippets);
     }
+
+    // register ourselves in the TransactionState
+    TRI_ASSERT(!_registeredQueryInTrx);
+    _trx->state()->beginQuery(isModificationQuery());
+    _registeredQueryInTrx = true;
   }
 
   if (traverserSlice.isArray()) {
@@ -175,7 +180,16 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
 futures::Future<Result> ClusterQuery::finalizeClusterQuery(ErrorCode errorCode) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(ServerState::instance()->isDBServer());
-  
+
+  ScopeGuard endQueryGuard([this](){
+    if (_registeredQueryInTrx) {
+      TRI_ASSERT(_trx != nullptr && _trx->state() != nullptr);
+      // unregister ourselves in the TransactionState
+      _trx->state()->endQuery(isModificationQuery());
+      _registeredQueryInTrx = false;
+    }
+  });
+
   // technically there is no need for this in DBServers, but it should
   // be good practice to prevent the other cleanup code from running
   ShutdownState exp = ShutdownState::None;

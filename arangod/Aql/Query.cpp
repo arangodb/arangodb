@@ -177,6 +177,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 
 /// @brief destroys a query
 Query::~Query() {
+  TRI_ASSERT(!_registeredQueryInTrx);
   _resourceMonitor.decreaseMemoryUsage(_resultMemoryUsage);
   _resultMemoryUsage = 0;
 
@@ -297,6 +298,7 @@ void Query::prepareQuery(SerializationFormat format) {
       _queryProfile->registerInQueryList();
     }
     // register ourselves in the TransactionState
+    TRI_ASSERT(!_registeredQueryInTrx);
     _trx->state()->beginQuery(isModificationQuery());
     _registeredQueryInTrx = true;
 
