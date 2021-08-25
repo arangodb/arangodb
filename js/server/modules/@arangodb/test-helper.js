@@ -113,7 +113,7 @@ exports.getChecksum = function (endpoint, name) {
 exports.getMetric = function (endpoint, name) {
 
   let res = request.get({
-    url: endpoint + '/_admin/metrics',
+    url: endpoint + '/_admin/metrics/v2',
   });
   let re = new RegExp("^" + name);
   let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
