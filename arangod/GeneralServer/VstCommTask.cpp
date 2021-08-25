@@ -65,7 +65,7 @@ VstCommTask<T>::VstCommTask(GeneralServer& server, ConnectionInfo info,
   // arbitrary initial reserve value to save a few memory allocations
   // in the most common cases.
   _writeQueue.reserve(32);
-  this->_server._feature.countVstConnection();
+  this->_server.feature().countVstConnection();
 }
 
 template <SocketType T>
@@ -277,7 +277,7 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
   stat.SET_READ_END();
   stat.ADD_RECEIVED_BYTES(buffer.size());
 
-  this->_server._feature.countVstRequest(buffer.size());
+  this->_server.feature().countVstRequest(buffer.size());
 
   // handle request types
   if (mt == fu::MessageType::Authentication) {  // auth

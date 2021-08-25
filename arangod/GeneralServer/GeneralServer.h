@@ -69,12 +69,15 @@ class GeneralServer {
   application_features::ApplicationServer& server() const;
 
   Result reloadTLS();
+  GeneralServerFeature& feature() {
+    return _feature;
+  }
+  GeneralServerFeature& _feature;
 
  protected:
   bool openEndpoint(IoContext& ioContext, Endpoint* endpoint);
 
  private:
-  GeneralServerFeature& _feature;
   EndpointList const* _endpointList;
   std::vector<IoContext> _contexts;
 
