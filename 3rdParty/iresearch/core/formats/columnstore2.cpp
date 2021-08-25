@@ -1211,7 +1211,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
       { buf_.get() },
       consolidation_ },
     compression,
-    compressor);
+    std::move(compressor));
 
   return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {
     // to avoid extra (and useless in our case) check for block index

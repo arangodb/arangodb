@@ -187,7 +187,7 @@ struct aligned_type {
 template<typename Alloc>
 struct allocator_deallocator : public compact_ref<0, Alloc> {
   typedef compact_ref<0, Alloc> allocator_ref_t;
-  typedef typename allocator_ref_t::allocator_type allocator_type;
+  typedef typename allocator_ref_t::type allocator_type;
   typedef typename allocator_type::pointer pointer;
 
   allocator_deallocator(const allocator_type& alloc) noexcept
@@ -195,12 +195,12 @@ struct allocator_deallocator : public compact_ref<0, Alloc> {
   }
 
   void operator()(pointer p) const noexcept {
-    auto& alloc = const_cast<allocator_ref_t*>(this)->get();
+    allocator_type& alloc = const_cast<allocator_type&>(
+      allocator_ref_t::get());
 
     // deallocate storage
     std::allocator_traits<allocator_type>::deallocate(
-      alloc, p, 1
-    );
+      alloc, p, 1);
   }
 }; // allocator_deallocator
 
@@ -217,7 +217,8 @@ struct allocator_deleter : public compact_ref<0, Alloc> {
   void operator()(pointer p) const noexcept {
     typedef std::allocator_traits<allocator_type> traits_t;
 
-    auto& alloc = const_cast<allocator_deleter*>(this)->get();
+    allocator_type& alloc = const_cast<allocator_type&>(
+      allocator_ref_t::get());
 
     // destroy object
     traits_t::destroy(alloc, p);
@@ -241,7 +242,8 @@ class allocator_array_deallocator : public compact_ref<0, Alloc> {
   void operator()(pointer p) const noexcept {
     typedef std::allocator_traits<allocator_type> traits_t;
 
-    auto& alloc = const_cast<allocator_type&>(allocator_ref_t::get());
+    allocator_type& alloc = const_cast<allocator_type&>(
+      allocator_ref_t::get());
 
     // deallocate storage
     traits_t::deallocate(alloc, p, size_);
@@ -265,7 +267,8 @@ class allocator_array_deleter : public compact_ref<0, Alloc> {
   void operator()(pointer p) const noexcept {
     typedef std::allocator_traits<allocator_type> traits_t;
 
-    auto& alloc = const_cast<allocator_type&>(allocator_ref_t::get());
+    allocator_type& alloc = const_cast<allocator_type&>(
+      allocator_ref_t::get());
 
     // destroy objects
     for (auto begin = p, end = p + size_; begin != end; ++begin) {

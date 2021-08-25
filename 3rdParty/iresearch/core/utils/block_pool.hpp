@@ -1035,7 +1035,6 @@ class block_pool_sliced_greedy_inserter {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T, size_t Size>
 struct proxy_block_t {
-  typedef std::shared_ptr<proxy_block_t> ptr;
   typedef T value_type;
 
   static const size_t SIZE = Size;
@@ -1089,8 +1088,7 @@ class block_pool {
 
     while (count--) {
       blocks.emplace_back(
-        std::allocate_shared<block_type>(proxy_alloc, blocks.size() * block_type::SIZE)
-      );
+        memory::allocate_unique<block_type>(proxy_alloc, blocks.size() * block_type::SIZE));
     }
   }
 
@@ -1221,9 +1219,9 @@ class block_pool {
  private:
   friend iterator;
   friend const_iterator;
-  
-  typedef typename block_type::ptr block_ptr;
+
   typedef typename std::allocator_traits<allocator>::template rebind_alloc<block_type> proxy_allocator;
+  typedef std::unique_ptr<block_type, memory::allocator_deallocator<proxy_allocator>> block_ptr;
   typedef typename std::allocator_traits<allocator>::template rebind_alloc<block_ptr> block_ptr_allocator;
   typedef std::vector<block_ptr, block_ptr_allocator> blocks_t;
 
