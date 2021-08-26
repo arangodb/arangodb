@@ -2399,7 +2399,7 @@ Result ClusterInfo::incrementPlanVersion() {
     std::vector<AgencyOperation>{IncreaseVersion()}, std::vector<AgencyPrecondition>{}};
   AgencyComm ac(_server);
   auto res = ac.sendTransactionWithFailover(trx);
-  
+
   LOG_TOPIC("ccb89", DEBUG, Logger::CLUSTER) << "incrementing plan version";
 
   if (res.successful()) {
@@ -2869,6 +2869,10 @@ Result ClusterInfo::createCollectionsCoordinator(
           << "createCollectionCoordinator, isBuilding removed, waiting for new "
              "Plan...";
 
+      TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding") {
+        res.set(TRI_ERROR_HTTP_PRECONDITION_FAILED, "Failed to mark collection ready");
+      }
+
       if (res.successful()) {
         // Note that this is not strictly necessary, just to avoid an
         // unneccessary request when we're sure that we don't need it anymore.
@@ -2879,6 +2883,13 @@ Result ClusterInfo::createCollectionsCoordinator(
             return r;
           }
         }
+      } else {
+        LOG_TOPIC("98675", WARN, Logger::CLUSTER)
+          << "Failed createCollectionsCoordinator for " << infos.size()
+          << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
+          << " first collection name: " << infos[0].name << " result: " << res;
+        return Result(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                      "A cluster backend which was required for the operation could not be reached");
       }
 
       // Report if this operation worked, if it failed collections will be
@@ -3997,7 +4008,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   // This object watches whether the collection is still present in Plan
   // It assumes that the collection *is* present and only changes state
   // if the collection disappears
-  CollectionWatcher collectionWatcher(_agencyCallbackRegistry, collection);
+  auto collectionWatcher = std::make_shared<CollectionWatcher>(_agencyCallbackRegistry, collection);
 
   if (!result.successful()) {
     if (result.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
@@ -4100,7 +4111,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
           }
         }
 
-        if (!collectionWatcher.isPresent()) {
+        if (!collectionWatcher->isPresent()) {
           return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
                         "Collection " + collectionID +
                             " has gone from database " + databaseName +
@@ -4187,7 +4198,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         // when we wanted to roll back the index creation.
       }
 
-      if (!collectionWatcher.isPresent()) {
+      if (!collectionWatcher->isPresent()) {
         return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                       "collection " + collectionID +
                           "appears to have been dropped from database " +

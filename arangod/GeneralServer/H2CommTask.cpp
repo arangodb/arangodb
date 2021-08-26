@@ -207,6 +207,7 @@ H2CommTask<T>::H2CommTask(GeneralServer& server, ConnectionInfo info,
                           std::unique_ptr<AsioSocket<T>> so)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)) {
   this->_connectionStatistics.SET_HTTP();
+  this->_server._feature.countHttp2Connection();
   initNgHttp2Session();
 }
 
@@ -491,6 +492,7 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream& stream) {
         << HttpRequest::translateMethod(req->requestType()) << "\",\"" << url(req.get()) << "\"";
 
     VPackStringRef body = req->rawPayload();
+    this->_server.feature().countHttp2Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
       LOG_TOPIC("b6dc3", TRACE, Logger::REQUESTS)

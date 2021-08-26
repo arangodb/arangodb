@@ -173,6 +173,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_TMPFILE 0
 #define TRI_NOATIME 0
 
 #define TRI_CHDIR ::chdir
@@ -318,6 +319,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_TMPFILE O_TMPFILE
 #define TRI_NOATIME 0
 
 #define TRI_CHDIR ::chdir
@@ -476,6 +478,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_TMPFILE O_TMPFILE
 #define TRI_NOATIME O_NOATIME
 
 #define TRI_CHDIR ::chdir
@@ -683,6 +686,7 @@ typedef unsigned char bool;
 #define S_IWUSR _S_IWRITE
 
 #define TRI_O_CLOEXEC 0
+#define TRI_O_TMPFILE 0
 #define TRI_NOATIME 0
 
 #define O_RDONLY _O_RDONLY
