@@ -24,14 +24,14 @@ const (
 )
 
 func file_line() string {
-    _, fileName, fileLine, ok := runtime.Caller(2)
-    var s string
-    if ok {
-        s = fmt.Sprintf("%s:%d", fileName, fileLine)
-    } else {
-        s = ""
-    }
-    return s
+	_, fileName, fileLine, ok := runtime.Caller(2)
+	var s string
+	if ok {
+		s = fmt.Sprintf("%s:%d", fileName, fileLine)
+	} else {
+		s = ""
+	}
+	return s
 }
 
 func testGreeting(msg string) {
@@ -77,12 +77,12 @@ func makeHttp2Client(config TestConfig) driver.Client {
 	conn, err := driverhttp.NewConnection(driverhttp.ConnectionConfig{
 		Endpoints: config.Endpoints,
 		Transport: &http2.Transport{
-		  AllowHTTP: true,
-	    // Pretend we are dialing a TLS endpoint. (Note, we ignore the passed tls.Config)
-      DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
-        return net.Dial(network, addr)
-      },
-	  },
+			AllowHTTP: true,
+			// Pretend we are dialing a TLS endpoint. (Note, we ignore the passed tls.Config)
+			DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+				return net.Dial(network, addr)
+			},
+		},
 	})
 	if err != nil {
 		fmt.Printf("Could not create client connection: %v\n", err)
@@ -118,14 +118,14 @@ func makeVSTClient(config TestConfig) driver.Client {
 
 func assert(b bool, msg string) {
 	if !b {
-			fmt.Printf("%s: Assertion failure: %s\n", file_line(), msg)
+		fmt.Printf("%s: Assertion failure: %s\n", file_line(), msg)
 		os.Exit(100)
 	}
 }
 
 func assertNil(err error, msg string) {
 	if err != nil {
-			fmt.Printf("%s: Expected no error but got: %v, %s\n", file_line(), err, msg)
+		fmt.Printf("%s: Expected no error but got: %v, %s\n", file_line(), err, msg)
 		os.Exit(101)
 	}
 }
@@ -137,8 +137,8 @@ type Metrics struct {
 func getMetrics(client driver.Client) (Metrics, error) {
 	req, err := client.Connection().NewRequest("GET", "/_admin/metrics/v2")
 	if err != nil {
-		return Metrics{lines:[]string{}}, err
-  }
+		return Metrics{lines: []string{}}, err
+	}
 	var rawResponse []byte
 	ctx := driver.WithRawResponse(context.Background(), &rawResponse)
 	_, _ = client.Connection().Do(ctx, req)
@@ -148,22 +148,22 @@ func getMetrics(client driver.Client) (Metrics, error) {
 	for i := 0; i < len(rawResponse); i++ {
 		if rawResponse[i] == '\n' {
 			lines = append(lines, string(rawResponse[prev:i]))
-			prev = i+1
-	  }
+			prev = i + 1
+		}
 	}
 	return Metrics{
 		lines: lines,
-  }, nil
+	}, nil
 }
 
 func (m *Metrics) readIntMetric(metricName string) int64 {
 	for i := 0; i < len(m.lines); i++ {
-		if len(m.lines[i]) >= len(metricName) + 1 &&
-		   m.lines[i][0:len(metricName)] == metricName {
+		if len(m.lines[i]) >= len(metricName)+1 &&
+			m.lines[i][0:len(metricName)] == metricName {
 			s := strings.Split(m.lines[i], " ")
 			j, err := strconv.ParseInt(s[1], 10, 64)
 			if err != nil {
-			  fmt.Printf("Metric %s : %d\n", metricName, 0)
+				fmt.Printf("Metric %s : %d\n", metricName, 0)
 				return 0
 			}
 			fmt.Printf("Metric %s : %d\n", metricName, j)
@@ -172,5 +172,3 @@ func (m *Metrics) readIntMetric(metricName string) int64 {
 	}
 	return 0
 }
-
-

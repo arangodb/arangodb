@@ -1,7 +1,7 @@
 package main
 
 import (
-	//"http"
+//"http"
 )
 
 func main() {
@@ -48,7 +48,7 @@ func main() {
 	assert(http1ReqCount2 > http1ReqCount, "http1 req count did not move")
 	//the metrics calls are via HTTP/1, so it is expected to move
 	assert(http2ReqCount2 == http2ReqCount, "http2 req count has moved")
-	assert(vstReqCount2 >= vstReqCount + 10, "vst req count did not move")
+	assert(vstReqCount2 >= vstReqCount+10, "vst req count did not move")
 	http1ReqCount = http1ReqCount2
 	vstReqCount = vstReqCount2
 
@@ -67,6 +67,6 @@ func main() {
 
 	assert(http1ReqCount2 > http1ReqCount, "http1 req count did not move")
 	//the metrics calls are via HTTP/1, so it is expected to move
-	assert(http2ReqCount2 >= http2ReqCount + 10, "http2 req count did not move")
+	assert(http2ReqCount2 >= http2ReqCount+10, "http2 req count did not move")
 	assert(vstReqCount2 == vstReqCount, "vst req count has moved")
 }
