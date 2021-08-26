@@ -87,6 +87,7 @@ function readAndPrint(pid, buffer) {
 
 function goTests (options) {
   function runInGoTest (options, instanceInfo, file, addArgs) {
+    print("Hugo:", instanceInfo);
     process.env['TEST_ENDPOINTS'] = instanceInfo.urls.join(',');
     process.env['TEST_AUTHENTICATION'] = 'basic:root:';
     let jwt = pu.getJwtSecret(options);

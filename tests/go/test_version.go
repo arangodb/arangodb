@@ -10,6 +10,6 @@ func main() {
 
 	client := makeHttpClient(config)
 	versionInfo, err := client.Version(nil)
-	assertNotNil(err, "could not get version")
+	assertNil(err, "could not get version")
 	fmt.Printf("Version found: %s\n", versionInfo.Version)
 }
