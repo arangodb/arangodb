@@ -49,8 +49,7 @@ class boolean_token_stream;
 
 namespace analysis {
 class analyzer;
-}
-
+}  // namespace analysis
 }  // namespace iresearch
 
 namespace arangodb {
@@ -126,7 +125,7 @@ struct Field {
     return true;
   }
 
-  irs::unbounded_object_pool<AnalyzerPool::Builder>::ptr _analyzer;
+  AnalyzerPool::CacheType::ptr _analyzer;
   irs::string_ref _name;
   irs::bytes_ref _value;
   ValueStorage _storeValues;
@@ -214,7 +213,7 @@ class FieldIterator {
   IndexId _linkId;
 
   // Support for outputting primitive type from analyzer
-  irs::analysis::analyzer* _currentTypedAnalyzer{nullptr};
+  AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
   VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
 
@@ -268,7 +267,7 @@ class InvertedIndexFieldIterator {
   using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
                                          VPackSlice slice);
 
-  irs::analysis::analyzer* _currentTypedAnalyzer{nullptr};
+  AnalyzerPool::CacheType::ptr _currentTypedAnalyzer{nullptr};
   VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
   std::vector<VPackArrayIterator> _arrayStack;

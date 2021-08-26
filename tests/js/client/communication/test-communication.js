@@ -43,7 +43,7 @@ let { debugCanUseFailAt,
     } = require('@arangodb/test-helper');
 
 const getMetric = (name) => {
-  let res = arango.GET_RAW("/_admin/metrics");
+  let res = arango.GET_RAW("/_admin/metrics/v2");
   let re = new RegExp("^" + name + "({[^}]*})?");
   let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
   if (!matches.length) {

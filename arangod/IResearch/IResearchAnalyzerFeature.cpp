@@ -1060,13 +1060,8 @@ void AnalyzerPool::setKey(irs::string_ref const& key) {
   _key = irs::string_ref(_config.c_str() + keyOffset, key.size());
 }
 
-bool AnalyzerPool::requireMangled() const noexcept {
-  return _requireMangling;
-}
-
 AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
   try {
-    // FIXME do not use shared_ptr
     return _cache.emplace(_type, _properties);
   } catch (basics::Exception const& e) {
     LOG_TOPIC("c9256", WARN, iresearch::TOPIC)

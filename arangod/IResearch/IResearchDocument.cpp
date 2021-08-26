@@ -297,7 +297,7 @@ namespace iresearch {
   field._storeValues = ValueStorage::VALUE;
   field._value =
       irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(&pk), sizeof(pk));
-  field._analyzer = StringStreamPool.emplace(AnalyzerPool::string_stream_tag());
+  field._analyzer = StringStreamPool.emplace(AnalyzerPool::StringStreamTag());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer.get());
 #else
@@ -321,7 +321,7 @@ void FieldIterator::reset(VPackSlice doc, FieldMeta const& linkMeta) {
   _slice = doc;
   _begin = nullptr;
   _end = nullptr;
-  _currentTypedAnalyzer = nullptr;
+  _currentTypedAnalyzer.reset();
   _currentTypedAnalyzerValue = nullptr;
   _primitiveTypeResetter = nullptr;
   _stack.clear();
@@ -340,12 +340,12 @@ void FieldIterator::setBoolValue(VPackSlice const value) {
   arangodb::iresearch::kludge::mangleBool(_nameBuffer);
 
   // init stream
-  auto stream = BoolStreamPool.emplace(AnalyzerPool::boolean_stream_tag());
+  auto stream = BoolStreamPool.emplace(AnalyzerPool::BooleanStreamTag());
   static_cast<irs::boolean_token_stream*>(stream.get())->reset(value.getBool());
 
   // set field properties
   _value._name = _nameBuffer;
-  _value._analyzer = std::move(stream);  // FIXME don't use shared_ptr
+  _value._analyzer = std::move(stream);
   _value._indexFeatures = irs::IndexFeatures::NONE;
   _value._fieldFeatures = {};
 }
@@ -356,7 +356,7 @@ void FieldIterator::setNumericValue(VPackSlice const value) {
   arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
 
   // init stream
-  auto stream = NumericStreamPool.emplace(AnalyzerPool::numeric_stream_tag());
+  auto stream = NumericStreamPool.emplace(AnalyzerPool::NumericStreamTag());
   static_cast<irs::numeric_token_stream*>(stream.get())->reset(value.getNumber<double>());
 
   // set field properties
@@ -373,7 +373,7 @@ void FieldIterator::setNullValue(VPackSlice const value) {
   arangodb::iresearch::kludge::mangleNull(_nameBuffer);
 
   // init stream
-  auto stream = NullStreamPool.emplace(AnalyzerPool::null_stream_tag());
+  auto stream = NullStreamPool.emplace(AnalyzerPool::NullStreamTag());
   static_cast<irs::null_token_stream*>(stream.get())->reset();
 
   // set field properties
@@ -462,8 +462,8 @@ bool FieldIterator::setValue(VPackSlice const value,
         if (!analyzer->next()) {
           return false;
         }
-        _currentTypedAnalyzer = analyzer.get();
-        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
+        _currentTypedAnalyzer = std::move(analyzer);
+        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
         TRI_ASSERT(_currentTypedAnalyzerValue);
         setBoolValue(_currentTypedAnalyzerValue->value);
         _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
@@ -483,8 +483,8 @@ bool FieldIterator::setValue(VPackSlice const value,
         if (!analyzer->next()) {
           return false;
         }
-        _currentTypedAnalyzer = analyzer.get();
-        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
+        _currentTypedAnalyzer = std::move(analyzer);
+        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
         TRI_ASSERT(_currentTypedAnalyzerValue);
         setNumericValue(_currentTypedAnalyzerValue->value);
         _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
@@ -499,19 +499,19 @@ bool FieldIterator::setValue(VPackSlice const value,
         };
       }
       break;
-    default: 
-      {
-        iresearch::kludge::mangleField(_nameBuffer, true, valueAnalyzer);
-        _value._analyzer = std::move(analyzer);
-        _value._fieldFeatures = pool->fieldFeatures();
-        _value._indexFeatures = pool->indexFeatures();
-        _value._name = _nameBuffer;
-      } 
-      break;
+    default: {
+      iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
+      _value._analyzer = std::move(analyzer);
+      _value._fieldFeatures = pool->fieldFeatures();
+      _value._indexFeatures = pool->indexFeatures();
+      _value._name = _nameBuffer;
+    } break;
   }
   auto* storeFunc = pool->storeFunc();
   if (storeFunc) {
-    auto const valueSlice = storeFunc(analyzer.get(), value, _buffer);
+    auto const valueSlice = storeFunc(
+      _currentTypedAnalyzer ? _currentTypedAnalyzer.get() : _value._analyzer.get(),
+      value, _buffer);
 
     if (!valueSlice.isNone()) {
       _value._value = iresearch::ref<irs::byte_type>(valueSlice);
@@ -533,7 +533,7 @@ void FieldIterator::next() {
        _primitiveTypeResetter(_value._analyzer.get(), _currentTypedAnalyzerValue->value);
        return;
      } else {
-       _currentTypedAnalyzer = nullptr;
+       _currentTypedAnalyzer.reset();
      }
   }
 

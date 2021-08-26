@@ -178,31 +178,31 @@ class AnalyzerPool : private irs::util::noncopyable {
     VPackSlice slice,
     VPackBuffer<uint8_t>& buf);
 
-  // type tags for primitive token streams
-  struct null_stream_tag {};
-  struct boolean_stream_tag {};
-  struct numeric_stream_tag {};
-  struct string_stream_tag {};
+    // type tags for primitive token streams
+  struct NullStreamTag {};
+  struct BooleanStreamTag {};
+  struct NumericStreamTag {};
+  struct StringStreamTag {};
 
   // 'make(...)' method wrapper for irs::analysis::analyzer types
   struct Builder {
     using ptr = irs::analysis::analyzer::ptr;
     DECLARE_FACTORY(irs::string_ref const& type, VPackSlice properties);
     
-    static ptr make(null_stream_tag&) {
-      return std::make_shared<irs::null_token_stream>();
+    static ptr make(NullStreamTag) {
+      return std::make_unique<irs::null_token_stream>();
     }
 
-    static ptr make(boolean_stream_tag&) {
-      return std::make_shared<irs::boolean_token_stream>();
+    static ptr make(BooleanStreamTag) {
+      return std::make_unique<irs::boolean_token_stream>();
     }
 
-    static ptr make(numeric_stream_tag&) {
-      return std::make_shared<irs::numeric_token_stream>();
+    static ptr make(NumericStreamTag) {
+      return std::make_unique<irs::numeric_token_stream>();
     }
 
-    static ptr make(string_stream_tag&) {
-      return std::make_shared<irs::string_token_stream>();
+    static ptr make(StringStreamTag) {
+      return std::make_unique<irs::string_token_stream>();
     }
   };
 
