@@ -290,13 +290,6 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
 Result CreateDatabaseInfo::checkOptions() {
   _validId = (_id != 0);
 
-  bool isSystem = _name == StaticStrings::SystemDatabase;
-  bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
-
-  if (!DatabaseNameValidator::isAllowedName(isSystem, extendedNames, arangodb::velocypack::StringRef(_name))) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-  }
-
   if (_replicationVersion == replication::Version::TWO && !replication2::EnableReplication2) {
     LOG_TOPIC("8fdd7", ERR, Logger::REPLICATION2)
         << "Replication version 2 is disabled in this binary, but loading a "
@@ -308,8 +301,17 @@ Result CreateDatabaseInfo::checkOptions() {
            "recreate the database with replication version 1 (the default), "
            "and then restore the data.";
   }
+  
+  bool isSystem = _name == StaticStrings::SystemDatabase;
+  bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
 
-  return Result();
+  Result res;
+
+  if (!DatabaseNameValidator::isAllowedName(isSystem, extendedNames, arangodb::velocypack::StringRef(_name))) {
+    res.reset(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+  }
+
+  return res;
 }
 
 VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server, VPackSlice const& options) {

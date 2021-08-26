@@ -1340,8 +1340,25 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       arangodb::CreateDatabaseInfo info(server(), ExecContext::current());
       auto res = info.load(it, VPackSlice::emptyArraySlice());
       if (res.fail()) {
+        if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID)) {
+          // special case: if we find an invalid database name during startup,
+          // we will give the user some hint how to fix it
+          std::string errorMsg(res.errorMessage());
+          errorMsg.append(": '").append(databaseName).append("'");
+          // check if the name would be allowed when using extended names
+          if (DatabaseNameValidator::isAllowedName(/*isSystem*/ false, /*extendedNames*/ true, 
+                                                   arangodb::velocypack::StringRef(databaseName))) {
+            errorMsg.append(
+                ". this database name would be allowed when using the "
+                "extended naming convention for databases, which is "
+                "currently disabled. the extended naming convention can "
+                "be enabled via the startup option `--database.extended-names-databases true`");
+          }
+          res.reset(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID, std::move(errorMsg));
+        }
         THROW_ARANGO_EXCEPTION(res);
       }
+
       auto database = engine.openDatabase(std::move(info), _upgrade);
 
       if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
