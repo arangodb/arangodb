@@ -226,6 +226,10 @@ struct AssertionLogger {
   const char* expr;
 #endif
   void operator&(NoOpStream const&) const noexcept {}
+  static auto getOutputStream() -> std::ostringstream&& {
+    static thread_local std::ostringstream stream;
+    return std::move(stream);
+  }
 };
 
 }  // namespace debug
@@ -242,7 +246,7 @@ struct AssertionLogger {
       ? (void)nullptr                                                         \
       : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
                                            ARANGODB_PRETTY_FUNCTION, #expr} & \
-            std::ostringstream {}
+            ::arangodb::debug::AssertionLogger::getOutputStream()
 
 #else
 
