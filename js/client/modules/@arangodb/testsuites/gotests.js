@@ -116,13 +116,17 @@ function goTests (options) {
         args.push(options.goOptions[key]);
       }
     }
-    args.push(file.slice(file.lastIndexOf("/")+1));
+    let pos = file.lastIndexOf("/");
+    let basename = file.slice(pos+1);
+    let path = file.slice(0, pos);
+    args.push(basename)
+    args.push("helpers.go")
     if (options.extremeVerbosity) {
       print(process.env);
       print(args);
     }
     let start = Date();
-    const res = executeExternal('go', args, true, [], file.slice(0, file.lastIndexOf("/")));
+    const res = executeExternal('go', args, true, [], path);
     let results = {};
     let status = true;
     let rc = {};
@@ -132,7 +136,7 @@ function goTests (options) {
       rc = statusExternal(res.pid);
     } while (rc.status === 'RUNNING');
     //if (options.extremeVerbosity || rc.exit !== 0) {
-      print("Output of test:", buf.b)
+      print(buf.b)
     //}
     if (rc.exit !== 0) {
       status = false;
