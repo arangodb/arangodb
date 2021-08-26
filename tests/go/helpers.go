@@ -2,16 +2,16 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"strings"
 	driver "github.com/arangodb/go-driver"
 	"github.com/arangodb/go-driver/http"
+	"os"
+	"strings"
 )
 
 const (
 	ErrorNoEnvironment = 1
-	ErrorNoConnection = 2
-	ErrorNoClient = 3
+	ErrorNoConnection  = 2
+	ErrorNoClient      = 3
 )
 
 func testGreeting(msg string) {
@@ -29,7 +29,7 @@ func configFromEnv() TestConfig {
 	if !ok {
 		fmt.Printf("Did not find TEST_ENDPOINTS!\n")
 		os.Exit(ErrorNoEnvironment)
-  }
+	}
 	return TestConfig{
 		Endpoints: strings.Split(endpointstring, ","),
 	}
@@ -37,14 +37,14 @@ func configFromEnv() TestConfig {
 
 func makeHttpClient(config TestConfig) driver.Client {
 	conn, err := http.NewConnection(http.ConnectionConfig{
-			Endpoints: config.Endpoints,
+		Endpoints: config.Endpoints,
 	})
 	if err != nil {
 		fmt.Printf("Could not create client connection: %v\n", err)
 		os.Exit(ErrorNoConnection)
 	}
 	client, err := driver.NewClient(driver.ClientConfig{
-			Connection: conn,
+		Connection: conn,
 	})
 	if err != nil {
 		fmt.Printf("Could not create client: %v\n", err)

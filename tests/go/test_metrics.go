@@ -1,11 +1,11 @@
 package main
 
 import (
-  "fmt"
+	"fmt"
 )
 
 func main() {
-  testGreeting("Protocol specific metrics move")
+	testGreeting("Protocol specific metrics move")
 	config := configFromEnv()
 
 	client := makeHttpClient(config)
@@ -13,4 +13,3 @@ func main() {
 	assertNotNil(err, "could not get version")
 	fmt.Printf("Version found: %s\n", versionInfo.Version)
 }
-
