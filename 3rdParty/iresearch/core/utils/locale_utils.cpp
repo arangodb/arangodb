@@ -3741,8 +3741,7 @@ bool is_utf8(std::locale const& locale) {
 std::locale locale(
     irs::string_ref const& name,
     irs::string_ref const& encodingOverride /*= irs::string_ref::NIL*/,
-    bool forceUnicodeSystem /*= true*/
-) {
+    bool forceUnicodeSystem /*= true*/) {
   if (encodingOverride.null()) {
     return get_locale(name, forceUnicodeSystem);
   }
@@ -3763,6 +3762,24 @@ std::locale locale(
   }
 
   return get_locale(locale_name, forceUnicodeSystem);
+}
+
+bool icu_locale(const string_ref& name, std::locale& locale) {
+  try {
+    // true == convert to unicode, required for ICU
+    locale = locale_utils::locale(name, string_ref::NIL, true);
+
+    // check if ICU supports locale
+    auto icu_locale =
+        icu::Locale(std::string(locale_utils::language(locale)).c_str(),
+                    std::string(locale_utils::country(locale)).c_str());
+    return !icu_locale.isBogus();
+  } catch (...) {
+    IR_FRMT_ERROR(
+      "Caught error while constructing a unicode locale from name: %s",
+      name.c_str());
+  }
+  return false;
 }
 
 const std::string& name(std::locale const& locale) {

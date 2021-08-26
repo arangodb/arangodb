@@ -68,7 +68,7 @@ std::vector<std::pair<irs::bstring, irs::bstring>> read_fst_input(
   auto read_size = [](std::istream& stream) {
     size_t size;
     stream.read(reinterpret_cast<char*>(&size), sizeof(size_t));
-    if (irs::numeric_utils::is_big_endian()) {
+    if constexpr (irs::is_big_endian()) {
       size = irs::numeric_utils::numeric_traits<size_t>::hton(size);
     }
     return size;

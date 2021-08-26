@@ -41,27 +41,17 @@ void analyzed_json_field_factory(
   class string_field : public templates::string_field {
    public:
     string_field(const std::string& name, const irs::string_ref& value)
-      : templates::string_field(name, value) {
-    }
-
-    const irs::flags& features() const {
-      static irs::flags features{ irs::type<irs::frequency>::get() };
-      return features;
+      : templates::string_field(name, value, irs::IndexFeatures::FREQ) {
     }
   }; // string_field
 
   if (data.is_string()) {
     // analyzed field
     doc.indexed.push_back(std::make_shared<text_field>(
-      std::string(name.c_str()) + "_anl",
-      data.str
-    ));
+      std::string(name.c_str()) + "_anl", data.str));
 
     // not analyzed field
-    doc.insert(std::make_shared<string_field>(
-      name,
-      data.str
-    ));
+    doc.insert(std::make_shared<string_field>(name, data.str));
   }
 }
 
@@ -7418,10 +7408,9 @@ TEST(by_phrase_test, ctor) {
   ASSERT_EQ(irs::by_phrase_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());
 
-  auto& features = irs::by_phrase::required();
-  ASSERT_EQ(2, features.size());
-  ASSERT_TRUE(features.check<irs::frequency>());
-  ASSERT_TRUE(features.check<irs::position>());
+  static_assert(
+    (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) ==
+    irs::by_phrase::required());
 }
 
 TEST(by_phrase_test, boost) {
@@ -7876,7 +7865,7 @@ TEST(by_phrase_test, copy_move) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   phrase_filter_test,
   phrase_filter_test_case,
   ::testing::Combine(

@@ -2,7 +2,7 @@ name: arangodb_replication_initial_sync_docs_requests_total
 renamedFrom: arangodb_replication_initial_sync_docs_requests
 introducedIn: "3.8.0"
 help: |
-  Number of replication initial sync docs requests
+  Number of replication initial sync docs requests.
 unit: number
 type: counter
 category: Replication

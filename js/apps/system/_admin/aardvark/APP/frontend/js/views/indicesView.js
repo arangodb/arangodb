@@ -475,7 +475,10 @@
       }
       $('#newIndexType' + type).show();
       if (type) {
+        // select "maintain index selectivity estimates" by default
         $('#new' + type + 'Estimates').prop('checked', true);
+        // select "create in background" by default
+        $('#new' + type + 'Background').prop('checked', true);
       }
     },
 

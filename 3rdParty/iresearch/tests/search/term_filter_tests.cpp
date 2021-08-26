@@ -675,7 +675,7 @@ TEST(by_term_test, boost) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   term_filter_test,
   term_filter_test_case,
   ::testing::Combine(

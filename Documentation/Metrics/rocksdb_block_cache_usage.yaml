@@ -1,7 +1,7 @@
 name: rocksdb_block_cache_usage
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-block-cache-usage"
+  Size of RocksDB block cache entries.
 unit: bytes
 type: gauge
 category: RocksDB
