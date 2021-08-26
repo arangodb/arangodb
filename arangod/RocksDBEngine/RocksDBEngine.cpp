@@ -915,7 +915,7 @@ void RocksDBEngine::beginShutdown() {
   // signal the event listener that we are going to shut down soon
   if (_shaListener != nullptr) {
     _shaListener->beginShutdown();
-  }  // if
+  } 
 }
 
 void RocksDBEngine::stop() {
@@ -924,6 +924,10 @@ void RocksDBEngine::stop() {
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
   replicationManager()->dropAll();
+  
+  if (_shaListener != nullptr) {
+    _shaListener->waitForShutdown();
+  }
 
   if (_backgroundThread) {
     // stop the press
