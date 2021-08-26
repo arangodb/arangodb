@@ -58,6 +58,9 @@ func configFromEnv() TestConfig {
 func makeHttp1Client(config TestConfig) driver.Client {
 	conn, err := driverhttp.NewConnection(driverhttp.ConnectionConfig{
 		Endpoints: config.Endpoints,
+		TLSConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
 	})
 	if err != nil {
 		fmt.Printf("Could not create client connection: %v\n", err)
@@ -74,16 +77,33 @@ func makeHttp1Client(config TestConfig) driver.Client {
 }
 
 func makeHttp2Client(config TestConfig) driver.Client {
-	conn, err := driverhttp.NewConnection(driverhttp.ConnectionConfig{
-		Endpoints: config.Endpoints,
-		Transport: &http2.Transport{
-			AllowHTTP: true,
-			// Pretend we are dialing a TLS endpoint. (Note, we ignore the passed tls.Config)
-			DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
-				return net.Dial(network, addr)
+	var conn driver.Connection
+	var err error
+	if len(config.Endpoints[0]) >= 5 && config.Endpoints[0][:5] == "https" {
+		conn, err = driverhttp.NewConnection(driverhttp.ConnectionConfig{
+			Endpoints: config.Endpoints,
+			Transport: &http2.Transport{
+				AllowHTTP: true,
 			},
-		},
-	})
+			TLSConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		})
+	} else {
+		conn, err = driverhttp.NewConnection(driverhttp.ConnectionConfig{
+			Endpoints: config.Endpoints,
+			Transport: &http2.Transport{
+				AllowHTTP: true,
+				// Pretend we are dialing a TLS endpoint. (Note, we ignore the passed tls.Config)
+				DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+					return net.Dial(network, addr)
+				},
+			},
+			TLSConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		})
+	}
 	if err != nil {
 		fmt.Printf("Could not create client connection: %v\n", err)
 		os.Exit(ErrorNoConnection)
@@ -101,6 +121,9 @@ func makeHttp2Client(config TestConfig) driver.Client {
 func makeVSTClient(config TestConfig) driver.Client {
 	conn, err := vst.NewConnection(vst.ConnectionConfig{
 		Endpoints: config.Endpoints,
+		TLSConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
 	})
 	if err != nil {
 		fmt.Printf("Could not create client connection: %v\n", err)
