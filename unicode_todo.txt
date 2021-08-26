@@ -1,6 +1,4 @@
 To do:
-- [ ] add recovery test
-- [ ] add tests for replication - leader/follower
 - [ ] add tests for replication - cluster
 - [ ] check location headers / http redirects
 - [ ] check web interface
