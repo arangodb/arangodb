@@ -1,6 +1,36 @@
 v3.8.1 (XXXX-XX-XX)
 -------------------
 
+* (Enterprise Edition only): added query option `forceOneShardAttributeValue` 
+  to explicitly set a shard key value that will be used during query snippet 
+  distribution to limit the query to a specific server in the cluster.
+
+  This query option can be used in complex queries in case the query optimizer 
+  cannot automatically detect that the query can be limited to only a single 
+  server (e.g. in a disjoint smart graph case).
+  When the option is set to the correct shard key value, the query will be 
+  limited to the target server determined by the shard key value. It thus 
+  requires that all collections in the query use the same distribution
+  (i.e. `distributeShardsLike` attribute via disjoint SmartGraphs).
+  
+  Limiting the query to a single DB server is a performance optimization 
+  and may make complex queries run a lot faster because of the reduced 
+  setup and teardown costs and the reduced cluster-internal traffic during 
+  query execution.
+
+  If the option is set incorrectly, i.e. to a wrong shard key value, then 
+  the query may be shipped to a wrong DB server and may not return results 
+  (i.e. empty result set). It is thus the caller's responsibility to set 
+  the `forceOneShardAttributeValue` correctly or not use it.
+
+  The `forceOneShardAttributeValue` option will only honor string values. 
+  All other values as well as the empty string will be ignored and treated 
+  as if the option is not set.
+
+  If the option is set and the query satisfies the requirements for using
+  the option, the query's execution plan will contain the "cluster-one-shard"
+  optimizer rule.
+
 * Added protocol specific metrics: histogram about request body size, total
   number of HTTP/2 connections and total number of VST connections.
 
