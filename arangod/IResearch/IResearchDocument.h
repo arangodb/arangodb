@@ -267,7 +267,7 @@ class InvertedIndexFieldIterator {
   using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
                                          VPackSlice slice);
 
-  AnalyzerPool::CacheType::ptr _currentTypedAnalyzer{nullptr};
+  AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
   VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
   std::vector<VPackArrayIterator> _arrayStack;

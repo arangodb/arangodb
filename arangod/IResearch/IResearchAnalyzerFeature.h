@@ -230,7 +230,11 @@ class AnalyzerPool : private irs::util::noncopyable {
   bool accepts(AnalyzerValueType types) const noexcept {
     return (_inputType & types) != AnalyzerValueType::Undefined;
   }
-  bool requireMangled() const noexcept;
+
+  bool requireMangled() const noexcept {
+    return _requireMangling;
+  }
+
   bool returns(AnalyzerValueType types) const noexcept {
     return (_returnType & types) != AnalyzerValueType::Undefined;
   }

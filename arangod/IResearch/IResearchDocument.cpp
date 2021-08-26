@@ -500,7 +500,7 @@ bool FieldIterator::setValue(VPackSlice const value,
       }
       break;
     default: {
-      iresearch::kludge::mangleField(_nameBuffer, valueAnalyzer);
+      iresearch::kludge::mangleField(_nameBuffer, false, valueAnalyzer);
       _value._analyzer = std::move(analyzer);
       _value._fieldFeatures = pool->fieldFeatures();
       _value._indexFeatures = pool->indexFeatures();
@@ -722,7 +722,7 @@ void InvertedIndexFieldIterator::next() {
       _primitiveTypeResetter(_value._analyzer.get(), _currentTypedAnalyzerValue->value);
       return;
     } else {
-      _currentTypedAnalyzer = nullptr;
+      _currentTypedAnalyzer.reset();
     }
   }
   _valueSlice = VPackSlice::noneSlice();
@@ -808,7 +808,7 @@ void InvertedIndexFieldIterator::setBoolValue(VPackSlice const value) {
   arangodb::iresearch::kludge::mangleBool(_nameBuffer);
 
   // init stream
-  auto stream = BoolStreamPool.emplace(AnalyzerPool::boolean_stream_tag());
+  auto stream = BoolStreamPool.emplace(AnalyzerPool::BooleanStreamTag());
   static_cast<irs::boolean_token_stream*>(stream.get())->reset(value.getBool());
 
   // set field properties
@@ -824,7 +824,7 @@ void InvertedIndexFieldIterator::setNumericValue(VPackSlice const value) {
   arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
 
   // init stream
-  auto stream = NumericStreamPool.emplace(AnalyzerPool::numeric_stream_tag());
+  auto stream = NumericStreamPool.emplace(AnalyzerPool::NumericStreamTag());
   static_cast<irs::numeric_token_stream*>(stream.get())->reset(value.getNumber<double>());
 
   // set field properties
@@ -841,7 +841,7 @@ void InvertedIndexFieldIterator::setNullValue(VPackSlice const value) {
   arangodb::iresearch::kludge::mangleNull(_nameBuffer);
 
   // init stream
-  auto stream = NullStreamPool.emplace(AnalyzerPool::null_stream_tag());
+  auto stream = NullStreamPool.emplace(AnalyzerPool::NullStreamTag());
   static_cast<irs::null_token_stream*>(stream.get())->reset();
 
   // set field properties
@@ -909,7 +909,7 @@ bool InvertedIndexFieldIterator::setValue(VPackSlice const value,
         if (!analyzer->next()) {
           return false;
         }
-        _currentTypedAnalyzer = analyzer.get();
+        _currentTypedAnalyzer = std::move(analyzer);
         _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
         TRI_ASSERT(_currentTypedAnalyzerValue);
         setBoolValue(_currentTypedAnalyzerValue->value);
@@ -930,7 +930,7 @@ bool InvertedIndexFieldIterator::setValue(VPackSlice const value,
         if (!analyzer->next()) {
           return false;
         }
-        _currentTypedAnalyzer = analyzer.get();
+        _currentTypedAnalyzer = std::move(analyzer);
         _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
         TRI_ASSERT(_currentTypedAnalyzerValue);
         setNumericValue(_currentTypedAnalyzerValue->value);
@@ -956,7 +956,8 @@ bool InvertedIndexFieldIterator::setValue(VPackSlice const value,
   }
   auto* storeFunc = pool->storeFunc();
   if (storeFunc) {
-    auto const valueSlice = storeFunc(analyzer.get(), value, _buffer);
+    auto const valueSlice = storeFunc(_currentTypedAnalyzer? _currentTypedAnalyzer.get() : analyzer.get(),
+                                      value, _buffer);
 
     if (!valueSlice.isNone()) {
       _value._value = iresearch::ref<irs::byte_type>(valueSlice);
