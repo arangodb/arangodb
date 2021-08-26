@@ -2,13 +2,17 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 
 	driver "github.com/arangodb/go-driver"
 	driverhttp "github.com/arangodb/go-driver/http"
+	"github.com/arangodb/go-driver/vst"
 
 	"golang.org/x/net/http2"
 )
@@ -18,6 +22,17 @@ const (
 	ErrorNoConnection  = 2
 	ErrorNoClient      = 3
 )
+
+func file_line() string {
+    _, fileName, fileLine, ok := runtime.Caller(2)
+    var s string
+    if ok {
+        s = fmt.Sprintf("%s:%d", fileName, fileLine)
+    } else {
+        s = ""
+    }
+    return s
+}
 
 func testGreeting(msg string) {
 	fmt.Printf("==========================================================\n")
@@ -61,7 +76,31 @@ func makeHttp1Client(config TestConfig) driver.Client {
 func makeHttp2Client(config TestConfig) driver.Client {
 	conn, err := driverhttp.NewConnection(driverhttp.ConnectionConfig{
 		Endpoints: config.Endpoints,
-		Transport: &http2.Transport{},
+		Transport: &http2.Transport{
+		  AllowHTTP: true,
+	    // Pretend we are dialing a TLS endpoint. (Note, we ignore the passed tls.Config)
+      DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+        return net.Dial(network, addr)
+      },
+	  },
+	})
+	if err != nil {
+		fmt.Printf("Could not create client connection: %v\n", err)
+		os.Exit(ErrorNoConnection)
+	}
+	client, err := driver.NewClient(driver.ClientConfig{
+		Connection: conn,
+	})
+	if err != nil {
+		fmt.Printf("Could not create client: %v\n", err)
+		os.Exit(ErrorNoClient)
+	}
+	return client
+}
+
+func makeVSTClient(config TestConfig) driver.Client {
+	conn, err := vst.NewConnection(vst.ConnectionConfig{
+		Endpoints: config.Endpoints,
 	})
 	if err != nil {
 		fmt.Printf("Could not create client connection: %v\n", err)
@@ -78,15 +117,15 @@ func makeHttp2Client(config TestConfig) driver.Client {
 }
 
 func assert(b bool, msg string) {
-	if b {
-		fmt.Printf("Assertion failure: %s\n", msg)
+	if !b {
+			fmt.Printf("%s: Assertion failure: %s\n", file_line(), msg)
 		os.Exit(100)
 	}
 }
 
 func assertNil(err error, msg string) {
 	if err != nil {
-		fmt.Printf("Expected no error but got: %v, %s\n", err, msg)
+			fmt.Printf("%s: Expected no error but got: %v, %s\n", file_line(), err, msg)
 		os.Exit(101)
 	}
 }
@@ -119,12 +158,15 @@ func getMetrics(client driver.Client) (Metrics, error) {
 
 func (m *Metrics) readIntMetric(metricName string) int64 {
 	for i := 0; i < len(m.lines); i++ {
-		if len(m.lines[i]) >= len(metricName) + 1 && 
+		if len(m.lines[i]) >= len(metricName) + 1 &&
 		   m.lines[i][0:len(metricName)] == metricName {
-			j, err := strconv.ParseInt(m.lines[i][len(metricName)+1:], 10, 64)
+			s := strings.Split(m.lines[i], " ")
+			j, err := strconv.ParseInt(s[1], 10, 64)
 			if err != nil {
+			  fmt.Printf("Metric %s : %d\n", metricName, 0)
 				return 0
 			}
+			fmt.Printf("Metric %s : %d\n", metricName, j)
 			return j
 		}
 	}
