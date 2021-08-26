@@ -1,6 +1,8 @@
 v3.6.16 (XXXX-XX-XX)
 --------------------
 
+* Updated arangosync to 1.8.0.
+
 * Fix a potential multi-threading issue in index creation on coordinators, when
   an agency callback was triggered at the same time the method
   `ensureIndexCoordinatorInner` was left.
@@ -52,8 +54,6 @@ v3.6.16 (XXXX-XX-XX)
 * Updated ArangoDB Starter to 0.15.1.
 
 * Fix BTS-453: Download of a HotBackup from remote source doesn't work on macOS.
-
-* Updated arangosync to 1.7.0.
 
 
 v3.6.15 (2021-07-14)
