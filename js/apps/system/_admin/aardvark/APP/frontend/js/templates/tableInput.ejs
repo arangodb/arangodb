@@ -1,0 +1,18 @@
+<table class="pure-table">
+    <thead>
+    <% head.forEach(header => { %>
+        <tr>
+            <th><%= header %></th>
+        </tr>
+    <% }) %>
+    </thead>
+    <tbody>
+    <% rows.forEach(row => { %>
+        <tr>
+            <% row.forEach(cell => { %>
+                <td><%= cell %>></td>
+            <% }) %>
+        </tr>
+    <% }) %>
+    </tbody>
+</table>

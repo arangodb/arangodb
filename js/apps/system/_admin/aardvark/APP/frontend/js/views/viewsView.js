@@ -9,6 +9,9 @@
     readOnly: false,
 
     template: templateEngine.createTemplate('viewsView.ejs'),
+    partialTemplates: {
+      modalInputs: templateEngine.createTemplate('modalInputs.ejs')
+    },
 
     initialize: function () {
     },
@@ -39,36 +42,37 @@
     },
 
     checkVisibility: function () {
-      if ($('#viewsDropdown').is(':visible')) {
-        this.dropdownVisible = true;
-      } else {
-        this.dropdownVisible = false;
-      }
+      this.dropdownVisible = !!$('#viewsDropdown').is(':visible');
       arangoHelper.setCheckboxStatus('#viewsDropdown');
     },
 
     checkIfInProgress: function () {
       if (window.location.hash.search('views') > -1) {
-        var self = this;
+        const self = this;
 
-        var callback = function (error, lockedViews) {
+        const callback = function (error, lockedViews) {
           if (error) {
             console.log('Could not check locked views');
           } else {
             if (lockedViews.length > 0) {
               _.each(lockedViews, function (foundView) {
+                const element = $('#' + foundView.collection + ' .collection-type-icon');
+
                 if ($('#' + foundView.collection)) {
                   // found view html container
-                  $('#' + foundView.collection + ' .collection-type-icon').removeClass('fa-clone');
-                  $('#' + foundView.collection + ' .collection-type-icon').addClass('fa-spinner').addClass('fa-spin');
+                  element.removeClass('fa-clone');
+                  element.addClass('fa-spinner').addClass('fa-spin');
                 } else {
-                  $('#' + foundView.collection + ' .collection-type-icon').addClass('fa-clone');
-                  $('#' + foundView.collection + ' .collection-type-icon').removeClass('fa-spinner').removeClass('fa-spin');
+                  element.addClass('fa-clone');
+                  element.removeClass('fa-spinner').removeClass('fa-spin');
                 }
               });
             } else {
               // if no view found at all, just reset all to default
-              $('.tile .collection-type-icon').addClass('fa-clone').removeClass('fa-spinner').removeClass('fa-spin');
+              $('.tile .collection-type-icon').
+                addClass('fa-clone').
+                removeClass('fa-spinner').
+                removeClass('fa-spin');
             }
 
             window.setTimeout(function () {
@@ -103,7 +107,7 @@
     },
 
     toggleSettingsDropdown: function () {
-      var self = this;
+      const self = this;
       // apply sorting to checkboxes
       $('#viewsSortDesc').attr('checked', this.sortOptions.desc);
 
@@ -114,12 +118,15 @@
     },
 
     render: function (data) {
-      var self = this;
+      const self = this;
 
       if (data) {
         self.$el.html(self.template.render({
           views: self.applySorting(data.result),
-          searchString: self.getSearchString()
+          searchString: self.getSearchString(),
+          partial: function (template, data) {
+            self.partialTemplates[template].render(data);
+          }
         }));
       } else {
         this.getViews();
@@ -129,18 +136,19 @@
         }));
       }
 
+      const element = $('#viewsSortDesc');
       if (self.dropdownVisible === true) {
-        $('#viewsSortDesc').attr('checked', self.sortOptions.desc);
+        element.attr('checked', self.sortOptions.desc);
         $('#viewsToggle').addClass('activated');
         $('#viewsDropdown2').show();
       }
 
-      $('#viewsSortDesc').attr('checked', self.sortOptions.desc);
+      element.attr('checked', self.sortOptions.desc);
       arangoHelper.setCheckboxStatus('#viewsDropdown');
 
-      var searchInput = $('#viewsSearchInput');
-      var strLength = searchInput.val().length;
-      searchInput.focus();
+      const searchInput = $('#viewsSearchInput');
+      const strLength = searchInput.val().length;
+      searchInput.trigger('focus');
       searchInput[0].setSelectionRange(strLength, strLength);
 
       arangoHelper.checkDatabasePermissions(this.setReadOnly.bind(this));
@@ -160,7 +168,7 @@
     },
 
     applySorting: function (data) {
-      var self = this;
+      const self = this;
 
       // default sorting order
       data = _.sortBy(data, 'name');
@@ -169,9 +177,9 @@
         data = data.reverse();
       }
 
-      var toReturn = [];
+      const toReturn = [];
       if (this.getSearchString() !== '') {
-        _.each(data, function (view, key) {
+        _.each(data, function (view) {
           if (view && view.name) {
             if (view.name.toLowerCase().indexOf(self.getSearchString()) !== -1) {
               toReturn.push(view);
@@ -186,19 +194,19 @@
     },
 
     gotoView: function (e) {
-      var name = $(e.currentTarget).attr('id');
+      const name = $(e.currentTarget).attr('id');
       if (name) {
-        var url = 'view/' + encodeURIComponent(name);
+        const url = 'view/' + encodeURIComponent(name);
         window.App.navigate(url, {trigger: true});
       }
     },
 
     getViews: function () {
-      var self = this;
+      const self = this;
 
       this.collection.fetch({
-        success: function (data) {
-          var res = {
+        success: function () {
+          const res = {
             result: []
           };
           self.collection.each(function (view) {
@@ -221,8 +229,8 @@
     },
 
     createViewModal: function () {
-      var buttons = [];
-      var tableContent = [];
+      const buttons = [];
+      const tableContent = [];
 
       tableContent.push(
         window.modalView.createTextEntry(
@@ -257,6 +265,12 @@
         )
       );
 
+      tableContent.push(
+        window.modalView.createTextEntry(
+
+        )
+      );
+
       buttons.push(
         window.modalView.createSuccessButton('Create', this.submitCreateView.bind(this))
       );
@@ -265,9 +279,9 @@
     },
 
     submitCreateView: function () {
-      var self = this;
-      var name = $('#newName').val();
-      var options = JSON.stringify({
+      const self = this;
+      const name = $('#newName').val();
+      const options = JSON.stringify({
         name: name,
         type: 'arangosearch',
         properties: {}
@@ -280,7 +294,7 @@
         contentType: 'application/json',
         processData: false,
         data: options,
-        success: function (data) {
+        success: function () {
           window.modalView.hide();
           arangoHelper.arangoNotification('View', 'Creation in progress. This may take a while.');
           self.getViews();

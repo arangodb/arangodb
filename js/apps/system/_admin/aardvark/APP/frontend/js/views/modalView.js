@@ -1,11 +1,11 @@
 /* jshint browser: true */
-/* global Backbone, $, window, setTimeout, Joi, _, arangoHelper */
+/* global Backbone, $, window, Joi, _, arangoHelper */
 /* global templateEngine */
 
 (function () {
   'use strict';
 
-  var createButtonStub = function (type, title, cb, confirm) {
+  const createButtonStub = function (type, title, cb, confirm) {
     return {
       type: type,
       title: title,
@@ -14,9 +14,9 @@
     };
   };
 
-  var createTextStub = function (type, label, value, info, placeholder, mandatory, joiObj,
+  const createTextStub = function (type, label, value, info, placeholder, mandatory, joiObj,
     addDelete, addAdd, maxEntrySize, tags) {
-    var obj = {
+    const obj = {
       type: type,
       label: label
     };
@@ -86,7 +86,8 @@
       SELECT: 'select',
       SELECT2: 'select2',
       JSONEDITOR: 'jsoneditor',
-      CHECKBOX: 'checkbox'
+      CHECKBOX: 'checkbox',
+      TABLE: 'table'
     },
 
     initialize: function () {
@@ -96,58 +97,64 @@
 
     createModalHotkeys: function () {
       // submit modal
-      $(this.el).unbind('keydown');
-      $(this.el).unbind('return');
+      $(this.el).off('keydown');
+      $(this.el).off('return');
 
-      $('#modal-dialog .modal-body .collectionTh > input').unbind('keydown');
-      $('#modal-dialog .modal-body .collectionTh > input').unbind('return');
-      $('#modal-dialog .modal-body .collectionTh > input', $(this.el)).bind('keydown', 'return', function (e) {
-        if (!$('#modal-dialog .modal-footer .button-success').is(':disabled') && e.keyCode === 13) {
-          $('#modal-dialog .modal-footer .button-success').click();
-        }
-      });
+      let element = $('#modal-dialog .modal-body .collectionTh > input');
+      const successButton = $('#modal-dialog .modal-footer .button-success');
+      element.off('keydown');
+      element.off('return');
+      $('#modal-dialog .modal-body .collectionTh > input', $(this.el)).on('keydown', null, 'return',
+        function (e) {
+          if (!successButton.is(':disabled') && e.keyCode === 13) {
+            $('#modal-dialog .modal-footer .button-success').trigger('click');
+          }
+        });
 
-      $('#modal-dialog .modal-body .collectionTh > select').unbind('keydown');
-      $('#modal-dialog .modal-body .collectionTh > select').unbind('return');
-      $('#modal-dialog .modal-body .collectionTh > select', $(this.el)).bind('keydown', 'return', function (e) {
-        if (!$('#modal-dialog .modal-footer .button-success').is(':disabled') && e.keyCode === 13) {
-          $('#modal-dialog .modal-footer .button-success').click();
-        }
-      });
+      element = $('#modal-dialog .modal-body .collectionTh > select');
+      element.off('keydown');
+      element.off('return');
+      $('#modal-dialog .modal-body .collectionTh > select', $(this.el)).on('keydown', null,
+        'return', function (e) {
+          if (!successButton.is(':disabled') && e.keyCode === 13) {
+            $('#modal-dialog .modal-footer .button-success').trigger('click');
+          }
+        });
     },
 
     createInitModalHotkeys: function () {
-      var self = this;
+      const self = this;
       // navigate through modal buttons
       // left cursor
-      $(this.el).bind('keydown', 'left', function () {
+      $(this.el).on('keydown', null, 'left', function () {
         self.navigateThroughButtons('left');
       });
       // right cursor
-      $(this.el).bind('keydown', 'right', function () {
+      $(this.el).on('keydown', null, 'right', function () {
         self.navigateThroughButtons('right');
       });
     },
 
     navigateThroughButtons: function (direction) {
-      var hasFocus = $('.createModalDialog .modal-footer button').is(':focus');
+      const button = $('.createModalDialog .modal-footer button');
+      const hasFocus = button.is(':focus');
       if (hasFocus === false) {
         if (direction === 'left') {
-          $('.createModalDialog .modal-footer button').first().focus();
+          button.first().trigger('focus');
         } else if (direction === 'right') {
-          $('.createModalDialog .modal-footer button').last().focus();
+          button.last().trigger('focus');
         }
       } else if (hasFocus === true) {
         if (direction === 'left') {
-          $(':focus').prev().focus();
+          $(':focus').prev().trigger('focus');
         } else if (direction === 'right') {
-          $(':focus').next().focus();
+          $(':focus').next().trigger('focus');
         }
       }
     },
 
     createCloseButton: function (title, cb) {
-      var self = this;
+      const self = this;
       return createButtonStub(this.buttons.CLOSE, title, function () {
         self.hide();
         if (cb) {
@@ -173,27 +180,27 @@
     },
 
     createDisabledButton: function (title) {
-      var disabledButton = createButtonStub(this.buttons.DISABLED, title);
+      const disabledButton = createButtonStub(this.buttons.DISABLED, title);
       disabledButton.disabled = true;
       return disabledButton;
     },
 
     createReadOnlyEntry: function (id, label, value, info, addDelete, addAdd) {
-      var obj = createTextStub(this.tables.READONLY, label, value, info, undefined, undefined,
+      const obj = createTextStub(this.tables.READONLY, label, value, info, undefined, undefined,
         undefined, addDelete, addAdd);
       obj.id = id;
       return obj;
     },
 
     createTextEntry: function (id, label, value, info, placeholder, mandatory, regexp) {
-      var obj = createTextStub(this.tables.TEXT, label, value, info, placeholder, mandatory,
+      const obj = createTextStub(this.tables.TEXT, label, value, info, placeholder, mandatory,
         regexp);
       obj.id = id;
       return obj;
     },
 
     createBlobEntry: function (id, label, value, info, placeholder, mandatory, regexp) {
-      var obj = createTextStub(this.tables.BLOB, label, value, info, placeholder, mandatory,
+      const obj = createTextStub(this.tables.BLOB, label, value, info, placeholder, mandatory,
         regexp);
       obj.id = id;
       return obj;
@@ -201,7 +208,7 @@
 
     createSelect2Entry: function (
       id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize, tags) {
-      var obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder,
+      const obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder,
         mandatory, undefined, addDelete, addAdd, maxEntrySize, tags);
       obj.id = id;
       return obj;
@@ -209,20 +216,21 @@
 
     createJsonEditor: function (
       id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize, tags) {
-      var obj = createTextStub(this.tables.JSONEDITOR, 'Document body', value, '', placeholder,
+      const obj = createTextStub(this.tables.JSONEDITOR, 'Document body', value, '', placeholder,
         mandatory, undefined, addDelete, addAdd, maxEntrySize, tags);
       obj.id = id;
       return obj;
     },
 
     createPasswordEntry: function (id, label, value, info, placeholder, mandatory, regexp) {
-      var obj = createTextStub(this.tables.PASSWORD, label, value, info, placeholder, mandatory, regexp);
+      const obj = createTextStub(this.tables.PASSWORD, label, value, info, placeholder, mandatory,
+        regexp);
       obj.id = id;
       return obj;
     },
 
     createCheckboxEntry: function (id, label, value, info, checked) {
-      var obj = createTextStub(this.tables.CHECKBOX, label, value, info);
+      const obj = createTextStub(this.tables.CHECKBOX, label, value, info);
       obj.id = id;
       if (checked) {
         obj.checked = checked;
@@ -235,7 +243,7 @@
     },
 
     createSelectEntry: function (id, label, selected, info, options) {
-      var obj = createTextStub(this.tables.SELECT, label, null, info);
+      const obj = createTextStub(this.tables.SELECT, label, null, info);
       obj.id = id;
       if (selected) {
         obj.selected = selected;
@@ -251,17 +259,29 @@
       };
     },
 
+    createTableEntry: function (id, cols, options, head = (new Array(cols)).fill(''),
+      rows = []) {
+      return {
+        type: this.tables.TABLE,
+        cols,
+        head,
+        rows,
+        options
+      };
+    },
+
     renameDangerButton: function (buttonID) {
-      var buttonText = $(buttonID).text();
+      const buttonText = $(buttonID).text();
       $('#modal-delete-confirmation strong').html('Really ' + buttonText.toLowerCase() + '?');
     },
 
     show: function (templateName, title, buttons, tableContent, advancedContent,
       extraInfo, events, noConfirm, tabBar, divID) {
-      var self = this;
-      var lastBtn;
-      var confirmMsg;
-      var closeButtonFound = false;
+      let element;
+      const self = this;
+      let lastBtn;
+      let confirmMsg;
+      let closeButtonFound = false;
 
       buttons = buttons || [];
       noConfirm = Boolean(noConfirm);
@@ -304,11 +324,15 @@
         // remove not needed modal elements
         $('#' + divID + ' #modal-dialog').removeClass('fade hide modal');
         $('#' + divID + ' .modal-header').remove();
-        $('#' + divID + ' .modal-tabbar').remove();
-        $('#' + divID + ' .modal-tabbar').remove();
+
+        element = $('#' + divID + ' .modal-tabbar');
+        element.remove();
+        element.remove();
         $('#' + divID + ' .button-close').remove();
-        if ($('#' + divID + ' .modal-footer').children().length === 0) {
-          $('#' + divID + ' .modal-footer').remove();
+
+        element = $('#' + divID + ' .modal-footer');
+        if (element.children().length === 0) {
+          element.remove();
         }
       }
       _.each(buttons, function (b, i) {
@@ -321,19 +345,20 @@
           return;
         }
         if (b.type === self.buttons.DELETE && !noConfirm) {
-          var string = '#modalButton' + i;
+          let string = '#modalButton' + i;
           if (divID) {
             string = '#' + divID + ' #modalButton' + i;
           }
-          $(string).bind('click', function () {
+          $(string).on('click', function () {
             if (divID) {
-              $('#' + divID + ' ' + self.confirm.yes).unbind('click');
-              $('#' + divID + ' ' + self.confirm.yes).bind('click', b.callback);
+              const element = $('#' + divID + ' ' + self.confirm.yes);
+              element.off('click');
+              element.on('click', b.callback);
               $('#' + divID + ' ' + self.confirm.list).css('display', 'block');
               self.renameDangerButton(string);
             } else {
-              $(self.confirm.yes).unbind('click');
-              $(self.confirm.yes).bind('click', b.callback);
+              $(self.confirm.yes).off('click');
+              $(self.confirm.yes).on('click', b.callback);
               $(self.confirm.list).css('display', 'block');
               self.renameDangerButton(string);
             }
@@ -341,23 +366,23 @@
           return;
         }
         if (divID) {
-          $('#' + divID + ' ' + '#modalButton' + i).bind('click', b.callback);
+          $('#' + divID + ' ' + '#modalButton' + i).on('click', b.callback);
         } else {
-          $('#modalButton' + i).bind('click', b.callback);
+          $('#modalButton' + i).on('click', b.callback);
         }
       });
 
       if (divID) {
-        $('#' + divID + ' ' + this.confirm.no).bind('click', function () {
+        $('#' + divID + ' ' + this.confirm.no).on('click', function () {
           $('#' + divID + ' ' + self.confirm.list).css('display', 'none');
         });
       } else {
-        $(this.confirm.no).bind('click', function () {
+        $(this.confirm.no).on('click', function () {
           $(self.confirm.list).css('display', 'none');
         });
       }
 
-      var template;
+      let template;
       if (typeof templateName === 'string') {
         template = templateEngine.createTemplate(templateName);
         if (divID) {
@@ -374,14 +399,15 @@
           }));
         }
       } else {
-        var counter = 0;
+        let counter = 0;
         _.each(templateName, function (v) {
           template = templateEngine.createTemplate(v);
-          $('.createModalDialog .modal-body .tab-content #' + tabBar[counter]).html(template.render({
-            content: tableContent,
-            advancedContent: advancedContent,
-            info: extraInfo
-          }));
+          $('.createModalDialog .modal-body .tab-content #' + tabBar[counter]).html(
+            template.render({
+              content: tableContent,
+              advancedContent: advancedContent,
+              info: extraInfo
+            }));
 
           counter++;
         });
@@ -389,7 +415,7 @@
 
       arangoHelper.createTooltips('.createModalDialog .modalTooltips', 'left');
 
-      var completeTableContent = tableContent || [];
+      let completeTableContent = tableContent || [];
       if (advancedContent && advancedContent.content) {
         completeTableContent = completeTableContent.concat(advancedContent.content);
       }
@@ -399,7 +425,7 @@
         if (row.type === self.tables.SELECT2) {
           // handle select2
 
-          var options = {
+          const options = {
             tags: row.tags || [],
             showSearchBox: false,
             minimumResultsForSearch: -1,
@@ -420,20 +446,21 @@
       }
 
       if ($('#accordion2')) {
-        $('#accordion2 .accordion-toggle').bind('click', function () {
-          if ($('#collapseOne').is(':visible')) {
-            $('#collapseOne').hide();
+        const element = $('#collapseOne');
+        $('#accordion2 .accordion-toggle').on('click', function () {
+          if (element.is(':visible')) {
+            element.hide();
             setTimeout(function () {
               $('.accordion-toggle').addClass('collapsed');
             }, 100);
           } else {
-            $('#collapseOne').show();
+            element.show();
             setTimeout(function () {
               $('.accordion-toggle').removeClass('collapsed');
             }, 100);
           }
         });
-        $('#collapseOne').hide();
+        element.hide();
         setTimeout(function () {
           $('.accordion-toggle').addClass('collapsed');
         }, 100);
@@ -453,7 +480,7 @@
       }
 
       // if input-field is available -> autofocus first one
-      var focus;
+      let focus;
       if (divID) {
         focus = $('#' + divID + ' ' + '#modal-dialog').find('input');
       } else {
@@ -469,7 +496,7 @@
           if (focus.length > 0) {
             focus = focus.find('input');
             if (focus.length > 0) {
-              $(focus[0]).focus();
+              $(focus[0]).trigger('focus');
             }
           }
         }, 400);
@@ -477,17 +504,17 @@
     },
 
     modalBindValidation: function (entry) {
-      var self = this;
+      const self = this;
       if (entry.hasOwnProperty('id') &&
-          entry.hasOwnProperty('validateInput')) {
-        var validCheck = function () {
-          var $el = $('#' + entry.id);
-          var validation = entry.validateInput($el);
-          var error = false;
+        entry.hasOwnProperty('validateInput')) {
+        const validCheck = function () {
+          const $el = $('#' + entry.id);
+          const validation = entry.validateInput($el);
+          let error = false;
           _.each(validation, function (validator) {
-            var value = $el.val();
+            const value = $el.val();
             if (!validator.rule) {
-              validator = {rule: validator};
+              validator = { rule: validator };
             }
             if (typeof validator.rule === 'function') {
               try {
@@ -496,7 +523,7 @@
                 error = validator.msg || e.message;
               }
             } else {
-              var result = Joi.validate(value, validator.rule);
+              const result = Joi.validate(value, validator.rule);
               if (result.error) {
                 error = validator.msg || result.error.message;
               }
@@ -509,11 +536,11 @@
             return error;
           }
         };
-        var $el = $('#' + entry.id);
+        const $el = $('#' + entry.id);
         // catch result of validation and act
         $el.on('keyup focusout', function () {
-          var msg = validCheck();
-          var errorElement = $el.next()[0];
+          const msg = validCheck();
+          const errorElement = $el.next()[0];
           if (msg) {
             $el.addClass('invalid-input');
             if (errorElement) {
@@ -524,13 +551,13 @@
               $el.after('<p class="errorMessage">' + msg + '</p>');
             }
             if ($('#modal-dialog').is(':visible')) {
-              $('#modal-dialog .modal-footer .button-success')
-                .prop('disabled', true)
-                .addClass('disabled');
+              $('#modal-dialog .modal-footer .button-success').
+                prop('disabled', true).
+                addClass('disabled');
             } else {
-              $('.createModalDialog .modal-footer .button-success')
-                .prop('disabled', true)
-                .addClass('disabled');
+              $('.createModalDialog .modal-footer .button-success').
+                prop('disabled', true).
+                addClass('disabled');
             }
           } else {
             $el.removeClass('invalid-input');
@@ -546,29 +573,29 @@
     },
 
     modalTestAll: function () {
-      var tests = _.map(this._validators, function (v) {
+      const tests = _.map(this._validators, function (v) {
         return v();
       });
-      var invalid = _.any(tests);
+      const invalid = _.any(tests);
       if (invalid) {
         if ($('#modal-dialog').is(':visible')) {
-          $('#modal-dialog .modal-footer .button-success')
-            .prop('disabled', true)
-            .addClass('disabled');
+          $('#modal-dialog .modal-footer .button-success').
+            prop('disabled', true).
+            addClass('disabled');
         } else {
-          $('.createModalDialog .modal-footer .button-success')
-            .prop('disabled', true)
-            .addClass('disabled');
+          $('.createModalDialog .modal-footer .button-success').
+            prop('disabled', true).
+            addClass('disabled');
         }
       } else {
         if ($('#modal-dialog').is(':visible')) {
-          $('#modal-dialog .modal-footer .button-success')
-            .prop('disabled', false)
-            .removeClass('disabled');
+          $('#modal-dialog .modal-footer .button-success').
+            prop('disabled', false).
+            removeClass('disabled');
         } else {
-          $('.createModalDialog .modal-footer .button-success')
-            .prop('disabled', false)
-            .removeClass('disabled');
+          $('.createModalDialog .modal-footer .button-success').
+            prop('disabled', false).
+            removeClass('disabled');
         }
       }
       return !invalid;
@@ -577,7 +604,7 @@
     clearValidators: function () {
       this._validators = [];
       _.each(this._validateWatchers, function (w) {
-        w.unbind('keyup focusout');
+        w.off('keyup focusout');
       });
       this._validateWatchers = [];
     },
