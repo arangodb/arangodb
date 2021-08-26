@@ -536,37 +536,37 @@ namespace avg {
 
 // Encodes block denoted by [begin;end) using average encoding algorithm
 // Returns block std::pair{ base, average }
-inline std::pair<uint64_t, uint64_t> encode(uint64_t* begin, uint64_t* end) {
+inline std::tuple<uint64_t, uint64_t, bool> encode(uint64_t* begin, uint64_t* end) noexcept {
   assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
   --end;
 
   const uint64_t base = *begin;
+  const std::ptrdiff_t distance = std::distance(begin, end);
 
-  const std::ptrdiff_t distance[] { 1, std::distance(begin, end) }; // prevent division by 0
   const uint64_t avg = std::lround(
-    static_cast<double_t>(*end - base) / distance[distance[1] > 0]
-  );
+    static_cast<double_t>(*end - base) / (distance > 0 ? distance : 1));
 
+  uint64_t value = 0;
   *begin++ = 0; // zig_zag_encode64(*begin - base - avg*0) == 0
   for (uint64_t avg_base = base; begin <= end; ++begin) {
     *begin = zig_zag_encode64(*begin - (avg_base += avg));
+    value |= *begin;
   }
 
-  return std::make_pair(base, avg);
+  return std::make_tuple(base, avg, !value);
 }
 
 // Encodes block denoted by [begin;end) using average encoding algorithm
 // Returns block std::pair{ base, average }
-inline std::pair<uint32_t, uint32_t> encode(uint32_t* begin, uint32_t* end) {
+inline std::pair<uint32_t, uint32_t> encode(uint32_t* begin, uint32_t* end) noexcept {
   assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
   --end;
 
   const uint32_t base = *begin;
+  const std::ptrdiff_t distance = std::distance(begin, end); // prevent division by 0
 
-  const std::ptrdiff_t distance[] { 1, std::distance(begin, end) }; // prevent division by 0
   const uint32_t avg = std::lround(
-    static_cast<float_t>(*end - base) / distance[distance[1] > 0]
-  );
+    static_cast<float_t>(*end - base) / (distance > 0 ? distance : 1));
 
   *begin++ = 0; // zig_zag_encode32(*begin - base - avg*0) == 0
   for (uint32_t avg_base = base; begin <= end; ++begin) {

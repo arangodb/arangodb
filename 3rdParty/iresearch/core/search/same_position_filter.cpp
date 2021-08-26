@@ -145,16 +145,12 @@ class same_position_query final : public filter::prepared {
     const bool no_score = ord.empty();
     auto term_stats = stats_.begin();
     for (auto& term_state : *query_state) {
-      auto term = term_state.reader->iterator();
-
-      // use bytes_ref::blank here since we do not need just to "jump"
-      // to cached state, and we are not interested in term value itself */
-      if (!term->seek(bytes_ref::NIL, *term_state.cookie)) {
-        return doc_iterator::empty();
-      }
+      auto* reader = term_state.reader;
+      assert(reader);
 
       // get postings
-      auto docs = term->postings(features);
+      auto docs = reader->postings(*term_state.cookie, features);
+      assert(docs);
 
       // get needed postings attributes
       auto* pos = irs::get_mutable<position>(docs.get());
@@ -251,7 +247,7 @@ filter::prepared::ptr by_same_position::prepare(
       field_stats.collect(segment, *field); // collect field statistics once per segment
 
       // find terms
-      seek_term_iterator::ptr term = field->iterator();
+      seek_term_iterator::ptr term = field->iterator(SeekMode::NORMAL);
 
       if (!term->seek(branch.second)) {
         if (ord.empty()) {

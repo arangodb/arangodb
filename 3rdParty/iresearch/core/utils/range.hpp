@@ -49,7 +49,6 @@ class range {
   constexpr value_type* end() noexcept { return end_; }
   constexpr const value_type* begin() const noexcept { return begin_; }
   constexpr const value_type* end() const noexcept { return end_; }
-
   constexpr bool operator==(const range& rhs) const noexcept {
     return std::equal(begin_, end_, rhs.begin_, rhs.end_);
   }
