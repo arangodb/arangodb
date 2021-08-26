@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to 2.6.0.
+
 * Fix a potential multi-threading issue in index creation on coordinators,
   when an agency callback was triggered at the same time the method
   `ensureIndexCoordinatorInner` was left.
