@@ -173,7 +173,7 @@ void DatabaseManagerThread::run() {
 
           TRI_ASSERT(!database->isSystem());
 
-          {
+          if (dealer.isEnabled()) {
             // remove apps directory for database
             std::string const& appPath = dealer.appPath();
             if (database->isOwnAppsDirectory() && !appPath.empty()) {
@@ -1248,6 +1248,12 @@ ErrorCode DatabaseFeature::createApplicationDirectory(std::string const& name,
   if (basePath.empty()) {
     return TRI_ERROR_NO_ERROR;
   }
+  
+  V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
+  if (!dealer.isEnabled()) {
+    // no JavaScript enabled - no need to create the js/apps directory/ies
+    return TRI_ERROR_NO_ERROR;
+  }
 
   std::string const path = basics::FileUtils::buildFilename(
       basics::FileUtils::buildFilename(basePath, "_db"), name);
@@ -1441,6 +1447,11 @@ void DatabaseFeature::closeDroppedDatabases() {
 void DatabaseFeature::verifyAppPaths() {
   // create shared application directory js/apps
   V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
+  if (!dealer.isEnabled()) {
+    // no JavaScript enabled - no need to create the js/apps directory/ies
+    return;
+  }
+
   auto appPath = dealer.appPath();
 
   if (!appPath.empty() && !TRI_IsDirectory(appPath.c_str())) {

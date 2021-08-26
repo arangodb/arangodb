@@ -718,20 +718,9 @@ module.exports =
     }
 
     static get _systemAppPath () {
+      // TODO: should this be STARTUP_PATH here?
       return APP_PATH ? (
         path.join(STARTUP_PATH, 'apps', 'system')
-        ) : undefined;
-    }
-
-    static get _oldAppPath () {
-      return APP_PATH ? (
-        path.join(APP_PATH, 'databases', internal.db._name())
-        ) : undefined;
-    }
-
-    static get _devAppPath () {
-      return DEV_APP_PATH ? (
-        path.join(DEV_APP_PATH, 'databases', internal.db._name())
         ) : undefined;
     }
 };
