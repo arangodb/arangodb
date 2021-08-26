@@ -817,7 +817,7 @@ TEST_P(format_10_test_case, postings_seek) {
     auto fr = get_codec()->get_field_reader();
     fr->prepare(*dir, meta, docs_mask);
 
-    auto it = fr->field(field_meta.name)->iterator();
+    auto it = fr->field(field_meta.name)->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(it->seek(term));
 
     // ires-336 sequence

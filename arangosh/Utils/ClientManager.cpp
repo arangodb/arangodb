@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Logger/Logger.h"
@@ -57,9 +58,11 @@ arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* res
     std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
     VPackSlice const body = parsedBody->slice();
 
-    auto serverCode = VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
-    std::string const& serverMessage =
-        VelocyPackHelper::getStringValue(body, "errorMessage", "");
+    auto serverCode =
+        VelocyPackHelper::getNumericValue<int>(body, arangodb::StaticStrings::ErrorNum, 0);
+    auto serverMessage =
+        VelocyPackHelper::getStringValue(body, arangodb::StaticStrings::ErrorMessage,
+                                         "");
 
     if (serverCode > 0) {
       code = ErrorCode{serverCode};

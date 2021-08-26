@@ -43,7 +43,7 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
       ASSERT_NE(nullptr, fields);
 
       while (fields->next()) {
-        auto expected_terms = fields->value().iterator();
+        auto expected_terms = fields->value().iterator(irs::SeekMode::NORMAL);
         ASSERT_NE(nullptr, expected_terms);
         auto actual_terms = fields->value().iterator(matcher);
         ASSERT_NE(nullptr, actual_terms);
