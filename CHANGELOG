@@ -1,6 +1,21 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.2-preview-1.
+
+* Reduce internal priority of AQL execution. This prevents possible deadlocks
+  with modification operations in a cluster and replicationFactor >= 2, and can
+  also improve responsiveness under high load of AQL queries.
+
+* Updated arangosync to 2.6.0.
+
+* Fix a potential multi-threading issue in index creation on coordinators,
+  when an agency callback was triggered at the same time the method
+  `ensureIndexCoordinatorInner` was left.
+
+* Added protocol specific metrics: histogram about request body size, total
+  number of HTTP/2 connections and total number of VST connections.
+
 * Add pseudo log topic "all" to set the log levels for all log topics at
   once. For example, this can be used when starting a server with trace or
   debug logging enabled for all log topics, e.g.

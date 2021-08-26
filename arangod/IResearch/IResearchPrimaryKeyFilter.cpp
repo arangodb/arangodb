@@ -66,7 +66,7 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     return irs::doc_iterator::empty();
   }
 
-  auto term = pkField->iterator();
+  auto term = pkField->iterator(irs::SeekMode::RANDOM_ONLY);
 
   auto const pkRef =
       irs::numeric_utils::numeric_traits<LocalDocumentId::BaseType>::raw_ref(_pk);

@@ -43,13 +43,16 @@ namespace iresearch {
 
 struct field_writer;
 class token_stream;
-class analyzer;
 struct offset;
 struct payload;
 class format;
 struct directory;
 class comparer;
 struct flush_state;
+
+namespace analysis {
+class analyzer;
+}
 
 typedef block_pool<size_t, 8192> int_block_pool;
 
