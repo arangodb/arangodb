@@ -48,6 +48,14 @@ devel
   (`_key` values) are not affected by this feature and will remain as in
   previous versions of ArangoDB.
 
+* Updated ArangoDB Starter to 0.15.2-preview-1.
+
+* Reduce internal priority of AQL execution. This prevents possible deadlocks
+  with modification operations in a cluster and replicationFactor >= 2, and can
+  also improve responsiveness under high load of AQL queries.
+
+* Updated arangosync to 2.6.0.
+
 * Fix a potential multi-threading issue in index creation on coordinators,
   when an agency callback was triggered at the same time the method
   `ensureIndexCoordinatorInner` was left.
