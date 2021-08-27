@@ -238,6 +238,23 @@ func (m *Metrics) readIntMetric(metricName string) int64 {
 	return 0
 }
 
+func (m *Metrics) readFloatMetric(metricName string) float64 {
+	for i := 0; i < len(m.lines); i++ {
+		if len(m.lines[i]) >= len(metricName)+1 &&
+			m.lines[i][0:len(metricName)] == metricName {
+			s := strings.Split(m.lines[i], " ")
+			j, err := strconv.ParseFloat(s[1], 64)
+			if err != nil {
+				fmt.Printf("Metric %s : %d\n", metricName, 0)
+				return 0
+			}
+			fmt.Printf("Metric %s : %d\n", metricName, j)
+			return j
+		}
+	}
+	return 0
+}
+
 func makeDatabase(client driver.Client, name string, opts *driver.CreateDatabaseOptions) driver.Database {
 	exists, err := client.DatabaseExists(nil, name)
 	assertNil(err, "Cannot check for database '" + name + "'")
