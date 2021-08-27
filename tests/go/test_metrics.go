@@ -1,9 +1,5 @@
 package main
 
-import (
-//"http"
-)
-
 func main() {
 	testGreeting("Protocol specific metrics move")
 	config := configFromEnv()

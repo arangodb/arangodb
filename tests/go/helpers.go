@@ -83,24 +83,21 @@ func makeHttp2Client(config TestConfig) driver.Client {
 		conn, err = driverhttp.NewConnection(driverhttp.ConnectionConfig{
 			Endpoints: config.Endpoints,
 			Transport: &http2.Transport{
-				AllowHTTP: true,
-			},
-			TLSConfig: &tls.Config{
-				InsecureSkipVerify: true,
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
 			},
 		})
 	} else {
 		conn, err = driverhttp.NewConnection(driverhttp.ConnectionConfig{
 			Endpoints: config.Endpoints,
 			Transport: &http2.Transport{
+				// This is a trick for HTTP/2 without encryption (h2c):
 				AllowHTTP: true,
 				// Pretend we are dialing a TLS endpoint. (Note, we ignore the passed tls.Config)
 				DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
 					return net.Dial(network, addr)
 				},
-			},
-			TLSConfig: &tls.Config{
-				InsecureSkipVerify: true,
 			},
 		})
 	}
