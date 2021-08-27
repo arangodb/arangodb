@@ -668,7 +668,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   std::vector<std::string> query_strs;
   for (auto const& sub_query : VPackArrayIterator(query)) {
     query_strs.emplace_back(sub_query.copyString());
-    showHidden |= (query_strs.back().find("/.") != std::string::npos);
+    showHidden |= (query_strs.back().find('.') == 0 || (query_strs.back().find("/.") != std::string::npos));
   }
 
   // Remove double ranges (inclusion / identity)
