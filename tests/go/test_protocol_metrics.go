@@ -32,6 +32,8 @@ func main() {
 	http1ReqCount := m.readIntMetric("arangodb_request_body_size_http1_count")
 	http2ReqCount := m.readIntMetric("arangodb_request_body_size_http2_count")
 	vstReqCount := m.readIntMetric("arangodb_request_body_size_vst_count")
+	http2ConnCount := m.readIntMetric("arangodb_http2_connections_total")
+	vstConnCount := m.readIntMetric("arangodb_vst_connections_total")
 
 	// Do a few HTTP/1 requests:
 	for i := 1; i <= 10; i++ {
@@ -62,6 +64,12 @@ func main() {
 	http1ReqCount2 = m2.readIntMetric("arangodb_request_body_size_http1_count")
 	http2ReqCount2 = m2.readIntMetric("arangodb_request_body_size_http2_count")
 	vstReqCount2 = m2.readIntMetric("arangodb_request_body_size_vst_count")
+	// Need one more VST connection in metric:
+	vstConnCount2 := m2.readIntMetric("arangodb_vst_connections_total")
+	http2ConnCount2 := m2.readIntMetric("arangodb_http2_connections_total")
+	assert(vstConnCount2 == vstConnCount + 1, "VST conn count metric did not move")
+	assert(http2ConnCount2 == http2ConnCount, "HTTP/2 conn count metric has moved")
+	vstConnCount = vstConnCount2
 
 	assert(http1ReqCount2 > http1ReqCount, "http1 req count did not move")
 	//the metrics calls are via HTTP/1, so it is expected to move
@@ -82,9 +90,13 @@ func main() {
 	http1ReqCount2 = m2.readIntMetric("arangodb_request_body_size_http1_count")
 	http2ReqCount2 = m2.readIntMetric("arangodb_request_body_size_http2_count")
 	vstReqCount2 = m2.readIntMetric("arangodb_request_body_size_vst_count")
+	http2ConnCount2 = m2.readIntMetric("arangodb_http2_connections_total")
 
 	assert(http1ReqCount2 > http1ReqCount, "http1 req count did not move")
 	//the metrics calls are via HTTP/1, so it is expected to move
 	assert(http2ReqCount2 >= http2ReqCount+10, "http2 req count did not move")
 	assert(vstReqCount2 == vstReqCount, "vst req count has moved")
+
+	assert(vstConnCount2 == vstConnCount, "VST conn count metric has moved")
+	assert(http2ConnCount2 == http2ConnCount + 1, "HTTP/2 conn count metric did not move")
 }
