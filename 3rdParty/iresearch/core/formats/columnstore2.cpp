@@ -69,7 +69,7 @@ bool is_encrypted(const column_header& hdr) noexcept {
   return ColumnProperty::ENCRYPT == (hdr.props & ColumnProperty::ENCRYPT);
 }
 
-void write_index(index_output& out, const column_index& blocks) {
+void write_bitmap_index(index_output& out, const column_index& blocks) {
   const uint32_t count = static_cast<uint32_t>(blocks.size());
 
   if (count > 2) {
@@ -83,7 +83,7 @@ void write_index(index_output& out, const column_index& blocks) {
   }
 }
 
-column_index read_index(index_input& in) {
+column_index read_bitmap_index(index_input& in) {
   const uint32_t count = in.read_int();
 
   if (count > std::numeric_limits<uint16_t>::max()) {
@@ -643,6 +643,7 @@ class dense_fixed_length_column final : public column_base {
       inflater_{std::move(inflater)},
       data_{data},
       len_{len} {
+    assert(!header().docs_index);
     assert(header().docs_count);
     assert(ColumnType::DENSE_FIXED == header().type);
   }
@@ -883,9 +884,9 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
   if (bitpack::ALL_EQUAL == block.bits) {
     const size_t addr = block.data + block.avg*index;
 
-    size_t length = block.last_size;
-    if (IRS_LIKELY(block.last != index)) {
-      length = block.avg;
+    size_t length = block.avg;
+    if (IRS_UNLIKELY(block.last == index)) {
+      length = block.last_size;
     }
 
     return ValueReader::value(addr, length);
@@ -1012,19 +1013,27 @@ void column::flush_block() {
   auto* begin = addr_table_.begin();
   auto* end = begin + addr_table_size;
 
-  std::tie(block.data, block.avg) = encode::avg::encode(begin, addr_table_.current());
+  bool all_equal = !data_.file.length();
+  if (!all_equal) {
+    std::tie(block.data, block.avg, all_equal)
+      = encode::avg::encode(begin, addr_table_.current());
+  } else {
+    block.avg = 0;
+    block.data = data_out.file_pointer();
+  }
 
-  if (simd::all_equal<false>(begin, addr_table_size)) {
+  if (all_equal) {
+    assert(simd::all_equal<false>(begin, addr_table_size) && (0 == *begin));
     block.bits = bitpack::ALL_EQUAL;
 
     // column is fixed length IFF
-    // * values in every document have the same length
-    // * blocks have the same length
+    // * it is still a fixed length column
+    // * values in a block are of the same length including the last one
+    // * values in all blocks have the same length
     fixed_length_ = (fixed_length_ &&
-                     (0 == *begin) &&
-                     (block.last_size == block.avg) &&
-                     (0 == docs_count_ || data_.file.length() == prev_block_size_));
-    prev_block_size_ = data_.file.length();
+                    (block.last_size == block.avg) &&
+                    (0 == docs_count_ || block.avg == prev_avg_));
+    prev_avg_ = block.avg;
   } else {
     block.bits = packed::maxbits64(begin, end);
     const size_t buf_size = packed::bytes_required_64(addr_table_size, block.bits);
@@ -1034,45 +1043,47 @@ void column::flush_block() {
     data_out.write_bytes(ctx_.u8buf, buf_size);
     fixed_length_ = false;
   }
-  addr_table_.reset();
 
-  block.data += data_out.file_pointer();
+  if (data_.file.length()) {
+    block.data += data_out.file_pointer();
 
-  if (ctx_.cipher) {
-    auto offset = data_out.file_pointer();
+    if (ctx_.cipher) {
+      auto offset = data_out.file_pointer();
 
-    auto encrypt_and_copy
-        = [&data_out, cipher = ctx_.cipher, &offset](irs::byte_type* b, size_t len) {
-      assert(cipher);
+      auto encrypt_and_copy
+          = [&data_out, cipher = ctx_.cipher, &offset](irs::byte_type* b, size_t len) {
+        assert(cipher);
 
-      if (!cipher->encrypt(offset, b, len)) {
-        return false;
+        if (!cipher->encrypt(offset, b, len)) {
+          return false;
+        }
+
+        data_out.write_bytes(b, len);
+        offset += len;
+        return true;
+      };
+
+      if (!data_.file.visit(encrypt_and_copy)) {
+        throw io_error("failed to encrypt columnstore");
       }
-
-      data_out.write_bytes(b, len);
-      offset += len;
-      return true;
-    };
-
-    if (!data_.file.visit(encrypt_and_copy)) {
-      throw io_error("failed to encrypt columnstore");
+    } else {
+      data_.file >> data_out;
     }
-  } else {
-    data_.file >> data_out;
+
+    data_.stream.seek(0);
+    data_.file.reset();
   }
 
-  if (data_.stream.file_pointer()) { // FIXME
-    data_.stream.seek(0);
-  }
+  addr_table_.reset();
 
   docs_count_ += docs_count;
 }
 
 void column::finish(index_output& index_out) {
+  assert(ctx_.data_out);
+
   docs_writer_.finish();
   if (!addr_table_.empty()) {
-    // we don't care of the tail block size
-    prev_block_size_ = data_.stream.file_pointer();
     flush_block();
   }
   docs_.stream.flush();
@@ -1088,10 +1099,12 @@ void column::finish(index_output& index_out) {
 
   // FIXME how to deal with rollback() and docs_writer_.back()?
   if (docs_count_ && (hdr.min + docs_count_ - doc_limits::min() != pend_)) {
+    auto& data_out = *ctx_.data_out;
+
     // we don't need to store bitmap index in case
     // if every document in a column has a value
-    hdr.docs_index = ctx_.data_out->file_pointer();
-    docs_.file >> *ctx_.data_out;
+    hdr.docs_index = data_out.file_pointer();
+    docs_.file >> data_out;
   }
 
   hdr.props = ColumnProperty::NORMAL;
@@ -1099,17 +1112,23 @@ void column::finish(index_output& index_out) {
     hdr.props |= ColumnProperty::ENCRYPT;
   }
 
-  if (0 == data_.file.length()) {
-    hdr.type = ColumnType::MASK;
-  } else if (fixed_length_) {
-    hdr.type = ctx_.consolidation
-      ? ColumnType::DENSE_FIXED
-      : ColumnType::FIXED;
+  if (fixed_length_) {
+    if (0 == prev_avg_) {
+      hdr.type = ColumnType::MASK;
+    } else if (ctx_.consolidation) {
+      hdr.type = ColumnType::DENSE_FIXED;
+    } else {
+      hdr.type = ColumnType::FIXED;
+    }
   }
 
   irs::write_string(index_out, compression_.name());
   write_header(index_out, hdr);
-  write_index(index_out, docs_writer_.index());
+
+  if (hdr.docs_index) {
+    // write bitmap index IFF it's really necessary
+    write_bitmap_index(index_out, docs_writer_.index());
+  }
 
   if (ColumnType::SPARSE == hdr.type) {
     write_blocks_sparse(index_out, blocks_);
@@ -1118,6 +1137,7 @@ void column::finish(index_output& index_out) {
     if (ColumnType::DENSE_FIXED == hdr.type) {
       index_out.write_long(blocks_.front().data);
     } else {
+      assert(ColumnType::FIXED == hdr.type);
       write_blocks_dense(index_out, blocks_);
     }
   }
@@ -1370,7 +1390,9 @@ void reader::prepare_index(
         i)};
     }
 
-    auto index = read_index(*index_in);
+    auto index = hdr.docs_index
+      ? read_bitmap_index(*index_in)
+      : column_index{};
 
     const size_t idx = static_cast<size_t>(hdr.type);
     if (IRS_LIKELY(idx < IRESEARCH_COUNTOF(FACTORIES))) {

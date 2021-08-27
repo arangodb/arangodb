@@ -34,7 +34,7 @@ namespace tests {
 struct test_slow_sobject {
   using ptr = std::shared_ptr<test_slow_sobject>;
   int id;
-  test_slow_sobject (int i): id(i) {
+  explicit test_slow_sobject(int i): id(i) {
     ++TOTAL_COUNT;
   }
   static std::atomic<size_t> TOTAL_COUNT; // # number of objects created
@@ -49,9 +49,12 @@ std::atomic<size_t> test_slow_sobject::TOTAL_COUNT{};
 struct test_sobject {
   using ptr = std::shared_ptr<test_sobject>;
   int id;
-  test_sobject(int i): id(i) { }
-  static ptr make(int i) { return ptr(new test_sobject(i)); }
+  explicit test_sobject(int i): id(i) { }
+  static ptr make(int i) { ++make_count; return ptr(new test_sobject(i)); }
+  static std::atomic<size_t> make_count;
 };
+
+std::atomic<size_t> test_sobject::make_count = 0;
 
 struct test_sobject_nullptr {
   using ptr = std::shared_ptr<test_sobject_nullptr>;
@@ -64,7 +67,7 @@ struct test_sobject_nullptr {
 struct test_uobject {
   using ptr = std::unique_ptr<test_uobject>;
   int id;
-  test_uobject(int i): id(i) {}
+  explicit test_uobject(int i): id(i) {}
   static ptr make(int i) { return ptr(new test_uobject(i)); }
 };
 
@@ -76,7 +79,7 @@ struct test_uobject_nullptr {
 
 /*static*/ size_t test_uobject_nullptr::make_count = 0;
 
-}
+} // namespace tests
 
 using namespace tests;
 
@@ -161,7 +164,7 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
       auto result = cond.wait_for(lock, 1000ms); // assume thread blocks in 1000ms
 
       // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-      while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
+      while (!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
 
       ASSERT_EQ(std::cv_status::timeout, result);
       // ^^^ expecting timeout because pool should block indefinitely
@@ -234,7 +237,7 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     auto result = cond.wait_for(lock, 1000ms); // assume thread finishes in 1000ms
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
+    while (!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
 
     obj.reset();
     ASSERT_FALSE(obj);
@@ -270,7 +273,7 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
       auto result = cond.wait_for(lock, 1000ms); // assume thread blocks in 1000ms
 
       // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-      while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
+      while (!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
 
       ASSERT_EQ(std::cv_status::timeout, result);
       // ^^^ expecting timeout because pool should block indefinitely
@@ -342,7 +345,7 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
     auto result = cond.wait_for(lock, 1000ms); // assume thread finishes in 1000ms
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
+    while (!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
 
     obj.reset();
 
@@ -650,6 +653,25 @@ TEST(unbounded_object_pool_tests, control_object_move) {
   }
 }
 
+TEST(unbounded_object_pool_tests, control_object_move_pools) {
+  irs::unbounded_object_pool<test_sobject> pool(2);
+  test_sobject::make_count = 0;
+  {
+     irs::unbounded_object_pool<test_sobject> pool_other(2);
+     auto from_other = pool_other.emplace(1);
+     ASSERT_EQ(1, test_sobject::make_count);
+     {
+       auto from_this = pool.emplace(1);
+       ASSERT_EQ(2, test_sobject::make_count);
+       from_other = std::move(from_this);
+     }
+     // from_other should be returned to pool_other now
+     // and no new make should be called
+     auto from_other2 = pool_other.emplace(1);
+     ASSERT_EQ(2, test_sobject::make_count);
+  }
+}
+
 TEST(unbounded_object_pool_volatile_tests, construct) {
   iresearch::unbounded_object_pool_volatile<test_sobject> pool(42);
   ASSERT_EQ(42, pool.size());
@@ -729,6 +751,20 @@ TEST(unbounded_object_pool_volatile_tests, control_object_move) {
     ASSERT_EQ(nullptr, moved.get());
     ASSERT_EQ(obj.get(), moved_ptr);
     ASSERT_EQ(1, obj->id);
+  }
+
+  // move between two identical pools
+  {
+     irs::unbounded_object_pool_volatile<test_sobject> pool_other(2);
+     auto from_other = pool_other.emplace(1);
+     ASSERT_EQ(1, pool_other.generation_size());
+     {
+       auto from_this = pool.emplace(3);
+       ASSERT_EQ(1, pool.generation_size());
+       from_other = std::move(from_this);
+     }
+     // from_other should be returned to pool_other now
+     ASSERT_EQ(0, pool_other.generation_size());
   }
 
   ASSERT_EQ(0, pool.generation_size());
@@ -1316,8 +1352,7 @@ TEST(concurrent_linked_list_test, concurrent_push) {
 
   ASSERT_TRUE(
     results.front() == THREADS
-    && irs::irstd::all_equal(results.begin(), results.end())
-  );
+    && irs::irstd::all_equal(results.begin(), results.end()));
 }
 
 TEST(concurrent_linked_list_test, concurrent_pop_push) {
@@ -1399,7 +1434,7 @@ TEST(concurrent_linked_list_test, concurrent_pop_push) {
 
   ASSERT_TRUE(list.empty());
 
-  size_t i =0;
+  size_t i = 0;
   for (auto& node : nodes) {
     ASSERT_EQ(1, node.value.value);
     ASSERT_EQ(true, node.value.visited);

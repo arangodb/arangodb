@@ -32,7 +32,7 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 boolean_token_stream::boolean_token_stream(bool value /*= false*/) noexcept
-  : in_use_(false),
+  : basic_token_stream(irs::type<boolean_token_stream>::get()), in_use_(false),
     value_(value) {
 }
 
@@ -48,7 +48,7 @@ bool boolean_token_stream::next() noexcept {
 // -----------------------------------------------------------------------------
 
 string_token_stream::string_token_stream() noexcept
-   : in_use_(false) {
+   : analysis::analyzer(irs::type<string_token_stream>::get()), in_use_(false) {
 }
 
 bool string_token_stream::next() noexcept {
