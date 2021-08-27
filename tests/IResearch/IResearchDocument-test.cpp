@@ -90,7 +90,12 @@ void assertField(
 
   auto* analyzer = dynamic_cast<Analyzer*>(&value.get_tokens());
   ASSERT_NE(nullptr, analyzer);
-  if constexpr (std::is_base_of_v<irs::analysis::analyzer, Analyzer>) {
+  if constexpr (std::is_same_v<irs::null_token_stream, Analyzer> ||
+                std::is_same_v<irs::string_token_stream, Analyzer> ||
+                std::is_same_v<irs::numeric_token_stream, Analyzer> ||
+                std::is_same_v<irs::boolean_token_stream, Analyzer>) {
+    ASSERT_EQ(expectedName, value.name());
+  } else if (std::is_base_of_v<irs::analysis::analyzer, Analyzer>) {
     auto analyzerName = explicitAnalyzerName.null() ?
                           std::string(irs::type<Analyzer>::name()) :
                           std::string(explicitAnalyzerName);

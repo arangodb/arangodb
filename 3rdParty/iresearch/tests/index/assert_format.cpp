@@ -292,7 +292,7 @@ void field_writer::write(
   irs::bstring actual_max_buf;
   size_t actual_size = 0;
 
-  for (auto expected_term = expected_term_reader->iterator(); 
+  for (auto expected_term = expected_term_reader->iterator(irs::SeekMode::NORMAL);
        actual_term.next(); ++actual_size) {
     ASSERT_TRUE(expected_term->next());
 
@@ -455,15 +455,18 @@ doc_iterator::doc_iterator(irs::IndexFeatures features, const tests::term& data)
 }
 
 class term_iterator final : public irs::seek_term_iterator {
- private:
-  struct term_cookie : seek_cookie {
+ public:
+  struct term_cookie final : irs::seek_cookie {
     explicit term_cookie(irs::bytes_ref term) noexcept
       : term(term) { }
+
+    virtual irs::attribute* get_mutable(irs::type_info::type_id) override {
+      return nullptr;
+    }
 
     irs::bytes_ref term;
   };
 
- public:
   explicit term_iterator(const tests::field& data) noexcept
     : data_(data) {
     next_ = data_.terms.begin();
@@ -532,12 +535,12 @@ class term_iterator final : public irs::seek_term_iterator {
 
   virtual bool seek(
       const irs::bytes_ref& /*term*/,
-      const irs::seek_term_iterator::seek_cookie& cookie) override {
+      const irs::seek_cookie& cookie) override {
     auto& state = dynamic_cast<const term_cookie&>(cookie);
     return seek(state.term);
   }
 
-  virtual irs::seek_term_iterator::seek_cookie::ptr cookie() const override {
+  virtual irs::seek_cookie::ptr cookie() const override {
     return irs::memory::make_unique<term_cookie>(value_);
   }
 
@@ -548,12 +551,13 @@ class term_iterator final : public irs::seek_term_iterator {
   irs::bytes_ref value_;
 };
 
-irs::seek_term_iterator::ptr term_reader::iterator() const {
+irs::seek_term_iterator::ptr term_reader::iterator(irs::SeekMode) const {
   return irs::memory::make_managed<term_iterator>(data_);
 }
 
 irs::seek_term_iterator::ptr term_reader::iterator(irs::automaton_table_matcher& matcher) const {
-  return irs::memory::make_managed<irs::automaton_term_iterator>(matcher.GetFst(), iterator());
+  return irs::memory::make_managed<irs::automaton_term_iterator>(
+    matcher.GetFst(), iterator(irs::SeekMode::NORMAL));
 }
 
 size_t term_reader::bit_union(
@@ -561,7 +565,7 @@ size_t term_reader::bit_union(
     size_t* bitset) const {
   constexpr auto BITS{irs::bits_required<uint64_t>()};
 
-  auto term = this->iterator();
+  auto term = this->iterator(irs::SeekMode::NORMAL);
 
   size_t count{0};
   while (auto* cookie = provider()) {
@@ -581,6 +585,16 @@ size_t term_reader::bit_union(
   }
 
   return count;
+}
+
+irs::doc_iterator::ptr term_reader::postings(
+    const irs::seek_cookie& cookie,
+    irs::IndexFeatures features) const {
+  auto it = this->iterator(irs::SeekMode::NORMAL);
+  if (!it->seek(irs::bytes_ref::NIL, cookie)) {
+    return irs::doc_iterator::empty();
+  }
+  return it->postings(features);
 }
 
 field_reader::field_reader(const index_segment& data)
@@ -774,8 +788,10 @@ void assert_terms_next(
   irs::bstring actual_max_buf;
   size_t actual_size = 0;
 
-  auto expected_term = matcher ? expected_term_reader.iterator(*matcher) : expected_term_reader.iterator();
-  auto actual_term = matcher ? actual_term_reader.iterator(*matcher) : actual_term_reader.iterator();
+  auto expected_term = matcher ? expected_term_reader.iterator(*matcher)
+                               : expected_term_reader.iterator(irs::SeekMode::NORMAL);
+  auto actual_term = matcher ? actual_term_reader.iterator(*matcher)
+                             : actual_term_reader.iterator(irs::SeekMode::NORMAL);
   for (; expected_term->next(); ++actual_size) {
     ASSERT_TRUE(actual_term->next());
 
@@ -806,8 +822,20 @@ void assert_terms_seek(
     irs::IndexFeatures features,
     irs::automaton_table_matcher* matcher,
     size_t lookahead /* = 10 */) {
-  auto expected_term = matcher ? expected_term_reader.iterator(*matcher) : expected_term_reader.iterator();
-  auto actual_term_with_state = matcher ? actual_term_reader.iterator(*matcher) : actual_term_reader.iterator();
+  auto expected_term = matcher
+    ? expected_term_reader.iterator(*matcher)
+    : expected_term_reader.iterator(irs::SeekMode::NORMAL);
+  ASSERT_NE(nullptr, expected_term);
+
+  auto actual_term_with_state = matcher
+    ? actual_term_reader.iterator(*matcher)
+    : actual_term_reader.iterator(irs::SeekMode::NORMAL);
+  ASSERT_NE(nullptr, actual_term_with_state);
+
+  auto actual_term_with_state_random_only
+    = actual_term_reader.iterator(irs::SeekMode::RANDOM_ONLY);
+  ASSERT_NE(nullptr, actual_term_with_state_random_only);
+
   for (; expected_term->next();) {
     // seek with state
     {
@@ -815,10 +843,25 @@ void assert_terms_seek(
       assert_term(*expected_term, *actual_term_with_state, features);
     }
 
-    // seek without state, iterate forward
-    irs::seek_term_iterator::seek_cookie::ptr cookie; // cookie
+    // seek without state random only
     {
-      auto actual_term = actual_term_reader.iterator();
+      auto actual_term = actual_term_reader.iterator(irs::SeekMode::RANDOM_ONLY);
+      ASSERT_TRUE(actual_term->seek(expected_term->value()));
+
+      assert_term(*expected_term, *actual_term, features);
+    }
+
+    // seek with state random only
+    {
+      ASSERT_TRUE(actual_term_with_state_random_only->seek(expected_term->value()));
+
+      assert_term(*expected_term, *actual_term_with_state_random_only, features);
+    }
+
+    // seek without state, iterate forward
+    irs::seek_cookie::ptr cookie;
+    {
+      auto actual_term = actual_term_reader.iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(actual_term->seek(expected_term->value()));
       assert_term(*expected_term, *actual_term, features);
       actual_term->read();
@@ -826,7 +869,7 @@ void assert_terms_seek(
 
       // iterate forward
       {
-        auto copy_expected_term = expected_term_reader.iterator();
+        auto copy_expected_term = expected_term_reader.iterator(irs::SeekMode::NORMAL);
         ASSERT_TRUE(copy_expected_term->seek(expected_term->value()));
         ASSERT_EQ(expected_term->value(), copy_expected_term->value());
         for(size_t i = 0; i < lookahead; ++i) {
@@ -847,13 +890,13 @@ void assert_terms_seek(
 
     // seek greater or equal without state, iterate forward
     {
-      auto actual_term = actual_term_reader.iterator();
+      auto actual_term = actual_term_reader.iterator(irs::SeekMode::NORMAL);
       ASSERT_EQ(irs::SeekResult::FOUND, actual_term->seek_ge(expected_term->value()));
       assert_term(*expected_term, *actual_term, features);
 
       // iterate forward
       {
-        auto copy_expected_term = expected_term_reader.iterator();
+        auto copy_expected_term = expected_term_reader.iterator(irs::SeekMode::NORMAL);
         ASSERT_TRUE(copy_expected_term->seek(expected_term->value()));
         ASSERT_EQ(expected_term->value(), copy_expected_term->value());
         for(size_t i = 0; i < lookahead; ++i) {
@@ -874,14 +917,14 @@ void assert_terms_seek(
 
     // seek to cookie without state, iterate to the end
     {
-      auto actual_term = actual_term_reader.iterator();
+      auto actual_term = actual_term_reader.iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(actual_term->seek(expected_term->value(), *cookie));
       ASSERT_EQ(expected_term->value(), actual_term->value());
       assert_term(*expected_term, *actual_term, features);
 
       // iterate forward
       {
-        auto copy_expected_term = expected_term_reader.iterator();
+        auto copy_expected_term = expected_term_reader.iterator(irs::SeekMode::NORMAL);
         ASSERT_TRUE(copy_expected_term->seek(expected_term->value()));
         ASSERT_EQ(expected_term->value(), copy_expected_term->value());
         for(size_t i = 0; i < lookahead; ++i) {

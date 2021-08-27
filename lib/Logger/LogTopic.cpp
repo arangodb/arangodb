@@ -109,6 +109,9 @@ class Topics {
 
 }  // namespace
 
+// pseudo-topic to address all log topics
+std::string const LogTopic::ALL("all");
+
 LogTopic Logger::AGENCY("agency", LogLevel::INFO);
 LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::INFO);
 LogTopic Logger::AGENCYSTORE("agencystore", LogLevel::WARN);
@@ -216,6 +219,9 @@ LogTopic::LogTopic(std::string const& name, LogLevel level)
     : _id(NEXT_TOPIC_ID.fetch_add(1, std::memory_order_seq_cst)),
       _name(name),
       _level(level) {
+  // "all" is only a pseudo-topic.
+  TRI_ASSERT(name != "all");
+
   if (name != "fixme" && name != "general") {
     // "fixme" is a remainder from ArangoDB < 3.2, when it was
     // allowed to log messages without a topic. From 3.2 onwards,

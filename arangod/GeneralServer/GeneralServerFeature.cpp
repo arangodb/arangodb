@@ -121,6 +121,21 @@ namespace arangodb {
 
 static uint64_t const _maxIoThreads = 64;
 
+struct RequestBodySizeScale {
+  static log_scale_t<uint64_t> scale() { return { 2, 64, 65536, 10 }; }
+};
+
+DECLARE_HISTOGRAM(arangodb_request_body_size_http1, RequestBodySizeScale,
+    "Body size of HTTP/1.1 requests");
+DECLARE_HISTOGRAM(arangodb_request_body_size_http2, RequestBodySizeScale,
+    "Body size of HTTP/2 requests");
+DECLARE_HISTOGRAM(arangodb_request_body_size_vst, RequestBodySizeScale,
+    "Body size of VST requests");
+DECLARE_COUNTER(arangodb_http2_connections_total,
+    "Total number of HTTP/2 connections");
+DECLARE_COUNTER(arangodb_vst_connections_total,
+    "Total number of VST connections");
+
 GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
@@ -128,7 +143,17 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
       _permanentRootRedirect(true),
       _redirectRootTo("/_admin/aardvark/index.html"),
       _supportInfoApiPolicy("hardened"),
-      _numIoThreads(0) {
+      _numIoThreads(0),
+      _requestBodySizeHttp1(
+          server.getFeature<MetricsFeature>().add(arangodb_request_body_size_http1{})),
+      _requestBodySizeHttp2(
+          server.getFeature<MetricsFeature>().add(arangodb_request_body_size_http2{})),
+      _requestBodySizeVst(
+          server.getFeature<MetricsFeature>().add(arangodb_request_body_size_vst{})),
+      _http2Connections(
+          server.getFeature<MetricsFeature>().add(arangodb_http2_connections_total{})),
+      _vstConnections(
+          server.getFeature<MetricsFeature>().add(arangodb_vst_connections_total{})) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 

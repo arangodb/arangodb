@@ -191,8 +191,8 @@ bool parse_vpack_options(
 analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   analysis::text_token_normalizing_stream::options_t options;
   if (parse_vpack_options(slice, options)) {
-    return memory::make_shared<
-        analysis::text_token_normalizing_stream>(std::move(options));
+    return memory::make_unique<analysis::text_token_normalizing_stream>(
+      std::move(options));
   } else {
     return nullptr;
   }
@@ -266,8 +266,8 @@ analysis::analyzer::ptr make_text(const string_ref& args) {
     analysis::text_token_normalizing_stream::options_t options;
 
     if (locale_utils::icu_locale(args, options.locale)) {// interpret 'args' as a locale name
-      return memory::make_shared<analysis::text_token_normalizing_stream>(
-          std::move(options) );
+      return memory::make_unique<analysis::text_token_normalizing_stream>(
+          std::move(options));
     }
   } catch (...) {
     std::string err_msg = static_cast<std::string>(args);

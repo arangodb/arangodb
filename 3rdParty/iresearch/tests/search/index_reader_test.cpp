@@ -576,7 +576,7 @@ TEST(segment_reader_test, open) {
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("A")), (terms->min)());
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("E")), (terms->max)());
 
-        auto term = terms->iterator();
+        auto term = terms->iterator(irs::SeekMode::NORMAL);
 
         // check term: A
         {
@@ -680,7 +680,7 @@ TEST(segment_reader_test, open) {
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("xyz")), (terms->min)());
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("xyz")), (terms->max)());
 
-        auto term = terms->iterator();
+        auto term = terms->iterator(irs::SeekMode::NORMAL);
 
         // check term: xyz
         {
@@ -722,7 +722,7 @@ TEST(segment_reader_test, open) {
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abcd")), (terms->min)());
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("vczc")), (terms->max)());
 
-        auto term = terms->iterator();
+        auto term = terms->iterator(irs::SeekMode::NORMAL);
 
         // check term: abcd
         {
@@ -775,7 +775,7 @@ TEST(segment_reader_test, open) {
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abcd")), (terms->min)());
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abcde")), (terms->max)());
 
-        auto term = terms->iterator();
+        auto term = terms->iterator(irs::SeekMode::NORMAL);
 
         // check term: abcd
         {

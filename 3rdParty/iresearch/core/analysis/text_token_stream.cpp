@@ -296,10 +296,9 @@ bool build_stopwords(const irs::analysis::text_token_stream::options_t& options,
 /// @brief create an analyzer based on the supplied cache_key and options
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr construct(
-  const irs::string_ref& cache_key,
-  irs::analysis::text_token_stream::options_t&& options,
-  irs::analysis::text_token_stream::stopwords_t&& stopwords
-) {
+    const irs::string_ref& cache_key,
+    irs::analysis::text_token_stream::options_t&& options,
+    irs::analysis::text_token_stream::stopwords_t&& stopwords) {
   static auto generator = [](
       const irs::hashed_string_ref& key,
       cached_options_t& value
@@ -328,9 +327,8 @@ irs::analysis::analyzer::ptr construct(
   }
 
   return irs::memory::make_unique<irs::analysis::text_token_stream>(
-    *options_ptr,
-    options_ptr->stopwords_
-  );
+      *options_ptr,
+      options_ptr->stopwords_);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -342,14 +340,12 @@ irs::analysis::analyzer::ptr construct(
   {
     auto lock = irs::make_lock_guard(mutex);
     auto itr = cached_state_by_key.find(
-      irs::make_hashed_ref(irs::string_ref(cache_key))
-    );
+      irs::make_hashed_ref(irs::string_ref(cache_key)));
 
     if (itr != cached_state_by_key.end()) {
       return irs::memory::make_unique<irs::analysis::text_token_stream>(
-        itr->second,
-        itr->second.stopwords_
-      );
+          itr->second,
+          itr->second.stopwords_);
     }
   }
 
