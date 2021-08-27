@@ -45,6 +45,11 @@ const (
 	ErrorNoClient      = 3
 )
 
+var (
+	dbCleanupList []string
+	collCleanupList []string
+)
+
 func file_line() string {
 	_, fileName, fileLine, ok := runtime.Caller(2)
 	var s string
@@ -161,6 +166,7 @@ func makeVSTClient(endpoints []string) driver.Client {
 func assert(b bool, msg string) {
 	if !b {
 		fmt.Printf("%s: Assertion failure: %s\n", file_line(), msg)
+		cleanupDatabasesAndCollections()
 		os.Exit(100)
 	}
 }
@@ -168,6 +174,7 @@ func assert(b bool, msg string) {
 func assertNil(err error, msg string) {
 	if err != nil {
 		fmt.Printf("%s: Expected no error but got: %v, %s\n", file_line(), err, msg)
+		cleanupDatabasesAndCollections()
 		os.Exit(101)
 	}
 }
@@ -213,4 +220,56 @@ func (m *Metrics) readIntMetric(metricName string) int64 {
 		}
 	}
 	return 0
+}
+
+func makeDatabase(client driver.Client, name string, opts *driver.CreateDatabaseOptions) driver.Database {
+	exists, err := client.DatabaseExists(nil, name)
+	assertNil(err, "Cannot check for database '" + name + "'")
+	if exists {
+		db, err := client.Database(nil, name)
+		assertNil(err, "Cannot access database '" + name + "'")
+		err = db.Remove(nil)
+		assertNil(err, "Cannot drop database '" + name + "'")
+	}
+  db, err := client.CreateDatabase(nil, name, opts)
+	assertNil(err, "Cannot create database '" + name + "'")
+	dbCleanupList = append(dbCleanupList, name)
+	return db
+}
+
+func makeCollection(db driver.Database, name string, opts *driver.CreateCollectionOptions) driver.Collection {
+	exists, err := db.CollectionExists(nil, name)
+	assertNil(err, "Cannot check for collection '" + name + "'")
+	if exists {
+		coll, err := db.Collection(nil, name)
+		assertNil(err, "Cannot access collection '" + name + "'")
+		err = coll.Remove(nil)
+		assertNil(err, "Cannot drop collection '" + name + "'")
+	}
+  coll, err := db.CreateCollection(nil, name, opts)
+	assertNil(err, "Cannot create collection '" + name + "'")
+	if db.Name() == "_system" {
+		collCleanupList = append(collCleanupList, name)
+	}
+	return coll
+}
+
+func cleanupDatabasesAndCollections() {
+	config := configFromEnv()
+	client := makeHttp1Client(config.Endpoints)
+  for _, n := range(dbCleanupList) {
+		db, err := client.Database(nil, n)
+		if err == nil {
+      db.Remove(nil)
+		}
+	}
+	db, err := client.Database(nil, "_system")
+	if err == nil {
+		for _, n := range(collCleanupList) {
+			coll, err := db.Collection(nil, n)
+			if err == nil {
+				coll.Remove(nil)
+			}
+		}
+	}
 }
