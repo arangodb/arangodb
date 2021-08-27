@@ -416,12 +416,6 @@ function IteratorSuite(permuteConfigs) {
     },
 
     testDocumentFunction: function () {
-      if (internal.isCluster()) {
-        // temporarily disabled because this query causes assertion failures in the cluster that
-        // are independent of the changes in this PR and need to be investigated separately
-        return;
-      }
-
       permute((ctx, opts) => {
         const tc = ctx.collection(cn);
         // lookup documents via DOCUMENT function

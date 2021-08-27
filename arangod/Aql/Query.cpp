@@ -177,7 +177,9 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 
 /// @brief destroys a query
 Query::~Query() {
+  unregisterQueryInTransactionState();
   TRI_ASSERT(!_registeredQueryInTrx);
+  
   _resourceMonitor.decreaseMemoryUsage(_resultMemoryUsage);
   _resultMemoryUsage = 0;
 
@@ -297,10 +299,7 @@ void Query::prepareQuery(SerializationFormat format) {
     if (_queryProfile) {
       _queryProfile->registerInQueryList();
     }
-    // register ourselves in the TransactionState
-    TRI_ASSERT(!_registeredQueryInTrx);
-    _trx->state()->beginQuery(isModificationQuery());
-    _registeredQueryInTrx = true;
+    registerQueryInTransactionState();
 
     enterState(QueryExecutionState::ValueType::EXECUTION);
   } catch (arangodb::basics::Exception const& ex) {
@@ -336,7 +335,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
     // UPSERTs and intermediate commits do not play nice together, because the
     // intermediate commit invalidates the read-own-write iterator required by
     // the subquery. Setting intermediateCommitSize and intermediateCommitCount
-    // to UINT64_MAX allows us to disable intermediate commits.
+    // to UINT64_MAX allows us to effectively disable intermediate commits.
     _queryOptions.transactionOptions.intermediateCommitSize = UINT64_MAX;
     _queryOptions.transactionOptions.intermediateCommitCount = UINT64_MAX;
   }
@@ -1089,6 +1088,22 @@ void Query::init(bool createProfile) {
   _ast = std::make_unique<Ast>(*this);
 }
 
+void Query::registerQueryInTransactionState() {
+  // register ourselves in the TransactionState
+  TRI_ASSERT(!_registeredQueryInTrx);
+  _trx->state()->beginQuery(isModificationQuery());
+  _registeredQueryInTrx = true;
+}
+
+void Query::unregisterQueryInTransactionState() noexcept {
+  if (_registeredQueryInTrx) {
+    TRI_ASSERT(_trx != nullptr && _trx->state() != nullptr);
+    // unregister ourselves in the TransactionState
+    _trx->state()->endQuery(isModificationQuery());
+    _registeredQueryInTrx = false;
+  }
+}
+  
 /// @brief calculate a hash for the query, once
 uint64_t Query::hash() {
   if (!_queryHashCalculated) {
@@ -1355,12 +1370,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
 aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
   ScopeGuard endQueryGuard([this](){
-    if (_registeredQueryInTrx) {
-      TRI_ASSERT(_trx != nullptr && _trx->state() != nullptr);
-      // unregister ourselves in the TransactionState
-      _trx->state()->endQuery(isModificationQuery());
-      _registeredQueryInTrx = false;
-    }
+    unregisterQueryInTransactionState();
   });
 
   ShutdownState exp = _shutdownState.load(std::memory_order_relaxed);

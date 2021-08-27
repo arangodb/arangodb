@@ -88,6 +88,30 @@ function transactionRevisionsSuite () {
       internal.wait(0);
     },
 
+    testInsertAndRead: function () {
+      let trx = db._createTransaction({ 
+        collections: { write: c.name()  }
+      });
+      try {
+        let tc = trx.collection(c.name());
+        tc.insert({ _key: 'test1', value: 1 });
+        tc.insert([{ _key: 'test2', value: 2 }, { _key: 'test3', value: 3 }]);
+
+        assertEqual(3, tc.count());
+        assertEqual(1, tc.document("test1").value);
+        assertEqual(2, tc.document("test2").value);
+        assertEqual(3, tc.document("test3").value);
+
+        const values = trx.query(`FOR d IN @@col SORT d._key RETURN {_key: d._key, value: d.value}`, { '@col': c.name() }).toArray();
+        assertEqual(3, values.length);
+        assertEqual({ _key: 'test1', value: 1 }, values[0]);
+        assertEqual({ _key: 'test2', value: 2 }, values[1]);
+        assertEqual({ _key: 'test3', value: 3 }, values[2]);
+      } finally {
+        trx.abort(); // otherwise drop hangs
+      }
+    },
+    
     testInsertUniqueFailing: function () {
       c.insert({ _key: 'test', value: 1 });
 
