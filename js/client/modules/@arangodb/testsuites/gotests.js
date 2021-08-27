@@ -125,8 +125,8 @@ function goTests (options) {
     let pos = file.lastIndexOf("/");
     let basename = file.slice(pos+1);
     let path = file.slice(0, pos);
-    args.push(basename)
-    args.push("helpers.go")
+    args.push(basename);
+    args.push("helpers.go");
     if (options.extremeVerbosity) {
       print(process.env);
       print(args);
@@ -142,7 +142,7 @@ function goTests (options) {
       rc = statusExternal(res.pid);
     } while (rc.status === 'RUNNING');
     //if (options.extremeVerbosity || rc.exit !== 0) {
-      print(buf.b)
+      print(buf.b);
     //}
     if (rc.exit !== 0) {
       status = false;
