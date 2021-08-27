@@ -181,6 +181,20 @@ IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
       RocksDBIndex(id, collection, name, IResearchInvertedIndex::fields(_meta), false, false,
                    RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid), objectId, false) {}
 
+IResearchRocksDBInvertedIndex::~IResearchRocksDBInvertedIndex() {
+  Result res;
+  try {
+    res = shutdownDataStore();
+  } catch (...) { 
+    res = {TRI_ERROR_INTERNAL};
+  }
+  if (!res.ok()) {
+    LOG_TOPIC("2b41f", ERR, iresearch::TOPIC)
+        << "failed to unload arangosearch dockdb inverted index destructor: "
+        << res.errorNumber() << " " << res.errorMessage();
+  }
+}
+
 void IResearchRocksDBInvertedIndex::toVelocyPack(VPackBuilder & builder,
                                                  std::underlying_type<Index::Serialize>::type flags) const {
   auto const forPersistence = Index::hasFlag(flags, Index::Serialize::Internals);
@@ -203,7 +217,7 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(VPackBuilder & builder,
 }
 
 Result IResearchRocksDBInvertedIndex::drop() {
-  return shutdownDataStore();
+  return deleteDataStore();
 }
 
 bool IResearchRocksDBInvertedIndex::matchesDefinition(arangodb::velocypack::Slice const& other) const {

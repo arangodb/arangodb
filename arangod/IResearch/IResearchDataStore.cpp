@@ -840,14 +840,28 @@ Result IResearchDataStore::shutdownDataStore() {
                           std::to_string(id().id()) + "': " + e.what()};
   } catch (std::exception const& e) {
     return {TRI_ERROR_INTERNAL,
-            "caught exception while removing arangosearch data store '" +
+            "caught exception while unloading arangosearch data store '" +
                 std::to_string(id().id()) + "': " + e.what()};
   } catch (...) {
     return {TRI_ERROR_INTERNAL,
-            "caught exception while removing arangosearch data store '" +
+            "caught exception while unloading arangosearch data store '" +
                 std::to_string(id().id()) + "'"};
   }
+  return {};
+}
 
+Result IResearchDataStore::deleteDataStore() {
+  auto res = shutdownDataStore();
+  if (res.fail()) {
+    return res;
+  }
+  bool exists;
+
+  // remove persisted data store directory if present
+  if (!_dataStore._path.exists_directory(exists) || (exists && !_dataStore._path.remove())) {
+    return {TRI_ERROR_INTERNAL, "failed to remove arangosearch data store'" +
+                                    std::to_string(id().id()) + "'"};
+  }
   return {};
 }
 

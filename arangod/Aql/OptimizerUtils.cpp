@@ -551,6 +551,7 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
         TRI_ASSERT(root == index.get()->specializeCondition(root, reference));
         usedIndexes.emplace_back(index);
         isAllCoveredByIndex = true;
+        // FIXME: we should somehow consider other indices and calculate here "overall" score
         return std::make_pair(true, false);
       }
     }

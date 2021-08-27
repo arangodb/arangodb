@@ -34,6 +34,8 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex, publi
   IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection, uint64_t objectId,
                                 std::string const& name, InvertedIndexFieldMeta&& meta);
 
+  virtual ~IResearchRocksDBInvertedIndex();
+
   Index::IndexType type() const override { return  Index::TRI_IDX_TYPE_INVERTED_INDEX; }
 
   void toVelocyPack(VPackBuilder& builder,
@@ -69,10 +71,17 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex, publi
     return IResearchInvertedIndex::inProgress();
   }
 
+  
+  bool hasCoveringIterator() const override {
+    return !_meta._storedValues.empty();
+  }
+
   Result drop() override;
 
   void load() override {}
-  void unload() override {}
+  void unload() override {
+    shutdownDataStore();
+  }
 
   bool matchesDefinition(arangodb::velocypack::Slice const& other) const override;
 

@@ -553,7 +553,7 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
   if (rv.ok()) {
     filterCosts.supportsCondition = true;
     filterCosts.coveredAttributes = 0; // FIXME: we may use stored values!
-    filterCosts.estimatedCosts = 1;//itemsInIndex;
+    filterCosts.estimatedCosts = 1;// FIXME: use itemsInIndex;
   }
   return filterCosts;
 }
