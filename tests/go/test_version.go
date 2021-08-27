@@ -30,7 +30,7 @@ func main() {
 	testGreeting("Protocol specific metrics move")
 	config := configFromEnv()
 
-	client := makeHttp1Client(config)
+	client := makeHttp1Client(config.endpoints)
 	versionInfo, err := client.Version(nil)
 	assertNil(err, "could not get version")
 	fmt.Printf("Version found: %s\n", versionInfo.Version)

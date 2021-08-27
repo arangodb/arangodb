@@ -77,9 +77,9 @@ func configFromEnv() TestConfig {
 	}
 }
 
-func makeHttp1Client(config TestConfig) driver.Client {
+func makeHttp1Client(endpoints []string) driver.Client {
 	conn, err := driverhttp.NewConnection(driverhttp.ConnectionConfig{
-		Endpoints: config.Endpoints,
+		Endpoints: endpoints,
 		TLSConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
@@ -98,12 +98,12 @@ func makeHttp1Client(config TestConfig) driver.Client {
 	return client
 }
 
-func makeHttp2Client(config TestConfig) driver.Client {
+func makeHttp2Client(endpoints []string) driver.Client {
 	var conn driver.Connection
 	var err error
-	if len(config.Endpoints[0]) >= 5 && config.Endpoints[0][:5] == "https" {
+	if len(endpoints[0]) >= 5 && endpoints[0][:5] == "https" {
 		conn, err = driverhttp.NewConnection(driverhttp.ConnectionConfig{
-			Endpoints: config.Endpoints,
+			Endpoints: endpoints,
 			Transport: &http2.Transport{
 				TLSClientConfig: &tls.Config{
 					InsecureSkipVerify: true,
@@ -112,7 +112,7 @@ func makeHttp2Client(config TestConfig) driver.Client {
 		})
 	} else {
 		conn, err = driverhttp.NewConnection(driverhttp.ConnectionConfig{
-			Endpoints: config.Endpoints,
+			Endpoints: endpoints,
 			Transport: &http2.Transport{
 				// This is a trick for HTTP/2 without encryption (h2c):
 				AllowHTTP: true,
@@ -137,9 +137,9 @@ func makeHttp2Client(config TestConfig) driver.Client {
 	return client
 }
 
-func makeVSTClient(config TestConfig) driver.Client {
+func makeVSTClient(endpoints []string) driver.Client {
 	conn, err := vst.NewConnection(vst.ConnectionConfig{
-		Endpoints: config.Endpoints,
+		Endpoints: endpoints,
 		TLSConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},

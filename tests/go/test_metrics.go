@@ -26,7 +26,7 @@ func main() {
 	testGreeting("Protocol specific metrics move")
 	config := configFromEnv()
 
-	client := makeHttp1Client(config)
+	client := makeHttp1Client(config.Endpoints)
 	m, err := getMetrics(client)
 	assertNil(err, "could not retrieve metrics")
 	http1ReqCount := m.readIntMetric("arangodb_request_body_size_http1_count")
@@ -51,7 +51,7 @@ func main() {
 	http1ReqCount = http1ReqCount2
 
 	// Do a few VST requests:
-	client2 := makeVSTClient(config)
+	client2 := makeVSTClient(config.Endpoints)
 	for i := 1; i <= 10; i++ {
 		_, err := client2.Version(nil)
 		assertNil(err, "Could not retrieve version via VST")
@@ -71,7 +71,7 @@ func main() {
 	vstReqCount = vstReqCount2
 
 	// Do a few HTTP/2 requests:
-	client3 := makeHttp2Client(config)
+	client3 := makeHttp2Client(config.Endpoints)
 	for i := 1; i <= 10; i++ {
 		_, err := client3.Version(nil)
 		assertNil(err, "Could not retrieve version via HTTP/2")
