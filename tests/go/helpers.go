@@ -69,16 +69,32 @@ func testGreeting(msg string) {
 
 type TestConfig struct {
 	Endpoints []string
+	Authentication string
+	JWTSecret string
+	Mode string           // can be "cluster", "resilientsingle" or "single"
+	Agents []string       // endpoints of agents (for cluster/resilientsingle)
+	DBServers []string    // endpoints of dbservers
+	Coordinators []string // endpoints of coordinators (cluster)
+}
+
+func getFromEnv(name string) string {
+	s, ok := os.LookupEnv(name)
+	if !ok {
+		fmt.Printf("Did not find %s!\n", name)
+		os.Exit(ErrorNoEnvironment)
+	}
+	return s
 }
 
 func configFromEnv() TestConfig {
-	endpointstring, ok := os.LookupEnv("TEST_ENDPOINTS")
-	if !ok {
-		fmt.Printf("Did not find TEST_ENDPOINTS!\n")
-		os.Exit(ErrorNoEnvironment)
-	}
 	return TestConfig{
-		Endpoints: strings.Split(endpointstring, ","),
+		Endpoints:      strings.Split(getFromEnv("TEST_ENDPOINTS"), ","),
+		Authentication: getFromEnv("TEST_AUTHENTICATION"),
+		JWTSecret:      getFromEnv("TEST_JWTSECRET"),
+		Mode:           getFromEnv("TEST_MODE"),
+		Agents:         strings.Split(getFromEnv("TEST_AGENTS"), ","),
+		DBServers:      strings.Split(getFromEnv("TEST_DBSERVERS"), ","),
+		Coordinators:   strings.Split(getFromEnv("TEST_COORDINATORS"), ","),
 	}
 }
 

@@ -29,6 +29,7 @@ import (
 func main() {
 	testGreeting("Protocol specific metrics move")
 	config := configFromEnv()
+	fmt.Printf("%v\n", config)
 
 	client := makeHttp1Client(config.Endpoints)
 	versionInfo, err := client.Version(nil)

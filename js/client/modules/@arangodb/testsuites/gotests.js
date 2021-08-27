@@ -93,10 +93,6 @@ function goTests (options) {
     if (jwt) {
       process.env['TEST_JWTSECRET'] = jwt;
     }
-    process.env['TEST_CONNECTION'] = '';
-    process.env['TEST_CVERSION'] = '';
-    process.env['TEST_CONTENT_TYPE'] = 'json';
-    process.env['TEST_PPROF'] = '';
     if (options.cluster) {
       process.env['TEST_MODE'] = 'cluster';
     } else if (options.activefailover) {
@@ -104,10 +100,20 @@ function goTests (options) {
     } else {
       process.env['TEST_MODE'] = 'single';
     }
-    process.env['TEST_BACKUP_REMOTE_REPO'] = '';
-    process.env['TEST_BACKUP_REMOTE_CONFIG'] = '';
     process.env['GODEBUG'] = 'tls13=1';
     process.env['CGO_ENABLED'] = '0';
+    process.env['TEST_AGENTS'] = instanceInfo.arangods
+      .filter(x => x.role === "agent")
+      .map(x => x.url)
+      .join(',');
+    process.env['TEST_DBSERVERS'] = instanceInfo.arangods
+      .filter(x => x.role === "dbserver")
+      .map(x => x.url)
+      .join(',');
+    process.env['TEST_COORDINATORS'] = instanceInfo.arangods
+      .filter(x => x.role === "coordinator")
+      .map(x => x.url)
+      .join(',');
     let args = ['run'];
 
     if (options.hasOwnProperty('goOptions')) {
