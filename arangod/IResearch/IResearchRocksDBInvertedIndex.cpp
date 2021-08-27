@@ -190,7 +190,7 @@ IResearchRocksDBInvertedIndex::~IResearchRocksDBInvertedIndex() {
   }
   if (!res.ok()) {
     LOG_TOPIC("2b41f", ERR, iresearch::TOPIC)
-        << "failed to unload arangosearch dockdb inverted index destructor: "
+        << "failed to unload arangosearch rockdb inverted index destructor: "
         << res.errorNumber() << " " << res.errorMessage();
   }
 }
