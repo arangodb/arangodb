@@ -142,9 +142,10 @@ struct OperationOptions {
   // header when putting together the requests for DB servers
   bool documentCallFromAql;
 
-  // disables index disabling to ensure that writes become visible to the current query
-  // this is necessary for UPSERTS with a subquery that relies on a non-unique secondary index.
-  bool dontDisableIndexing = false;
+  // whether or not indexing can be disabed. We must not disable indexing if we have to ensure
+  // that writes become visible to the current query.
+  // This is necessary for UPSERTS where the subquery relies on a non-unique secondary index.
+  bool canDisableIndexing = true;
 
   // get associated execution context
   ExecContext const& context() const;
