@@ -882,7 +882,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
 
   } else {
     // AQL queries never read from the same collection, after writing into it
-    IndexingDisabler guard(mthds, trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL) && !options.dontDisableIndexing);
+    IndexingDisabler guard(mthds, trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL) && options.canDisableIndexing);
 
     RocksDBValue value = RocksDBValue::VPackIndexValue();
     for (RocksDBKey& key : elements) {

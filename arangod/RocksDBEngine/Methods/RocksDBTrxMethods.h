@@ -59,9 +59,6 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
                                                  ReadOptionsCallback) override;
 
   bool iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const override;
-
-  /// @brief a counter value that gets increase after every intermediate commit
-  uint64_t intermediateCommitId() const { return _intermediateCommitId; } 
   
   void beginQuery(bool isModificationQuery);
   void endQuery(bool isModificationQuery) noexcept;
@@ -88,16 +85,13 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   Result checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit);
 
   void initializeReadWriteBatch();
-  void releaseReadWriteBatch();
+  void releaseReadWriteBatch() noexcept;
 
   /// @brief used for read-only trx and intermediate commits
   /// For intermediate commits this MUST ONLY be used for iterators
   rocksdb::Snapshot const* _iteratorReadSnapshot{nullptr};
-
-  /// @brief a counter value that gets increase after every intermediate commit
-  uint64_t _intermediateCommitId{0};
   
-  /// @brief this WriteBatch can be used to satisfy read operations in a streamin trx.
+  /// @brief this WriteBatch can be used to satisfy read operations in a streaming trx.
   /// _readWriteBatch can have three different states:
   ///   - nullptr
   ///   - pointing to a copy (_ownsReadWriteBatch == true)

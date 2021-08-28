@@ -74,6 +74,7 @@ void DocumentProducingNode::cloneInto(ExecutionPlan* plan, DocumentProducingNode
     c.setFilter(std::unique_ptr<Expression>(_filter->clone(plan->getAst())));
   }
   c.copyCountFlag(this);
+  c.setCanReadOwnWrites(canReadOwnWrites());
 }
 
 void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,

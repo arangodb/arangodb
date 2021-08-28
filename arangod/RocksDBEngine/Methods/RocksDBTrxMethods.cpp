@@ -25,7 +25,6 @@
 
 #include "Aql/QueryCache.h"
 #include "Random/RandomGenerator.h"
-#include "RestHandler/RestAdminClusterHandler.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
@@ -372,7 +371,7 @@ void RocksDBTrxMethods::initializeReadWriteBatch() {
   }
 }
 
-void RocksDBTrxMethods::releaseReadWriteBatch() {
+void RocksDBTrxMethods::releaseReadWriteBatch() noexcept {
   if (_ownsReadWriteBatch) {
     delete _readWriteBatch;
     _readWriteBatch = nullptr;
