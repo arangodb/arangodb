@@ -31,6 +31,19 @@ devel
   the option, the query's execution plan will contain the "cluster-one-shard"
   optimizer rule.
 
+* Fix a rare shutdown race in RocksDBShaCalculatorThread. 
+
+* Added "Analyzers" view to web UI to let manage ArangoSearch analyzers
+  creation.
+
+* Updated ArangoDB Starter to 0.15.2-preview-1.
+
+* Reduce internal priority of AQL execution. This prevents possible deadlocks
+  with modification operations in a cluster and replicationFactor >= 2, and can
+  also improve responsiveness under high load of AQL queries.
+
+* Updated arangosync to 2.6.0.
+
 * Fix a potential multi-threading issue in index creation on coordinators,
   when an agency callback was triggered at the same time the method
   `ensureIndexCoordinatorInner` was left.
