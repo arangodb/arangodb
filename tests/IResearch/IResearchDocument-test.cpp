@@ -354,7 +354,7 @@ class TypedArrayAnalyzer : public irs::analysis::analyzer {
     _returnType.value = arangodb::iresearch::AnalyzerValueType::Number;
   }
 
-  __declspec(noinline) virtual bool reset(irs::string_ref const& data) override {
+  virtual bool reset(irs::string_ref const& data) override {
     auto value = std::string(data);
     _values.clear();
     _current = 0;
@@ -364,7 +364,7 @@ class TypedArrayAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  __declspec(noinline) virtual bool next() override {
+  virtual bool next() override {
     if (_current < _values.size()) {
       _typedValue = arangodb::aql::AqlValue(
          arangodb::aql::AqlValueHintDouble(_values[_current++]));
