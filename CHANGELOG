@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix a rare shutdown race in RocksDBShaCalculatorThread. 
+
 * Added "Analyzers" view to web UI to let manage ArangoSearch analyzers
   creation.
 
