@@ -66,6 +66,7 @@ AqlTransaction::AqlTransaction(
     aql::Collections const& collections,
     transaction::Options const& options)
     : transaction::Methods(transactionContext, options) { 
+  TRI_ASSERT(state() != nullptr);
   if (options.isIntermediateCommitEnabled()) {
     addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
   }
@@ -79,8 +80,6 @@ AqlTransaction::AqlTransaction(
 
     return true;
   });
-  
-  TRI_ASSERT(state() != nullptr);
 }
 
 /// @brief add a collection to the transaction

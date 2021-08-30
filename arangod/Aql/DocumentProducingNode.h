@@ -80,9 +80,9 @@ class DocumentProducingNode {
   /// @brief wheter or not the node can be used for counting
   bool doCount() const;
 
-  ReadOwnWrites canReadOwnWrites() const { return _readOwnWrites; }
+  ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
 
-  void setCanReadOwnWrites(ReadOwnWrites v) { _readOwnWrites = v; }
+  void setCanReadOwnWrites(ReadOwnWrites v) noexcept { _readOwnWrites = v; }
 
  protected:
   Variable const* _outVariable;

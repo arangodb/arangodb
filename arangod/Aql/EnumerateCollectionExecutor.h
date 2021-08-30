@@ -95,7 +95,7 @@ class EnumerateCollectionExecutorInfos {
   bool _produceResult;
   bool _random;
   bool _count;
-  ReadOwnWrites _readOwnWrites;
+  ReadOwnWrites const _readOwnWrites;
 };
 
 /**
