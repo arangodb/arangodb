@@ -1,8 +1,8 @@
 devel
 -----
 
-* Fix rare case of invalid data could be inserted in the index if 
-  several clientc concurrently inserting data and use custom analyzer
+* Fix rare case of invalid data could be inserted in the ArangoSearch index if 
+  several clients concurrently inserts data and use custom analyzer
   with non-string return type
 
 * Fix a rare shutdown race in RocksDBShaCalculatorThread. 
