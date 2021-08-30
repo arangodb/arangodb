@@ -756,10 +756,16 @@ Future<OperationResult> addTracking(Future<OperationResult>&& f, F&& func) {
 }
 }
 
+OperationResult Methods::document(std::string const& collectionName,
+                                  VPackSlice value,
+                                  OperationOptions const& options) {
+  return documentInternal(collectionName, value, options, Api::Synchronous).get();
+}
+
 /// @brief return one or multiple documents from a collection
 Future<OperationResult> transaction::Methods::documentAsync(std::string const& cname,
                                                             VPackSlice value,
-                                                            OperationOptions& options) {
+                                                            OperationOptions const& options) {
   return documentInternal(cname, value, options, Api::Asynchronous);
 }
 
@@ -861,6 +867,12 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
 
   return futures::makeFuture(OperationResult(std::move(res), resultBuilder.steal(),
                                              options, countErrorCodes));
+}
+
+
+OperationResult Methods::insert(std::string const& cname, VPackSlice value,
+                                OperationOptions const& options) {
+  return insertInternal(cname, value, options, Api::Synchronous).get();
 }
 
 /// @brief create one or multiple documents in a collection
@@ -1161,6 +1173,11 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
                                              options, std::move(errorCounter)));
 }
 
+OperationResult Methods::update(std::string const& cname, VPackSlice updateValue,
+                                OperationOptions const& options) {
+  return updateInternal(cname, updateValue, options, Api::Synchronous).get();
+}
+
 /// @brief update/patch one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
@@ -1193,6 +1210,11 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
   return arangodb::modifyDocumentOnCoordinator(*this, *colptr, newValue, options, isPatch);
 }
 #endif
+
+OperationResult Methods::replace(std::string const& cname, VPackSlice replaceValue,
+                                 OperationOptions const& options) {
+  return replaceInternal(cname, replaceValue, options, Api::Synchronous).get();
+}
 
 /// @brief replace one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
@@ -1385,6 +1407,11 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
   return OperationResult(std::move(res), std::move(resDocs),
                          std::move(options), std::move(errorCounter));
+}
+
+OperationResult Methods::remove(std::string const& collectionName,
+                                VPackSlice value, OperationOptions const& options) {
+  return removeInternal(collectionName, value, options, Api::Synchronous).get();
 }
 
 /// @brief remove one or multiple documents in a collection
@@ -1633,6 +1660,11 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
   return OperationResult(Result(), resultBuilder.steal(), options);
 }
 
+OperationResult Methods::truncate(std::string const& collectionName,
+                                  OperationOptions const& options) {
+  return truncateInternal(collectionName, options, Api::Synchronous).get();
+}
+
 /// @brief remove all documents in a collection
 Future<OperationResult> transaction::Methods::truncateAsync(std::string const& collectionName,
                                                             OperationOptions const& options) {
@@ -1815,6 +1847,11 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
   }
 
   return futures::makeFuture(OperationResult(res, options));
+}
+
+OperationResult Methods::count(std::string const& collectionName,
+                               CountType type, OperationOptions const& options) {
+  return countInternal(collectionName, type, options, Api::Synchronous).get();
 }
 
 /// @brief count the number of documents in a collection
@@ -2518,9 +2555,8 @@ Future<Result> Methods::finishInternal(Result const& res, Api api) {
   });
 }
 
-Future<OperationResult> Methods::documentInternal(std::string const& cname,
-                                                       VPackSlice value,
-                                                       OperationOptions& options, Api api) {
+Future<OperationResult> Methods::documentInternal(std::string const& cname, VPackSlice value,
+                                                  OperationOptions const& options, Api api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
@@ -2542,8 +2578,7 @@ Future<OperationResult> Methods::documentInternal(std::string const& cname,
 }
 
 Future<OperationResult> Methods::insertInternal(std::string const& cname, VPackSlice value,
-                                                     OperationOptions const& options,
-                                                     Api api) {
+                                                OperationOptions const& options, Api api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
@@ -2573,10 +2608,8 @@ Future<OperationResult> Methods::insertInternal(std::string const& cname, VPackS
   });
 }
 
-Future<OperationResult> Methods::updateInternal(std::string const& cname,
-                                                     VPackSlice newValue,
-                                                     OperationOptions const& options,
-                                                     Api api) {
+Future<OperationResult> Methods::updateInternal(std::string const& cname, VPackSlice newValue,
+                                                OperationOptions const& options, Api api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!newValue.isObject() && !newValue.isArray()) {
@@ -2604,10 +2637,8 @@ Future<OperationResult> Methods::updateInternal(std::string const& cname,
   });
 }
 
-Future<OperationResult> Methods::replaceInternal(std::string const& cname,
-                                                      VPackSlice newValue,
-                                                      OperationOptions const& options,
-                                                      Api api) {
+Future<OperationResult> Methods::replaceInternal(std::string const& cname, VPackSlice newValue,
+                                                 OperationOptions const& options, Api api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!newValue.isObject() && !newValue.isArray()) {
@@ -2635,10 +2666,8 @@ Future<OperationResult> Methods::replaceInternal(std::string const& cname,
   });
 }
 
-Future<OperationResult> Methods::removeInternal(std::string const& cname,
-                                                     VPackSlice value,
-                                                     OperationOptions const& options,
-                                                     Api api) {
+Future<OperationResult> Methods::removeInternal(std::string const& cname, VPackSlice value,
+                                                OperationOptions const& options, Api api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray() && !value.isString()) {
@@ -2667,8 +2696,7 @@ Future<OperationResult> Methods::removeInternal(std::string const& cname,
 }
 
 Future<OperationResult> Methods::truncateInternal(std::string const& collectionName,
-                                                       OperationOptions const& options,
-                                                       Api api) {
+                                                  OperationOptions const& options, Api api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   OperationOptions optionsCopy = options;
@@ -2684,9 +2712,9 @@ Future<OperationResult> Methods::truncateInternal(std::string const& collectionN
 }
 
 futures::Future<OperationResult> Methods::countInternal(std::string const& collectionName,
-                                                             CountType type,
-                                                             OperationOptions const& options,
-                                                             Api api) {
+                                                        CountType type,
+                                                        OperationOptions const& options,
+                                                        Api api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (_state->isCoordinator()) {

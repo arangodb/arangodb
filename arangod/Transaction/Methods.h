@@ -277,47 +277,38 @@ class Methods {
 
   /// @brief return one or multiple documents from a collection
   /// @deprecated use async variant
-  ENTERPRISE_VIRT OperationResult document(std::string const& collectionName,
-                                           VPackSlice value,
-                                           OperationOptions& options) {
-    return documentAsync(collectionName, value, options).get();
-  }
+  [[deprecated]] ENTERPRISE_VIRT OperationResult document(std::string const& collectionName,
+                                                          VPackSlice value,
+                                                          OperationOptions const& options);
 
   /// @brief return one or multiple documents from a collection
-  Future<OperationResult> documentAsync(std::string const& collectionName,
-                                        VPackSlice value, OperationOptions& options);
+  Future<OperationResult> documentAsync(std::string const& cname,
+                                        VPackSlice value,
+                                        OperationOptions const& options);
 
   /// @deprecated use async variant
-  OperationResult insert(std::string const& cname,
-                         VPackSlice value,
-                         OperationOptions const& options) {
-    return this->insertAsync(cname, value, options).get();
-  }
+  [[deprecated]] OperationResult insert(std::string const& cname, VPackSlice value,
+                                        OperationOptions const& options);
 
   /// @brief create one or multiple documents in a collection
   /// The single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  Future<OperationResult> insertAsync(std::string const& collectionName,
-                                      VPackSlice value,
+  Future<OperationResult> insertAsync(std::string const& collectionName, VPackSlice value,
                                       OperationOptions const& options);
-  
+
   /// @deprecated use async variant
-  OperationResult update(std::string const& cname, VPackSlice updateValue,
-                         OperationOptions const& options) {
-    return this->updateAsync(cname, updateValue, options).get();
-  }
+  [[deprecated]] OperationResult update(std::string const& cname, VPackSlice updateValue,
+                                        OperationOptions const& options);
 
   /// @brief update/patch one or multiple documents in a collection.
   /// The single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   Future<OperationResult> updateAsync(std::string const& collectionName, VPackSlice updateValue,
                                       OperationOptions const& options);
-  
+
   /// @deprecated use async variant
-  OperationResult replace(std::string const& cname, VPackSlice replaceValue,
-                         OperationOptions const& options) {
-    return this->replaceAsync(cname, replaceValue, options).get();
-  }
+  [[deprecated]] OperationResult replace(std::string const& cname, VPackSlice replaceValue,
+                                         OperationOptions const& options);
 
   /// @brief replace one or multiple documents in a collection.
   /// The single-document variant of this operation will either succeed or,
@@ -326,35 +317,31 @@ class Methods {
                                        OperationOptions const& options);
 
   /// @deprecated use async variant
-  OperationResult remove(std::string const& collectionName,
-                         VPackSlice value, OperationOptions const& options) {
-    return removeAsync(collectionName, value, options).get();
-  }
+  [[deprecated]] OperationResult remove(std::string const& collectionName, VPackSlice value,
+                                        OperationOptions const& options);
 
   /// @brief remove one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  Future<OperationResult> removeAsync(std::string const& collectionName,
-                                      VPackSlice value, OperationOptions const& options);
+  Future<OperationResult> removeAsync(std::string const& collectionName, VPackSlice value,
+                                      OperationOptions const& options);
 
   /// @brief fetches all documents in a collection
   ENTERPRISE_VIRT OperationResult all(std::string const& collectionName, uint64_t skip,
                                       uint64_t limit, OperationOptions const& options);
 
   /// @brief deprecated use async variant
-  OperationResult truncate(std::string const& collectionName, OperationOptions const& options) {
-    return this->truncateAsync(collectionName, options).get();
-  }
+  [[deprecated]] OperationResult truncate(std::string const& collectionName,
+                                          OperationOptions const& options);
 
   /// @brief remove all documents in a collection
   Future<OperationResult> truncateAsync(std::string const& collectionName,
                                         OperationOptions const& options);
 
   /// deprecated, use async variant
-  virtual OperationResult count(std::string const& collectionName,
-                                CountType type, OperationOptions const& options) {
-    return countAsync(collectionName, type, options).get();
-  }
+  [[deprecated]] virtual OperationResult count(std::string const& collectionName,
+                                               CountType type,
+                                               OperationOptions const& options);
 
   /// @brief count the number of documents in a collection
   virtual futures::Future<OperationResult> countAsync(std::string const& collectionName,
@@ -475,8 +462,8 @@ class Methods {
   auto finishInternal(Result const& res, Api api) -> Future<Result>;
   // TODO document() is ENTERPRISE_VIRT, but documentAsync() is not.
   //      should this be?
-  auto documentInternal(std::string const& collectionName, VPackSlice value,
-                        OperationOptions& options, Api api) -> Future<OperationResult>;
+  auto documentInternal(std::string const& cname, VPackSlice value,
+                        OperationOptions const& options, Api api) -> Future<OperationResult>;
   auto insertInternal(std::string const& collectionName, VPackSlice value,
                       OperationOptions const& options, Api api) -> Future<OperationResult>;
   auto updateInternal(std::string const& collectionName, VPackSlice updateValue,
