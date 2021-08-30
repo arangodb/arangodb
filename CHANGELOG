@@ -35,10 +35,9 @@ devel
   extended naming convention.
 
   Warning: turning on the `--database.extended-names-databases` option for a
-  deployment requires it to stay enabled permanently, because otherwise any 
-  existing databases that were created with extended names will become
-  inaccessible and may cause follow-up problems when the extended mode is
-  turned off.
+  deployment requires it to stay enabled permanently, i.e. it can be changed
+  from `false` to `true` but not back. When enabling it, it is also required
+  to do this consistently on all coordinators and DB servers.
 
   The extended names for databases will be enabled by default in one of the
   future releases of ArangoDB, once enough drivers and other client tools
