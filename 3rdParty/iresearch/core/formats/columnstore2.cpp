@@ -643,7 +643,6 @@ class dense_fixed_length_column final : public column_base {
       inflater_{std::move(inflater)},
       data_{data},
       len_{len} {
-    assert(!header().docs_index);
     assert(header().docs_count);
     assert(ColumnType::DENSE_FIXED == header().type);
   }
