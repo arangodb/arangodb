@@ -94,8 +94,8 @@ class block_pool_const_iterator {
     assert(block_);
 
     const auto pos = pos_ + offset;
-    if (pos < block_->begin || pos >= block_->end) {
-      return parent().at(block_offset() + std::distance(block_->begin, pos));
+    if (pos < block_->data || pos >= std::end(block_->data)) {
+      return parent().at(block_offset() + std::distance(block_->data, pos));
     }
 
     return *pos;
@@ -165,7 +165,7 @@ class block_pool_const_iterator {
 
   size_t offset() const noexcept {
     assert(block_);
-    return std::distance(block_->begin, pos_);
+    return std::distance(block_->data, pos_);
   }
 
   size_t block_offset() const noexcept { return block_start_; }
@@ -174,15 +174,15 @@ class block_pool_const_iterator {
 
   void refresh() noexcept {
     const auto pos = this->offset();
-    block_ = parent().get_blocks()[block_offset() / block_type::SIZE].get();
-    pos_ = block_->begin + pos;
+    block_ = parent().get_blocks()[block_offset() / block_type::SIZE];
+    pos_ = block_->data + pos;
   }
 
   void reset(size_t offset) noexcept {
     if (offset >= pool_->value_count()) {
       block_start_ = pool_->value_count();
       block_ = &EMPTY_BLOCK;
-      pos_ = block_->begin;
+      pos_ = block_->data;
       return;
     }
 
@@ -193,9 +193,9 @@ class block_pool_const_iterator {
     const size_t pos = offset % block_type::SIZE;
     assert(pos < block_type::SIZE);
 
-    block_ = blocks[idx].get();
+    block_ = blocks[idx];
     block_start_ = block_->start;
-    pos_ = block_->begin + pos;
+    pos_ = block_->data + pos;
   }
 
   const container& parent() const noexcept {
@@ -208,7 +208,7 @@ class block_pool_const_iterator {
     assert(block_);
 
     pos_ += offset;
-    if (pos_ < block_->begin || pos_ >= block_->end) {
+    if (pos_ < block_->data || pos_ >= std::end(block_->data)) {
       reset(pool_offset());
     }
   }
@@ -223,7 +223,7 @@ class block_pool_const_iterator {
 }; // block_pool_const_iterator
 
 template<typename ContType>
-typename ContType::block_type  block_pool_const_iterator<ContType>::EMPTY_BLOCK(0);
+typename ContType::block_type block_pool_const_iterator<ContType>::EMPTY_BLOCK{};
 
 template<typename ContType>
 block_pool_const_iterator<ContType> operator+(
@@ -1039,14 +1039,7 @@ struct proxy_block_t {
 
   static const size_t SIZE = Size;
 
-  constexpr explicit proxy_block_t(size_t start) noexcept
-    : begin{ 0 },
-      end(begin + SIZE),
-      start(start) {
-  }
-
-  value_type begin[SIZE]; // begin of valid bytes
-  value_type* end; // end of valid bytes
+  value_type data[SIZE]; // begin of valid bytes
   size_t start; // where block starts
 }; // proxy_block_t
 
@@ -1082,13 +1075,30 @@ class block_pool {
     static_assert(block_type::SIZE > 0, "block_type::SIZE == 0");
   }
 
+  ~block_pool() {
+    proxy_allocator proxy_alloc(get_allocator());
+
+    for (auto* p : get_blocks()) {
+      proxy_alloc.deallocate(p, 1);
+    }
+  }
+
   void alloc_buffer(size_t count = 1) {
     proxy_allocator proxy_alloc(get_allocator());
     auto& blocks = get_blocks();
 
     while (count--) {
-      blocks.emplace_back(
-        memory::allocate_unique<block_type>(proxy_alloc, blocks.size() * block_type::SIZE));
+      auto* p = proxy_alloc.allocate(1);
+      assert(p);
+
+      p->start = blocks.size() * block_type::SIZE;
+
+      try {
+        blocks.emplace_back(p);
+      } catch (...) {
+        proxy_alloc.deallocate(p, 1);
+        throw;
+      }
     }
   }
 
@@ -1172,7 +1182,7 @@ class block_pool {
     const size_t idx = offset / block_type::SIZE;
     const size_t pos = offset % block_type::SIZE;
 
-    return *(get_blocks()[idx]->begin + pos);
+    return *(get_blocks()[idx]->data + pos);
   }
 
   reference operator[](size_t offset) noexcept { return at(offset); }
@@ -1221,9 +1231,8 @@ class block_pool {
   friend const_iterator;
 
   typedef typename std::allocator_traits<allocator>::template rebind_alloc<block_type> proxy_allocator;
-  typedef std::unique_ptr<block_type, memory::allocator_deallocator<proxy_allocator>> block_ptr;
-  typedef typename std::allocator_traits<allocator>::template rebind_alloc<block_ptr> block_ptr_allocator;
-  typedef std::vector<block_ptr, block_ptr_allocator> blocks_t;
+  typedef typename std::allocator_traits<allocator>::template rebind_alloc<block_type*> block_ptr_allocator;
+  typedef std::vector<block_type*, block_ptr_allocator> blocks_t;
 
   const blocks_t& get_blocks() const noexcept { return rep_.first(); }
   blocks_t& get_blocks() noexcept { return rep_.first(); }
