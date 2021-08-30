@@ -34,6 +34,7 @@
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/GeneralResponse.h"
+#include "Transaction/MethodsApi.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
@@ -120,7 +121,8 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature&,
 
 futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
                                                     std::string const& collname,
-                                                    OperationOptions const& options);
+                                                    OperationOptions const& options,
+                                                    arangodb::transaction::MethodsApi api);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers
@@ -136,17 +138,16 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature&, std::string const& dbn
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> createDocumentOnCoordinator(
-    transaction::Methods const& trx, LogicalCollection&, VPackSlice const slice,
-    OperationOptions const& options);
+    transaction::Methods const& trx, LogicalCollection& coll, VPackSlice slice,
+    OperationOptions const& options, transaction::MethodsApi api);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> removeDocumentOnCoordinator(transaction::Methods& trx,
-                                                             LogicalCollection&,
-                                                             VPackSlice const slice,
-                                                             OperationOptions const& options);
+futures::Future<OperationResult> removeDocumentOnCoordinator(
+    transaction::Methods& trx, LogicalCollection& coll, VPackSlice slice,
+    OperationOptions const& options, transaction::MethodsApi api);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a document in a coordinator
@@ -154,7 +155,8 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(transaction::Method
 
 futures::Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
                                                           LogicalCollection&, VPackSlice slice,
-                                                          OperationOptions const& options);
+                                                          OperationOptions const& options,
+                                                          transaction::MethodsApi api);
 
 /// @brief fetch edges from TraverserEngines
 ///        Contacts all TraverserEngines placed
@@ -211,14 +213,16 @@ void fetchVerticesFromEngines(
 
 futures::Future<OperationResult> modifyDocumentOnCoordinator(
     transaction::Methods& trx, LogicalCollection& coll,
-    arangodb::velocypack::Slice const& slice, OperationOptions const& options, bool isPatch);
+    arangodb::velocypack::Slice const& slice, OperationOptions const& options,
+    bool isPatch, transaction::MethodsApi api);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> truncateCollectionOnCoordinator(
-    transaction::Methods& trx, std::string const& collname, OperationOptions const& options);
+    transaction::Methods& trx, std::string const& collname,
+    OperationOptions const& options, transaction::MethodsApi api);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers
