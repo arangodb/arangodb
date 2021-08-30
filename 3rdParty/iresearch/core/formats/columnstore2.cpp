@@ -643,7 +643,6 @@ class dense_fixed_length_column final : public column_base {
       inflater_{std::move(inflater)},
       data_{data},
       len_{len} {
-    assert(!header().docs_index);
     assert(header().docs_count);
     assert(ColumnType::DENSE_FIXED == header().type);
   }
@@ -1211,7 +1210,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
       { buf_.get() },
       consolidation_ },
     compression,
-    compressor);
+    std::move(compressor));
 
   return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {
     // to avoid extra (and useless in our case) check for block index

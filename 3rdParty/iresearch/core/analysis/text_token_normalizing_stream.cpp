@@ -67,11 +67,15 @@ namespace analysis {
 struct text_token_normalizing_stream::state_t {
   icu::UnicodeString data;
   icu::Locale icu_locale;
-  std::shared_ptr<const icu::Normalizer2> normalizer;
   const options_t options;
   std::string term_buf; // used by reset()
-  std::shared_ptr<icu::Transliterator> transliterator;
-  state_t(const options_t& opts): icu_locale("C"), options(opts) {
+  const icu::Normalizer2* normalizer; // reusable object owned by ICU
+  std::unique_ptr<icu::Transliterator> transliterator;
+
+  explicit state_t(const options_t& opts)
+    : icu_locale{"C"},
+      options{opts},
+      normalizer{} {
     // NOTE: use of the default constructor for Locale() or
     //       use of Locale::createFromName(nullptr)
     //       causes a memory leak with Boost 1.58, as detected by valgrind
@@ -343,11 +347,16 @@ REGISTER_ANALYZER_VPACK(analysis::text_token_normalizing_stream, make_vpack,
 namespace iresearch {
 namespace analysis {
 
+void text_token_normalizing_stream::state_deleter_t::operator()(
+    state_t* p) const noexcept {
+  delete p;
+}
+
 text_token_normalizing_stream::text_token_normalizing_stream(
     const options_t& options)
   : analyzer{irs::type<text_token_normalizing_stream>::get()},
-    state_(memory::make_unique<state_t>(options)),
-    term_eof_(true) {
+    state_{new state_t{options}},
+    term_eof_{true} {
 }
 
 /*static*/ void text_token_normalizing_stream::init() {
@@ -390,12 +399,10 @@ bool text_token_normalizing_stream::reset(const string_ref& data) {
 
   if (!state_->normalizer) {
     // reusable object owned by ICU
-    state_->normalizer.reset(
-      icu::Normalizer2::getNFCInstance(err), [](const icu::Normalizer2*)->void{}
-    );
+    state_->normalizer = icu::Normalizer2::getNFCInstance(err);
 
     if (!U_SUCCESS(err) || !state_->normalizer) {
-      state_->normalizer.reset();
+      state_->normalizer = nullptr;
 
       return false;
     }
@@ -408,8 +415,7 @@ bool text_token_normalizing_stream::reset(const string_ref& data) {
 
     // reusable object owned by *this
     state_->transliterator.reset(icu::Transliterator::createInstance(
-      collationRule, UTransDirection::UTRANS_FORWARD, err
-    ));
+      collationRule, UTransDirection::UTRANS_FORWARD, err));
 
     if (!U_SUCCESS(err) || !state_->transliterator) {
       state_->transliterator.reset();
