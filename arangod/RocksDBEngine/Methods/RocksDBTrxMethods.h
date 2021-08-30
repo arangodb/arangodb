@@ -107,6 +107,11 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// previously performed writes.
   /// If _readWriteBatch is not null, read-operations without read-own-writes semantic
   /// are performed on _readWriteBatch, otherwise on _rocksTransaction.
+  ///
+  /// If the transaction is globally managed (e.g., a streaming trx), we already set
+  /// _readWriteBatch to point to the trx's underlying WriteBatch at the begin of the
+  /// transaction. This is necessary to ensure that read operations performed as part
+  /// of the trx observe the correct transaction state, regardless of any AQL queries.
   rocksdb::WriteBatchWithIndex* _readWriteBatch{nullptr};
   bool _ownsReadWriteBatch{false};
 

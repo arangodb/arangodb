@@ -50,7 +50,7 @@ Result RocksDBReadOnlyBaseMethods::addOperation(DataSourceId collectionId, Revis
 rocksdb::Status RocksDBReadOnlyBaseMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
                                                          rocksdb::Slice const& key,
                                                          rocksdb::PinnableSlice* val) {
-  return this->Get(cf, key, val, ReadOwnWrites::yes);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
 rocksdb::Status RocksDBReadOnlyBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,

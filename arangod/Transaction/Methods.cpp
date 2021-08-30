@@ -817,6 +817,8 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
+  // We never want to see our own writes here, otherwise we could observe documents
+  // which have been inserted by a currently running query.
   return collection->getPhysical()->read(this, key, cb, ReadOwnWrites::no);
 }
 
@@ -1128,6 +1130,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       key = value.get(StaticStrings::KeyString);
       if (key.isString()) {
         std::pair<LocalDocumentId, RevisionId> lookupResult;
+        // modifications always need to observe all changes in order to validate uniqueness constraints
         res = collection->getPhysical()->lookupKey(this, key.stringRef(), lookupResult, ReadOwnWrites::yes);
         if (res.ok()) {
           TRI_ASSERT(lookupResult.first.isSet());

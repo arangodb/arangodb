@@ -83,8 +83,6 @@ AqlTransaction::AqlTransaction(
   TRI_ASSERT(state() != nullptr);
 }
 
-AqlTransaction::~AqlTransaction() = default;
-
 /// @brief add a collection to the transaction
 Result AqlTransaction::processCollection(aql::Collection& collection) {
   if (collection.hasCollectionObject()) {

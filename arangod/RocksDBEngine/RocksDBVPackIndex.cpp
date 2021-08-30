@@ -765,6 +765,7 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
       if (lock) {
         s = mthds->GetForUpdate(_cf, key.string(), &existing); 
       } else {
+        // modifications always need to observe all changes in order to validate uniqueness constraints
         s = mthds->Get(_cf, key.string(), &existing, ReadOwnWrites::yes);
       }
 
@@ -788,7 +789,7 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
                addErrorMsg(res, key.copyString());
              }
              return true; // return value does not matter here
-           }, ReadOwnWrites::yes);
+           }, ReadOwnWrites::yes); // modifications always need to observe all changes in order to validate uniqueness constraints
         if (readResult.fail()) {
           addErrorMsg(readResult);
           THROW_ARANGO_EXCEPTION(readResult);
@@ -870,7 +871,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
                addErrorMsg(res, key.copyString());
              }
              return true; // return value does not matter here
-           }, ReadOwnWrites::yes);
+           }, ReadOwnWrites::yes); // modifications always need to observe all changes in order to validate uniqueness constraints
         if (readResult.fail()) {
           addErrorMsg(readResult);
           THROW_ARANGO_EXCEPTION(readResult);

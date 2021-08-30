@@ -569,6 +569,7 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
     // a.b == value
     return createEqIterator(trx, aap.attribute, aap.value, opts.enableCache, readOwnWrites);
   } else if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    // "in"-checks never needs to observe own writes
     TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);
     // a.b IN values
     if (aap.value->isArray()) {
@@ -785,7 +786,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
     }
     if (needsInsert) {
       LocalDocumentId const docId = RocksDBKey::edgeDocumentId(key);
-      if (!rocksColl->readDocument(trx, docId, mdr, ReadOwnWrites::yes)) {
+      // warmup does not need to observe own writes
+      if (!rocksColl->readDocument(trx, docId, mdr, ReadOwnWrites::no)) {
         // Data Inconsistency. revision id without a document...
         TRI_ASSERT(false);
         continue;
@@ -844,6 +846,7 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(
   std::unique_ptr<VPackBuilder> keys(builder.steal());
 
   fillInLookupValues(trx, *(keys.get()), valNode);
+  // "in"-checks never need to observe own writes.
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx,
                                                           this, std::move(keys),
                                                           useCache ? _cache : nullptr,

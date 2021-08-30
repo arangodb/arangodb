@@ -51,7 +51,10 @@ class RDBNearIterator final : public IndexIterator {
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   RDBNearIterator(LogicalCollection* collection, transaction::Methods* trx,
                   RocksDBGeoIndex const* index, geo::QueryParams&& params)
-      : IndexIterator(collection, trx, ReadOwnWrites::no), _index(index), _near(std::move(params)) {
+      : IndexIterator(collection, trx, ReadOwnWrites::no),
+        // geo index never needs to observe own writes since it cannot be used for an UPSERT subquery
+        _index(index),
+        _near(std::move(params)) {
     RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(trx);
     _iter = mthds->NewIterator(_index->columnFamily(), {});
     TRI_ASSERT(_index->columnFamily()->GetID() ==
@@ -109,6 +112,7 @@ class RDBNearIterator final : public IndexIterator {
                 cb(gdoc.token, doc);  // return document
                 result = true;
                 return true;
+                // geo index never needs to observe own writes
               }, ReadOwnWrites::no).ok()) {
             return false;  // ignore document
           }
@@ -136,6 +140,7 @@ class RDBNearIterator final : public IndexIterator {
                     return false;
                   }
                   return true;
+                  // geo index never needs to observe own writes
                 }, ReadOwnWrites::no).ok()) {
               return false;
             }
@@ -341,7 +346,7 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);
+  TRI_ASSERT(readOwnWrites == ReadOwnWrites::no); // geo index never needs to observe own writes
 
   geo::QueryParams params;
   params.sorted = opts.sorted;

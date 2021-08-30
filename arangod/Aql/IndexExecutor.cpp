@@ -341,13 +341,13 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
                                           AstNode const* condition,
                                           transaction::Methods::IndexHandle const& index,
                                           DocumentProducingFunctionContext& context,
-                                          bool checkUniqueness, ReadOwnWrites readOwnWrites)
+                                          bool checkUniqueness)
     : _trx(trx),
       _infos(infos),
       _condition(condition),
       _index(index),
       _cursor(_trx.indexScanForCondition(
-          index, condition, infos.getOutVariable(), infos.getOptions(), readOwnWrites)),
+          index, condition, infos.getOutVariable(), infos.getOptions(), infos.canReadOwnWrites())),
       _context(context),
       _type(infos.getCount() ? Type::Count :
                 infos.isLateMaterialized()
@@ -511,7 +511,7 @@ void IndexExecutor::CursorReader::reset() {
     _cursor = _trx.indexScanForCondition(_index, _condition,
                                          _infos.getOutVariable(),
                                          _infos.getOptions(),
-                                         ReadOwnWrites::no);
+                                         _infos.canReadOwnWrites());
   }
 }
 
@@ -661,8 +661,7 @@ bool IndexExecutor::advanceCursor() {
         conditionNode = _infos.getCondition()->getMember(infoIndex);
       }
       _cursors.emplace_back(_trx, _infos, conditionNode, _infos.getIndexes()[infoIndex],
-                            _documentProducingFunctionContext, needsUniquenessCheck(),
-                            _infos.canReadOwnWrites());
+                            _documentProducingFunctionContext, needsUniquenessCheck());
     } else {
       // Next index exists, need a reset.
       getCursor().reset();

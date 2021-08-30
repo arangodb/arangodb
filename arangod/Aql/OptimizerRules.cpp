@@ -7878,6 +7878,22 @@ void arangodb::aql::enableReadOwnWritesForUpsertSubquery(ExecutionPlan& plan) {
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan.findNodesOfType(nodes, EN::UPSERT, true);
 
+  // An upsert is roughly translated to the following:
+  //   LET #x = ( <subquery> )
+  //   LET $OLD = #x[0]
+  //   UPSERT $OLD INSERT ... UPDATE ... IN col
+  //
+  // The subquery is always of the form
+  //   FOR #y IN col FILTER <#y matches sample> LIMIT 0, 1 RETURN #y.
+  // This subquery is optimized like every other; whether it can use any
+  // indexes depends on the FILTER condition.
+  // So what we do here is for each UPSERT get the input variable's setter
+  // (CalculationNode). The calculation expression is always an indexed access
+  // with a reference to the subquery. From the subquery end we simply search
+  // upwards until we find the subquery's FOR node (which must be either an
+  // IndexNode or EnumerateCollectionNode), so we can set the read-own-writes
+  // flag.
+
   for (auto n : nodes) {
     auto node = ExecutionNode::castTo<UpsertNode const*>(n);
     auto inputVar = node->inDocVariable();

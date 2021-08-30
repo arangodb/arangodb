@@ -180,7 +180,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
                                 transaction::Methods* trx, RocksDBPrimaryIndex* index,
                                 std::unique_ptr<VPackBuilder> keys,
                                 bool allowCoveringIndexOptimization)
-      : IndexIterator(collection, trx, ReadOwnWrites::no),
+      : IndexIterator(collection, trx, ReadOwnWrites::no), // "in"-checks never need to observe own writes.
         _index(index),
         _keys(std::move(keys)),
         _iterator(_keys->slice()),
@@ -228,6 +228,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     }
 
     while (limit > 0) {
+      // This is an in-iterator, and "in"-checks never need to observe own writes.
       LocalDocumentId documentId =
           _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator), ReadOwnWrites::no);
       if (documentId.isSet()) {
@@ -253,6 +254,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     }
 
     while (limit > 0) {
+      // This is an in-iterator, and "in"-checks never need to observe own writes.
       LocalDocumentId documentId =
           _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator), ReadOwnWrites::no);
       if (documentId.isSet()) {
@@ -646,6 +648,7 @@ Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
   if (lock) {
     s = mthd->GetForUpdate(_cf, key->string(), &ps);
   } else {
+    // modifications always need to observe all changes in order to validate uniqueness constraints
     s = mthd->Get(_cf, key->string(), &ps, ReadOwnWrites::yes);
   }
 
@@ -848,6 +851,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       return createEqIterator(trx, aap.attribute, aap.value, readOwnWrites);
     }
     if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN && aap.value->isArray()) {
+      // "in"-checks never need to observe own writes.
       TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);
       // a.b IN array
       return createInIterator(trx, aap.attribute, aap.value, opts.ascending);

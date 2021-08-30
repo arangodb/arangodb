@@ -205,7 +205,7 @@ void RocksDBAllIndexIterator::ensureIterator() {
 // ================ Any Iterator ================
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
                                                  transaction::Methods* trx)
-    : IndexIterator(col, trx, ReadOwnWrites::no),
+    : IndexIterator(col, trx, ReadOwnWrites::no), // any-iterator never needs to observe own writes.
       _cmp(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
                ->GetComparator()),
       _objectId(static_cast<RocksDBMetaCollection*>(col->getPhysical())->objectId()),

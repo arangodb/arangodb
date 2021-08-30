@@ -1074,6 +1074,7 @@ Result RocksDBCollection::performUpdateOrReplace(transaction::Methods* trx,
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
 
+  // modifications always need to observe all changes in order to validate uniqueness constraints
   auto const oldDocumentId = primaryIndex()->lookupKey(trx, keyStr, ReadOwnWrites::yes);
   if (!oldDocumentId.isSet()) {
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
@@ -1081,6 +1082,7 @@ Result RocksDBCollection::performUpdateOrReplace(transaction::Methods* trx,
   std::string* prevBuffer = previousMdr.setManaged();
   // uses either prevBuffer or avoids memcpy (if read hits block cache)
   rocksdb::PinnableSlice previousPS(prevBuffer);
+  // modifications always need to observe all changes in order to validate uniqueness constraints
   res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
     /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
   if (res.fail()) {
@@ -1196,6 +1198,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
+  // modifications always need to observe all changes in order to validate uniqueness constraints
   auto const documentId = primaryIndex()->lookupKey(&trx, keyStr, ReadOwnWrites::yes);
   if (!documentId.isSet()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -1231,6 +1234,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
   std::string* prevBuffer = previousMdr.setManaged();
   // uses either prevBuffer or avoids memcpy (if read hits block cache)
   rocksdb::PinnableSlice previousPS(prevBuffer);
+  // modifications always need to observe all changes in order to validate uniqueness constraints
   res = lookupDocumentVPack(&trx, documentId, previousPS,
   /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
   if (res.fail()) {

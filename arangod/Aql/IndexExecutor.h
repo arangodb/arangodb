@@ -179,8 +179,7 @@ class IndexExecutor {
     CursorReader(transaction::Methods& trx,
                  IndexExecutorInfos const& infos, AstNode const* condition,
                  std::shared_ptr<Index> const& index,
-                 DocumentProducingFunctionContext& context, bool checkUniqueness,
-                 ReadOwnWrites readOwnWrites);
+                 DocumentProducingFunctionContext& context, bool checkUniqueness);
     bool readIndex(OutputAqlItemRow& output);
     size_t skipIndex(size_t toSkip);
     void reset();
