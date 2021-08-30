@@ -7465,7 +7465,7 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
     EXPECT_TRUE(analyzers.remove(vocbase->name() + "::test_analyzer3", true).ok());
     EXPECT_EQ(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
-    auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() {
+    auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() noexcept {
       if (view) {
         EXPECT_TRUE(vocbase->dropView(view->id(), false).ok());
         view = nullptr;
@@ -7517,7 +7517,7 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
     EXPECT_TRUE(analyzers.remove(vocbase->name() + "::test_analyzer3", true).ok());
     EXPECT_EQ(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
-    auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() {
+    auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() noexcept {
       if (view) {
         EXPECT_TRUE(vocbase->dropView(view->id(), false).ok());
         view = nullptr;
@@ -7570,7 +7570,7 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
     EXPECT_TRUE(analyzers.remove(vocbase->name() + "::test_analyzer3", true).ok());
     EXPECT_EQ(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
-    auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() {
+    auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() noexcept {
       if (view) {
         EXPECT_TRUE(vocbase->dropView(view->id(), false).ok());
         view = nullptr;
