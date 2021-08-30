@@ -269,6 +269,9 @@ RocksDBShaCalculator::RocksDBShaCalculator(application_features::ApplicationServ
 
 /// @brief Shutdown the background thread only if it was ever started
 RocksDBShaCalculator::~RocksDBShaCalculator() {
+  // when we get here the background thread should have been stopped
+  // already.
+  TRI_ASSERT(!_shaThread.isRunning());
   waitForShutdown();
 }
   
