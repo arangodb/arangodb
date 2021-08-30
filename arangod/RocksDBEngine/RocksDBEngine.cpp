@@ -838,7 +838,7 @@ void RocksDBEngine::start() {
                  ->GetID() == 0);
 
   // will crash the process if version does not match
-  arangodb::rocksdbStartupVersionCheck(_db, dbExisted);
+  arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted);
 
   // only enable logger after RocksDB start
   if (logger != nullptr) {

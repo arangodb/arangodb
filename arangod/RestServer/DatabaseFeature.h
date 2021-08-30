@@ -144,6 +144,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool extendedNamesForCollections() const { return _extendedNamesForCollections; }
   bool extendedNamesForViews() const { return _extendedNamesForViews; }
   bool extendedNamesForAnalyzers() const { return _extendedNamesForAnalyzers; }
+  // will be called during startup when reading stored value from storage engine
+  void extendedNamesForDatabases(bool value) { _extendedNamesForDatabases = value; }
 
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
