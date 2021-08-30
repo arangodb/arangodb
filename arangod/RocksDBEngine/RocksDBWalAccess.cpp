@@ -871,6 +871,16 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   // while scanning the WAL
   latestTick = db->GetLatestSequenceNumber();
 
+  if (lastScannedTick > latestTick) {
+    // it is possible to get here if we call WAL tailing with a too high
+    // sequence number. in this case lastScannedTick is higher than the
+    // current tick, and we need to reset it to avoid assertions further
+    // down the road
+    TRI_ASSERT(since > latestTick);
+    TRI_ASSERT(firstTick == UINT64_MAX);
+    lastScannedTick = latestTick;
+  }
+
   WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= filter.tickStart,
                          lastWrittenTick, lastScannedTick, latestTick);
   if (!s.ok()) {
