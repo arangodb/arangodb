@@ -19,7 +19,7 @@ devel
       required by UPSERT. Previously, UPSERTs that triggered intermediate
       commits could have produced unexpected results (e.g., previous inserts
       that have been committed might not be visible) or even crashes.
-  To achieve the correct read-own-write behavior in streaming transactions we
+  To achieve the correct read-own-write behavior in streaming transactions, we
   sometimes have to copy the internal WriteBatch from the underlying RocksDB
   transaction. In particular, the copy is created whenever an AQL query with
   modification operations (INSERT/REMOVE/UPDATE/UPSERT/REPLACE) is executed in
@@ -28,6 +28,11 @@ devel
   the copy is essentially a no-op. However, if the transaction already contains
   a lot of modifications, creating the WriteBatch copy might incur some
   overhead that can now lead to decreased performance.
+
+* Fix a rare shutdown race in RocksDBShaCalculatorThread. 
+
+* Added "Analyzers" view to web UI to let manage ArangoSearch analyzers
+  creation.
 
 * Updated ArangoDB Starter to 0.15.2-preview-1.
 

@@ -19,6 +19,7 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+
 #ifndef IRESEARCH_SEGMENTATION_TOKEN_STREAM_H
 #define IRESEARCH_SEGMENTATION_TOKEN_STREAM_H
 
@@ -27,7 +28,6 @@
 #include "token_stream.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
-
 
 namespace iresearch {
 namespace analysis {
@@ -56,7 +56,6 @@ class segmentation_token_stream final
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
-
  private:
   using attributes = std::tuple<
     increment,
@@ -64,8 +63,11 @@ class segmentation_token_stream final
     term_attribute>;
 
   struct state_t;
+  struct state_deleter_t {
+    void operator()(state_t*) const noexcept;
+  };
 
-  std::shared_ptr<state_t> state_;
+  std::unique_ptr<state_t, state_deleter_t> state_;
   options_t options_;
   std::string term_buf_; // buffer for value if value cannot be referenced directly
   attributes attrs_;
