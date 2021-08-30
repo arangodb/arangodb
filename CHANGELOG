@@ -1,3 +1,10 @@
+v3.7.14.1 (2021-08-07)
+----------------------
+
+* Fixed LDAP global options. This need to use the first active provider, not the
+  first provider (ES-881).
+
+
 v3.7.14 (2021-08-07)
 --------------------
 
