@@ -42,6 +42,7 @@
       'store/:name': 'storeDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
+      'g6graphs': 'g6GraphManagement',
       'metrics': 'metrics',
       'users': 'userManagement',
       'user/:name': 'userView',
@@ -324,6 +325,13 @@
       this.checkUser();
 
       this.init.then(() => ReactDOM.render(React.createElement(window.AnalyzersReactView),
+        document.getElementById('content')));
+    },
+
+    g6GraphManagement: function () {
+      this.checkUser();
+
+      this.init.then(() => ReactDOM.render(React.createElement(window.G6GraphReactView),
         document.getElementById('content')));
     },
 

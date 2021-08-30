@@ -3,6 +3,9 @@
   "version": "3.0.0",
   "private": true,
   "dependencies": {
+    "@antv/graphin": "^2.3.4",
+    "@antv/graphin-components": "^2.3.0",
+    "@antv/graphin-icons": "^1.0.0",
     "@types/lodash": "^4.14.172",
     "ajv": "^8.6.2",
     "arangojs": "^7.5.0",

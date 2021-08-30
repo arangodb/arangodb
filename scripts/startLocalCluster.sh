@@ -160,6 +160,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --log.role true \
           --log.file cluster/$PORT.log \
           --log.force-direct false \
+          --http.trusted-origin "*" \
           --log.level $LOG_LEVEL_AGENCY \
           --server.descriptors-minimum 0 \
           $STORAGE_ENGINE \
@@ -189,6 +190,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --log.force-direct false \
         --log.level $LOG_LEVEL_AGENCY \
         --server.descriptors-minimum 0 \
+        --http.trusted-origin "*" \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
@@ -246,6 +248,7 @@ start() {
           --log.level $LOG_LEVEL_CLUSTER \
           --server.descriptors-minimum 0 \
           --javascript.allow-admin-execute true \
+          --http.trusted-origin "*" \
           $SYSTEM_REPLICATION_FACTOR \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
@@ -272,6 +275,7 @@ start() {
         --log.level $LOG_LEVEL_CLUSTER \
         --server.descriptors-minimum 0 \
         --javascript.allow-admin-execute true \
+        --http.trusted-origin "*" \
         $SYSTEM_REPLICATION_FACTOR \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
