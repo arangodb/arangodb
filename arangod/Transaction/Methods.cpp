@@ -510,92 +510,17 @@ Result transaction::Methods::begin() {
 
 /// @brief commit / finish the transaction
 Future<Result> transaction::Methods::commitAsync() {
-  TRI_IF_FAILURE("TransactionCommitFail") { return Result(TRI_ERROR_DEBUG); }
-
-  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
-    // transaction not created or not running
-    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                  "transaction not running on commit");
-  }
-
-  if (!_state->isReadOnlyTransaction()) {
-    auto const& exec = ExecContext::current();
-    bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
-    if (exec.isCanceled() || cancelRW) {
-      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
-    }
-  }
-
-  if (!_mainTransaction) {
-    return futures::makeFuture(Result());
-  }
-
-  auto f = futures::makeFuture(Result());
-  if (_state->isRunningInCluster()) {
-    // first commit transaction on subordinate servers
-    f = ClusterTrxMethods::commitTransaction(*this);
-  }
-
-  return std::move(f).thenValue([this](Result res) -> Result {
-    if (res.fail()) {  // do not commit locally
-      LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
-          << "failed to commit on subordinates: '" << res.errorMessage() << "'";
-      return res;
-    }
-
-    res = _state->commitTransaction(this);
-    if (res.ok()) {
-      applyStatusChangeCallbacks(*this, Status::COMMITTED);
-    }
-
-    return res;
-  });
+  return commitInternal(Api::Asynchronous);
 }
 
 /// @brief abort the transaction
 Future<Result> transaction::Methods::abortAsync() {
-  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
-    // transaction not created or not running
-    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                  "transaction not running on abort");
-  }
-
-  if (!_mainTransaction) {
-    return futures::makeFuture(Result());
-  }
-
-  auto f = futures::makeFuture(Result());
-  if (_state->isRunningInCluster()) {
-    // first commit transaction on subordinate servers
-    f = ClusterTrxMethods::abortTransaction(*this);
-  }
-
-  return std::move(f).thenValue([this](Result res) -> Result {
-    if (res.fail()) {  // do not commit locally
-      LOG_TOPIC("d89a8", WARN, Logger::TRANSACTIONS)
-          << "failed to abort on subordinates: " << res.errorMessage();
-    }  // abort locally anyway
-
-    res = _state->abortTransaction(this);
-    if (res.ok()) {
-      applyStatusChangeCallbacks(*this, Status::ABORTED);
-    }
-
-    return res;
-  });
+  return abortInternal(Api::Asynchronous);
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
 Future<Result> transaction::Methods::finishAsync(Result const& res) {
-  if (res.ok()) {
-    // there was no previous error, so we'll commit
-    return this->commitAsync();
-  }
-
-  // there was a previous error, so we'll abort
-  return this->abortAsync().thenValue([res](Result ignore) {
-    return res;  // return original error
-  });
+  return finishInternal(res, Api::Asynchronous);
 }
 
 /// @brief return the transaction id
@@ -835,23 +760,7 @@ Future<OperationResult> addTracking(Future<OperationResult>&& f, F&& func) {
 Future<OperationResult> transaction::Methods::documentAsync(std::string const& cname,
                                                             VPackSlice value,
                                                             OperationOptions& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  if (!value.isObject() && !value.isArray()) {
-    // must provide a document object or an array of documents
-    events::ReadDocument(vocbase().name(), cname, value, options,
-                         TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
-  if (_state->isCoordinator()) {
-    return addTracking(documentCoordinator(cname, value, options),
-                       [=](OperationResult&& opRes) {
-      events::ReadDocument(vocbase().name(), cname, value, opRes.options, opRes.errorNumber());
-      return std::move(opRes);
-    });
-  }
-  return documentLocal(cname, value, options);
+  return documentInternal(cname, value, options, Api::Asynchronous);
 }
 
 /// @brief read one or multiple documents in a collection, coordinator
@@ -960,33 +869,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
 Future<OperationResult> transaction::Methods::insertAsync(std::string const& cname,
                                                           VPackSlice value,
                                                           OperationOptions const& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  if (!value.isObject() && !value.isArray()) {
-    // must provide a document object or an array of documents
-    events::CreateDocument(vocbase().name(), cname, value, options,
-                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-  if (value.isArray() && value.length() == 0) {
-    events::CreateDocument(vocbase().name(), cname, value, options, TRI_ERROR_NO_ERROR);
-    return emptyResult(options);
-  }
-
-  auto f = Future<OperationResult>::makeEmpty();
-  if (_state->isCoordinator()) {
-    f = insertCoordinator(cname, value, options);
-  } else {
-    OperationOptions optionsCopy = options;
-    f = insertLocal(cname, value, optionsCopy);
-  }
-
-  return addTracking(std::move(f), [=](OperationResult&& opRes) {
-    events::CreateDocument(vocbase().name(), cname,
-                           (opRes.ok() && opRes.options.returnNew) ? opRes.slice() : value,
-                           opRes.options, opRes.errorNumber());
-    return std::move(opRes);
-  });
+  return insertInternal(cname, value, options, Api::Asynchronous);
 }
 
 /// @brief create one or multiple documents in a collection, coordinator
@@ -1284,32 +1167,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 Future<OperationResult> transaction::Methods::updateAsync(std::string const& cname,
                                                           VPackSlice newValue,
                                                           OperationOptions const& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  if (!newValue.isObject() && !newValue.isArray()) {
-    // must provide a document object or an array of documents
-    events::ModifyDocument(vocbase().name(), cname, newValue, options,
-                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-  if (newValue.isArray() && newValue.length() == 0) {
-    events::ModifyDocument(vocbase().name(), cname, newValue, options,
-                           TRI_ERROR_NO_ERROR);
-    return emptyResult(options);
-  }
-
-  auto f = Future<OperationResult>::makeEmpty();
-  if (_state->isCoordinator()) {
-    f = modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-  } else {
-    OperationOptions optionsCopy = options;
-    f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-  }
-  return addTracking(std::move(f), [=](OperationResult&& opRes) {
-    events::ModifyDocument(vocbase().name(), cname, newValue, opRes.options,
-                           opRes.errorNumber());
-    return std::move(opRes);
-  });
+  return updateInternal(cname, newValue, options, Api::Asynchronous);
 }
 
 /// @brief update one or multiple documents in a collection, coordinator
@@ -1342,32 +1200,7 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
 Future<OperationResult> transaction::Methods::replaceAsync(std::string const& cname,
                                               VPackSlice newValue,
                                               OperationOptions const& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  if (!newValue.isObject() && !newValue.isArray()) {
-    // must provide a document object or an array of documents
-    events::ReplaceDocument(vocbase().name(), cname, newValue, options,
-                            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-  if (newValue.isArray() && newValue.length() == 0) {
-    events::ReplaceDocument(vocbase().name(), cname, newValue, options,
-                            TRI_ERROR_NO_ERROR);
-    return futures::makeFuture(emptyResult(options));
-  }
-
-  auto f = Future<OperationResult>::makeEmpty();
-  if (_state->isCoordinator()) {
-    f = modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
-  } else {
-    OperationOptions optionsCopy = options;
-    f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
-  }
-  return addTracking(std::move(f), [=](OperationResult&& opRes) {
-    events::ReplaceDocument(vocbase().name(), cname, newValue, opRes.options,
-                            opRes.errorNumber());
-    return std::move(opRes);
-  });
+  return replaceInternal(cname, newValue, options, Api::Asynchronous);
 }
 
 /// @brief replace one or multiple documents in a collection, local
@@ -1560,31 +1393,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 Future<OperationResult> transaction::Methods::removeAsync(std::string const& cname,
                                                           VPackSlice value,
                                                           OperationOptions const& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  if (!value.isObject() && !value.isArray() && !value.isString()) {
-    // must provide a document object or an array of documents
-    events::DeleteDocument(vocbase().name(), cname, value, options,
-                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-  if (value.isArray() && value.length() == 0) {
-    events::DeleteDocument(vocbase().name(), cname, value, options, TRI_ERROR_NO_ERROR);
-    return emptyResult(options);
-  }
-
-  auto f = Future<OperationResult>::makeEmpty();
-  if (_state->isCoordinator()) {
-    f = removeCoordinator(cname, value, options);
-  } else {
-    OperationOptions optionsCopy = options;
-    f = removeLocal(cname, value, optionsCopy);
-  }
-  return addTracking(std::move(f), [=](OperationResult&& opRes) {
-    events::DeleteDocument(vocbase().name(), cname, value, opRes.options,
-                           opRes.errorNumber());
-    return std::move(opRes);
-  });
+  return removeInternal(cname, value, options, Api::Asynchronous);
 }
 
 /// @brief remove one or multiple documents in a collection, coordinator
@@ -1827,18 +1636,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
 /// @brief remove all documents in a collection
 Future<OperationResult> transaction::Methods::truncateAsync(std::string const& collectionName,
                                                             OperationOptions const& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  OperationOptions optionsCopy = options;
-  auto cb = [this, collectionName](OperationResult res) {
-    events::TruncateCollection(vocbase().name(), collectionName, res);
-    return res;
-  };
-
-  if (_state->isCoordinator()) {
-    return truncateCoordinator(collectionName, optionsCopy).thenValue(cb);
-  }
-  return truncateLocal(collectionName, optionsCopy).thenValue(cb);
+  return truncateInternal(collectionName, options, Api::Asynchronous);
 }
 
 /// @brief remove all documents in a collection, coordinator
@@ -2023,19 +1821,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
 futures::Future<OperationResult> transaction::Methods::countAsync(
     std::string const& collectionName, transaction::CountType type,
     OperationOptions const& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  if (_state->isCoordinator()) {
-    return countCoordinator(collectionName, type, options);
-  }
-
-  if (type == CountType::Detailed) {
-    // we are a single-server... we cannot provide detailed per-shard counts,
-    // so just downgrade the request to a normal request
-    type = CountType::Normal;
-  }
-
-  return futures::makeFuture(countLocal(collectionName, type, options));
+  return countInternal(collectionName, type, options, Api::Asynchronous);
 }
 
 #ifndef USE_ENTERPRISE
@@ -2643,6 +2429,277 @@ Future<Result> Methods::replicateOperations(
     return Result();
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+}
+
+Future<Result> Methods::commitInternal(Api api) {
+  TRI_IF_FAILURE("TransactionCommitFail") { return Result(TRI_ERROR_DEBUG); }
+
+  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
+    // transaction not created or not running
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
+                  "transaction not running on commit");
+  }
+
+  if (!_state->isReadOnlyTransaction()) {
+    auto const& exec = ExecContext::current();
+    bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
+    if (exec.isCanceled() || cancelRW) {
+      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
+    }
+  }
+
+  if (!_mainTransaction) {
+    return futures::makeFuture(Result());
+  }
+
+  auto f = futures::makeFuture(Result());
+  if (_state->isRunningInCluster()) {
+    // first commit transaction on subordinate servers
+    f = ClusterTrxMethods::commitTransaction(*this);
+  }
+
+  return std::move(f).thenValue([this](Result res) -> Result {
+    if (res.fail()) {  // do not commit locally
+      LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
+          << "failed to commit on subordinates: '" << res.errorMessage() << "'";
+      return res;
+    }
+
+    res = _state->commitTransaction(this);
+    if (res.ok()) {
+      applyStatusChangeCallbacks(*this, Status::COMMITTED);
+    }
+
+    return res;
+  });
+}
+
+Future<Result> Methods::abortInternal(Api api) {
+  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
+    // transaction not created or not running
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
+                  "transaction not running on abort");
+  }
+
+  if (!_mainTransaction) {
+    return futures::makeFuture(Result());
+  }
+
+  auto f = futures::makeFuture(Result());
+  if (_state->isRunningInCluster()) {
+    // first commit transaction on subordinate servers
+    f = ClusterTrxMethods::abortTransaction(*this);
+  }
+
+  return std::move(f).thenValue([this](Result res) -> Result {
+    if (res.fail()) {  // do not commit locally
+      LOG_TOPIC("d89a8", WARN, Logger::TRANSACTIONS)
+          << "failed to abort on subordinates: " << res.errorMessage();
+    }  // abort locally anyway
+
+    res = _state->abortTransaction(this);
+    if (res.ok()) {
+      applyStatusChangeCallbacks(*this, Status::ABORTED);
+    }
+
+    return res;
+  });
+}
+
+Future<Result> Methods::finishInternal(Result const& res, Api api) {
+  if (res.ok()) {
+    // there was no previous error, so we'll commit
+    return this->commitAsync();
+  }
+
+  // there was a previous error, so we'll abort
+  return this->abortAsync().thenValue([res](Result ignore) {
+    return res;  // return original error
+  });
+}
+
+Future<OperationResult> Methods::documentInternal(std::string const& cname,
+                                                       VPackSlice value,
+                                                       OperationOptions& options, Api api) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  if (!value.isObject() && !value.isArray()) {
+    // must provide a document object or an array of documents
+    events::ReadDocument(vocbase().name(), cname, value, options,
+                         TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  if (_state->isCoordinator()) {
+    return addTracking(documentCoordinator(cname, value, options),
+                       [=](OperationResult&& opRes) {
+                         events::ReadDocument(vocbase().name(), cname, value,
+                                              opRes.options, opRes.errorNumber());
+                         return std::move(opRes);
+                       });
+  }
+  return documentLocal(cname, value, options);
+}
+
+Future<OperationResult> Methods::insertInternal(std::string const& cname, VPackSlice value,
+                                                     OperationOptions const& options,
+                                                     Api api) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  if (!value.isObject() && !value.isArray()) {
+    // must provide a document object or an array of documents
+    events::CreateDocument(vocbase().name(), cname, value, options,
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (value.isArray() && value.length() == 0) {
+    events::CreateDocument(vocbase().name(), cname, value, options, TRI_ERROR_NO_ERROR);
+    return emptyResult(options);
+  }
+
+  auto f = Future<OperationResult>::makeEmpty();
+  if (_state->isCoordinator()) {
+    f = insertCoordinator(cname, value, options);
+  } else {
+    OperationOptions optionsCopy = options;
+    f = insertLocal(cname, value, optionsCopy);
+  }
+
+  return addTracking(std::move(f), [=](OperationResult&& opRes) {
+    events::CreateDocument(vocbase().name(), cname,
+                           (opRes.ok() && opRes.options.returnNew) ? opRes.slice() : value,
+                           opRes.options, opRes.errorNumber());
+    return std::move(opRes);
+  });
+}
+
+Future<OperationResult> Methods::updateInternal(std::string const& cname,
+                                                     VPackSlice newValue,
+                                                     OperationOptions const& options,
+                                                     Api api) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  if (!newValue.isObject() && !newValue.isArray()) {
+    // must provide a document object or an array of documents
+    events::ModifyDocument(vocbase().name(), cname, newValue, options,
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (newValue.isArray() && newValue.length() == 0) {
+    events::ModifyDocument(vocbase().name(), cname, newValue, options, TRI_ERROR_NO_ERROR);
+    return emptyResult(options);
+  }
+
+  auto f = Future<OperationResult>::makeEmpty();
+  if (_state->isCoordinator()) {
+    f = modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+  } else {
+    OperationOptions optionsCopy = options;
+    f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+  }
+  return addTracking(std::move(f), [=](OperationResult&& opRes) {
+    events::ModifyDocument(vocbase().name(), cname, newValue, opRes.options,
+                           opRes.errorNumber());
+    return std::move(opRes);
+  });
+}
+
+Future<OperationResult> Methods::replaceInternal(std::string const& cname,
+                                                      VPackSlice newValue,
+                                                      OperationOptions const& options,
+                                                      Api api) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  if (!newValue.isObject() && !newValue.isArray()) {
+    // must provide a document object or an array of documents
+    events::ReplaceDocument(vocbase().name(), cname, newValue, options,
+                            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (newValue.isArray() && newValue.length() == 0) {
+    events::ReplaceDocument(vocbase().name(), cname, newValue, options, TRI_ERROR_NO_ERROR);
+    return futures::makeFuture(emptyResult(options));
+  }
+
+  auto f = Future<OperationResult>::makeEmpty();
+  if (_state->isCoordinator()) {
+    f = modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+  } else {
+    OperationOptions optionsCopy = options;
+    f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+  }
+  return addTracking(std::move(f), [=](OperationResult&& opRes) {
+    events::ReplaceDocument(vocbase().name(), cname, newValue, opRes.options,
+                            opRes.errorNumber());
+    return std::move(opRes);
+  });
+}
+
+Future<OperationResult> Methods::removeInternal(std::string const& cname,
+                                                     VPackSlice value,
+                                                     OperationOptions const& options,
+                                                     Api api) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  if (!value.isObject() && !value.isArray() && !value.isString()) {
+    // must provide a document object or an array of documents
+    events::DeleteDocument(vocbase().name(), cname, value, options,
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (value.isArray() && value.length() == 0) {
+    events::DeleteDocument(vocbase().name(), cname, value, options, TRI_ERROR_NO_ERROR);
+    return emptyResult(options);
+  }
+
+  auto f = Future<OperationResult>::makeEmpty();
+  if (_state->isCoordinator()) {
+    f = removeCoordinator(cname, value, options);
+  } else {
+    OperationOptions optionsCopy = options;
+    f = removeLocal(cname, value, optionsCopy);
+  }
+  return addTracking(std::move(f), [=](OperationResult&& opRes) {
+    events::DeleteDocument(vocbase().name(), cname, value, opRes.options,
+                           opRes.errorNumber());
+    return std::move(opRes);
+  });
+}
+
+Future<OperationResult> Methods::truncateInternal(std::string const& collectionName,
+                                                       OperationOptions const& options,
+                                                       Api api) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  OperationOptions optionsCopy = options;
+  auto cb = [this, collectionName](OperationResult res) {
+    events::TruncateCollection(vocbase().name(), collectionName, res);
+    return res;
+  };
+
+  if (_state->isCoordinator()) {
+    return truncateCoordinator(collectionName, optionsCopy).thenValue(cb);
+  }
+  return truncateLocal(collectionName, optionsCopy).thenValue(cb);
+}
+
+futures::Future<OperationResult> Methods::countInternal(std::string const& collectionName,
+                                                             CountType type,
+                                                             OperationOptions const& options,
+                                                             Api api) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  if (_state->isCoordinator()) {
+    return countCoordinator(collectionName, type, options);
+  }
+
+  if (type == CountType::Detailed) {
+    // we are a single-server... we cannot provide detailed per-shard counts,
+    // so just downgrade the request to a normal request
+    type = CountType::Normal;
+  }
+
+  return futures::makeFuture(countLocal(collectionName, type, options));
 }
 
 #ifndef USE_ENTERPRISE

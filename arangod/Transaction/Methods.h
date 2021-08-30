@@ -101,6 +101,11 @@ class Methods {
 
   Methods& operator=(Methods const&) = delete;
 
+  enum class Api {
+    Asynchronous,
+    Synchronous
+  };
+
  public:
   
   /// @brief create the transaction
@@ -458,6 +463,34 @@ class Methods {
 
   Future<OperationResult> truncateLocal(std::string const& collectionName,
                                         OperationOptions& options);
+
+  // The internal methods distinguish between the synchronous and asynchronous
+  // APIs via an additional parameter, so `skipScheduler` can be set for network
+  // requests.
+  // TODO Note that currently, the code was just moved from the async methods,
+  //      and no code has yet been changed.
+
+  auto commitInternal(Api api) -> Future<Result>;
+  auto abortInternal(Api api) -> Future<Result>;
+  auto finishInternal(Result const& res, Api api) -> Future<Result>;
+  // TODO document() is ENTERPRISE_VIRT, but documentAsync() is not.
+  //      should this be?
+  auto documentInternal(std::string const& collectionName, VPackSlice value,
+                        OperationOptions& options, Api api) -> Future<OperationResult>;
+  auto insertInternal(std::string const& collectionName, VPackSlice value,
+                      OperationOptions const& options, Api api) -> Future<OperationResult>;
+  auto updateInternal(std::string const& collectionName, VPackSlice updateValue,
+                      OperationOptions const& options, Api api) -> Future<OperationResult>;
+  auto replaceInternal(std::string const& collectionName, VPackSlice replaceValue,
+                       OperationOptions const& options, Api api) -> Future<OperationResult>;
+  auto removeInternal(std::string const& collectionName, VPackSlice value,
+                      OperationOptions const& options, Api api) -> Future<OperationResult>;
+  auto truncateInternal(std::string const& collectionName, OperationOptions const& options,
+                        Api api) -> Future<OperationResult>;
+  // TODO count() and countAsync() are virtual. Should this be virtual instead?
+  auto countInternal(std::string const& collectionName, CountType type,
+                     OperationOptions const& options, Api api)
+      -> futures::Future<OperationResult>;
 
  protected:
   /// @brief return the transaction collection for a document collection
