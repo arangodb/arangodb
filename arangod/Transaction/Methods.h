@@ -461,7 +461,7 @@ class Methods {
   auto abortInternal(Api api) -> Future<Result>;
   auto finishInternal(Result const& res, Api api) -> Future<Result>;
   // TODO document() is ENTERPRISE_VIRT, but documentAsync() is not.
-  //      should this be?
+  //      Instead, make documentInternal() virtual (or ENTERPRISE_VIRT, whatever).
   auto documentInternal(std::string const& cname, VPackSlice value,
                         OperationOptions const& options, Api api) -> Future<OperationResult>;
   auto insertInternal(std::string const& collectionName, VPackSlice value,
@@ -474,7 +474,8 @@ class Methods {
                       OperationOptions const& options, Api api) -> Future<OperationResult>;
   auto truncateInternal(std::string const& collectionName, OperationOptions const& options,
                         Api api) -> Future<OperationResult>;
-  // TODO count() and countAsync() are virtual. Should this be virtual instead?
+  // TODO count() and countAsync() are currently virtual.
+  //      Make countInternal() virtual instead.
   auto countInternal(std::string const& collectionName, CountType type,
                      OperationOptions const& options, Api api)
       -> futures::Future<OperationResult>;
