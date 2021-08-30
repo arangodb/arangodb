@@ -473,7 +473,7 @@ void visit(
     const irs::by_granular_range::options_type::range_type& rng,
     Visitor& visitor) {
 
-  auto terms = reader.iterator();
+  auto terms = reader.iterator(irs::SeekMode::NORMAL);
 
   if (IRS_UNLIKELY(!terms) || !terms->next()) {
     return; // no terms to collect

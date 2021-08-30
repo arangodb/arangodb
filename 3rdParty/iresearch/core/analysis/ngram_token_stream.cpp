@@ -319,9 +319,8 @@ namespace analysis {
 
 template<irs::analysis::ngram_token_stream_base::InputType StreamType>
 /*static*/ analyzer::ptr ngram_token_stream<StreamType>::make(
-    const ngram_token_stream_base::Options& options
-) {
-  return std::make_shared<ngram_token_stream<StreamType>>(options);
+    const ngram_token_stream_base::Options& options) {
+  return std::make_unique<ngram_token_stream<StreamType>>(options);
 }
 
 /*static*/ void ngram_token_stream_base::init() {

@@ -48,9 +48,7 @@ class empty_analyzer final
   virtual bool reset(const irs::string_ref&) override { return false; }
 };
 
-empty_analyzer EMPTY_ANALYZER;
-
-using  options_normalize_t = std::vector<std::pair<std::string, std::string>>;
+using options_normalize_t = std::vector<std::pair<std::string, std::string>>;
 
 template<typename T>
 bool parse_vpack_options(const VPackSlice slice, T& options) {
@@ -224,7 +222,8 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
 irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   irs::analysis::pipeline_token_stream::options_t options;
   if (parse_vpack_options(slice, options)) {
-    return std::make_shared<irs::analysis::pipeline_token_stream>(std::move(options));
+    return irs::memory::make_unique<irs::analysis::pipeline_token_stream>(
+      std::move(options));
   } else {
     return nullptr;
   }
@@ -318,7 +317,7 @@ pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& 
     } {
   const auto track_offset = irs::get<offset>(*this) != nullptr;
   pipeline_.reserve(options.size());
-  for (auto p : options) {
+  for (auto& p : options) {
     assert(p);
     pipeline_.emplace_back(std::move(p), track_offset);
   }
@@ -405,19 +404,19 @@ bool pipeline_token_stream::reset(const string_ref& data) {
 }
 
 pipeline_token_stream::sub_analyzer_t::sub_analyzer_t(
-    const irs::analysis::analyzer::ptr& a,
+    irs::analysis::analyzer::ptr a,
     bool track_offset)
   : term(irs::get<irs::term_attribute>(*a)),
     inc(irs::get<irs::increment>(*a)),
     offs(track_offset ? irs::get<irs::offset>(*a) : &NO_OFFSET),
-    analyzer(a) {
+    analyzer(std::move(a)) {
   assert(inc);
   assert(term);
 }
 
 pipeline_token_stream::sub_analyzer_t::sub_analyzer_t()
   : term(nullptr), inc(nullptr), offs(nullptr),
-    analyzer(irs::analysis::analyzer::ptr(), &EMPTY_ANALYZER) { }
+    analyzer(memory::make_unique<empty_analyzer>()) { }
 
 } // namespace analysis
 } // namespace iresearch

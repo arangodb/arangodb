@@ -84,7 +84,7 @@ bool parse_vpack_options(const VPackSlice slice, std::locale& locale) {
 analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   std::locale locale;
   if (parse_vpack_options(slice, locale)) {
-    return memory::make_shared<analysis::text_token_stemming_stream>(locale);
+    return memory::make_unique<analysis::text_token_stemming_stream>(locale);
   } else {
     return nullptr;
   }
@@ -177,7 +177,7 @@ analysis::analyzer::ptr make_text(const string_ref& args) {
   try {
     std::locale locale;
     if (locale_utils::icu_locale(args, locale)) {
-      return memory::make_shared<analysis::text_token_stemming_stream>(locale);
+      return memory::make_unique<analysis::text_token_stemming_stream>(locale);
     }
   } catch (...) {
     std::string err_msg = static_cast<std::string>(args);

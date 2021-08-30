@@ -95,7 +95,7 @@ TEST(token_stopwords_stream_tests, test_load) {
     irs::string_ref data0("abc");
     irs::string_ref data1("ghi");
 
-    auto testFunc = [](const irs::string_ref& data0, const irs::string_ref& data1, irs::analysis::analyzer::ptr stream) {
+    auto testFunc = [](const irs::string_ref& data0, const irs::string_ref& data1, irs::analysis::analyzer* stream) {
       ASSERT_NE(nullptr, stream);
       ASSERT_TRUE(stream->reset(data0));
       ASSERT_FALSE(stream->next());
@@ -110,15 +110,18 @@ TEST(token_stopwords_stream_tests, test_load) {
       ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
       ASSERT_FALSE(stream->next());
     };
-    auto stream = irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "[ \"abc\", \"646566\", \"6D6e6F\" ]");
-    testFunc(data0, data1, stream);
+    auto stream = irs::analysis::analyzers::get(
+      "stopwords", irs::type<irs::text_format::json>::get(), "[ \"abc\", \"646566\", \"6D6e6F\" ]");
+    testFunc(data0, data1, stream.get());
 
     // check with another order of mask
-    auto stream2 = irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "[ \"6D6e6F\", \"abc\", \"646566\" ]");
-    testFunc(data0, data1, stream2);
+    auto stream2 = irs::analysis::analyzers::get(
+      "stopwords", irs::type<irs::text_format::json>::get(), "[ \"6D6e6F\", \"abc\", \"646566\" ]");
+    testFunc(data0, data1, stream2.get());
 
-    auto streamFromJsonObjest = irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "{\"stopwords\":[ \"abc\", \"646566\", \"6D6e6F\" ]}");
-    testFunc(data0, data1, streamFromJsonObjest);
+    auto streamFromJsonObjest = irs::analysis::analyzers::get(
+      "stopwords", irs::type<irs::text_format::json>::get(), "{\"stopwords\":[ \"abc\", \"646566\", \"6D6e6F\" ]}");
+    testFunc(data0, data1, streamFromJsonObjest.get());
   }
 
   // load jSON object (mask string hex)
@@ -126,7 +129,7 @@ TEST(token_stopwords_stream_tests, test_load) {
     irs::string_ref data0("abc");
     irs::string_ref data1("646566");
 
-    auto testFunc = [](const irs::string_ref& data0, const irs::string_ref& data1, irs::analysis::analyzer::ptr stream) {
+    auto testFunc = [](const irs::string_ref& data0, const irs::string_ref& data1, irs::analysis::analyzer* stream) {
       ASSERT_NE(nullptr, stream);
       ASSERT_TRUE(stream->reset(data0));
       ASSERT_FALSE(stream->next());
@@ -141,9 +144,10 @@ TEST(token_stopwords_stream_tests, test_load) {
       ASSERT_EQ("646566", irs::ref_cast<char>(term->value));
       ASSERT_FALSE(stream->next());
     };
-    auto streamFromJsonObjest = irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "{\"stopwords\":[ \"616263\", \"6D6e6F\" ], \"hex\":true}");
+    auto streamFromJsonObjest = irs::analysis::analyzers::get(
+      "stopwords", irs::type<irs::text_format::json>::get(), "{\"stopwords\":[ \"616263\", \"6D6e6F\" ], \"hex\":true}");
     ASSERT_TRUE(streamFromJsonObjest);
-    testFunc(data0, data1, streamFromJsonObjest);
+    testFunc(data0, data1, streamFromJsonObjest.get());
   }
 
   // load jSON invalid
