@@ -1961,7 +1961,7 @@ function BaseTestConfig () {
     },
     
     testTailingWithTooHighSequenceNumber: function () {
-      connectToMaster();
+      connectToLeader();
 
       const dbPrefix = db._name() === '_system' ? '' : '/_db/' + db._name();
 
