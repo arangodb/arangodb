@@ -148,8 +148,8 @@ Result RocksDBSettingsManager::sync(bool force) {
   // only one thread can enter here at a time
 
   // make sure we give up our lock when we exit this function
-  auto guard =
-      scopeGuard([this]() { _syncing.store(false, std::memory_order_release); });
+  auto guard = scopeGuard(
+      [this]() noexcept { _syncing.store(false, std::memory_order_release); });
 
   // need superuser scope to ensure we can sync all collections and keep seq
   // numbers in sync; background index creation will call this function as user,

@@ -2828,7 +2828,7 @@ void arangodb::aql::useIndexesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan
 
   std::unordered_map<ExecutionNodeId, ExecutionNode*> changes;
 
-  auto cleanupChanges = scopeGuard([&changes]() -> void {
+  auto cleanupChanges = scopeGuard([&changes]() noexcept {
     for (auto& v : changes) {
       delete v.second;
     }

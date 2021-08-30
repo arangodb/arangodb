@@ -197,7 +197,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
 
   std::size_t current = 0;
   auto guard = arangodb::scopeGuard(
-      [&current, &stats]() -> void { stats.numDocsRequested += current; });
+      [&current, &stats]() noexcept { stats.numDocsRequested += current; });
   char ridBuffer[arangodb::basics::maxUInt64StringSize];
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response;
   while (current < toFetch.size()) {
@@ -411,10 +411,15 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
     LOG_TOPIC("0a10d", DEBUG, Logger::REPLICATION)
         << "client: getting leader state to dump " << vocbase().name();
-    
-    auto batchCancelation = scopeGuard([this]() {
-      if (!_config.isChild()) {
-        batchFinish();
+
+    auto batchCancelation = scopeGuard([this]() noexcept {
+      try {
+        if (!_config.isChild()) {
+          batchFinish();
+        }
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("432fe", ERR, Logger::REPLICATION)
+            << "Failed to cancel batch: " << ex.what();
       }
     });
 
@@ -1377,8 +1382,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   TransactionId blockerId = context->generateId();
   physical->placeRevisionTreeBlocker(blockerId);
   
-  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
-    physical->removeRevisionTreeBlocker(blockerId);
+  auto blockerGuard = scopeGuard([&]() noexcept {  // remove blocker afterwards
+    try {
+        physical->removeRevisionTreeBlocker(blockerId);
+    } catch(std::exception const& ex) {
+        LOG_TOPIC("e020c", ERR, Logger::REPLICATION) << "Failed to remove revision tree blocker: " << ex.what();
+    }
   });
   std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
   transaction::Options options;
@@ -1416,13 +1425,16 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     return Result(res.errorNumber(),
                   concatT("unable to start transaction: ", res.errorMessage()));
   }
-  auto guard = scopeGuard(
-      [trx = trx.get()]() -> void {
-        if (trx->status() == transaction::Status::RUNNING) {
-          trx->abort();
-        }
-       });
-
+  auto guard = scopeGuard([trx = trx.get()]() noexcept {
+    try {
+      if (trx->status() == transaction::Status::RUNNING) {
+        trx->abort();
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("1a537", ERR, Logger::REPLICATION)
+          << "Failed to abort transaction: " << ex.what();
+    }
+  });
 
   // diff with local tree
   //std::pair<std::size_t, std::size_t> fullRange = treeLeader->range();

@@ -99,7 +99,7 @@ AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
   TRI_ASSERT(_type != UNPROCESSED);
       
   _expressionContext = ctx;
-  auto guard = scopeGuard([this] {
+  auto guard = scopeGuard([this]() noexcept {
     _expressionContext = nullptr;
   });
 

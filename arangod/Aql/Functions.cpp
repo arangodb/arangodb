@@ -8264,7 +8264,7 @@ AqlValue Functions::Apply(ExpressionContext* expressionContext, AstNode const& n
   AqlValue rawParamArray;
   std::vector<bool> mustFree;
 
-  auto guard = scopeGuard([&mustFree, &invokeParams]() {
+  auto guard = scopeGuard([&mustFree, &invokeParams]() noexcept {
     for (size_t i = 0; i < mustFree.size(); ++i) {
       if (mustFree[i]) {
         invokeParams[i].destroy();
@@ -8578,7 +8578,7 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
 
   Result res;
   {
-    arangodb::ScopeGuard guardi([storedLevel, &validator]{
+    arangodb::ScopeGuard guard([storedLevel, &validator]() noexcept {
         validator->setLevel(storedLevel);
     });
 

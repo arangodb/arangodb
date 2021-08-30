@@ -235,7 +235,7 @@ class TtlThread final : public Thread {
     
     // mark ourselves as busy
     _working = true;
-    auto guard = scopeGuard([this]() { _working = false; });
+    auto guard = scopeGuard([this]() noexcept { _working = false; });
   
     LOG_TOPIC("139af", TRACE, Logger::TTL) << "ttl thread work()";
 

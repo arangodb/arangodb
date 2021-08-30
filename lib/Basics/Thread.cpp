@@ -81,7 +81,7 @@ void Thread::startThread(void* arg) {
   LOCAL_THREAD_NAME = ptr->name().c_str();
 
   // make sure we drop our reference when we are finished!
-  auto guard = scopeGuard([ptr]() {
+  auto guard = scopeGuard([ptr]() noexcept {
     LOCAL_THREAD_NAME = nullptr;
     ptr->_state.store(ThreadState::STOPPED);
     ptr->releaseRef();
@@ -331,7 +331,7 @@ void Thread::runMe() {
   }
 }
 
-void Thread::releaseRef() {
+void Thread::releaseRef() noexcept {
   auto refs = _refs.fetch_sub(1) - 1;
   TRI_ASSERT(refs >= 0);
   if (refs == 0 && _deleteOnExit) {

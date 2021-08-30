@@ -31,7 +31,7 @@
 
 // helper macros for creating a capture-all ScopeGuard
 #define TRI_DEFER_BLOCK_INTERNAL(func, objname) \
-  auto objname = arangodb::scopeGuard([&] { func; });
+  auto objname = arangodb::scopeGuard([&]() noexcept { func; });
 
 #define TRI_DEFER_BLOCK(func) \
   TRI_DEFER_BLOCK_INTERNAL(func, SCOPE_GUARD_TOKEN_PASTE(autoScopeGuardObj, __LINE__))
@@ -47,6 +47,7 @@ class ScopeGuard {
  public:
   // prevent empty construction
   ScopeGuard() = delete;
+  static_assert(std::is_nothrow_invocable_r_v<void, T>, "lambda passed to scope guard is not noexcept");
 
   // prevent copying
   ScopeGuard(ScopeGuard const&) = delete;

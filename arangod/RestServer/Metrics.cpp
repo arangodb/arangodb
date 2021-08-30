@@ -58,7 +58,7 @@ std::string const& Metric::help() const { return _help; }
 std::string const& Metric::name() const { return _name; }
 std::string const& Metric::labels() const { return _labels; }
 
-Counter& Counter::operator++() {
+Counter& Counter::operator++() noexcept {
   count();
   return *this;
 }

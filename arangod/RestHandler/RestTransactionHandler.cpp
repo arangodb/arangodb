@@ -300,7 +300,7 @@ void RestTransactionHandler::executeJSTransaction() {
   }
 
   // register a function to release the V8Context whenever we exit from this scope
-  auto guard = scopeGuard([this]() {
+  auto guard = scopeGuard([this]() noexcept {
     WRITE_LOCKER(lock, _lock);
     if (_v8Context != nullptr) {
       server().getFeature<V8DealerFeature>().exitContext(_v8Context);

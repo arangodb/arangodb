@@ -198,7 +198,7 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
              _hasEnteredContext == !input.isFirstDataRowInBlock());
 
   enterContext();
-  auto contextGuard = scopeGuard([this]() { exitContext(); });
+  auto contextGuard = scopeGuard([this]() noexcept { exitContext(); });
 
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!

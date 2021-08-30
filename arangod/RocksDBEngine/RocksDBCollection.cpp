@@ -382,7 +382,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   }
 
   _numIndexCreations.fetch_add(1, std::memory_order_release);
-  auto colGuard = scopeGuard([&] {
+  auto colGuard = scopeGuard([&]() noexcept {
     _numIndexCreations.fetch_sub(1, std::memory_order_release);
     vocbase.release();
   });
@@ -660,7 +660,7 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
   RocksDBReplicationManager* manager = engine.replicationManager();
   RocksDBReplicationContext* ctx = batchId == 0 ? nullptr : manager->find(batchId);
-  auto guard = scopeGuard([manager, ctx]() -> void {
+  auto guard = scopeGuard([manager, ctx]() noexcept {
     if (ctx) {
       manager->release(ctx);
     }

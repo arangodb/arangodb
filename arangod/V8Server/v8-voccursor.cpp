@@ -336,7 +336,7 @@ struct V8Cursor final {
     Cursor* cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
     // a soft shutdown will throw here!
  
-    arangodb::ScopeGuard releaseCursorGuard([&]() {
+    arangodb::ScopeGuard releaseCursorGuard([&]() noexcept {
       cc->release();
     });
     // args.Holder() is supposedly better than args.This()

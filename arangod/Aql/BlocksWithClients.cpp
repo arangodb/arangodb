@@ -161,7 +161,7 @@ auto BlocksWithClientsImpl<Executor>::executeForClient(AqlCallStack stack,
     _executor.acquireLock();
   }
   
-  auto guard = scopeGuard([this]() {
+  auto guard = scopeGuard([this]() noexcept {
     if constexpr (std::is_same<MutexExecutor, Executor>::value) {
       _executor.releaseLock();
     } else {

@@ -70,7 +70,7 @@ class Counter : public Metric {
   Counter(Counter const&) = delete;
   ~Counter();
   std::ostream& print (std::ostream&) const;
-  Counter& operator++();
+  Counter& operator++() noexcept;
   Counter& operator++(int);
   Counter& operator+=(uint64_t const&);
   Counter& operator=(uint64_t const&);

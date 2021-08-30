@@ -1371,7 +1371,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
 
   // Only one thread is allowed to call commit
   if (errorCode == TRI_ERROR_NO_ERROR) {
-    ScopeGuard guard([this](){
+    ScopeGuard guard([this]() noexcept {
       // If we exit here we need to throw the error.
       // The caller will handle the error and will call this method
       // again using an errorCode != NO_ERROR.

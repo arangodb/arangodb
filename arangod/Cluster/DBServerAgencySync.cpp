@@ -85,7 +85,7 @@ Result DBServerAgencySync::getLocalCollections(
       continue;
     }
     TRI_vocbase_t& vocbase = *tmp;
-    auto unuse = scopeGuard([&vocbase] { vocbase.release(); });
+    auto unuse = scopeGuard([&vocbase]() noexcept { vocbase.release(); });
 
     auto [it, created] =
       databases.try_emplace(dbname, std::make_shared<VPackBuilder>());
