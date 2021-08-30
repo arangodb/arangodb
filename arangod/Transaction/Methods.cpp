@@ -2509,11 +2509,11 @@ Future<Result> Methods::abortInternal(Api api) {
 Future<Result> Methods::finishInternal(Result const& res, Api api) {
   if (res.ok()) {
     // there was no previous error, so we'll commit
-    return this->commitAsync();
+    return this->commitInternal(api);
   }
 
   // there was a previous error, so we'll abort
-  return this->abortAsync().thenValue([res](Result ignore) {
+  return this->abortInternal(api).thenValue([res](Result const& ignore) {
     return res;  // return original error
   });
 }
