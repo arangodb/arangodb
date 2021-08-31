@@ -202,7 +202,7 @@ AqlValueGuard SubqueryEndExecutor::Accumulator::stealValue(AqlValue& result) {
 
   // Call reset *after* AqlValueGuard is constructed, so when an exception is
   // thrown, the ValueGuard can free the AqlValue.
-  TRI_DEFER(reset());
+  auto sg = arangodb::scopeGuard([&]() noexcept { reset(); });
 
   return AqlValueGuard{result, true};
 }

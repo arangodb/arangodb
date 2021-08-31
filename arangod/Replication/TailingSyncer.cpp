@@ -1092,7 +1092,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
       _analyzersModified.clear();
     }
   };
-  TRI_DEFER(reloader());
+  auto sg = arangodb::scopeGuard([&]() noexcept { reloader(); });
 
   StringBuffer& data = response->getBody();
   char const* p = data.begin();

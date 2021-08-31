@@ -945,7 +945,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
 
     auto old = v8g->_expressionContext;
     v8g->_expressionContext = _expressionContext;
-    TRI_DEFER(v8g->_expressionContext = old);
+    auto sg = arangodb::scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
 
     std::string jsName;
     size_t const n = member->numMembers();

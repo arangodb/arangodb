@@ -334,7 +334,7 @@ void TRI_vocbase_t::registerCollection(bool doLock,
                                  _dataSourceLockWriteOwner, doLock);
 
     checkCollectionInvariants();
-    TRI_DEFER(checkCollectionInvariants());
+    auto sg = arangodb::scopeGuard([&]() noexcept { checkCollectionInvariants(); });
 
     // check name
     auto it = _dataSourceByName.try_emplace(name, collection);

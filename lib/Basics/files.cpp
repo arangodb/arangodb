@@ -1422,7 +1422,7 @@ ErrorCode TRI_VerifyLockFile(char const* filename) {
          sizeof(buffer));  // not really necessary, but this shuts up valgrind
   TRI_read_return_t n = TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   if (n <= 0 || n == sizeof(buffer)) {
     return TRI_ERROR_NO_ERROR;

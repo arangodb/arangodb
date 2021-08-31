@@ -68,7 +68,7 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
     }
   };
 
-  TRI_DEFER(cleanup());
+  auto sg = arangodb::scopeGuard([&]() noexcept { cleanup(); });
 
   std::vector<arangodb::aql::ConditionPart> parts;
   parts.reserve(n);

@@ -777,7 +777,7 @@ Result DumpFeature::runSingleDump(httpclient::SimpleHttpClient& client,
   if (res.fail()) {
     return res;
   }
-  TRI_DEFER(::endBatch(client, "", batchId));
+  auto sg = arangodb::scopeGuard([&]() noexcept { ::endBatch(client, "", batchId); });
 
   // get the cluster inventory
   std::string const url = "/_api/replication/inventory?includeSystem=" +

@@ -1187,7 +1187,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
   size_t failed;
   auto ret = std::make_shared<arangodb::velocypack::Builder>();
   {
-    TRI_DEFER(removeTrxsOngoing(qs));
+    auto sg = arangodb::scopeGuard([&]() noexcept { removeTrxsOngoing(qs); });
     // Note that once the transactions are in our log, we can remove them
     // from the list of ongoing ones, although they might not yet be committed.
     // This is because then, inquire will find them in the log and draw its
@@ -1363,7 +1363,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
 
   {
     addTrxsOngoing(query->slice());  // remember that these are ongoing
-    TRI_DEFER(removeTrxsOngoing(query->slice()));
+    auto sg = arangodb::scopeGuard([&]() noexcept { removeTrxsOngoing(query->slice()); });
     // Note that once the transactions are in our log, we can remove them
     // from the list of ongoing ones, although they might not yet be committed.
     // This is because then, inquire will find them in the log and draw its

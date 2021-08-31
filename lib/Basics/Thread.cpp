@@ -312,7 +312,7 @@ void Thread::markAsStopped() noexcept {
 
 void Thread::runMe() {
   // make sure the thread is marked as stopped under all circumstances
-  TRI_DEFER(markAsStopped());
+  auto sg = arangodb::scopeGuard([&]() noexcept { markAsStopped(); });
 
   try {
     run();

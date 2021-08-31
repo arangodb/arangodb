@@ -1062,7 +1062,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
         // results
 
         AstNode* clone = ast->shallowCopyForModify(inNode);
-        TRI_DEFER(FINALIZE_SUBTREE(clone));
+        auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(clone); });
         // set sortedness bit for the IN operator
         clone->setBoolValue(true);
         // finally adjust the variable inside the IN calculation
@@ -1115,7 +1115,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
     setter->setParent(calculationNode);
 
     AstNode* clone = ast->shallowCopyForModify(inNode);
-    TRI_DEFER(FINALIZE_SUBTREE(clone));
+    auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(clone); });
     // set sortedness bit for the IN operator
     clone->setBoolValue(true);
     // finally adjust the variable inside the IN calculation

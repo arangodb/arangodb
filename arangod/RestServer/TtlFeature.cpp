@@ -260,7 +260,7 @@ class TtlThread final : public Thread {
       }
           
       // make sure we decrease the reference counter later
-      TRI_DEFER(vocbase->release());
+      auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
       
       LOG_TOPIC("ec905", TRACE, Logger::TTL) << "TTL thread going to process database '" << vocbase->name() << "'";
 

@@ -279,7 +279,7 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   TRI_ASSERT(vocbase != nullptr);
   TRI_ASSERT(!vocbase->isDangling());
 
-  TRI_DEFER(vocbase->release());
+  auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
 
   Result res = grantCurrentUser(info, 10);
   if (!res.ok()) {

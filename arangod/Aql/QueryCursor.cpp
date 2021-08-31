@@ -217,11 +217,11 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder)
   }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  TRI_DEFER(
+  ScopeGuard sg([&]() noexcept {
     TRI_IF_FAILURE("QueryCursor::directKillAfterQueryIsGettingDumped") {
       debugKillQuery();
     }
-  )
+  });
 #endif
 
   TRI_ASSERT(batchSize() > 0);
@@ -279,11 +279,11 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
     debugKillQuery();
   }
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  TRI_DEFER(
+  ScopeGuard sg([&]() noexcept {
     TRI_IF_FAILURE("QueryCursor::directKillAfterQueryIsGettingDumpedSynced") {
       debugKillQuery();
     }
-  )
+  });
 #endif
   TRI_ASSERT(batchSize() > 0);
   LOG_TOPIC("9dada", TRACE, Logger::QUERIES)

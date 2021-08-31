@@ -514,7 +514,7 @@ Result DatabaseInitialSyncer::getInventory(VPackBuilder& builder) {
     return r;
   }
 
-  TRI_DEFER(batchFinish());
+  auto sg = arangodb::scopeGuard([&]() noexcept { batchFinish(); });
 
   // caller did not supply an inventory, we need to fetch it
   return fetchInventory(builder);
@@ -1214,7 +1214,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
     });
   };
 
-  TRI_DEFER(shutdown());
+  auto sg = arangodb::scopeGuard([&]() noexcept { shutdown(); });
 
   VPackSlice const count = slice.get("count");
 

@@ -1115,7 +1115,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, AstNode const& n
 
     auto old = v8g->_expressionContext;
     v8g->_expressionContext = expressionContext;
-    TRI_DEFER(v8g->_expressionContext = old);
+    auto sg = arangodb::scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
 
     VPackOptions const& options = trx.vpackOptions();
     std::string jsName;

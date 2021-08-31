@@ -655,7 +655,7 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
   if (wasFinalizedAlready) {                                                               \
     (n)->flags = ((n)->flags & ~arangodb::aql::AstNodeFlagType::FLAG_FINALIZED);           \
   }                                                                                        \
-  TRI_DEFER(FINALIZE_SUBTREE_CONDITIONAL(n, wasFinalizedAlready));
+  auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE_CONDITIONAL(n, wasFinalizedAlready); });
 #else
 #define FINALIZE_SUBTREE(n) \
   while (0) {               \

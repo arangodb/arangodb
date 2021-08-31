@@ -325,7 +325,7 @@ arangodb::Result translateWindowsError(DWORD error) {
 
 std::string windowsErrorToUTF8(DWORD errorNum) {
   LPWSTR buffer = nullptr;
-  TRI_DEFER(::LocalFree(buffer);)
+  auto sg = arangodb::scopeGuard([&]() noexcept { ::LocalFree(buffer; });)
   size_t size =
       FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
                          FORMAT_MESSAGE_IGNORE_INSERTS,

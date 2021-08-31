@@ -123,7 +123,7 @@ RestStatus RestCursorHandler::continueExecute() {
 }
 
 void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
-  TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
+  auto sg = arangodb::scopeGuard([&]() noexcept { RestVocbaseBaseHandler::shutdownExecute(isFinalized); });
 
   // request not done yet
   if (!isFinalized) {

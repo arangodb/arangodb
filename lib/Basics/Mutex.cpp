@@ -49,7 +49,7 @@ using namespace arangodb;
 Mutex::Mutex() noexcept
     : _mutex(), _holder((std::numeric_limits<decltype(_holder)>::max)()) {
 #else
-Mutex::Mutex() : _mutex() {
+Mutex::Mutex() noexcept : _mutex() {
 #endif
   pthread_mutexattr_init(&_attributes);
 
