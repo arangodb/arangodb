@@ -143,8 +143,8 @@ struct IResearchLinkHelper {
     std::unordered_set<DataSourceId>& modified,
     LogicalView& view,
     velocypack::Slice links,
-    std::unordered_set<DataSourceId> const& stale = {},
-    LinkVersion linkVersion = LinkVersion::MAX);
+    LinkVersion linkVersion,
+    std::unordered_set<DataSourceId> const& stale = {});
 
  private:
   IResearchLinkHelper() = delete;

@@ -857,8 +857,8 @@ namespace iresearch {
     std::unordered_set<DataSourceId>& modified,
     LogicalView& view,
     velocypack::Slice links,
-    std::unordered_set<DataSourceId> const& stale /*= {}*/,
-    LinkVersion linkVersion /*= LinkVersion::MAX*/) {
+    LinkVersion defaultVersion,
+    std::unordered_set<DataSourceId> const& stale /*= {}*/) {
   LOG_TOPIC("00bf9", TRACE, arangodb::iresearch::TOPIC)
       << "beginning IResearchLinkHelper::updateLinks";
   try {
@@ -866,13 +866,13 @@ namespace iresearch {
       return modifyLinks<IResearchViewCoordinator>(
         modified,
         LogicalView::cast<IResearchViewCoordinator>(view),
-        links, linkVersion, stale);
+        links, defaultVersion, stale);
     }
 
     return modifyLinks<IResearchView>(
       modified,
       LogicalView::cast<IResearchView>(view),
-      links, linkVersion, stale);
+      links, defaultVersion, stale);
   } catch (basics::Exception& e) {
     LOG_TOPIC("72dde", WARN, arangodb::iresearch::TOPIC)
       << "caught exception while updating links for arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();

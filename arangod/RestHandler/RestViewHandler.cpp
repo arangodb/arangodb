@@ -216,7 +216,7 @@ void RestViewHandler::createView() {
     }
 
     LogicalView::ptr view;
-    res = LogicalView::create(view, _vocbase, body);
+    res = LogicalView::create(view, _vocbase, body, LogicalView::RequestContext::User);
 
     if (!res.ok()) {
       generateError(res);
@@ -372,7 +372,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     }
   }
 
-  auto result = view->properties(body, partialUpdate);
+  auto result = view->properties(body, LogicalView::RequestContext::User, partialUpdate);
 
   if (!result.ok()) {
     generateError(result);

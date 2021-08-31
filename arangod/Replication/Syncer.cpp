@@ -943,7 +943,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
       }
     }
 
-    return view->properties(slice, false);  // always a full-update
+    // always a full-update
+    return view->properties(slice, LogicalView::RequestContext::Internal, false);
   }
 
   // check for name conflicts
@@ -966,7 +967,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
 
   try {
     LogicalView::ptr empty;  // ignore result
-    return LogicalView::create(empty, vocbase, merged.slice());
+    return LogicalView::create(
+      empty, vocbase, merged.slice(), LogicalView::RequestContext::Internal);
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

@@ -74,7 +74,7 @@ using irs::async_utils::read_write_mutex;
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
   virtual Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                        velocypack::Slice const& definition) const override {
+                        VPackSlice definition, RequestContext ctx) const override {
     if (!vocbase.server().hasFeature<ClusterFeature>()) {
       return Result(
           TRI_ERROR_INTERNAL,
@@ -84,12 +84,12 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
     }
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-    auto& properties = definition.isObject()
-                           ? definition
-                           : velocypack::Slice::emptyObjectSlice();  // if no 'info' then assume defaults
+    auto properties = definition.isObject()
+      ? definition
+      : velocypack::Slice::emptyObjectSlice(); // if no 'info' then assume defaults
     auto links = properties.hasKey(StaticStrings::LinksField)
-                     ? properties.get(StaticStrings::LinksField)
-                     : velocypack::Slice::emptyObjectSlice();
+      ? properties.get(StaticStrings::LinksField)
+      : velocypack::Slice::emptyObjectSlice();
     auto res = IResearchLinkHelper::validateLinks(vocbase, links);
 
     if (!res.ok()) {
@@ -104,12 +104,17 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
       return res;
     }
 
+    // link version in case if it's not specified in a definition
+    LinkVersion const defaultVersion = ctx == RequestContext::Internal
+      ? LinkVersion::MIN
+      : LinkVersion::MAX;
+
     // create links on a best-effor basis
     // link creation failure does not cause view creation failure
     try {
       std::unordered_set<DataSourceId> collections;
 
-      res = IResearchLinkHelper::updateLinks(collections, *impl, links);
+      res = IResearchLinkHelper::updateLinks(collections, *impl, links, defaultVersion);
 
       if (!res.ok()) {
         LOG_TOPIC("39d88", WARN, iresearch::TOPIC)
@@ -147,7 +152,7 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
 
   virtual Result instantiate(LogicalView::ptr& view,
                              TRI_vocbase_t& vocbase,
-                             velocypack::Slice const& definition) const override {
+                             VPackSlice definition) const override {
     std::string error;
     auto impl = std::shared_ptr<IResearchViewCoordinator>(
         new IResearchViewCoordinator(vocbase, definition));
@@ -357,8 +362,10 @@ bool IResearchViewCoordinator::visitCollections(CollectionVisitor const& visitor
   return true;
 }
 
-Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
-                                                      bool partialUpdate) {
+Result IResearchViewCoordinator::properties(
+    velocypack::Slice slice,
+    RequestContext ctx,
+    bool partialUpdate) {
   if (!vocbase().server().hasFeature<ClusterFeature>()) {
     return Result(TRI_ERROR_INTERNAL,
                             std::string("failure to get storage engine while "
@@ -369,8 +376,8 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
 
   try {
     auto links = slice.hasKey(StaticStrings::LinksField)
-                     ? slice.get(StaticStrings::LinksField)
-                     : velocypack::Slice::emptyObjectSlice();
+      ? slice.get(StaticStrings::LinksField)
+      : velocypack::Slice::emptyObjectSlice();
     auto res = IResearchLinkHelper::validateLinks(vocbase(), links);
 
     if (!res.ok()) {
@@ -459,14 +466,19 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
       currentLinks.close();
     }
 
+    // link version in case if it's not specified in a definition
+    LinkVersion const defaultVersion = ctx == RequestContext::Internal
+      ? LinkVersion::MIN
+      : LinkVersion::MAX;
+
     std::unordered_set<DataSourceId> collections;
 
     if (partialUpdate) {
-      return IResearchLinkHelper::updateLinks(collections, *this, links);
+      return IResearchLinkHelper::updateLinks(collections, *this, links, defaultVersion);
     }
 
     return IResearchLinkHelper::updateLinks(
-      collections, *this, links, currentCids);
+      collections, *this, links, defaultVersion, currentCids);
   } catch (basics::Exception& e) {
     LOG_TOPIC("714b3", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
@@ -534,6 +546,7 @@ Result IResearchViewCoordinator::dropImpl() {
       collections,
       *this,
       velocypack::Slice::emptyObjectSlice(),
+      LinkVersion::MAX, // we don't care of link version due to removal only request
       currentCids);
 
     if (!res.ok()) {
