@@ -443,11 +443,8 @@ class Methods {
   // The internal methods distinguish between the synchronous and asynchronous
   // APIs via an additional parameter, so `skipScheduler` can be set for network
   // requests.
-  // TODO set skipScheduler: true for network requests
   auto commitInternal(MethodsApi api) -> Future<Result>;
-  // TODO set skipScheduler: true for network requests
   auto abortInternal(MethodsApi api) -> Future<Result>;
-  // TODO set skipScheduler: true for network requests
   auto finishInternal(Result const& res, MethodsApi api) -> Future<Result>;
   // is virtual for IgnoreNoAccessMethods
   // TODO set skipScheduler: true for network requests
@@ -528,4 +525,3 @@ class Methods {
 
 }  // namespace transaction
 }  // namespace arangodb
-

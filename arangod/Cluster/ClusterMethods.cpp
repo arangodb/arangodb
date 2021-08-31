@@ -154,7 +154,8 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
       leaders.emplace(leader);
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(state, leaders);
+  return ClusterTrxMethods::beginTransactionOnLeaders(state, leaders,
+                                                      transaction::MethodsApi::Asynchronous);
 }
 
 // begin transaction on shard leaders
@@ -168,7 +169,8 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap 
       leaders.emplace(srv);
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders);
+  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders,
+                                                      transaction::MethodsApi::Asynchronous);
 }
 
 /// @brief add the correct header for the shard

@@ -2492,7 +2492,7 @@ Future<Result> Methods::commitInternal(MethodsApi api) {
   auto f = futures::makeFuture(Result());
   if (_state->isRunningInCluster()) {
     // first commit transaction on subordinate servers
-    f = ClusterTrxMethods::commitTransaction(*this);
+    f = ClusterTrxMethods::commitTransaction(*this, api);
   }
 
   return std::move(f).thenValue([this](Result res) -> Result {
@@ -2525,7 +2525,7 @@ Future<Result> Methods::abortInternal(MethodsApi api) {
   auto f = futures::makeFuture(Result());
   if (_state->isRunningInCluster()) {
     // first commit transaction on subordinate servers
-    f = ClusterTrxMethods::abortTransaction(*this);
+    f = ClusterTrxMethods::abortTransaction(*this, api);
   }
 
   return std::move(f).thenValue([this](Result res) -> Result {
