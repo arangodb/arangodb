@@ -103,7 +103,8 @@ struct TestIndex : public arangodb::Index {
   std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
       arangodb::transaction::Methods* /* trx */, arangodb::aql::AstNode const* /* node */,
       arangodb::aql::Variable const* /* reference */,
-      arangodb::IndexIteratorOptions const& /* opts */) override {
+      arangodb::IndexIteratorOptions const& /* opts */,
+      arangodb::ReadOwnWrites) override {
     return nullptr;
   }
   void load() override {}

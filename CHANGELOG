@@ -1,9 +1,37 @@
 devel
 -----
 
-* Fix rare case of invalid data could be inserted in the ArangoSearch index if 
-  several clients concurrently inserts data and use custom analyzer
-  with non-string return type
+* Fix internal iterator states after intermediate commits in write
+  transactions. Iterators could point to invalid data after an
+  intermediate commit, producing undefined behavior.
+  
+* Fix read-own-write behavior in different scenarios:
+    - in some cases writes performed by an AQL query could be observed within
+      the same query. This was not intended and is fixed now.
+    - AQL queries in streaming transactions could observe their own writes in
+      even more cases, which could potentially result in an endless loop when
+      the query iterates over the same collection that it is inserting documents
+      into.
+    - UPSERT did not find documents inserted by a previous iteration if the
+      subquery relied on a non-unique secondary index.
+    - disabled intermediate commits for queries with UPSERTs, because
+      intermediate commits can invalidate the internal read-own-write iterator
+      required by UPSERT. Previously, UPSERTs that triggered intermediate
+      commits could have produced unexpected results (e.g., previous inserts
+      that have been committed might not be visible) or even crashes.
+  To achieve the correct read-own-write behavior in streaming transactions, we
+  sometimes have to copy the internal WriteBatch from the underlying RocksDB
+  transaction. In particular, the copy is created whenever an AQL query with
+  modification operations (INSERT/REMOVE/UPDATE/UPSERT/REPLACE) is executed in
+  the streaming transaction. If there have not been any other modifications so
+  far (queries/document operations), then the WriteBatch is empty and creating
+  the copy is essentially a no-op. However, if the transaction already contains
+  a lot of modifications, creating the WriteBatch copy might incur some
+  overhead that can now lead to decreased performance.
+
+* Fix rare case of invalid data that could be inserted into the ArangoSearch 
+  index if several clients concurrently insert data and use custom analyzer
+  with non-string return type.
 
 * Fix a rare shutdown race in RocksDBShaCalculatorThread. 
 
