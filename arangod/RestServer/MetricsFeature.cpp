@@ -85,9 +85,7 @@ void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 }
 
-
 void MetricsFeature::toPrometheus(std::string& result) const {
-
   // minimize reallocs
   result.reserve(32768);
 
@@ -100,10 +98,8 @@ void MetricsFeature::toPrometheus(std::string& result) const {
 
   // StatisticsFeature
   auto& sf = server().getFeature<StatisticsFeature>();
-  if (sf.enabled()) {
-    sf.toPrometheus(result, std::chrono::duration<double, std::milli>(
-                      std::chrono::system_clock::now().time_since_epoch()).count());
-  }
+  sf.toPrometheus(result, std::chrono::duration<double, std::milli>(
+                    std::chrono::system_clock::now().time_since_epoch()).count());
 
   // RocksDBEngine
   auto es = EngineSelectorFeature::ENGINE;
