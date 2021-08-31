@@ -29,6 +29,10 @@ devel
   a lot of modifications, creating the WriteBatch copy might incur some
   overhead that can now lead to decreased performance.
 
+* Fix rare case of invalid data that could be inserted into the ArangoSearch 
+  index if several clients concurrently insert data and use custom analyzer
+  with non-string return type.
+
 * Fix a rare shutdown race in RocksDBShaCalculatorThread. 
 
 * Added "Analyzers" view to web UI to let manage ArangoSearch analyzers
