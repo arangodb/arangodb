@@ -215,7 +215,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   resultBuilder.openArray();
   
   // We directly read the entire cursor. so batchsize == limit
-  auto iterator = trx.indexScan(collectionName, transaction::Methods::CursorType::ALL);
+  auto iterator = trx.indexScan(collectionName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments(
       [&resultBuilder](LocalDocumentId const&, VPackSlice slice) {

@@ -77,10 +77,11 @@ rocksdb::SequenceNumber RocksDBReadOnlyMethods::GetSequenceNumber() const noexce
   }
   return _db->GetLatestSequenceNumber();
 }
-                 
+
 rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::Slice const& key,
-                                            rocksdb::PinnableSlice* val) {
+                                            rocksdb::PinnableSlice* val,
+                                            ReadOwnWrites) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _readOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
@@ -91,7 +92,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
     rocksdb::ColumnFamilyHandle* cf, ReadOptionsCallback readOptionsCallback) {
   TRI_ASSERT(cf != nullptr);
 
-  rocksdb::ReadOptions opts = _readOptions;
+  ReadOptions opts = _readOptions;
   if (readOptionsCallback) {
     readOptionsCallback(opts);
   }
@@ -103,7 +104,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
   }
   return iterator;
 }
-
+                                                                 
 void RocksDBReadOnlyMethods::releaseSnapshot() {
   if (_readOptions.snapshot != nullptr) {
     _db->ReleaseSnapshot(_readOptions.snapshot); 

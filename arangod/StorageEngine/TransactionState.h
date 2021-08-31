@@ -195,6 +195,9 @@ class TransactionState {
 
   virtual bool hasFailedOperations() const = 0;
 
+  virtual void beginQuery(bool /*isModificationQuery*/) {}
+  virtual void endQuery(bool /*isModificationQuery*/) noexcept {}
+
   TransactionCollection* findCollection(DataSourceId cid) const;
 
   /// @brief make a exclusive transaction, only valid before begin

@@ -26,6 +26,8 @@
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
+#include <cstddef>
+#include <limits>
 
 #include "Basics/Common.h"
 #include "Containers/SmallVector.h"
@@ -42,11 +44,7 @@
 struct TRI_vocbase_t;
 
 namespace rocksdb {
-
-class Transaction;
-class Slice;
 class Iterator;
-
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -91,6 +89,11 @@ class RocksDBTransactionState final : public TransactionState {
   bool hasFailedOperations() const override {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
+
+  void beginQuery(bool isModificationQuery) override;
+  void endQuery(bool isModificationQuery) noexcept override;
+
+  bool iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const;
 
   void prepareOperation(DataSourceId cid, RevisionId rid,
                         TRI_voc_document_operation_e operationType);
@@ -169,6 +172,7 @@ class RocksDBTransactionState final : public TransactionState {
 
   /// @brief cache transaction to unblock banished keys
   cache::Transaction* _cacheTx;
+
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBTransactionMethods> _rocksMethods;
 
