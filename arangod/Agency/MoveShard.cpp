@@ -495,17 +495,15 @@ JOB_STATUS MoveShard::status() {
 
 JOB_STATUS MoveShard::pendingLeader() {
 
-  auto considerTimeout = [&]() -> bool {
-    // Not yet all in sync, consider timeout:
-    std::string timeCreatedString =
-        _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated").first;
-    Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
-    Supervision::TimePoint now(std::chrono::system_clock::now());
-    if (now - timeCreated > std::chrono::duration<double>(43200.0)) {  // 12h
-      abort("MoveShard timed out in pending leader");
-      return true;
+  auto considerCancellation = [&]() -> bool {
+    // Allow for cancellation of shard moves
+    auto [cancel,exists] =
+      _snapshot.hasAsBool(pendingPrefix + _jobId + "/abort");
+    auto cancelled = exists && cancel;
+    if (cancelled) {
+      abort("Killed via API");
     }
-    return false;
+    return cancelled;
   };
 
   // Find the other shards in the same distributeShardsLike group:
@@ -557,9 +555,9 @@ JOB_STATUS MoveShard::pendingLeader() {
                      }
                    });
 
-    // Consider timeout:
+    // Consider cancellation:
     if (done < shardsLikeMe.size()) {
-      if (considerTimeout()) {
+      if (considerCancellation()) {
         return FAILED;
       }
       return PENDING;  // do not act
@@ -624,9 +622,9 @@ JOB_STATUS MoveShard::pendingLeader() {
                      }
                    });
 
-    // Consider timeout:
+    // Consider cancellation:
     if (done < shardsLikeMe.size()) {
-      if (considerTimeout()) {
+      if (considerCancellation()) {
         return FAILED;
       }
       return PENDING;  // do not act!
@@ -753,9 +751,9 @@ JOB_STATUS MoveShard::pendingLeader() {
                      }
                    });
 
-    // Consider timeout:
+    // Consider cancellation:
     if (done < shardsLikeMe.size()) {
-      if (considerTimeout()) {
+      if (considerCancellation()) {
         return FAILED;
       }
       return PENDING;  // do not act!

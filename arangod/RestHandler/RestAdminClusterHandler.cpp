@@ -268,6 +268,7 @@ std::string const RestAdminClusterHandler::ResignLeadership =
     "resignLeadership";
 std::string const RestAdminClusterHandler::MoveShard = "moveShard";
 std::string const RestAdminClusterHandler::QueryJobStatus = "queryAgencyJob";
+std::string const RestAdminClusterHandler::CancelJob = "cancelAgencyJob";
 std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
 std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
 
@@ -307,6 +308,8 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleResignLeadership();
     } else if (command == MoveShard) {
       return handleMoveShard();
+    } else if (command == CancelJob) {
+      return handleCancelJob();
     } else if (command == QueryJobStatus) {
       return handleQueryJobStatus();
     } else if (command == RemoveServer) {
@@ -804,6 +807,120 @@ RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
           }));
 }
 
+RestStatus RestAdminClusterHandler::handleCancelJob() {
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  bool parseSuccess;
+  VPackSlice body = parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return RestStatus::DONE;
+  }
+
+  std::string jobId;
+  if (body.isObject() && body.hasKey("id") && body.get("id").isString()) {
+    jobId = body.get("id").copyString();
+  } else {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "object with key `id`");
+    return RestStatus::DONE;
+  }
+
+  auto targetPath = arangodb::cluster::paths::root()->arango()->target();
+  std::vector<std::string> paths = {
+      targetPath->pending()->job(jobId)->str(),
+      targetPath->failed()->job(jobId)->str(),
+      targetPath->finished()->job(jobId)->str(),
+      targetPath->toDo()->job(jobId)->str(),
+  };
+
+  return waitForFuture(
+    AsyncAgencyComm()
+    .sendTransaction(20s, AgencyReadTransaction{std::move(paths)})
+    .thenValue([this, targetPath, jobId = std::move(jobId)](AsyncAgencyCommResult&& result) {
+      if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+        auto paths = std::vector{
+          targetPath->pending()->job(jobId)->vec(),
+          targetPath->failed()->job(jobId)->vec(),
+          targetPath->finished()->job(jobId)->vec(),
+          targetPath->toDo()->job(jobId)->vec(),
+        };
+
+        for (auto const& path : paths) {
+          VPackSlice job = result.slice().at(0).get(path);
+          if (job.isObject()) {
+            auto name = job.get("name").copyString();
+            if (name != "MoveShard") { // only moveshard may be aborted
+              generateError(Result{400, "Only MoveShard jobs can be aborted"});
+            } else if (path[2] != "Pending" || path[2] != "ToDo") {
+              generateError(Result{400,path[2] + " jobs can no longer be cancelled."});
+            }
+            
+            auto sendTransaction = [&] {
+              return AsyncAgencyComm().setValue(60s, "/Target/" + path[2] + "/" + jobId + "/Cancel", VPackValue(true));
+            };
+            
+            waitForFuture(
+              sendTransaction()
+              .thenValue([this](AsyncAgencyCommResult&& result) {
+                if (!result.ok()) {
+                  if (result.statusCode() == 412) {
+                    generateError(Result{412, "Job is no longer running"});
+                  } else {
+                    generateError(result.asResult());
+                  }
+                } else {
+                  resetResponse(rest::ResponseCode::OK);
+                }
+                return futures::makeFuture();
+              })
+              .thenError<VPackException>([this](VPackException const& e) {
+                generateError(Result{e.errorCode(), e.what()});
+              })
+              .thenError<std::exception>([this](std::exception const& e) {
+                generateError(rest::ResponseCode::SERVER_ERROR,
+                              TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+              }));
+
+            VPackBuffer<uint8_t> payload;
+            {
+              VPackBuilder builder(payload);
+              VPackObjectBuilder ob(&builder);
+              builder.add("job", VPackValue(jobId));
+              builder.add("status", VPackValue("aborted"));
+              builder.add("error", VPackValue(false));
+            }
+            resetResponse(rest::ResponseCode::OK);
+            response()->setPayload(std::move(payload));
+            return;
+          }
+        }
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+      } else {
+        generateError(result.asResult());//  
+      }
+      
+    })
+    .thenError<VPackException>([this](VPackException const& e) {
+      generateError(Result{e.errorCode(), e.what()});
+    })
+    .thenError<std::exception>([this](std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+    }));
+}
+
 RestStatus RestAdminClusterHandler::handleSingleServerJob(std::string const& job) {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
@@ -1150,7 +1267,7 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActive) {
   auto sendTransaction = [&] {
     if (wantToActive) {
       constexpr int timeout = 3600; // 1 hour
-      return AsyncAgencyComm().setValue(60s, maintenancePath, 
+      return AsyncAgencyComm().setValue(60s, maintenancePath,
           VPackValue(timepointToString(
               std::chrono::system_clock::now() + std::chrono::seconds(timeout))), 3600);
     } else {
@@ -1420,12 +1537,12 @@ RestStatus RestAdminClusterHandler::handleNumberOfServers() {
                   "only allowed on coordinators");
     return RestStatus::DONE;
   }
- 
+
   // GET requests are allowed for everyone, unless --server.harden is used.
   // in this case admin privileges are required.
   // PUT requests always require admin privileges
   ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
-  bool const needsAdminPrivileges = 
+  bool const needsAdminPrivileges =
       (request()->requestType() != rest::RequestType::GET || security.isRestApiHardened());
 
   if (needsAdminPrivileges &&

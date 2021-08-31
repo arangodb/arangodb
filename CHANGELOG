@@ -1,6 +1,8 @@
 v3.7.15 (XXXX-XX-XX)
 --------------------
 
+* No runtime limits for shard moves, instead possibility to cancel them.
+
 * Make statistics available in metrics API even if `--server.statistics` is set
   to `false`. This allows clients to fetch some process statistics metrics from
   instances that have statistics aggregation and storage turned off.
