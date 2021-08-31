@@ -1369,7 +1369,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 } // namespace
 
 aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
-  ScopeGuard endQueryGuard([this](){
+  ScopeGuard endQueryGuard([this]() noexcept {
     unregisterQueryInTransactionState();
   });
 

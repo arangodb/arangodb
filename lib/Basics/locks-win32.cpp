@@ -65,7 +65,7 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) noexcept {
   // ...........................................................................
   delay = delay / 1000;
   return SleepConditionVariableCS(&cond->_conditionVariable,
-                                  &cond->_lockWaiters, (DWORD)delay) != 0
+                                  &cond->_lockWaiters, (DWORD)delay) != 0;
 }
 
 /// @brief locks the mutex of a condition variable

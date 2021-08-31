@@ -794,7 +794,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
   // push our current transaction on the stack
   state->beginQuery(true);
-  auto stateGuard = scopeGuard([state]() {
+  auto stateGuard = scopeGuard([state]() noexcept {
     state->endQuery(true);
   });
 
