@@ -33,6 +33,7 @@
 #include "Rest/CommonDefines.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Hints.h"
+#include "Transaction/MethodsApi.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
 #include "Utils/OperationResult.h"
@@ -87,12 +88,6 @@ class TransactionCollection;
 namespace transaction {
 
 class Methods {
- protected:
-  enum class Api {
-    Asynchronous,
-    Synchronous
-  };
-
  public:
   template<typename T>
   using Future = futures::Future<T>;
@@ -449,35 +444,35 @@ class Methods {
   // APIs via an additional parameter, so `skipScheduler` can be set for network
   // requests.
   // TODO set skipScheduler: true for network requests
-  auto commitInternal(Api api) -> Future<Result>;
+  auto commitInternal(MethodsApi api) -> Future<Result>;
   // TODO set skipScheduler: true for network requests
-  auto abortInternal(Api api) -> Future<Result>;
+  auto abortInternal(MethodsApi api) -> Future<Result>;
   // TODO set skipScheduler: true for network requests
-  auto finishInternal(Result const& res, Api api) -> Future<Result>;
+  auto finishInternal(Result const& res, MethodsApi api) -> Future<Result>;
   // is virtual for IgnoreNoAccessMethods
   // TODO set skipScheduler: true for network requests
   ENTERPRISE_VIRT auto documentInternal(std::string const& cname, VPackSlice value,
-                                        OperationOptions const& options, Api api)
+                                        OperationOptions const& options, MethodsApi api)
       -> Future<OperationResult>;
   // TODO set skipScheduler: true for network requests
   auto insertInternal(std::string const& collectionName, VPackSlice value,
-                      OperationOptions const& options, Api api) -> Future<OperationResult>;
+                      OperationOptions const& options, MethodsApi api) -> Future<OperationResult>;
   // TODO set skipScheduler: true for network requests
   auto updateInternal(std::string const& collectionName, VPackSlice updateValue,
-                      OperationOptions const& options, Api api) -> Future<OperationResult>;
+                      OperationOptions const& options, MethodsApi api) -> Future<OperationResult>;
   // TODO set skipScheduler: true for network requests
   auto replaceInternal(std::string const& collectionName, VPackSlice replaceValue,
-                       OperationOptions const& options, Api api) -> Future<OperationResult>;
+                       OperationOptions const& options, MethodsApi api) -> Future<OperationResult>;
   // TODO set skipScheduler: true for network requests
   auto removeInternal(std::string const& collectionName, VPackSlice value,
-                      OperationOptions const& options, Api api) -> Future<OperationResult>;
+                      OperationOptions const& options, MethodsApi api) -> Future<OperationResult>;
   // TODO set skipScheduler: true for network requests
   auto truncateInternal(std::string const& collectionName, OperationOptions const& options,
-                        Api api) -> Future<OperationResult>;
+                        MethodsApi api) -> Future<OperationResult>;
   // is virtual for IgnoreNoAccessMethods
   // TODO set skipScheduler: true for network requests
   ENTERPRISE_VIRT auto countInternal(std::string const& collectionName, CountType type,
-                                     OperationOptions const& options, Api api)
+                                     OperationOptions const& options, MethodsApi api)
       -> futures::Future<OperationResult>;
 
   /// @brief return the transaction collection for a document collection

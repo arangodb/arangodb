@@ -510,17 +510,17 @@ Result transaction::Methods::begin() {
 
 /// @brief commit / finish the transaction
 Future<Result> transaction::Methods::commitAsync() {
-  return commitInternal(Api::Asynchronous);
+  return commitInternal(MethodsApi::Asynchronous);
 }
 
 /// @brief abort the transaction
 Future<Result> transaction::Methods::abortAsync() {
-  return abortInternal(Api::Asynchronous);
+  return abortInternal(MethodsApi::Asynchronous);
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
 Future<Result> transaction::Methods::finishAsync(Result const& res) {
-  return finishInternal(res, Api::Asynchronous);
+  return finishInternal(res, MethodsApi::Asynchronous);
 }
 
 /// @brief return the transaction id
@@ -759,14 +759,14 @@ Future<OperationResult> addTracking(Future<OperationResult>&& f, F&& func) {
 OperationResult Methods::document(std::string const& collectionName,
                                   VPackSlice value,
                                   OperationOptions const& options) {
-  return documentInternal(collectionName, value, options, Api::Synchronous).get();
+  return documentInternal(collectionName, value, options, MethodsApi::Synchronous).get();
 }
 
 /// @brief return one or multiple documents from a collection
 Future<OperationResult> transaction::Methods::documentAsync(std::string const& cname,
                                                             VPackSlice value,
                                                             OperationOptions const& options) {
-  return documentInternal(cname, value, options, Api::Asynchronous);
+  return documentInternal(cname, value, options, MethodsApi::Asynchronous);
 }
 
 /// @brief read one or multiple documents in a collection, coordinator
@@ -872,7 +872,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
 
 OperationResult Methods::insert(std::string const& cname, VPackSlice value,
                                 OperationOptions const& options) {
-  return insertInternal(cname, value, options, Api::Synchronous).get();
+  return insertInternal(cname, value, options, MethodsApi::Synchronous).get();
 }
 
 /// @brief create one or multiple documents in a collection
@@ -881,7 +881,7 @@ OperationResult Methods::insert(std::string const& cname, VPackSlice value,
 Future<OperationResult> transaction::Methods::insertAsync(std::string const& cname,
                                                           VPackSlice value,
                                                           OperationOptions const& options) {
-  return insertInternal(cname, value, options, Api::Asynchronous);
+  return insertInternal(cname, value, options, MethodsApi::Asynchronous);
 }
 
 /// @brief create one or multiple documents in a collection, coordinator
@@ -1175,7 +1175,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
 OperationResult Methods::update(std::string const& cname, VPackSlice updateValue,
                                 OperationOptions const& options) {
-  return updateInternal(cname, updateValue, options, Api::Synchronous).get();
+  return updateInternal(cname, updateValue, options, MethodsApi::Synchronous).get();
 }
 
 /// @brief update/patch one or multiple documents in a collection
@@ -1184,7 +1184,7 @@ OperationResult Methods::update(std::string const& cname, VPackSlice updateValue
 Future<OperationResult> transaction::Methods::updateAsync(std::string const& cname,
                                                           VPackSlice newValue,
                                                           OperationOptions const& options) {
-  return updateInternal(cname, newValue, options, Api::Asynchronous);
+  return updateInternal(cname, newValue, options, MethodsApi::Asynchronous);
 }
 
 /// @brief update one or multiple documents in a collection, coordinator
@@ -1213,7 +1213,7 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
 
 OperationResult Methods::replace(std::string const& cname, VPackSlice replaceValue,
                                  OperationOptions const& options) {
-  return replaceInternal(cname, replaceValue, options, Api::Synchronous).get();
+  return replaceInternal(cname, replaceValue, options, MethodsApi::Synchronous).get();
 }
 
 /// @brief replace one or multiple documents in a collection
@@ -1222,7 +1222,7 @@ OperationResult Methods::replace(std::string const& cname, VPackSlice replaceVal
 Future<OperationResult> transaction::Methods::replaceAsync(std::string const& cname,
                                               VPackSlice newValue,
                                               OperationOptions const& options) {
-  return replaceInternal(cname, newValue, options, Api::Asynchronous);
+  return replaceInternal(cname, newValue, options, MethodsApi::Asynchronous);
 }
 
 /// @brief replace one or multiple documents in a collection, local
@@ -1411,7 +1411,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
 OperationResult Methods::remove(std::string const& collectionName,
                                 VPackSlice value, OperationOptions const& options) {
-  return removeInternal(collectionName, value, options, Api::Synchronous).get();
+  return removeInternal(collectionName, value, options, MethodsApi::Synchronous).get();
 }
 
 /// @brief remove one or multiple documents in a collection
@@ -1420,7 +1420,7 @@ OperationResult Methods::remove(std::string const& collectionName,
 Future<OperationResult> transaction::Methods::removeAsync(std::string const& cname,
                                                           VPackSlice value,
                                                           OperationOptions const& options) {
-  return removeInternal(cname, value, options, Api::Asynchronous);
+  return removeInternal(cname, value, options, MethodsApi::Asynchronous);
 }
 
 /// @brief remove one or multiple documents in a collection, coordinator
@@ -1662,13 +1662,13 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
 
 OperationResult Methods::truncate(std::string const& collectionName,
                                   OperationOptions const& options) {
-  return truncateInternal(collectionName, options, Api::Synchronous).get();
+  return truncateInternal(collectionName, options, MethodsApi::Synchronous).get();
 }
 
 /// @brief remove all documents in a collection
 Future<OperationResult> transaction::Methods::truncateAsync(std::string const& collectionName,
                                                             OperationOptions const& options) {
-  return truncateInternal(collectionName, options, Api::Asynchronous);
+  return truncateInternal(collectionName, options, MethodsApi::Asynchronous);
 }
 
 /// @brief remove all documents in a collection, coordinator
@@ -1851,14 +1851,14 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
 
 OperationResult Methods::count(std::string const& collectionName,
                                CountType type, OperationOptions const& options) {
-  return countInternal(collectionName, type, options, Api::Synchronous).get();
+  return countInternal(collectionName, type, options, MethodsApi::Synchronous).get();
 }
 
 /// @brief count the number of documents in a collection
 futures::Future<OperationResult> transaction::Methods::countAsync(
     std::string const& collectionName, transaction::CountType type,
     OperationOptions const& options) {
-  return countInternal(collectionName, type, options, Api::Asynchronous);
+  return countInternal(collectionName, type, options, MethodsApi::Asynchronous);
 }
 
 #ifndef USE_ENTERPRISE
@@ -2468,7 +2468,7 @@ Future<Result> Methods::replicateOperations(
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
 
-Future<Result> Methods::commitInternal(Api api) {
+Future<Result> Methods::commitInternal(MethodsApi api) {
   TRI_IF_FAILURE("TransactionCommitFail") { return Result(TRI_ERROR_DEBUG); }
 
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
@@ -2511,7 +2511,7 @@ Future<Result> Methods::commitInternal(Api api) {
   });
 }
 
-Future<Result> Methods::abortInternal(Api api) {
+Future<Result> Methods::abortInternal(MethodsApi api) {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
     return Result(TRI_ERROR_TRANSACTION_INTERNAL,
@@ -2543,7 +2543,7 @@ Future<Result> Methods::abortInternal(Api api) {
   });
 }
 
-Future<Result> Methods::finishInternal(Result const& res, Api api) {
+Future<Result> Methods::finishInternal(Result const& res, MethodsApi api) {
   if (res.ok()) {
     // there was no previous error, so we'll commit
     return this->commitInternal(api);
@@ -2556,7 +2556,7 @@ Future<Result> Methods::finishInternal(Result const& res, Api api) {
 }
 
 Future<OperationResult> Methods::documentInternal(std::string const& cname, VPackSlice value,
-                                                  OperationOptions const& options, Api api) {
+                                                  OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
@@ -2578,7 +2578,7 @@ Future<OperationResult> Methods::documentInternal(std::string const& cname, VPac
 }
 
 Future<OperationResult> Methods::insertInternal(std::string const& cname, VPackSlice value,
-                                                OperationOptions const& options, Api api) {
+                                                OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
@@ -2609,7 +2609,7 @@ Future<OperationResult> Methods::insertInternal(std::string const& cname, VPackS
 }
 
 Future<OperationResult> Methods::updateInternal(std::string const& cname, VPackSlice newValue,
-                                                OperationOptions const& options, Api api) {
+                                                OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!newValue.isObject() && !newValue.isArray()) {
@@ -2638,7 +2638,7 @@ Future<OperationResult> Methods::updateInternal(std::string const& cname, VPackS
 }
 
 Future<OperationResult> Methods::replaceInternal(std::string const& cname, VPackSlice newValue,
-                                                 OperationOptions const& options, Api api) {
+                                                 OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!newValue.isObject() && !newValue.isArray()) {
@@ -2667,7 +2667,7 @@ Future<OperationResult> Methods::replaceInternal(std::string const& cname, VPack
 }
 
 Future<OperationResult> Methods::removeInternal(std::string const& cname, VPackSlice value,
-                                                OperationOptions const& options, Api api) {
+                                                OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray() && !value.isString()) {
@@ -2696,7 +2696,7 @@ Future<OperationResult> Methods::removeInternal(std::string const& cname, VPackS
 }
 
 Future<OperationResult> Methods::truncateInternal(std::string const& collectionName,
-                                                  OperationOptions const& options, Api api) {
+                                                  OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   OperationOptions optionsCopy = options;
@@ -2714,7 +2714,7 @@ Future<OperationResult> Methods::truncateInternal(std::string const& collectionN
 futures::Future<OperationResult> Methods::countInternal(std::string const& collectionName,
                                                         CountType type,
                                                         OperationOptions const& options,
-                                                        Api api) {
+                                                        MethodsApi api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (_state->isCoordinator()) {
