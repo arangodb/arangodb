@@ -598,14 +598,18 @@ char* TRI_tolower_utf8(char const* src, int32_t srcLength, int32_t* dstLength) {
 ////////////////////////////////////////////////////////////////////////////////
 
 UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength,
-                       UChar* buffer, size_t bufferSize, size_t* outLength) {
-  UErrorCode status = U_ZERO_ERROR;
+                       UChar* buffer, size_t bufferSize, size_t* outLength, UErrorCode* status) {
+  UErrorCode localStatus = U_ZERO_ERROR;
+  if (status == nullptr) {
+    status = &localStatus;
+  }
+  *status = U_ZERO_ERROR;
 
   // 1. convert utf8 string to utf16
   // calculate utf16 string length
   int32_t utf16Length;
-  u_strFromUTF8(nullptr, 0, &utf16Length, utf8, (int32_t)inLength, &status);
-  if (status != U_BUFFER_OVERFLOW_ERROR) {
+  u_strFromUTF8(nullptr, 0, &utf16Length, utf8, (int32_t)inLength, status);
+  if (*status != U_BUFFER_OVERFLOW_ERROR) {
     return nullptr;
   }
 
@@ -622,10 +626,10 @@ UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength,
   }
 
   // now convert
-  status = U_ZERO_ERROR;
+  *status = U_ZERO_ERROR;
   // the +1 will append a 0 byte at the end
-  u_strFromUTF8(utf16, utf16Length + 1, nullptr, utf8, (int32_t)inLength, &status);
-  if (status != U_ZERO_ERROR) {
+  u_strFromUTF8(utf16, utf16Length + 1, nullptr, utf8, (int32_t)inLength, status);
+  if (*status != U_ZERO_ERROR) {
     TRI_Free(utf16);
     return nullptr;
   }
@@ -635,14 +639,19 @@ UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength,
   return utf16;
 }
 
-UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength) {
+UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength, UErrorCode* status) {
+  UErrorCode localStatus = U_ZERO_ERROR;
+  if (status == nullptr) {
+    status = &localStatus;
+  }
+  *status = U_ZERO_ERROR;
+
   int32_t utf16Length;
 
   // 1. convert utf8 string to utf16
   // calculate utf16 string length
-  UErrorCode status = U_ZERO_ERROR;
-  u_strFromUTF8(nullptr, 0, &utf16Length, utf8, (int32_t)inLength, &status);
-  if (status != U_BUFFER_OVERFLOW_ERROR) {
+  u_strFromUTF8(nullptr, 0, &utf16Length, utf8, (int32_t)inLength, status);
+  if (*status != U_BUFFER_OVERFLOW_ERROR) {
     return nullptr;
   }
 
@@ -652,10 +661,10 @@ UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength) {
   }
 
   // now convert
-  status = U_ZERO_ERROR;
+  *status = U_ZERO_ERROR;
   // the +1 will append a 0 byte at the end
-  u_strFromUTF8(utf16, utf16Length + 1, nullptr, utf8, (int32_t)inLength, &status);
-  if (status != U_ZERO_ERROR) {
+  u_strFromUTF8(utf16, utf16Length + 1, nullptr, utf8, (int32_t)inLength, status);
+  if (*status != U_ZERO_ERROR) {
     TRI_Free(utf16);
     return nullptr;
   }
@@ -669,14 +678,18 @@ UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength) {
 /// @brief convert a uchar (utf-16) to a utf-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength) {
+char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength, UErrorCode* status) {
+  UErrorCode localStatus = U_ZERO_ERROR;
+  if (status == nullptr) {
+    status = &localStatus;
+  }
+  *status = U_ZERO_ERROR;
   int32_t utf8Length;
 
   // calculate utf8 string length
-  UErrorCode status = U_ZERO_ERROR;
-  u_strToUTF8(nullptr, 0, &utf8Length, uchar, (int32_t)inLength, &status);
+  u_strToUTF8(nullptr, 0, &utf8Length, uchar, (int32_t)inLength, status);
 
-  if (status != U_ZERO_ERROR && status != U_BUFFER_OVERFLOW_ERROR) {
+  if (*status != U_ZERO_ERROR && *status != U_BUFFER_OVERFLOW_ERROR) {
     return nullptr;
   }
 
@@ -687,11 +700,11 @@ char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength) {
   }
 
   // convert to utf8
-  status = U_ZERO_ERROR;
+  *status = U_ZERO_ERROR;
   // the +1 will append a 0 byte at the end
-  u_strToUTF8(utf8, utf8Length + 1, nullptr, uchar, (int32_t)inLength, &status);
+  u_strToUTF8(utf8, utf8Length + 1, nullptr, uchar, (int32_t)inLength, status);
 
-  if (status != U_ZERO_ERROR) {
+  if (*status != U_ZERO_ERROR) {
     TRI_Free(utf8);
     return nullptr;
   }
@@ -705,7 +718,7 @@ char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength) {
 /// @brief normalize an utf8 string (NFC)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLength) {
+char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLength, UErrorCode* status) {
   *outLength = 0;
 
   if (inLength == 0) {
@@ -717,11 +730,17 @@ char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLe
     return utf8Dest;
   }
 
+  UErrorCode localStatus = U_ZERO_ERROR;
+  if (status == nullptr) {
+    status = &localStatus;
+  }
+  *status = U_ZERO_ERROR;
+
   size_t utf16Length;
   // use this buffer and pass it to TRI_Utf8ToUChar so we can avoid dynamic memory
   // allocation for shorter strings
   UChar buffer[128];
-  UChar* utf16 = TRI_Utf8ToUChar(utf8, inLength, &buffer[0], sizeof(buffer) / sizeof(UChar), &utf16Length);
+  UChar* utf16 = TRI_Utf8ToUChar(utf8, inLength, &buffer[0], sizeof(buffer) / sizeof(UChar), &utf16Length, status);
 
   if (utf16 == nullptr) {
     return nullptr;
@@ -729,7 +748,7 @@ char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLe
 
   // continue in TR_normalize_utf16_to_NFC
   char* utf8Dest = TRI_normalize_utf16_to_NFC((uint16_t const*)utf16,
-                                              (int32_t)utf16Length, outLength);
+                                              (int32_t)utf16Length, outLength, status);
 
   if (utf16 != &buffer[0]) {
     // TRI_Utf8ToUChar dynamically allocated memory
@@ -742,8 +761,12 @@ char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLe
 std::string normalizeUtf8ToNFC(char const* value, size_t length) {
   auto deleter = [](char* data) { TRI_Free(data); };
   size_t outLength = 0;
-  std::unique_ptr<char, decltype(deleter)> normalized(TRI_normalize_utf8_to_NFC(value, length, &outLength), deleter);
+  UErrorCode status = U_ZERO_ERROR;
+  std::unique_ptr<char, decltype(deleter)> normalized(TRI_normalize_utf8_to_NFC(value, length, &outLength, &status), deleter);
   if (normalized == nullptr) {
+    if (status != U_ZERO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, std::string("invalid UTF-8 string: ") + u_errorName(status));
+    }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   return std::string(normalized.get(), outLength);
@@ -757,7 +780,7 @@ std::string normalizeUtf8ToNFC(std::string const& value) {
 /// @brief normalize an utf8 string (NFC)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength, size_t* outLength) {
+char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength, size_t* outLength, UErrorCode* status) {
   *outLength = 0;
 
   if (inLength == 0) {
@@ -767,11 +790,15 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength, size_t*
     }
     return utf8Dest;
   }
+  
+  UErrorCode localStatus = U_ZERO_ERROR;
+  if (status == nullptr) {
+    status = &localStatus;
+  }
+  *status = U_ZERO_ERROR;
+  UNormalizer2 const* norm2 = unorm2_getInstance(nullptr, "nfc", UNORM2_COMPOSE, status);
 
-  UErrorCode status = U_ZERO_ERROR;
-  UNormalizer2 const* norm2 = unorm2_getInstance(nullptr, "nfc", UNORM2_COMPOSE, &status);
-
-  if (status != U_ZERO_ERROR) {
+  if (*status != U_ZERO_ERROR) {
     return nullptr;
   }
 
@@ -797,15 +824,15 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength, size_t*
   int32_t utf16DestLength;
 
   while (true) {
-    status = U_ZERO_ERROR;
+    *status = U_ZERO_ERROR;
     utf16DestLength = unorm2_normalize(norm2, (UChar*)utf16, (int32_t)inLength, utf16Dest,
-                                       (int32_t)(inLength + overhead + 1), &status);
+                                       (int32_t)(inLength + overhead + 1), status);
 
-    if (status == U_ZERO_ERROR) {
+    if (*status == U_ZERO_ERROR) {
       break;
     }
 
-    if (status == U_BUFFER_OVERFLOW_ERROR || status == U_STRING_NOT_TERMINATED_WARNING) {
+    if (*status == U_BUFFER_OVERFLOW_ERROR || *status == U_STRING_NOT_TERMINATED_WARNING) {
       // output buffer was too small. now re-try with a bigger buffer (inLength
       // + overhead size)
       if (mustFree) {
