@@ -658,7 +658,8 @@ arangodb::aql::AstNode* Index::specializeCondition(arangodb::aql::AstNode* /* no
 std::unique_ptr<IndexIterator> Index::iteratorForCondition(transaction::Methods* /* trx */,
                                                            aql::AstNode const* /* node */,
                                                            aql::Variable const* /* reference */,
-                                                           IndexIteratorOptions const& /* opts */) {
+                                                           IndexIteratorOptions const& /* opts */,
+                                                           ReadOwnWrites /* readOwnWrites */) {
   // the default implementation should never be called
   TRI_ASSERT(false); 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("no default implementation for iteratorForCondition. index type: ") + typeName());

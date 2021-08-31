@@ -217,6 +217,9 @@ class Query : public QueryContext {
  protected:
   /// @brief initializes the query
   void init(bool createProfile);
+  
+  void registerQueryInTransactionState();
+  void unregisterQueryInTransactionState() noexcept;
 
   /// @brief calculate a hash for the query, once
   uint64_t hash();
@@ -340,6 +343,8 @@ class Query : public QueryContext {
 
   /// @brief user that started the query
   std::string _user;
+
+  bool _registeredQueryInTrx{false};
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // Intentionally initialized here to not

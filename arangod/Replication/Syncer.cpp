@@ -155,7 +155,9 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       // the target document exists. if yes, we don't try an insert (which would
       // fail anyway) but carry on with a replace.
       std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
-      if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
+      // We must see our own writes, because we may have to remove conflicting documents
+      // (that we just inserted) as documents may be replicated in unexpected order.
+      if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult, arangodb::ReadOwnWrites::yes).ok()) {
         // determine if we already have this revision or need to replace the
         // one we have
         arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(slice);

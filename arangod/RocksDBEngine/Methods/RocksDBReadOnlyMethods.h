@@ -51,7 +51,7 @@ class RocksDBReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
   rocksdb::SequenceNumber GetSequenceNumber() const noexcept override;
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
-                      rocksdb::PinnableSlice* val) override;
+                      rocksdb::PinnableSlice* val, ReadOwnWrites) override;
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
                                                  ReadOptionsCallback) override;
@@ -60,7 +60,7 @@ class RocksDBReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
   
   rocksdb::TransactionDB* _db;
 
-  rocksdb::ReadOptions _readOptions;
+  ReadOptions _readOptions;
 };
 
 }  // namespace arangodb
