@@ -448,26 +448,34 @@ class Methods {
   // The internal methods distinguish between the synchronous and asynchronous
   // APIs via an additional parameter, so `skipScheduler` can be set for network
   // requests.
-  // TODO Note that currently, the code was just moved from the async methods,
-  //      and no code has yet been changed.
+  // TODO set skipScheduler: true for network requests
   auto commitInternal(Api api) -> Future<Result>;
+  // TODO set skipScheduler: true for network requests
   auto abortInternal(Api api) -> Future<Result>;
+  // TODO set skipScheduler: true for network requests
   auto finishInternal(Result const& res, Api api) -> Future<Result>;
   // is virtual for IgnoreNoAccessMethods
+  // TODO set skipScheduler: true for network requests
   ENTERPRISE_VIRT auto documentInternal(std::string const& cname, VPackSlice value,
                                         OperationOptions const& options, Api api)
       -> Future<OperationResult>;
+  // TODO set skipScheduler: true for network requests
   auto insertInternal(std::string const& collectionName, VPackSlice value,
                       OperationOptions const& options, Api api) -> Future<OperationResult>;
+  // TODO set skipScheduler: true for network requests
   auto updateInternal(std::string const& collectionName, VPackSlice updateValue,
                       OperationOptions const& options, Api api) -> Future<OperationResult>;
+  // TODO set skipScheduler: true for network requests
   auto replaceInternal(std::string const& collectionName, VPackSlice replaceValue,
                        OperationOptions const& options, Api api) -> Future<OperationResult>;
+  // TODO set skipScheduler: true for network requests
   auto removeInternal(std::string const& collectionName, VPackSlice value,
                       OperationOptions const& options, Api api) -> Future<OperationResult>;
+  // TODO set skipScheduler: true for network requests
   auto truncateInternal(std::string const& collectionName, OperationOptions const& options,
                         Api api) -> Future<OperationResult>;
   // is virtual for IgnoreNoAccessMethods
+  // TODO set skipScheduler: true for network requests
   ENTERPRISE_VIRT auto countInternal(std::string const& collectionName, CountType type,
                                      OperationOptions const& options, Api api)
       -> futures::Future<OperationResult>;
