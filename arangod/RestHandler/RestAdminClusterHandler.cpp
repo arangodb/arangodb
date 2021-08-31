@@ -860,29 +860,53 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
 
         for (auto const& path : paths) {
           VPackSlice job = result.slice().at(0).get(path);
+
           if (job.isObject()) {
-            auto name = job.get("name").copyString();
-            if (name != "MoveShard") { // only moveshard may be aborted
+            LOG_TOPIC("eb139", INFO, Logger::SUPERVISION)
+              << "Attempting to abort supervision job " << job.toJson();
+            auto type = job.get("type").copyString();
+            if (type != "moveShard") { // only moveshard may be aborted
               generateError(Result{400, "Only MoveShard jobs can be aborted"});
-            } else if (path[2] != "Pending" || path[2] != "ToDo") {
-              generateError(Result{400,path[2] + " jobs can no longer be cancelled."});
+              return;
+            } else if (path[2] != "Pending" && path[2] != "ToDo") {
+              generateError(Result{400, path[2] + " jobs can no longer be cancelled."});
+              return;
             }
-            
+
             auto sendTransaction = [&] {
-              return AsyncAgencyComm().setValue(60s, "/Target/" + path[2] + "/" + jobId + "/Cancel", VPackValue(true));
+              VPackBuffer<uint8_t> trxBody;
+              { VPackBuilder builder(trxBody);
+                { VPackArrayBuilder trxs(&builder);
+                  if (path[2] == "ToDo") {
+                    VPackArrayBuilder trx(&builder);
+                    { VPackObjectBuilder op(&builder);
+                    builder.add("arango/Target/ToDo/" + jobId + "/abort", VPackValue(true)); }
+                    { VPackObjectBuilder pre(&builder);
+                      builder.add(VPackValue("arango/Target/ToDo/" + jobId));
+                      { VPackObjectBuilder val(&builder);
+                        builder.add("oldEmpty", VPackValue(false)); }}
+                  }
+                  VPackArrayBuilder trx(&builder);
+                  { VPackObjectBuilder op(&builder);
+                    builder.add("arango/Target/Pending/" + jobId + "/abort", VPackValue(true)); }
+                  { VPackObjectBuilder pre(&builder);
+                    builder.add(VPackValue("arango/Target/Pending/" + jobId));
+                    { VPackObjectBuilder val(&builder);
+                      builder.add("oldEmpty", VPackValue(false)); }}
+                }
+              }
+              return AsyncAgencyComm().sendWriteTransaction(60s, std::move(trxBody));
             };
-            
+
             waitForFuture(
               sendTransaction()
-              .thenValue([this](AsyncAgencyCommResult&& result) {
-                if (!result.ok()) {
-                  if (result.statusCode() == 412) {
+              .thenValue([this](AsyncAgencyCommResult&& wr) {
+                if (!wr.ok()) {
+                  if (wr.statusCode() == 412) {
                     generateError(Result{412, "Job is no longer running"});
                   } else {
-                    generateError(result.asResult());
+                    generateError(wr.asResult());
                   }
-                } else {
-                  resetResponse(rest::ResponseCode::OK);
                 }
                 return futures::makeFuture();
               })
@@ -893,7 +917,6 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
                 generateError(rest::ResponseCode::SERVER_ERROR,
                               TRI_ERROR_HTTP_SERVER_ERROR, e.what());
               }));
-
             VPackBuffer<uint8_t> payload;
             {
               VPackBuilder builder(payload);
@@ -909,9 +932,8 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
         }
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else {
-        generateError(result.asResult());//  
+        generateError(result.asResult());
       }
-      
     })
     .thenError<VPackException>([this](VPackException const& e) {
       generateError(Result{e.errorCode(), e.what()});
