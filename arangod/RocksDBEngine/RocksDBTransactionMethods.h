@@ -34,6 +34,15 @@ namespace arangodb {
 class RocksDBKey;
 class RocksDBTransactionState;
 
+struct ReadOptions : public rocksdb::ReadOptions {
+  bool readOwnWrites = false;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // only used to control whether we verify in NewIterator that we do not
+  // create a read-own-write iterator with intermediate commits enabled.
+  bool checkIntermediateCommits = true;
+#endif
+};
+
 class RocksDBTransactionMethods : public RocksDBMethods {
  public:
   explicit RocksDBTransactionMethods(RocksDBTransactionState* state) : _state(state) {}
@@ -44,7 +53,7 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual Result commitTransaction() = 0;
 
   virtual Result abortTransaction() = 0;
-  
+
   // Only relevant for RocksDBTrxMethods
   virtual Result checkIntermediateCommit(bool& hasPerformedIntermediateCommit) { return {}; }
   
@@ -78,11 +87,13 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual Result addOperation(DataSourceId collectionId, RevisionId revisionId,
                               TRI_voc_document_operation_e opType) = 0;
 
-  using ReadOptionsCallback = std::function<void(rocksdb::ReadOptions&)>;
+  using ReadOptionsCallback = std::function<void(ReadOptions&)>;
   
   virtual std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
                                                          ReadOptionsCallback) = 0;
-
+                                                                      
+  virtual bool iteratorMustCheckBounds(ReadOwnWrites) const = 0;
+                   
   virtual void SetSavePoint() = 0;
   virtual rocksdb::Status RollbackToSavePoint() = 0;
   virtual rocksdb::Status RollbackToWriteBatchSavePoint() = 0;

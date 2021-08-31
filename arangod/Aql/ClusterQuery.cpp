@@ -29,6 +29,7 @@
 #include "Aql/Timing.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryProfile.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
@@ -150,6 +151,8 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
       TRI_ASSERT(_trx->state()->isCoordinator());
       QueryRegistryFeature::registry()->registerSnippets(_snippets);
     }
+
+    registerQueryInTransactionState();
   }
 
   if (traverserSlice.isArray()) {
@@ -175,7 +178,7 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
 futures::Future<Result> ClusterQuery::finalizeClusterQuery(ErrorCode errorCode) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(ServerState::instance()->isDBServer());
-  
+
   // technically there is no need for this in DBServers, but it should
   // be good practice to prevent the other cleanup code from running
   ShutdownState exp = ShutdownState::None;
@@ -218,6 +221,8 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(ErrorCode errorCode) 
      _execStats.setExecutionTime(elapsedSince(_startTime));
     _shutdownState.store(ShutdownState::Done);
      
+     unregisterQueryInTransactionState();
+     
      LOG_TOPIC("5fde0", DEBUG, Logger::QUERIES)
          << elapsedSince(_startTime)
          << " ClusterQuery::finalizeClusterQuery: done"
@@ -226,4 +231,5 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(ErrorCode errorCode) 
     return res;
   });
  }
-
+ 
+ 
