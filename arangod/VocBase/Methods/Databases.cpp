@@ -67,7 +67,7 @@ using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
 std::string Databases::normalizeName(std::string const& name) {
-  return normalizeUtf8ToNFC(basics::StringUtils::trim(name, " \n\r\t\f\b"));
+  return normalizeUtf8ToNFC(name);
 }
 
 std::vector<std::string> Databases::list(application_features::ApplicationServer& server,
