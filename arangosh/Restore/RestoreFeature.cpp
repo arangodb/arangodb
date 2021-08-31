@@ -41,6 +41,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -312,7 +313,7 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
   VPackBuilder builder;
   {
     ObjectBuilder object(&builder);
-    object->add(arangodb::StaticStrings::DatabaseName, VPackValue(name));
+    object->add(arangodb::StaticStrings::DatabaseName, VPackValue(normalizeUtf8ToNFC(name)));
 
     // add replication factor write concern etc
     if (properties.isObject()) {

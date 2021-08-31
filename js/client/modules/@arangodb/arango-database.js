@@ -340,6 +340,10 @@ ArangoDatabase.prototype._collection = function (id) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._create = function (name, properties, type, options) {
+  try {
+    // try to NFC-normalize the database name
+    name = name.normalize("NFC");
+  } catch (err) {}
   let body = Object.assign(properties !== undefined ? properties : {}, {
     'name': name,
     'type': ArangoCollection.TYPE_DOCUMENT

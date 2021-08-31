@@ -152,36 +152,47 @@ void arangodb::rocksdbStartupVersionCheck(application_features::ApplicationServe
   // fetch stored value of option `--database.extended-names-databases`
   RocksDBKey extendedNamesKey;
   extendedNamesKey.constructSettingsValue(RocksDBSettingsType::ExtendedDatabaseNames);
-    
-  char extendedDatabaseNames = server.getFeature<DatabaseFeature>().extendedNamesForDatabases() ? '1' : '0';
-
+   
   if (dbExisted) {
     rocksdb::PinnableSlice existingDatabaseNamesValue;
     rocksdb::Status s = db->Get(rocksdb::ReadOptions(),
                                 RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
                                 extendedNamesKey.string(), &existingDatabaseNamesValue);
-    
+  
     if (s.ok() && existingDatabaseNamesValue.size() == 1) {
-      if (existingDatabaseNamesValue[0] != extendedDatabaseNames &&
-          existingDatabaseNamesValue[0] == '1' &&
-          server.options()->processingResult().touched("database.extended-names-databases")) {
-        LOG_TOPIC("1d4f6", FATAL, Logger::ENGINES)
-            << "it is unsupported to change the value of the startup option `--database.extended-names-databases`"
-            << " back to `false` after it was set to `true` before.";
-        FATAL_ERROR_EXIT();
+      if (existingDatabaseNamesValue[0] == '1') {
+        if (!server.getFeature<DatabaseFeature>().extendedNamesForDatabases() &&
+            server.options()->processingResult().touched("database.extended-names-databases")) {
+          // user is trying to switch back from extended names to traditional names.
+          // this is unsupported
+          LOG_TOPIC("1d4f6", FATAL, Logger::ENGINES)
+              << "it is unsupported to change the value of the startup option `--database.extended-names-databases`"
+              << " back to `false` after it was set to `true` before.";
+          FATAL_ERROR_EXIT();
+        }
       }
-
-      // update our own value to whatever was stored in the database
+      // set flag for our local instance
       server.getFeature<DatabaseFeature>().extendedNamesForDatabases(existingDatabaseNamesValue[0] == '1');
     } else if (!s.IsNotFound()) {
+      // arbitrary error. we need to abort
       LOG_TOPIC("f3a71", FATAL, Logger::ENGINES)
           << "Error reading extended database names key info from storage engine";
       FATAL_ERROR_EXIT();
     }
-  } else {
+  } 
+
+  // once we have the extended names flag enabled, we must store it forever
+  if (server.getFeature<DatabaseFeature>().extendedNamesForDatabases()) {
     // now permanently store value
+    char value = '1';
     rocksdb::Status s = db->Put(rocksdb::WriteOptions(),
                                 RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
-                                extendedNamesKey.string(), rocksdb::Slice(&extendedDatabaseNames, sizeof(char)));
+                                extendedNamesKey.string(), rocksdb::Slice(&value, sizeof(char)));
+    if (!s.ok()) {
+      LOG_TOPIC("d61a8", FATAL, Logger::ENGINES) 
+          << "Error storing extended database names key info in storage engine: "
+          << rocksutils::convertStatus(s).errorMessage();
+      FATAL_ERROR_EXIT();
+    }
   }
 }

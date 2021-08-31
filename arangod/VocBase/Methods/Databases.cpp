@@ -313,6 +313,13 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
     return res;
   }
 
+  if (createInfo.getName() != dbName) {
+    // check if name after normalization will change
+    res.reset(TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+    events::CreateDatabase(dbName, res, exec);
+    return res;
+  }
+
   if (createInfo.replicationVersion() == replication::Version::TWO &&
       !replication2::EnableReplication2) {
     using namespace std::string_view_literals;

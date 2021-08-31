@@ -136,32 +136,12 @@
 
     handleError: function (err, dbname) {
       if (err.status === 409) {
-        arangoHelper.arangoError('DB', 'Database ' + dbname + ' already exists.');
+        arangoHelper.arangoError('DB', 'Database ' + _.escape(dbname) + ' already exists.');
       } else if (err.status === 400) {
-        arangoHelper.arangoError('DB', 'Invalid Parameters: ' + err.responseJSON.errorMessage);
+        arangoHelper.arangoError('DB', 'Invalid Parameters: ' + _.escape(err.responseJSON.errorMessage));
       } else if (err.status === 403) {
         arangoHelper.arangoError('DB', 'Insufficient rights. Execute this from _system database');
       }
-    },
-
-    validateDatabaseInfo: function (db, user) {
-      if (user === '') {
-        arangoHelper.arangoError('DB', 'You have to define an owner for the new database');
-        return false;
-      }
-      if (db === '') {
-        arangoHelper.arangoError('DB', 'You have to define a name for the new database');
-        return false;
-      }
-      if (db.indexOf('_') === 0) {
-        arangoHelper.arangoError('DB ', 'Database name should not start with _');
-        return false;
-      }
-      if (!db.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
-        arangoHelper.arangoError('DB', 'Database name may only contain numbers, letters, _ and -');
-        return false;
-      }
-      return true;
     },
 
     createDatabase: function (e) {
@@ -183,7 +163,13 @@
 
     submitCreateDatabase: function () {
       var self = this; // userPassword,
-      var dbname = $('#newDatabaseName').val();
+      var dbname = String($('#newDatabaseName').val()).trim();
+      try {
+        // create NFC-normalized variant of the database name
+        dbname = dbname.normalize("NFC");
+      } catch (err) {
+        // for browsers not supporting the normalize API
+      }
       var userName = $('#newUser').val();
 
       var sharding = $('#newSharding').val();
@@ -213,7 +199,7 @@
           if (window.location.hash === '#databases') {
             self.updateDatabases();
           }
-          arangoHelper.arangoNotification('Database ' + data.get('name') + ' created.');
+          arangoHelper.arangoNotification('Database ' + _.escape(data.get('name')) + ' created.');
         }
       });
 

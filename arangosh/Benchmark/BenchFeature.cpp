@@ -41,6 +41,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
@@ -258,7 +259,7 @@ void BenchFeature::start() {
     createDbClient->params().setUserNamePassword("/", client.username(), client.password());
     VPackBuilder b;
     b.openObject();
-    b.add("name", VPackValue(connectDB));
+    b.add("name", VPackValue(normalizeUtf8ToNFC(connectDB)));
     b.close();
       
     std::unordered_map<std::string, std::string> headers;

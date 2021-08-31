@@ -82,6 +82,17 @@ TEST(DatabaseNameValidatorTest, test_isAllowedName_traditionalNames) {
   EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("a/b")));
   EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("a\\b")));
   EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("a.b.c")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef(" a")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("\na")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("\ta")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("\ra")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("\ba")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("\fa")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("a\n")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("a\t")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("a\r")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("a\b")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("a\f")));
   
   // unicode 
   EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, false, arangodb::velocypack::StringRef("mötör")));
@@ -137,6 +148,16 @@ TEST(DatabaseNameValidatorTest, test_isAllowedName_extendedNames) {
   EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("a/b")));
   EXPECT_TRUE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("a\\b")));
   EXPECT_TRUE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("a.b.c")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("\na")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("\ta")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("\ra")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("\ba")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("\fa")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("a\n")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("a\t")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("a\r")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("a\b")));
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("a\f")));
   
   // unicode 
   EXPECT_TRUE(arangodb::DatabaseNameValidator::isAllowedName(true, true, arangodb::velocypack::StringRef("mötör")));
