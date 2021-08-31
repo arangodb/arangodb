@@ -47,6 +47,10 @@ devel
   (`_key` values) are not affected by this feature and will remain as in
   previous versions of ArangoDB.
 
+* Fix rare case of invalid data could be inserted in the ArangoSearch index if 
+  several clients concurrently inserts data and use custom analyzer
+  with non-string return type
+
 * Fix a rare shutdown race in RocksDBShaCalculatorThread. 
 
 * Added "Analyzers" view to web UI to let manage ArangoSearch analyzers
