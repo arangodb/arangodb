@@ -507,7 +507,7 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       }
     });
   };
-  bool ok = SchedulerFeature::SCHEDULER->queue(lane, std::move(cb));
+  bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, std::move(cb));
 
   if (!ok) {
     sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
@@ -542,7 +542,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler), manager(&jobManager)] {
+    return SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, [handler = std::move(handler), manager(&jobManager)] {
       handler->trackQueueEnd();
       handler->trackTaskStart();
 
@@ -553,7 +553,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     });
   } else {
     // here the response will just be ignored
-    return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler)] {
+    return SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, [handler = std::move(handler)] {
       handler->trackQueueEnd();
       handler->trackTaskStart();
       

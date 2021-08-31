@@ -283,7 +283,7 @@ void Manager::endTransaction(Transaction* tx) noexcept {
   _transactions.end(tx);
 }
 
-bool Manager::post(std::function<void()> fn) { return _schedulerPost(fn); }
+void Manager::post(std::function<void()> fn) { return _schedulerPost(fn); }
 
 std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(std::uint64_t fixedSize,
                                                                           std::uint64_t maxSize) {
@@ -640,12 +640,7 @@ void Manager::resizeCache(Manager::TaskEnvironment environment, SpinLocker&& met
 
   auto task = std::make_shared<FreeMemoryTask>(environment, *this,
                                                cache->shared_from_this());
-  bool dispatched = task->dispatch();
-  if (!dispatched) {
-    // TODO: decide what to do if we don't have an io_service
-    SpinLocker altMetaGuard(SpinLocker::Mode::Write, metadata.lock());
-    metadata.toggleResizing();
-  }
+  task->dispatch();
 }
 
 void Manager::migrateCache(Manager::TaskEnvironment environment, SpinLocker&& metaGuard,
@@ -660,13 +655,7 @@ void Manager::migrateCache(Manager::TaskEnvironment environment, SpinLocker&& me
 
   auto task = std::make_shared<MigrateTask>(environment, *this,
                                             cache->shared_from_this(), table);
-  bool dispatched = task->dispatch();
-  if (!dispatched) {
-    // TODO: decide what to do if we don't have an io_service
-    SpinLocker altMetaGuard(SpinLocker::Mode::Write, metadata.lock());
-    reclaimTable(table, true);
-    metadata.toggleMigrating();
-  }
+  task->dispatch();
 }
 
 std::shared_ptr<Table> Manager::leaseTable(std::uint32_t logSize) {

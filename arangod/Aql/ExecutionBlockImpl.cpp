@@ -771,9 +771,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       // TODO - we should avoid flooding the queue with too many tasks as that
       // can significantly delay processing of user REST requests.
             
-      // we can safely ignore the result here, because we will try to
-      // claim the task ourselves anyway.
-      std::ignore = SchedulerFeature::SCHEDULER->queue(
+      SchedulerFeature::SCHEDULER->queue(
           RequestLane::INTERNAL_LOW,
           [block = this, task = _prefetchTask, stack = ctx.stack]() mutable {
             if (!task->tryClaim()) {

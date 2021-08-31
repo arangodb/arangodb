@@ -44,9 +44,9 @@ LocalTask::~LocalTask() = default;
 /// @brief dispatch this task to the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LocalTask::dispatch() {
+void LocalTask::dispatch() {
   // only called once by _queue, while _queue->_mutex is held
-  return _queue->post([self = shared_from_this(), this]() {
+  _queue->post([self = shared_from_this(), this]() {
     _queue->startTask();
     try {
       run();
@@ -122,7 +122,7 @@ void LocalTaskQueue::enqueue(std::shared_ptr<LocalTask> task) {
 /// by task dispatch.
 //////////////////////////////////////////////////////////////////////////////
 
-bool LocalTaskQueue::post(std::function<bool()>&& fn) { return _poster(std::move(fn)); }
+void LocalTaskQueue::post(std::function<bool()>&& fn) { return _poster(std::move(fn)); }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief dispatch all tasks, including those that are queued while running,
@@ -154,7 +154,8 @@ void LocalTaskQueue::dispatchAndWait() {
         _dispatched.fetch_add(1, std::memory_order_release);
         bool dispatched = false;
         try {
-          dispatched = task->dispatch();
+          task->dispatch();
+          dispatched = true;
         } catch (basics::Exception const& ex) {
           TRI_ASSERT(!dispatched);
           _status.reset({ex.code(), ex.what()});
