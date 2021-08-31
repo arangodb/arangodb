@@ -87,27 +87,22 @@ class TransactionCollection;
 namespace transaction {
 
 class Methods {
- public:
-
-  template<typename T>
-  using Future = futures::Future<T>;
-  using IndexHandle = std::shared_ptr<arangodb::Index>; // legacy
-  using VPackSlice = arangodb::velocypack::Slice;
-
-  /// @brief transaction::Methods
- private:
-  Methods() = delete;
-  Methods(Methods const&) = delete;
-
-  Methods& operator=(Methods const&) = delete;
-
+ protected:
   enum class Api {
     Asynchronous,
     Synchronous
   };
 
  public:
-  
+  template<typename T>
+  using Future = futures::Future<T>;
+  using IndexHandle = std::shared_ptr<arangodb::Index>; // legacy
+  using VPackSlice = arangodb::velocypack::Slice;
+
+  Methods() = delete;
+  Methods(Methods const&) = delete;
+  Methods& operator=(Methods const&) = delete;
+
   /// @brief create the transaction
   explicit Methods(std::shared_ptr<transaction::Context> const& ctx,
                    transaction::Options const& options = transaction::Options());
@@ -277,9 +272,8 @@ class Methods {
 
   /// @brief return one or multiple documents from a collection
   /// @deprecated use async variant
-  [[deprecated]] ENTERPRISE_VIRT OperationResult document(std::string const& collectionName,
-                                                          VPackSlice value,
-                                                          OperationOptions const& options);
+  [[deprecated]] OperationResult document(std::string const& collectionName, VPackSlice value,
+                                          OperationOptions const& options);
 
   /// @brief return one or multiple documents from a collection
   Future<OperationResult> documentAsync(std::string const& cname,
@@ -339,14 +333,12 @@ class Methods {
                                         OperationOptions const& options);
 
   /// deprecated, use async variant
-  [[deprecated]] virtual OperationResult count(std::string const& collectionName,
-                                               CountType type,
-                                               OperationOptions const& options);
+  [[deprecated]] OperationResult count(std::string const& collectionName, CountType type,
+                                       OperationOptions const& options);
 
   /// @brief count the number of documents in a collection
-  virtual futures::Future<OperationResult> countAsync(std::string const& collectionName,
-                                                      CountType type,
-                                                      OperationOptions const& options);
+  futures::Future<OperationResult> countAsync(std::string const& collectionName, CountType type,
+                                              OperationOptions const& options);
 
   /// @brief factory for IndexIterator objects from AQL
   /// note: the caller must have read-locked the underlying collection when
@@ -451,19 +443,20 @@ class Methods {
   Future<OperationResult> truncateLocal(std::string const& collectionName,
                                         OperationOptions& options);
 
+ protected:
+
   // The internal methods distinguish between the synchronous and asynchronous
   // APIs via an additional parameter, so `skipScheduler` can be set for network
   // requests.
   // TODO Note that currently, the code was just moved from the async methods,
   //      and no code has yet been changed.
-
   auto commitInternal(Api api) -> Future<Result>;
   auto abortInternal(Api api) -> Future<Result>;
   auto finishInternal(Result const& res, Api api) -> Future<Result>;
-  // TODO document() is ENTERPRISE_VIRT, but documentAsync() is not.
-  //      Instead, make documentInternal() virtual (or ENTERPRISE_VIRT, whatever).
-  auto documentInternal(std::string const& cname, VPackSlice value,
-                        OperationOptions const& options, Api api) -> Future<OperationResult>;
+  // is virtual for IgnoreNoAccessMethods
+  ENTERPRISE_VIRT auto documentInternal(std::string const& cname, VPackSlice value,
+                                        OperationOptions const& options, Api api)
+      -> Future<OperationResult>;
   auto insertInternal(std::string const& collectionName, VPackSlice value,
                       OperationOptions const& options, Api api) -> Future<OperationResult>;
   auto updateInternal(std::string const& collectionName, VPackSlice updateValue,
@@ -474,13 +467,11 @@ class Methods {
                       OperationOptions const& options, Api api) -> Future<OperationResult>;
   auto truncateInternal(std::string const& collectionName, OperationOptions const& options,
                         Api api) -> Future<OperationResult>;
-  // TODO count() and countAsync() are currently virtual.
-  //      Make countInternal() virtual instead.
-  auto countInternal(std::string const& collectionName, CountType type,
-                     OperationOptions const& options, Api api)
+  // is virtual for IgnoreNoAccessMethods
+  ENTERPRISE_VIRT auto countInternal(std::string const& collectionName, CountType type,
+                                     OperationOptions const& options, Api api)
       -> futures::Future<OperationResult>;
 
- protected:
   /// @brief return the transaction collection for a document collection
   TransactionCollection* trxCollection(DataSourceId cid,
                                        AccessMode::Type type = AccessMode::Type::READ) const;
@@ -522,7 +513,6 @@ class Methods {
       std::unordered_set<size_t> const& excludePositions,
       FollowerInfo& followerInfo);
 
- private:
   /// @brief transaction hints
   transaction::Hints _localHints;
 
