@@ -151,8 +151,8 @@ bool Mutex::try_lock() noexcept { return TryAcquireSRWLockExclusive(&_mutex) != 
 void Mutex::unlock() noexcept { ReleaseSRWLockExclusive(&_mutex); }
 
 #ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
-void Mutex::assertLockedByCurrentThread() noexcept {}
-void Mutex::assertNotLockedByCurrentThread() noexcept {}
+void Mutex::assertLockedByCurrentThread() const noexcept {}
+void Mutex::assertNotLockedByCurrentThread() const noexcept {}
 #endif
 
 #endif
