@@ -379,9 +379,11 @@ transaction::Hints Manager::ensureHints(transaction::Options& options) const {
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isFollowerTransactionOnDBServer(options)) {
     hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
-    // turn on intermediate commits on followers as well. otherwise huge leader
-    // transactions could make the follower claim all memory and crash.
-    hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    if (options.isIntermediateCommitEnabled()) {
+      // turn on intermediate commits on followers as well. otherwise huge leader
+      // transactions could make the follower claim all memory and crash.
+      hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    }
   }
   return hints;
 }

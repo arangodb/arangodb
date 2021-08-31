@@ -334,6 +334,72 @@ class TypedAnalyzer : public irs::analysis::analyzer {
 
 REGISTER_ANALYZER_VPACK(TypedAnalyzer, TypedAnalyzer::make, TypedAnalyzer::normalize);
 
+class TypedArrayAnalyzer : public irs::analysis::analyzer {
+ public:
+  static constexpr irs::string_ref type_name() noexcept {
+    return "iresearch-document-typed-array";
+  }
+
+  static ptr make(irs::string_ref const& args) {
+    PTR_NAMED(TypedArrayAnalyzer, ptr, args);
+    return ptr;
+  }
+
+  static bool normalize(irs::string_ref const& args, std::string& out) {
+    out.assign(args.c_str(), args.size());
+    return true;
+  }
+
+  explicit TypedArrayAnalyzer(irs::string_ref const&) : irs::analysis::analyzer(irs::type<TypedArrayAnalyzer>::get()) {
+    _returnType.value = arangodb::iresearch::AnalyzerValueType::Number;
+  }
+
+  virtual bool reset(irs::string_ref const& data) override {
+    auto value = std::string(data);
+    _values.clear();
+    _current = 0;
+    for (double d = 1; d < std::atoi(value.c_str()); ++d) {
+      _values.push_back(d);
+    }
+    return true;
+  }
+
+  virtual bool next() override {
+    if (_current < _values.size()) {
+      _typedValue = arangodb::aql::AqlValue(
+         arangodb::aql::AqlValueHintDouble(_values[_current++]));
+      _vpackTerm.value = _typedValue.slice();
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<irs::increment>::id()) {
+      return &_inc;
+    }
+    if (type == irs::type<arangodb::iresearch::AnalyzerValueTypeAttribute>::id()) {
+      return &_returnType;
+    }
+    if (type == irs::type<arangodb::iresearch::VPackTermAttribute>::id()) {
+      return &_vpackTerm;
+    }
+    return nullptr;
+  }
+
+ private:
+  arangodb::iresearch::VPackTermAttribute _vpackTerm;
+  irs::increment _inc;
+  std::vector<double> _values;
+  size_t _current{0};
+  arangodb::iresearch::AnalyzerValueTypeAttribute _returnType;
+  arangodb::aql::AqlValue _typedValue;
+};
+
+REGISTER_ANALYZER_VPACK(TypedArrayAnalyzer, TypedArrayAnalyzer::make, TypedArrayAnalyzer::normalize);
+
+
 }  // namespace
 
 namespace std {
@@ -424,6 +490,14 @@ class IResearchDocumentTest
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-string",
         "iresearch-document-typed",
         arangodb::velocypack::Parser::fromJson("{ \"type\": \"string\" }")->slice(),
+        arangodb::iresearch::Features{});
+    EXPECT_TRUE(res.ok());
+
+    res = analyzers.emplace(
+        result,
+        arangodb::StaticStrings::SystemDatabase + "::iresearch-document-number-array",
+        "iresearch-document-typed-array",
+        arangodb::velocypack::Parser::fromJson("{ \"type\": \"number\" }")->slice(),
         arangodb::iresearch::Features{});
     EXPECT_TRUE(res.ok());
   }
@@ -2679,3 +2753,86 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
     ASSERT_TRUE(id_indexed);
   }
 }
+
+TEST_F(IResearchDocumentTest, FieldIterator_concurrent_use_typed_analyzer) {
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
+  auto sysVocbase = sysDatabase.use();
+  auto& analyzers = server.template getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  arangodb::iresearch::IResearchLinkMeta linkMeta;
+  linkMeta._analyzers.clear();
+  linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
+        analyzers.get(arangodb::StaticStrings::SystemDatabase + "::iresearch-document-number-array",
+                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+        "iresearch-document-number-array"));  // add analyzer
+  ASSERT_TRUE(linkMeta._analyzers.front()._pool);
+  linkMeta._includeAllFields = true;  // include all fields
+  linkMeta._primitiveOffset = linkMeta._analyzers.size();
+  std::string error;
+  std::vector<std::string> EMPTY;
+  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
+                                     EMPTY, EMPTY, EMPTY,
+                                     arangodb::transaction::Options());
+  arangodb::iresearch::FieldIterator it1(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+
+  auto json = arangodb::velocypack::Parser::fromJson("{\"value\":\"3\"}");
+  auto json2 = arangodb::velocypack::Parser::fromJson("{\"value\":\"4\"}");
+
+  it1.reset(json->slice(), linkMeta);
+  ASSERT_TRUE(it1.valid());
+ 
+  arangodb::iresearch::FieldIterator it2(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  it2.reset(json2->slice(), linkMeta);
+  ASSERT_TRUE(it2.valid());
+
+  // exhaust first array member (1) of it1
+  {
+    irs::numeric_token_stream expected_tokens; expected_tokens.reset(1.);
+    auto& actual_tokens =  (*it1).get_tokens();
+    auto actual_value = irs::get<irs::term_attribute>(actual_tokens);
+    auto expected_value = irs::get<irs::term_attribute>(expected_tokens);
+    while (actual_tokens.next()) {
+      ASSERT_TRUE(expected_tokens.next());
+      ASSERT_EQ(actual_value->value, expected_value->value);
+    }
+    ASSERT_FALSE(expected_tokens.next());
+  }
+  // exhaust first array member (1) of it2
+  {
+    irs::numeric_token_stream expected_tokens; expected_tokens.reset(1.);
+    auto& actual_tokens =  (*it2).get_tokens();
+    auto actual_value = irs::get<irs::term_attribute>(actual_tokens);
+    auto expected_value = irs::get<irs::term_attribute>(expected_tokens);
+    while (actual_tokens.next()) {
+      ASSERT_TRUE(expected_tokens.next());
+      ASSERT_EQ(actual_value->value, expected_value->value);
+    }
+    ASSERT_FALSE(expected_tokens.next());
+  }
+  ++it1; // now it1 should have it`s typed iterator pointing to 2
+  ++it2; // now it2 should have it`s typed iterator pointing to 2  (not to 3!)
+  ASSERT_TRUE(it1.valid());
+  {
+    irs::numeric_token_stream expected_tokens; expected_tokens.reset(2.);
+    auto& actual_tokens =  (*it1).get_tokens();
+    auto actual_value = irs::get<irs::term_attribute>(actual_tokens);
+    auto expected_value = irs::get<irs::term_attribute>(expected_tokens);
+    while (actual_tokens.next()) {
+      ASSERT_TRUE(expected_tokens.next());
+      ASSERT_EQ(actual_value->value, expected_value->value);
+    }
+    ASSERT_FALSE(expected_tokens.next());
+  }
+  ASSERT_TRUE(it2.valid());
+  {
+    irs::numeric_token_stream expected_tokens; expected_tokens.reset(2.);
+    auto& actual_tokens =  (*it2).get_tokens();
+    auto actual_value = irs::get<irs::term_attribute>(actual_tokens);
+    auto expected_value = irs::get<irs::term_attribute>(expected_tokens);
+    while (actual_tokens.next()) {
+      ASSERT_TRUE(expected_tokens.next());
+      ASSERT_EQ(actual_value->value, expected_value->value);
+    }
+    ASSERT_FALSE(expected_tokens.next());
+  }
+}
+

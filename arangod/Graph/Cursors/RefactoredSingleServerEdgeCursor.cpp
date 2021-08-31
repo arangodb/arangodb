@@ -89,7 +89,7 @@ void RefactoredSingleServerEdgeCursor::LookupInfo::rearmVertex(
   } else {
     // rearming not supported - we need to throw away the index iterator
     // and create a new one
-    _cursor = trx->indexScanForCondition(_idxHandle, node, tmpVar, ::defaultIndexIteratorOptions);
+    _cursor = trx->indexScanForCondition(_idxHandle, node, tmpVar, ::defaultIndexIteratorOptions, ReadOwnWrites::no);
   }
 }
 
@@ -167,7 +167,7 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
 #endif
           callback(EdgeDocumentToken(cid, token), edgeDoc, _currentCursor);
           return true;
-        }).ok();
+        }, ReadOwnWrites::no).ok();
       });
     }
   }
