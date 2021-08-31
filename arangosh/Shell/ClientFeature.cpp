@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
@@ -307,6 +308,8 @@ void ClientFeature::loadJwtSecretFile() {
 }
 
 void ClientFeature::prepare() {
+  _databaseName = normalizeUtf8ToNFC(_databaseName);
+
   if (!isEnabled()) {
     return;
   }
@@ -392,6 +395,10 @@ void ClientFeature::stop() {
     SetConsoleOutputCP(_originalCodePage);
   }
 #endif
+}
+  
+void ClientFeature::setDatabaseName(std::string const& databaseName) {
+  _databaseName = normalizeUtf8ToNFC(databaseName);
 }
 
 std::string ClientFeature::buildConnectedMessage(

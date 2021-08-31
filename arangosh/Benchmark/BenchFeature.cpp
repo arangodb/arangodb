@@ -254,7 +254,7 @@ void BenchFeature::start() {
 
   if (_createDatabase) {
     auto connectDB = client.databaseName();
-    client.setDatabaseName("_system");
+    client.setDatabaseName(StaticStrings::SystemDatabase);
     auto createDbClient = client.createHttpClient();
     createDbClient->params().setUserNamePassword("/", client.username(), client.password());
     VPackBuilder b;
