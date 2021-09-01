@@ -240,8 +240,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     };
 
     auto action = std::invoke([&]() noexcept -> DeferredAction {
-      TRI_ASSERT(req.largestCommonIndex >= self->_largestCommonIndex);
-      if (self->_largestCommonIndex > req.largestCommonIndex) {
+      TRI_ASSERT(req.largestCommonIndex <= self->_largestCommonIndex)
+          << "req.lci = " << req.largestCommonIndex
+          << ", self.lci = " << self->_largestCommonIndex;
+      if (self->_largestCommonIndex < req.largestCommonIndex) {
         LOG_CTX("fc467", TRACE, self->_follower._loggerContext)
             << "largest common index went from " << self->_largestCommonIndex
             << " to " << req.largestCommonIndex << ".";
