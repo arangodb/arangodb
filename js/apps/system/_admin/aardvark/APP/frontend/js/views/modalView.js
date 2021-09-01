@@ -1,25 +1,33 @@
 /* jshint browser: true */
-/* global Backbone, $, window, Joi, _, arangoHelper */
+/* global Backbone, $, window, setTimeout, Joi, _, arangoHelper */
 /* global templateEngine */
 
 (function () {
   'use strict';
 
-  const createButtonStub = function (type, title, cb, confirm) {
-    return {
+  var createButtonStub = function (type, title, cb, confirm, style) {
+    const button = {
       type: type,
       title: title,
       callback: cb,
       confirm: confirm
     };
+    if (style !== undefined) {
+      button.style = style;
+    }
+
+    return button;
   };
 
-  const createTextStub = function (type, label, value, info, placeholder, mandatory, joiObj,
-    addDelete, addAdd, maxEntrySize, tags) {
-    const obj = {
+  var createTextStub = function (type, label, value, info, placeholder, mandatory, joiObj,
+    addDelete, addAdd, maxEntrySize, tags, style) {
+    var obj = {
       type: type,
       label: label
     };
+    if (style !== undefined) {
+      obj.style = style;
+    }
     if (value !== undefined) {
       obj.value = value;
     }
@@ -97,64 +105,58 @@
 
     createModalHotkeys: function () {
       // submit modal
-      $(this.el).off('keydown');
-      $(this.el).off('return');
+      $(this.el).unbind('keydown');
+      $(this.el).unbind('return');
 
-      let element = $('#modal-dialog .modal-body .collectionTh > input');
-      const successButton = $('#modal-dialog .modal-footer .button-success');
-      element.off('keydown');
-      element.off('return');
-      $('#modal-dialog .modal-body .collectionTh > input', $(this.el)).on('keydown', null, 'return',
-        function (e) {
-          if (!successButton.is(':disabled') && e.keyCode === 13) {
-            $('#modal-dialog .modal-footer .button-success').trigger('click');
+      $('#modal-dialog .modal-body .collectionTh > input').unbind('keydown');
+      $('#modal-dialog .modal-body .collectionTh > input').unbind('return');
+      $('#modal-dialog .modal-body .collectionTh > input', $(this.el)).bind('keydown', 'return', function (e) {
+        if (!$('#modal-dialog .modal-footer .button-success').is(':disabled') && e.keyCode === 13) {
+          $('#modal-dialog .modal-footer .button-success').click();
           }
         });
 
-      element = $('#modal-dialog .modal-body .collectionTh > select');
-      element.off('keydown');
-      element.off('return');
-      $('#modal-dialog .modal-body .collectionTh > select', $(this.el)).on('keydown', null,
-        'return', function (e) {
-          if (!successButton.is(':disabled') && e.keyCode === 13) {
-            $('#modal-dialog .modal-footer .button-success').trigger('click');
+      $('#modal-dialog .modal-body .collectionTh > select').unbind('keydown');
+      $('#modal-dialog .modal-body .collectionTh > select').unbind('return');
+      $('#modal-dialog .modal-body .collectionTh > select', $(this.el)).bind('keydown', 'return', function (e) {
+        if (!$('#modal-dialog .modal-footer .button-success').is(':disabled') && e.keyCode === 13) {
+          $('#modal-dialog .modal-footer .button-success').click();
           }
         });
     },
 
     createInitModalHotkeys: function () {
-      const self = this;
+      var self = this;
       // navigate through modal buttons
       // left cursor
-      $(this.el).on('keydown', null, 'left', function () {
+      $(this.el).bind('keydown', 'left', function () {
         self.navigateThroughButtons('left');
       });
       // right cursor
-      $(this.el).on('keydown', null, 'right', function () {
+      $(this.el).bind('keydown', 'right', function () {
         self.navigateThroughButtons('right');
       });
     },
 
     navigateThroughButtons: function (direction) {
-      const button = $('.createModalDialog .modal-footer button');
-      const hasFocus = button.is(':focus');
+      var hasFocus = $('.createModalDialog .modal-footer button').is(':focus');
       if (hasFocus === false) {
         if (direction === 'left') {
-          button.first().trigger('focus');
+          $('.createModalDialog .modal-footer button').first().focus();
         } else if (direction === 'right') {
-          button.last().trigger('focus');
+          $('.createModalDialog .modal-footer button').last().focus();
         }
       } else if (hasFocus === true) {
         if (direction === 'left') {
-          $(':focus').prev().trigger('focus');
+          $(':focus').prev().focus();
         } else if (direction === 'right') {
-          $(':focus').next().trigger('focus');
+          $(':focus').next().focus();
         }
       }
     },
 
     createCloseButton: function (title, cb) {
-      const self = this;
+      var self = this;
       return createButtonStub(this.buttons.CLOSE, title, function () {
         self.hide();
         if (cb) {
@@ -179,58 +181,60 @@
       return createButtonStub(this.buttons.NEUTRAL, title, cb);
     },
 
-    createDisabledButton: function (title) {
-      const disabledButton = createButtonStub(this.buttons.DISABLED, title);
+    createDisabledButton: function (title, style) {
+      var disabledButton = createButtonStub(this.buttons.DISABLED, title, style);
       disabledButton.disabled = true;
       return disabledButton;
     },
 
-    createReadOnlyEntry: function (id, label, value, info, addDelete, addAdd) {
-      const obj = createTextStub(this.tables.READONLY, label, value, info, undefined, undefined,
-        undefined, addDelete, addAdd);
+    createReadOnlyEntry: function (id, label, value, info, addDelete, addAdd, style) {
+      var obj = createTextStub(this.tables.READONLY, label, value, info, undefined, undefined,
+        undefined, addDelete, addAdd, undefined, undefined, style);
       obj.id = id;
       return obj;
     },
 
-    createTextEntry: function (id, label, value, info, placeholder, mandatory, regexp) {
-      const obj = createTextStub(this.tables.TEXT, label, value, info, placeholder, mandatory,
-        regexp);
+    createTextEntry: function (id, label, value, info, placeholder, mandatory, regexp, style) {
+      var obj = createTextStub(this.tables.TEXT, label, value, info, placeholder, mandatory,
+        regexp, undefined, undefined, undefined, undefined, style);
       obj.id = id;
       return obj;
     },
 
-    createBlobEntry: function (id, label, value, info, placeholder, mandatory, regexp) {
-      const obj = createTextStub(this.tables.BLOB, label, value, info, placeholder, mandatory,
-        regexp);
+    createBlobEntry: function (id, label, value, info, placeholder, mandatory, regexp, style) {
+      var obj = createTextStub(this.tables.BLOB, label, value, info, placeholder, mandatory,
+        regexp, undefined, undefined, undefined, undefined, style);
       obj.id = id;
       return obj;
     },
 
     createSelect2Entry: function (
       id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize, tags) {
-      const obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder,
+      var obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder,
         mandatory, undefined, addDelete, addAdd, maxEntrySize, tags);
       obj.id = id;
       return obj;
     },
 
     createJsonEditor: function (
-      id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize, tags) {
-      const obj = createTextStub(this.tables.JSONEDITOR, 'Document body', value, '', placeholder,
-        mandatory, undefined, addDelete, addAdd, maxEntrySize, tags);
+      id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize, tags, style) {
+      var obj = createTextStub(this.tables.JSONEDITOR, 'Document body', value, '', placeholder,
+        mandatory, undefined, addDelete, addAdd, maxEntrySize, tags, style);
       obj.id = id;
       return obj;
     },
 
-    createPasswordEntry: function (id, label, value, info, placeholder, mandatory, regexp) {
-      const obj = createTextStub(this.tables.PASSWORD, label, value, info, placeholder, mandatory,
-        regexp);
+    createPasswordEntry: function (id, label, value, info, placeholder, mandatory, regexp, style) {
+      var obj = createTextStub(this.tables.PASSWORD, label, value, info, placeholder, mandatory,
+        regexp, undefined, undefined, undefined, undefined, style);
       obj.id = id;
       return obj;
     },
 
-    createCheckboxEntry: function (id, label, value, info, checked) {
-      const obj = createTextStub(this.tables.CHECKBOX, label, value, info);
+    createCheckboxEntry: function (id, label, value, info, checked, style) {
+      var obj = createTextStub(this.tables.CHECKBOX, label, value, info, undefined,
+        undefined, undefined, undefined, undefined,
+        undefined, undefined, style);
       obj.id = id;
       if (checked) {
         obj.checked = checked;
@@ -242,8 +246,10 @@
       return obj;
     },
 
-    createSelectEntry: function (id, label, selected, info, options) {
-      const obj = createTextStub(this.tables.SELECT, label, null, info);
+    createSelectEntry: function (id, label, selected, info, options, style) {
+      var obj = createTextStub(this.tables.SELECT, label, null, info, undefined,
+        undefined, undefined, undefined, undefined,
+        undefined, undefined, style);
       obj.id = id;
       if (selected) {
         obj.selected = selected;
@@ -252,36 +258,37 @@
       return obj;
     },
 
-    createOptionEntry: function (label, value) {
+    createOptionEntry: function (label, value, style) {
       return {
         label: label,
-        value: value || label
+        value: value || label,
+        style
       };
     },
 
-    createTableEntry: function (id, cols, options, head = (new Array(cols)).fill(''),
-      rows = []) {
+    createTableEntry: function (id, label, head, rows, info, style) {
       return {
+        id,
+        label,
+        info,
         type: this.tables.TABLE,
-        cols,
         head,
         rows,
-        options
+        style
       };
     },
 
     renameDangerButton: function (buttonID) {
-      const buttonText = $(buttonID).text();
+      var buttonText = $(buttonID).text();
       $('#modal-delete-confirmation strong').html('Really ' + buttonText.toLowerCase() + '?');
     },
 
     show: function (templateName, title, buttons, tableContent, advancedContent,
       extraInfo, events, noConfirm, tabBar, divID) {
-      let element;
-      const self = this;
-      let lastBtn;
-      let confirmMsg;
-      let closeButtonFound = false;
+      var self = this;
+      var lastBtn;
+      var confirmMsg;
+      var closeButtonFound = false;
 
       buttons = buttons || [];
       noConfirm = Boolean(noConfirm);
@@ -324,15 +331,11 @@
         // remove not needed modal elements
         $('#' + divID + ' #modal-dialog').removeClass('fade hide modal');
         $('#' + divID + ' .modal-header').remove();
-
-        element = $('#' + divID + ' .modal-tabbar');
-        element.remove();
-        element.remove();
+        $('#' + divID + ' .modal-tabbar').remove();
+        $('#' + divID + ' .modal-tabbar').remove();
         $('#' + divID + ' .button-close').remove();
-
-        element = $('#' + divID + ' .modal-footer');
-        if (element.children().length === 0) {
-          element.remove();
+        if ($('#' + divID + ' .modal-footer').children().length === 0) {
+          $('#' + divID + ' .modal-footer').remove();
         }
       }
       _.each(buttons, function (b, i) {
@@ -345,20 +348,19 @@
           return;
         }
         if (b.type === self.buttons.DELETE && !noConfirm) {
-          let string = '#modalButton' + i;
+          var string = '#modalButton' + i;
           if (divID) {
             string = '#' + divID + ' #modalButton' + i;
           }
-          $(string).on('click', function () {
+          $(string).bind('click', function () {
             if (divID) {
-              const element = $('#' + divID + ' ' + self.confirm.yes);
-              element.off('click');
-              element.on('click', b.callback);
+              $('#' + divID + ' ' + self.confirm.yes).unbind('click');
+              $('#' + divID + ' ' + self.confirm.yes).bind('click', b.callback);
               $('#' + divID + ' ' + self.confirm.list).css('display', 'block');
               self.renameDangerButton(string);
             } else {
-              $(self.confirm.yes).off('click');
-              $(self.confirm.yes).on('click', b.callback);
+              $(self.confirm.yes).unbind('click');
+              $(self.confirm.yes).bind('click', b.callback);
               $(self.confirm.list).css('display', 'block');
               self.renameDangerButton(string);
             }
@@ -366,23 +368,23 @@
           return;
         }
         if (divID) {
-          $('#' + divID + ' ' + '#modalButton' + i).on('click', b.callback);
+          $('#' + divID + ' ' + '#modalButton' + i).bind('click', b.callback);
         } else {
-          $('#modalButton' + i).on('click', b.callback);
+          $('#modalButton' + i).bind('click', b.callback);
         }
       });
 
       if (divID) {
-        $('#' + divID + ' ' + this.confirm.no).on('click', function () {
+        $('#' + divID + ' ' + this.confirm.no).bind('click', function () {
           $('#' + divID + ' ' + self.confirm.list).css('display', 'none');
         });
       } else {
-        $(this.confirm.no).on('click', function () {
+        $(this.confirm.no).bind('click', function () {
           $(self.confirm.list).css('display', 'none');
         });
       }
 
-      let template;
+      var template;
       if (typeof templateName === 'string') {
         template = templateEngine.createTemplate(templateName);
         if (divID) {
@@ -399,11 +401,10 @@
           }));
         }
       } else {
-        let counter = 0;
+        var counter = 0;
         _.each(templateName, function (v) {
           template = templateEngine.createTemplate(v);
-          $('.createModalDialog .modal-body .tab-content #' + tabBar[counter]).html(
-            template.render({
+          $('.createModalDialog .modal-body .tab-content #' + tabBar[counter]).html(template.render({
               content: tableContent,
               advancedContent: advancedContent,
               info: extraInfo
@@ -415,7 +416,7 @@
 
       arangoHelper.createTooltips('.createModalDialog .modalTooltips', 'left');
 
-      let completeTableContent = tableContent || [];
+      var completeTableContent = tableContent || [];
       if (advancedContent && advancedContent.content) {
         completeTableContent = completeTableContent.concat(advancedContent.content);
       }
@@ -425,7 +426,7 @@
         if (row.type === self.tables.SELECT2) {
           // handle select2
 
-          const options = {
+          var options = {
             tags: row.tags || [],
             showSearchBox: false,
             minimumResultsForSearch: -1,
@@ -446,21 +447,20 @@
       }
 
       if ($('#accordion2')) {
-        const element = $('#collapseOne');
-        $('#accordion2 .accordion-toggle').on('click', function () {
-          if (element.is(':visible')) {
-            element.hide();
+        $('#accordion2 .accordion-toggle').bind('click', function () {
+          if ($('#collapseOne').is(':visible')) {
+            $('#collapseOne').hide();
             setTimeout(function () {
               $('.accordion-toggle').addClass('collapsed');
             }, 100);
           } else {
-            element.show();
+            $('#collapseOne').show();
             setTimeout(function () {
               $('.accordion-toggle').removeClass('collapsed');
             }, 100);
           }
         });
-        element.hide();
+        $('#collapseOne').hide();
         setTimeout(function () {
           $('.accordion-toggle').addClass('collapsed');
         }, 100);
@@ -480,7 +480,7 @@
       }
 
       // if input-field is available -> autofocus first one
-      let focus;
+      var focus;
       if (divID) {
         focus = $('#' + divID + ' ' + '#modal-dialog').find('input');
       } else {
@@ -496,7 +496,7 @@
           if (focus.length > 0) {
             focus = focus.find('input');
             if (focus.length > 0) {
-              $(focus[0]).trigger('focus');
+              $(focus[0]).focus();
             }
           }
         }, 400);
@@ -504,15 +504,15 @@
     },
 
     modalBindValidation: function (entry) {
-      const self = this;
+      var self = this;
       if (entry.hasOwnProperty('id') &&
         entry.hasOwnProperty('validateInput')) {
-        const validCheck = function () {
-          const $el = $('#' + entry.id);
-          const validation = entry.validateInput($el);
-          let error = false;
+        var validCheck = function () {
+          var $el = $('#' + entry.id);
+          var validation = entry.validateInput($el);
+          var error = false;
           _.each(validation, function (validator) {
-            const value = $el.val();
+            var value = $el.val();
             if (!validator.rule) {
               validator = { rule: validator };
             }
@@ -523,7 +523,7 @@
                 error = validator.msg || e.message;
               }
             } else {
-              const result = Joi.validate(value, validator.rule);
+              var result = Joi.validate(value, validator.rule);
               if (result.error) {
                 error = validator.msg || result.error.message;
               }
@@ -536,11 +536,11 @@
             return error;
           }
         };
-        const $el = $('#' + entry.id);
+        var $el = $('#' + entry.id);
         // catch result of validation and act
         $el.on('keyup focusout', function () {
-          const msg = validCheck();
-          const errorElement = $el.next()[0];
+          var msg = validCheck();
+          var errorElement = $el.next()[0];
           if (msg) {
             $el.addClass('invalid-input');
             if (errorElement) {
@@ -573,10 +573,10 @@
     },
 
     modalTestAll: function () {
-      const tests = _.map(this._validators, function (v) {
+      var tests = _.map(this._validators, function (v) {
         return v();
       });
-      const invalid = _.any(tests);
+      var invalid = _.any(tests);
       if (invalid) {
         if ($('#modal-dialog').is(':visible')) {
           $('#modal-dialog .modal-footer .button-success').
@@ -604,7 +604,7 @@
     clearValidators: function () {
       this._validators = [];
       _.each(this._validateWatchers, function (w) {
-        w.off('keyup focusout');
+        w.unbind('keyup focusout');
       });
       this._validateWatchers = [];
     },

@@ -9,9 +9,6 @@
     readOnly: false,
 
     template: templateEngine.createTemplate('viewsView.ejs'),
-    partialTemplates: {
-      modalInputs: templateEngine.createTemplate('modalInputs.ejs')
-    },
 
     initialize: function () {
     },
@@ -42,37 +39,36 @@
     },
 
     checkVisibility: function () {
-      this.dropdownVisible = !!$('#viewsDropdown').is(':visible');
+      if ($('#viewsDropdown').is(':visible')) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
       arangoHelper.setCheckboxStatus('#viewsDropdown');
     },
 
     checkIfInProgress: function () {
       if (window.location.hash.search('views') > -1) {
-        const self = this;
+        var self = this;
 
-        const callback = function (error, lockedViews) {
+        var callback = function (error, lockedViews) {
           if (error) {
             console.log('Could not check locked views');
           } else {
             if (lockedViews.length > 0) {
               _.each(lockedViews, function (foundView) {
-                const element = $('#' + foundView.collection + ' .collection-type-icon');
-
                 if ($('#' + foundView.collection)) {
                   // found view html container
-                  element.removeClass('fa-clone');
-                  element.addClass('fa-spinner').addClass('fa-spin');
+                  $('#' + foundView.collection + ' .collection-type-icon').removeClass('fa-clone');
+                  $('#' + foundView.collection + ' .collection-type-icon').addClass('fa-spinner').addClass('fa-spin');
                 } else {
-                  element.addClass('fa-clone');
-                  element.removeClass('fa-spinner').removeClass('fa-spin');
+                  $('#' + foundView.collection + ' .collection-type-icon').addClass('fa-clone');
+                  $('#' + foundView.collection + ' .collection-type-icon').removeClass('fa-spinner').removeClass('fa-spin');
                 }
               });
             } else {
               // if no view found at all, just reset all to default
-              $('.tile .collection-type-icon').
-                addClass('fa-clone').
-                removeClass('fa-spinner').
-                removeClass('fa-spin');
+              $('.tile .collection-type-icon').addClass('fa-clone').removeClass('fa-spinner').removeClass('fa-spin');
             }
 
             window.setTimeout(function () {
@@ -107,7 +103,7 @@
     },
 
     toggleSettingsDropdown: function () {
-      const self = this;
+      var self = this;
       // apply sorting to checkboxes
       $('#viewsSortDesc').attr('checked', this.sortOptions.desc);
 
@@ -118,15 +114,12 @@
     },
 
     render: function (data) {
-      const self = this;
+      var self = this;
 
       if (data) {
         self.$el.html(self.template.render({
           views: self.applySorting(data.result),
-          searchString: self.getSearchString(),
-          partial: function (template, data) {
-            self.partialTemplates[template].render(data);
-          }
+          searchString: self.getSearchString()
         }));
       } else {
         this.getViews();
@@ -136,22 +129,24 @@
         }));
       }
 
-      const element = $('#viewsSortDesc');
       if (self.dropdownVisible === true) {
-        element.attr('checked', self.sortOptions.desc);
+        $('#viewsSortDesc').attr('checked', self.sortOptions.desc);
         $('#viewsToggle').addClass('activated');
         $('#viewsDropdown2').show();
       }
 
-      element.attr('checked', self.sortOptions.desc);
+      $('#viewsSortDesc').attr('checked', self.sortOptions.desc);
       arangoHelper.setCheckboxStatus('#viewsDropdown');
 
-      const searchInput = $('#viewsSearchInput');
-      const strLength = searchInput.val().length;
-      searchInput.trigger('focus');
+      var searchInput = $('#viewsSearchInput');
+      var strLength = searchInput.val().length;
+      searchInput.focus();
       searchInput[0].setSelectionRange(strLength, strLength);
 
       arangoHelper.checkDatabasePermissions(this.setReadOnly.bind(this));
+
+      self.events['click .graphViewer-icon-button.add'] = self.addRow.bind(self);
+      self.events['click .graphViewer-icon-button.delete'] = self.removeRow.bind(self);
     },
 
     setReadOnly: function () {
@@ -168,7 +163,7 @@
     },
 
     applySorting: function (data) {
-      const self = this;
+      var self = this;
 
       // default sorting order
       data = _.sortBy(data, 'name');
@@ -177,9 +172,9 @@
         data = data.reverse();
       }
 
-      const toReturn = [];
+      var toReturn = [];
       if (this.getSearchString() !== '') {
-        _.each(data, function (view) {
+        _.each(data, function (view, key) {
           if (view && view.name) {
             if (view.name.toLowerCase().indexOf(self.getSearchString()) !== -1) {
               toReturn.push(view);
@@ -194,19 +189,19 @@
     },
 
     gotoView: function (e) {
-      const name = $(e.currentTarget).attr('id');
+      var name = $(e.currentTarget).attr('id');
       if (name) {
-        const url = 'view/' + encodeURIComponent(name);
+        var url = 'view/' + encodeURIComponent(name);
         window.App.navigate(url, {trigger: true});
       }
     },
 
     getViews: function () {
-      const self = this;
+      var self = this;
 
       this.collection.fetch({
-        success: function () {
-          const res = {
+        success: function (data) {
+          var res = {
             result: []
           };
           self.collection.each(function (view) {
@@ -229,8 +224,10 @@
     },
 
     createViewModal: function () {
-      const buttons = [];
-      const tableContent = [];
+      var buttons = [];
+      var tableContent = [];
+      var advanced = {};
+      var advancedTableContent = [];
 
       tableContent.push(
         window.modalView.createTextEntry(
@@ -267,24 +264,228 @@
 
       tableContent.push(
         window.modalView.createTextEntry(
-
+          'newPrimarySortCompression',
+          'Primary Sort Compression',
+          'lz4',
+          false,
+          'none | lz4',
+          false,
+          [
+            {
+              rule: Joi.string().valid('lz4', 'none'),
+              msg: 'Only these values are allowed: \'lz4\', \'none\''
+            }
+          ],
+          'width: unset; margin-left: 20px;'
         )
       );
+
+      tableContent.push(
+        window.modalView.createTableEntry(
+          'newPrimarySort',
+          'Primary Sort',
+          ['Field', 'Direction'],
+          [[
+            window.modalView.createTextEntry(
+              undefined,
+              undefined,
+              '',
+              false,
+              undefined,
+              true,
+              [
+                {
+                  rule: Joi.string().required(),
+                  msg: 'No field name given.'
+                }
+              ]
+            ),
+            window.modalView.createTextEntry(
+              undefined,
+              undefined,
+              '',
+              false,
+              'asc | desc',
+              true,
+              [
+                {
+                  rule: Joi.string().valid('asc', 'ASC', 'desc', 'DESC'),
+                  msg: 'Only these values are allowed: \'asc\', \'ASC\', \'desc\', \'DESC\''
+                },
+                {
+                  rule: Joi.string().required(),
+                  msg: 'No direction given.'
+                }
+              ]
+            )
+          ]]
+        )
+      );
+
+      tableContent.push(
+        window.modalView.createTableEntry(
+          'newStoredValues',
+          'Stored Values',
+          ['Fields (one per line)', 'Compression'],
+          [[
+            window.modalView.createBlobEntry(
+              _.uniqueId('field-')
+            ),
+            window.modalView.createTextEntry(
+              undefined,
+              undefined,
+              '',
+              false,
+              'none | lz4',
+              false,
+              [
+                {
+                  rule: Joi.string().valid('lz4', 'none'),
+                  msg: 'Only these values are allowed: \'lz4\', \'none\''
+                }
+              ]
+            )
+          ]],
+          undefined,
+          'margin-top: 10px;'
+        )
+      );
+
+      advancedTableContent.push(
+        window.modalView.createTextEntry(
+          'newWriteBufferIdle',
+          'Write Buffer Idle',
+          64,
+          false,
+          undefined,
+          false,
+          [
+            {
+              rule: Joi.number().integer().min(0),
+              msg: 'Only non-negative integers allowed.'
+            }
+          ]
+        )
+      );
+
+      advancedTableContent.push(
+        window.modalView.createTextEntry(
+          'newWriteBufferActive',
+          'Write Buffer Active',
+          '0',
+          false,
+          undefined,
+          false,
+          [
+            {
+              rule: Joi.number().integer().min(0),
+              msg: 'Only non-negative integers allowed.'
+            }
+          ]
+        )
+      );
+
+      advancedTableContent.push(
+        window.modalView.createTextEntry(
+          'newWriteBufferSizeMax',
+          'Write Buffer Size Max',
+          33554432,
+          false,
+          undefined,
+          false,
+          [
+            {
+              rule: Joi.number().integer().min(0),
+              msg: 'Only non-negative integers allowed.'
+            }
+          ]
+        )
+      );
+      advanced.header = 'Advanced';
+      advanced.content = advancedTableContent;
 
       buttons.push(
         window.modalView.createSuccessButton('Create', this.submitCreateView.bind(this))
       );
 
-      window.modalView.show('modalTable.ejs', 'Create New View', buttons, tableContent);
+      window.modalView.show('modalTable.ejs', 'Create New View', buttons, tableContent, advanced,
+        undefined, this.events);
+    },
+
+    addRow: function (e) {
+      e.stopPropagation();
+
+      const row = $(e.currentTarget).closest('tr');
+      const newRow = row.clone();
+      const idParts = newRow.attr('id').split('-');
+
+      idParts[idParts.length - 1] = parseInt(idParts[idParts.length - 1]) + 1;
+      const newId = idParts.join('-');
+
+      newRow.attr('id', newId);
+      newRow.find('input').val('');
+      if (!newRow.find('button.delete').length) {
+        const addButton = newRow.find('button.add');
+        $(`
+            <button style="margin-left: 5px;"
+                    class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete addDelete">
+            </button>
+        `).insertAfter(addButton);
+      }
+
+      newRow.insertAfter(row);
+    },
+
+    removeRow: function (e) {
+      e.stopPropagation();
+      $(e.currentTarget).closest('tr').remove();
     },
 
     submitCreateView: function () {
-      const self = this;
-      const name = $('#newName').val();
-      const options = JSON.stringify({
+      var self = this;
+      var name = $('#newName').val();
+      var primarySortCompression = $('#newPrimarySortCompression').val();
+      var writebufferIdle = parseInt($('#newWriteBufferIdle').val());
+      var writebufferActive = parseInt($('#newWriteBufferActive').val());
+      var writebufferSizeMax = parseInt($('#newWriteBufferSizeMax').val());
+
+      const primarySort = [];
+      $('#newPrimarySort tbody').children().each((idx, tr) => {
+        const inputs = $(tr).find('input');
+        const [field, direction] = inputs.map((idx, input) => input.value);
+
+        if (field) {
+          primarySort.push({
+            field,
+            direction: direction || 'asc'
+          });
+        }
+      });
+
+      const storedValues = [];
+      $('#newStoredValues tbody').children().each((idx, tr) => {
+        const inputs = $(tr).find('input,textarea');
+        const [fields, compression] = inputs.map((idx, input) => input.value);
+
+        if (fields) {
+          const fieldsArr = fields.trim().split('\n');
+
+          storedValues.push({
+            fields: fieldsArr,
+            compression: compression || 'lz4'
+          });
+        }
+      });
+
+      var options = JSON.stringify({
         name: name,
         type: 'arangosearch',
-        properties: {}
+        primarySortCompression,
+        writebufferIdle,
+        writebufferActive,
+        writebufferSizeMax,
+        primarySort,
+        storedValues
       });
 
       $.ajax({
@@ -294,7 +495,7 @@
         contentType: 'application/json',
         processData: false,
         data: options,
-        success: function () {
+        success: function (data) {
           window.modalView.hide();
           arangoHelper.arangoNotification('View', 'Creation in progress. This may take a while.');
           self.getViews();
