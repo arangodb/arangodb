@@ -602,7 +602,7 @@ TEST_F(ShapeContainerTest2, intersections_multipoint) {
   NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&multiline)));
   NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&poly)));
   NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&multipoly)));
-  ASSERT_TRUE(multipoint.intersects(&rect));
+  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(&rect)));
 }
 
 TEST_F(ShapeContainerTest2, intersections_line) {

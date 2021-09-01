@@ -1609,16 +1609,26 @@ TEST_F(ValidGeoJSONInputTest, valid_polygon_rectangle) {
   ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
   ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).ok());
 
+  // Please note: Some of the ASSERT_FALSEs below are not intuitive, since
+  // one would expect this polygon to contain all points with coordinators
+  // whose latitude is between -1 and 1 (including the boundaries) and whose
+  // longitude is between -1 and 1 (including the boundaries). However, this
+  // is not how S2 polygons work. Not even the vertices on the boundary
+  // polyline need to be contained in the polygon. Rather, a tricky definition
+  // says clearly, to which side of a polyline a vertex belongs with the
+  // property, that if one cuts the earth into polygonal shapes with polylines,
+  // every point is in exactly one area.
+  // Unfortunately, this is not the same definition as GeoJSON uses!
   ASSERT_TRUE(shape.type() == geo::ShapeContainer::Type::S2_POLYGON);
   ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0, 0).ToPoint()));
   ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1, 0).ToPoint()));
   ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-1, 0).ToPoint()));
-  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0, -1).ToPoint()));
-  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0, 1).ToPoint()));
-  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1, -1).ToPoint()));
-  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1, 1).ToPoint()));
+  ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(0, -1).ToPoint()));
+  ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(0, 1).ToPoint()));
+  ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(1, -1).ToPoint()));
+  ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(1, 1).ToPoint()));
   ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-1, 1).ToPoint()));
-  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-1, -1).ToPoint()));
+  ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(-1, -1).ToPoint()));
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(-1.00001, -1.00001).ToPoint()));
 }
 

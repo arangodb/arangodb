@@ -460,5 +460,5 @@ TEST_F(QueryPointsContainedInTest, rectangle) {
 
   AscIterator near(std::move(params));
   checkResult(nearSearch(index, docs, near, 10000),
-              {{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}});
+              {{1.0, 1.0}});
 }
