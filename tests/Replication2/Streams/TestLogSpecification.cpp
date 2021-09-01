@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,11 +20,9 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "TestHelper.h"
+#include "TestLogSpecification.h"
 
-#include "Replication2/ReplicatedLog/LogCore.h"
-#include "Replication2/ReplicatedLog/LogLeader.h"
-#include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/Streams/LogMultiplexer.tpp"
 
-#include <utility>
+template struct arangodb::replication2::streams::LogMultiplexer<arangodb::replication2::test::MyTestSpecification>;
+template struct arangodb::replication2::streams::LogDemultiplexer<arangodb::replication2::test::MyTestSpecification>;

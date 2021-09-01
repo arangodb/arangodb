@@ -23,9 +23,22 @@
 
 #include "Supervision.h"
 
-#include <Basics/StringUtils.h>
-#include <Basics/overload.h>
-#include <thread>
+#include <cstddef>
+#include <algorithm>
+#include <cstdint>
+#include <exception>
+#include <iosfwd>
+#include <optional>
+#include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <variant>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-common.h>
 
 #include "Agency/ActiveFailoverJob.h"
 #include "Agency/AddFollower.h"
@@ -48,6 +61,22 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "StorageEngine/HealthData.h"
+#include "Agency/AgencyStrings.h"
+#include "Agency/AgentConfiguration.h"
+#include "Agency/AgentInterface.h"
+#include "Agency/PathComponent.h"
+#include "Agency/TimeString.h"
+#include "Agency/TransactionBuilder.h"
+#include "Basics/Result.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
+#include "Basics/overload.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "RestServer/Metrics.h"
+#include "RestServer/MetricsFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -2282,20 +2311,21 @@ void Supervision::checkReplicatedLogs() {
       });
       auto newTermSpec = checkReplicatedLog(dbName, spec, current, info);
 
-      envelope = std::visit(
-          overload{[&, &dbName = dbName](LogPlanTermSpecification const& newSpec) {
-                     return arangodb::replication2::agency::methods::updateTermSpecificationTrx(
-                         std::move(envelope), dbName, spec.id, newSpec,
-                         spec.currentTerm->term);
-                   },
-                   [&, &dbName = dbName](LogCurrentSupervisionElection const& newElection) {
-                     return arangodb::replication2::agency::methods::updateElectionResult(
-                         std::move(envelope), dbName, spec.id, newElection);
-                   },
-                   [&](std::monostate const&) {
-                     return std::move(envelope);  // do nothing
-                   }},
-          newTermSpec);
+      envelope =
+          std::visit(arangodb::overload{
+                         [&, &dbName = dbName](LogPlanTermSpecification const& newSpec) {
+                           return arangodb::replication2::agency::methods::updateTermSpecificationTrx(
+                               std::move(envelope), dbName, spec.id, newSpec,
+                               spec.currentTerm->term);
+                         },
+                         [&, &dbName = dbName](LogCurrentSupervisionElection const& newElection) {
+                           return arangodb::replication2::agency::methods::updateElectionResult(
+                               std::move(envelope), dbName, spec.id, newElection);
+                         },
+                         [&](std::monostate const&) {
+                           return std::move(envelope);  // do nothing
+                         }},
+                     newTermSpec);
     }
   }
 

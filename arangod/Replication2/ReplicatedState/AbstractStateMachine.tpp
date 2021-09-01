@@ -55,7 +55,7 @@ auto replicated_state::AbstractStateMachine<T>::insert(T const& v) -> LogIndex {
 
 template <typename T>
 auto replication2::replicated_state::AbstractStateMachine<T>::waitFor(LogIndex idx)
-    -> futures::Future<std::shared_ptr<const replication2::replicated_log::QuorumData>> {
+    -> futures::Future<replicated_log::WaitForResult> {
   return log->getParticipant()->waitFor(idx);
 }
 

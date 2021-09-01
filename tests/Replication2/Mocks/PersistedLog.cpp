@@ -26,9 +26,9 @@ auto MockLog::insert(PersistedLogIterator& iter, WriteOptions const&) -> arangod
 template <typename I>
 struct MockLogContainerIterator : PersistedLogIterator {
   MockLogContainerIterator(MockLog::storeType store, LogIndex start)
-  : _store(std::move(store)),
-  _current(_store.lower_bound(start)),
-  _end(_store.end()) {}
+      : _store(std::move(store)),
+        _current(_store.lower_bound(start)),
+        _end(_store.end()) {}
 
   auto next() -> std::optional<PersistingLogEntry> override {
     if (_current != _end) {
@@ -60,22 +60,22 @@ auto MockLog::removeBack(replication2::LogIndex start) -> Result {
 
 auto MockLog::drop() -> Result {
   _storage.clear();
-  return Result();
+  return {};
 }
 
 void MockLog::setEntry(replication2::LogIndex idx, replication2::LogTerm term,
-    replication2::LogPayload payload) {
+                       replication2::LogPayload payload) {
   _storage.emplace(std::piecewise_construct, std::forward_as_tuple(idx),
-      std::forward_as_tuple(term, idx, std::move(payload)));
+                   std::forward_as_tuple(term, idx, std::move(payload)));
 }
 
 MockLog::MockLog(replication2::LogId id) : MockLog(id, {}) {}
 
 MockLog::MockLog(replication2::LogId id, MockLog::storeType storage)
-: PersistedLog(id), _storage(std::move(storage)) {}
+    : PersistedLog(id), _storage(std::move(storage)) {}
 
 AsyncMockLog::AsyncMockLog(replication2::LogId id)
-: MockLog(id), _asyncWorker([this] { this->runWorker(); }) {}
+    : MockLog(id), _asyncWorker([this] { this->runWorker(); }) {}
 
 AsyncMockLog::~AsyncMockLog() noexcept { stop(); }
 
@@ -84,12 +84,12 @@ void MockLog::setEntry(replication2::PersistingLogEntry entry) {
 }
 
 auto MockLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
-    WriteOptions const& opts) -> futures::Future<Result> {
+                          WriteOptions const& opts) -> futures::Future<Result> {
   return insert(*iter, opts);
 }
 
 auto AsyncMockLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
-    WriteOptions const& opts) -> futures::Future<Result> {
+                               WriteOptions const& opts) -> futures::Future<Result> {
   auto entry = std::make_shared<QueueEntry>();
   entry->opts = opts;
   entry->iter = std::move(iter);
@@ -121,9 +121,9 @@ void AsyncMockLog::runWorker() {
         std::swap(queue, _queue);
       }
     }
-    for (auto& lambda : queue) {
-      auto res = insert(*lambda->iter, lambda->opts);
-      lambda->promise.setValue(res);
+    for (auto& entry : queue) {
+      auto res = insert(*entry->iter, entry->opts);
+      entry->promise.setValue(res);
     }
   }
 }

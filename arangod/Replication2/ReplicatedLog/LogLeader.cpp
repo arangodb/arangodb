@@ -22,16 +22,6 @@
 
 #include "LogLeader.h"
 
-#include "Replication2/ReplicatedLog/InMemoryLog.h"
-#include "Replication2/ReplicatedLog/LogContextKeys.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
-#include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "RestServer/Metrics.h"
-#include "Scheduler/SchedulerFeature.h"
-
 #include <Basics/Exceptions.h>
 #include <Basics/Guarded.h>
 #include <Basics/StringUtils.h>
@@ -45,12 +35,35 @@
 #include <Logger/LogMacros.h>
 #include <Logger/Logger.h>
 #include <Logger/LoggerStream.h>
-
 #include <chrono>
-#include <cstdlib>
 #include <functional>
-#include <thread>
 #include <type_traits>
+#include <algorithm>
+#include <cstdint>
+#include <exception>
+#include <iterator>
+#include <ratio>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/LogContextKeys.h"
+#include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "RestServer/Metrics.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Basics/ErrorCode.h"
+#include "Futures/Promise-inl.h"
+#include "Futures/Promise.h"
+#include "Futures/Unit.h"
+#include "Replication2/DeferredExecution.h"
+#include "Scheduler/SupervisedScheduler.h"
+#include "immer/detail/iterator_facade.hpp"
+#include "immer/detail/rbts/rrbtree_iterator.hpp"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -179,7 +192,7 @@ void replicated_log::LogLeader::handleResolvedPromiseSet(
 
   for (auto& promise : resolvedPromises._set) {
     TRI_ASSERT(promise.second.valid());
-    promise.second.setValue(resolvedPromises._quorum);
+    promise.second.setValue(resolvedPromises.result);
   }
 }
 
@@ -454,7 +467,7 @@ auto replicated_log::LogLeader::waitFor(LogIndex index) -> WaitForFuture {
       return promise.getFuture();
     }
     if (leaderData._commitIndex >= index) {
-      return futures::Future<std::shared_ptr<QuorumData const>>{std::in_place,
+      return futures::Future<WaitForResult>{std::in_place, leaderData._commitIndex,
                                                                 leaderData._lastQuorum};
     }
     auto it = leaderData._waitForQueue.emplace(index, WaitForPromise{});
@@ -497,7 +510,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
           << "resolving promise for index " << it->first;
       toBeResolved.insert(_waitForQueue.extract(it++));
     }
-    return ResolvedPromiseSet{std::move(toBeResolved), std::move(quorum),
+    return ResolvedPromiseSet{std::move(toBeResolved),
+                              WaitForResult(newIndex, std::move(quorum)),
                               _inMemoryLog.slice(oldIndex, newIndex + 1)};
   } catch (std::exception const& e) {
     // If those promises are not fulfilled we can not continue.
@@ -545,7 +559,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerIn
   if (follower.lastAckedEntry.index == lastAvailableIndex.index &&
       _commitIndex == follower.lastAckedCommitIndex &&
       _largestCommonIndex == follower.lastAckedLCI) {
-    LOG_CTX("74b71", TRACE, _self._logContext) << "up to date";
+    LOG_CTX("74b71", TRACE, follower.logContext) << "up to date";
     return std::nullopt;  // nothing to replicate
   }
 
@@ -879,6 +893,10 @@ auto replicated_log::LogLeader::construct(
 
 auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
   return Result();
+}
+
+auto replicated_log::LogLeader::copyInMemoryLog() const -> replicated_log::InMemoryLog {
+  return _guardedLeaderData.getLockedGuard()->_inMemoryLog;
 }
 
 replicated_log::LogLeader::LocalFollower::LocalFollower(
