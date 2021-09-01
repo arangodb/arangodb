@@ -1233,7 +1233,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
       EXPECT_EQ(1, tmpSlice2.get("version").getNumber<uint32_t>());
       EXPECT_TRUE(tmpSlice2.get("collectionName").isString() && "testCollection" == tmpSlice2.get("collectionName").copyString());
       EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() && "lz4" == tmpSlice2.get("primarySortCompression").copyString());
-      EXPECT_TRUE(tmpSlice2.get("storedFields").isArray() && 2 == tmpSlice2.get("storedFields").length());
+      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() && 0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
@@ -1518,7 +1518,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
       EXPECT_EQ(0, tmpSlice2.get("version").getNumber<uint32_t>());
       EXPECT_TRUE(tmpSlice2.get("collectionName").isString() && "testCollection" == tmpSlice2.get("collectionName").copyString());
       EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() && "lz4" == tmpSlice2.get("primarySortCompression").copyString());
-      EXPECT_TRUE(tmpSlice2.get("storedFields").isArray() && 2 == tmpSlice2.get("storedFields").length());
+      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() && 0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
@@ -1672,7 +1672,6 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
       EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
       EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
       EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
-      EXPECT_TRUE(tmpSlice2.get("version").isNumber());
     }
   }
 
@@ -1802,7 +1801,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
       EXPECT_EQ(0, tmpSlice2.get("version").getNumber<uint32_t>());
       EXPECT_TRUE(tmpSlice2.get("collectionName").isString() && "testCollection" == tmpSlice2.get("collectionName").copyString());
       EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() && "lz4" == tmpSlice2.get("primarySortCompression").copyString());
-      EXPECT_TRUE(tmpSlice2.get("storedFields").isArray() && 2 == tmpSlice2.get("storedFields").length());
+      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() && 0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
@@ -2086,7 +2085,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
       EXPECT_EQ(1, tmpSlice2.get("version").getNumber<uint32_t>());
       EXPECT_TRUE(tmpSlice2.get("collectionName").isString() && "testCollection" == tmpSlice2.get("collectionName").copyString());
       EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() && "lz4" == tmpSlice2.get("primarySortCompression").copyString());
-      EXPECT_TRUE(tmpSlice2.get("storedFields").isArray() && 2 == tmpSlice2.get("storedFields").length());
+      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() && 0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
