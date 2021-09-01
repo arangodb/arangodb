@@ -7788,6 +7788,29 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_TRUE((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
         EXPECT_TRUE((false == slice.hasKey("links")));
       }
+
+      // inventory
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.hasKey("links"));
+        auto linksSlice = slice.get("links");
+        ASSERT_TRUE(linksSlice.isObject());
+        auto linkSlice = linksSlice.get("testCollection");
+        ASSERT_TRUE(linkSlice.isObject());
+        auto versionSlice = linkSlice.get("version");
+        ASSERT_TRUE(versionSlice.isNumber());
+        ASSERT_EQ(1, versionSlice.getNumber<uint32_t>());
+      }
     }
 
     // update link
@@ -7837,6 +7860,248 @@ TEST_F(IResearchViewTest, test_update_partial) {
         auto tmpSlice = slice.get("collections");
         EXPECT_TRUE((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
         EXPECT_TRUE((false == slice.hasKey("links")));
+      }
+
+      // inventory
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.hasKey("links"));
+        auto linksSlice = slice.get("links");
+        ASSERT_TRUE(linksSlice.isObject());
+        auto linkSlice = linksSlice.get("testCollection");
+        ASSERT_TRUE(linkSlice.isObject());
+        auto versionSlice = linkSlice.get("version");
+        ASSERT_TRUE(versionSlice.isNumber());
+        ASSERT_EQ(1, versionSlice.getNumber<uint32_t>());
+      }
+    }
+
+    // update link (internal request)
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": { } } }"
+      );
+      EXPECT_TRUE((view->properties(updateJson->slice(), false, true).ok()));
+
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.get("deleted").isNone()); // no system properties
+        auto tmpSlice = slice.get("links");
+        EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+        tmpSlice = tmpSlice.get("testCollection");
+        EXPECT_TRUE((true == tmpSlice.isObject()));
+        tmpSlice = tmpSlice.get("includeAllFields");
+        EXPECT_TRUE((true == tmpSlice.isBoolean() && false == tmpSlice.getBoolean()));
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(19, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        auto tmpSlice = slice.get("collections");
+        EXPECT_TRUE((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+        EXPECT_TRUE((false == slice.hasKey("links")));
+      }
+
+      // inventory
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.hasKey("links"));
+        auto linksSlice = slice.get("links");
+        ASSERT_TRUE(linksSlice.isObject());
+        auto linkSlice = linksSlice.get("testCollection");
+        ASSERT_TRUE(linkSlice.isObject());
+        auto versionSlice = linkSlice.get("version");
+        ASSERT_TRUE(versionSlice.isNumber());
+        ASSERT_EQ(0, versionSlice.getNumber<uint32_t>());
+      }
+    }
+
+    // update link (internal request, explicit version)
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": { \"version\":1 } } }"
+      );
+      EXPECT_TRUE((view->properties(updateJson->slice(), false, true).ok()));
+
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.get("deleted").isNone()); // no system properties
+        auto tmpSlice = slice.get("links");
+        EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+        tmpSlice = tmpSlice.get("testCollection");
+        EXPECT_TRUE((true == tmpSlice.isObject()));
+        tmpSlice = tmpSlice.get("includeAllFields");
+        EXPECT_TRUE((true == tmpSlice.isBoolean() && false == tmpSlice.getBoolean()));
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(19, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        auto tmpSlice = slice.get("collections");
+        EXPECT_TRUE((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+        EXPECT_TRUE((false == slice.hasKey("links")));
+      }
+
+      // inventory
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.hasKey("links"));
+        auto linksSlice = slice.get("links");
+        ASSERT_TRUE(linksSlice.isObject());
+        auto linkSlice = linksSlice.get("testCollection");
+        ASSERT_TRUE(linkSlice.isObject());
+        auto versionSlice = linkSlice.get("version");
+        ASSERT_TRUE(versionSlice.isNumber());
+        ASSERT_EQ(1, versionSlice.getNumber<uint32_t>());
+      }
+    }
+
+    // update link (user request, explicit version)
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": { \"version\":0 } } }"
+      );
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
+
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.get("deleted").isNone()); // no system properties
+        auto tmpSlice = slice.get("links");
+        EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+        tmpSlice = tmpSlice.get("testCollection");
+        EXPECT_TRUE((true == tmpSlice.isObject()));
+        tmpSlice = tmpSlice.get("includeAllFields");
+        EXPECT_TRUE((true == tmpSlice.isBoolean() && false == tmpSlice.getBoolean()));
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(19, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        auto tmpSlice = slice.get("collections");
+        EXPECT_TRUE((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+        EXPECT_TRUE((false == slice.hasKey("links")));
+      }
+
+      // inventory
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.hasKey("links"));
+        auto linksSlice = slice.get("links");
+        ASSERT_TRUE(linksSlice.isObject());
+        auto linkSlice = linksSlice.get("testCollection");
+        ASSERT_TRUE(linkSlice.isObject());
+        auto versionSlice = linkSlice.get("version");
+        ASSERT_TRUE(versionSlice.isNumber());
+        ASSERT_EQ(0, versionSlice.getNumber<uint32_t>());
       }
     }
   }
