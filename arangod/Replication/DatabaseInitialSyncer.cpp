@@ -296,7 +296,9 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
         }
 
         arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
-        if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()), mdr)) {
+        // We must see our own writes, because we may have to remove conflicting documents
+        // (that we just inserted) as documents may be replicated in unexpected order.
+        if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()), mdr, arangodb::ReadOwnWrites::yes)) {
           // already have exactly this revision no need to insert
           break;
         }
