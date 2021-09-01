@@ -3813,7 +3813,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         "\"testCollection1\": { \"analyzers\": [ \"::test_analyzer\", "
         "\"identity\", \"::ngram_test_analyzer13\", \"::ngram_test_analyzer2\" ], \"includeAllFields\": true }"
         "}}");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
@@ -4798,7 +4798,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         "\"_system::test_analyzer\", \"identity\", \"::ngram_test_analyzer13\", \"::ngram_test_analyzer2\" ], \"includeAllFields\": "
         "true }"
         "}}");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);

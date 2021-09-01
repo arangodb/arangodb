@@ -102,7 +102,7 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
         "\"collection_1\" : { \"includeAllFields\" : true },"
         "\"collection_2\" : { \"includeAllFields\" : true }"
         "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -752,7 +752,7 @@ TEST_F(IResearchQueryOptionsTest, WaitForSync) {
         "\"collection_1\" : { \"includeAllFields\" : true },"
         "\"collection_2\" : { \"includeAllFields\" : true }"
         "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -969,7 +969,7 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
         "\"collection_1\" : { \"includeAllFields\" : true },"
         "\"collection_2\" : { \"includeAllFields\" : true }"
         "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 

@@ -139,7 +139,7 @@ class IResearchView final: public arangodb::LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   using LogicalDataSource::properties;
   virtual Result properties(velocypack::Slice properties,
-                            RequestContext ctx,
+                            bool isUserRequest,
                             bool partialUpdate) override final;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -241,7 +241,7 @@ class IResearchView final: public arangodb::LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result updateProperties(
     velocypack::Slice slice,
-    RequestContext ctx,
+    bool isUserRequest,
     bool partialUpdate);
 
   //////////////////////////////////////////////////////////////////////////////

@@ -84,7 +84,7 @@ class IResearchQueryOptimizationTest : public IResearchQueryTest {
         "{ \"links\" : {"
         "\"collection_1\" : { \"includeAllFields\" : true }"
         "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 

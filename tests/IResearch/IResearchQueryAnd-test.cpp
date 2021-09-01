@@ -148,7 +148,7 @@ TEST_F(IResearchQueryAndTest, test) {
         "\"testCollection1\": { \"analyzers\": [ \"test_analyzer\", "
         "\"identity\" ], \"includeAllFields\": true, \"storeValues\":\"id\" }"
         "}}");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);

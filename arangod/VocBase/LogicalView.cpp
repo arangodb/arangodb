@@ -109,7 +109,7 @@ bool LogicalView::canUse(arangodb::auth::Level const& level) {
 }
 
 /*static*/ Result LogicalView::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                                      velocypack::Slice definition, RequestContext ctx) {
+                                      velocypack::Slice definition, bool isUserRequest) {
   if (!vocbase.server().hasFeature<ViewTypesFeature>()) {
     std::string name;
     if (definition.isObject()) {
@@ -128,7 +128,7 @@ bool LogicalView::canUse(arangodb::auth::Level const& level) {
     VPackStringRef(nullptr, 0));
   auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
 
-  return factory.create(view, vocbase, definition, ctx);
+  return factory.create(view, vocbase, definition, isUserRequest);
 }
 
 Result LogicalView::drop() {

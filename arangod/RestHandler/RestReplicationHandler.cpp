@@ -2044,7 +2044,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
     // must create() since view was drop()ed
     auto res = LogicalView::create(
-      view, _vocbase, slice, LogicalView::RequestContext::Internal);
+      view, _vocbase, slice, false);
 
     if (!res.ok()) {
       generateError(res);

@@ -56,7 +56,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
         "\"" + collectionName1 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\"},"
         "\"" + collectionName2 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\"}"
       "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -428,7 +428,7 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
 
   auto updateJson = VPackParser::fromJson(
     "{\"links\": {\"" + collectionName + "\": {\"includeAllFields\": true} }}");
-  EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+  EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
   arangodb::velocypack::Builder builder;
 
@@ -574,7 +574,7 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecordWithCompressio
 
   auto updateJson = VPackParser::fromJson(
     "{\"links\": {\"" + collectionName + "\": {\"includeAllFields\": true} }}");
-  EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+  EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
   arangodb::velocypack::Builder builder;
 

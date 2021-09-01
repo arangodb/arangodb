@@ -150,7 +150,7 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchView::ViewFactory : public arangodb::ViewFactory {
   virtual Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                        VPackSlice definition, RequestContext ctx) const override {
+                        VPackSlice definition, bool isUserRequest) const override {
     auto& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
     auto properties = definition.isObject()
       ? definition
@@ -203,9 +203,9 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     }
 
     // link version in case if it's not specified in a definition
-    LinkVersion const defaultVersion = ctx == RequestContext::Internal
-      ? LinkVersion::MIN
-      : LinkVersion::MAX;
+    LinkVersion const defaultVersion = isUserRequest
+      ? LinkVersion::MAX
+      : LinkVersion::MIN;
 
     // create links on a best-effort basis
     // link creation failure does not cause view creation failure
@@ -752,9 +752,9 @@ void IResearchView::open() {
 
 Result IResearchView::properties(
     velocypack::Slice properties,
-    RequestContext ctx,
+    bool isUserRequest,
     bool partialUpdate) {
-  auto res = updateProperties(properties, ctx, partialUpdate);
+  auto res = updateProperties(properties, isUserRequest, partialUpdate);
 
   if (!res.ok()) {
     return res;
@@ -977,7 +977,7 @@ Result IResearchView::unlink(DataSourceId cid) noexcept {
 
 Result IResearchView::updateProperties(
     velocypack::Slice slice,
-    RequestContext ctx,
+    bool isUserRequest,
     bool partialUpdate) {
   try {
     auto links = slice.hasKey(StaticStrings::LinksField)
@@ -1052,9 +1052,9 @@ Result IResearchView::updateProperties(
     }
 
     // link version in case if it's not specified in a definition
-    LinkVersion const defaultVersion = ctx == RequestContext::Internal
-      ? LinkVersion::MIN
-      : LinkVersion::MAX;
+    LinkVersion const defaultVersion = isUserRequest
+      ? LinkVersion::MAX
+      : LinkVersion::MIN;
 
     // ...........................................................................
     // update links if requested (on a best-effort basis)

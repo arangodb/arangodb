@@ -74,7 +74,7 @@ using irs::async_utils::read_write_mutex;
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
   virtual Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                        VPackSlice definition, RequestContext ctx) const override {
+                        VPackSlice definition, bool isUserRequest) const override {
     if (!vocbase.server().hasFeature<ClusterFeature>()) {
       return Result(
           TRI_ERROR_INTERNAL,
@@ -105,9 +105,9 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
     }
 
     // link version in case if it's not specified in a definition
-    LinkVersion const defaultVersion = ctx == RequestContext::Internal
-      ? LinkVersion::MIN
-      : LinkVersion::MAX;
+    LinkVersion const defaultVersion = isUserRequest
+      ? LinkVersion::MAX
+      : LinkVersion::MIN;
 
     // create links on a best-effor basis
     // link creation failure does not cause view creation failure
@@ -364,7 +364,7 @@ bool IResearchViewCoordinator::visitCollections(CollectionVisitor const& visitor
 
 Result IResearchViewCoordinator::properties(
     velocypack::Slice slice,
-    RequestContext ctx,
+    bool isUserRequest,
     bool partialUpdate) {
   if (!vocbase().server().hasFeature<ClusterFeature>()) {
     return Result(TRI_ERROR_INTERNAL,
@@ -467,9 +467,9 @@ Result IResearchViewCoordinator::properties(
     }
 
     // link version in case if it's not specified in a definition
-    LinkVersion const defaultVersion = ctx == RequestContext::Internal
-      ? LinkVersion::MIN
-      : LinkVersion::MAX;
+    LinkVersion const defaultVersion = isUserRequest
+      ? LinkVersion::MAX
+      : LinkVersion::MIN;
 
     std::unordered_set<DataSourceId> collections;
 

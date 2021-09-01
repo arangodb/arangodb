@@ -332,11 +332,11 @@ RocksDBIndexFactory::RocksDBIndexFactory(application_features::ApplicationServer
   static const Geo1IndexFactory geo1IndexFactory(server);
   static const Geo2IndexFactory geo2IndexFactory(server);
   static const SecondaryIndexFactory<RocksDBHashIndex, Index::TRI_IDX_TYPE_HASH_INDEX> hashIndexFactory(
-      server);
+    server);
   static const SecondaryIndexFactory<RocksDBPersistentIndex, Index::TRI_IDX_TYPE_PERSISTENT_INDEX> persistentIndexFactory(
-      server);
+    server);
   static const SecondaryIndexFactory<RocksDBSkiplistIndex, Index::TRI_IDX_TYPE_SKIPLIST_INDEX> skiplistIndexFactory(
-      server);
+    server);
   static const TtlIndexFactory ttlIndexFactory(server, Index::TRI_IDX_TYPE_TTL_INDEX);
   static const PrimaryIndexFactory primaryIndexFactory(server);
 

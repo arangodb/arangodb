@@ -41,7 +41,7 @@ struct ViewFactory {
   //////////////////////////////////////////////////////////////////////////////
   virtual Result create(
     LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-    velocypack::Slice definition, LogicalView::RequestContext ctx) const = 0;
+    velocypack::Slice definition, bool isUserRequest) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief LogicalView factory for internal instantiation only

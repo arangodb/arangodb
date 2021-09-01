@@ -39,7 +39,7 @@ using namespace arangodb;
 struct InvalidViewFactory : public arangodb::ViewFactory {
   virtual Result create(
       LogicalView::ptr&, TRI_vocbase_t& vocbase,
-      VPackSlice definition, LogicalView::RequestContext /*ctx*/) const override {
+      VPackSlice definition, bool /*isUserRequest*/) const override {
     std::string name;
     if (definition.isObject()) {
       name = basics::VelocyPackHelper::getStringValue(

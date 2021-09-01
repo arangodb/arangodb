@@ -55,11 +55,6 @@ class LogicalView : public LogicalDataSource {
   typedef std::shared_ptr<LogicalView> ptr;
   typedef std::function<bool(DataSourceId)> CollectionVisitor;
 
-  enum class RequestContext {
-    User,
-    Internal
-  };
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief casts a specified 'LogicalView' to a provided Target type
   //////////////////////////////////////////////////////////////////////////////
@@ -116,7 +111,7 @@ class LogicalView : public LogicalDataSource {
   /// @param ctx request context
   //////////////////////////////////////////////////////////////////////////////
   virtual Result properties(velocypack::Slice definition,
-                            RequestContext ctx,
+                            bool isUserRequest,
                             bool partialUpdate) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -141,10 +136,11 @@ class LogicalView : public LogicalDataSource {
   ///        on success non-null, on failure undefined
   /// @param vocbase database where the view resides
   /// @param definition the view definition
+  /// @param isUserRequest creation request is coming from a user
   /// @return success and sets 'view' or failure
   //////////////////////////////////////////////////////////////////////////////
   static Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                       velocypack::Slice definition, RequestContext ctx);
+                       velocypack::Slice definition, bool isUserRequest);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an existing view

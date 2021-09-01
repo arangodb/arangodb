@@ -68,7 +68,7 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
         "{ \"links\": {"
         "  \"testCollection1\": { \"includeAllFields\": true } "
         "}}");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);

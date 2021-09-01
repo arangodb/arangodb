@@ -100,7 +100,7 @@ TEST_F(IResearchQueryFilterTest, SearchAndFilter) {
         "\"collection_1\" : { \"includeAllFields\" : true },"
         "\"collection_2\" : { \"includeAllFields\" : true }"
         "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 

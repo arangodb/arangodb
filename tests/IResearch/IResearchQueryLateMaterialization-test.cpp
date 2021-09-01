@@ -55,7 +55,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
         "\"" + collectionName1 + "\": {\"includeAllFields\": true},"
         "\"" + collectionName2 + "\": {\"includeAllFields\": true}"
       "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 

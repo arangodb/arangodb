@@ -159,8 +159,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
         "}");
     arangodb::LogicalView::ptr logicalView;
-    ASSERT_TRUE(
-        (arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice()).ok()));
+    ASSERT_TRUE(arangodb::LogicalView::create(
+      logicalView, *vocbase, viewJson->slice(), true).ok());
 
     ASSERT_TRUE(logicalView);
     auto const viewId = std::to_string(logicalView->planId().id());
@@ -312,8 +312,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
         "}");
     arangodb::LogicalView::ptr logicalView;
-    ASSERT_TRUE(
-        (arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice()).ok()));
+    ASSERT_TRUE(arangodb::LogicalView::create(
+      logicalView, *vocbase, viewJson->slice(), true).ok());
     ASSERT_TRUE(logicalView);
     auto const viewId = std::to_string(logicalView->planId().id());
     EXPECT_TRUE("42" == viewId);

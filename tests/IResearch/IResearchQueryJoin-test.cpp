@@ -89,8 +89,8 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
         "\"fields\": {}, \"includeAllFields\": true, \"storeValues\": \"id\", "
         "\"trackListPositions\": false } }, \"type\": \"arangosearch\", "
         "\"writebufferIdle\": 64 }");
-    ASSERT_TRUE(
-        arangodb::LogicalView::create(entities_view, vocbase, json->slice()).ok());
+    ASSERT_TRUE(arangodb::LogicalView::create(
+      entities_view, vocbase, json->slice(), true).ok());
     ASSERT_NE(nullptr, entities_view);
   }
 
@@ -106,8 +106,8 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
         "\"fields\": {}, \"includeAllFields\": true, \"storeValues\": \"id\", "
         "\"trackListPositions\": false } }, \"type\": \"arangosearch\", "
         "\"writebufferIdle\": 64 }");
-    ASSERT_TRUE(
-        arangodb::LogicalView::create(links_view, vocbase, json->slice()).ok());
+    ASSERT_TRUE(arangodb::LogicalView::create(
+      links_view, vocbase, json->slice(), true).ok());
     ASSERT_NE(nullptr, links_view);
   }
 
@@ -290,7 +290,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
         "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
         "], \"includeAllFields\": true }"
         "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -448,7 +448,7 @@ TEST_F(IResearchQueryJoinTest, test) {
         "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
         "], \"includeAllFields\": true }"
         "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 

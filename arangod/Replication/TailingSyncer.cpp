@@ -923,7 +923,7 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
 
   if (properties.isObject()) {
     // always a full-update
-    return view->properties(properties, LogicalView::RequestContext::Internal, false);
+    return view->properties(properties, false, false);
   }
 
   return {};

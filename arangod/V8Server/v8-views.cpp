@@ -201,8 +201,7 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
     }
 
     LogicalView::ptr view;
-    res = LogicalView::create(
-      view, vocbase, builder.slice(), LogicalView::RequestContext::User);
+    res = LogicalView::create(view, vocbase, builder.slice(), true);
 
     if (!res.ok()) {
       // events::CreateView(vocbase.name(), name, res.errorNumber());
@@ -596,7 +595,7 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
       TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
 
-    res = view->properties(builder.slice(), LogicalView::RequestContext::User, partialUpdate);
+    res = view->properties(builder.slice(), true, partialUpdate);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());

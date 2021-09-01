@@ -68,7 +68,7 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
 
   using LogicalDataSource::properties;
   virtual Result properties(VPackSlice properties,
-                            RequestContext ctx,
+                            bool isUserRequest,
                             bool partialUpdate) override;
 
   //////////////////////////////////////////////////////////////////////////////

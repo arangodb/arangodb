@@ -126,7 +126,7 @@ TEST_F(IResearchQueryNGramMatchTest, SysVocbase) {
         "\"testCollection0\": { \"analyzers\": [ \"::myngram\", "
         "\"identity\" ], \"includeAllFields\": true, \"trackListPositions\": "
         "true }}}");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
@@ -677,7 +677,7 @@ TEST_F(IResearchQueryNGramMatchTest, test) {
       "\"testCollection0\": { \"analyzers\": [ \"myngram\", "
       "\"identity\" ], \"includeAllFields\": true, \"trackListPositions\": "
       "true }}}");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);

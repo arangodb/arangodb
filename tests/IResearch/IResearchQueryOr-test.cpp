@@ -95,7 +95,7 @@ TEST_F(IResearchQueryOrTest, test) {
         "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
         "], \"includeAllFields\": true, \"storeValues\":\"id\" }"
         "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
