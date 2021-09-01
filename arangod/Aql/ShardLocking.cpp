@@ -64,8 +64,24 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       errorCode = col->getCollection()->getResponsibleShard(
           forceOneShardAttributeValue + ":test:" + forceOneShardAttributeValue, shardId);
     } else {
-      errorCode =
-          col->getCollection()->getResponsibleShard(forceOneShardAttributeValue, shardId);
+      auto const& shardKeys = col->getCollection().get()->shardKeys();
+      TRI_ASSERT(shardKeys.size());
+      auto const& shardKey = shardKeys.at(0);
+      if (shardKey == "_key:") {
+        errorCode =
+            col->getCollection()->getResponsibleShard(forceOneShardAttributeValue + ":test", shardId);
+      } else if (shardKey == ":_key") {
+        errorCode =
+            col->getCollection()->getResponsibleShard("test:" + forceOneShardAttributeValue, shardId);
+      } else {
+        VPackBuilder builder;
+        {
+          VPackObjectBuilder guard(&builder);
+          builder.add(shardKey, VPackValue(forceOneShardAttributeValue));
+        }
+        errorCode =
+            col->getCollection()->getResponsibleShard(builder.slice(), false, shardId);
+      }
     }
     if (errorCode != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(errorCode);
