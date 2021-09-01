@@ -296,7 +296,7 @@ struct TypedLogRangeIterator : TypedLogIterator<T> {
   // Note that this does not imply that all indexes in the range [from, to)
   // are returned. Hence (to - from) is only an upper bound on the number of
   // entries returned.
-  virtual auto range() const noexcept -> std::pair<LogIndex, LogIndex> = 0;
+  virtual auto range() const noexcept -> LogRange = 0;
 };
 
 using LogIterator = TypedLogIterator<LogEntryView>;

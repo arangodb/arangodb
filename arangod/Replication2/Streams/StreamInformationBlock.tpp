@@ -85,9 +85,8 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIterator()
       return std::nullopt;
     }
 
-    [[nodiscard]] auto range() const noexcept -> std::pair<LogIndex, LogIndex> override {
-      abort();
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    [[nodiscard]] auto range() const noexcept -> LogRange override {
+      abort(); // TODO
     }
 
     explicit Iterator(ContainerType log)
@@ -119,7 +118,7 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIteratorRange
       }
       return std::nullopt;
     }
-    [[nodiscard]] auto range() const noexcept -> std::pair<LogIndex, LogIndex> override {
+    [[nodiscard]] auto range() const noexcept -> LogRange override {
       return {start, stop};
     }
 
