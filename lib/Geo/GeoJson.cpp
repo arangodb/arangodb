@@ -323,12 +323,18 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
                     std::string("Invalid loop in polygon: ").append(error.text()));
     }
     
-    S2Loop* loop = loops.back().get();
-    // normalization ensures that point orientation does not matter for Polygon
-    // type the RFC recommends this for better compatibility
-    loop->Normalize();
+    // Note that we are using a constructor for S2Polygon below, which
+    // in the end uses `InitNested`. Therefore, we are supposed to deliver
+    // all our loops in CCW convention (aka right hand rule, interiour
+    // is to the left of the polyline).
+    // Since we want to want to allow for loops, whose interiour covers
+    // more than half of the earth, we must not blindly "Normalize"
+    // the loops, as we did in earlier versions, although RFC7946
+    // says "parsers SHOULD NOT reject Polygons that do not follow
+    // the right-hand rule". Since we cannot detect this, we cannot    // reject anything, is my reading of this. Max 1.9.2021 .
 
-    // subsequent loops must be holes within first loop
+    // subsequent loops must be holes within first loop:
+    S2Loop* loop = loops.back().get();
     if (loops.size() > 1 && !loops.front()->Contains(loop)) {
       return Result(TRI_ERROR_BAD_PARAMETER,
                     "Subsequent loop not a hole in polygon");
@@ -420,10 +426,15 @@ Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region)
         return Result(TRI_ERROR_BAD_PARAMETER,
                       std::string("Invalid loop in polygon: ").append(error.text()));
       }
-      S2Loop* loop = loops.back().get();
-      // normalization ensures that CCW orientation does not matter for Polygon
-      // the RFC recommends this for better compatibility
-      loop->Normalize();
+      // Note that we are using a constructor for S2Polygon below, which
+      // in the end uses `InitNested`. Therefore, we are supposed to deliver
+      // all our loops in CCW convention (aka right hand rule, interiour
+      // is to the left of the polyline).
+      // Since we want to want to allow for loops, whose interiour covers
+      // more than half of the earth, we must not blindly "Normalize"
+      // the loops, as we did in earlier versions, although RFC7946
+      // says "parsers SHOULD NOT reject Polygons that do not follow
+      // the right-hand rule". Since we cannot detect this, we cannot    // reject anything, is my reading of this. Max 1.9.2021 .
 
       // Any subsequent loop must be a hole within first loop
       if (outerLoop + 1 < loops.size() &&
