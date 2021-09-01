@@ -44,7 +44,7 @@ struct LogStatus;
 
 struct WaitForResult {
   /// @brief contains the _current_ commit index. (Not the index waited for)
-  LogIndex commitIndex;
+  LogIndex currentCommitIndex;
   /// @brief Quorum information
   std::shared_ptr<QuorumData const> quorum;
 

@@ -171,7 +171,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
       // Expect the quorum to consist of the follower only
       ASSERT_TRUE(f.isReady());
       auto result = f.get();
-      EXPECT_EQ(result.commitIndex, LogIndex{2});
+      EXPECT_EQ(result.currentCommitIndex, LogIndex{2});
       EXPECT_EQ(result.quorum->index, LogIndex{2});
       EXPECT_EQ(result.quorum->term, LogTerm{1});
       EXPECT_EQ(result.quorum->quorum, (std::vector<ParticipantId>{leaderId, followerId}));
@@ -382,7 +382,7 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   {
     ASSERT_TRUE(future.isReady());
     auto result = future.get();
-    EXPECT_EQ(result.commitIndex, LogIndex{2});
+    EXPECT_EQ(result.currentCommitIndex, LogIndex{2});
     EXPECT_EQ(result.quorum->term, LogTerm{1});
     EXPECT_EQ(result.quorum->index, LogIndex{2});
     EXPECT_EQ(result.quorum->quorum, (std::vector{leaderId, followerId_1, followerId_2}));

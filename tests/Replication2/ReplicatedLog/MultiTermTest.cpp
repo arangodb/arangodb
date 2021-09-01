@@ -252,7 +252,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     ASSERT_TRUE(f2.isReady());
     {
       auto result = f2.get();
-      EXPECT_EQ(result.commitIndex, LogIndex{3});
+      EXPECT_EQ(result.currentCommitIndex, LogIndex{3});
       EXPECT_EQ(result.quorum->index, LogIndex{3});
       EXPECT_EQ(result.quorum->term, LogTerm{2});
       EXPECT_EQ(result.quorum->quorum,

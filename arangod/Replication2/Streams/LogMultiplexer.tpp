@@ -140,10 +140,8 @@ struct LogMultiplexerImplementationBase {
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
             typename E = StreamEntryView<T>>
   auto getIteratorInternal() -> std::unique_ptr<TypedLogRangeIterator<E>> {
-    using BlockType = StreamInformationBlock<StreamDescriptor>;
-
     return _guardedData.template doUnderLock([](MultiplexerData<Spec>& self) {
-      auto& block = std::get<BlockType>(self._blocks);
+      auto& block = self.template getBlockForDescriptor<StreamDescriptor>();
       return block.getIterator();
     });
   }
@@ -216,9 +214,8 @@ struct LogDemultiplexerImplementation
     : LogDemultiplexer<Spec>,  // implement the actual class
       ProxyStreamDispatcher<LogDemultiplexerImplementation<Spec, Interface>, Spec, Stream>,  // use a proxy stream dispatcher
       LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec, Interface>, Spec, Stream, Interface> {
-  using SelfClass = LogDemultiplexerImplementation<Spec, Interface>;
   explicit LogDemultiplexerImplementation(std::shared_ptr<Interface> interface)
-      : LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec, Interface>, Spec, Stream, Interface>(
+      : LogMultiplexerImplementationBase<LogDemultiplexerImplementation, Spec, Stream, Interface>(
             std::move(interface)) {}
 
   auto digestIterator(LogRangeIterator& iter) -> void override {
@@ -244,7 +241,7 @@ struct LogDemultiplexerImplementation
     this->_interface->waitForIterator(waitForIndex)
         .thenValue([weak = this->weak_from_this()](std::unique_ptr<LogRangeIterator>&& iter) {
           if (auto locked = weak.lock(); locked) {
-            auto that = std::static_pointer_cast<SelfClass>(locked);
+            auto that = std::static_pointer_cast<LogDemultiplexerImplementation>(locked);
             auto [nextIndex, promiseSets] = that->_guardedData.doUnderLock([&](auto& self) {
               self._firstUncommittedIndex = iter->range().second;
               self.digestIterator(*iter);
@@ -314,8 +311,8 @@ struct LogMultiplexerImplementation
           self._pendingWaitFor = false;
 
           // find out what the commit index is
-          self._firstUncommittedIndex = result.commitIndex + 1;
-          return std::make_pair(self.getWaitForResolveSetAll(result.commitIndex),
+          self._firstUncommittedIndex = result.currentCommitIndex + 1;
+          return std::make_pair(self.getWaitForResolveSetAll(result.currentCommitIndex),
                                 self.checkWaitFor());
         });
 

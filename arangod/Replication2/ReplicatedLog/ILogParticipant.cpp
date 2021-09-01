@@ -72,16 +72,16 @@ auto replicated_log::LogUnconfiguredParticipant::release(LogIndex doneWithIdx) -
 
 replicated_log::WaitForResult::WaitForResult(LogIndex index,
                                              std::shared_ptr<QuorumData const> quorum)
-    : commitIndex(index), quorum(std::move(quorum)) {}
+    : currentCommitIndex(index), quorum(std::move(quorum)) {}
 
 void replicated_log::WaitForResult::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex));
+  builder.add(StaticStrings::CommitIndex, VPackValue(currentCommitIndex));
   builder.add(VPackValue("quorum"));
   quorum->toVelocyPack(builder);
 }
 
 replicated_log::WaitForResult::WaitForResult(velocypack::Slice s) {
-  commitIndex = s.get(StaticStrings::CommitIndex).extract<LogIndex>();
+  currentCommitIndex = s.get(StaticStrings::CommitIndex).extract<LogIndex>();
   quorum = std::make_shared<QuorumData>(s.get("quorum"));
 }
