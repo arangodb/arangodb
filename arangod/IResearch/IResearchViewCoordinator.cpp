@@ -192,7 +192,9 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
     [](irs::string_ref const& key) -> bool {
       return key != iresearch::StaticStrings::AnalyzerDefinitionsField
           && key != iresearch::StaticStrings::PrimarySortField
+          && key != iresearch::StaticStrings::PrimarySortCompressionField
           && key != iresearch::StaticStrings::StoredValuesField
+          && key != iresearch::StaticStrings::VersionField
           && key != iresearch::StaticStrings::CollectionNameField;
   };
 
