@@ -66,7 +66,7 @@ void visit(
     const term_reader& reader,
     const by_range_options::range_type& rng,
     Visitor& visitor) {
-  auto terms = reader.iterator();
+  auto terms = reader.iterator(SeekMode::NORMAL);
 
   if (IRS_UNLIKELY(!terms)) {
     return;

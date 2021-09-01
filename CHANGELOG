@@ -1,6 +1,87 @@
 devel
 -----
 
+* Fix internal iterator states after intermediate commits in write
+  transactions. Iterators could point to invalid data after an
+  intermediate commit, producing undefined behavior.
+  
+* Fix read-own-write behavior in different scenarios:
+    - in some cases writes performed by an AQL query could be observed within
+      the same query. This was not intended and is fixed now.
+    - AQL queries in streaming transactions could observe their own writes in
+      even more cases, which could potentially result in an endless loop when
+      the query iterates over the same collection that it is inserting documents
+      into.
+    - UPSERT did not find documents inserted by a previous iteration if the
+      subquery relied on a non-unique secondary index.
+    - disabled intermediate commits for queries with UPSERTs, because
+      intermediate commits can invalidate the internal read-own-write iterator
+      required by UPSERT. Previously, UPSERTs that triggered intermediate
+      commits could have produced unexpected results (e.g., previous inserts
+      that have been committed might not be visible) or even crashes.
+  To achieve the correct read-own-write behavior in streaming transactions, we
+  sometimes have to copy the internal WriteBatch from the underlying RocksDB
+  transaction. In particular, the copy is created whenever an AQL query with
+  modification operations (INSERT/REMOVE/UPDATE/UPSERT/REPLACE) is executed in
+  the streaming transaction. If there have not been any other modifications so
+  far (queries/document operations), then the WriteBatch is empty and creating
+  the copy is essentially a no-op. However, if the transaction already contains
+  a lot of modifications, creating the WriteBatch copy might incur some
+  overhead that can now lead to decreased performance.
+
+* Fix rare case of invalid data that could be inserted into the ArangoSearch 
+  index if several clients concurrently insert data and use custom analyzer
+  with non-string return type.
+
+* Fix a rare shutdown race in RocksDBShaCalculatorThread. 
+
+* Added "Analyzers" view to web UI to let manage ArangoSearch analyzers
+  creation.
+
+* Updated ArangoDB Starter to 0.15.2-preview-1.
+
+* Reduce internal priority of AQL execution. This prevents possible deadlocks
+  with modification operations in a cluster and replicationFactor >= 2, and can
+  also improve responsiveness under high load of AQL queries.
+
+* Updated arangosync to 2.6.0.
+
+* Fix a potential multi-threading issue in index creation on coordinators,
+  when an agency callback was triggered at the same time the method
+  `ensureIndexCoordinatorInner` was left.
+
+* Added protocol specific metrics: histogram about request body size, total
+  number of HTTP/2 connections and total number of VST connections.
+
+* Add pseudo log topic "all" to set the log levels for all log topics at
+  once. For example, this can be used when starting a server with trace or
+  debug logging enabled for all log topics, e.g.
+
+  `--log.level all=debug`.
+  `--log.level all=trace`.
+
+  This is very coarse and should only be used for such use cases.
+
+* Change the default value for the `--threads` startup parameter of the
+  following client tools from previously 2 to the maximum of 2 and the
+  number of available CPU cores:
+  - arangodump
+  - arangoimport
+  - arangorestore
+
+* Preselect "create index in background" option when creating indexes in
+  the web UI. The "create index in background" option can be less intrusive
+  because it allows other write operations on the collection to proceed.
+
+* Do not block a scheduler thread on the coordinator while an index is being 
+  created. Instead, start a background thread for the actual index 
+  fill-up work. The original thread can then be relinquished until the index
+  is completely filled or index creation has failed. 
+  The default index creation timeout on coordinators has also been 
+  extended from 1 hour to 4 days, but it is still configurable via the
+  startup parameter `--cluster.index-create-timeout` in case this is
+  necessary.
+
 * Fix wrong assertion in fuerte and move it to where the TLA+ model says
   it should be. This fixes a unit test failure occurring on newer Macs
   with a certain clang version.

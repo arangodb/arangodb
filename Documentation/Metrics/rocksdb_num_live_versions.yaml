@@ -1,7 +1,7 @@
 name: rocksdb_num_live_versions
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-num-live-versions"
+  Number of live RocksDB versions.
 unit: number
 type: gauge
 category: RocksDB

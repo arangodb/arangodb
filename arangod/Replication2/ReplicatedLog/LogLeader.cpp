@@ -498,7 +498,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
       << "updating commit index to " << newIndex << " with quorum " << quorum->quorum;
   auto oldIndex = _commitIndex;
 
-  TRI_ASSERT(_commitIndex < newIndex);
+  TRI_ASSERT(_commitIndex < newIndex)
+      << "_commitIndex == " << _commitIndex << ", newIndex == " << newIndex;
   _commitIndex = newIndex;
   _lastQuorum = quorum;
 

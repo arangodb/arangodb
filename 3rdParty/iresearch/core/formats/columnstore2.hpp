@@ -69,10 +69,10 @@ class column final : public irs::column_output {
   explicit column(
       const context& ctx,
       const irs::type_info& compression,
-      const compression::compressor::ptr& deflater)
+      compression::compressor::ptr deflater)
     : ctx_{ctx},
       compression_{compression},
-      deflater_{deflater} {
+      deflater_{std::move(deflater)} {
   }
 
   void prepare(doc_id_t key) {
@@ -134,7 +134,7 @@ class column final : public irs::column_output {
 
     void pop_back() noexcept {
       assert(offset_ > offsets_);
-      offset_--;
+      *--offset_ = 0;
     }
 
     // returns number of items to be flushed
@@ -175,7 +175,7 @@ class column final : public irs::column_output {
   memory_output docs_{*ctx_.alloc};
   sparse_bitmap_writer docs_writer_{docs_.stream};
   address_table addr_table_;
-  uint64_t prev_block_size_{};
+  uint64_t prev_avg_{};
   doc_id_t docs_count_{};
   doc_id_t prev_{}; // last committed doc_id_t
   doc_id_t pend_{}; // last pushed doc_id_t

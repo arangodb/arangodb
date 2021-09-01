@@ -79,7 +79,7 @@ struct options {
 /// @class compressor
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API compressor {
-  using ptr = std::shared_ptr<compressor>;
+  using ptr = memory::managed_ptr<compressor>;
 
   /// @note returns a value as it is
   static ptr identity() noexcept;
@@ -97,7 +97,7 @@ struct IRESEARCH_API compressor {
 /// @class compressor
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API decompressor {
-  using ptr = std::shared_ptr<decompressor>;
+  using ptr = memory::managed_ptr<decompressor>;
 
   virtual ~decompressor() = default;
 
