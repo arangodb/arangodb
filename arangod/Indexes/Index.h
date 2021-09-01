@@ -408,7 +408,8 @@ class Index {
   virtual std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
                                                               aql::AstNode const* node,
                                                               aql::Variable const* reference,
-                                                              IndexIteratorOptions const& opts);
+                                                              IndexIteratorOptions const& opts,
+                                                              ReadOwnWrites readOwnWrites);
 
   bool canUseConditionPart(arangodb::aql::AstNode const* access,
                            arangodb::aql::AstNode const* other,

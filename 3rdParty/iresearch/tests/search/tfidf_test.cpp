@@ -1182,7 +1182,7 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
   ASSERT_EQ(1, reader.size());
   auto* field = reader[0].field("name");
   ASSERT_NE(nullptr, field);
-  auto term = field->iterator();
+  auto term = field->iterator(irs::SeekMode::NORMAL);
   ASSERT_NE(nullptr, term);
   ASSERT_TRUE(term->next());
   term->read(); // fill term_meta

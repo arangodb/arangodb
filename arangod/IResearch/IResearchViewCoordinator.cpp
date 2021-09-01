@@ -195,7 +195,7 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
 
   if (context == Serialization::Persistence ||
       context == Serialization::PersistenceWithInProgress) {
-    auto res = arangodb::LogicalViewHelperClusterInfo::properties(builder, *this);
+    auto res = LogicalViewHelperClusterInfo::properties(builder, *this);
 
     if (!res.ok()) {
       return res;
@@ -265,14 +265,14 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
   return {};
 }
 
-/*static*/ arangodb::ViewFactory const& IResearchViewCoordinator::factory() {
+/*static*/ ViewFactory const& IResearchViewCoordinator::factory() {
   static const ViewFactory factory;
 
   return factory;
 }
 
 Result IResearchViewCoordinator::link(IResearchLink const& link) {
-  if (!arangodb::ClusterMethods::includeHiddenCollectionInLink(link.collection().name())) {
+  if (!ClusterMethods::includeHiddenCollectionInLink(link.collection().name())) {
     return TRI_ERROR_NO_ERROR;
   }
   static const std::function<bool(irs::string_ref const& key)> acceptor = []( // acceptor
@@ -430,7 +430,7 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
     }
 
     if (links.isEmptyObject() && partialUpdate) {
-      return Result();  // nothing more to do
+      return {};  // nothing more to do
     }
 
     // ...........................................................................
@@ -465,36 +465,35 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
       return IResearchLinkHelper::updateLinks(collections, *this, links);
     }
 
-    return IResearchLinkHelper::updateLinks( // update links
-      collections, *this, links, currentCids // args
-    );
+    return IResearchLinkHelper::updateLinks(
+      collections, *this, links, currentCids);
   } catch (basics::Exception& e) {
     LOG_TOPIC("714b3", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "': " << e.code() << " " << e.what();
 
-    return Result(
+    return {
         e.code(),
         std::string("error updating properties for arangosearch view '") +
-            name() + "'");
+            name() + "'" };
   } catch (std::exception const& e) {
     LOG_TOPIC("86a5c", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "': " << e.what();
 
-    return Result(
+    return {
         TRI_ERROR_BAD_PARAMETER,
         std::string("error updating properties for arangosearch view '") +
-            name() + "'");
+            name() + "'" };
   } catch (...) {
     LOG_TOPIC("17b66", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "'";
 
-    return Result(
+    return {
         TRI_ERROR_BAD_PARAMETER,
         std::string("error updating properties for arangosearch view '") +
-            name() + "'");
+            name() + "'" };
   }
 }
 
@@ -531,16 +530,18 @@ Result IResearchViewCoordinator::dropImpl() {
     }
 
     std::unordered_set<DataSourceId> collections;
-    auto res = IResearchLinkHelper::updateLinks( // update links
-      collections, // modified collections
-      *this, // view
+    auto res = IResearchLinkHelper::updateLinks(
+      collections,
+      *this,
       velocypack::Slice::emptyObjectSlice(),
       currentCids);
 
     if (!res.ok()) {
-      return Result(res.errorNumber(), arangodb::basics::StringUtils::concatT("failed to remove links while removing arangosearch view '",
-                                                                              name(),
-                                                                              "': ", res.errorMessage()));
+      return {
+        res.errorNumber(),
+        basics::StringUtils::concatT("failed to remove links while removing arangosearch view '",
+                                      name(), "': ", res.errorMessage())
+      };
     }
   }
 

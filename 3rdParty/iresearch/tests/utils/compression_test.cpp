@@ -31,7 +31,7 @@
 namespace {
 
 struct dummy_compressor final : irs::compression::compressor {
-  virtual irs::bytes_ref compress(irs::byte_type* in, size_t size, irs::bstring& /*buf*/) {
+  virtual irs::bytes_ref compress(irs::byte_type*, size_t, irs::bstring& /*buf*/) {
     return irs::bytes_ref::NIL;
   }
 
@@ -40,8 +40,8 @@ struct dummy_compressor final : irs::compression::compressor {
 
 struct dummy_decompressor final : irs::compression::decompressor {
   virtual irs::bytes_ref decompress(
-      const irs::byte_type* src, size_t src_size,
-      irs::byte_type* dst, size_t dst_size) {
+      const irs::byte_type*, size_t,
+      irs::byte_type*, size_t) {
     return irs::bytes_ref::NIL;
   }
 
@@ -69,11 +69,11 @@ TEST(compression_test, registration) {
      type,
      [](const irs::compression::options&) -> irs::compression::compressor::ptr {
        ++calls_count;
-       return std::make_shared<dummy_compressor>();
+       return irs::memory::to_managed(std::make_unique<dummy_compressor>());
      },
      []() -> irs::compression::decompressor::ptr {
        ++calls_count;
-       return std::make_shared<dummy_decompressor>();
+       return irs::memory::to_managed(std::make_unique<dummy_decompressor>());
      }
   );
   ASSERT_TRUE(initial); // registered
