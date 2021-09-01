@@ -1566,8 +1566,7 @@ TEST_F(ValidGeoJSONInputTest, valid_polygon_empty_rectangle) {
   ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
   ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).ok());
 
-  ASSERT_TRUE(shape.type() ==
-              geo::ShapeContainer::Type::S2_LATLNGRECT);
+  ASSERT_TRUE(shape.type() == geo::ShapeContainer::Type::S2_POLYGON);
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(41.0, 41.0).ToPoint()));
 }
 
@@ -1610,8 +1609,7 @@ TEST_F(ValidGeoJSONInputTest, valid_polygon_rectangle) {
   ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
   ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).ok());
 
-  ASSERT_TRUE(shape.type() ==
-              geo::ShapeContainer::Type::S2_LATLNGRECT);
+  ASSERT_TRUE(shape.type() == geo::ShapeContainer::Type::S2_POLYGON);
   ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0, 0).ToPoint()));
   ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1, 0).ToPoint()));
   ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-1, 0).ToPoint()));

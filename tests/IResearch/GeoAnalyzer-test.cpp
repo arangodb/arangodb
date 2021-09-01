@@ -688,7 +688,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeLatLngRect) {
 
   geo::ShapeContainer shape;
   ASSERT_TRUE(geo::geojson::parsePolygon(json->slice(), shape).ok());
-  ASSERT_EQ(geo::ShapeContainer::Type::S2_LATLNGRECT, shape.type());
+  ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYGON, shape.type());
 
   // tokenize shape
   {
