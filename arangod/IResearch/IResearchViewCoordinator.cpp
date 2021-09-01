@@ -104,17 +104,13 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
       return res;
     }
 
-    // link version in case if it's not specified in a definition
-    LinkVersion const defaultVersion = isUserRequest
-      ? LinkVersion::MAX
-      : LinkVersion::MIN;
-
     // create links on a best-effor basis
     // link creation failure does not cause view creation failure
     try {
       std::unordered_set<DataSourceId> collections;
 
-      res = IResearchLinkHelper::updateLinks(collections, *impl, links, defaultVersion);
+      res = IResearchLinkHelper::updateLinks(
+        collections, *impl, links, getDefaultVersion(isUserRequest));
 
       if (!res.ok()) {
         LOG_TOPIC("39d88", WARN, iresearch::TOPIC)
@@ -468,19 +464,15 @@ Result IResearchViewCoordinator::properties(
       currentLinks.close();
     }
 
-    // link version in case if it's not specified in a definition
-    LinkVersion const defaultVersion = isUserRequest
-      ? LinkVersion::MAX
-      : LinkVersion::MIN;
-
     std::unordered_set<DataSourceId> collections;
 
     if (partialUpdate) {
-      return IResearchLinkHelper::updateLinks(collections, *this, links, defaultVersion);
+      return IResearchLinkHelper::updateLinks(
+        collections, *this, links, getDefaultVersion(isUserRequest));
     }
 
     return IResearchLinkHelper::updateLinks(
-      collections, *this, links, defaultVersion, currentCids);
+      collections, *this, links, getDefaultVersion(isUserRequest), currentCids);
   } catch (basics::Exception& e) {
     LOG_TOPIC("714b3", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"

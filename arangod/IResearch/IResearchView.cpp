@@ -202,17 +202,13 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
                                   vocbase.name() + "'");
     }
 
-    // link version in case if it's not specified in a definition
-    LinkVersion const defaultVersion = isUserRequest
-      ? LinkVersion::MAX
-      : LinkVersion::MIN;
-
     // create links on a best-effort basis
     // link creation failure does not cause view creation failure
     try {
       std::unordered_set<DataSourceId> collections;
 
-      res = IResearchLinkHelper::updateLinks(collections, *impl, links, defaultVersion);
+      res = IResearchLinkHelper::updateLinks(
+        collections, *impl, links, getDefaultVersion(isUserRequest));
 
       if (!res.ok()) {
         LOG_TOPIC("d683b", WARN, arangodb::iresearch::TOPIC)
@@ -1051,11 +1047,6 @@ Result IResearchView::updateProperties(
       return res;
     }
 
-    // link version in case if it's not specified in a definition
-    LinkVersion const defaultVersion = isUserRequest
-      ? LinkVersion::MAX
-      : LinkVersion::MIN;
-
     // ...........................................................................
     // update links if requested (on a best-effort basis)
     // indexing of collections is done in different threads so no locks can be held and rollback is not possible
@@ -1069,7 +1060,8 @@ Result IResearchView::updateProperties(
 
       auto lock = irs::make_lock_guard(_updateLinksLock);
 
-      return IResearchLinkHelper::updateLinks(collections, *this, links, defaultVersion);
+      return IResearchLinkHelper::updateLinks(
+        collections, *this, links, getDefaultVersion(isUserRequest));
     }
 
     std::unordered_set<DataSourceId> stale;
@@ -1082,7 +1074,8 @@ Result IResearchView::updateProperties(
 
     auto lock = irs::make_lock_guard(_updateLinksLock);
 
-    return IResearchLinkHelper::updateLinks(collections, *this, links, defaultVersion, stale);
+    return IResearchLinkHelper::updateLinks(
+      collections, *this, links, getDefaultVersion(isUserRequest), stale);
   } catch (basics::Exception& e) {
     LOG_TOPIC("74705", WARN, iresearch::TOPIC)
       << "caught exception while updating properties for arangosearch view '" << name() << "': " << e.code() << " " << e.what();
