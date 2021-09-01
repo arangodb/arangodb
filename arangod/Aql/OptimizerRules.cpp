@@ -4633,6 +4633,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
                                                 OptimizerRule const& rule) {
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  VarSet usedBySort;
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
   bool modified = false;
@@ -4694,14 +4695,37 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
 
         case EN::SORT: {
           auto thisSortNode = ExecutionNode::castTo<SortNode*>(inspectNode);
-
+          usedBySort.clear();
+          thisSortNode->getVariablesUsedHere(usedBySort);
           // remember our cursor...
           parents = inspectNode->getParents();
           // then unlink the filter/calculator from the plan
           plan->unlinkNode(inspectNode);
           // and re-insert into plan in front of the remoteNode
           if (thisSortNode->_reinsertInCluster) {
-            plan->insertDependency(rn, inspectNode);
+            // let's look for the best place for that SORT.
+            // We could skip over several calculations if
+            // they are not needed for our sort. So we could calculate
+            // more lazily and even make late materialization possible
+            ExecutionNode* insertPoint = rn;
+            auto current  = insertPoint->getFirstDependency();
+            while (current != nullptr &&
+                   current->getType() == EN::CALCULATION) {
+              auto nn = ExecutionNode::castTo<CalculationNode*>(current);
+              if (!nn->expression()->isDeterministic()) {
+                // let's not touch non-deterministic calculation
+                // as results may depend on calls count and sort could change this
+                break;
+              }
+              auto variable = nn->outVariable();
+              if (usedBySort.find(variable) == usedBySort.end()) {
+                insertPoint = current;
+              } else {
+                break;  // first node used by sort. We should stop here.
+              }
+              current = current->getFirstDependency();
+            }
+            plan->insertDependency(insertPoint, inspectNode);
           }
 
           gatherNode->elements(thisSortNode->elements());

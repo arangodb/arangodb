@@ -1,5 +1,7 @@
 devel
 -----
+* SEARCH-238: Improved SortNodes placement optimization in cluster so 
+  late materialization could cover more cases
 
 * Fix a rare shutdown race in RocksDBShaCalculatorThread. 
 
