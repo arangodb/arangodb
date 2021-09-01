@@ -45,8 +45,8 @@ TEST_F(MultiTermTest, add_follower_test) {
     leader->triggerAsyncReplication();
     {
       ASSERT_TRUE(f.isReady());
-      auto const& quorum = f.get();
-      EXPECT_EQ(quorum->quorum, std::vector<ParticipantId>{"leader"});
+      auto const& result = f.get();
+      EXPECT_EQ(result.quorum->quorum, std::vector<ParticipantId>{"leader"});
     }
     {
       auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
@@ -251,10 +251,11 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
 
     ASSERT_TRUE(f2.isReady());
     {
-      auto quorum = f2.get();
-      EXPECT_EQ(quorum->index, LogIndex{3});
-      EXPECT_EQ(quorum->term, LogTerm{2});
-      EXPECT_EQ(quorum->quorum,
+      auto result = f2.get();
+      EXPECT_EQ(result.currentCommitIndex, LogIndex{3});
+      EXPECT_EQ(result.quorum->index, LogIndex{3});
+      EXPECT_EQ(result.quorum->term, LogTerm{2});
+      EXPECT_EQ(result.quorum->quorum,
                 (std::vector<ParticipantId>{"newLeader", "newFollower"}));
     }
   }

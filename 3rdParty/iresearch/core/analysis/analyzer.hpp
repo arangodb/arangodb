@@ -31,7 +31,7 @@ namespace analysis {
 
 class IRESEARCH_API analyzer : public token_stream {
  public:
-  using ptr = std::shared_ptr<analyzer>;
+  using ptr = std::unique_ptr<analyzer>;
 
   explicit analyzer(const type_info& type) noexcept;
 

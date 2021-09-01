@@ -90,9 +90,9 @@ createConsolidationPolicy<irs::index_utils::consolidate_bytes_accum>(
 
 template <>
 arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationPolicy<irs::index_utils::consolidate_tier>(
-    arangodb::velocypack::Slice const& slice, std::string& errorField) {
+    VPackSlice const& slice, std::string& errorField) {
   irs::index_utils::consolidate_tier options;
-  arangodb::velocypack::Builder properties;
+  VPackBuilder properties;
 
   {
     // optional size_t
@@ -216,10 +216,10 @@ IResearchViewMeta::IResearchViewMeta()
       _commitIntervalMsec(1000),
       _consolidationIntervalMsec(1000),
       _locale(std::locale::classic()),
-      _version(LATEST_VERSION),
+      _version(static_cast<uint32_t>(ViewVersion::MAX)),
       _writebufferActive(0),
       _writebufferIdle(64),
-      _writebufferSizeMax(32 * (size_t(1) << 20)),  // 32MB
+      _writebufferSizeMax(32 * (size_t(1) << 20)), // 32MB
       _primarySortCompression{getDefaultCompression()} {
   std::string errorField;
 
@@ -718,8 +718,6 @@ size_t IResearchViewMeta::memory() const {
 IResearchViewMetaState::Mask::Mask(bool mask /*=false*/) noexcept
     : _collections(mask) {}
 
-IResearchViewMetaState::IResearchViewMetaState() = default;
-
 IResearchViewMetaState::IResearchViewMetaState(IResearchViewMetaState const& defaults) {
   *this = defaults;
 }
@@ -762,11 +760,10 @@ bool IResearchViewMetaState::operator!=(IResearchViewMetaState const& other) con
   return meta;
 }
 
-bool IResearchViewMetaState::init(arangodb::velocypack::Slice const& slice,
+bool IResearchViewMetaState::init(VPackSlice slice,
                                   std::string& errorField,
                                   IResearchViewMetaState const& defaults /*= DEFAULT()*/,
-                                  Mask* mask /*= nullptr*/
-) {
+                                  Mask* mask /*= nullptr*/) {
   if (!slice.isObject()) {
     errorField = "not an object";
     return false;
@@ -818,10 +815,9 @@ bool IResearchViewMetaState::init(arangodb::velocypack::Slice const& slice,
   return true;
 }
 
-bool IResearchViewMetaState::json(arangodb::velocypack::Builder& builder,
+bool IResearchViewMetaState::json(VPackBuilder& builder,
                                   IResearchViewMetaState const* ignoreEqual /*= nullptr*/,
-                                  Mask const* mask /*= nullptr*/
-                                  ) const {
+                                  Mask const* mask /*= nullptr*/) const {
   if (!builder.isOpenObject()) {
     return false;
   }

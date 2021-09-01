@@ -148,19 +148,6 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     self->_inMemoryLog = std::move(newInMemoryLog);
   }
 
-  struct WaitForQueueResolve {
-    using QueueGuard = Guarded<WaitForQueue, basics::UnshackledMutex>::mutex_guard_type;
-
-    WaitForQueueResolve(QueueGuard guard, LogIndex commitIndex) noexcept
-        : _guard(std::move(guard)),
-          begin(_guard->begin()),
-          end(_guard->upper_bound(commitIndex)) {}
-
-    QueueGuard _guard;
-    WaitForQueue::iterator begin;
-    WaitForQueue::iterator end;
-  };
-
   // Allocations
   auto newInMemoryLog = std::invoke([&] {
     // if prevLogIndex is 0, we want to replace the entire log
@@ -176,14 +163,13 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     return self->_inMemoryLog.append(_loggerContext, req.entries);
   });
   auto iter = std::make_unique<InMemoryPersistedLogIterator>(req.entries);
-  auto toBeResolvedPtr = std::make_unique<std::optional<WaitForQueueResolve>>();
+  auto toBeResolved = std::make_unique<WaitForQueue>();
 
   auto* core = self->_logCore.get();
   static_assert(std::is_nothrow_move_constructible_v<decltype(newInMemoryLog)>);
   auto commitToMemoryAndResolve =
       [selfGuard = std::move(self), req = std::move(req),
-       newInMemoryLog = std::move(newInMemoryLog),
-       toBeResolvedPtr = std::move(toBeResolvedPtr)](
+       newInMemoryLog = std::move(newInMemoryLog), toBeResolved = std::move(toBeResolved)](
           futures::Try<Result>&& tryRes) mutable -> std::pair<AppendEntriesResult, DeferredAction> {
     // We have to release the guard after this lambda is finished.
     // Otherwise it would be released when the lambda is destroyed, which
@@ -214,6 +200,45 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
           << req.prevLogEntry.index << ", leader commit index = " << req.leaderCommit;
     }
 
+    auto const generateToBeResolved = [&] {
+      try {
+        auto waitForQueue = self->_waitForQueue.getLockedGuard();
+
+        auto const end = waitForQueue->upper_bound(self->_commitIndex);
+        for (auto it = waitForQueue->begin(); it != end;) {
+          LOG_CTX("37d9c", TRACE, self->_follower._loggerContext)
+              << "resolving promise for index " << it->first;
+          toBeResolved->insert(waitForQueue->extract(it++));
+        }
+        return DeferredAction([commitIndex = self->_commitIndex,
+                               toBeResolved = std::move(toBeResolved)]() noexcept {
+          for (auto& it : *toBeResolved) {
+            if (!it.second.isFulfilled()) {
+              // This only throws if promise was fulfilled earlier.
+              it.second.setValue(WaitForResult{commitIndex, std::shared_ptr<QuorumData>{}});
+            }
+          }
+        });
+      } catch (std::exception const& e) {
+        // If those promises are not fulfilled we can not continue.
+        // Note that the move constructor of std::multi_map is not noexcept.
+        LOG_CTX("e7a4d", FATAL, self->_follower._loggerContext)
+            << "failed to fulfill replication promises due to exception; "
+               "system "
+               "can not continue. message: "
+            << e.what();
+        FATAL_ERROR_EXIT();
+      } catch (...) {
+        // If those promises are not fulfilled we can not continue.
+        // Note that the move constructor of std::multi_map is not noexcept.
+        LOG_CTX("c0bbb", FATAL, self->_follower._loggerContext)
+            << "failed to fulfill replication promises due to exception; "
+               "system "
+               "can not continue";
+        FATAL_ERROR_EXIT();
+      }
+    };
+
     auto action = std::invoke([&]() noexcept -> DeferredAction {
       TRI_ASSERT(req.largestCommonIndex >= self->_largestCommonIndex);
       if (self->_largestCommonIndex > req.largestCommonIndex) {
@@ -230,22 +255,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
             std::min(req.leaderCommit, self->_inMemoryLog.back().entry().logIndex());
         LOG_CTX("1641d", TRACE, self->_follower._loggerContext)
             << "increment commit index: " << self->_commitIndex;
-
-        auto toBeResolved =
-            std::optional<WaitForQueueResolve>{std::in_place,
-                                               self->_waitForQueue.getLockedGuard(),
-                                               self->_commitIndex};
-        static_assert(std::is_nothrow_move_assignable_v<std::optional<WaitForQueueResolve>>);
-        *toBeResolvedPtr = std::move(toBeResolved);
-        return DeferredAction([toBeResolved = std::move(toBeResolvedPtr)]() noexcept {
-          auto& resolve = toBeResolved->value();
-          for (auto it = resolve.begin; it != resolve.end; it = resolve._guard->erase(it)) {
-            if (!it->second.isFulfilled()) {
-              // This only throws if promise was fulfilled earlier.
-              it->second.setValue(std::shared_ptr<QuorumData>{});
-            }
-          }
-        });
+        return generateToBeResolved();
       }
 
       return {};
@@ -264,10 +274,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       .then(std::move(commitToMemoryAndResolve))
       .then([measureTime = std::move(measureTimeGuard)](auto&& res) mutable {
         measureTime.fire();
-        auto&& [result, toBeResolved] = res.get();
+        auto&& [result, action] = res.get();
         // It is okay to fire here, because commitToMemoryAndResolve has
         // released the guard already.
-        toBeResolved.fire();
+        action.fire();
         return std::move(result);
       });
 }
@@ -302,7 +312,7 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<std::unique_ptr<LogC
     if (followerData._logCore == nullptr) {
       LOG_CTX("55a1d", WARN, _loggerContext)
           << "follower log core is already gone. Resign was called twice!";
-      ASSERT_OR_THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+      basics::abortOrThrow(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
     }
 
     // use a unique ptr because move constructor for multimaps is not noexcept
@@ -347,8 +357,8 @@ auto replicated_log::LogFollower::waitFor(LogIndex idx)
     -> replicated_log::ILogParticipant::WaitForFuture {
   auto self = _guardedFollowerData.getLockedGuard();
   if (self->_commitIndex >= idx) {
-    return futures::Future<std::shared_ptr<QuorumData const>>{
-        std::in_place, std::make_shared<QuorumData>(idx, _currentTerm)};
+    return futures::Future<WaitForResult>{std::in_place, self->_commitIndex,
+                                          std::make_shared<QuorumData>(idx, _currentTerm)};
   }
   // emplace might throw a std::bad_alloc but the remainder is noexcept
   // so either you inserted it and or nothing happens

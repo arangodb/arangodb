@@ -66,16 +66,24 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
 
   // Used to generate payloads that are unique across threads.
   constexpr static auto genPayload = [](ThreadIdx thread, IterIdx i) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
+#endif
+    // up to 5 digits for thread
+    static_assert(std::numeric_limits<ThreadIdx>::max() <= 99'999);
+    // up to 10 digits for i
+    static_assert(std::numeric_limits<IterIdx>::max() <= 99'999'999'999);
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+
     // This should fit into short string optimization
     auto str = std::string(16, ' ');
 
     auto p = str.begin() + 5;
-    // up to 5 digits for thread
-    static_assert(std::numeric_limits<ThreadIdx>::max() <= 99'999);
     // 1 digit for ':'
     *p = ':';
-    // up to 10 digits for i
-    static_assert(std::numeric_limits<IterIdx>::max() <= 99'999'999'999);
 
     do {
       --p;
@@ -209,7 +217,6 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   using namespace std::chrono_literals;
 
   auto replicatedLog = makeReplicatedLogWithAsyncMockLog(LogId{1});
-  // TODO this test hangs because there is not local follower currently
   auto leaderLog = replicatedLog->becomeLeader("leader", LogTerm{1}, {}, 1);
 
   auto data = ThreadCoordinationData{leaderLog};

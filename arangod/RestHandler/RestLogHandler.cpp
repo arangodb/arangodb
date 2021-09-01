@@ -83,7 +83,7 @@ struct arangodb::ReplicatedLogMethods {
   }
 
   virtual auto insert(LogId, LogPayload) const
-      -> futures::Future<std::pair<LogIndex, std::shared_ptr<replicated_log::QuorumData const>>> {
+      -> futures::Future<std::pair<LogIndex, replicated_log::WaitForResult>> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -101,7 +101,7 @@ namespace {
 
 auto sendInsertRequest(network::ConnectionPool* pool, std::string const& server,
                        std::string const& database, LogId id, LogPayload payload)
-    -> futures::Future<std::pair<LogIndex, std::shared_ptr<replicated_log::QuorumData const>>> {
+    -> futures::Future<std::pair<LogIndex, replicated_log::WaitForResult>> {
   auto path = basics::StringUtils::joinT("/", "_api/log", id, "insert");
 
   network::RequestOptions opts;
@@ -113,10 +113,14 @@ auto sendInsertRequest(network::ConnectionPool* pool, std::string const& server,
           THROW_ARANGO_EXCEPTION(resp.combinedResult());
         }
         auto result = resp.slice().get("result");
+        auto waitResult = result.get("result");
+
         auto quorum = std::make_shared<replication2::replicated_log::QuorumData const>(
-            result.get("quorum"));
+            waitResult.get("quorum"));
+        auto commitIndex = waitResult.get("commitIndex").extract<LogIndex>();
         auto index = result.get("index").extract<LogIndex>();
-        return std::make_pair(index, std::move(quorum));
+        return std::make_pair(index, replicated_log::WaitForResult(commitIndex,
+                                                                   std::move(quorum)));
       });
 }
 
@@ -205,7 +209,7 @@ struct ReplicatedLogMethodsCoord final : ReplicatedLogMethods {
   }
 
   auto insert(LogId id, LogPayload payload) const
-      -> futures::Future<std::pair<LogIndex, std::shared_ptr<replicated_log::QuorumData const>>> override {
+      -> futures::Future<std::pair<LogIndex, replicated_log::WaitForResult>> override {
     return sendInsertRequest(pool, getLogLeader(id), vocbase.name(), id, std::move(payload));
   }
 
@@ -304,11 +308,11 @@ struct ReplicatedLogMethodsDBServ final : ReplicatedLogMethods {
   }
 
   auto insert(LogId logId, LogPayload payload) const
-      -> futures::Future<std::pair<LogIndex, std::shared_ptr<replicated_log::QuorumData const>>> override {
+      -> futures::Future<std::pair<LogIndex, replicated_log::WaitForResult>> override {
     auto log = vocbase.getReplicatedLogLeaderById(logId);
     auto idx = log->insert(std::move(payload));
     return log->waitFor(idx).thenValue(
-        [idx](auto&& quorum) { return std::make_pair(idx, std::move(quorum)); });
+        [idx](auto&& result) { return std::make_pair(idx, std::move(result)); });
   }
 
   auto releaseIndex(LogId id, LogIndex idx) const -> futures::Future<Result> override {
@@ -398,13 +402,13 @@ RestStatus RestLogHandler::handlePostRequest(ReplicatedLogMethods const& methods
 
   if (auto& verb = suffixes[1]; verb == "insert") {
     return waitForFuture(
-        methods.insert(logId, LogPayload::createFromSlice(body)).thenValue([this](auto&& quorum) {
+        methods.insert(logId, LogPayload::createFromSlice(body)).thenValue([this](auto&& waitForResult) {
           VPackBuilder response;
           {
             VPackObjectBuilder result(&response);
-            response.add("index", VPackValue(quorum.first));
-            response.add(VPackValue("quorum"));
-            quorum.second->toVelocyPack(response);
+            response.add("index", VPackValue(waitForResult.first));
+            response.add(VPackValue("result"));
+            waitForResult.second.toVelocyPack(response);
           }
           generateOk(rest::ResponseCode::ACCEPTED, response.slice());
         }));

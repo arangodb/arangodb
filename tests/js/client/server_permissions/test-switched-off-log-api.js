@@ -72,9 +72,6 @@ function testSuite() {
   }, 'HS256');
 
   return {
-    setUp: function() {},
-    tearDown: function() {},
-
     testCanAccessAdminLogRw : function() {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/log");

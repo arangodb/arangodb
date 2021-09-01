@@ -91,7 +91,6 @@ struct aggregated_stats_visitor : util::noncopyable {
   void operator()(const irs::sub_reader& segment,
                   const irs::term_reader& field,
                   uint32_t docs_count) const {
-    it = field.iterator();
     this->segment = &segment;
     this->field = &field;
     state = &states.insert(segment);
@@ -100,21 +99,14 @@ struct aggregated_stats_visitor : util::noncopyable {
   }
 
   void operator()(seek_term_iterator::cookie_ptr& cookie) const {
-    assert(it);
-
-    if (!it->seek(irs::bytes_ref::NIL, *cookie)) {
-      return;
-    }
-
     assert(segment);
     assert(field);
-    term_stats.collect(*segment, *field, 0, *it);
+    term_stats.collect(*segment, *field, 0, *cookie);
     state->scored_states.emplace_back(std::move(cookie), 0, boost);
   }
 
   const term_collectors& term_stats;
   StatesType& states;
-  mutable seek_term_iterator::ptr it;
   mutable typename StatesType::state_type* state{};
   mutable const sub_reader* segment{};
   mutable const term_reader* field{};
@@ -155,7 +147,7 @@ void visit(
     const byte_type no_distance,
     const uint32_t utf8_target_size,
     automaton_table_matcher& matcher,
-    Visitor& visitor) {
+    Visitor&& visitor) {
   assert(fst::kError != matcher.Properties(0));
   auto terms = reader.iterator(matcher);
 
@@ -300,7 +292,6 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
         automaton_table_matcher matcher;
       };
 
-      // FIXME
       auto ctx = memory::make_shared<automaton_context>(d, prefix, term);
 
       if (!validate(ctx->acceptor)) {
@@ -311,7 +302,7 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
                                                             utf8_utils::utf8_length(term)));
       const byte_type max_distance = d.max_distance() + 1;
 
-      return [ctx, utf8_term_size, max_distance](
+      return [ctx = std::move(ctx), utf8_term_size, max_distance](
           const sub_reader& segment,
           const term_reader& field,
           filter_visitor& visitor) mutable {

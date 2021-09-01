@@ -566,7 +566,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/types.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
-        Replication2/ReplicatedState/AbstractStateMachine.tpp Replication2/ReplicatedState/AbstractStateMachine.h)
+        Replication2/ReplicatedState/AbstractStateMachine.tpp Replication2/ReplicatedState/AbstractStateMachine.h Replication2/Streams/LogMultiplexer.tpp Replication2/Streams/LogMultiplexer.h Replication2/Streams/StreamSpecification.h Replication2/Streams/Streams.h Replication2/Streams/MultiplexedValues.h Replication2/Streams/StreamInformationBlock.h)
 
 set (LIB_ARANGO_METRICS_SOURCES
   RestServer/Metrics.cpp
@@ -742,6 +742,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
   RestHandler/RestSupervisionStateHandler.cpp
+  RestHandler/RestSupportInfoHandler.cpp
   RestHandler/RestSystemReportHandler.cpp
   RestHandler/RestTasksHandler.cpp
   RestHandler/RestTimeHandler.cpp
@@ -761,6 +762,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
+  RestServer/EnvironmentFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FlushFeature.cpp
   RestServer/FortuneFeature.cpp
@@ -768,6 +770,8 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/InitDatabaseFeature.cpp
   RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
+  RestServer/LogBufferFeature.cpp
+  RestServer/MaxMapCountFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
@@ -820,7 +824,10 @@ if (USE_MAINTAINER_MODE)
 endif()
 
 if (NOT MSVC)
-  set(LIB_ARANGOSERVER_SOURCES ${LIB_ARANGOSERVER_SOURCES} GeneralServer/AcceptorUnixDomain.cpp)
+  set(LIB_ARANGOSERVER_SOURCES ${LIB_ARANGOSERVER_SOURCES} 
+    GeneralServer/AcceptorUnixDomain.cpp
+    RestServer/DaemonFeature.cpp
+    RestServer/SupervisorFeature.cpp)
 endif()
 
 include(ClusterEngine/CMakeLists.txt)
