@@ -50,8 +50,14 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/Methods/Collections.h"
 
+inline auto GetLinkVersions() noexcept {
+  return testing::Values(
+    arangodb::iresearch::LinkVersion::MIN,
+    arangodb::iresearch::LinkVersion::MAX);
+}
+
 class IResearchQueryTest
-    : public ::testing::Test,
+    : public ::testing::TestWithParam<arangodb::iresearch::LinkVersion>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
@@ -176,6 +182,10 @@ class IResearchQueryTest
   TRI_vocbase_t& vocbase() {
     TRI_ASSERT(_vocbase != nullptr);
     return *_vocbase;
+  }
+
+  arangodb::iresearch::LinkVersion linkVersion() const noexcept {
+    return GetParam();
   }
 };  // IResearchQueryTest
 
