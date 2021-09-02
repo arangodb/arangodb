@@ -558,13 +558,13 @@
               $el.after('<p class="errorMessage">' + msg + '</p>');
             }
             if ($('#modal-dialog').is(':visible')) {
-              $('#modal-dialog .modal-footer .button-success').
-                prop('disabled', true).
-                addClass('disabled');
+              $('#modal-dialog .modal-footer .button-success')
+                .prop('disabled', true)
+                .addClass('disabled');
             } else {
-              $('.createModalDialog .modal-footer .button-success').
-                prop('disabled', true).
-                addClass('disabled');
+              $('.createModalDialog .modal-footer .button-success')
+                .prop('disabled', true)
+                .addClass('disabled');
             }
           } else {
             $el.removeClass('invalid-input');
@@ -586,23 +586,23 @@
       var invalid = _.any(tests);
       if (invalid) {
         if ($('#modal-dialog').is(':visible')) {
-          $('#modal-dialog .modal-footer .button-success').
-            prop('disabled', true).
-            addClass('disabled');
+          $('#modal-dialog .modal-footer .button-success')
+            .prop('disabled', true)
+            .addClass('disabled');
         } else {
-          $('.createModalDialog .modal-footer .button-success').
-            prop('disabled', true).
-            addClass('disabled');
+          $('.createModalDialog .modal-footer .button-success')
+            .prop('disabled', true)
+            .addClass('disabled');
         }
       } else {
         if ($('#modal-dialog').is(':visible')) {
-          $('#modal-dialog .modal-footer .button-success').
-            prop('disabled', false).
-            removeClass('disabled');
+          $('#modal-dialog .modal-footer .button-success')
+            .prop('disabled', false)
+            .removeClass('disabled');
         } else {
-          $('.createModalDialog .modal-footer .button-success').
-            prop('disabled', false).
-            removeClass('disabled');
+          $('.createModalDialog .modal-footer .button-success')
+            .prop('disabled', false)
+            .removeClass('disabled');
         }
       }
       return !invalid;
