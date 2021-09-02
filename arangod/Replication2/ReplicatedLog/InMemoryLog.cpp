@@ -76,16 +76,19 @@ auto replicated_log::InMemoryLog::getEntryByIndex(LogIndex const idx) const noex
   }
 
   auto const& e = _log.at(idx.value - _first.value);
-  TRI_ASSERT(e.entry().logIndex() == idx);
+  TRI_ASSERT(e.entry().logIndex() == idx)
+      << "idx = " << idx << ", entry = " << e.entry().logIndex();
   return e;
 }
 
 auto replicated_log::InMemoryLog::slice(LogIndex from, LogIndex to) const -> log_type {
   from = std::max(from, _first);
   to = std::max(to, _first);
-  TRI_ASSERT(from <= to);
+  TRI_ASSERT(from <= to) << "from = " << from << ", to = " << to;
   auto res = _log.take(to.value - _first.value).drop(from.value - _first.value);
-  TRI_ASSERT(res.size() <= to.value - from.value);
+  TRI_ASSERT(res.size() <= to.value - from.value)
+      << "res.size() = " << res.size() << ", to = " << to.value
+      << ", from = " << from.value;
   return res;
 }
 
@@ -241,7 +244,10 @@ void replicated_log::InMemoryLog::appendInPlace(LoggerContext const& logContext,
 
 auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
                                          log_type entries) const -> InMemoryLog {
-  TRI_ASSERT(entries.empty() || getNextIndex() == entries.front().entry().logIndex());
+  TRI_ASSERT(entries.empty() || getNextIndex() == entries.front().entry().logIndex())
+      << std::boolalpha << "entries.empty() = " << entries.empty()
+      << ", front = " << entries.front().entry().logIndex()
+      << ", getNextIndex = " << getNextIndex();
   auto transient = _log.transient();
   transient.append(std::move(entries).transient());
   return InMemoryLog{std::move(transient).persistent(), _first};
@@ -249,7 +255,10 @@ auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
 
 auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
                                          log_type_persisted const& entries) const -> InMemoryLog {
-  TRI_ASSERT(entries.empty() || getNextIndex() == entries.front().logIndex());
+  TRI_ASSERT(entries.empty() || getNextIndex() == entries.front().logIndex())
+      << std::boolalpha << "entries.empty() = " << entries.empty()
+      << ", front = " << entries.front().logIndex()
+      << ", getNextIndex = " << getNextIndex();
   auto transient = _log.transient();
   for (auto const& entry : entries) {
     transient.push_back(InMemoryLogEntry(entry));
