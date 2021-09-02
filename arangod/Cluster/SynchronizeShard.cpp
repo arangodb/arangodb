@@ -160,6 +160,8 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
                  .get();
   auto res = response.combinedResult();
 
+  TRI_ASSERT(!FileUtils::exists("breakOnGet"));
+
   if (res.ok()) {
     auto const idSlice = response.response->slice();
     TRI_ASSERT(idSlice.isObject());
