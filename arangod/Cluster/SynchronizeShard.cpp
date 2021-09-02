@@ -28,6 +28,7 @@
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterFeature.h"
@@ -160,7 +161,7 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
                  .get();
   auto res = response.combinedResult();
 
-  TRI_ASSERT(!FileUtils::exists("breakOnGet"));
+  TRI_ASSERT(!basics::FileUtils::exists("breakOnGet"));
 
   if (res.ok()) {
     auto const idSlice = response.response->slice();
