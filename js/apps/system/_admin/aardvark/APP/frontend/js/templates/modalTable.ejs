@@ -88,8 +88,7 @@ function createInput(row) {
         %>
             <tr id="<%= contentRowId %>">
             <% contentRow.forEach(cell => {
-              console.log(cell.style);
-                        cell.style = [(cell.style || ''), "width: unset;", "margin: 0;"].join(' ');
+                cell.style = [(cell.style || ''), "width: unset;", "margin: 0;"].join(' ');
             %>
                 <td>
                     <% createInput(cell) %>
