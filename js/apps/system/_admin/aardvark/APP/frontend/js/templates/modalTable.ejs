@@ -125,51 +125,51 @@ var createTR = function(row) {
     <th class="collectionTh"<%= row.info ? '' : ' colspan="2"' %>>
         <% createInput(row) %>
         <% if (row.info) { %>
-    </th>
-    <th>
+        </th>
+        <th>
           <span class="modalTooltips arangoicon icon_arangodb_info" title="<%=row.info%>">
           </span>
         <% } %>
-    </th>
-</tr>
-<%
-};
-%>
-<% if (content) { %>
+      </th>
+    </tr>
+    <%
+  };
+  %>
+  <% if (content) { %>
     <table>
-        <tbody>
+      <tbody>
         <%
-            _.each(content, function (row) {
-                createTR(row);
-            });
+        _.each(content, function(row) {
+          createTR(row);
+        });
         %>
-        </tbody>
+      </tbody>
     </table>
-<% } %>
-<% if (info) { %>
+  <% } %>
+  <% if (info) { %>
     <%= info %>
-<% } %>
-<% if (advancedContent) { %>
+  <% } %>
+  <% if (advancedContent) { %>
     <div class="accordion" id="accordion2">
-        <div class="accordion-group">
-            <div class="accordion-heading">
+      <div class="accordion-group">
+        <div class="accordion-heading">
           <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion2" href="#collapseOne">
             <span><%=advancedContent.header%></span><span><b class="caret"></b></span>
-                </a>
-            </div>
-            <div id="collapseOne" class="accordion-body collapse out">
-                <div class="accordion-inner">
-                    <table>
-                        <tbody>
-                        <%
-                            _.each(advancedContent.content, function (row) {
-                                createTR(row);
-                            });
-                        %>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+          </a>
         </div>
+        <div id="collapseOne" class="accordion-body collapse out">
+          <div class="accordion-inner">
+            <table>
+              <tbody>
+                <%
+                _.each(advancedContent.content, function(row) {
+                  createTR(row);
+                });
+                %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
-<% } %>
+  <% } %>

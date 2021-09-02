@@ -113,16 +113,16 @@
       $('#modal-dialog .modal-body .collectionTh > input', $(this.el)).bind('keydown', 'return', function (e) {
         if (!$('#modal-dialog .modal-footer .button-success').is(':disabled') && e.keyCode === 13) {
           $('#modal-dialog .modal-footer .button-success').click();
-          }
-        });
+        }
+      });
 
       $('#modal-dialog .modal-body .collectionTh > select').unbind('keydown');
       $('#modal-dialog .modal-body .collectionTh > select').unbind('return');
       $('#modal-dialog .modal-body .collectionTh > select', $(this.el)).bind('keydown', 'return', function (e) {
         if (!$('#modal-dialog .modal-footer .button-success').is(':disabled') && e.keyCode === 13) {
           $('#modal-dialog .modal-footer .button-success').click();
-          }
-        });
+        }
+      });
     },
 
     createInitModalHotkeys: function () {
@@ -405,10 +405,10 @@
         _.each(templateName, function (v) {
           template = templateEngine.createTemplate(v);
           $('.createModalDialog .modal-body .tab-content #' + tabBar[counter]).html(template.render({
-              content: tableContent,
-              advancedContent: advancedContent,
-              info: extraInfo
-            }));
+            content: tableContent,
+            advancedContent: advancedContent,
+            info: extraInfo
+          }));
 
           counter++;
         });
@@ -542,7 +542,6 @@
             }
           }
         };
-
         var $el = $('#' + entry.id);
         // catch result of validation and act
         $el.on('keyup focusout', function (e) {
