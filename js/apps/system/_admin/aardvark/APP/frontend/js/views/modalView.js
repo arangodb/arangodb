@@ -439,6 +439,10 @@
 
           $('#' + row.id).select2(options);
         }
+
+        if (row.type === self.tables.TABLE) {
+          row.rows.forEach(row => _.each(row, self.modalBindValidation, self));
+        }
       });
 
       if (events) {
@@ -507,39 +511,43 @@
       var self = this;
       if (entry.hasOwnProperty('id') &&
         entry.hasOwnProperty('validateInput')) {
-        var validCheck = function () {
-          var $el = $('#' + entry.id);
-          var validation = entry.validateInput($el);
-          var error = false;
-          _.each(validation, function (validator) {
-            var value = $el.val();
-            if (!validator.rule) {
-              validator = { rule: validator };
-            }
-            if (typeof validator.rule === 'function') {
-              try {
-                validator.rule(value);
-              } catch (e) {
-                error = validator.msg || e.message;
+        var validCheck = function (e) {
+          if (e) {
+            var $el = $(e.target);
+            var validation = entry.validateInput($el);
+            var error = false;
+            _.each(validation, function (validator) {
+              var value = $el.val();
+              if (!validator.rule) {
+                validator = { rule: validator };
               }
-            } else {
-              var result = Joi.validate(value, validator.rule);
-              if (result.error) {
-                error = validator.msg || result.error.message;
+              if (typeof validator.rule === 'function') {
+                try {
+                  validator.rule(value);
+                } catch (e) {
+                  error = validator.msg || e.message;
+                }
+              } else {
+                var result = Joi.validate(value, validator.rule);
+                if (result.error) {
+                  error = validator.msg || result.error.message;
+                }
               }
-            }
+              if (error) {
+                return false;
+              }
+            });
             if (error) {
-              return false;
+              return error;
             }
-          });
-          if (error) {
-            return error;
           }
         };
+
         var $el = $('#' + entry.id);
         // catch result of validation and act
-        $el.on('keyup focusout', function () {
-          var msg = validCheck();
+        $el.on('keyup focusout', function (e) {
+          var $el = $(e.target);
+          var msg = validCheck(e);
           var errorElement = $el.next()[0];
           if (msg) {
             $el.addClass('invalid-input');

@@ -272,11 +272,11 @@
           false,
           [
             {
-              rule: Joi.string().valid('lz4', 'none'),
+              rule: Joi.string().valid('lz4', 'none', ''),
               msg: 'Only these values are allowed: \'lz4\', \'none\''
             }
           ],
-          'width: unset; margin-left: 20px;'
+          'width: unset;'
         )
       );
 
@@ -301,24 +301,22 @@
               ]
             ),
             window.modalView.createTextEntry(
-              undefined,
+              _.uniqueId('direction-'),
               undefined,
               '',
               false,
               'asc | desc',
-              true,
+              false,
               [
                 {
-                  rule: Joi.string().valid('asc', 'ASC', 'desc', 'DESC'),
+                  rule: Joi.string().valid('asc', 'ASC', 'desc', 'DESC', ''),
                   msg: 'Only these values are allowed: \'asc\', \'ASC\', \'desc\', \'DESC\''
-                },
-                {
-                  rule: Joi.string().required(),
-                  msg: 'No direction given.'
                 }
               ]
             )
-          ]]
+          ]],
+          undefined,
+          'padding-left: 0;'
         )
       );
 
@@ -329,10 +327,17 @@
           ['Fields (one per line)', 'Compression'],
           [[
             window.modalView.createBlobEntry(
-              _.uniqueId('field-')
+              _.uniqueId('field-'),
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              'width: 170px !important;'
             ),
             window.modalView.createTextEntry(
-              undefined,
+              _.uniqueId('compression-'),
               undefined,
               '',
               false,
@@ -340,14 +345,14 @@
               false,
               [
                 {
-                  rule: Joi.string().valid('lz4', 'none'),
+                  rule: Joi.string().valid('lz4', 'none', ''),
                   msg: 'Only these values are allowed: \'lz4\', \'none\''
                 }
               ]
             )
           ]],
           undefined,
-          'margin-top: 10px;'
+          'margin-top: 10px; padding-left: 0;'
         )
       );
 
@@ -416,14 +421,18 @@
       e.stopPropagation();
 
       const row = $(e.currentTarget).closest('tr');
-      const newRow = row.clone();
+      const newRow = row.clone(true);
       const idParts = newRow.attr('id').split('-');
 
       idParts[idParts.length - 1] = parseInt(idParts[idParts.length - 1]) + 1;
       const newId = idParts.join('-');
 
       newRow.attr('id', newId);
-      newRow.find('input').val('');
+
+      const inputs = newRow.find('input,textarea');
+      inputs.val('');
+      inputs.attr('id', (idx, id) => id ? `${id.split('-')[0]}-${_.uniqueId()}` : id);
+
       if (!newRow.find('button.delete').length) {
         const addButton = newRow.find('button.add');
         $(`
