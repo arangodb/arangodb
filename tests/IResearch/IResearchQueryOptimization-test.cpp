@@ -71,19 +71,17 @@ bool findEmptyNodes(TRI_vocbase_t& vocbase, std::string const& queryString,
   return !nodes.empty();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
 class IResearchQueryOptimizationTest : public IResearchQueryTest {
  protected:
   std::deque<arangodb::ManagedDocumentResult> insertedDocs;
 
   void addLinkToCollection(std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
+    auto versionStr = std::to_string(static_cast<uint32_t>(linkVersion()));
+
     auto updateJson = VPackParser::fromJson(
-        "{ \"links\" : {"
-        "\"collection_1\" : { \"includeAllFields\" : true }"
-        "}}");
+    "{ \"links\" : {"
+      "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " }"
+    "}}");
     EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
@@ -176,7 +174,7 @@ constexpr size_t disabledDnfOptimizationStart = 2;
 
 // dedicated to https://github.com/arangodb/arangodb/issues/8294
   // a IN [ x ] && a == y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_1) {
+TEST_P(IResearchQueryOptimizationTest, test_1) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -242,7 +240,7 @@ TEST_F(IResearchQueryOptimizationTest, test_1) {
 }
 
   // a IN [ x ] && a == y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_2) {
+TEST_P(IResearchQueryOptimizationTest, test_2) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -311,7 +309,7 @@ TEST_F(IResearchQueryOptimizationTest, test_2) {
 }
 
   // a IN [ x ] && a == y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_3) {
+TEST_P(IResearchQueryOptimizationTest, test_3) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -373,7 +371,7 @@ TEST_F(IResearchQueryOptimizationTest, test_3) {
 }
 
   // a IN [ x ] && a == y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_4) {
+TEST_P(IResearchQueryOptimizationTest, test_4) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -437,7 +435,7 @@ TEST_F(IResearchQueryOptimizationTest, test_4) {
 }
 
   // a IN [ x ] && a == y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_5) {
+TEST_P(IResearchQueryOptimizationTest, test_5) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -498,7 +496,7 @@ TEST_F(IResearchQueryOptimizationTest, test_5) {
 }
 
   // a IN [ x ] && a == y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_6) {
+TEST_P(IResearchQueryOptimizationTest, test_6) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -563,7 +561,7 @@ TEST_F(IResearchQueryOptimizationTest, test_6) {
   /*
   //FIXME
   // a IN [ x ] && a == y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_7) {
+TEST_P(IResearchQueryOptimizationTest, test_7) {
     std::string const query =
       std::string("FOR d IN testView SEARCH d.values IN [ 'A', 'A' ] AND d.values != 'A'") + o +) + o + "RETURN d";
 
@@ -600,7 +598,7 @@ TEST_F(IResearchQueryOptimizationTest, test_7) {
   */
 
   // a IN [ x ] && a != y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_8) {
+TEST_P(IResearchQueryOptimizationTest, test_8) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -661,7 +659,7 @@ TEST_F(IResearchQueryOptimizationTest, test_8) {
 }
 
   // a IN [ x ] && a != y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_9) {
+TEST_P(IResearchQueryOptimizationTest, test_9) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -724,7 +722,7 @@ TEST_F(IResearchQueryOptimizationTest, test_9) {
 }
 
   // a IN [ x ] && a < y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_10) {
+TEST_P(IResearchQueryOptimizationTest, test_10) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -788,7 +786,7 @@ TEST_F(IResearchQueryOptimizationTest, test_10) {
 }
 
   // a IN [ x ] && a < y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_11) {
+TEST_P(IResearchQueryOptimizationTest, test_11) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -852,7 +850,7 @@ TEST_F(IResearchQueryOptimizationTest, test_11) {
 }
 
   // a IN [ x ] && a < y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_12) {
+TEST_P(IResearchQueryOptimizationTest, test_12) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -916,7 +914,7 @@ TEST_F(IResearchQueryOptimizationTest, test_12) {
 }
 
   // a IN [ x ] && a <= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_13) {
+TEST_P(IResearchQueryOptimizationTest, test_13) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
 
@@ -980,7 +978,7 @@ TEST_F(IResearchQueryOptimizationTest, test_13) {
   }
 }
   // a IN [ x ] && a <= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_14) {
+TEST_P(IResearchQueryOptimizationTest, test_14) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1043,7 +1041,7 @@ TEST_F(IResearchQueryOptimizationTest, test_14) {
   }
 }
   // a IN [ x ] && a <= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_15) {
+TEST_P(IResearchQueryOptimizationTest, test_15) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1106,7 +1104,7 @@ TEST_F(IResearchQueryOptimizationTest, test_15) {
   }
 }
   // a IN [ x ] && a >= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_16) {
+TEST_P(IResearchQueryOptimizationTest, test_16) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1170,7 +1168,7 @@ TEST_F(IResearchQueryOptimizationTest, test_16) {
 }
 
   // a IN [ x ] && a >= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_17) {
+TEST_P(IResearchQueryOptimizationTest, test_17) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
 
@@ -1234,7 +1232,7 @@ TEST_F(IResearchQueryOptimizationTest, test_17) {
   }
 }
   // a IN [ x ] && a >= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_18) {
+TEST_P(IResearchQueryOptimizationTest, test_18) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1298,7 +1296,7 @@ TEST_F(IResearchQueryOptimizationTest, test_18) {
 }
 
   // a IN [ x ] && a > y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_19) {
+TEST_P(IResearchQueryOptimizationTest, test_19) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
 
@@ -1363,7 +1361,7 @@ TEST_F(IResearchQueryOptimizationTest, test_19) {
 }
 
   // a IN [ x ] && a > y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_20) {
+TEST_P(IResearchQueryOptimizationTest, test_20) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1428,7 +1426,7 @@ TEST_F(IResearchQueryOptimizationTest, test_20) {
 }
 
   // a IN [ x ] && a > y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_21) {
+TEST_P(IResearchQueryOptimizationTest, test_21) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1492,7 +1490,7 @@ TEST_F(IResearchQueryOptimizationTest, test_21) {
 }
 
   // a IN [ x ] && a IN [ y ]
-TEST_F(IResearchQueryOptimizationTest, test_22) {
+TEST_P(IResearchQueryOptimizationTest, test_22) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1570,7 +1568,7 @@ TEST_F(IResearchQueryOptimizationTest, test_22) {
 }
 
   // a IN [ x ] && a == y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_23) {
+TEST_P(IResearchQueryOptimizationTest, test_23) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1625,7 +1623,7 @@ TEST_F(IResearchQueryOptimizationTest, test_23) {
   }
 }
   // a IN [ x ] && a == y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_24) {
+TEST_P(IResearchQueryOptimizationTest, test_24) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1674,7 +1672,7 @@ TEST_F(IResearchQueryOptimizationTest, test_24) {
 }
 
   // a IN [ x ] && a == y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_25) {
+TEST_P(IResearchQueryOptimizationTest, test_25) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1728,7 +1726,7 @@ TEST_F(IResearchQueryOptimizationTest, test_25) {
   }
 }
   // a IN [ x ] && a != y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_26) {
+TEST_P(IResearchQueryOptimizationTest, test_26) {
 
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
@@ -1798,7 +1796,7 @@ TEST_F(IResearchQueryOptimizationTest, test_26) {
 }
 
   // a IN [ x ] && a != y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_27) {
+TEST_P(IResearchQueryOptimizationTest, test_27) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -1874,7 +1872,7 @@ TEST_F(IResearchQueryOptimizationTest, test_27) {
 }
 
   // a IN [ x ] && a != y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_28) {
+TEST_P(IResearchQueryOptimizationTest, test_28) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -1941,7 +1939,7 @@ TEST_F(IResearchQueryOptimizationTest, test_28) {
   }
 }
   // a IN [ x ] && a < y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_29) {
+TEST_P(IResearchQueryOptimizationTest, test_29) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -2006,7 +2004,7 @@ TEST_F(IResearchQueryOptimizationTest, test_29) {
 }
 
   // a IN [ x ] && a < y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_30) {
+TEST_P(IResearchQueryOptimizationTest, test_30) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -2063,7 +2061,7 @@ TEST_F(IResearchQueryOptimizationTest, test_30) {
 }
 
   // a IN [ x ] && a < y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_31) {
+TEST_P(IResearchQueryOptimizationTest, test_31) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2119,7 +2117,7 @@ TEST_F(IResearchQueryOptimizationTest, test_31) {
 }
 
   // a IN [ x ] && a <= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_32) {
+TEST_P(IResearchQueryOptimizationTest, test_32) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -2184,7 +2182,7 @@ TEST_F(IResearchQueryOptimizationTest, test_32) {
 }
 
   // a IN [x] && a <= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_33) {
+TEST_P(IResearchQueryOptimizationTest, test_33) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -2249,7 +2247,7 @@ TEST_F(IResearchQueryOptimizationTest, test_33) {
 }
 
   // a IN [ x ] && a <= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_34) {
+TEST_P(IResearchQueryOptimizationTest, test_34) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2303,7 +2301,7 @@ TEST_F(IResearchQueryOptimizationTest, test_34) {
   }
 }
   // a IN [ x ] && a >= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_35) {
+TEST_P(IResearchQueryOptimizationTest, test_35) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -2374,7 +2372,7 @@ TEST_F(IResearchQueryOptimizationTest, test_35) {
 }
 
   // a IN [ x ] && a >= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_36) {
+TEST_P(IResearchQueryOptimizationTest, test_36) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -2438,7 +2436,7 @@ TEST_F(IResearchQueryOptimizationTest, test_36) {
   }
 }
   // a IN [x] && a >= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_37) {
+TEST_P(IResearchQueryOptimizationTest, test_37) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -2502,7 +2500,7 @@ TEST_F(IResearchQueryOptimizationTest, test_37) {
   }
 }
   // a IN [x] && a > y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_38) {
+TEST_P(IResearchQueryOptimizationTest, test_38) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -2572,7 +2570,7 @@ TEST_F(IResearchQueryOptimizationTest, test_38) {
   }
 }
   // a IN [x] && a > y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_39) {
+TEST_P(IResearchQueryOptimizationTest, test_39) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -2643,7 +2641,7 @@ TEST_F(IResearchQueryOptimizationTest, test_39) {
 }
 
   // a IN [x] && a > y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_40) {
+TEST_P(IResearchQueryOptimizationTest, test_40) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -2708,7 +2706,7 @@ TEST_F(IResearchQueryOptimizationTest, test_40) {
 }
 
   // a == x && a == y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_41) {
+TEST_P(IResearchQueryOptimizationTest, test_41) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2762,7 +2760,7 @@ TEST_F(IResearchQueryOptimizationTest, test_41) {
 }
 
   // a == x && a == y, x == y
-  TEST_F(IResearchQueryOptimizationTest, test_42) {
+  TEST_P(IResearchQueryOptimizationTest, test_42) {
     for (auto& o : optimizerOptionsAvailable) {
       SCOPED_TRACE(o);
       std::string const query =
@@ -2811,7 +2809,7 @@ TEST_F(IResearchQueryOptimizationTest, test_41) {
   }
 
 // a == x && a == y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_43) {
+TEST_P(IResearchQueryOptimizationTest, test_43) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2865,7 +2863,7 @@ TEST_F(IResearchQueryOptimizationTest, test_43) {
 }
 
   // a == x && a != y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_44) {
+TEST_P(IResearchQueryOptimizationTest, test_44) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -2932,7 +2930,7 @@ TEST_F(IResearchQueryOptimizationTest, test_44) {
 }
 
   // a == x && a != y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_45) {
+TEST_P(IResearchQueryOptimizationTest, test_45) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -3007,7 +3005,7 @@ TEST_F(IResearchQueryOptimizationTest, test_45) {
 }
 
   // a == x && a != y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_46) {
+TEST_P(IResearchQueryOptimizationTest, test_46) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -3074,7 +3072,7 @@ TEST_F(IResearchQueryOptimizationTest, test_46) {
 }
 
   // a == x && a < y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_47) {
+TEST_P(IResearchQueryOptimizationTest, test_47) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -3139,7 +3137,7 @@ TEST_F(IResearchQueryOptimizationTest, test_47) {
 }
 
   // a == x && a < y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_48) {
+TEST_P(IResearchQueryOptimizationTest, test_48) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -3195,7 +3193,7 @@ TEST_F(IResearchQueryOptimizationTest, test_48) {
 }
 
   // a == x && a < y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_49) {
+TEST_P(IResearchQueryOptimizationTest, test_49) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -3251,7 +3249,7 @@ TEST_F(IResearchQueryOptimizationTest, test_49) {
 }
 
   // a == x && a <= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_50) {
+TEST_P(IResearchQueryOptimizationTest, test_50) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -3316,7 +3314,7 @@ TEST_F(IResearchQueryOptimizationTest, test_50) {
 }
 
   // a == x && a <= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_51) {
+TEST_P(IResearchQueryOptimizationTest, test_51) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -3375,7 +3373,7 @@ TEST_F(IResearchQueryOptimizationTest, test_51) {
 }
 
   // a == x && a <= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_52) {
+TEST_P(IResearchQueryOptimizationTest, test_52) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -3431,7 +3429,7 @@ TEST_F(IResearchQueryOptimizationTest, test_52) {
 }
 
   // a == x && a >= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_53) {
+TEST_P(IResearchQueryOptimizationTest, test_53) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -3502,7 +3500,7 @@ TEST_F(IResearchQueryOptimizationTest, test_53) {
 }
 
   // a == x && a >= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_54) {
+TEST_P(IResearchQueryOptimizationTest, test_54) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -3561,7 +3559,7 @@ TEST_F(IResearchQueryOptimizationTest, test_54) {
 }
 
   // a == x && a >= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_55) {
+TEST_P(IResearchQueryOptimizationTest, test_55) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -3620,7 +3618,7 @@ TEST_F(IResearchQueryOptimizationTest, test_55) {
 }
 
   // a == x && a > y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_56) {
+TEST_P(IResearchQueryOptimizationTest, test_56) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -3690,7 +3688,7 @@ TEST_F(IResearchQueryOptimizationTest, test_56) {
   }
 }
   // a == x && a > y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_57) {
+TEST_P(IResearchQueryOptimizationTest, test_57) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -3761,7 +3759,7 @@ TEST_F(IResearchQueryOptimizationTest, test_57) {
 }
 
   // a == x && a > y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_58) {
+TEST_P(IResearchQueryOptimizationTest, test_58) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -3820,7 +3818,7 @@ TEST_F(IResearchQueryOptimizationTest, test_58) {
 }
 
   // a != x && a == y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_59) {
+TEST_P(IResearchQueryOptimizationTest, test_59) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -3874,7 +3872,7 @@ TEST_F(IResearchQueryOptimizationTest, test_59) {
 }
 
   // a != x && a == y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_60) {
+TEST_P(IResearchQueryOptimizationTest, test_60) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -3928,7 +3926,7 @@ TEST_F(IResearchQueryOptimizationTest, test_60) {
 }
 
   // a != x && a == y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_61) {
+TEST_P(IResearchQueryOptimizationTest, test_61) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -4006,7 +4004,7 @@ TEST_F(IResearchQueryOptimizationTest, test_61) {
 }
 
   // a != x && a == y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_62) {
+TEST_P(IResearchQueryOptimizationTest, test_62) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4061,7 +4059,7 @@ TEST_F(IResearchQueryOptimizationTest, test_62) {
 }
 
   // a != x && a == y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_63) {
+TEST_P(IResearchQueryOptimizationTest, test_63) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4114,7 +4112,7 @@ TEST_F(IResearchQueryOptimizationTest, test_63) {
 }
 
   // a != x && a != y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_64) {
+TEST_P(IResearchQueryOptimizationTest, test_64) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4169,7 +4167,7 @@ TEST_F(IResearchQueryOptimizationTest, test_64) {
 }
 
   // a != x && a != y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_65) {
+TEST_P(IResearchQueryOptimizationTest, test_65) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4221,7 +4219,7 @@ TEST_F(IResearchQueryOptimizationTest, test_65) {
   }
 }
   // a != x && a != y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_66) {
+TEST_P(IResearchQueryOptimizationTest, test_66) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4270,7 +4268,7 @@ TEST_F(IResearchQueryOptimizationTest, test_66) {
 }
 
   // a != x && a != y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_67) {
+TEST_P(IResearchQueryOptimizationTest, test_67) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4317,7 +4315,7 @@ TEST_F(IResearchQueryOptimizationTest, test_67) {
 }
 
   // a != x && a != y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_68) {
+TEST_P(IResearchQueryOptimizationTest, test_68) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4368,7 +4366,7 @@ TEST_F(IResearchQueryOptimizationTest, test_68) {
   }
 }
   // a != x && a < y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_69) {
+TEST_P(IResearchQueryOptimizationTest, test_69) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4423,7 +4421,7 @@ TEST_F(IResearchQueryOptimizationTest, test_69) {
 }
 
   // a != x && a < y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_70) {
+TEST_P(IResearchQueryOptimizationTest, test_70) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4476,7 +4474,7 @@ TEST_F(IResearchQueryOptimizationTest, test_70) {
 }
 
   // a != x && a < y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_71) {
+TEST_P(IResearchQueryOptimizationTest, test_71) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4532,7 +4530,7 @@ TEST_F(IResearchQueryOptimizationTest, test_71) {
 }
 
   // a != x && a < y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_72) {
+TEST_P(IResearchQueryOptimizationTest, test_72) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4588,7 +4586,7 @@ TEST_F(IResearchQueryOptimizationTest, test_72) {
 }
 
   // a != x && a < y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_73) {
+TEST_P(IResearchQueryOptimizationTest, test_73) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4644,7 +4642,7 @@ TEST_F(IResearchQueryOptimizationTest, test_73) {
 }
 
   // a != x && a < y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_74) {
+TEST_P(IResearchQueryOptimizationTest, test_74) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4698,7 +4696,7 @@ TEST_F(IResearchQueryOptimizationTest, test_74) {
 }
 
   // a != x && a <= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_75) {
+TEST_P(IResearchQueryOptimizationTest, test_75) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4753,7 +4751,7 @@ TEST_F(IResearchQueryOptimizationTest, test_75) {
   }
 }
   // a != x && a <= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_76) {
+TEST_P(IResearchQueryOptimizationTest, test_76) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4807,7 +4805,7 @@ TEST_F(IResearchQueryOptimizationTest, test_76) {
 }
 
   // a != x && a <= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_77) {
+TEST_P(IResearchQueryOptimizationTest, test_77) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4863,7 +4861,7 @@ TEST_F(IResearchQueryOptimizationTest, test_77) {
 }
 
   // a != x && a <= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_78) {
+TEST_P(IResearchQueryOptimizationTest, test_78) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4917,7 +4915,7 @@ TEST_F(IResearchQueryOptimizationTest, test_78) {
 }
 
   // a != x && a <= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_79) {
+TEST_P(IResearchQueryOptimizationTest, test_79) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4973,7 +4971,7 @@ TEST_F(IResearchQueryOptimizationTest, test_79) {
 }
 
   // a != x && a <= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_80) {
+TEST_P(IResearchQueryOptimizationTest, test_80) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5027,7 +5025,7 @@ TEST_F(IResearchQueryOptimizationTest, test_80) {
 }
 
   // a != x && a >= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_81) {
+TEST_P(IResearchQueryOptimizationTest, test_81) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5083,7 +5081,7 @@ TEST_F(IResearchQueryOptimizationTest, test_81) {
 }
 
   // a != x && a >= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_82) {
+TEST_P(IResearchQueryOptimizationTest, test_82) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5137,7 +5135,7 @@ TEST_F(IResearchQueryOptimizationTest, test_82) {
 }
 
   // a != x && a >= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_83) {
+TEST_P(IResearchQueryOptimizationTest, test_83) {
 
   for (auto& o : optimizerOptionsAvailable) {
     std::string const query =
@@ -5194,7 +5192,7 @@ TEST_F(IResearchQueryOptimizationTest, test_83) {
 }
 
   // a != x && a >= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_84) {
+TEST_P(IResearchQueryOptimizationTest, test_84) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -5249,7 +5247,7 @@ TEST_F(IResearchQueryOptimizationTest, test_84) {
 }
 
   // a != x && a >= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_85) {
+TEST_P(IResearchQueryOptimizationTest, test_85) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -5306,7 +5304,7 @@ TEST_F(IResearchQueryOptimizationTest, test_85) {
 }
 
   // a != x && a >= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_86) {
+TEST_P(IResearchQueryOptimizationTest, test_86) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -5361,7 +5359,7 @@ TEST_F(IResearchQueryOptimizationTest, test_86) {
 }
 
   // a != x && a > y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_87) {
+TEST_P(IResearchQueryOptimizationTest, test_87) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -5418,7 +5416,7 @@ TEST_F(IResearchQueryOptimizationTest, test_87) {
 }
 
   // a != x && a > y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_88) {
+TEST_P(IResearchQueryOptimizationTest, test_88) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -5473,7 +5471,7 @@ TEST_F(IResearchQueryOptimizationTest, test_88) {
 }
 
   // a != x && a > y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_89) {
+TEST_P(IResearchQueryOptimizationTest, test_89) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -5530,7 +5528,7 @@ TEST_F(IResearchQueryOptimizationTest, test_89) {
 }
 
   // a != x && a > y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_90) {
+TEST_P(IResearchQueryOptimizationTest, test_90) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -5585,7 +5583,7 @@ TEST_F(IResearchQueryOptimizationTest, test_90) {
 }
 
   // a != x && a > y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_91) {
+TEST_P(IResearchQueryOptimizationTest, test_91) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -5642,7 +5640,7 @@ TEST_F(IResearchQueryOptimizationTest, test_91) {
 }
 
   // a != x && a > y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_92) {
+TEST_P(IResearchQueryOptimizationTest, test_92) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -5697,7 +5695,7 @@ TEST_F(IResearchQueryOptimizationTest, test_92) {
 }
 
   // a < x && a == y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_93) {
+TEST_P(IResearchQueryOptimizationTest, test_93) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -5769,7 +5767,7 @@ TEST_F(IResearchQueryOptimizationTest, test_93) {
 }
 
   // a < x && a == y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_94) {
+TEST_P(IResearchQueryOptimizationTest, test_94) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -5840,7 +5838,7 @@ TEST_F(IResearchQueryOptimizationTest, test_94) {
 }
 
   // a < x && a == y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_95) {
+TEST_P(IResearchQueryOptimizationTest, test_95) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -5901,7 +5899,7 @@ TEST_F(IResearchQueryOptimizationTest, test_95) {
 }
 
   // a < x && a != y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_96) {
+TEST_P(IResearchQueryOptimizationTest, test_96) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -5972,7 +5970,7 @@ TEST_F(IResearchQueryOptimizationTest, test_96) {
 }
 
   // a < x && a != y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_97) {
+TEST_P(IResearchQueryOptimizationTest, test_97) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -6041,7 +6039,7 @@ TEST_F(IResearchQueryOptimizationTest, test_97) {
 }
 
   // a < x && a != y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_98) {
+TEST_P(IResearchQueryOptimizationTest, test_98) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -6112,7 +6110,7 @@ TEST_F(IResearchQueryOptimizationTest, test_98) {
 }
 
   // a < x && a != y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_99) {
+TEST_P(IResearchQueryOptimizationTest, test_99) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -6181,7 +6179,7 @@ TEST_F(IResearchQueryOptimizationTest, test_99) {
 }
 
   // a < x && a != y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_100) {
+TEST_P(IResearchQueryOptimizationTest, test_100) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -6253,7 +6251,7 @@ TEST_F(IResearchQueryOptimizationTest, test_100) {
 }
 
   // a < x && a != y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_101) {
+TEST_P(IResearchQueryOptimizationTest, test_101) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -6322,7 +6320,7 @@ TEST_F(IResearchQueryOptimizationTest, test_101) {
 }
 
   // a < x && a < y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_102) {
+TEST_P(IResearchQueryOptimizationTest, test_102) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -6383,7 +6381,7 @@ TEST_F(IResearchQueryOptimizationTest, test_102) {
 }
 
   // a < x && a < y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_103) {
+TEST_P(IResearchQueryOptimizationTest, test_103) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -6434,7 +6432,7 @@ TEST_F(IResearchQueryOptimizationTest, test_103) {
 }
 
   // a < x && a < y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_104) {
+TEST_P(IResearchQueryOptimizationTest, test_104) {
 
   std::vector<arangodb::velocypack::Slice> expectedDocs{
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
@@ -6494,7 +6492,7 @@ TEST_F(IResearchQueryOptimizationTest, test_104) {
   }
 }
   // a < x && a <= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_105) {
+TEST_P(IResearchQueryOptimizationTest, test_105) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -6554,7 +6552,7 @@ TEST_F(IResearchQueryOptimizationTest, test_105) {
 }
 
   // a < x && a <= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_106) {
+TEST_P(IResearchQueryOptimizationTest, test_106) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -6614,7 +6612,7 @@ TEST_F(IResearchQueryOptimizationTest, test_106) {
 }
 
   // a < x && a <= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_107) {
+TEST_P(IResearchQueryOptimizationTest, test_107) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -6674,7 +6672,7 @@ TEST_F(IResearchQueryOptimizationTest, test_107) {
 }
 
   // a < x && a >= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_108) {
+TEST_P(IResearchQueryOptimizationTest, test_108) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -6747,7 +6745,7 @@ TEST_F(IResearchQueryOptimizationTest, test_108) {
 }
 
   // a < x && a >= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_109) {
+TEST_P(IResearchQueryOptimizationTest, test_109) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -6820,7 +6818,7 @@ TEST_F(IResearchQueryOptimizationTest, test_109) {
 }
 
   // a < x && a >= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_110) {
+TEST_P(IResearchQueryOptimizationTest, test_110) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -6893,7 +6891,7 @@ TEST_F(IResearchQueryOptimizationTest, test_110) {
 }
 
   // a < x && a > y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_111) {
+TEST_P(IResearchQueryOptimizationTest, test_111) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -6964,7 +6962,7 @@ TEST_F(IResearchQueryOptimizationTest, test_111) {
 }
 
   // a < x && a > y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_112) {
+TEST_P(IResearchQueryOptimizationTest, test_112) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7037,7 +7035,7 @@ TEST_F(IResearchQueryOptimizationTest, test_112) {
 }
 
   // a < x && a > y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_113) {
+TEST_P(IResearchQueryOptimizationTest, test_113) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7110,7 +7108,7 @@ TEST_F(IResearchQueryOptimizationTest, test_113) {
 }
 
   // a <= x && a == y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_114) {
+TEST_P(IResearchQueryOptimizationTest, test_114) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7181,7 +7179,7 @@ TEST_F(IResearchQueryOptimizationTest, test_114) {
 }
 
   // a <= x && a == y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_115) {
+TEST_P(IResearchQueryOptimizationTest, test_115) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7240,7 +7238,7 @@ TEST_F(IResearchQueryOptimizationTest, test_115) {
 }
 
   // a <= x && a == y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_116) {
+TEST_P(IResearchQueryOptimizationTest, test_116) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7299,7 +7297,7 @@ TEST_F(IResearchQueryOptimizationTest, test_116) {
 }
 
   // a <= x && a != y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_117) {
+TEST_P(IResearchQueryOptimizationTest, test_117) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7370,7 +7368,7 @@ TEST_F(IResearchQueryOptimizationTest, test_117) {
 }
 
   // a <= x && a != y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_118) {
+TEST_P(IResearchQueryOptimizationTest, test_118) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7439,7 +7437,7 @@ TEST_F(IResearchQueryOptimizationTest, test_118) {
 }
 
   // a <= x && a != y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_119) {
+TEST_P(IResearchQueryOptimizationTest, test_119) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7508,7 +7506,7 @@ TEST_F(IResearchQueryOptimizationTest, test_119) {
 }
 
   // a <= x && a != y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_120) {
+TEST_P(IResearchQueryOptimizationTest, test_120) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7579,7 +7577,7 @@ TEST_F(IResearchQueryOptimizationTest, test_120) {
 }
 
   // a <= x && a != y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_121) {
+TEST_P(IResearchQueryOptimizationTest, test_121) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7650,7 +7648,7 @@ TEST_F(IResearchQueryOptimizationTest, test_121) {
 }
 
   // a <= x && a != y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_122) {
+TEST_P(IResearchQueryOptimizationTest, test_122) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7719,7 +7717,7 @@ TEST_F(IResearchQueryOptimizationTest, test_122) {
 }
 
   // a <= x && a < y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_123) {
+TEST_P(IResearchQueryOptimizationTest, test_123) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7779,7 +7777,7 @@ TEST_F(IResearchQueryOptimizationTest, test_123) {
 }
 
   // a <= x && a < y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_124) {
+TEST_P(IResearchQueryOptimizationTest, test_124) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7838,7 +7836,7 @@ TEST_F(IResearchQueryOptimizationTest, test_124) {
   }
 }
   // a <= x && a < y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_125) {
+TEST_P(IResearchQueryOptimizationTest, test_125) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7898,7 +7896,7 @@ TEST_F(IResearchQueryOptimizationTest, test_125) {
 }
 
   // a <= x && a <= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_126) {
+TEST_P(IResearchQueryOptimizationTest, test_126) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -7958,7 +7956,7 @@ TEST_F(IResearchQueryOptimizationTest, test_126) {
 }
 
   // a <= x && a <= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_127) {
+TEST_P(IResearchQueryOptimizationTest, test_127) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -8008,7 +8006,7 @@ TEST_F(IResearchQueryOptimizationTest, test_127) {
 }
 
   // a <= x && a <= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_128) {
+TEST_P(IResearchQueryOptimizationTest, test_128) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -8068,7 +8066,7 @@ TEST_F(IResearchQueryOptimizationTest, test_128) {
 }
 
   // a <= x && a >= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_129) {
+TEST_P(IResearchQueryOptimizationTest, test_129) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -8141,7 +8139,7 @@ TEST_F(IResearchQueryOptimizationTest, test_129) {
 }
 
   // a <= x && a >= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_130) {
+TEST_P(IResearchQueryOptimizationTest, test_130) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -8214,7 +8212,7 @@ TEST_F(IResearchQueryOptimizationTest, test_130) {
 }
 
   // a <= x && a >= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_131) {
+TEST_P(IResearchQueryOptimizationTest, test_131) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -8287,7 +8285,7 @@ TEST_F(IResearchQueryOptimizationTest, test_131) {
 }
 
   // a <= x && a > y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_132) {
+TEST_P(IResearchQueryOptimizationTest, test_132) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -8360,7 +8358,7 @@ TEST_F(IResearchQueryOptimizationTest, test_132) {
 }
 
   // a <= x && a > y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_133) {
+TEST_P(IResearchQueryOptimizationTest, test_133) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -8433,7 +8431,7 @@ TEST_F(IResearchQueryOptimizationTest, test_133) {
 }
 
   // a <= x && a > y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_134) {
+TEST_P(IResearchQueryOptimizationTest, test_134) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -8506,7 +8504,7 @@ TEST_F(IResearchQueryOptimizationTest, test_134) {
 }
 
   // a >= x && a == y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_135) {
+TEST_P(IResearchQueryOptimizationTest, test_135) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -8564,7 +8562,7 @@ TEST_F(IResearchQueryOptimizationTest, test_135) {
   }
 }
   // a >= x && a == y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_136) {
+TEST_P(IResearchQueryOptimizationTest, test_136) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -8623,7 +8621,7 @@ TEST_F(IResearchQueryOptimizationTest, test_136) {
 }
 
   // a >= x && a == y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_137) {
+TEST_P(IResearchQueryOptimizationTest, test_137) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -8678,7 +8676,7 @@ TEST_F(IResearchQueryOptimizationTest, test_137) {
   }
 }
   // a >= x && a != y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_138) {
+TEST_P(IResearchQueryOptimizationTest, test_138) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -8749,7 +8747,7 @@ TEST_F(IResearchQueryOptimizationTest, test_138) {
 }
 
   // a >= x && a != y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_139) {
+TEST_P(IResearchQueryOptimizationTest, test_139) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -8818,7 +8816,7 @@ TEST_F(IResearchQueryOptimizationTest, test_139) {
 }
 
   // a >= x && a != y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_140) {
+TEST_P(IResearchQueryOptimizationTest, test_140) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -8889,7 +8887,7 @@ TEST_F(IResearchQueryOptimizationTest, test_140) {
 }
 
   // a >= x && a != y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_141) {
+TEST_P(IResearchQueryOptimizationTest, test_141) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -8957,7 +8955,7 @@ TEST_F(IResearchQueryOptimizationTest, test_141) {
   }
 }
   // a >= x && a != y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_142) {
+TEST_P(IResearchQueryOptimizationTest, test_142) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -9028,7 +9026,7 @@ TEST_F(IResearchQueryOptimizationTest, test_142) {
 }
 
   // a >= x && a != y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_143) {
+TEST_P(IResearchQueryOptimizationTest, test_143) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -9097,7 +9095,7 @@ TEST_F(IResearchQueryOptimizationTest, test_143) {
 }
 
   // a >= x && a < y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_144) {
+TEST_P(IResearchQueryOptimizationTest, test_144) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -9154,7 +9152,7 @@ TEST_F(IResearchQueryOptimizationTest, test_144) {
 }
 
   // a >= x && a < y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_145) {
+TEST_P(IResearchQueryOptimizationTest, test_145) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -9211,7 +9209,7 @@ TEST_F(IResearchQueryOptimizationTest, test_145) {
 }
 
   // a >= x && a < y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_146) {
+TEST_P(IResearchQueryOptimizationTest, test_146) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -9268,7 +9266,7 @@ TEST_F(IResearchQueryOptimizationTest, test_146) {
 }
 
   // a >= x && a <= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_147) {
+TEST_P(IResearchQueryOptimizationTest, test_147) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -9325,7 +9323,7 @@ TEST_F(IResearchQueryOptimizationTest, test_147) {
 }
 
   // a >= x && a <= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_148) {
+TEST_P(IResearchQueryOptimizationTest, test_148) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -9380,7 +9378,7 @@ TEST_F(IResearchQueryOptimizationTest, test_148) {
   }
 }
   // a >= x && a <= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_149) {
+TEST_P(IResearchQueryOptimizationTest, test_149) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -9436,7 +9434,7 @@ TEST_F(IResearchQueryOptimizationTest, test_149) {
 }
 
   // a >= x && a >= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_150) {
+TEST_P(IResearchQueryOptimizationTest, test_150) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -9497,7 +9495,7 @@ TEST_F(IResearchQueryOptimizationTest, test_150) {
 }
 
   // a >= x && a >= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_151) {
+TEST_P(IResearchQueryOptimizationTest, test_151) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -9548,7 +9546,7 @@ TEST_F(IResearchQueryOptimizationTest, test_151) {
 }
 
   // a >= x && a >= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_152) {
+TEST_P(IResearchQueryOptimizationTest, test_152) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -9608,7 +9606,7 @@ TEST_F(IResearchQueryOptimizationTest, test_152) {
 }
 
   // a >= x && a > y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_153) {
+TEST_P(IResearchQueryOptimizationTest, test_153) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -9669,7 +9667,7 @@ TEST_F(IResearchQueryOptimizationTest, test_153) {
 }
 
   // a >= x && a > y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_154) {
+TEST_P(IResearchQueryOptimizationTest, test_154) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -9730,7 +9728,7 @@ TEST_F(IResearchQueryOptimizationTest, test_154) {
 }
 
   // a >= x && a > y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_155) {
+TEST_P(IResearchQueryOptimizationTest, test_155) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -9791,7 +9789,7 @@ TEST_F(IResearchQueryOptimizationTest, test_155) {
 }
 
   // a > x && a == y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_156) {
+TEST_P(IResearchQueryOptimizationTest, test_156) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -9850,7 +9848,7 @@ TEST_F(IResearchQueryOptimizationTest, test_156) {
 }
 
   // a > x && a == y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_157) {
+TEST_P(IResearchQueryOptimizationTest, test_157) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -9905,7 +9903,7 @@ TEST_F(IResearchQueryOptimizationTest, test_157) {
 }
 
   // a > x && a == y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_158) {
+TEST_P(IResearchQueryOptimizationTest, test_158) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -9960,7 +9958,7 @@ TEST_F(IResearchQueryOptimizationTest, test_158) {
 }
 
   // a > x && a != y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_159) {
+TEST_P(IResearchQueryOptimizationTest, test_159) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -10031,7 +10029,7 @@ TEST_F(IResearchQueryOptimizationTest, test_159) {
 }
 
   // a > x && a != y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_160) {
+TEST_P(IResearchQueryOptimizationTest, test_160) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -10100,7 +10098,7 @@ TEST_F(IResearchQueryOptimizationTest, test_160) {
 }
 
   // a > x && a != y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_161) {
+TEST_P(IResearchQueryOptimizationTest, test_161) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -10171,7 +10169,7 @@ TEST_F(IResearchQueryOptimizationTest, test_161) {
 }
 
   // a > x && a != y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_162) {
+TEST_P(IResearchQueryOptimizationTest, test_162) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -10241,7 +10239,7 @@ TEST_F(IResearchQueryOptimizationTest, test_162) {
 }
 
   // a > x && a != y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_163) {
+TEST_P(IResearchQueryOptimizationTest, test_163) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -10312,7 +10310,7 @@ TEST_F(IResearchQueryOptimizationTest, test_163) {
 }
 
   // a > x && a != y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_164) {
+TEST_P(IResearchQueryOptimizationTest, test_164) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -10381,7 +10379,7 @@ TEST_F(IResearchQueryOptimizationTest, test_164) {
 }
 
   // a > x && a < y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_165) {
+TEST_P(IResearchQueryOptimizationTest, test_165) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -10438,7 +10436,7 @@ TEST_F(IResearchQueryOptimizationTest, test_165) {
 }
 
   // a > x && a < y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_166) {
+TEST_P(IResearchQueryOptimizationTest, test_166) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -10496,7 +10494,7 @@ TEST_F(IResearchQueryOptimizationTest, test_166) {
 }
 
   // a > x && a < y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_167) {
+TEST_P(IResearchQueryOptimizationTest, test_167) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -10551,7 +10549,7 @@ TEST_F(IResearchQueryOptimizationTest, test_167) {
 }
 
   // a > x && a <= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_168) {
+TEST_P(IResearchQueryOptimizationTest, test_168) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -10608,7 +10606,7 @@ TEST_F(IResearchQueryOptimizationTest, test_168) {
 }
 
   // a > x && a <= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_169) {
+TEST_P(IResearchQueryOptimizationTest, test_169) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -10665,7 +10663,7 @@ TEST_F(IResearchQueryOptimizationTest, test_169) {
 }
 
   // a > x && a <= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_170) {
+TEST_P(IResearchQueryOptimizationTest, test_170) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -10722,7 +10720,7 @@ TEST_F(IResearchQueryOptimizationTest, test_170) {
 }
 
   // a > x && a >= y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_171) {
+TEST_P(IResearchQueryOptimizationTest, test_171) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -10783,7 +10781,7 @@ TEST_F(IResearchQueryOptimizationTest, test_171) {
 }
 
   // a > x && a >= y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_172) {
+TEST_P(IResearchQueryOptimizationTest, test_172) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -10843,7 +10841,7 @@ TEST_F(IResearchQueryOptimizationTest, test_172) {
 }
 
   // a > x && a >= y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_173) {
+TEST_P(IResearchQueryOptimizationTest, test_173) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -10903,7 +10901,7 @@ TEST_F(IResearchQueryOptimizationTest, test_173) {
 }
 
   // a > x && a > y, x < y
-TEST_F(IResearchQueryOptimizationTest, test_174) {
+TEST_P(IResearchQueryOptimizationTest, test_174) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -10964,7 +10962,7 @@ TEST_F(IResearchQueryOptimizationTest, test_174) {
 }
 
   // a > x && a > y, x == y
-TEST_F(IResearchQueryOptimizationTest, test_175) {
+TEST_P(IResearchQueryOptimizationTest, test_175) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -11015,7 +11013,7 @@ TEST_F(IResearchQueryOptimizationTest, test_175) {
 }
 
   // a > x && a > y, x > y
-TEST_F(IResearchQueryOptimizationTest, test_176) {
+TEST_P(IResearchQueryOptimizationTest, test_176) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -11075,7 +11073,7 @@ TEST_F(IResearchQueryOptimizationTest, test_176) {
 }
 
 // check double negation is always collapsed
-TEST_F(IResearchQueryOptimizationTest, test_177) {
+TEST_P(IResearchQueryOptimizationTest, test_177) {
 
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -11127,7 +11125,7 @@ TEST_F(IResearchQueryOptimizationTest, test_177) {
 }
 
 // check DNF conversion disabled 
-TEST_F(IResearchQueryOptimizationTest, test_178) {
+TEST_P(IResearchQueryOptimizationTest, test_178) {
   auto dnfConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
     // left part B && C
@@ -11234,7 +11232,7 @@ TEST_F(IResearchQueryOptimizationTest, test_178) {
 }
 
 // check DNF conversion disabled  but IN nodes processed (sorted and deduplicated)!
-TEST_F(IResearchQueryOptimizationTest, test_179) {
+TEST_P(IResearchQueryOptimizationTest, test_179) {
   auto dnfConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
     {
@@ -11394,7 +11392,7 @@ TEST_F(IResearchQueryOptimizationTest, test_179) {
 }
 
 // check DNF conversion disabled (with root disjunction)  but IN nodes processed (sorted and deduplicated)!
-TEST_F(IResearchQueryOptimizationTest, test_180) {
+TEST_P(IResearchQueryOptimizationTest, test_180) {
   auto dnfConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
     {
@@ -11537,7 +11535,7 @@ TEST_F(IResearchQueryOptimizationTest, test_180) {
 }
 
 // check DNF conversion disabled (with root disjunction and conjunction inside)  but IN nodes processed (sorted and deduplicated)!
-TEST_F(IResearchQueryOptimizationTest, test_181) {
+TEST_P(IResearchQueryOptimizationTest, test_181) {
   auto dnfConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
     {
@@ -11681,7 +11679,7 @@ TEST_F(IResearchQueryOptimizationTest, test_181) {
 
 
 // check Negation conversion disabled 
-TEST_F(IResearchQueryOptimizationTest, test_182) {
+TEST_P(IResearchQueryOptimizationTest, test_182) {
   auto negationConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
     {
@@ -11767,7 +11765,7 @@ TEST_F(IResearchQueryOptimizationTest, test_182) {
 }
 
 // check Negation conversion disabled 
-TEST_F(IResearchQueryOptimizationTest, test_183) {
+TEST_P(IResearchQueryOptimizationTest, test_183) {
   auto negationConvertedExpected = [](irs::Or& expected) {
     auto& root = expected.add<irs::And>();
     {
@@ -11853,7 +11851,7 @@ TEST_F(IResearchQueryOptimizationTest, test_183) {
 }
 
 // check OR deduplication in sub-nodes
-TEST_F(IResearchQueryOptimizationTest, test_184) {
+TEST_P(IResearchQueryOptimizationTest, test_184) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -11923,7 +11921,7 @@ TEST_F(IResearchQueryOptimizationTest, test_184) {
 }
 
 // check IN deduplication in sub-nodes
-TEST_F(IResearchQueryOptimizationTest, test_185) {
+TEST_P(IResearchQueryOptimizationTest, test_185) {
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -11991,3 +11989,8 @@ TEST_F(IResearchQueryOptimizationTest, test_185) {
     ++optimizeType;
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryOptimizationTest,
+  IResearchQueryOptimizationTest,
+  GetLinkVersions());
