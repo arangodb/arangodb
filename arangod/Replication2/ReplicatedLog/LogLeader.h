@@ -246,6 +246,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
                                                   TermIndexPair const& lastAvailableIndex) const
         -> std::pair<AppendEntriesRequest, TermIndexPair>;
 
+    [[nodiscard]] auto calculateCommitLag() const noexcept -> double;
+
     LogLeader& _self;
     InMemoryLog _inMemoryLog;
     std::vector<FollowerInfo> _follower{};

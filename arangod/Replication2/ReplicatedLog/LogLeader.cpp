@@ -35,18 +35,23 @@
 #include <Logger/LogMacros.h>
 #include <Logger/Logger.h>
 #include <Logger/LoggerStream.h>
-#include <chrono>
-#include <functional>
-#include <type_traits>
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <exception>
+#include <functional>
 #include <iterator>
 #include <ratio>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
 
+#include "Basics/ErrorCode.h"
+#include "Futures/Promise-inl.h"
+#include "Futures/Promise.h"
+#include "Futures/Unit.h"
+#include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
@@ -56,11 +61,6 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "RestServer/Metrics.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Basics/ErrorCode.h"
-#include "Futures/Promise-inl.h"
-#include "Futures/Promise.h"
-#include "Futures/Unit.h"
-#include "Replication2/DeferredExecution.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "immer/detail/iterator_facade.hpp"
 #include "immer/detail/rbts/rrbtree_iterator.hpp"
@@ -415,7 +415,7 @@ auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
 }
 
 auto replicated_log::LogLeader::getStatus() const -> LogStatus {
-  return _guardedLeaderData.doUnderLock([term = _currentTerm](auto& leaderData) {
+  return _guardedLeaderData.doUnderLock([term = _currentTerm](GuardedLeaderData const& leaderData) {
     if (leaderData._didResign) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
@@ -423,11 +423,16 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.local = leaderData.getLocalStatistics();
     status.term = term;
     for (FollowerInfo const& f : leaderData._follower) {
-      status.follower[f._impl->getParticipantId()] = {
-          LogStatistics{f.lastAckedEntry, f.lastAckedCommitIndex}, f.lastErrorReason,
+      auto lastRequestLatencyMS =
           std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f._lastRequestLatency)
-              .count()};
+              .count();
+      status.follower.emplace(
+          f._impl->getParticipantId(),
+          FollowerStatistics{
+              LogStatistics{f.lastAckedEntry, f.lastAckedCommitIndex}, f.lastErrorReason, lastRequestLatencyMS});
     }
+
+    status.commitLagMS = leaderData.calculateCommitLag();
     return LogStatus{std::move(status)};
   });
 }
@@ -468,7 +473,7 @@ auto replicated_log::LogLeader::waitFor(LogIndex index) -> WaitForFuture {
     }
     if (leaderData._commitIndex >= index) {
       return futures::Future<WaitForResult>{std::in_place, leaderData._commitIndex,
-                                                                leaderData._lastQuorum};
+                                            leaderData._lastQuorum};
     }
     auto it = leaderData._waitForQueue.emplace(index, WaitForPromise{});
     auto& promise = it->second;
@@ -822,6 +827,22 @@ replicated_log::LogLeader::GuardedLeaderData::GuardedLeaderData(replicated_log::
                                                                 InMemoryLog inMemoryLog)
     : _self(self), _inMemoryLog(std::move(inMemoryLog)) {}
 
+auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag() const noexcept
+    -> double {
+  auto memtry = _inMemoryLog.getEntryByIndex(_commitIndex + 1);
+  if (memtry.has_value()) {
+    return std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
+               std::chrono::steady_clock::now() - memtry->insertTp())
+        .count();
+  } else {
+    TRI_ASSERT(_commitIndex == _inMemoryLog.getLastIndex())
+        << "If there is no entry following the commitIndex the last index "
+           "should be the commitIndex. _commitIndex = "
+        << _commitIndex << ", lastIndex = " << _inMemoryLog.getLastIndex();
+    return 0;
+  }
+}
+
 auto replicated_log::LogLeader::getReplicatedLogSnapshot() const -> InMemoryLog::log_type {
   auto [log, commitIndex] = _guardedLeaderData.doUnderLock([](auto const& leaderData) {
     if (leaderData._didResign) {
@@ -841,15 +862,16 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
                                    "invalid parameter; log index 0 is invalid");
   }
 
-  return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) -> WaitForIteratorFuture {
+  return waitFor(index).thenValue([this, self = shared_from_this(),
+                                   index](auto&& quorum) -> WaitForIteratorFuture {
     auto [actualIndex, iter] = _guardedLeaderData.doUnderLock(
         [&](GuardedLeaderData& leaderData) -> std::pair<LogIndex, std::unique_ptr<LogRangeIterator>> {
           TRI_ASSERT(index <= leaderData._commitIndex);
 
           /*
            * This code here ensures that if only private log entries are present
-           * we do not reply with an empty iterator but instead wait for the next
-           * entry containing payload.
+           * we do not reply with an empty iterator but instead wait for the
+           * next entry containing payload.
            */
 
           auto actualIndex = index;

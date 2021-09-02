@@ -68,6 +68,7 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("role", VPackValue(StaticStrings::Leader));
   builder.add(StaticStrings::Term, VPackValue(term.value));
+  builder.add("commitLagMS", VPackValue(commitLagMS));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
   {
@@ -84,15 +85,16 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
   LeaderStatus status;
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
   status.local = LogStatistics::fromVelocyPack(slice.get("local"));
+  status.commitLagMS = slice.get("commitLagMS").extract<double>();
   for (auto [key, value] : VPackObjectIterator(slice.get(StaticStrings::Follower))) {
     auto id = ParticipantId{key.copyString()};
     auto stat = FollowerStatistics::fromVelocyPack(value);
-    status.follower.emplace(std::move(id), std::move(stat));
+    status.follower.emplace(std::move(id), stat);
   }
   return status;
 }
 
-void LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
+void FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex.value));
   builder.add(VPackValue(StaticStrings::Spearhead));
@@ -102,7 +104,7 @@ void LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::Builder& builder
   builder.add("lastRequestLatencyMS", VPackValue(lastRequestLatencyMS));
 }
 
-auto LeaderStatus::FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics {
+auto FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics {
   FollowerStatistics stats;
   stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
   stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
