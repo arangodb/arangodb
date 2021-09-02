@@ -25,6 +25,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <variant>
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
@@ -39,6 +40,33 @@ class Slice;
 }  // namespace arangodb::velocypack
 
 namespace arangodb::replication2::replicated_log {
+
+struct FollowerState {
+
+  struct UpToDate {};
+  struct ErrorBackoff {
+    double durationMS;
+    std::size_t retryCount;
+  };
+  struct RequestInFlight {
+    double durationMS;
+  };
+
+  std::variant<UpToDate, ErrorBackoff, RequestInFlight> value;
+
+  static auto withUpToDate() noexcept -> FollowerState;
+  static auto withErrorBackoff(double, std::size_t retryCount) noexcept -> FollowerState;
+  static auto withRequestInFlight(double) noexcept -> FollowerState;
+  static auto fromVelocyPack(velocypack::Slice) -> FollowerState;
+  void toVelocyPack(velocypack::Builder&) const;
+
+  FollowerState() = default;
+ private:
+  template<typename... Args>
+  explicit FollowerState(std::in_place_t, Args&&... args) : value(std::forward<Args>(args)...) {}
+};
+
+auto to_string(FollowerState const&) -> std::string_view;
 
 struct AppendEntriesRequest;
 struct AppendEntriesResult;

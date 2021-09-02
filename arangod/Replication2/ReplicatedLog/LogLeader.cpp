@@ -238,6 +238,10 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
         auto messageId = request.messageId;
         LOG_CTX("1b0ec", TRACE, follower->logContext)
             << "sending append entries, messageId = " << messageId;
+
+        // We take the start time here again to have a more precise measurement.
+        // (And do not use follower._lastRequestStartTP)
+        // TODO really needed?
         auto startTime = std::chrono::steady_clock::now();
         // Capture a weak pointer `parentLog` that will be locked
         // when the request returns. If the locking is successful
@@ -426,10 +430,27 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
       auto lastRequestLatencyMS =
           std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f._lastRequestLatency)
               .count();
+      auto state = std::invoke([&] {
+        switch (f._state) {
+          case FollowerInfo::ERROR_BACKOFF:
+            return FollowerState::withErrorBackoff(
+                std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
+                    f._errorBackoffEndTP - std::chrono::steady_clock::now())
+                    .count(),
+                f.numErrorsSinceLastAnswer);
+          case FollowerInfo::REQUEST_IN_FLIGHT:
+            return FollowerState::withRequestInFlight(
+                std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
+                    std::chrono::steady_clock::now() - f._lastRequestStartTP)
+                    .count());
+          default:
+            return FollowerState::withUpToDate();
+                     }
+                   });
       status.follower.emplace(
           f._impl->getParticipantId(),
           FollowerStatistics{
-              LogStatistics{f.lastAckedEntry, f.lastAckedCommitIndex}, f.lastErrorReason, lastRequestLatencyMS});
+              LogStatistics{f.lastAckedEntry, f.lastAckedCommitIndex}, f.lastErrorReason, lastRequestLatencyMS, state});
     }
 
     status.commitLagMS = leaderData.calculateCommitLag();
@@ -548,7 +569,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntries()
 
 auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerInfo& follower)
     -> std::optional<PreparedAppendEntryRequest> {
-  if (follower.requestInFlight) {
+  if (follower._state != FollowerInfo::IDLE) {
     LOG_CTX("1d7b6", TRACE, follower.logContext)
         << "request in flight - skipping";
     return std::nullopt;  // wait for the request to return
@@ -569,7 +590,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerIn
     return std::nullopt;  // nothing to replicate
   }
 
-  follower.requestInFlight = true;
+
   auto const executionDelay = std::invoke([&] {
     using namespace std::chrono_literals;
     if (follower.numErrorsSinceLastAnswer > 0) {
@@ -581,8 +602,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerIn
           << follower.numErrorsSinceLastAnswer << " requests failed, last one was "
           << follower.lastSentMessageId << " - waiting " << executionDelay / 1ms
           << "ms before sending next message.";
+      follower._state = FollowerInfo::ERROR_BACKOFF;
+      follower._errorBackoffEndTP = std::chrono::steady_clock::now() + executionDelay;
       return executionDelay;
     } else {
+      follower._state = FollowerInfo::PREPARE;
       return 0us;
     }
   });
@@ -602,6 +626,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   req.leaderId = _self._id;
   req.waitForSync = _self._config.waitForSync;
   req.messageId = ++follower.lastSentMessageId;
+
+  follower._state = FollowerInfo::REQUEST_IN_FLIGHT;
+  follower._lastRequestStartTP = std::chrono::steady_clock::now();
 
   if (lastAcked) {
     req.prevLogEntry.index = lastAcked->entry().logIndex();
@@ -657,7 +684,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     LOG_CTX("35a32", TRACE, follower.logContext)
         << "received message " << messageId << " - no other requests in flight";
     // there is no request in flight currently
-    follower.requestInFlight = false;
+    follower._state = FollowerInfo::IDLE;
   }
   if (res.hasValue()) {
     auto& response = res.get();

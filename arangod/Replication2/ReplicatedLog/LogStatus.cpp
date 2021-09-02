@@ -102,6 +102,8 @@ void FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
   builder.add("lastErrorReason", VPackValue(int(lastErrorReason)));
   builder.add("lastErrorReasonMessage", VPackValue(to_string(lastErrorReason)));
   builder.add("lastRequestLatencyMS", VPackValue(lastRequestLatencyMS));
+  builder.add(VPackValue("state"));
+  internalState.toVelocyPack(builder);
 }
 
 auto FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics {
@@ -110,6 +112,7 @@ auto FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStat
   stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
   stats.lastErrorReason = AppendEntriesErrorReason{slice.get("lastErrorReason").getNumericValue<int>()};
   stats.lastRequestLatencyMS = slice.get("lastRequestLatencyMS").getDouble();
+  stats.internalState = FollowerState::fromVelocyPack(slice.get("state"));
   return stats;
 }
 

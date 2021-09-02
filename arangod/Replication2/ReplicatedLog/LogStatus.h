@@ -36,6 +36,7 @@ namespace arangodb::replication2::replicated_log {
 struct FollowerStatistics : LogStatistics {
   AppendEntriesErrorReason lastErrorReason;
   double lastRequestLatencyMS;
+  FollowerState internalState;
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics;
 };
