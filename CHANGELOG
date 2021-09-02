@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix some memory leaks after adding optimization rule for AqlAnalyzer.
+
 * Fix internal iterator states after intermediate commits in write
   transactions. Iterators could point to invalid data after an
   intermediate commit, producing undefined behavior.

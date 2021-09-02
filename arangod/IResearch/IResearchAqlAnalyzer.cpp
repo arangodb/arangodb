@@ -558,9 +558,7 @@ void resetFromExpression(AqlAnalyzer* analyzer) {
   analyzer->_queryResults->destroyValue(0,0);
   bool mustDestroy = true;
 
-  AqlValue value;
-  value = e->execute(&ctx, mustDestroy);
-  analyzer->_queryResults->setValue(0,0, value);
+  analyzer->_queryResults->setValue(0,0, e->execute(&ctx, mustDestroy));
 
   analyzer->_engineResultRegister = 0;
 }
