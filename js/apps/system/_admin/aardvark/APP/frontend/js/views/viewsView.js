@@ -263,18 +263,14 @@
       );
 
       tableContent.push(
-        window.modalView.createTextEntry(
+        window.modalView.createSelectEntry(
           'newPrimarySortCompression',
           'Primary Sort Compression',
           'lz4',
           false,
-          'none | lz4',
-          false,
           [
-            {
-              rule: Joi.string().valid('lz4', 'none', ''),
-              msg: 'Only these values are allowed: \'lz4\', \'none\''
-            }
+            window.modalView.createOptionEntry('LZ4', 'lz4'),
+            window.modalView.createOptionEntry('None', 'none')
           ],
           'width: unset;'
         )
@@ -300,18 +296,14 @@
                 }
               ]
             ),
-            window.modalView.createTextEntry(
+            window.modalView.createSelectEntry(
               _.uniqueId('direction-'),
               undefined,
-              '',
-              false,
-              'asc | desc',
+              'asc',
               false,
               [
-                {
-                  rule: Joi.string().valid('asc', 'ASC', 'desc', 'DESC', ''),
-                  msg: 'Only these values are allowed: \'asc\', \'ASC\', \'desc\', \'DESC\''
-                }
+                window.modalView.createOptionEntry('ASC', 'asc'),
+                window.modalView.createOptionEntry('DESC', 'desc')
               ]
             )
           ]],
@@ -336,18 +328,14 @@
               undefined,
               'width: 170px !important;'
             ),
-            window.modalView.createTextEntry(
+            window.modalView.createSelectEntry(
               _.uniqueId('compression-'),
               undefined,
-              '',
-              false,
-              'none | lz4',
+              'lz4',
               false,
               [
-                {
-                  rule: Joi.string().valid('lz4', 'none', ''),
-                  msg: 'Only these values are allowed: \'lz4\', \'none\''
-                }
+                window.modalView.createOptionEntry('LZ4', 'lz4'),
+                window.modalView.createOptionEntry('None', 'none')
               ]
             )
           ]],
@@ -460,7 +448,7 @@
 
       const primarySort = [];
       $('#newPrimarySort tbody').children().each((idx, tr) => {
-        const inputs = $(tr).find('input');
+        const inputs = $(tr).find('input,select');
         const [field, direction] = inputs.map((idx, input) => input.value);
 
         if (field) {
@@ -473,7 +461,7 @@
 
       const storedValues = [];
       $('#newStoredValues tbody').children().each((idx, tr) => {
-        const inputs = $(tr).find('input,textarea');
+        const inputs = $(tr).find('textarea,select');
         const [fields, compression] = inputs.map((idx, input) => input.value);
 
         if (fields) {
