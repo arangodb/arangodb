@@ -88,22 +88,22 @@ function withinRectangleSuite () {
 
     testWithinRectangleAsResult : function () {
       var actual = AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo, -1, -1, 1, 1)").json[0];
-      assertEqual(actual.length , 9);
+      assertEqual(actual.length , 4);
     },
 
     testWithinRectangleAsResultForSingleDocument : function () {
-      var actual = AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo, -0.8, -1.2, -1.2, -0.8)").json[0];
+      var actual = AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo, -1.2, -1.2, -0.8, -0.8)").json[0];
       assertEqual(actual.length , 1);
     },
 
     testWithinRectangleAsResultForMissingDocument : function () {
-      var actual = AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo, -41, -41, -41, -41)").json[0];
+      var actual = AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo, -41, -41, -40.5, -40.5)").json[0];
       assertEqual(actual.length , 0);
     },
 
     testWithinRectangleAsResultForUnknownCollection : function () {
       try  {
-        AQL_EXECUTE("RETURN WITHIN_RECTANGLE(unknown, -41, -41, -41, -41)");
+        AQL_EXECUTE("RETURN WITHIN_RECTANGLE(unknown, -41, -41, -40.5, -40.5)");
         fail();
       } catch (e) {
         assertTrue(e.errorNum === errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
@@ -112,7 +112,7 @@ function withinRectangleSuite () {
 
     testWithinRectangleAsResultForCollectionWithoutGeoIndex : function () {
       try  {
-        AQL_EXECUTE("RETURN WITHIN_RECTANGLE(_graphs, -41, -41, -41, -41)");
+        AQL_EXECUTE("RETURN WITHIN_RECTANGLE(_graphs, -41, -41, -40.5, -40.5)");
         fail();
       } catch (e) {
         assertTrue(e.errorNum === errors.ERROR_QUERY_GEO_INDEX_MISSING.code);
@@ -121,16 +121,16 @@ function withinRectangleSuite () {
 
     testWithinRectangleAsResultWithPositionBasedGeoIndex : function () {
       var actual =AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo2, -1, -1, 1, 1)").json[0];
-      assertEqual(actual.length , 9);
+      assertEqual(actual.length , 4);
     },
 
     testWithinRectangleAsResultForSingleDocumentWithPositionBasedGeoIndex : function () {
-      var actual =AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo2, -0.8, -1.2, -1.2, -0.8)").json[0];
+      var actual =AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo2, -1.2, -1.2, -0.8, -0.8)").json[0];
       assertEqual(actual.length , 1);
     },
 
     testWithinRectangleAsResultForMissingDocumentWithPositionBasedGeoIndex : function () {
-      var actual =AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo2, -41, -41, -41, -41)").json[0];
+      var actual =AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo2, -41, -41, -40.5, -40.5)").json[0];
       assertEqual(actual.length , 0);
     }
 
