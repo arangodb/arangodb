@@ -210,7 +210,7 @@ struct TRI_vocbase_t {
   /// @brief determine whether a data-source name is a system data-source name
   static bool IsSystemName(std::string const& name) noexcept;
 
-  arangodb::application_features::ApplicationServer& server() const {
+  arangodb::application_features::ApplicationServer& server() const noexcept {
     return _server;
   }
 
@@ -367,7 +367,7 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalCollection> useCollection(std::string const& name, bool checkPermissions);
 
   /// @brief releases a collection from usage
-  void releaseCollection(arangodb::LogicalCollection* collection);
+  void releaseCollection(arangodb::LogicalCollection* collection) noexcept;
 
   /// @brief visit all DataSources registered with this vocbase
   /// @param visitor returns if visitation should continue

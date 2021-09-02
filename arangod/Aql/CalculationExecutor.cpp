@@ -130,7 +130,7 @@ void CalculationExecutor<calculationType>::enterContext() {
 
 template <CalculationType calculationType>
 template <CalculationType U, typename>
-void CalculationExecutor<calculationType>::exitContext() {
+void CalculationExecutor<calculationType>::exitContext() noexcept {
   if (shouldExitContextBetweenBlocks()) {
     // must invalidate the expression now as we might be called from
     // different threads
@@ -140,7 +140,7 @@ void CalculationExecutor<calculationType>::exitContext() {
 }
 
 template <CalculationType calculationType>
-bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks() const {
+bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks() const noexcept {
   static bool const isRunningInCluster = ServerState::instance()->isRunningInCluster();
   bool const stream = _infos.getQuery().queryOptions().stream;
 

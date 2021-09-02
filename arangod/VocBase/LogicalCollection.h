@@ -308,7 +308,7 @@ class LogicalCollection : public LogicalDataSource {
   void persistPhysicalCollection();
 
   /// lock protecting the status and name
-  basics::ReadWriteLock& statusLock();
+  basics::ReadWriteLock& statusLock() noexcept;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop

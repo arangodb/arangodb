@@ -122,5 +122,4 @@ class ConditionLocker {
 
 #endif
 };
-}  // namespace arangodb
-
+}  // namespace arangodb::basics

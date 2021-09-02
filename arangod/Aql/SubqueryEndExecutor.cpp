@@ -132,7 +132,7 @@ auto SubqueryEndExecutor::consumeShadowRow(ShadowAqlItemRow shadowRow,
   output.consumeShadowRow(_infos.getOutputRegister(), shadowRow, guard);
 }
 
-void SubqueryEndExecutor::Accumulator::reset() {
+void SubqueryEndExecutor::Accumulator::reset() noexcept {
   if (_memoryUsage > 0) {
     _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
     _memoryUsage = 0;

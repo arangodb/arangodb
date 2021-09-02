@@ -134,7 +134,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
         std::lock_guard<std::mutex> guard(_batchPingMutex);
         _batchPingTimer.reset();
       }
-      _batch.finish(_state.connection, _progress, _state.syncerId);
+      std::ignore = _batch.finish(_state.connection, _progress, _state.syncerId);
     }
   });
   LOG_TOPIC("62fb5", DEBUG, Logger::REPLICATION) << "sending start batch done";
@@ -370,7 +370,9 @@ Result GlobalInitialSyncer::getInventory(VPackBuilder& builder) {
     return r;
   }
 
-  auto sg = arangodb::scopeGuard([&]() noexcept { _batch.finish(_state.connection, _progress, _state.syncerId); });
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    std::ignore = _batch.finish(_state.connection, _progress, _state.syncerId);
+  });
 
   // caller did not supply an inventory, we need to fetch it
   return fetchInventory(builder);

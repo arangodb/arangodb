@@ -180,5 +180,4 @@ class ReadLocker {
 #endif
 };
 
-}  // namespace arangodb
-
+}  // namespace arangodb::basics

@@ -62,13 +62,11 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
   ::arangodb::containers::SmallVector<ConditionData*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ConditionData*> conditionData{a};
 
-  auto cleanup = [&conditionData]() -> void {
+  auto sg = arangodb::scopeGuard([&conditionData]() noexcept -> void {
     for (auto& it : conditionData) {
       delete it;
     }
-  };
-
-  auto sg = arangodb::scopeGuard([&]() noexcept { cleanup(); });
+  });
 
   std::vector<arangodb::aql::ConditionPart> parts;
   parts.reserve(n);

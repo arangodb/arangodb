@@ -358,7 +358,7 @@ DatabaseInitialSyncer::Configuration::Configuration(
     replutils::ProgressInfo& p, SyncerState& s, TRI_vocbase_t& v)
     : applier{a}, batch{bat}, connection{c}, flushed{f}, leader{l}, progress{p}, state{s}, vocbase{v} {}
 
-bool DatabaseInitialSyncer::Configuration::isChild() const {
+bool DatabaseInitialSyncer::Configuration::isChild() const noexcept {
   return state.isChildSyncer;
 }
 
@@ -415,13 +415,8 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
         << "client: getting leader state to dump " << vocbase().name();
 
     auto batchCancelation = scopeGuard([this]() noexcept {
-      try {
-        if (!_config.isChild()) {
-          batchFinish();
-        }
-      } catch (std::exception const& ex) {
-        LOG_TOPIC("432fe", ERR, Logger::REPLICATION)
-            << "Failed to cancel batch: " << ex.what();
+      if (!_config.isChild()) {
+        std::ignore = batchFinish();
       }
     });
 
@@ -2209,7 +2204,7 @@ Result DatabaseInitialSyncer::batchExtend() {
   return _config.batch.extend(_config.connection, _config.progress, _config.state.syncerId);
 }
 
-Result DatabaseInitialSyncer::batchFinish() {
+Result DatabaseInitialSyncer::batchFinish() noexcept {
   return _config.batch.finish(_config.connection, _config.progress, _config.state.syncerId);
 }
 

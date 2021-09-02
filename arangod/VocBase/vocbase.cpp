@@ -1393,7 +1393,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollectionInterna
 }
 
 /// @brief releases a collection from usage
-void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) {
+void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) noexcept {
   collection->statusLock().unlock();
 }
 

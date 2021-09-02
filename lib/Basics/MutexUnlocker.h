@@ -93,5 +93,4 @@ class MutexUnlocker {
   /// @brief whether or not the mutex is locked
   bool _isLocked;
 };
-}  // namespace arangodb
-
+}  // namespace arangodb::basics

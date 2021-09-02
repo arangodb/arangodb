@@ -40,7 +40,7 @@ struct UniqueBool {
   }
 
   void reset() noexcept { _value = false; }
-  operator bool() const noexcept { return _value; }
+  explicit operator bool() const noexcept { return _value; }
   [[nodiscard]] auto value() const noexcept -> bool { return _value; }
   auto once() noexcept -> bool {
     if (_value) {

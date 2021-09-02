@@ -562,7 +562,7 @@ struct AstNode {
   /// If it runs into a finalized node, it assumes the whole subtree beneath
   /// it is marked already and exits early; otherwise it will finalize the node
   /// and recurse on its subtree.
-  static void markFinalized(AstNode* subtreeRoot);
+  static void markFinalized(AstNode* subtreeRoot) noexcept;
 
   /// @brief sets the computed value pointer.
   void setComputedValue(uint8_t* data);

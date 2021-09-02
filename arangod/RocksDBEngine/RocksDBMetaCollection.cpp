@@ -139,7 +139,7 @@ ErrorCode RocksDBMetaCollection::lockWrite(double timeout) {
 }
 
 /// @brief write unlocks a collection
-void RocksDBMetaCollection::unlockWrite() { _exclusiveLock.unlockWrite(); }
+void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlockWrite(); }
 
 /// @brief read locks a collection, with a timeout
 ErrorCode RocksDBMetaCollection::lockRead(double timeout) {

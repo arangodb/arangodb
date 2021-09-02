@@ -1362,8 +1362,9 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   }
 
   {
-    addTrxsOngoing(query->slice());  // remember that these are ongoing
-    auto sg = arangodb::scopeGuard([&]() noexcept { removeTrxsOngoing(query->slice()); });
+    auto slice = query->slice();
+    addTrxsOngoing(slice);  // remember that these are ongoing
+    auto sg = arangodb::scopeGuard([&]() noexcept { removeTrxsOngoing(slice); });
     // Note that once the transactions are in our log, we can remove them
     // from the list of ongoing ones, although they might not yet be committed.
     // This is because then, inquire will find them in the log and draw its
@@ -1371,7 +1372,6 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
     // from when we receive the request until we have appended the trxs
     // ourselves.
 
-    auto slice = query->slice();
     size_t ntrans = slice.length();
     size_t npacks = ntrans / _config.maxAppendSize();
     if (ntrans % _config.maxAppendSize() != 0) {
@@ -2379,7 +2379,7 @@ void Agent::addTrxsOngoing(Slice trxs) {
   }
 }
 
-void Agent::removeTrxsOngoing(Slice trxs) {
+void Agent::removeTrxsOngoing(Slice trxs) noexcept {
   try {
     MUTEX_LOCKER(guard, _trxsLock);
     for (auto const& trx : VPackArrayIterator(trxs)) {

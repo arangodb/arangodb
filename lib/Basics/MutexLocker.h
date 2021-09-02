@@ -176,5 +176,4 @@ class MutexLocker {
 #endif
 };
 
-}  // namespace arangodb
-
+}  // namespace arangodb::basics
