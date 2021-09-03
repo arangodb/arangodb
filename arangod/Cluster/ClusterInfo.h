@@ -667,14 +667,14 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
-  Result createCollectionCoordinator(
-      std::string const& databaseName, std::string const& collectionID,
-      uint64_t numberOfShards, uint64_t replicationFactor,
-      uint64_t writeConcern, bool waitForSync, bool waitForReplication,
-      velocypack::Slice const& json, double timeout, bool isNewDatabase,
-      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
-      replication::Version replicationVersion,
-      std::optional<std::shared_ptr<std::unordered_map<ShardID, replication2::LogId>>> replicatedLogs);
+  Result createCollectionCoordinator(   // create collection
+      std::string const& databaseName,  // database name
+      std::string const& collectionID, uint64_t numberOfShards,
+      uint64_t replicationFactor, uint64_t writeConcern,
+      bool waitForReplication, arangodb::velocypack::Slice const& json,
+      double timeout,  // request timeout
+      bool isNewDatabase,
+      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
 
   /// @brief this method does an atomic check of the preconditions for the
   /// collections to be created, using the currently loaded plan. it populates
@@ -689,15 +689,17 @@ class ClusterInfo final {
   /// Note that in contrast to most other methods here, this method does not
   /// get a timeout parameter, but an endTime parameter!!!
   Result createCollectionsCoordinator(std::string const& databaseName,
-                                      std::vector<ClusterCollectionCreationInfo>& infos,
+                                      std::vector<ClusterCollectionCreationInfo>&,
                                       double endTime, bool isNewDatabase,
-                                      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
-                                      replication::Version replicationVersion);
+                                      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
 
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
-  Result dropCollectionCoordinator(std::string const& dbName,
-                                   std::string const& collectionID, double timeout);
+  Result dropCollectionCoordinator(     // drop collection
+      std::string const& databaseName,  // database name
+      std::string const& collectionID,  // collection identifier
+      double timeout                    // request timeout
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set collection properties in coordinator
@@ -959,9 +961,6 @@ class ClusterInfo final {
 
   auto getReplicatedLogLeader(DatabaseID const& database, replication2::LogId) const
       -> std::optional<ServerID>;
-
-  auto getCollectionGroupById(DatabaseID const& database, replication2::agency::CollectionGroupId id)
-    -> std::shared_ptr<replication2::agency::CollectionGroup const>;
 
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds

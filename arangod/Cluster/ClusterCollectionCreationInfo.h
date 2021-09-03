@@ -31,32 +31,24 @@
 #include <velocypack/Slice.h>
 #include <optional>
 
-namespace arangodb::replication2 {
-class LogId;
-}
-
 namespace arangodb {
 
 enum class ClusterCollectionCreationState { INIT, FAILED, DONE };
 
 struct ClusterCollectionCreationInfo {
-  ClusterCollectionCreationInfo() = delete;
-  ClusterCollectionCreationInfo(
-      std::string cID, uint64_t shards, uint64_t replicationFactor,
-      uint64_t writeConcern, bool waitForSync, bool waitForRep,
-      velocypack::Slice const& slice, std::string coordinatorId, RebootId rebootId,
-      std::optional<std::shared_ptr<std::unordered_map<ShardID, replication2::LogId>>> replicatedLogs);
+  ClusterCollectionCreationInfo(std::string cID, uint64_t shards,
+                                uint64_t replicationFactor, uint64_t writeConcern,
+                                bool waitForRep, velocypack::Slice const& slice,
+                                std::string coordinatorId, RebootId rebootId);
 
   std::string const collectionID;
   uint64_t numberOfShards;
   uint64_t replicationFactor;
   uint64_t writeConcern;
-  bool waitForSync;
   bool waitForReplication;
   velocypack::Slice const json;
   std::string name;
   ClusterCollectionCreationState state;
-  std::optional<std::shared_ptr<std::unordered_map<ShardID, replication2::LogId>>> replicatedLogs;
 
  class CreatorInfo : public velocypack::Serializable {
    public:
@@ -64,10 +56,10 @@ struct ClusterCollectionCreationInfo {
 
     void toVelocyPack(velocypack::Builder& builder) const override;
 
-    ~CreatorInfo() override = default;
+    virtual ~CreatorInfo() = default;
 
-    [[nodiscard]] RebootId rebootId() const noexcept;
-    [[nodiscard]] std::string const& coordinatorId() const noexcept;
+    RebootId rebootId() const noexcept;
+    std::string const& coordinatorId() const noexcept;
 
   private:
    std::string _coordinatorId;
@@ -77,10 +69,10 @@ struct ClusterCollectionCreationInfo {
   std::optional<CreatorInfo> creator;
 
  public:
-  [[nodiscard]] velocypack::Slice isBuildingSlice() const;
+  velocypack::Slice isBuildingSlice() const;
 
  private:
-  [[nodiscard]] bool needsBuildingFlag() const;
+  bool needsBuildingFlag() const;
 
  private:
   velocypack::Builder _isBuildingJson;

@@ -319,7 +319,10 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/FakeReplicatedLog.cpp
   Replication2/Mocks/FakeReplicatedLog.h
   Replication2/Streams/TestLogSpecification.cpp
-  Replication2/Streams/TestLogSpecification.h Replication2/Streams/MultiplexerConcurrencyTest.cpp Replication2/Mocks/AsyncFollower.cpp Replication2/Mocks/AsyncFollower.h)
+  Replication2/Streams/TestLogSpecification.h
+  Replication2/Streams/MultiplexerConcurrencyTest.cpp
+  Replication2/Mocks/AsyncFollower.cpp
+  Replication2/Mocks/AsyncFollower.h)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
