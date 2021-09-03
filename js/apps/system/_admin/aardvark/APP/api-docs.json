@@ -6326,7 +6326,7 @@
             "name": "Apache License, Version 2.0"
         }, 
         "title": "ArangoDB", 
-        "version": "3.8.1"
+        "version": "3.8.2"
     }, 
     "paths": {
         "/_admin/backup/create": {
