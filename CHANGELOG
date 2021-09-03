@@ -1,6 +1,9 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* SEARCH-238: Improved SortNodes placement optimization in cluster so late
+  materialization could cover more cases.
+
 * Fix rare case of invalid data could be inserted in the ArangoSearch index if
   several clients concurrently inserts data and use custom analyzer with
   non-string return type.
