@@ -1,6 +1,8 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* Updated ArangoDB Starter to 0.15.2.
+
 * SEARCH-238: Improved SortNodes placement optimization in cluster so late
   materialization could cover more cases.
 
