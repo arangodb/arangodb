@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-// Note that error.h uses ARANGODB_BASICS_ERROR_H!
 
 #include <string>
 #include <string_view>

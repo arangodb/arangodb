@@ -2042,7 +2042,9 @@ void RestReplicationHandler::handleCommandRestoreView() {
       }
     }
 
-    auto res = LogicalView::create(view, _vocbase, slice);  // must create() since view was drop()ed
+    // must create() since view was drop()ed
+    auto res = LogicalView::create(
+      view, _vocbase, slice, false);
 
     if (!res.ok()) {
       generateError(res);

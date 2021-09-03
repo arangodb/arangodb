@@ -484,10 +484,9 @@ TEST(by_same_position_test, ctor) {
   ASSERT_EQ(irs::by_same_position_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());
 
-  auto& features = irs::by_same_position::required();
-  ASSERT_EQ(2, features.size());
-  ASSERT_TRUE(features.check<irs::frequency>());
-  ASSERT_TRUE(features.check<irs::position>());
+  static_assert(
+    (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) ==
+    irs::by_same_position::required());
 }
 
 TEST(by_same_position_test, boost) {
@@ -610,7 +609,7 @@ TEST(by_same_position_test, equal) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   same_position_filter_test,
   same_position_filter_test_case,
   ::testing::Combine(

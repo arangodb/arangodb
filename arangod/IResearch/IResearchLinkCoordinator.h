@@ -110,32 +110,30 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
   /// @brief IResearchLinkCoordinator-specific implementation of an
   ///        IndexTypeFactory
   ////////////////////////////////////////////////////////////////////////////////
-  struct IndexFactory : public arangodb::IndexTypeFactory {
+  struct IndexFactory : public IndexTypeFactory {
     friend class IResearchLinkCoordinator;
 
    private:
-    IndexFactory(arangodb::application_features::ApplicationServer& server);
+    IndexFactory(application_features::ApplicationServer& server);
 
    public:
-    bool equal(arangodb::velocypack::Slice const& lhs,
-               arangodb::velocypack::Slice const& rhs,
+    bool equal(velocypack::Slice lhs,
+               velocypack::Slice rhs,
                std::string const& dbname) const override;
 
-    std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
-                                                 arangodb::velocypack::Slice const& definition,
-                                                 IndexId id,
-                                                 bool isClusterConstructor) const override;
+    std::shared_ptr<Index> instantiate(LogicalCollection& collection,
+                                       velocypack::Slice definition,
+                                       IndexId id,
+                                       bool isClusterConstructor) const override;
 
-    virtual arangodb::Result normalize(             // normalize definition
-        arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
-        arangodb::velocypack::Slice definition,  // source definition
-        bool isCreation,              // definition for index creation
-        TRI_vocbase_t const& vocbase  // index vocbase
-        ) const override;
+    virtual Result normalize(
+        velocypack::Builder& normalized,
+        velocypack::Slice definition,
+        bool isCreation,
+        TRI_vocbase_t const& vocbase) const override;
   };
 
   static std::shared_ptr<IndexFactory> createFactory(application_features::ApplicationServer&);
-
 };  // IResearchLinkCoordinator
 
 }  // namespace iresearch

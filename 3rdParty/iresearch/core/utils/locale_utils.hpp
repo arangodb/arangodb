@@ -156,8 +156,16 @@ bool append_internal(
 IRESEARCH_API std::locale locale(
   const irs::string_ref& name,
   const irs::string_ref& encodingOverride = irs::string_ref::NIL,
-  bool forceUnicodeSystem = true
-);
+  bool forceUnicodeSystem = true);
+
+/**
+* @brief create an ICU complian locale from name (language[_COUNTRY][.encoding][@variant])
+* @param name name of the locale to create (nullptr == "C")
+* @return success
+**/
+IRESEARCH_API bool icu_locale(
+  const string_ref& name,
+  std::locale& locale);
 
 /**
  * @brief extract the locale country from a locale

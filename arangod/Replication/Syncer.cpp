@@ -154,7 +154,9 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       // the target document exists. if yes, we don't try an insert (which would
       // fail anyway) but carry on with a replace.
       std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
-      if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
+      // We must see our own writes, because we may have to remove conflicting documents
+      // (that we just inserted) as documents may be replicated in unexpected order.
+      if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult, arangodb::ReadOwnWrites::yes).ok()) {
         // determine if we already have this revision or need to replace the
         // one we have
         arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(slice);
@@ -943,7 +945,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
       }
     }
 
-    return view->properties(slice, false);  // always a full-update
+    // always a full-update
+    return view->properties(slice, false, false);
   }
 
   // check for name conflicts
@@ -966,7 +969,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
 
   try {
     LogicalView::ptr empty;  // ignore result
-    return LogicalView::create(empty, vocbase, merged.slice());
+    return LogicalView::create(
+      empty, vocbase, merged.slice(), false);
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -977,7 +981,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
 }
 
 /// @brief drops a view, based on the VelocyPack provided
-Result Syncer::dropView(arangodb::velocypack::Slice const& slice, bool reportError) {
+Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
+                        bool /*reportError*/) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);

@@ -305,7 +305,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   terms_filter_test,
   terms_filter_test_case,
   ::testing::Combine(

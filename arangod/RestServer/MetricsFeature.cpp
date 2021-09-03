@@ -464,7 +464,6 @@ void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
-
   // minimize reallocs
   result.reserve(32768);
 

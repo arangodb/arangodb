@@ -29,23 +29,25 @@ up-to-date copies will succeed at the same time however. The value of
 *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 @RESTBODYPARAM{users,array,optional,get_api_database_new_USERS}
-Has to be an array of user objects to initially create for the new database.
-User information will not be changed for users that already exist.
-If *users* is not specified or does not contain any users, a default user
-*root* will be created with an empty string password. This ensures that the
-new database will be accessible after it is created.
-Each user object can contain the following attributes:
+An array of user objects. The users will be granted *Administrate* permissions
+for the new database. Users that do not exist yet will be created.
+If *users* is not specified or does not contain any users, the default user
+*root* will be used to ensure that the new database will be accessible after it
+is created. The *root* user is created with an empty password should it not
+exist. Each user object can contain the following attributes:
 
 @RESTSTRUCT{username,get_api_database_new_USERS,string,required,}
-Login name of the user to be created.
+Login name of an existing user or one to be created.
 
 @RESTSTRUCT{passwd,get_api_database_new_USERS,string,optional,password}
-The user password as a string. If not specified, it will default to an empty string.
+The user password as a string. If not specified, it will default to an empty
+string. The attribute is ignored for users that already exist.
 
 @RESTSTRUCT{active,get_api_database_new_USERS,boolean,optional,}
 A flag indicating whether the user account should be activated or not.
-The default value is *true*. If set to *false*, the user won't be able to
-log into the database. The default is *true*.
+The default value is *true*. If set to *false*, then the user won't be able to
+log into the database. The default is *true*. The attribute is ignored for users
+that already exist.
 
 @RESTSTRUCT{extra,get_api_database_new_USERS,object,optional,}
 A JSON object with extra user information. It is used by the web interface

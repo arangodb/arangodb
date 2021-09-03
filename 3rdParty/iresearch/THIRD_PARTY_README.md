@@ -81,9 +81,9 @@ number of components produced by third parties
     - Copyright: Daniel Povey <dpovey@gmail.com>
     - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
     - How it's used: a set of extensions for OpenFST library
-14. Title: Unicorn Library
-    - Copyright: Ross Smith
-    - License: [MIT license](https://opensource.org/licenses/MIT)
+14. Title: Boost::Text
+    - Copyright: Zachary Laine
+    - License: [Boost Software License, Version 1.0](http://www.boost.org/LICENSE_1_0.txt)
     - How it's used: Word segmentation rules implementation for
       segmentation analyzer
 15. Title: Velocypack Library

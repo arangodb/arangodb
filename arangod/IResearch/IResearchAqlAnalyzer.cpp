@@ -463,7 +463,7 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
         validateQuery(options.queryString,
                       arangodb::DatabaseFeature::getCalculationVocbase());
     if (validationRes.ok()) {
-      return std::make_shared<arangodb::iresearch::AqlAnalyzer>(options);
+      return std::make_unique<arangodb::iresearch::AqlAnalyzer>(options);
     } else {
       LOG_TOPIC("f775e", WARN, arangodb::iresearch::TOPIC)
           << "error validating calculation query: " << validationRes.errorMessage();
@@ -556,9 +556,9 @@ void resetFromExpression(AqlAnalyzer* analyzer) {
 
   // put calculated value in _queryResults
   analyzer->_queryResults->destroyValue(0,0);
-  bool mustDestroy = false;
-  AqlValue& out = const_cast<AqlValue&>(analyzer->_queryResults->getValueReference(0,0));
-  out = e->execute(&ctx, mustDestroy);
+  bool mustDestroy = true;
+
+  analyzer->_queryResults->setValue(0,0, e->execute(&ctx, mustDestroy));
 
   analyzer->_engineResultRegister = 0;
 }

@@ -65,13 +65,24 @@ struct options {
   options(Hint hint = Hint::DEFAULT)
     : hint(hint) {
   }
+
+  bool operator==(const options& rhs) const noexcept {
+    return hint == rhs.hint;
+  }
+
+  bool operator!=(const options& rhs) const noexcept {
+    return !(*this == rhs);
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class compressor
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API compressor {
-  using ptr = std::shared_ptr<compressor>;
+  using ptr = memory::managed_ptr<compressor>;
+
+  /// @note returns a value as it is
+  static ptr identity() noexcept;
 
   virtual ~compressor() = default;
 
@@ -86,7 +97,7 @@ struct IRESEARCH_API compressor {
 /// @class compressor
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API decompressor {
-  using ptr = std::shared_ptr<decompressor>;
+  using ptr = memory::managed_ptr<decompressor>;
 
   virtual ~decompressor() = default;
 

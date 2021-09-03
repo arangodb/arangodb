@@ -47,8 +47,8 @@ struct volatile_boost_score_ctx : score_ctx {
 };
 
 struct prepared final : prepared_sort_basic<boost_t> {
-  const irs::flags& features() const override {
-    return irs::flags::empty_instance();
+  IndexFeatures features() const noexcept override {
+    return IndexFeatures::NONE;
   }
 
   score_function prepare_scorer(

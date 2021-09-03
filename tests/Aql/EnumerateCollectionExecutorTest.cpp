@@ -110,7 +110,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         count(false),
         registerInfos({}, RegIdSet{0}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{}, {{}}),
         executorInfos(0 /*outReg*/, *fakedQuery, &aqlCollection, &outVariable, varUsedLater,
-                      nullptr, projections, random, count),
+                      nullptr, projections, random, count, arangodb::ReadOwnWrites::no),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     try {
       collection = vocbase.createCollection(json->slice());
@@ -295,7 +295,7 @@ class EnumerateCollectionExecutorTestProduce
         registerInfos({}, RegIdSet{1}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{},
                       RegIdFlatSetStack{{}}),
         executorInfos(1, *fakedQuery, &aqlCollection, &outVariable, varUsedLater, nullptr,
-                      projections, random, count) {}
+                      projections, random, count, arangodb::ReadOwnWrites::no) {}
 
   auto makeRegisterInfos(RegisterId outputRegister = 0, RegisterCount nrInputRegister = 1,
                          RegisterCount nrOutputRegister = 1, RegIdFlatSet regToClear = {},
@@ -316,7 +316,8 @@ class EnumerateCollectionExecutorTestProduce
         &aqlCollection, &outVariable,
         varUsedLater,   nullptr,
         projections,    
-        random, count};
+        random, count,
+        arangodb::ReadOwnWrites::no};
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     return infos;
   }

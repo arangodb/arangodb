@@ -1,0 +1,149 @@
+[/ Copyright (C) 2020 T. Zachary Laine
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+[section Examples]
+
+[heading Ropes in Practice]
+
+A key use of ropes is in text editors.  Every text editor you've ever used
+that handles large files gracefully has done something to break the file into
+chunks -- editing the beginning of a 16GB file that is stored in a contiguous
+sequence in memory is way too slow.  The use of a rope is a common approach to
+remedy this.
+
+In the example directory, there is a program `rope_editor`.  It uses a _r_ to
+store the file you're editing.  Even when typing at the beginning of a 1GB
+file, it's very snappy.
+
+[note This editor is pretty lame.  It doesn't have cut/copy/paste, and can't
+even open a new file!  It uses Emacs keybindings for what little it does.]
+
+Let's take a look at the editor.  We'll get a sense for how _Text_ is used in
+a larger example.  The editor is built using _curses_, a popular Unix library
+for for making character-based UIs suitable for terminals.  It stores the file
+to edit in a single _r_, and uses _Text_'s line breaking algorithm to
+determine what portions of the _r_ are on each line.  Each character cell in
+the editor is a grapheme, not a _cp_ or _cu_.  It probably mis-renders _grs_
+containing multiple combining _cps_ _emdash_ again, it's very minimal.
+However, all the logic is done in terms of _grs_.
+
+[editor_main]
+
+First, here's main.cpp.  It's not terribly interesting; it's little more than
+an event loop.  Do take note of one thing, though.  The main update loop uses
+no reference semantics.  The application state is moved into the `update()`
+function, and a new state is returned.  This pattern is attractive when your
+primary data structure is a _r_ or _segv_, since they're so cheap to copy.
+The only reason for the move here is that the undo history uses a
+`std::vector`, which is a lot less copy friendly.  Without that `std::vector`,
+we could use value semantics even without the moves.
+
+[editor_key_mappings_0]
+
+Here we define what a key or mouse event looks like, and how to represent a
+chain of them for making commands that require multiple keystrokes.
+
+[editor_key_mappings_1]
+
+We'll see this function defined later, and we saw it used in main to provide
+the key bindings used to initialize the app state.
+
+[editor_buffer]
+
+Here is the full buffer.hpp header.  The inline comments tell the story.  The
+types here used in the `app_state_t` type:
+
+[editor_app_state_header]
+
+Ok, with this in mind, let's look at the keybindings and `update()` we saw in
+main:
+
+[editor_app_state_bindings_and_update]
+
+They key bindings are quite minimal.  You can use the arrow keys to move the
+cursor one cell an any direction; you can move forward or backward one word at
+a time; you can click on a spot to move the cursor there; you can use
+backspace and delete; you can undo; and you can save and exit.
+
+As for `update()`, it simply calls `eval_input()`, and if `eval_input()`
+indicates that a command should be executed, it executes that command.
+
+[editor_app_state_eval_input]
+
+As it says inline, this function simply processes keyboard input as it occurs,
+indicating that a command should be executed when the input matches one of the
+sequences defined in the key bindings.  Now let's look at the implementations
+of two of the cursor movement actions:
+
+[editor_app_state_move_up]
+[editor_app_state_move_right]
+
+The details here are not that important, but what I'm trying to show here is
+how relatively simple these implementations are.  There are multiple cases that
+must be dealt with, but those are inherent to moving a cursor around in
+variable-length rows.  What we *don't* have to deal with are all the cases
+that would come up if we dealt with text as _cps_ or _cus_.
+
+[editor_app_state_word_move_left]
+
+Even this implementation, which is certainly more complicated than the
+previous two, is relatively simple thanks to the grapheme-based overload of
+`boost::text::prev_word_break()`.
+
+[editor_app_state_erase_at]
+
+This is the action invoked when you hit the delete key.  It erases a single
+grapheme that is under the cursor, if any.  Note that we're inserting and
+replacing elements in a sequence container of unbounded size.  This is still
+an efficient operation because our sequence container is a _segv_.  Even if
+there are millions of lines, inserting and erasing is an `O(1)` operation at
+every place in the sequence (see the _ur_ part of the string layer
+documentation for why).
+
+[editor_app_state_rebreak]
+
+In `erase_at()`, we could take some shortcuts because we knew we were going to
+re-break from the line where the cursor is until the next line break.  We have
+to do this because a line of text might be broken into an arbitrary number of
+lines in our editor.  If we make an edit on line N, it may end up affecting
+line breaks all the way to line N + 1000.  Notice that again the logic is
+pretty straightforward.  Almost all the logic is devoted to figuring out the
+range of _grs_ we want to re-break.  The actual line breaking is just a call
+to `get_lines()`, which is itself just a single call to
+`boost::text::lines()`, as we saw earlier.
+
+[editor_app_state_insert]
+
+Finally, we see an implementation that's pretty complicated.  Part of the
+reason for this is that I've chosen to treat hard line breaks specially, so
+there's special handling for inserting one.  But the main complication is that
+graphemes themselves are complicated.  This is because they are context
+sensitive _emdash_ the _cps_ before and after a _gr_ may affect that _gr_'s
+boundaries.  The next function explains why.  Note that erases don't have to
+deal with this, because they always deal in whole graphemes.
+
+[editor_app_state_insertion_deltas]
+
+That's messed up.  So when I insert arbitrary text that is considered a whole
+grapheme, it may contextually stop being a whole grapheme, and instead be
+merged into another existing one.  Still, figuring out if and how this happens
+is not much code.
+
+[note `grapheme_insertion_deltas()` probably doesn't need to allocate,
+considering that _t_ is implemented in terms of _s_, which has a small-buffer
+optimization.  Very large graphemes will of course make this function
+allocate.  I could also use a fixed-capacity array of `4 * 32 * 3` bytes and
+be guaranteed not to allocate.  The `4` is for the maximum _cus_ per _cp_, the
+`32` is for the maximum _cps_ per _gr_ (because of the _str_safe_ assumption),
+and the `3` is the number of _grs_ we're working with.]
+
+[editor_app_state_undo_save_quit]
+
+The implementation of `undo()` is a punchline of sorts.  If you look back at
+all the branches required to implement all the actions in the editor, it seems
+stunning that the undo action could be so simple.  It's also surprising that
+it does what looks like a bulk copy in `O(1)`, making it efficient as well.
+
+[endsect]

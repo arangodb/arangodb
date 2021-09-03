@@ -379,9 +379,11 @@ transaction::Hints Manager::ensureHints(transaction::Options& options) const {
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isFollowerTransactionOnDBServer(options)) {
     hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
-    // turn on intermediate commits on followers as well. otherwise huge leader
-    // transactions could make the follower claim all memory and crash.
-    hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    if (options.isIntermediateCommitEnabled()) {
+      // turn on intermediate commits on followers as well. otherwise huge leader
+      // transactions could make the follower claim all memory and crash.
+      hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    }
   }
   return hints;
 }
@@ -494,15 +496,17 @@ Result Manager::lockCollections(TRI_vocbase_t& vocbase,
               if (res.fail()) {
                 return false;
               }
-              res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname,
-                                             mode, /*lockUsage*/ false));
-              if (res.fail()) {
-                return false;
-              }
-              res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname,
-                                             mode, /*lockUsage*/ false));
-              if (res.fail()) {
-                return false;
+              if (!col->isDisjoint()) {
+                res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname,
+                                               mode, /*lockUsage*/ false));
+                if (res.fail()) {
+                  return false;
+                }
+                res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname,
+                                               mode, /*lockUsage*/ false));
+                if (res.fail()) {
+                  return false;
+                }
               }
             }
           } catch (basics::Exception const& ex) {
