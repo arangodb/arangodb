@@ -651,7 +651,7 @@ FunctionEnd
 Function InstallOptionsPage2
    IfSilent 0 continueUI
    ; this would be called inside the UI code:
-   stop_old_service
+   Call stop_old_service
    Return
 continueUI:
 
