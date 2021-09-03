@@ -3552,7 +3552,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
 Result ClusterInfo::createViewCoordinator(  // create view
     std::string const& databaseName,        // database name
     std::string const& viewID,
-    velocypack::Slice json // view definition
+    velocypack::Slice json  // view definition
 ) {
   // TRI_ASSERT(ServerState::instance()->isCoordinator());
   // FIXME TODO is this check required?
