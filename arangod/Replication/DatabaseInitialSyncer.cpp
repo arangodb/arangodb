@@ -1196,22 +1196,27 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
                       ": response does not contain valid 'id' attribute");
   }
 
-  auto shutdown = [&]() -> void {
-    url = baseUrl + "/" + keysId.copyString();
-    std::string msg =
-        "deleting remote collection keys object for collection '" +
-        coll->name() + "' from " + url;
-    _config.progress.set(msg);
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    try {
+      url = baseUrl + "/" + keysId.copyString();
+      std::string msg =
+          "deleting remote collection keys object for collection '" +
+          coll->name() + "' from " + url;
+      _config.progress.set(msg);
 
-    // now delete the keys we ordered
-    std::unique_ptr<httpclient::SimpleHttpResult> response;
-    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-      auto headers = replutils::createHeaders();
-      response.reset(client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0, headers));
-    });
-  };
-
-  auto sg = arangodb::scopeGuard([&]() noexcept { shutdown(); });
+      // now delete the keys we ordered
+      std::unique_ptr<httpclient::SimpleHttpResult> response;
+      _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+        auto headers = replutils::createHeaders();
+        response.reset(client->retryRequest(rest::RequestType::DELETE_REQ, url,
+                                            nullptr, 0, headers));
+      });
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("f8b31", ERR, Logger::REPLICATION)
+          << "Failed to deleting remote collection keys object for collection "
+          << coll->name() << ex.what();
+    }
+  });
 
   VPackSlice const count = slice.get("count");
 
