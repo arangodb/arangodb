@@ -48,8 +48,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
 
   std::string const& forceOneShardAttributeValue =
       _query.queryOptions().forceOneShardAttributeValue;
-  bool isOneShardEnabled = baseNode->plan()->hasAppliedRule(OptimizerRule::clusterOneShardRule);
-  bool useRestrictedShard = isOneShardEnabled && !forceOneShardAttributeValue.empty();
+  bool useRestrictedShard = pushToSingleServer && !forceOneShardAttributeValue.empty();
 
   auto addRestrictedShard = [&](aql::Collection const* col,
                                 std::unordered_set<std::string>& restrictedShards) {
