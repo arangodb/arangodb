@@ -103,7 +103,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
   EdgeIndexIteratorMock(arangodb::LogicalCollection* collection,
                         arangodb::transaction::Methods* trx, arangodb::Index const* index,
                         Map const& map, std::unique_ptr<VPackBuilder>&& keys)
-      : IndexIterator(collection, trx),
+      : IndexIterator(collection, trx, arangodb::ReadOwnWrites::no),
         _map(map),
         _begin(_map.begin()),
         _end(_map.end()),
@@ -273,7 +273,8 @@ class EdgeIndexMock final : public arangodb::Index {
 
   std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
       arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* node,
-      arangodb::aql::Variable const*, arangodb::IndexIteratorOptions const&) override {
+      arangodb::aql::Variable const*, arangodb::IndexIteratorOptions const&,
+      arangodb::ReadOwnWrites) override {
     TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
     TRI_ASSERT(node->numMembers() == 1);
@@ -385,7 +386,7 @@ class ReverseAllIteratorMock final : public arangodb::IndexIterator {
  public:
   ReverseAllIteratorMock(uint64_t size, arangodb::LogicalCollection* coll,
                          arangodb::transaction::Methods* trx)
-      : arangodb::IndexIterator(coll, trx), _end(size), _size(size) {}
+      : arangodb::IndexIterator(coll, trx, arangodb::ReadOwnWrites::no), _end(size), _size(size) {}
 
   virtual char const* typeName() const override {
     return "ReverseAllIteratorMock";
@@ -411,7 +412,7 @@ class AllIteratorMock final : public arangodb::IndexIterator {
  public:
   AllIteratorMock(std::unordered_map<arangodb::velocypack::StringRef, PhysicalCollectionMock::DocElement> const& data,
                   arangodb::LogicalCollection& coll, arangodb::transaction::Methods* trx)
-      : arangodb::IndexIterator(&coll, trx), _data(data), _it{_data.begin()} {}
+      : arangodb::IndexIterator(&coll, trx, arangodb::ReadOwnWrites::no), _data(data), _it{_data.begin()} {}
 
   virtual char const* typeName() const override { return "AllIteratorMock"; }
 
@@ -441,7 +442,7 @@ struct IndexFactoryMock : arangodb::IndexFactory {
 
   /// @brief create indexes from a list of index definitions
   virtual void prepareIndexes(arangodb::LogicalCollection& col,
-                              arangodb::velocypack::Slice const& indexesSlice,
+                              arangodb::velocypack::Slice indexesSlice,
                               std::vector<std::shared_ptr<arangodb::Index>>& indexes) const override {
     // NOOP
   }
@@ -651,7 +652,7 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
   HashIndexIteratorMock(arangodb::LogicalCollection* collection,
                         arangodb::transaction::Methods* trx, arangodb::Index const* index,
                         HashIndexMap const& map, std::unique_ptr<VPackBuilder>&& keys)
-    : IndexIterator(collection, trx), _map(map) {
+    : IndexIterator(collection, trx, arangodb::ReadOwnWrites::no), _map(map) {
     _documents = _map.find(std::move(keys));
     _begin = _documents.begin();
     _end = _documents.end();
@@ -798,7 +799,8 @@ class HashIndexMock final : public arangodb::Index {
 
   std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
       arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* node,
-      arangodb::aql::Variable const*, arangodb::IndexIteratorOptions const&) override {
+      arangodb::aql::Variable const*, arangodb::IndexIteratorOptions const&,
+      arangodb::ReadOwnWrites) override {
     arangodb::transaction::BuilderLeaser builder(trx);
     std::unique_ptr<VPackBuilder> keys(builder.steal());
     keys->openArray();
@@ -1054,7 +1056,7 @@ void PhysicalCollectionMock::figuresSpecific(bool /*details*/, arangodb::velocyp
 }
 
 std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAllIterator(
-    arangodb::transaction::Methods* trx) const {
+    arangodb::transaction::Methods* trx, arangodb::ReadOwnWrites) const {
   before();
 
   return std::make_unique<AllIteratorMock>(_documents, this->_logicalCollection, trx);
@@ -1153,7 +1155,8 @@ arangodb::Result PhysicalCollectionMock::insert(
 
 arangodb::Result PhysicalCollectionMock::lookupKey(
     arangodb::transaction::Methods*, arangodb::velocypack::StringRef key,
-    std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>& result) const {
+    std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>& result,
+    arangodb::ReadOwnWrites) const {
   before();
     
   auto it = _documents.find(arangodb::velocypack::StringRef{key});
@@ -1236,7 +1239,8 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
 
 arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*,
                                               arangodb::velocypack::StringRef const& key,
-                                              arangodb::IndexIterator::DocumentCallback const& cb) const {
+                                              arangodb::IndexIterator::DocumentCallback const& cb,
+                                              arangodb::ReadOwnWrites) const {
   before();
   auto it = _documents.find(key);
   if (it != _documents.end()) {
@@ -1248,7 +1252,8 @@ arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*,
 
 arangodb::Result PhysicalCollectionMock::read(
     arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token,
-    arangodb::IndexIterator::DocumentCallback const& cb) const {
+    arangodb::IndexIterator::DocumentCallback const& cb,
+    arangodb::ReadOwnWrites) const {
   before();
   for (auto const& entry : _documents) {
     auto& doc = entry.second;
@@ -1262,7 +1267,8 @@ arangodb::Result PhysicalCollectionMock::read(
 
 bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx,
                                           arangodb::LocalDocumentId const& token,
-                                          arangodb::ManagedDocumentResult& result) const {
+                                          arangodb::ManagedDocumentResult& result,
+                                          arangodb::ReadOwnWrites) const {
   before();
   for (auto const& entry : _documents) {
     auto& doc = entry.second;

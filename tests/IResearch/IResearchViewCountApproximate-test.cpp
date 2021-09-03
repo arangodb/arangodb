@@ -223,7 +223,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
         "\"" + collectionName1 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\"},"
         "\"" + collectionName2 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\"}"
       "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
