@@ -878,7 +878,14 @@ void HeartbeatThread::runSingleServer() {
         }
         _agency.setTransient(transientPath, builder.slice(), static_cast<uint64_t>(ttl), timeout);
       };
-      auto sg = arangodb::scopeGuard([&]() noexcept { sendTransient(); });
+      auto sg = arangodb::scopeGuard([&]() noexcept {
+        try {
+          sendTransient();
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("1b5a3", WARN, Logger::HEARTBEAT)
+              << "Best effort heart beat failed: " << ex.what();
+        }
+      });
 
       // Case 2: Current server is leader
       if (leader.compareString(_myId) == 0) {
