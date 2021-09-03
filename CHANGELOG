@@ -4,8 +4,18 @@ v3.8.2 (XXXX-XX-XX)
 * SEARCH-238: Improved SortNodes placement optimization in cluster so late
   materialization could cover more cases.
 
+* Fix rare case of invalid data could be inserted in the ArangoSearch index if
+  several clients concurrently inserts data and use custom analyzer with
+  non-string return type.
 
-v3.8.1 (XXXX-XX-XX)
+* Fix a rare shutdown race in RocksDBShaCalculatorThread. 
+
+* Reduce internal priority of AQL execution. This prevents possible deadlocks
+  with modification operations in a cluster and replicationFactor >= 2, and can
+  also improve responsiveness under high load of AQL queries.
+
+
+v3.8.1 (2021-08-27)
 -------------------
 
 * Updated arangosync to 2.6.0.
