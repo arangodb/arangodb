@@ -1,11 +1,11 @@
-v3.8.1 (XXXX-XX-XX)
+v3.8.2 (XXXX-XX-XX)
 -------------------
 
 * Fix a rare shutdown race in RocksDBShaCalculatorThread. 
 
-* Reduce internal priority of AQL execution. This prevents possible deadlocks
-  with modification operations in a cluster and replicationFactor >= 2, and can
-  also improve responsiveness under high load of AQL queries.
+
+v3.8.1 (XXXX-XX-XX)
+-------------------
 
 * Updated arangosync to 2.6.0.
 
