@@ -1,6 +1,8 @@
 v3.7.15 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to 0.15.2.
+
 * Make statistics available in metrics API even if `--server.statistics` is set
   to `false`. This allows clients to fetch some process statistics metrics from
   instances that have statistics aggregation and storage turned off.
