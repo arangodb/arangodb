@@ -394,7 +394,7 @@ TEST_F(IResearchQueryGeoIntersectsTest, test) {
     auto result = arangodb::tests::executeQuery(
         vocbase,
         R"(LET box = GEO_POLYGON([
-             [37.613025, 55.709029],
+             [37.612025, 55.709029],
              [37.618818, 55.709029],
              [37.618818, 55.711906],
              [37.613025, 55.711906],
