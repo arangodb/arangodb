@@ -77,6 +77,52 @@ inline IResearchViewStoredValues const& storedValues(arangodb::LogicalView const
   return viewImpl.storedValues();
 }
 
+/// @brief Moves all LEVENSHTEIN_MATCH  before STRATS_WITH in every AND nodes
+///        to make it possible later optimize out STARTS_WITH covered by LEVENSHTEIN_MATCH
+/// @param condition SEARCH condition node
+/// @param plan current query plan
+void groupStartsAndLevenshtein(arangodb::aql::AstNode& condition, ExecutionPlan& plan) {
+  auto numMembers = condition.numMembers();
+  //arangodb::iresearch::QueryContext queryContextForOptimization;
+  for (size_t memberIdx = 0; memberIdx < numMembers; ++memberIdx) {
+    auto current = condition.getMemberUnchecked(memberIdx);
+    TRI_ASSERT(current);
+    if (current->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
+      auto numAndMembers = current->numMembers();
+      if (numAndMembers > 1) {
+        size_t movePoint = numAndMembers -1;
+        while (movePoint != 0 &&
+               current->getMemberUnchecked(movePoint)->type == arangodb::aql::AstNodeType::NODE_TYPE_FCALL &&
+               arangodb::iresearch::getFuncName(*current->getMemberUnchecked(movePoint)) == "STARTS_WITH") {
+          --movePoint;
+        }
+        for (size_t andMemberIdx = 0; andMemberIdx < movePoint; ++andMemberIdx) {
+          auto andMember = current->getMemberUnchecked(andMemberIdx);
+          if (andMember->type == arangodb::aql::AstNodeType::NODE_TYPE_FCALL) {
+            if (arangodb::iresearch::getFuncName(*andMember) == "STARTS_WITH") {
+              auto tmp = current->getMemberUnchecked(movePoint);
+              current->changeMember(movePoint, andMember);
+              current->changeMember(andMemberIdx, tmp);
+              while (movePoint > andMemberIdx &&
+                current->getMemberUnchecked(movePoint)->type == arangodb::aql::AstNodeType::NODE_TYPE_FCALL &&
+                arangodb::iresearch::getFuncName(*current->getMemberUnchecked(movePoint)) == "STARTS_WITH") {
+                --movePoint;
+              }
+            }
+          } else {
+            groupStartsAndLevenshtein(*andMember, plan);
+          }
+        }
+      } else {
+        groupStartsAndLevenshtein(*current, plan);
+      }
+    } else {
+      groupStartsAndLevenshtein(*current, plan);
+    }
+  }
+
+}
+
 bool addView(arangodb::LogicalView const& view, arangodb::aql::QueryContext& query) {
   auto& collections = query.collections();
 
@@ -132,6 +178,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
 
   // check filter condition if present
   if (searchCondition.root()) {
+    groupStartsAndLevenshtein(*searchCondition.root(), plan);
     auto filterCreated = FilterFactory::filter(
       nullptr,
       { &query.trxForOptimization(), nullptr, nullptr, nullptr, nullptr, &viewNode.outVariable() },
