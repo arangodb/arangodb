@@ -159,9 +159,9 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t);
 
-  bool checkSmartDestination(VPackSlice edge, velocypack::StringRef sourceVertex);
+  bool checkSmartDestination(VPackSlice edge, velocypack::StringRef sourceVertex) const;
 
-  bool destinationCollectionAllowed(velocypack::Slice edge, velocypack::StringRef sourceVertex);
+  bool destinationCollectionAllowed(velocypack::Slice edge, velocypack::StringRef sourceVertex) const;
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
@@ -220,6 +220,10 @@ struct TraverserOptions : public graph::BaseOptions {
   auto isDisjoint() const -> bool;
 
   auto isSatelliteLeader() const -> bool;
+
+  auto getEdgeDestination(arangodb::velocypack::Slice edge,
+                          arangodb::velocypack::StringRef origin) const
+      -> arangodb::velocypack::StringRef;
 
  private:
   void readProduceInfo(VPackSlice obj);
