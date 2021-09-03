@@ -235,7 +235,7 @@ class TtlThread final : public Thread {
     
     // mark ourselves as busy
     _working = true;
-    auto guard = scopeGuard([this]() { _working = false; });
+    auto guard = scopeGuard([this]() noexcept { _working = false; });
   
     LOG_TOPIC("139af", TRACE, Logger::TTL) << "ttl thread work()";
 
@@ -260,7 +260,7 @@ class TtlThread final : public Thread {
       }
           
       // make sure we decrease the reference counter later
-      TRI_DEFER(vocbase->release());
+      auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
       
       LOG_TOPIC("ec905", TRACE, Logger::TTL) << "TTL thread going to process database '" << vocbase->name() << "'";
 

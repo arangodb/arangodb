@@ -174,7 +174,7 @@ class Query : public QueryContext {
     return _queryOptions;
   }
   
-  QueryOptions& queryOptions() override {
+  QueryOptions& queryOptions() noexcept override {
     return _queryOptions;
   }
   

@@ -52,7 +52,7 @@ auto CustomAccumulator<VPackSlice>::clear() -> greenspun::EvalResult {
 auto CustomAccumulator<VPackSlice>::setBySlice(VPackSlice v)
     -> arangodb::greenspun::EvalResult {
   _inputSlice = v;
-  TRI_DEFER({ _inputSlice = Slice::noneSlice(); })
+  auto sg = ScopeGuard([&]() noexcept {  _inputSlice = Slice::noneSlice();  });
 
   if (_definition.setProgram.isEmpty()) {
     _buffer.clear();
@@ -87,10 +87,10 @@ auto CustomAccumulator<VPackSlice>::updateByMessageSlice(VPackSlice msg)
   this->_inputSlice = msg.get(StaticStrings::AccumulatorValue);
   this->_inputSender = msg.get(StaticStrings::AccumulatorSender);
 
-  TRI_DEFER({
+  auto sg = ScopeGuard([&]() noexcept {
     this->_inputSlice = VPackSlice::noneSlice();
     this->_inputSender = VPackSlice::noneSlice();
-  })
+   });
 
   VPackBuilder result;
   auto res = greenspun::Evaluate(_machine, _definition.updateProgram.slice(), result);
@@ -120,10 +120,10 @@ auto CustomAccumulator<VPackSlice>::updateByMessage(MessageData const& msg)
   sender.add(VPackValue(msg._sender));
   this->_inputSender = sender.slice();
 
-  TRI_DEFER({
+  auto sg = ScopeGuard([&]() noexcept {
     this->_inputSlice = VPackSlice::noneSlice();
     this->_inputSender = VPackSlice::noneSlice();
-  })
+   });
 
   VPackBuilder result;
   auto res = greenspun::Evaluate(_machine, _definition.updateProgram.slice(), result);
@@ -155,7 +155,7 @@ auto CustomAccumulator<VPackSlice>::setStateBySlice(VPackSlice msg) -> greenspun
   } else {
     VPackBuilder sink;
     this->_inputSlice = msg;
-    TRI_DEFER({ this->_inputSlice = VPackSlice::noneSlice(); });
+    auto sg = ScopeGuard([&]() noexcept {  this->_inputSlice = VPackSlice::noneSlice();  });
     result = greenspun::Evaluate(_machine, _definition.setStateProgram.slice(), sink);
   }
   _value = _buffer.slice();
@@ -166,7 +166,7 @@ auto CustomAccumulator<VPackSlice>::setStateBySlice(VPackSlice msg) -> greenspun
 auto CustomAccumulator<VPackSlice>::aggregateStateBySlice(VPackSlice msg)
     -> greenspun::EvalResult {
   this->_inputState = msg;
-  TRI_DEFER({ this->_inputState = VPackSlice::noneSlice(); });
+  auto sg = ScopeGuard([&]() noexcept {  this->_inputState = VPackSlice::noneSlice();  });
 
   if (_definition.aggregateStateProgram.isEmpty()) {
     return greenspun::EvalError{

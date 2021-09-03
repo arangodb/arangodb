@@ -73,7 +73,7 @@ TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
   if (it == _vocbases.end()) {
     TRI_vocbase_t* vocbase = _server.getFeature<DatabaseFeature>().useDatabase(dbid);
     if (vocbase != nullptr) {
-      TRI_DEFER(vocbase->release());
+      auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
       _vocbases.try_emplace(dbid, *vocbase);
     }
 
