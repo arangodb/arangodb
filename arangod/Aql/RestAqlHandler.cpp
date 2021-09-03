@@ -851,3 +851,11 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
     generateResult(rest::ResponseCode::OK, std::move(buffer));
   }));
 }
+
+RequestLane RestAqlHandler::lane() const {
+  if (ServerState::instance()->isCoordinator()) {
+    return RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR;
+  } else {
+    return RequestLane::CLUSTER_AQL;
+  }
+}
