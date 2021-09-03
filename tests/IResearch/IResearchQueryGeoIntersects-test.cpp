@@ -398,7 +398,7 @@ TEST_F(IResearchQueryGeoIntersectsTest, test) {
              [37.618818, 55.709029],
              [37.618818, 55.711906],
              [37.613025, 55.711906],
-             [37.613025, 55.709029]
+             [37.612025, 55.709029]
            ])
            FOR d IN testView
            SEARCH ANALYZER(GEO_INTERSECTS(box, d.geometry), 'mygeojson')
