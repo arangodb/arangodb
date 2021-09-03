@@ -922,7 +922,8 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   VPackSlice properties = data.get("properties");
 
   if (properties.isObject()) {
-    return view->properties(properties, false);  // always a full-update
+    // always a full-update
+    return view->properties(properties, false, false);
   }
 
   return {};
@@ -931,8 +932,8 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
 /// @brief apply a single marker from the continuous log
 Result TailingSyncer::applyLogMarker(VPackSlice const& slice, 
                                      ApplyStats& applyStats,
-                                     TRI_voc_tick_t firstRegularTick,
-                                     TRI_voc_tick_t markerTick, 
+                                     TRI_voc_tick_t /*firstRegularTick*/,
+                                     TRI_voc_tick_t /*markerTick*/,
                                      TRI_replication_operation_e type) {
   // handle marker type
   if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_REMOVE) {

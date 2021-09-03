@@ -442,7 +442,7 @@ struct IndexFactoryMock : arangodb::IndexFactory {
 
   /// @brief create indexes from a list of index definitions
   virtual void prepareIndexes(arangodb::LogicalCollection& col,
-                              arangodb::velocypack::Slice const& indexesSlice,
+                              arangodb::velocypack::Slice indexesSlice,
                               std::vector<std::shared_ptr<arangodb::Index>>& indexes) const override {
     // NOOP
   }

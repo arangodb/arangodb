@@ -1364,14 +1364,14 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
       IndexTypeFactory(arangodb::application_features::ApplicationServer& server)
           : arangodb::IndexTypeFactory(server) {}
 
-      virtual bool equal(arangodb::velocypack::Slice const& lhs,
-                         arangodb::velocypack::Slice const& rhs,
+      virtual bool equal(arangodb::velocypack::Slice lhs,
+                         arangodb::velocypack::Slice rhs,
                          std::string const&) const override {
         return false;
       }
 
       std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
-                                                   arangodb::velocypack::Slice const& definition,
+                                                   arangodb::velocypack::Slice definition,
                                                    arangodb::IndexId id,
                                                    bool isClusterConstructor) const override {
         EXPECT_TRUE(collection.vocbase().server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>());
