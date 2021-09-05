@@ -224,6 +224,14 @@
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
 
+// noexcept
+
+#if defined(__clang__) && __clang_major__ == 11 && __clang_minor__ == 0
+#define ARANGODB_NOEXCEPT_ASSIGN_OP /* noexcept */
+#else
+#define ARANGODB_NOEXCEPT_ASSIGN_OP noexcept
+#endif
+
 #endif
 
 // -----------------------------------------------------------------------------
@@ -370,6 +378,10 @@
 
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
+
+// noexcept
+
+#define ARANGODB_NOEXCEPT_ASSIGN_OP noexcept
 
 #endif
 
@@ -531,6 +543,10 @@
 #include <sys/types.h>
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
+
+// noexcept
+
+#define ARANGODB_NOEXCEPT_ASSIGN_OP noexcept
 
 #endif
 
@@ -766,6 +782,10 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 #define TRI_uid_t void*
 #define TRI_gid_t void*
+
+// noexcept
+
+#define ARANGODB_NOEXCEPT_ASSIGN_OP noexcept
 
 #endif
 
