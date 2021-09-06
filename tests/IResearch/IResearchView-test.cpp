@@ -146,7 +146,7 @@ REGISTER_SCORER_TEXT(DocIdScorer, DocIdScorer::make);
 
 struct TestAttribute : public irs::attribute {
   static constexpr irs::string_ref type_name() noexcept {
-    return "TestAttribute";
+    return "TestAttributeView";
   }
 };
 
@@ -155,7 +155,7 @@ REGISTER_ATTRIBUTE(TestAttribute);  // required to open reader on segments with 
 class TestAnalyzer : public irs::analysis::analyzer {
  public:
   static constexpr irs::string_ref type_name() noexcept {
-    return "TestAnalyzer";
+    return "TestAnalyzerView";
   }
 
   TestAnalyzer() : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) { }

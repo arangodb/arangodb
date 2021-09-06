@@ -118,7 +118,7 @@ struct TestIndex : public arangodb::Index {
 
 struct TestAttribute : public irs::attribute {
   static constexpr irs::string_ref type_name() noexcept {
-    return "TestAttribute";
+    return "TestAttributeAnalyzerFeature";
   }
 };
 
@@ -186,7 +186,7 @@ REGISTER_ANALYZER_VPACK(ReNormalizingAnalyzer, ReNormalizingAnalyzer::make,
 class TestAnalyzer : public irs::analysis::analyzer {
  public:
   static constexpr irs::string_ref type_name() noexcept {
-    return "TestAnalyzer";
+    return "TestAnalyzerAnalyzerFeature";
   }
 
   TestAnalyzer() : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) { }
