@@ -533,7 +533,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     WaitForQueue toBeResolved;
     auto const end = _waitForQueue.upper_bound(_commitIndex);
     for (auto it = _waitForQueue.begin(); it != end;) {
-      LOG_CTX("37d9c", TRACE, _self._logContext)
+      LOG_CTX("37d9d", TRACE, _self._logContext)
           << "resolving promise for index " << it->first;
       toBeResolved.insert(_waitForQueue.extract(it++));
     }
@@ -543,7 +543,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   } catch (std::exception const& e) {
     // If those promises are not fulfilled we can not continue.
     // Note that the move constructor of std::multi_map is not noexcept.
-    LOG_CTX("e7a4d", FATAL, _self._logContext)
+    LOG_CTX("e7a4e", FATAL, _self._logContext)
         << "failed to fulfill replication promises due to exception; system "
            "can not continue. message: "
         << e.what();
@@ -551,7 +551,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   } catch (...) {
     // If those promises are not fulfilled we can not continue.
     // Note that the move constructor of std::multi_map is not noexcept.
-    LOG_CTX("c0bbb", FATAL, _self._logContext)
+    LOG_CTX("c0bba", FATAL, _self._logContext)
         << "failed to fulfill replication promises due to exception; system "
            "can not continue";
     FATAL_ERROR_EXIT();

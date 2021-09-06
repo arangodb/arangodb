@@ -194,7 +194,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
 
         auto const end = waitForQueue->upper_bound(self->_commitIndex);
         for (auto it = waitForQueue->begin(); it != end;) {
-          LOG_CTX("69022", TRACE, self->_follower._loggerContext)
+          LOG_CTX("37d9c", TRACE, self->_follower._loggerContext)
               << "resolving promise for index " << it->first;
           toBeResolved->insert(waitForQueue->extract(it++));
         }
@@ -210,7 +210,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       } catch (std::exception const& e) {
         // If those promises are not fulfilled we can not continue.
         // Note that the move constructor of std::multi_map is not noexcept.
-        LOG_CTX("e7a3d", FATAL, self->_follower._loggerContext)
+        LOG_CTX("e7a4d", FATAL, self->_follower._loggerContext)
             << "failed to fulfill replication promises due to exception; "
                "system "
                "can not continue. message: "
@@ -219,9 +219,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       } catch (...) {
         // If those promises are not fulfilled we can not continue.
         // Note that the move constructor of std::multi_map is not noexcept.
-        LOG_CTX("c0bba", FATAL, self->_follower._loggerContext)
+        LOG_CTX("c0bbb", FATAL, self->_follower._loggerContext)
             << "failed to fulfill replication promises due to exception; "
-               "system can not continue";
+               "system "
+               "can not continue";
         FATAL_ERROR_EXIT();
       }
     };
