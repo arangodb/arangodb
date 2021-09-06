@@ -8103,7 +8103,11 @@ void arangodb::aql::enableReadOwnWritesForUpsertSubquery(ExecutionPlan& plan) {
     TRI_ASSERT(exprNode->getMember(0)->type == NODE_TYPE_REFERENCE);
     Variable const* v = static_cast<Variable const*>(exprNode->getMember(0)->getData());
     auto current = plan.getVarSetBy(v->id);
-    TRI_ASSERT(current->getType() == EN::SUBQUERY_END);
+    TRI_ASSERT(current->getType() == EN::SUBQUERY_END || current->getType() == EN::SUBQUERY);
+    if (current->getType() == EN::SUBQUERY) {
+      current = ExecutionNode::castTo<SubqueryNode*>(current)->getSubquery();
+    }
+    
     while (current != nullptr) {
       if (current->getType() == EN::SUBQUERY_START) {
         // we reached the subquery start without finding an Index or Enumerate node
@@ -8117,6 +8121,7 @@ void arangodb::aql::enableReadOwnWritesForUpsertSubquery(ExecutionPlan& plan) {
       }
       current = current->getFirstDependency();
     }
+    TRI_ASSERT(current != nullptr);
   }
 }
 
