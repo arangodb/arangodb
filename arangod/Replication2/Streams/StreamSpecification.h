@@ -139,14 +139,14 @@ using stream_descriptor_primary_tag_t =
     typename tag_descriptor_set_primary_t<stream_descriptor_tags_t<T>>::type;
 
 namespace detail {
-template <StreamId StreamId, typename... Ds>
+template <StreamId Id, typename... Ds>
 struct stream_descriptor_by_id_impl;
-template <StreamId StreamId, typename D, typename... Ds>
-struct stream_descriptor_by_id_impl<StreamId, D, Ds...>
-    : std::conditional<StreamId == stream_descriptor_id_v<D>, D,
-                       typename stream_descriptor_by_id_impl<StreamId, Ds...>::type> {};
-template <unsigned StreamId, typename D>
-struct stream_descriptor_by_id_impl<StreamId, D> {
+template <StreamId Id, typename D, typename... Ds>
+struct stream_descriptor_by_id_impl<Id, D, Ds...>
+    : std::conditional<Id == stream_descriptor_id_v<D>, D,
+                       typename stream_descriptor_by_id_impl<Id, Ds...>::type> {};
+template <unsigned Id, typename D>
+struct stream_descriptor_by_id_impl<Id, D> {
   // static_assert(StreamId == stream_descriptor_id_v<D>);
   using type = D;
 };

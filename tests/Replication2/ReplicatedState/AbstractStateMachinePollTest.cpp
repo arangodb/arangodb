@@ -30,6 +30,7 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 
 #include "Basics/voc-errors.h"
+#include "Basics/Exceptions.h"
 #include "Replication2/ReplicatedState/AbstractStateMachine.h"
 
 using namespace arangodb;
@@ -59,6 +60,7 @@ struct MyTestStateMachine : replicated_state::AbstractStateMachine<TestLogEntry>
  protected:
   auto installSnapshot(ParticipantId const& id) -> futures::Future<Result> override {
     TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
   auto applyEntries(std::unique_ptr<LogRangeIterator> ptr)
       -> futures::Future<Result> override {

@@ -57,7 +57,7 @@ struct AbstractStateMachine : std::enable_shared_from_this<AbstractStateMachine<
 
   void releaseIndex(LogIndex);
   auto getEntry(LogIndex) -> std::optional<T>;
-  auto getIterator(LogIndex first) -> LogIterator;
+  auto getIterator(LogIndex first) -> std::unique_ptr<LogIterator>;
   auto insert(T const&) -> LogIndex;
   auto waitFor(LogIndex) -> futures::Future<replication2::replicated_log::WaitForResult>;
 
