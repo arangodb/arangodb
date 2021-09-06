@@ -171,7 +171,7 @@ const AnalyzersReactView = () => {
                        onChange={toggleInbuiltAnalyzers} style={{
                   width: 'auto',
                   marginBottom: 7
-                }}/> Show In-built Analyzers
+                }}/> Show Built-in Analyzers
               </label>
             </Cell>
           </Grid>
