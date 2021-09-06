@@ -2411,6 +2411,46 @@ function complexFilteringSuite() {
         assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
       }
     },
+    
+    testStorePruneConditionInVariable: function () {
+      // The additional parentheses in LENGTH are important for this test!
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @ecol PRUNE pruneCondition = v.value == 75 FILTER pruneCondition RETURN {value: v.value, variable: pruneCondition}`;
+      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @ecol PRUNE v.value == 75 FILTER v.value == 75 RETURN {value: v.value, variable: pruneCondition}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertTrue(_.isEqual(query1result, query2result));
+  },
+    testStorePruneConditionInVariableExplain: function () {
+      // The additional parentheses in LENGTH are important for this test!
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @ecol PRUNE pruneCondition = v.value == 75 FILTER pruneCondition RETURN {value: v.value, variable: pruneCondition}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query).plan.nodes;
+      print(queryExplain);
+      assertTrue(_.isEqual(query1result, query2result));
+  },
+
+    },
+
+    testStorePruneConditionInVariableExplainWithOptions: function () {
+      // The additional parentheses in LENGTH are important for this test!
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @ecol PRUNE pruneCondition = v.value == 75 OPTIONS {bfs: true} FILTER pruneCondition RETURN {value: v.value, variable: pruneCondition}`;
+      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @ecol PRUNE v.value == 75 OPTIONS {bfs: true} FILTER v.value == 75 RETURN {value: v.value, variable: pruneCondition}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query).plan.nodes;
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertTrue(_.isEqual(query1result, query2result));
+    },
 
     testVertexEarlyPruneHighDepth: function () {
       var query = `WITH ${vn}
