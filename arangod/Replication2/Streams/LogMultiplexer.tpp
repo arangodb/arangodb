@@ -94,8 +94,8 @@ auto resolvePromiseSets(stream_descriptor_set<Descriptors...>, std::tuple<Pairs.
 
 template <typename Derived, typename Spec, template <typename> typename StreamInterface, typename Interface>
 struct LogMultiplexerImplementationBase {
-  explicit LogMultiplexerImplementationBase(std::shared_ptr<Interface> const& interface)
-      : _guardedData(static_cast<Derived&>(*this)), _interface(interface) {}
+  explicit LogMultiplexerImplementationBase(std::shared_ptr<Interface> const& interface_)
+      : _guardedData(static_cast<Derived&>(*this)), _interface(interface_) {}
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
             typename E = StreamEntryView<T>>
@@ -225,9 +225,9 @@ struct LogDemultiplexerImplementation
     : LogDemultiplexer<Spec>,  // implement the actual class
       ProxyStreamDispatcher<LogDemultiplexerImplementation<Spec, Interface>, Spec, Stream>,  // use a proxy stream dispatcher
       LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec, Interface>, Spec, Stream, Interface> {
-  explicit LogDemultiplexerImplementation(std::shared_ptr<Interface> interface)
+  explicit LogDemultiplexerImplementation(std::shared_ptr<Interface> interface_)
       : LogMultiplexerImplementationBase<LogDemultiplexerImplementation, Spec, Stream, Interface>(
-            std::move(interface)) {}
+            std::move(interface_)) {}
 
   auto digestIterator(LogRangeIterator& iter) -> void override {
     this->_guardedData.getLockedGuard()->digestIterator(iter);
@@ -275,9 +275,9 @@ struct LogMultiplexerImplementation
       LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec, Interface>, Spec, ProducerStream, Interface> {
   using SelfClass = LogMultiplexerImplementation<Spec, Interface>;
 
-  explicit LogMultiplexerImplementation(std::shared_ptr<Interface> interface)
+  explicit LogMultiplexerImplementation(std::shared_ptr<Interface> interface_)
       : LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec, Interface>, Spec, ProducerStream, Interface>(
-            std::move(interface)) {}
+            std::move(interface_)) {}
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>>
   auto insertInternal(T const& t) -> LogIndex {
@@ -337,10 +337,10 @@ struct LogMultiplexerImplementation
 };
 
 template <typename Spec>
-auto LogDemultiplexer<Spec>::construct(std::shared_ptr<replicated_log::ILogParticipant> interface)
+auto LogDemultiplexer<Spec>::construct(std::shared_ptr<replicated_log::ILogParticipant> interface_)
     -> std::shared_ptr<LogDemultiplexer> {
   return std::make_shared<streams::LogDemultiplexerImplementation<Spec, replicated_log::ILogParticipant>>(
-      std::move(interface));
+      std::move(interface_));
 }
 
 template <typename Spec>
