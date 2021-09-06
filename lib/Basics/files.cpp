@@ -810,7 +810,7 @@ std::vector<std::string> TRI_FilesDirectory(char const* path) {
     return result;
   }
 
-  auto guard = scopeGuard([&d]() { closedir(d); });
+  auto guard = scopeGuard([&d]() noexcept { closedir(d); });
 
   struct dirent* de = readdir(d);
 
@@ -1084,7 +1084,7 @@ bool TRI_ProcessFile(char const* filename,
   TRI_string_buffer_t result;
   TRI_InitStringBuffer(&result, false);
 
-  auto guard = scopeGuard([&fd, &result]() {
+  auto guard = scopeGuard([&fd, &result]() noexcept {
     TRI_CLOSE(fd);
     TRI_DestroyStringBuffer(&result);
   });
@@ -1121,7 +1121,7 @@ bool TRI_ProcessFile(char const* filename,
 char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   gzFile gzFd = gzopen(filename,"rb");
-  auto fdGuard = arangodb::scopeGuard([&gzFd]() {
+  auto fdGuard = arangodb::scopeGuard([&gzFd]() noexcept {
     if (nullptr != gzFd) {
       gzclose(gzFd);
     }
@@ -1178,7 +1178,7 @@ char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* fil
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
   encryptionFeature.setKeyFile(keyfile);
-  auto keyGuard = arangodb::scopeGuard([&encryptionFeature]() {
+  auto keyGuard = arangodb::scopeGuard([&encryptionFeature]() noexcept {
     encryptionFeature.clearKey();
   });
 
@@ -1422,7 +1422,7 @@ ErrorCode TRI_VerifyLockFile(char const* filename) {
          sizeof(buffer));  // not really necessary, but this shuts up valgrind
   TRI_read_return_t n = TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   if (n <= 0 || n == sizeof(buffer)) {
     return TRI_ERROR_NO_ERROR;
