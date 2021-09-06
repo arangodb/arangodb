@@ -302,7 +302,9 @@ void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
       if ((!pair.isArray()) || pair.length() != 2) {
         // Invalid communication. Skip
         TRI_ASSERT(false);
-        continue;
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "Internal Traverser communication "
+                                       "broken. Failed to inject variables.");
       }
       auto varId =
           arangodb::basics::VelocyPackHelper::getNumericValue<aql::VariableId>(pair.at(0),
