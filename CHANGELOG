@@ -1,6 +1,16 @@
 devel
 -----
 
+* (EE only) Bug-fix: If you created a ArangoSearch view on Satellite-
+  Collections only and then join with a collection only having a single
+  shard the cluster-one-shard-rule was falsly applied and could lead to
+  empty view results. The Rule will now detect the situation properly,
+  and not trigger.
+
+* (EE only) If you have a query using only satellite collections,
+  now the cluster-one-shard-rule can be applied to improve
+  query performance.
+
 * (Enterprise Edition only): added query option `forceOneShardAttributeValue` 
   to explicitly set a shard key value that will be used during query snippet 
   distribution to limit the query to a specific server in the cluster.
