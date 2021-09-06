@@ -181,6 +181,11 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
 }
 
 bool MoveShard::start(bool&) {
+
+  if (considerCancellation()) {
+    return false;
+  }
+
   // If anything throws here, the run() method catches it and finishes
   // the job.
 
@@ -478,7 +483,7 @@ bool MoveShard::start(bool&) {
 
 JOB_STATUS MoveShard::status() {
 
-  if (_status != PENDING && _status != TODO) {
+  if (_status == PENDING || _status == TODO) {
     if (considerCancellation()) {
       return FAILED;
     }
@@ -542,7 +547,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                          }
                        }
                      } else {
-                       
+
                        LOG_TOPIC("edfc7", WARN, Logger::SUPERVISION)
                          << "missing current entry for " << _shard << " or a clone, we'll be back";
 #ifndef ARANGODB_USE_GOOGLE_TESTS
@@ -836,7 +841,7 @@ JOB_STATUS MoveShard::pendingLeader() {
 }
 
 JOB_STATUS MoveShard::pendingFollower() {
-  
+
   // Check if any of the servers in the Plan are FAILED, if so,
   // we abort:
   std::string planPath =

@@ -192,6 +192,11 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
 }
 
 bool CleanOutServer::start(bool& aborts) {
+
+  if (considerCancellation()) {
+    return false;
+  }
+
   // If anything throws here, the run() method catches it and finishes
   // the job.
 

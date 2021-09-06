@@ -2719,7 +2719,7 @@ TEST_F(MoveShardTest, trying_to_abort_a_finished_should_result_in_failure) {
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
 }
 
-TEST_F(MoveShardTest, test_cancel_job) {
+TEST_F(MoveShardTest, test_cancel_pending_job) {
   std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure =
       [&](VPackSlice const& s, std::string const& path) {
         std::unique_ptr<VPackBuilder> builder;
@@ -2768,6 +2768,64 @@ TEST_F(MoveShardTest, test_cancel_job) {
   AgentInterface& agent = mockAgent.get();
 
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  Mock<Job> spy(moveShard);
+  Fake(Method(spy, abort));
+
+  Job& spyMoveShard = spy.get();
+  spyMoveShard.run(aborts);
+
+  Verify(Method(spy, abort));
+}
+
+TEST_F(MoveShardTest, test_cancel_todo_job) {
+  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure =
+      [&](VPackSlice const& s, std::string const& path) {
+        std::unique_ptr<VPackBuilder> builder;
+        builder.reset(new VPackBuilder());
+        if (s.isObject()) {
+          builder->add(VPackValue(VPackValueType::Object));
+          for (auto it : VPackObjectIterator(s)) {
+            auto childBuilder =
+                createTestStructure(it.value, path + "/" + it.key.copyString());
+            if (childBuilder) {
+              builder->add(it.key.copyString(), childBuilder->slice());
+            }
+          }
+
+          if (path == "/arango/Target/ToDo") {
+            VPackBuilder pendingJob;
+            {
+              VPackObjectBuilder b(&pendingJob);
+              auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
+                pendingJob.add(it.key.copyString(), it.value);
+              }
+              pendingJob.add("abort", VPackValue(true));
+            }
+            builder->add(jobId, pendingJob.slice());
+          }
+          builder->close();
+        } else {
+          if (path == "/arango/Plan/Collections/" + DATABASE + "/" +
+                          COLLECTION + "/shards/" + SHARD) {
+            builder->add(VPackValue(VPackValueType::Array));
+            builder->add(VPackValue(FREE_SERVER));
+            builder->add(VPackValue(SHARD_FOLLOWER1));
+            builder->close();
+          } else {
+            builder->add(s);
+          }
+        }
+        return builder;
+      };
+
+  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  Node agency = createAgencyFromBuilder(*builder);
+
+  Mock<AgentInterface> mockAgent;
+  AgentInterface& agent = mockAgent.get();
+
+  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
   Mock<Job> spy(moveShard);
   Fake(Method(spy, abort));
 
