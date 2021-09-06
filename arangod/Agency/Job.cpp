@@ -87,7 +87,7 @@ Job::~Job() = default;
 // this will be initialized in the AgencyFeature
 std::string Job::agencyPrefix = "arango";
 
-auto MoveShard::considerCancellation() {
+bool Job::considerCancellation() {
   // Allow for cancellation of shard moves
   auto [cancel,exists] = 
     _snapshot.hasAsBool(std::string("/Target/") + jobStatus[_status] + "/" + _jobId + "/abort");

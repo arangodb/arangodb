@@ -49,7 +49,7 @@ namespace consensus {
 class Node;
 
 enum JOB_STATUS { TODO, PENDING, FINISHED, FAILED, NOTFOUND };
-const std::vector<std::string> jobStatus {"ToDo", "Pending", "Finished", "Failed"}
+const std::vector<std::string> jobStatus {"ToDo", "Pending", "Finished", "Failed"};
 const std::vector<std::string> pos({"/Target/ToDo/", "/Target/Pending/",
                                     "/Target/Finished/", "/Target/Failed/"});
 extern std::string const mapUniqueToShortID;
