@@ -12,7 +12,7 @@
       callback: cb,
       confirm: confirm
     };
-    if (style !== undefined) {
+    if (style) {
       button.style = style;
     }
 
@@ -25,10 +25,10 @@
       type: type,
       label: label
     };
-    if (style !== undefined) {
+    if (style) {
       obj.style = style;
     }
-    if (value !== undefined) {
+    if (value) {
       obj.value = value;
     }
     if (info !== undefined) {
