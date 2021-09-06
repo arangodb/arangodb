@@ -48,6 +48,8 @@ class StaticStrings {
   static std::string const AttachmentString;
   static std::string const IdString;
   static std::string const KeyString;
+  static std::string const PrefixOfKeyString;
+  static std::string const PostfixOfKeyString;
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;

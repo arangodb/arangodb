@@ -43,6 +43,8 @@ std::string const StaticStrings::IndexGt("gt");
 std::string const StaticStrings::AttachmentString("_attachment");
 std::string const StaticStrings::IdString("_id");
 std::string const StaticStrings::KeyString("_key");
+std::string const StaticStrings::PrefixOfKeyString("_key:");
+std::string const StaticStrings::PostfixOfKeyString(":_key");
 std::string const StaticStrings::RevString("_rev");
 std::string const StaticStrings::FromString("_from");
 std::string const StaticStrings::ToString("_to");
