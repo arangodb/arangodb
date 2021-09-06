@@ -800,8 +800,8 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
                   std::string const& queryString, irs::filter const& expected,
                   arangodb::aql::ExpressionContext* exprCtx /*= nullptr*/,
                   std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
-                  std::string const& refName /*= "d"*/
-) {
+                  std::string const& refName /*= "d"*/,
+                  bool allowFiltersMerge /*= false*/) {
   SCOPED_TRACE(testing::Message("assertFilter failed for query:<") << queryString << "> parseOk:" << parseOk << " execOk:" << execOk);
 
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
@@ -852,7 +852,8 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
       mockCtx->setTrx(&trx);
     }
 
-    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, nullptr, ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr,
+                                                nullptr, nullptr, ref, allowFiltersMerge};
     EXPECT_TRUE(
         (parseOk ==
          arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
@@ -871,7 +872,8 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
     irs::Or actual;
-    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, &irs::sub_reader::empty(), ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx,
+                                                &irs::sub_reader::empty(), ref, allowFiltersMerge};
     EXPECT_EQ(execOk, arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok());
 
     if (execOk) {
@@ -885,9 +887,10 @@ void assertFilterSuccess(TRI_vocbase_t& vocbase, std::string const& queryString,
                          irs::filter const& expected,
                          arangodb::aql::ExpressionContext* exprCtx /*= nullptr*/,
                          std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
-                         std::string const& refName /*= "d"*/
+                         std::string const& refName /*= "d"*/, bool allowFiltersMerge /*= false*/
 ) {
-  return assertFilter(vocbase, true, true, queryString, expected, exprCtx, bindVars, refName);
+  return assertFilter(vocbase, true, true, queryString, expected, exprCtx,
+                      bindVars, refName, allowFiltersMerge);
 }
 
 void assertFilterFail(TRI_vocbase_t& vocbase, std::string const& queryString,

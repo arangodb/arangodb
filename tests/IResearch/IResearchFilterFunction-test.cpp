@@ -7199,3 +7199,23 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     vocbase(),
     "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, RAND() ? 'identity' : 'test_analyzer') RETURN d");
 }
+
+
+TEST_F(IResearchFilterFunctionTest, mergeLevenshteinStartsWith) {
+  // NGRAM_MATCH with explicit analyzer via ANALYZER explicit threshold
+  {
+    irs::Or expected;
+    auto& filter = expected.add<irs::And>().add<irs::by_edit_distance>();
+    *filter.mutable_field() = mangleString("name", "test_analyzer");
+    auto* opts = filter.mutable_options();
+    opts->max_distance = 2;
+    opts->max_terms = 63;
+    opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+    opts->with_transpositions = false;
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER ANALYZER(LEVENSHTEIN_MATCH(d.name, 'foobar', 2, false, 63) AND STARTS_WITH(d.name, 'foo'), 'test_analyzer') RETURN d",
+      expected, nullptr, nullptr, "d", true);
+  }
+}
