@@ -1,5 +1,5 @@
 import { JsonEditor as Editor } from 'jsoneditor-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Ajv from 'ajv';
 import { FormProps, formSchema, FormState, State } from "../constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
@@ -36,6 +36,11 @@ const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
       ));
     }
   };
+
+  useEffect(() => {
+    setFormErrors([]);
+    dispatch({ type: 'unlockJsonForm' });
+  }, [dispatch, renderKey]);
 
   return <Grid>
     <Cell size={'1'}>

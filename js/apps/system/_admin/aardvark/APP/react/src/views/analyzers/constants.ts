@@ -180,7 +180,7 @@ const baseSchema = {
     name: {
       nullable: false,
       type: 'string',
-      pattern: '^[a-zA-Z][a-zA-Z0-9-_]*$'
+      pattern: '^([a-zA-Z][a-zA-Z0-9-_]*)?$'
     },
     features: {
       type: 'array',
