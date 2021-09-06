@@ -216,7 +216,7 @@ void RestViewHandler::createView() {
     }
 
     LogicalView::ptr view;
-    res = LogicalView::create(view, _vocbase, body);
+    res = LogicalView::create(view, _vocbase, body, true);
 
     if (!res.ok()) {
       generateError(res);
@@ -277,137 +277,132 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     return;
   }
 
-  try {
-    bool parseSuccess = false;
-    VPackSlice const body = this->parseVPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice const body = this->parseVPackBody(parseSuccess);
 
-    if (!parseSuccess) {
-      return;
-    }
+  if (!parseSuccess) {
+    return;
+  }
 
-    // First refresh our analyzers cache to see all latest changes in analyzers
-    auto const analyzersRes = server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-                                      .loadAvailableAnalyzers(_vocbase.name());
-    if (analyzersRes.fail()) {
-      generateError(analyzersRes);
-      return;
-    }
+  // First refresh our analyzers cache to see all latest changes in analyzers
+  auto const analyzersRes = server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+                                    .loadAvailableAnalyzers(_vocbase.name());
+  if (analyzersRes.fail()) {
+    generateError(analyzersRes);
+    return;
+  }
 
-    // handle rename functionality
-    if (suffixes[1] == "rename") {
-      VPackSlice newName = body.get("name");
+  // handle rename functionality
+  if (suffixes[1] == "rename") {
+    VPackSlice newName = body.get("name");
 
-      if (!newName.isString()) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                      "expecting \"name\" parameter to be a string");
-
-        return;
-      }
-
-      // .......................................................................
-      // end of parameter parsing
-      // .......................................................................
-
-      if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
-        generateError(
-            Result(TRI_ERROR_FORBIDDEN, "insufficient rights to rename view"));
-
-        return;
-      }
-
-      // skip views for which the full view definition cannot be generated, as
-      // per https://github.com/arangodb/backlog/issues/459
-      try {
-        arangodb::velocypack::Builder viewBuilder;
-
-        viewBuilder.openObject();
-
-        auto res = view->properties(viewBuilder, LogicalDataSource::Serialization::Properties);
-
-        if (!res.ok()) {
-          generateError(res);
-
-          return;  // skip view
-        }
-      } catch (...) {
-        generateError(arangodb::Result(TRI_ERROR_INTERNAL));
-
-        return;  // skip view
-      }
-
-      auto res = view->rename(newName.copyString());
-
-      if (res.ok()) {
-        getView(view->name(), false);
-      } else {
-        generateError(res);
-      }
+    if (!newName.isString()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "expecting \"name\" parameter to be a string");
 
       return;
     }
 
-    // .........................................................................
+    // .......................................................................
     // end of parameter parsing
-    // .........................................................................
+    // .......................................................................
 
     if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
       generateError(
-          Result(TRI_ERROR_FORBIDDEN, "insufficient rights to modify view"));
+          Result(TRI_ERROR_FORBIDDEN, "insufficient rights to rename view"));
 
       return;
     }
 
-    // check ability to read current properties
-    {
-      arangodb::velocypack::Builder builderCurrent;
+    // skip views for which the full view definition cannot be generated, as
+    // per https://github.com/arangodb/backlog/issues/459
+    try {
+      arangodb::velocypack::Builder viewBuilder;
 
-      builderCurrent.openObject();
+      viewBuilder.openObject();
 
-      auto resCurrent = view->properties(builderCurrent,
-                                         LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(viewBuilder, LogicalDataSource::Serialization::Properties);
 
-      if (!resCurrent.ok()) {
-        generateError(resCurrent);
+      if (!res.ok()) {
+        generateError(res);
 
-        return;
+        return;  // skip view
       }
+    } catch (...) {
+      generateError(arangodb::Result(TRI_ERROR_INTERNAL));
+
+      return;  // skip view
     }
 
-    auto result = view->properties(body, partialUpdate);
+    auto res = view->rename(newName.copyString());
 
-    if (!result.ok()) {
-      generateError(result);
-
-      return;
-    }
-
-    view = resolver.getView(view->id());  // ensure have the latest definition
-
-    if (!view) {
-      generateError(arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
-
-      return;
-    }
-
-    arangodb::velocypack::Builder updated;
-
-    updated.openObject();
-
-    auto res = view->properties(updated, LogicalDataSource::Serialization::Properties);
-
-    updated.close();
-
-    if (!res.ok()) {
+    if (res.ok()) {
+      getView(view->name(), false);
+    } else {
       generateError(res);
+    }
+
+    return;
+  }
+
+  // .........................................................................
+  // end of parameter parsing
+  // .........................................................................
+
+  if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
+    generateError(
+        Result(TRI_ERROR_FORBIDDEN, "insufficient rights to modify view"));
+
+    return;
+  }
+
+  // check ability to read current properties
+  {
+    arangodb::velocypack::Builder builderCurrent;
+
+    builderCurrent.openObject();
+
+    auto resCurrent = view->properties(builderCurrent,
+                                       LogicalDataSource::Serialization::Properties);
+
+    if (!resCurrent.ok()) {
+      generateError(resCurrent);
 
       return;
     }
-
-    generateResult(rest::ResponseCode::OK, updated.slice());
-  } catch (...) {
-    // TODO: cleanup?
-    throw;
   }
+
+  auto result = view->properties(body, true, partialUpdate);
+
+  if (!result.ok()) {
+    generateError(result);
+
+    return;
+  }
+
+  view = resolver.getView(view->id());  // ensure have the latest definition
+
+  if (!view) {
+    generateError(arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+
+    return;
+  }
+
+  arangodb::velocypack::Builder updated;
+
+  updated.openObject();
+
+  auto res = view->properties(updated, LogicalDataSource::Serialization::Properties);
+
+  updated.close();
+
+  if (!res.ok()) {
+    generateError(res);
+
+    return;
+  }
+
+  generateResult(rest::ResponseCode::OK, updated.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

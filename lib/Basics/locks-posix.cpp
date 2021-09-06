@@ -39,13 +39,13 @@
 #include "Logger/Logger.h"
 
 /// @brief initializes a new condition variable
-void TRI_InitCondition(TRI_condition_t* cond) {
+void TRI_InitCondition(TRI_condition_t* cond) noexcept {
   pthread_cond_init(&cond->_cond, nullptr);
   pthread_mutex_init(&cond->_mutex, nullptr);
 }
 
 /// @brief destroys a condition variable
-void TRI_DestroyCondition(TRI_condition_t* cond) {
+void TRI_DestroyCondition(TRI_condition_t* cond) noexcept {
   pthread_cond_destroy(&cond->_cond);
   pthread_mutex_destroy(&cond->_mutex);
 }
@@ -53,7 +53,7 @@ void TRI_DestroyCondition(TRI_condition_t* cond) {
 /// @brief signals a condition variable
 ///
 /// Note that you must hold the lock.
-void TRI_SignalCondition(TRI_condition_t* cond) {
+void TRI_SignalCondition(TRI_condition_t* cond) noexcept {
   int rc = pthread_cond_signal(&cond->_cond);
 
   if (rc != 0) {
@@ -66,7 +66,7 @@ void TRI_SignalCondition(TRI_condition_t* cond) {
 /// @brief broad casts a condition variable
 ///
 /// Note that you must hold the lock.
-void TRI_BroadcastCondition(TRI_condition_t* cond) {
+void TRI_BroadcastCondition(TRI_condition_t* cond) noexcept {
   int rc = pthread_cond_broadcast(&cond->_cond);
 
   if (rc != 0) {
@@ -79,7 +79,7 @@ void TRI_BroadcastCondition(TRI_condition_t* cond) {
 /// @brief waits for a signal on a condition variable
 ///
 /// Note that you must hold the lock.
-void TRI_WaitCondition(TRI_condition_t* cond) {
+void TRI_WaitCondition(TRI_condition_t* cond) noexcept {
   int rc = pthread_cond_wait(&cond->_cond, &cond->_mutex);
 
   if (rc != 0) {
@@ -92,7 +92,7 @@ void TRI_WaitCondition(TRI_condition_t* cond) {
 /// @brief waits for a signal with a timeout in micro-seconds
 /// returns true when the condition was signaled, false on timeout
 /// Note that you must hold the lock.
-bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
+bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) noexcept {
   struct timespec ts;
   struct timeval tp;
   uint64_t x, y;
@@ -126,7 +126,7 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
 }
 
 /// @brief locks the mutex of a condition variable
-void TRI_LockCondition(TRI_condition_t* cond) {
+void TRI_LockCondition(TRI_condition_t* cond) noexcept {
   int rc = pthread_mutex_lock(&cond->_mutex);
 
   if (rc != 0) {
@@ -137,7 +137,7 @@ void TRI_LockCondition(TRI_condition_t* cond) {
 }
 
 /// @brief unlocks the mutex of a condition variable
-void TRI_UnlockCondition(TRI_condition_t* cond) {
+void TRI_UnlockCondition(TRI_condition_t* cond) noexcept {
   int rc = pthread_mutex_unlock(&cond->_mutex);
 
   if (rc != 0) {

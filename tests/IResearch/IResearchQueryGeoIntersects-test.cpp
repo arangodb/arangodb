@@ -32,19 +32,18 @@
 
 #include <velocypack/Iterator.h>
 
+#include "utils/string_utils.hpp"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
 
 class IResearchQueryGeoIntersectsTest : public IResearchQueryTest {};
 
-TEST_F(IResearchQueryGeoIntersectsTest, test) {
+TEST_P(IResearchQueryGeoIntersectsTest, test) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
@@ -78,10 +77,22 @@ TEST_F(IResearchQueryGeoIntersectsTest, test) {
     impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     ASSERT_NE(nullptr, impl);
 
-    auto updateJson = VPackParser::fromJson(R"({
-      "links" : { "testCollection0" : { "fields" : { "geometry" : { "analyzers": ["mygeojson"] } } } }
-    })");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    auto viewDefinitionTemplate = R"({
+      "links" : {
+        "testCollection0" : {
+          "fields" : { "geometry" : { "analyzers": ["mygeojson"] } },
+          "version" : %u
+        }
+      }
+    })";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()));
+
+    auto updateJson = VPackParser::fromJson(viewDefinition);
+
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
@@ -441,5 +452,10 @@ TEST_F(IResearchQueryGeoIntersectsTest, test) {
     EXPECT_EQ(i, expected.size());
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryGeoIntersectsTest,
+  IResearchQueryGeoIntersectsTest,
+  GetLinkVersions());
 
 }

@@ -231,7 +231,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
 
 TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
   auto beforeRole = arangodb::ServerState::instance()->getRole();
-  auto roleGuard = scopeGuard([&]() {
+  auto roleGuard = scopeGuard([&]() noexcept {
     arangodb::ServerState::instance()->setRole(beforeRole);
   });
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);

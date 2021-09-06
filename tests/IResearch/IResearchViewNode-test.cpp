@@ -2782,7 +2782,7 @@ TEST_F(IResearchViewNodeTest, collections) {
       "\"testCollection1\": { \"includeAllFields\": true },"
       "\"testCollection2\": { \"includeAllFields\": true }"
       "}}");
-  EXPECT_TRUE(logicalView->properties(updateJson->slice(), true).ok());
+  EXPECT_TRUE(logicalView->properties(updateJson->slice(), true, true).ok());
 
   // dummy query
   MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2849,7 +2849,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
       "\"testCollection0\": { \"includeAllFields\": true, "
       "\"trackListPositions\": true }"
       "}}");
-  EXPECT_TRUE(logicalView->properties(updateJson->slice(), true).ok());
+  EXPECT_TRUE(logicalView->properties(updateJson->slice(), true, true).ok());
 
   // insert into collection
   {
@@ -3105,7 +3105,7 @@ protected:
         "\"testCollection0\": { \"includeAllFields\": true, "
         "\"trackListPositions\": true }"
         "}}");
-      EXPECT_TRUE(logicalView0->properties(updateJson->slice(), true).ok());
+      EXPECT_TRUE(logicalView0->properties(updateJson->slice(), true, true).ok());
     }
     arangodb::LogicalView::ptr logicalView1;
     {
@@ -3118,7 +3118,7 @@ protected:
         "\"testCollection1\": { \"includeAllFields\": true, "
         "\"trackListPositions\": true }"
         "}}");
-      EXPECT_TRUE(logicalView1->properties(updateJson->slice(), true).ok());
+      EXPECT_TRUE(logicalView1->properties(updateJson->slice(), true, true).ok());
     }
 
     std::vector<std::string> EMPTY_VECTOR;
@@ -3499,7 +3499,7 @@ class IResearchViewBlockTest
         "\"testCollection0\": { \"includeAllFields\": true, "
         "\"trackListPositions\": true }"
         "}}");
-    EXPECT_TRUE(logicalView->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(logicalView->properties(updateJson->slice(), true, true).ok());
     std::vector<std::string> EMPTY_VECTOR;
     auto trx = std::make_shared<arangodb::transaction::Methods>(
         arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY_VECTOR,
