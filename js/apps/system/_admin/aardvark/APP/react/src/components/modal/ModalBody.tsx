@@ -58,11 +58,6 @@ const ModalBody = ({ children, innerStyle = {}, maximize = false, show = false }
 
       const maxGrandParentHeight = window.innerHeight * 0.9;
       const bodyHeight = Math.floor(maxGrandParentHeight - offset);
-      console.log({
-        maxGrandParentHeight,
-        offset,
-        bodyHeight
-      });
 
       body.style.height = `${bodyHeight}px`;
       body.style.maxHeight = 'unset';
