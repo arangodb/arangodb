@@ -139,14 +139,14 @@ using stream_descriptor_primary_tag_t =
     typename tag_descriptor_set_primary_t<stream_descriptor_tags_t<T>>::type;
 
 namespace detail {
-template <StreamId Id, typename... Ds>
+template <StreamId StreamId, typename... Ds>
 struct stream_descriptor_by_id_impl;
-template <StreamId Id, typename D, typename... Ds>
-struct stream_descriptor_by_id_impl<Id, D, Ds...>
-    : std::conditional<Id == stream_descriptor_id_v<D>, D,
-                       typename stream_descriptor_by_id_impl<Id, Ds...>::type> {};
-template <unsigned Id, typename D>
-struct stream_descriptor_by_id_impl<Id, D> {
+template <StreamId StreamId, typename D, typename... Ds>
+struct stream_descriptor_by_id_impl<StreamId, D, Ds...>
+    : std::conditional<StreamId == stream_descriptor_id_v<D>, D,
+                       typename stream_descriptor_by_id_impl<StreamId, Ds...>::type> {};
+template <StreamId StreamId, typename D>
+struct stream_descriptor_by_id_impl<StreamId, D> {
   // static_assert(StreamId == stream_descriptor_id_v<D>);
   using type = D;
 };
@@ -174,7 +174,7 @@ template <std::size_t I, StreamId StreamId, typename D, typename... Ds>
 struct stream_index_by_id_impl<I, StreamId, D, Ds...>
     : std::conditional_t<StreamId == stream_descriptor_id_v<D>, std::integral_constant<std::size_t, I>,
                          stream_index_by_id_impl<I + 1, StreamId, Ds...>> {};
-template <std::size_t I, unsigned StreamId, typename D>
+template <std::size_t I, StreamId StreamId, typename D>
 struct stream_index_by_id_impl<I, StreamId, D>
     : std::integral_constant<std::size_t, I> {};
 }  // namespace detail
