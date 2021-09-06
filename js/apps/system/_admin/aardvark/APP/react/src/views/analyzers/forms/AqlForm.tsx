@@ -63,13 +63,13 @@ const AqlForm = ({ formState, dispatch, disabled }: FormProps) => {
     <Cell size={'1-3'}>
       <Grid>
         <Cell size={'1'}>
-          <Textbox label={'Batch Size'} type={'number'} min={1} placeholder={'10'} required={true}
+          <Textbox label={'Batch Size'} type={'number'} min={1} required={true}
                    value={aqlFormState.properties.batchSize || ''} disabled={disabled}
                    onChange={getNumericFieldSetter('properties.batchSize')}/>
         </Cell>
         <Cell size={'1'}>
           <Textbox label={'Memory Limit'} type={'number'} min={1} max={33554432} required={true}
-                   placeholder={'1048576'} value={aqlFormState.properties.memoryLimit || ''}
+                   value={aqlFormState.properties.memoryLimit || ''}
                    disabled={disabled} onChange={getNumericFieldSetter('properties.memoryLimit')}/>
         </Cell>
       </Grid>
