@@ -284,7 +284,7 @@ TEST_F(IResearchViewTest, test_defaults) {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
-    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice()).ok()));
+    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice(), true).ok()));
     EXPECT_TRUE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
@@ -315,7 +315,7 @@ TEST_F(IResearchViewTest, test_defaults) {
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
-    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice()).ok()));
+    EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice(), true).ok());
     EXPECT_TRUE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
@@ -348,7 +348,7 @@ TEST_F(IResearchViewTest, test_defaults) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
     arangodb::LogicalView::ptr view;
-    auto res = arangodb::iresearch::IResearchView::factory().create(view, vocbase, viewCreateJson->slice());
+    auto res = arangodb::iresearch::IResearchView::factory().create(view, vocbase, viewCreateJson->slice(), true);
     EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == res.errorNumber()));
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
   }
@@ -364,7 +364,7 @@ TEST_F(IResearchViewTest, test_defaults) {
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     arangodb::LogicalView::ptr view;
-    auto res = arangodb::iresearch::IResearchView::factory().create(view, vocbase, viewCreateJson->slice());
+    auto res = arangodb::iresearch::IResearchView::factory().create(view, vocbase, viewCreateJson->slice(), true);
     EXPECT_TRUE((TRI_ERROR_BAD_PARAMETER == res.errorNumber()));
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
   }
@@ -391,7 +391,7 @@ TEST_F(IResearchViewTest, test_defaults) {
 
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
     arangodb::LogicalView::ptr view;
-    auto res = arangodb::iresearch::IResearchView::factory().create(view, vocbase, viewCreateJson->slice());
+    auto res = arangodb::iresearch::IResearchView::factory().create(view, vocbase, viewCreateJson->slice(), true);
     EXPECT_TRUE((TRI_ERROR_FORBIDDEN == res.errorNumber()));
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
   }
@@ -407,7 +407,7 @@ TEST_F(IResearchViewTest, test_defaults) {
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     arangodb::LogicalView::ptr logicalView;
-    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(logicalView, vocbase, viewCreateJson->slice()).ok()));
+    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(logicalView, vocbase, viewCreateJson->slice(), true).ok()));
     ASSERT_TRUE((false == !logicalView));
     std::set<arangodb::DataSourceId> cids;
     logicalView->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
@@ -441,7 +441,7 @@ TEST_F(IResearchViewTest, test_defaults) {
   }
 }
 
-TEST_F(IResearchViewTest, test_properties) {
+TEST_F(IResearchViewTest, test_properties_user_request) {
   // new view definition with links
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
@@ -462,7 +462,768 @@ TEST_F(IResearchViewTest, test_properties) {
   EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
   EXPECT_TRUE(logicalCollection->getIndexes().empty());
   arangodb::LogicalView::ptr logicalView;
-  EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().create(logicalView, vocbase, viewCreateJson->slice()).ok());
+  EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().create(logicalView, vocbase, viewCreateJson->slice(), true).ok());
+  ASSERT_TRUE(logicalView);
+  std::set<arangodb::DataSourceId> cids;
+  logicalView->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
+    cids.emplace(cid);
+    return true;
+  });
+  EXPECT_EQ(1, cids.size());
+  EXPECT_FALSE(logicalCollection->getIndexes().empty());
+
+  // check serialization for listing
+  {
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::List);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(4, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+  }
+
+  // check serialization for properties
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    VPackBuilder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(15, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    tmpSlice = slice.get("storedValues");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    { // links
+      tmpSlice = slice.get("links");
+      EXPECT_TRUE(tmpSlice.isObject());
+      EXPECT_EQ(1, tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("testCollection");
+      EXPECT_TRUE(tmpSlice2.isObject());
+      EXPECT_EQ(5, tmpSlice2.length());
+      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
+                  1 == tmpSlice2.get("analyzers").length() &&
+                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+    }
+  }
+
+  // check serialization for persistence
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(19, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("planId").isString() && "101" == slice.get("planId").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
+    EXPECT_TRUE(slice.get("isSystem").isBool() && !slice.get("isSystem").getBool());
+    EXPECT_TRUE(slice.get("collections").isArray() &&
+                1 == slice.get("collections").length() &&
+                100 == slice.get("collections").at(0).getNumber<size_t>());
+
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    tmpSlice = slice.get("storedValues");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("version");
+    EXPECT_TRUE(tmpSlice.isNumber<uint32_t>() && 1 == tmpSlice.getNumber<uint32_t>());
+  }
+
+  // check serialization for inventory
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(15, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    tmpSlice = slice.get("storedValues");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    { // links
+      tmpSlice = slice.get("links");
+      EXPECT_TRUE(tmpSlice.isObject());
+      EXPECT_EQ(1, tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("testCollection");
+      EXPECT_TRUE(tmpSlice2.isObject());
+      EXPECT_EQ(10, tmpSlice2.length());
+      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
+                  1 == tmpSlice2.get("analyzers").length() &&
+                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_TRUE(tmpSlice2.get("version").isNumber());
+      EXPECT_EQ(1, tmpSlice2.get("version").getNumber<uint32_t>());
+
+      tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
+      ASSERT_TRUE(tmpSlice2.isArray());
+      ASSERT_EQ(1, tmpSlice2.length());
+      tmpSlice2 = tmpSlice2.at(0);
+      ASSERT_TRUE(tmpSlice2.isObject());
+      EXPECT_EQ(4, tmpSlice2.length());
+      EXPECT_TRUE(tmpSlice2.get("name").isString() && "inPlace" == tmpSlice2.get("name").copyString());
+      EXPECT_TRUE(tmpSlice2.get("type").isString() && "identity" == tmpSlice2.get("type").copyString());
+      EXPECT_TRUE(tmpSlice2.get("properties").isObject() && 0 == tmpSlice2.get("properties").length());
+      EXPECT_TRUE(tmpSlice2.get("features").isArray() && 0 == tmpSlice2.get("features").length());
+    }
+  }
+}
+
+TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
+  // new view definition with links
+  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+  auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
+    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, "
+    "  \"links\": { "
+    "    \"testCollection\": { "
+    "      \"includeAllFields\":true, "
+    "      \"version\": 0, "
+    "      \"analyzers\": [\"inPlace\"], "
+    "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", \"type\":\"identity\", \"properties\":{}, \"features\":[] } ]"
+    "    } "
+    "  } "
+    "}"
+  );
+
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  EXPECT_NE(nullptr, logicalCollection);
+  EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
+  EXPECT_TRUE(logicalCollection->getIndexes().empty());
+  arangodb::LogicalView::ptr logicalView;
+  EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().create(logicalView, vocbase, viewCreateJson->slice(), true).ok());
+  ASSERT_TRUE(logicalView);
+  std::set<arangodb::DataSourceId> cids;
+  logicalView->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
+    cids.emplace(cid);
+    return true;
+  });
+  EXPECT_EQ(1, cids.size());
+  EXPECT_FALSE(logicalCollection->getIndexes().empty());
+
+  // check serialization for listing
+  {
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::List);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(4, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+  }
+
+  // check serialization for properties
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    VPackBuilder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(15, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    tmpSlice = slice.get("storedValues");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    { // links
+      tmpSlice = slice.get("links");
+      EXPECT_TRUE(tmpSlice.isObject());
+      EXPECT_EQ(1, tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("testCollection");
+      EXPECT_TRUE(tmpSlice2.isObject());
+      EXPECT_EQ(5, tmpSlice2.length());
+      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
+                  1 == tmpSlice2.get("analyzers").length() &&
+                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+    }
+  }
+
+  // check serialization for persistence
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(19, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("planId").isString() && "101" == slice.get("planId").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
+    EXPECT_TRUE(slice.get("isSystem").isBool() && !slice.get("isSystem").getBool());
+    EXPECT_TRUE(slice.get("collections").isArray() &&
+                1 == slice.get("collections").length() &&
+                100 == slice.get("collections").at(0).getNumber<size_t>());
+
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    tmpSlice = slice.get("storedValues");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("version");
+    EXPECT_TRUE(tmpSlice.isNumber<uint32_t>() && 1 == tmpSlice.getNumber<uint32_t>());
+  }
+
+  // check serialization for inventory
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(15, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    tmpSlice = slice.get("storedValues");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    { // links
+      tmpSlice = slice.get("links");
+      EXPECT_TRUE(tmpSlice.isObject());
+      EXPECT_EQ(1, tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("testCollection");
+      EXPECT_TRUE(tmpSlice2.isObject());
+      EXPECT_EQ(10, tmpSlice2.length());
+      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
+                  1 == tmpSlice2.get("analyzers").length() &&
+                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_TRUE(tmpSlice2.get("version").isNumber());
+      EXPECT_EQ(0, tmpSlice2.get("version").getNumber<uint32_t>());
+
+      tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
+      ASSERT_TRUE(tmpSlice2.isArray());
+      ASSERT_EQ(1, tmpSlice2.length());
+      tmpSlice2 = tmpSlice2.at(0);
+      ASSERT_TRUE(tmpSlice2.isObject());
+      EXPECT_EQ(4, tmpSlice2.length());
+      EXPECT_TRUE(tmpSlice2.get("name").isString() && "inPlace" == tmpSlice2.get("name").copyString());
+      EXPECT_TRUE(tmpSlice2.get("type").isString() && "identity" == tmpSlice2.get("type").copyString());
+      EXPECT_TRUE(tmpSlice2.get("properties").isObject() && 0 == tmpSlice2.get("properties").length());
+      EXPECT_TRUE(tmpSlice2.get("features").isArray() && 0 == tmpSlice2.get("features").length());
+    }
+  }
+}
+
+TEST_F(IResearchViewTest, test_properties_internal_request) {
+  // new view definition with links
+  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+  auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
+    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, "
+    "  \"links\": { "
+    "    \"testCollection\": { "
+    "      \"includeAllFields\":true, "
+    "      \"analyzers\": [\"inPlace\"], "
+    "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", \"type\":\"identity\", \"properties\":{}, \"features\":[] } ]"
+    "    } "
+    "  } "
+    "}"
+  );
+
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  EXPECT_NE(nullptr, logicalCollection);
+  EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
+  EXPECT_TRUE(logicalCollection->getIndexes().empty());
+  arangodb::LogicalView::ptr logicalView;
+  EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().create(logicalView, vocbase, viewCreateJson->slice(), false).ok());
+  ASSERT_TRUE(logicalView);
+  std::set<arangodb::DataSourceId> cids;
+  logicalView->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
+    cids.emplace(cid);
+    return true;
+  });
+  EXPECT_EQ(1, cids.size());
+  EXPECT_FALSE(logicalCollection->getIndexes().empty());
+
+  // check serialization for listing
+  {
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::List);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(4, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+  }
+
+  // check serialization for properties
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    VPackBuilder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(15, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    tmpSlice = slice.get("storedValues");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    { // links
+      tmpSlice = slice.get("links");
+      EXPECT_TRUE(tmpSlice.isObject());
+      EXPECT_EQ(1, tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("testCollection");
+      EXPECT_TRUE(tmpSlice2.isObject());
+      EXPECT_EQ(5, tmpSlice2.length());
+      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
+                  1 == tmpSlice2.get("analyzers").length() &&
+                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+    }
+  }
+
+  // check serialization for persistence
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(19, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("planId").isString() && "101" == slice.get("planId").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
+    EXPECT_TRUE(slice.get("isSystem").isBool() && !slice.get("isSystem").getBool());
+    EXPECT_TRUE(slice.get("collections").isArray() &&
+                1 == slice.get("collections").length() &&
+                100 == slice.get("collections").at(0).getNumber<size_t>());
+
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    tmpSlice = slice.get("storedValues");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("version");
+    EXPECT_TRUE(tmpSlice.isNumber<uint32_t>() && 1 == tmpSlice.getNumber<uint32_t>());
+  }
+
+  // check serialization for inventory
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(15, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    tmpSlice = slice.get("storedValues");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    { // links
+      tmpSlice = slice.get("links");
+      EXPECT_TRUE(tmpSlice.isObject());
+      EXPECT_EQ(1, tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("testCollection");
+      EXPECT_TRUE(tmpSlice2.isObject());
+      EXPECT_EQ(10, tmpSlice2.length());
+      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
+                  1 == tmpSlice2.get("analyzers").length() &&
+                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_TRUE(tmpSlice2.get("version").isNumber());
+      EXPECT_EQ(0, tmpSlice2.get("version").getNumber<uint32_t>());
+
+      tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
+      ASSERT_TRUE(tmpSlice2.isArray());
+      ASSERT_EQ(1, tmpSlice2.length());
+      tmpSlice2 = tmpSlice2.at(0);
+      ASSERT_TRUE(tmpSlice2.isObject());
+      EXPECT_EQ(4, tmpSlice2.length());
+      EXPECT_TRUE(tmpSlice2.get("name").isString() && "inPlace" == tmpSlice2.get("name").copyString());
+      EXPECT_TRUE(tmpSlice2.get("type").isString() && "identity" == tmpSlice2.get("type").copyString());
+      EXPECT_TRUE(tmpSlice2.get("properties").isObject() && 0 == tmpSlice2.get("properties").length());
+      EXPECT_TRUE(tmpSlice2.get("features").isArray() && 0 == tmpSlice2.get("features").length());
+    }
+  }
+}
+
+TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
+  // new view definition with links
+  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+  auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
+    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, "
+    "  \"links\": { "
+    "    \"testCollection\": { "
+    "      \"includeAllFields\":true, "
+    "      \"version\": 1, "
+    "      \"analyzers\": [\"inPlace\"], "
+    "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", \"type\":\"identity\", \"properties\":{}, \"features\":[] } ]"
+    "    } "
+    "  } "
+    "}"
+  );
+
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  EXPECT_NE(nullptr, logicalCollection);
+  EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
+  EXPECT_TRUE(logicalCollection->getIndexes().empty());
+  arangodb::LogicalView::ptr logicalView;
+  EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().create(logicalView, vocbase, viewCreateJson->slice(), false).ok());
   ASSERT_TRUE(logicalView);
   std::set<arangodb::DataSourceId> cids;
   logicalView->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
@@ -715,7 +1476,7 @@ TEST_F(IResearchViewTest, test_vocbase_inventory) {
   EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
   EXPECT_TRUE(logicalCollection->getIndexes().empty());
   arangodb::LogicalView::ptr logicalView;
-  EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().create(logicalView, vocbase, viewCreateJson->slice()).ok());
+  EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().create(logicalView, vocbase, viewCreateJson->slice(), true).ok());
   ASSERT_TRUE(logicalView);
   std::set<arangodb::DataSourceId> cids;
   logicalView->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
@@ -903,7 +1664,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
     \"links\": { \"testCollection\": {} } \
   }");
 
-  arangodb::Result res = view->properties(links->slice(), true);
+  arangodb::Result res = view->properties(links->slice(), true, true);
   EXPECT_TRUE(true == res.ok());
   EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
   dataPath =
@@ -968,7 +1729,7 @@ TEST_F(IResearchViewTest, test_drop_collection) {
   auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
   ASSERT_TRUE((false == !view));
 
-  EXPECT_TRUE((true == logicalView->properties(viewUpdateJson->slice(), true).ok()));
+  EXPECT_TRUE((true == logicalView->properties(viewUpdateJson->slice(), true, true).ok()));
   EXPECT_TRUE((false == logicalView->visitCollections(
                             [](arangodb::DataSourceId) -> bool { return false; })));
 
@@ -2854,7 +3615,7 @@ TEST_F(IResearchViewTest, test_query) {
     EXPECT_TRUE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     EXPECT_TRUE((false == !view));
-    arangodb::Result res = logicalView->properties(links->slice(), true);
+    arangodb::Result res = logicalView->properties(links->slice(), true, true);
     EXPECT_TRUE(true == res.ok());
     EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
     auto index = logicalCollection->getIndexes()[0];
@@ -2942,7 +3703,7 @@ TEST_F(IResearchViewTest, test_query) {
     ASSERT_TRUE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     ASSERT_TRUE((false == !view));
-    arangodb::Result res = logicalView->properties(viewUpdateJson->slice(), true);
+    arangodb::Result res = logicalView->properties(viewUpdateJson->slice(), true, true);
     ASSERT_TRUE(true == res.ok());
 
     static std::vector<std::string> const EMPTY;
@@ -3316,7 +4077,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     );
 
     link->unload(); // unload link before creating a new link instance
-    arangodb::Result res = logicalView->properties(links->slice(), true);
+    arangodb::Result res = logicalView->properties(links->slice(), true, true);
     EXPECT_TRUE(true == res.ok());
     EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
 
@@ -3427,7 +4188,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     );
 
     link->unload(); // unload link before creating a new link instance
-    arangodb::Result res = logicalView->properties(links->slice(), true);
+    arangodb::Result res = logicalView->properties(links->slice(), true, true);
     EXPECT_TRUE(true == res.ok());
     EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
 
@@ -3508,7 +4269,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
       \"links\": { \"testCollection\": {} } \
     }");
 
-    arangodb::Result res = logicalView->properties(links->slice(), true);
+    arangodb::Result res = logicalView->properties(links->slice(), true, true);
     EXPECT_TRUE(true == res.ok());
     EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
 
@@ -3541,7 +4302,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
       ASSERT_TRUE((false == !logicalView));
       auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
       ASSERT_TRUE((nullptr != viewImpl));
-      EXPECT_TRUE((viewImpl->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((viewImpl->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
       std::set<arangodb::DataSourceId> cids;
       viewImpl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
@@ -3591,7 +4352,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
     engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
-    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, viewJson->slice()).ok()));
+    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, viewJson->slice(), true).ok()));
     EXPECT_TRUE((nullptr != view));
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
     ASSERT_TRUE((nullptr != viewImpl));
@@ -3621,7 +4382,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     ASSERT_TRUE((nullptr != viewImpl));
 
-    EXPECT_TRUE((viewImpl->properties(updateJson->slice(), false).ok()));
+    EXPECT_TRUE((viewImpl->properties(updateJson->slice(), true, false).ok()));
 
     std::set<arangodb::DataSourceId> actual;
     std::set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
@@ -3658,7 +4419,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
 
     // create link
     {
-      EXPECT_TRUE((viewImpl->properties(updateJson0->slice(), false).ok()));
+      EXPECT_TRUE((viewImpl->properties(updateJson0->slice(), true, false).ok()));
 
       std::set<arangodb::DataSourceId> actual;
       std::set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
@@ -3676,7 +4437,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
 
     // drop link
     {
-      EXPECT_TRUE((viewImpl->properties(updateJson1->slice(), false).ok()));
+      EXPECT_TRUE((viewImpl->properties(updateJson1->slice(), true, false).ok()));
 
       std::set<arangodb::DataSourceId> actual;
       viewImpl->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
@@ -3760,7 +4521,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     ASSERT_TRUE((nullptr != viewImpl));
 
-    EXPECT_TRUE((viewImpl->properties(updateJson->slice(), false).ok()));
+    EXPECT_TRUE((viewImpl->properties(updateJson->slice(), true, false).ok()));
 
     std::set<arangodb::DataSourceId> actual;
     std::set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
@@ -3793,7 +4554,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
 
     // create link
     {
-      EXPECT_TRUE((viewImpl->properties(updateJson0->slice(), false).ok()));
+      EXPECT_TRUE((viewImpl->properties(updateJson0->slice(), true, false).ok()));
 
       std::set<arangodb::DataSourceId> actual;
       std::set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
@@ -3811,7 +4572,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
 
     // drop link
     {
-      EXPECT_TRUE((viewImpl->properties(updateJson1->slice(), false).ok()));
+      EXPECT_TRUE((viewImpl->properties(updateJson1->slice(), true, false).ok()));
 
       std::set<arangodb::DataSourceId> actual;
       viewImpl->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
@@ -3898,7 +4659,7 @@ TEST_F(IResearchViewTest, test_overwrite_immutable_properties) {
       "]"
   "}");
 
-  EXPECT_TRUE(logicalView->properties(newProperties->slice(), false).ok()); // update immutable properties
+  EXPECT_TRUE(logicalView->properties(newProperties->slice(), true, false).ok()); // update immutable properties
 
   // check immutable properties after update
   {
@@ -3954,7 +4715,7 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
   // link collection to view
   {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
-    EXPECT_TRUE((viewImpl->properties(updateJson->slice(), false).ok()));
+    EXPECT_TRUE((viewImpl->properties(updateJson->slice(), true, false).ok()));
   }
 
   // read transaction (by id)
@@ -4482,7 +5243,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       }");
 
       expectedMeta._cleanupIntervalStep = 42;
-      EXPECT_TRUE((view->properties(updateJson->slice(), false).ok()));
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, false).ok()));
 
       // not for persistence
       {
@@ -4540,7 +5301,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       }");
 
       expectedMeta._cleanupIntervalStep = 62;
-      EXPECT_TRUE((view->properties(updateJson->slice(), false).ok()));
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, false).ok()));
 
       // not for persistence
       {
@@ -4603,7 +5364,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 0.123 }");
 
     expectedMeta._cleanupIntervalStep = 52;
-    EXPECT_TRUE((TRI_ERROR_BAD_PARAMETER == logicalView->properties(updateJson->slice(), false).errorNumber()));
+    EXPECT_TRUE((TRI_ERROR_BAD_PARAMETER == logicalView->properties(updateJson->slice(), true, false).errorNumber()));
 
     // not for persistence
     {
@@ -4665,7 +5426,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62, \"links\": { \"testCollection\": {} } }");
 
     expectedMeta._cleanupIntervalStep = 52;
-    EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == logicalView->properties(updateJson->slice(), false).errorNumber()));
+    EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == logicalView->properties(updateJson->slice(), true, false).errorNumber()));
     EXPECT_TRUE((true == logicalView->visitCollections(
                              [](arangodb::DataSourceId) -> bool { return false; })));
 
@@ -4733,7 +5494,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62, \"links\": { \"testCollection\": 42 } }");
 
     expectedMeta._cleanupIntervalStep = 52;
-    EXPECT_TRUE((TRI_ERROR_BAD_PARAMETER == logicalView->properties(updateJson->slice(), false).errorNumber()));
+    EXPECT_TRUE((TRI_ERROR_BAD_PARAMETER == logicalView->properties(updateJson->slice(), true, false).errorNumber()));
     EXPECT_TRUE((true == logicalView->visitCollections(
                              [](arangodb::DataSourceId) -> bool { return false; })));
 
@@ -4806,7 +5567,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       expectedMeta._cleanupIntervalStep = 52;
       expectedMetaState._collections.insert(logicalCollection->id());
       expectedLinkMeta["testCollection"]; // use defaults
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, true).ok()));
 
       // not for persistence
       {
@@ -4883,7 +5644,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       }");
 
       expectedMeta._cleanupIntervalStep = 62;
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), false).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, false).ok()));
 
       // not for persistence
       {
@@ -4959,7 +5720,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       expectedMeta._cleanupIntervalStep = 52;
       expectedMetaState._collections.insert(logicalCollection0->id());
       expectedLinkMeta["testCollection0"]; // use defaults
-      EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
 
       // not for persistence
       {
@@ -5037,7 +5798,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
       expectedMetaState._collections.insert(logicalCollection1->id());
       expectedLinkMeta["testCollection1"]; // use defaults
-      EXPECT_TRUE((view->properties(updateJson->slice(), false).ok()));
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, false).ok()));
 
       // not for persistence
       {
@@ -5122,7 +5883,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }"
       );
-      EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
 
       // not for persistence
       {
@@ -5172,7 +5933,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { } } }"
       );
-      EXPECT_TRUE((view->properties(updateJson->slice(), false).ok()));
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, false).ok()));
 
       // not for persistence
       {
@@ -5235,7 +5996,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
         return false;
@@ -5261,7 +6022,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
       arangodb::iresearch::IResearchViewMeta expectedMeta;
 
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
+      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true, false).errorNumber()));
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
@@ -5284,7 +6045,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       expectedMeta._cleanupIntervalStep = 62;
 
-      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), false).ok()));
+      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true, false).ok()));
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
@@ -5325,7 +6086,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
     auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
 
-    EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
+    EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true, false).errorNumber()));
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
                              [](arangodb::DataSourceId) -> bool { return false; })));
@@ -5350,7 +6111,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
         return false;
@@ -5374,7 +6135,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
+      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true, false).errorNumber()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
         return false;
@@ -5388,7 +6149,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), false).ok()));
+      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true, false).ok()));
       EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
       EXPECT_TRUE((true == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
         return false;
@@ -5419,7 +6180,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -5444,7 +6205,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
+      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true, false).errorNumber()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -5460,7 +6221,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), false).ok()));
+      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true, false).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -5492,7 +6253,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -5518,7 +6279,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
+      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true, false).errorNumber()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -5534,7 +6295,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), false).ok()));
+      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true, false).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -5562,7 +6323,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
         return false;
@@ -5586,7 +6347,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
+      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true, false).errorNumber()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
         return false;
@@ -5600,7 +6361,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), false).ok()));
+      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true, false).ok()));
       EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
       EXPECT_TRUE((true == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
         return false;
@@ -5631,7 +6392,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -5657,7 +6418,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
+      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true, false).errorNumber()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -5673,7 +6434,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), false).ok()));
+      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true, false).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -5705,7 +6466,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -5731,7 +6492,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
+      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true, false).errorNumber()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -5747,7 +6508,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), false).ok()));
+      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true, false).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -5782,7 +6543,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     }");
 
     expectedMeta._cleanupIntervalStep = 42;
-    EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
 
     // not for persistence
     {
@@ -5844,7 +6605,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 0.123 }");
 
     expectedMeta._cleanupIntervalStep = 52;
-    EXPECT_TRUE((TRI_ERROR_BAD_PARAMETER == logicalView->properties(updateJson->slice(), true).errorNumber()));
+    EXPECT_TRUE((TRI_ERROR_BAD_PARAMETER == logicalView->properties(updateJson->slice(), true, true).errorNumber()));
 
     // not for persistence
     {
@@ -5906,7 +6667,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62, \"links\": { \"testCollection\": {} } }");
 
     expectedMeta._cleanupIntervalStep = 52;
-    EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == logicalView->properties(updateJson->slice(), true).errorNumber()));
+    EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == logicalView->properties(updateJson->slice(), true, true).errorNumber()));
     EXPECT_TRUE((true == logicalView->visitCollections(
                              [](arangodb::DataSourceId) -> bool { return false; })));
 
@@ -5974,7 +6735,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62, \"links\": { \"testCollection\": 42 } }");
 
     expectedMeta._cleanupIntervalStep = 52;
-    EXPECT_TRUE((TRI_ERROR_BAD_PARAMETER == logicalView->properties(updateJson->slice(), true).errorNumber()));
+    EXPECT_TRUE((TRI_ERROR_BAD_PARAMETER == logicalView->properties(updateJson->slice(), true, true).errorNumber()));
     EXPECT_TRUE((true == logicalView->visitCollections(
                              [](arangodb::DataSourceId) -> bool { return false; })));
 
@@ -6047,7 +6808,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       expectedMeta._cleanupIntervalStep = 52;
       expectedMetaState._collections.insert(logicalCollection->id());
       expectedLinkMeta["testCollection"]; // use defaults
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, true).ok()));
 
       // not for persistence
       {
@@ -6127,7 +6888,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       expectedMeta._cleanupIntervalStep = 62;
       expectedMetaState._collections.insert(logicalCollection->id());
       expectedLinkMeta["testCollection"]; // use defaults
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, true).ok()));
 
       // not for persistence
       {
@@ -6214,7 +6975,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto restore = irs::make_finally([&beforeRec]()->void { StorageEngineMock::recoveryStateResult = beforeRec; });
     persisted = false;
-    EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
     EXPECT_TRUE((true == persisted));
 
     // not for persistence
@@ -6281,7 +7042,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     expectedMetaState._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
-    EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
     EXPECT_TRUE((true == persisted)); // link addition does modify and persist view meta
 
     // not for persistence
@@ -6386,7 +7147,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     expectedMetaState._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
-    EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
     EXPECT_TRUE((true == persisted)); // link addition does modify and persist view meta
 
     // not for persistence
@@ -6468,7 +7229,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       }}");
 
     expectedMeta._cleanupIntervalStep = 52;
-    EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == view->properties(updateJson->slice(), true).errorNumber()));
+    EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == view->properties(updateJson->slice(), true, true).errorNumber()));
 
     // not for persistence
     {
@@ -6536,7 +7297,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
       auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
-      EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((true == persisted)); // link addition does not persist view meta
 
       arangodb::velocypack::Builder builder;
@@ -6568,7 +7329,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::recoveryStateResult = before; });
       persisted = false;
-      EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == persisted));
 
       arangodb::velocypack::Builder builder;
@@ -6613,7 +7374,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
           \"testCollection\": {} \
       }}");
 
-      EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
 
       // not for persistence
       {
@@ -6671,7 +7432,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       expectedMeta._cleanupIntervalStep = 52;
       expectedMetaState._collections.clear();
-      EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
 
       // not for persistence
       {
@@ -6736,7 +7497,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       }}");
 
     expectedMeta._cleanupIntervalStep = 52;
-    EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == view->properties(updateJson->slice(), true).errorNumber()));
+    EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == view->properties(updateJson->slice(), true, true).errorNumber()));
 
     // not for persistence
     {
@@ -6803,7 +7564,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     }}");
 
     expectedMeta._cleanupIntervalStep = 52;
-    EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
 
     // not for persistence
     {
@@ -6867,7 +7628,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": {} } }"
       );
-      EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
 
       // not for persistence
       {
@@ -6920,7 +7681,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       }
 
       EXPECT_TRUE((!initial.empty()));
-      EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
 
       // not for persistence
       {
@@ -6984,7 +7745,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }"
       );
-      EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
 
       // not for persistence
       {
@@ -7027,6 +7788,29 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_TRUE((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
         EXPECT_TRUE((false == slice.hasKey("links")));
       }
+
+      // inventory
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.hasKey("links"));
+        auto linksSlice = slice.get("links");
+        ASSERT_TRUE(linksSlice.isObject());
+        auto linkSlice = linksSlice.get("testCollection");
+        ASSERT_TRUE(linkSlice.isObject());
+        auto versionSlice = linkSlice.get("version");
+        ASSERT_TRUE(versionSlice.isNumber());
+        ASSERT_EQ(1, versionSlice.getNumber<uint32_t>());
+      }
     }
 
     // update link
@@ -7034,7 +7818,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { } } }"
       );
-      EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
 
       // not for persistence
       {
@@ -7077,6 +7861,248 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_TRUE((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
         EXPECT_TRUE((false == slice.hasKey("links")));
       }
+
+      // inventory
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.hasKey("links"));
+        auto linksSlice = slice.get("links");
+        ASSERT_TRUE(linksSlice.isObject());
+        auto linkSlice = linksSlice.get("testCollection");
+        ASSERT_TRUE(linkSlice.isObject());
+        auto versionSlice = linkSlice.get("version");
+        ASSERT_TRUE(versionSlice.isNumber());
+        ASSERT_EQ(1, versionSlice.getNumber<uint32_t>());
+      }
+    }
+
+    // update link (internal request)
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": { } } }"
+      );
+      EXPECT_TRUE((view->properties(updateJson->slice(), false, true).ok()));
+
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.get("deleted").isNone()); // no system properties
+        auto tmpSlice = slice.get("links");
+        EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+        tmpSlice = tmpSlice.get("testCollection");
+        EXPECT_TRUE((true == tmpSlice.isObject()));
+        tmpSlice = tmpSlice.get("includeAllFields");
+        EXPECT_TRUE((true == tmpSlice.isBoolean() && false == tmpSlice.getBoolean()));
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(19, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        auto tmpSlice = slice.get("collections");
+        EXPECT_TRUE((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+        EXPECT_TRUE((false == slice.hasKey("links")));
+      }
+
+      // inventory
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.hasKey("links"));
+        auto linksSlice = slice.get("links");
+        ASSERT_TRUE(linksSlice.isObject());
+        auto linkSlice = linksSlice.get("testCollection");
+        ASSERT_TRUE(linkSlice.isObject());
+        auto versionSlice = linkSlice.get("version");
+        ASSERT_TRUE(versionSlice.isNumber());
+        ASSERT_EQ(0, versionSlice.getNumber<uint32_t>());
+      }
+    }
+
+    // update link (internal request, explicit version)
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": { \"version\":1 } } }"
+      );
+      EXPECT_TRUE((view->properties(updateJson->slice(), false, true).ok()));
+
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.get("deleted").isNone()); // no system properties
+        auto tmpSlice = slice.get("links");
+        EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+        tmpSlice = tmpSlice.get("testCollection");
+        EXPECT_TRUE((true == tmpSlice.isObject()));
+        tmpSlice = tmpSlice.get("includeAllFields");
+        EXPECT_TRUE((true == tmpSlice.isBoolean() && false == tmpSlice.getBoolean()));
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(19, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        auto tmpSlice = slice.get("collections");
+        EXPECT_TRUE((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+        EXPECT_TRUE((false == slice.hasKey("links")));
+      }
+
+      // inventory
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.hasKey("links"));
+        auto linksSlice = slice.get("links");
+        ASSERT_TRUE(linksSlice.isObject());
+        auto linkSlice = linksSlice.get("testCollection");
+        ASSERT_TRUE(linkSlice.isObject());
+        auto versionSlice = linkSlice.get("version");
+        ASSERT_TRUE(versionSlice.isNumber());
+        ASSERT_EQ(1, versionSlice.getNumber<uint32_t>());
+      }
+    }
+
+    // update link (user request, explicit version)
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": { \"version\":0 } } }"
+      );
+      EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
+
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.get("deleted").isNone()); // no system properties
+        auto tmpSlice = slice.get("links");
+        EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+        tmpSlice = tmpSlice.get("testCollection");
+        EXPECT_TRUE((true == tmpSlice.isObject()));
+        tmpSlice = tmpSlice.get("includeAllFields");
+        EXPECT_TRUE((true == tmpSlice.isBoolean() && false == tmpSlice.getBoolean()));
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(19, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        auto tmpSlice = slice.get("collections");
+        EXPECT_TRUE((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+        EXPECT_TRUE((false == slice.hasKey("links")));
+      }
+
+      // inventory
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        builder.close();
+
+        auto slice = builder.slice();
+        EXPECT_TRUE(slice.isObject());
+        EXPECT_EQ(15, slice.length());
+        EXPECT_TRUE(slice.get("name").copyString() == "testView");
+        EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        EXPECT_TRUE(slice.hasKey("links"));
+        auto linksSlice = slice.get("links");
+        ASSERT_TRUE(linksSlice.isObject());
+        auto linkSlice = linksSlice.get("testCollection");
+        ASSERT_TRUE(linkSlice.isObject());
+        auto versionSlice = linkSlice.get("version");
+        ASSERT_TRUE(versionSlice.isNumber());
+        ASSERT_EQ(0, versionSlice.getNumber<uint32_t>());
+      }
     }
   }
 
@@ -7099,7 +8125,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
         return false;
@@ -7125,7 +8151,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       arangodb::iresearch::IResearchViewMeta expectedMeta;
 
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
+      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true, true).errorNumber()));
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
@@ -7148,7 +8174,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       expectedMeta._cleanupIntervalStep = 62;
 
-      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true, true).ok()));
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
@@ -7189,7 +8215,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
     auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
 
-    EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
+    EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true, false).errorNumber()));
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
     EXPECT_TRUE((true == logicalView->visitCollections(
                              [](arangodb::DataSourceId) -> bool { return false; })));
@@ -7214,7 +8240,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
         return false;
@@ -7238,7 +8264,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
+      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true, true).errorNumber()));
       EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
         return false;
@@ -7252,7 +8278,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true, true).ok()));
       EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
       EXPECT_TRUE((true == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
         return false;
@@ -7283,7 +8309,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -7309,7 +8335,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
+      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true, true).errorNumber()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -7325,7 +8351,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -7357,7 +8383,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // initial link creation
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
-      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -7383,7 +8409,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
+      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true, true).errorNumber()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -7399,7 +8425,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true).ok()));
+      EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
       EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
       EXPECT_TRUE((false == logicalView->visitCollections([](arangodb::DataSourceId) -> bool {
@@ -7457,7 +8483,7 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
 
       auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection1\": { \"includeAllFields\": true, \"analyzers\":[\"test_analyzer3\"] }}}");
-      EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+      EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
     }
 
     EXPECT_FALSE(analyzers.remove(vocbase->name() + "::test_analyzer3", false).ok()); // used by link
@@ -7465,7 +8491,7 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
     EXPECT_TRUE(analyzers.remove(vocbase->name() + "::test_analyzer3", true).ok());
     EXPECT_EQ(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
-    auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() {
+    auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() noexcept {
       if (view) {
         EXPECT_TRUE(vocbase->dropView(view->id(), false).ok());
         view = nullptr;
@@ -7509,7 +8535,7 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
            }, \
            \"links\": { \"testCollection1\": { \"includeAllFields\": true, \"analyzers\":[\"test_analyzer3\"] }} \
         }");
-      EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+      EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
     }
 
     EXPECT_FALSE(analyzers.remove(vocbase->name() + "::test_analyzer3", false).ok()); // used by link
@@ -7517,7 +8543,7 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
     EXPECT_TRUE(analyzers.remove(vocbase->name() + "::test_analyzer3", true).ok());
     EXPECT_EQ(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
-    auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() {
+    auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() noexcept {
       if (view) {
         EXPECT_TRUE(vocbase->dropView(view->id(), false).ok());
         view = nullptr;
@@ -7562,7 +8588,7 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
            }, \
            \"links\": { \"testCollection1\": { \"includeAllFields\": true, \"analyzers\":[\"test_analyzer3\"] }} \
         }");
-      EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+      EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
     }
 
     EXPECT_FALSE(analyzers.remove(vocbase->name() + "::test_analyzer3", false).ok()); // used by link (we ignore analyzerDefinitions on single-server)
@@ -7570,7 +8596,7 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
     EXPECT_TRUE(analyzers.remove(vocbase->name() + "::test_analyzer3", true).ok());
     EXPECT_EQ(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
-    auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() {
+    auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() noexcept {
       if (view) {
         EXPECT_TRUE(vocbase->dropView(view->id(), false).ok());
         view = nullptr;
@@ -7597,7 +8623,7 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
           "} ");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
-    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice()).ok()));
+    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice(), true).ok()));
     EXPECT_FALSE(!view);
 
     arangodb::velocypack::Builder builder;
@@ -7641,7 +8667,7 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
           "} ");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
-    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice()).ok()));
+    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice(), true).ok()));
     EXPECT_FALSE(!view);
 
     arangodb::velocypack::Builder builder;
@@ -7685,7 +8711,7 @@ TEST_F(IResearchViewTest, create_view_with_stored_value_with_compression) {
       "} ");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
-    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice()).ok()));
+    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice(), true).ok()));
     EXPECT_FALSE(!view);
 
     arangodb::velocypack::Builder builder;

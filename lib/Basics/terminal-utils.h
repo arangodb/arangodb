@@ -50,5 +50,5 @@ TRI_TerminalSize TRI_DefaultTerminalSize();
 /// @brief set the visibility of stdin inputs (turn off for password entry etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetStdinVisibility(bool);
+void TRI_SetStdinVisibility(bool) noexcept;
 

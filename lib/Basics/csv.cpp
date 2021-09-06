@@ -81,7 +81,7 @@ void TRI_InitCsvParser(
 /// @brief destroys a CSV parser
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyCsvParser(TRI_csv_parser_t* parser) {
+void TRI_DestroyCsvParser(TRI_csv_parser_t* parser) noexcept {
   if (parser->_begin != nullptr) {
     TRI_Free(parser->_begin);
   }

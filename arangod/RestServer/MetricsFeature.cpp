@@ -551,7 +551,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
   }
 }
 
-ServerStatistics& MetricsFeature::serverStatistics() {
+ServerStatistics& MetricsFeature::serverStatistics() noexcept {
   return *_serverStatistics;
 }
 
