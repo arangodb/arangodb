@@ -257,7 +257,7 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
 TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
   using namespace std::chrono_literals;
 
-  auto guard = scopeGuard([] {
+  auto guard = scopeGuard([]() noexcept {
     LOG_TOPIC("27bc7", FATAL, Logger::REPLICATION2)
         << "Test terminating early, aborting for debugging";
     FATAL_ERROR_ABORT();

@@ -149,7 +149,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
   std::vector<Future<network::Response>> futures;
   futures.reserve(engines->size());
 
-  TRI_DEFER({
+  ScopeGuard sg([&]() noexcept {
     for (Future<network::Response>& f : futures) {
       try {
         // TODO: As soon as we switch to the new future library, we need to replace the wait with proper *finally* method.
@@ -283,7 +283,7 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   std::vector<Future<network::Response>> futures;
   futures.reserve(engines->size());
 
-  TRI_DEFER({
+  ScopeGuard sg([&]() noexcept {
     for (Future<network::Response>& f : futures) {
       try {
         // TODO: As soon as we switch to the new future library, we need to replace the wait with proper *finally* method.

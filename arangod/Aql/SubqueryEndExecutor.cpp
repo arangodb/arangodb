@@ -132,7 +132,7 @@ auto SubqueryEndExecutor::consumeShadowRow(ShadowAqlItemRow shadowRow,
   output.consumeShadowRow(_infos.getOutputRegister(), shadowRow, guard);
 }
 
-void SubqueryEndExecutor::Accumulator::reset() {
+void SubqueryEndExecutor::Accumulator::reset() noexcept {
   if (_memoryUsage > 0) {
     _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
     _memoryUsage = 0;
@@ -202,7 +202,7 @@ AqlValueGuard SubqueryEndExecutor::Accumulator::stealValue(AqlValue& result) {
 
   // Call reset *after* AqlValueGuard is constructed, so when an exception is
   // thrown, the ValueGuard can free the AqlValue.
-  TRI_DEFER(reset());
+  auto sg = arangodb::scopeGuard([&]() noexcept { reset(); });
 
   return AqlValueGuard{result, true};
 }
