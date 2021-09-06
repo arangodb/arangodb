@@ -476,23 +476,12 @@ bool MoveShard::start(bool&) {
   return false;
 }
 
-auto MoveShard::considerCancellation(std::string const& status) {
-  // Allow for cancellation of shard moves
-  auto [cancel,exists] = 
-    _snapshot.hasAsBool(std::string("/Target/") + status + "/" + _jobId + "/abort");
-  auto cancelled = exists && cancel;
-  if (cancelled) {
-    abort("Killed via API");
-  }
-  return cancelled;
-};
-
 JOB_STATUS MoveShard::status() {
 
   if (_status != PENDING && _status != TODO) {
     if (considerCancellation()) {
       return FAILED;
-    }    
+    }
   }
 
   if (_status != PENDING) {
