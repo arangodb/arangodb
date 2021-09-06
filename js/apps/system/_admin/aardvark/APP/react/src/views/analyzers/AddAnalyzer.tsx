@@ -199,7 +199,10 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
       </ModalBody>
       <ModalFooter>
         <button className="button-close" onClick={() => dispatch({ type: 'reset' })}>Close</button>
-        <button className="button-success" style={{ float: 'right' }} onClick={handleAdd}>Create</button>
+        <button className="button-success" style={{ float: 'right' }} onClick={handleAdd}
+                disabled={state.lockJsonForm}>
+          Create
+        </button>
       </ModalFooter>
     </Modal>
   </>
