@@ -984,6 +984,25 @@ TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief writes from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_read_return_t TRI_WritePipe(ExternalProcess const* process,
+                                 char const* buffer,
+                                size_t bufferSize) {
+  if (process == nullptr || TRI_IS_INVALID_PIPE(process->_writePipe)) {
+    return 0;
+  }
+
+#ifndef _WIN32
+  return TRI_WritePointer(process->_writePipe, buffer, bufferSize);
+#else
+  return TRI_WRITE_POINTER(process->_writePipe, buffer, bufferSize);
+#endif
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
