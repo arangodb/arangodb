@@ -2765,21 +2765,26 @@ Result ClusterInfo::createCollectionsCoordinator(
   std::vector<std::shared_ptr<AgencyCallback>> agencyCallbacks;
 
   auto cbGuard = scopeGuard([&]() noexcept {
-    // We have a subtle race here, that we try to cover against:
-    // We register a callback in the agency.
-    // For some reason this scopeguard is executed (e.g. error case)
-    // While we are in this cleanup, and before a callback is removed from the
-    // agency. The callback is triggered by another thread. We have the
-    // following guarantees: a) cacheMutex|Owner are valid and locked by cleanup
-    // b) isCleaned is valid and now set to true
-    // c) the closure is owned by the callback
-    // d) info might be deleted, so we cannot use it.
-    // e) If the callback is ongoing during cleanup, the callback will
-    //    hold the Mutex and delay the cleanup.
-    RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
-    *isCleaned = true;
-    for (auto& cb : agencyCallbacks) {
-      _agencyCallbackRegistry->unregisterCallback(cb);
+    try {
+      // We have a subtle race here, that we try to cover against:
+      // We register a callback in the agency.
+      // For some reason this scopeguard is executed (e.g. error case)
+      // While we are in this cleanup, and before a callback is removed from the
+      // agency. The callback is triggered by another thread. We have the
+      // following guarantees: a) cacheMutex|Owner are valid and locked by cleanup
+      // b) isCleaned is valid and now set to true
+      // c) the closure is owned by the callback
+      // d) info might be deleted, so we cannot use it.
+      // e) If the callback is ongoing during cleanup, the callback will
+      //    hold the Mutex and delay the cleanup.
+      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
+      *isCleaned = true;
+      for (auto& cb : agencyCallbacks) {
+        _agencyCallbackRegistry->unregisterCallback(cb);
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("cc911", ERR, Logger::CLUSTER)
+          << "Failed to unregister agency callback: " << ex.what();
     }
   });
 
