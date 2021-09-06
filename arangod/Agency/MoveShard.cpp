@@ -476,7 +476,24 @@ bool MoveShard::start(bool&) {
   return false;
 }
 
+auto MoveShard::considerCancellation(std::string const& status) {
+  // Allow for cancellation of shard moves
+  auto [cancel,exists] = 
+    _snapshot.hasAsBool(std::string("/Target/") + status + "/" + _jobId + "/abort");
+  auto cancelled = exists && cancel;
+  if (cancelled) {
+    abort("Killed via API");
+  }
+  return cancelled;
+};
+
 JOB_STATUS MoveShard::status() {
+
+  if (_status != PENDING && _status != TODO) {
+    if (considerCancellation()) {
+      return FAILED;
+    }    
+  }
 
   if (_status != PENDING) {
     return _status;
@@ -496,23 +513,6 @@ JOB_STATUS MoveShard::status() {
 
 JOB_STATUS MoveShard::pendingLeader() {
 
-  auto considerCancellation = [&]() -> bool {
-    // Allow for cancellation of shard moves
-    LOG_DEVEL << pendingPrefix + _jobId + "/abort";
-    auto [cancel,exists] = 
-      _snapshot.hasAsBool(pendingPrefix + _jobId + "/abort");
-    LOG_DEVEL << cancel << " " << exists;
-    auto cancelled = exists && cancel;
-    if (cancelled) {
-      abort("Killed via API");
-    }
-    return cancelled;
-  };
-
-  if (considerCancellation()) {
-    return FAILED;
-  }
-  
   // Find the other shards in the same distributeShardsLike group:
   std::vector<Job::shard_t> shardsLikeMe =
       clones(_snapshot, _database, _collection, _shard);
@@ -847,21 +847,6 @@ JOB_STATUS MoveShard::pendingLeader() {
 }
 
 JOB_STATUS MoveShard::pendingFollower() {
-
-  auto considerCancellation = [&]() -> bool {
-    // Allow for cancellation of shard moves
-    auto [cancel,exists] =
-      _snapshot.hasAsBool(pendingPrefix + _jobId + "/abort");
-    auto cancelled = exists && cancel;
-    if (cancelled) {
-      abort("Killed via API");
-    }
-    return cancelled;
-  };
-  
-  if (considerCancellation()) {
-    return FAILED;
-  }
   
   // Check if any of the servers in the Plan are FAILED, if so,
   // we abort:

@@ -81,6 +81,8 @@ struct MoveShard : public Job {
   void addMoveShardToServerCanUnLock(Builder& ops) const;
   void addMoveShardFromServerCanUnLock(Builder& ops) const;
 
+  bool considerCancellation(std::string const& status);
+
   bool moveShardFinish(bool unlock, bool success, std::string const& msg);
 };
 }  // namespace consensus
