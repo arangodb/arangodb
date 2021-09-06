@@ -31,6 +31,8 @@
 
 #include <velocypack/Iterator.h>
 
+#include "utils/string_utils.hpp"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
@@ -39,7 +41,7 @@ class IResearchQueryLevenhsteinMatchTest : public IResearchQueryTest {};
 
 }  // namespace
 
-TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
+TEST_P(IResearchQueryLevenhsteinMatchTest, test) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
@@ -64,11 +66,19 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     ASSERT_FALSE(!impl);
 
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\": {"
-        "  \"testCollection1\": { \"includeAllFields\": true } "
-        "}}");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    auto viewDefinitionTemplate = R"({
+      "links": {
+        "testCollection1": { "includeAllFields": true, "version": %u }
+      }
+    })";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()));
+
+    auto updateJson = VPackParser::fromJson(viewDefinition);
+
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
@@ -886,3 +896,8 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryLevenhsteinMatchTest,
+  IResearchQueryLevenhsteinMatchTest,
+  GetLinkVersions());

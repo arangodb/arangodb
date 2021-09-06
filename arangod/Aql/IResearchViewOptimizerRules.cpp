@@ -515,7 +515,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
                      std::unique_ptr<ExecutionPlan> plan,
                      OptimizerRule const& rule) {
   auto modified = false;
-  auto const addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() {
+  auto const addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() noexcept {
     opt->addPlan(std::move(plan), rule, modified);
   });
   // arangosearch view node supports late materialization

@@ -222,7 +222,7 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
   }
 
   // this->_proto->timer.cancel();
-  auto guard = scopeGuard([&] { _messages.erase(chunk.header.messageID()); });
+  auto guard = scopeGuard([&]() noexcept { _messages.erase(chunk.header.messageID()); });
   processMessage(std::move(msg.buffer), chunk.header.messageID());
   return true;
 }

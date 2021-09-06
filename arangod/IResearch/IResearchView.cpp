@@ -150,17 +150,17 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchView::ViewFactory : public arangodb::ViewFactory {
   virtual Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                        velocypack::Slice const& definition) const override {
+                        VPackSlice definition, bool isUserRequest) const override {
     auto& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
-    auto& properties = definition.isObject()
-                           ? definition
-                           : velocypack::Slice::emptyObjectSlice();  // if no 'info' then assume defaults
+    auto properties = definition.isObject()
+      ? definition
+      : velocypack::Slice::emptyObjectSlice();  // if no 'info' then assume defaults
     auto links = properties.hasKey(StaticStrings::LinksField)
-                     ? properties.get(StaticStrings::LinksField)
-                     : velocypack::Slice::emptyObjectSlice();
+      ? properties.get(StaticStrings::LinksField)
+      : velocypack::Slice::emptyObjectSlice();
     auto res = engine.inRecovery()
-                   ? Result()  // do not validate if in recovery
-                   : IResearchLinkHelper::validateLinks(vocbase, links);
+      ? Result()  // do not validate if in recovery
+      : IResearchLinkHelper::validateLinks(vocbase, links);
 
     if (!res.ok()) {
       std::string name;
@@ -175,8 +175,8 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     LogicalView::ptr impl;
 
     res = ServerState::instance()->isSingleServer()
-              ? LogicalViewHelperStorageEngine::construct(impl, vocbase, definition)
-              : LogicalViewHelperClusterInfo::construct(impl, vocbase, definition);
+       ? LogicalViewHelperStorageEngine::construct(impl, vocbase, definition)
+       : LogicalViewHelperClusterInfo::construct(impl, vocbase, definition);
 
     if (!res.ok()) {
       std::string name;
@@ -207,7 +207,8 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     try {
       std::unordered_set<DataSourceId> collections;
 
-      res = IResearchLinkHelper::updateLinks(collections, *impl, links);
+      res = IResearchLinkHelper::updateLinks(
+        collections, *impl, links, getDefaultVersion(isUserRequest));
 
       if (!res.ok()) {
         LOG_TOPIC("d683b", WARN, arangodb::iresearch::TOPIC)
@@ -252,7 +253,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
 
   virtual Result instantiate(LogicalView::ptr& view,
                              TRI_vocbase_t& vocbase,
-                             velocypack::Slice const& definition) const override {
+                             VPackSlice definition) const override {
     std::string error;
     IResearchViewMeta meta;
     IResearchViewMetaState metaState;
@@ -270,7 +271,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     }
 
     auto impl = std::shared_ptr<IResearchView>(
-        new IResearchView(vocbase, definition, std::move(meta)));
+      new IResearchView(vocbase, definition, std::move(meta)));
 
     // NOTE: for single-server must have full list of collections to lock
     //       for cluster the shards to lock come from coordinator and are not in
@@ -590,6 +591,7 @@ Result IResearchView::dropImpl() {
       res = IResearchLinkHelper::updateLinks(
         collections, *this,
         velocypack::Slice::emptyObjectSlice(),
+        LinkVersion::MAX, // we don't care of link version due to removal only request
         stale);
     }
 
@@ -745,9 +747,10 @@ void IResearchView::open() {
 }
 
 Result IResearchView::properties(
-    velocypack::Slice const& properties,
+    velocypack::Slice properties,
+    bool isUserRequest,
     bool partialUpdate) {
-  auto res = updateProperties(properties, partialUpdate);
+  auto res = updateProperties(properties, isUserRequest, partialUpdate);
 
   if (!res.ok()) {
     return res;
@@ -969,7 +972,9 @@ Result IResearchView::unlink(DataSourceId cid) noexcept {
 }
 
 Result IResearchView::updateProperties(
-    velocypack::Slice slice, bool partialUpdate) {
+    velocypack::Slice slice,
+    bool isUserRequest,
+    bool partialUpdate) {
   try {
     auto links = slice.hasKey(StaticStrings::LinksField)
                      ? slice.get(StaticStrings::LinksField)
@@ -1055,7 +1060,8 @@ Result IResearchView::updateProperties(
 
       auto lock = irs::make_lock_guard(_updateLinksLock);
 
-      return IResearchLinkHelper::updateLinks(collections, *this, links);
+      return IResearchLinkHelper::updateLinks(
+        collections, *this, links, getDefaultVersion(isUserRequest));
     }
 
     std::unordered_set<DataSourceId> stale;
@@ -1068,7 +1074,8 @@ Result IResearchView::updateProperties(
 
     auto lock = irs::make_lock_guard(_updateLinksLock);
 
-    return IResearchLinkHelper::updateLinks(collections, *this, links, stale);
+    return IResearchLinkHelper::updateLinks(
+      collections, *this, links, getDefaultVersion(isUserRequest), stale);
   } catch (basics::Exception& e) {
     LOG_TOPIC("74705", WARN, iresearch::TOPIC)
       << "caught exception while updating properties for arangosearch view '" << name() << "': " << e.code() << " " << e.what();

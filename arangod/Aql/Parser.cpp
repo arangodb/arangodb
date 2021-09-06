@@ -96,7 +96,7 @@ void Parser::parse() {
   TRI_ASSERT(_scanner != nullptr);
   Aqlset_extra(this, _scanner);
 
-  auto guard = scopeGuard([this]() {
+  auto guard = scopeGuard([this]() noexcept {
     Aqllex_destroy(_scanner);
     _scanner = nullptr;
   });
