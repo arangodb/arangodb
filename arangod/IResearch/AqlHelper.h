@@ -241,6 +241,8 @@ struct QueryContext {
   aql::ExpressionContext* ctx;
   irs::index_reader const* index;
   aql::Variable const* ref;
+  /// @brief allow optimize away/modify some conditions during filter building
+  bool allowFiltersMerge {false};
 };  // QueryContext
 
 ////////////////////////////////////////////////////////////////////////////////

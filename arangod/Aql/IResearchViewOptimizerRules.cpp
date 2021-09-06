@@ -178,7 +178,12 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
 
   // check filter condition if present
   if (searchCondition.root()) {
-    groupStartsAndLevenshtein(*searchCondition.root(), plan);
+    if (viewNode.scorers().empty()) {
+      // we could benefit from merging STARTS_WITH and LEVENSHTEIN_MATCH
+      // if there is no scorers (with scorers we can't as it will affect score values)
+      // to do so we need to have all levenshtein filters present before first starts_with
+      groupStartsAndLevenshtein(*searchCondition.root(), plan);
+    }
     auto filterCreated = FilterFactory::filter(
       nullptr,
       { &query.trxForOptimization(), nullptr, nullptr, nullptr, nullptr, &viewNode.outVariable() },
@@ -775,13 +780,13 @@ void handleViewsRule(Optimizer* opt,
       modified |= optimizeSort(viewNode, plan.get());
     }
 
-    if (!optimizeSearchCondition(viewNode, query, *plan)) {
-      continue;
-    }
-
     // find scorers that have to be evaluated by a view
     scorerReplacer.extract(viewNode.outVariable(), scorers);
     viewNode.scorers(std::move(scorers));
+
+    if (!optimizeSearchCondition(viewNode, query, *plan)) {
+      continue;
+    }
 
     modified = true;
   }

@@ -3570,7 +3570,62 @@ Result fromFuncStartsWith(
 
     TRI_ASSERT(filterCtx.analyzer);
     kludge::mangleField(name, filterCtx.analyzer);
-    filter->boost(filterCtx.boost);
+    filter->boost(filterCtx.boost); // FIXME: should boost new filter, not existing!
+
+    // Try to optimize us away
+    if (!isMultiPrefix && ctx.allowFiltersMerge && filter->type() == irs::type<irs::And>::id()) {
+      for (auto& f : *filter) {
+        if (f.type() == irs::type<irs::by_edit_distance>::id()) {
+          auto& levenshtein = static_cast<irs::by_edit_distance&>(f);
+          if (*levenshtein.mutable_field() == name) {
+            auto options = levenshtein.mutable_options();
+            auto startsWith = prefixes.back().second;
+            if (options->prefix.empty()) {
+              // no-prefix. Maybe term contains suitable prefix ?
+              if (options->term.size() > startsWith.size() && 
+                  std::memcmp(options->term.data(), startsWith.c_str(), startsWith.size())) {
+                // common prefix found.
+                options->prefix = irs::ref_cast<irs::byte_type>(startsWith);
+                options->term.erase(options->term.begin(), options->term.begin() + startsWith.size());
+                return {};
+              }
+            } else {
+              if (irs::ref_cast<irs::byte_type>(startsWith) == options->prefix) {
+                // clear match. nothing to do. We are already covered by this levenshtein
+                return {};
+              } else if (startsWith.size() < options->prefix.size()) {
+                if (std::memcmp(options->prefix.data(), startsWith.c_str(),
+                                startsWith.size()) == 0) {
+                  // Nothing to do. We are already covered by this levenshtein prefix
+                  return {};
+                }
+               } else {
+                // maybe we could enlarge prefix to cover us?
+                 if (std::memcmp(options->prefix.data(), startsWith.c_str(),
+                                 options->prefix.size()) == 0) {
+                   // looks promising - beginning of the levenshtein prefix is ok
+                   auto prefixTailSize = startsWith.size() - options->prefix.size();
+                   if (options->term.size() > prefixTailSize &&
+                       std::memcmp(options->term.data(),
+                                   startsWith.c_str() + options->prefix.size(),
+                                   prefixTailSize) == 0) {
+                     // we could enlarge prefix
+                     options->prefix = irs::ref_cast<irs::byte_type>(startsWith);
+                     options->term.erase(options->term.begin(),
+                                         options->term.begin() + prefixTailSize);
+                     return {};
+                   }
+                 }
+                // FIXME: if levenshtein term.size() + prefix.size() + max_distance < startsWith.size()
+                //        this is impossible condition so we could replace whole conjunction with an empty
+                //        filter. But current API does not allow filters removal
+                //        Also we could check if there is a contradiction in prefixes and make an empty filter.
+              }
+            }
+          }
+        }
+      }
+    }
 
     if (isMultiPrefix) {
       auto& minMatchFilter = filter->add<irs::Or>();
