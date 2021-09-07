@@ -639,7 +639,6 @@ TEST_P(DFSFinderTest, path_loop) {
   }
 
   {
-    result.clear();
     auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
     EXPECT_TRUE(finder.isDone());
@@ -703,7 +702,6 @@ TEST_P(DFSFinderTest, triangle_loop) {
   }
 
   {
-    result.clear();
     // Try again to make sure we stay at non-existing
     auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
