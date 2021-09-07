@@ -167,12 +167,6 @@ class GraphManager {
   std::pair<Result, std::string> ensureEnterpriseCollectionSharding(
       Graph const* graph, bool waitForSync,
       std::unordered_set<std::string>& documentCollections) const;
-  std::pair<Result, std::string> ensureSmartCollectionSharding(
-      Graph const* graph, bool waitForSync,
-      std::unordered_set<std::string>& documentCollections) const;
-  std::pair<Result, std::string> ensureSatelliteCollectionSharding(
-      Graph const* graph, bool waitForSync,
-      std::unordered_set<std::string>& documentCollections) const;
 #endif
 
   Result ensureCollections(
