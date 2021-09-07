@@ -291,7 +291,7 @@ RestStatus RestAdminClusterHandler::execute() {
     bool const isWriteOperation =  (request()->requestType() != rest::RequestType::GET);
     std::string const& apiJwtPolicy = server().getFeature<ClusterFeature>().apiJwtPolicy();
 
-    if (apiJwtPolicy == "jwt-all" || 
+    if (apiJwtPolicy == "jwt-all" ||
         (apiJwtPolicy == "jwt-write" && isWriteOperation)) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
       return RestStatus::DONE;
@@ -456,7 +456,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
                 return futures::makeFuture();
               });
         }
-                    
+
         TRI_IF_FAILURE("removeServer::noRetry") {
           generateError(Result(TRI_ERROR_HTTP_PRECONDITION_FAILED));
           return futures::makeFuture();
@@ -532,18 +532,18 @@ RestStatus RestAdminClusterHandler::handleShardStatistics() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
-    
+
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
     return RestStatus::DONE;
   }
-  
+
   if (!_vocbase.isSystem()) {
     generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
                   TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     return RestStatus::DONE;
   }
-  
+
   std::string const& restrictServer = _request->value("DBserver");
   bool details = _request->parsedValue("details", false);
 
@@ -944,8 +944,9 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
         LOG_TOPIC("eb139", INFO, Logger::SUPERVISION)
           << "Attempting to abort supervision job " << job.toJson();
         auto type = job.get("type").copyString();
-        if (type != "moveShard") { // only moveshard may be aborted
-          generateError(Result{400, "Only MoveShard jobs can be aborted"});
+         // only moveshard and cleanoutserver may be aborted
+        if (type != "moveShard" && type != "cleanOutServer") {
+          generateError(Result{400, "Only MoveShard and CleanOutServer jobs can be aborted"});
           return RestStatus::DONE;
         } else if (path[2] != "Pending" && path[2] != "ToDo") {
           generateError(Result{400, path[2] + " jobs can no longer be cancelled."});
@@ -982,7 +983,11 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
           .thenValue([this](AsyncAgencyCommResult&& wr) {
             if (!wr.ok()) {
               if (wr.statusCode() == 412) {
-                generateError(Result{412, "Job is no longer running"});
+                try {
+                  auto results = rw.slice().get("results");
+                  if (results[0] == 0 && results[1] == 0) {
+                    generateError(Result{412, "Job is no longer running"});
+                  }
               } else {
                 generateError(wr.asResult());
               }
@@ -1202,7 +1207,7 @@ RestStatus RestAdminClusterHandler::handleShardDistribution() {
     builder.add(VPackValue("results"));
     reporter->getDistributionForDatabase(_vocbase.name(), builder);
   }
-  generateOk(rest::ResponseCode::OK, builder); 
+  generateOk(rest::ResponseCode::OK, builder);
   return RestStatus::DONE;
 }
 
@@ -1221,7 +1226,7 @@ RestStatus RestAdminClusterHandler::handleGetCollectionShardDistribution(std::st
     builder.add(VPackValue("results"));
     reporter->getCollectionDistributionForDatabase(_vocbase.name(), collection, builder);
   }
-  generateOk(rest::ResponseCode::OK, builder); 
+  generateOk(rest::ResponseCode::OK, builder);
   return RestStatus::DONE;
 }
 
@@ -1471,7 +1476,7 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
                                                   targetPath->cleanedServers()->vec()));
               }
 
-              generateOk(rest::ResponseCode::OK, builder); 
+              generateOk(rest::ResponseCode::OK, builder);
             } else {
               generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                             "agency communication failed");
