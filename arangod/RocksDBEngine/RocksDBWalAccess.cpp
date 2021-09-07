@@ -836,13 +836,11 @@ void RocksDBWalAccess::printWal(Filter const& filter, size_t chunkSize,
 
     dumper.startNewBatch(batch.sequence);
     s = batch.writeBatchPtr->Iterate(&dumper);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (batch.writeBatchPtr->Count() == 0) {
       // there can be completely empty write batches. in case we encounter
       // some, we cannot assume the tick gets increased next time
       dumper.disableTickCheck();
     }
-#endif
     TRI_ASSERT(s.ok());
 
     uint64_t batchEndSeq = dumper.endBatch();        // end tick of the batch
