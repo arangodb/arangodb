@@ -92,7 +92,7 @@ bool Job::considerCancellation() {
   // Allow for cancellation of shard moves
   auto abort = 
     _snapshot.hasAsBool(std::string("/Target/") + jobStatus[_status] + "/" + _jobId + "/abort");
-  auto cancelled = abort && abort.value;
+  auto cancelled = abort && abort.value();
   if (cancelled) {
     abort("Killed via API");
   }
