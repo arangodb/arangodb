@@ -83,10 +83,7 @@ JOB_STATUS CleanOutServer::status() {
 
   if (found > 0) {  // some subjob still running
     // consider cancellation
-    if (considerCancellation()) {
-      return FAILED;
-    }
-    return PENDING;
+    return considerCancellation() ? FAILED : PENDING;
   }
 
   Node::Children const& failed = _snapshot.hasAsChildren(failedPrefix).first;
