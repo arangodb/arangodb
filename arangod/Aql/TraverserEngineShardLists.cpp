@@ -72,7 +72,7 @@ TraverserEngineShardLists::TraverserEngineShardLists(
 
 std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
     std::unordered_map<ShardID, ServerID> const& shardMapping, ServerID const& server,
-    std::shared_ptr<std::vector<std::string>> shardIds, bool colIsSatellite) {
+    std::shared_ptr<std::vector<std::string>> shardIds, bool allowReadFromFollower) {
   std::vector<ShardID> localShards;
   for (auto const& shard : *shardIds) {
     auto const& it = shardMapping.find(shard);
@@ -81,7 +81,7 @@ std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
       localShards.emplace_back(shard);
       // Guaranteed that the traversal will be executed on this server.
       _hasShard = true;
-    } else if (colIsSatellite) {
+    } else if (allowReadFromFollower) {
       // The satellite does not force run of a traversal here.
       localShards.emplace_back(shard);
     }
