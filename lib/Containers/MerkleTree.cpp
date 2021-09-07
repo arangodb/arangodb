@@ -55,8 +55,6 @@
 #include "Basics/debugging.h"
 #include "Basics/hashes.h"
 
-#include "Logger/LogMacros.h"
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 #include "Random/RandomGenerator.h"
 #endif
