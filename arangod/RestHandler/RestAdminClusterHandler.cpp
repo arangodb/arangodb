@@ -986,7 +986,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
                 try {
                   auto results = rw.slice().get("results");
                   if (results[0] == 0 && results[1] == 0) {
-                    generateError(Result{412, "Job is no longer running"});
+                    generateError(Result{412, "Job is no longer pending or to do"});
                   }
               } else {
                 generateError(wr.asResult());
