@@ -73,7 +73,8 @@ class SingleServerProviderTest : public ::testing::Test {
 
   std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
 
-  std::string stringToMatch = "0-1";
+  // can be used for further testing to generate a expression
+  // std::string stringToMatch = "0-1";
 
   SingleServerProviderTest() {}
   ~SingleServerProviderTest() {}
@@ -97,8 +98,10 @@ class SingleServerProviderTest : public ::testing::Test {
     _varNode = ::InitializeReference(*query->ast(), *_tmpVar);
 
     std::vector<IndexAccessor> usedIndexes{};
-    auto expr = conditionKeyMatches(stringToMatch);
-    usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, expr, 0});
+
+    // can be used to create an expression, currently unused but may be helpful for additional tests
+    // auto expr = conditionKeyMatches(stringToMatch);
+    usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr, 0});
 
     _expressionContext =
         std::make_unique<arangodb::aql::FixedVarExpressionContext>(*_trx, *query, _functionsCache);
@@ -137,11 +140,16 @@ TEST_F(SingleServerProviderTest, it_can_provide_edges) {
                               static_cast<uint32_t>(startVertex.length())};
   Step s = testee.startVertex(hashedStart);
 
+  std::vector<std::string> results = {};
+  VPackBuilder builder;
+
   testee.expand(s, 0, [&](Step next) {
-    VPackBuilder hund;
-    testee.addEdgeToBuilder(next.getEdge(), hund);
-    LOG_DEVEL << next.getVertexIdentifier() << " e: " << hund.toJson();
+    results.push_back(next.getVertex().getID().toString());
   });
+
+  ASSERT_EQ(results.size(), 2);
+  ASSERT_EQ(results.at(0), "v/1");
+  ASSERT_EQ(results.at(1), "v/2");
 }
 
 }  // namespace single_server_provider_test
