@@ -12140,6 +12140,34 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       "RETURN d",
       expected);
   }
+  // prefix too long
+  {
+    irs::Or expected;
+    auto& andFilter = expected.add<irs::And>(); 
+    auto& filter = andFilter.add<irs::by_edit_distance>();
+    *filter.mutable_field() = mangleString("name", "identity");
+    {
+      auto* opts = filter.mutable_options();
+      opts->max_distance = 2;
+      opts->max_terms = 63;
+      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+      opts->with_transpositions = false;
+    }
+    {
+      auto& starts = andFilter.add<irs::by_prefix>();
+      *starts.mutable_field() = mangleString("name", "identity");
+      auto* opt = starts.mutable_options();
+      opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foobard"));
+      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    }
+    assertFilterOptimized(
+      vocbase(),
+      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
+      "AND STARTS_WITH(d.name, 'foobard') "
+      "RETURN d",
+      expected);
+  }
   // name not match
   {
     irs::Or expected;
@@ -12301,6 +12329,43 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       " AND LEVENSHTEIN_MATCH(d.name, 'poor', 2, false, 63) "
       " AND STARTS_WITH(d.name, 'fo') "
       " AND STARTS_WITH(d.name, 'foooab') "
+      " AND LEVENSHTEIN_MATCH(d.name, 'r', 2, false, 63, 'foooab') "
+      " OPTIONS {\"conditionOptimization\":\"none\"} "
+      " RETURN d",
+      expected);
+  }
+  // merge multiple resort 2 levs moar sorting  
+  {
+    irs::Or expected;
+    auto& andF = expected.add<irs::And>();
+    {
+      auto& filter = andF.add<irs::by_edit_distance>();
+      *filter.mutable_field() = mangleString("name", "identity");
+      auto* opts = filter.mutable_options();
+      opts->max_distance = 2;
+      opts->max_terms = 63;
+      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foooab"));
+      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+      opts->with_transpositions = false;
+    }
+    {
+      auto& filter = andF.add<irs::by_edit_distance>();
+      *filter.mutable_field() = mangleString("name", "identity");
+      auto* opts = filter.mutable_options();
+      opts->max_distance = 2;
+      opts->max_terms = 63;
+      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("poo"));
+      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+      opts->with_transpositions = false;
+    }
+    assertFilterOptimized(
+      vocbase(),
+      "FOR d IN testView SEARCH "
+      " STARTS_WITH(d.name, 'f') "
+      " AND STARTS_WITH(d.name, 'poo')"
+      " AND STARTS_WITH(d.name, 'fo') "
+      " AND STARTS_WITH(d.name, 'foooab') "
+      " AND LEVENSHTEIN_MATCH(d.name, 'poor', 2, false, 63) "
       " AND LEVENSHTEIN_MATCH(d.name, 'r', 2, false, 63, 'foooab') "
       " OPTIONS {\"conditionOptimization\":\"none\"} "
       " RETURN d",
