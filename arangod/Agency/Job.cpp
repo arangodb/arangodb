@@ -90,9 +90,9 @@ std::string Job::agencyPrefix = "arango";
 
 bool Job::considerCancellation() {
   // Allow for cancellation of shard moves
-  auto [cancel,exists] = 
+  auto abort = 
     _snapshot.hasAsBool(std::string("/Target/") + jobStatus[_status] + "/" + _jobId + "/abort");
-  auto cancelled = exists && cancel;
+  auto cancelled = abort && abort.value;
   if (cancelled) {
     abort("Killed via API");
   }
