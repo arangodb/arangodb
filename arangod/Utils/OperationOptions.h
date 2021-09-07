@@ -34,6 +34,27 @@ class StringRef;
 }
 class ExecContext;
 
+/// @brief Indicates whether we want to observe writes performed within the
+/// current (sub) transaction. This is only relevant for AQL queries.
+/// AQL queries are performed transcationally, i.e., either all changes are
+/// visible or none (ignoring intermediate commits). A query should observe
+/// (only) the state of the db/transaction at the time the query was started,
+/// e.g., documents that are inserted as part of the current query should not
+/// be visible, otherwise we could easily produce endless loops:
+///   FOR doc IN col INSERT doc INTO col
+/// However, some operations still need to observe these writes. For example,
+/// the internal subquery for an UPSERT must see documents that a previous
+/// UPSERT has inserted. Likewise, modification operations also need to observe
+/// all changes in order to perform unique constraint checks. Therefore, every
+/// read operation must specify whether writes performed within the same (sub)
+/// transaction should be visible or not.
+/// A standalone AQL query represents a single transaction; an AQL query which
+/// is executed inside a streaming transaction is a kind of _sub-transaction_,
+/// i.e., it should observe the changes performed within the transaction so far,
+/// but not the changes performed by the query itself. For more details see
+/// RocksDBTrxMethods.
+enum class ReadOwnWrites : bool { no, yes, };
+
 /// @brief: mode to signal how operation should behave
 enum class IndexOperationMode : uint8_t { normal, internal, rollback };
 
@@ -139,6 +160,11 @@ struct OperationOptions {
   // for exactly this case on a coordinator, in order to make it set a special
   // header when putting together the requests for DB servers
   bool documentCallFromAql;
+
+  // whether or not indexing can be disabed. We must not disable indexing if we have to ensure
+  // that writes become visible to the current query.
+  // This is necessary for UPSERTS where the subquery relies on a non-unique secondary index.
+  bool canDisableIndexing = true;
 
   // get associated execution context
   ExecContext const& context() const;

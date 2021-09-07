@@ -46,8 +46,6 @@ class text_token_normalizing_stream final
     bool accent{true}; // no extra normalization
   };
 
-  struct state_t;
-
   static constexpr string_ref type_name() noexcept { return "norm"; }
   static void init(); // for trigering registration in a static build
   static ptr make(const string_ref& locale);
@@ -66,8 +64,13 @@ class text_token_normalizing_stream final
     payload,         // raw token value
     term_attribute>; // token value with evaluated quotes
 
+  struct state_t;
+  struct state_deleter_t {
+    void operator()(state_t*) const noexcept;
+  };
+
   attributes attrs_;
-  std::shared_ptr<state_t> state_;
+  std::unique_ptr<state_t, state_deleter_t> state_;
   bool term_eof_;
 };
 

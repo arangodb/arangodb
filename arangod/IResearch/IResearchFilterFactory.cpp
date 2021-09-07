@@ -470,11 +470,9 @@ struct FilterContext {
   irs::boost_t boost;
 };  // FilterContext
 
-typedef std::function<
-  Result(char const* funcName, irs::boolean_filter*,
-         QueryContext const&, FilterContext const&,
-         aql::AstNode const&)
-> ConvertionHandler;
+using ConvertionHandler = Result(*)(char const* funcName, irs::boolean_filter*,
+                                    QueryContext const&, FilterContext const&,
+                                    aql::AstNode const&);
 
 // forward declaration
 Result filter(irs::boolean_filter* filter,
@@ -3832,7 +3830,7 @@ Result fromFuncGeoContainsIntersect(
   return {};
 }
 
-std::map<irs::string_ref, ConvertionHandler> const FCallUserConvertionHandlers;
+frozen::map<irs::string_ref, ConvertionHandler, 0> constexpr FCallUserConvertionHandlers{};
 
 Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
                      FilterContext const& filterCtx, aql::AstNode const& node) {
@@ -3876,7 +3874,7 @@ Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
   return entry->second(entry->first.c_str(), filter, ctx, filterCtx, *args);
 }
 
-std::map<irs::string_ref, ConvertionHandler> const FCallSystemConvertionHandlers{
+frozen::map<irs::string_ref, ConvertionHandler, 13> constexpr FCallSystemConvertionHandlers{
   // filter functions
   {"PHRASE", fromFuncPhrase},
   {"STARTS_WITH", fromFuncStartsWith},

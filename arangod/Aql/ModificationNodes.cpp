@@ -540,6 +540,8 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
 
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
+  // We must not disable indexing for UPSERTs because the subquery might rely on a non-unique secondary index
+  options.canDisableIndexing = false;
 
   auto executorInfos = ModificationExecutorInfos(
       &engine,

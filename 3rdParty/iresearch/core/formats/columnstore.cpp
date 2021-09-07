@@ -395,11 +395,11 @@ class writer final : public irs::columnstore_writer {
   class column final : public irs::column_output {
    public:
     explicit column(writer& ctx, const irs::type_info& type,
-                    const compression::compressor::ptr& compressor,
+                    compression::compressor::ptr compressor,
                     encryption::stream* cipher)
       : ctx_(&ctx),
         comp_type_(type),
-        comp_(compressor),
+        comp_(std::move(compressor)),
         cipher_(cipher),
         blocks_index_(*ctx.alloc_),
         block_buf_(2*MAX_DATA_BLOCK_SIZE, 0) {
@@ -630,7 +630,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
   }
 
   const auto id = columns_.size();
-  columns_.emplace_back(*this, info.compression(), compressor, cipher);
+  columns_.emplace_back(*this, info.compression(), std::move(compressor), cipher);
   auto& column = columns_.back();
 
   return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {
@@ -1644,7 +1644,7 @@ class column
     if (!avg_block_count_) {
       avg_block_count_ = count_;
     }
-    decomp_ = decomp;
+    decomp_ = std::move(decomp);
   }
 
   bool encrypted() const noexcept { return encrypted_; }
@@ -1807,7 +1807,7 @@ class sparse_column final : public column {
   }
 
   virtual void read(data_input& in, uint64_t* buf, compression::decompressor::ptr decomp) override {
-    column::read(in, buf, decomp); // read common header
+    column::read(in, buf, std::move(decomp)); // read common header
 
     uint32_t blocks_count = in.read_vint(); // total number of column index blocks
 
@@ -1999,7 +1999,7 @@ class dense_fixed_offset_column final : public column {
   }
 
   virtual void read(data_input& in, uint64_t* buf, compression::decompressor::ptr decomp) override {
-    column::read(in, buf, decomp); // read common header
+    column::read(in, buf, std::move(decomp)); // read common header
 
     size_t blocks_count = in.read_vint(); // total number of column index blocks
 
@@ -2170,7 +2170,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     // potentially removed on merge, so we don't validate
     // column properties using such blocks
 
-    column::read(in, buf, decomp); // read common header
+    column::read(in, buf, std::move(decomp)); // read common header
 
     uint32_t blocks_count = in.read_vint(); // total number of column index blocks
 
@@ -2461,7 +2461,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     }
 
     try {
-      column->read(*stream, buf, decomp);
+      column->read(*stream, buf, std::move(decomp));
     } catch (...) {
       IR_FRMT_ERROR("Failed to load column id=" IR_SIZE_T_SPECIFIER, i);
 

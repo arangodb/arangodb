@@ -34,16 +34,21 @@ RocksDBBatchedWithIndexMethods::RocksDBBatchedWithIndexMethods(rocksdb::Transact
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                                     rocksdb::Slice const& key,
-                                                    rocksdb::PinnableSlice* val) {
+                                                    rocksdb::PinnableSlice* val,
+                                                    ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
-  return _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
+  if (readOwnWrites == ReadOwnWrites::yes) {
+    return _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
+  } else {
+    return _db->Get(ro, cf, key, val);
+  }
 }
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
                                                              rocksdb::Slice const& key,
                                                              rocksdb::PinnableSlice* val) {
-  return this->Get(cf, key, val);
+  return this->Get(cf, key, val, ReadOwnWrites::yes); // update operations always have to read own writes
 }
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::Put(rocksdb::ColumnFamilyHandle* cf,

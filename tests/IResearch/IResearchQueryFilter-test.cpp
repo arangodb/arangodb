@@ -34,23 +34,17 @@
 
 #include <velocypack/Iterator.h>
 
+#include "utils/string_utils.hpp"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
 
 class IResearchQueryFilterTest : public IResearchQueryTest {};
 
 }  // namespace
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-TEST_F(IResearchQueryFilterTest, SearchAndFilter) {
+TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
   // ==, !=, <, <=, >, >=, range
   static std::vector<std::string> const EMPTY;
 
@@ -95,12 +89,23 @@ TEST_F(IResearchQueryFilterTest, SearchAndFilter) {
 
   // add link to collection
   {
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\" : {"
-        "\"collection_1\" : { \"includeAllFields\" : true },"
-        "\"collection_2\" : { \"includeAllFields\" : true }"
-        "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    auto viewDefinitionTemplate = R"({ "links": {
+      "collection_1": {
+        "includeAllFields": true,
+        "version": %u },
+      "collection_2": {
+        "includeAllFields": true,
+        "version": %u }
+    }})";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
+
+    auto updateJson = VPackParser::fromJson(viewDefinition);
+
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -212,3 +217,8 @@ TEST_F(IResearchQueryFilterTest, SearchAndFilter) {
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_QUERY_PARSE));
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryFilterTest,
+  IResearchQueryFilterTest,
+  GetLinkVersions());

@@ -416,7 +416,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
   ErrorCode cleanupReason = TRI_ERROR_CLUSTER_TIMEOUT;
   
-  auto cleanupGuard = scopeGuard([this, &serverToQueryId, &cleanupReason]() {
+  auto cleanupGuard = scopeGuard([this, &serverToQueryId, &cleanupReason]() noexcept {
     try {
       transaction::Methods& trx = _query.trxForOptimization();
       auto requests = cleanupEngines(cleanupReason, _query.vocbase().name(), serverToQueryId);
@@ -450,7 +450,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // DB server(s).
   _query.queryOptions().ttl = std::max<double>(oldTtl, transaction::Manager::idleTTLDBServer);
 
-  auto ttlGuard = scopeGuard([this, oldTtl]() {
+  auto ttlGuard = scopeGuard([this, oldTtl]() noexcept {
     // restore previous TTL value
     _query.queryOptions().ttl = oldTtl;
   });

@@ -69,10 +69,10 @@ class column final : public irs::column_output {
   explicit column(
       const context& ctx,
       const irs::type_info& compression,
-      const compression::compressor::ptr& deflater)
+      compression::compressor::ptr deflater)
     : ctx_{ctx},
       compression_{compression},
-      deflater_{deflater} {
+      deflater_{std::move(deflater)} {
   }
 
   void prepare(doc_id_t key) {

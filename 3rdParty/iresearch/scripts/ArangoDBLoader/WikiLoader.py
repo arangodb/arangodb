@@ -28,6 +28,7 @@
 import sys
 import csv
 import ctypes
+import time
 from arango import ArangoClient
 
 monthDecode = {
@@ -83,23 +84,40 @@ def main():
   reader = csv.reader(f, delimiter='\t')
   data = []
   total = 0
+  totaltimeNs = 0
   count = offset
   for row in reader:
     if offset > 0:
       offset = offset - 1
       continue
-    data.append({'title': row[0], 'body': row[2], 'count': count, 'created':decodeDate(row[1])})
+    data.append({'title': row[0].replace("\n", "\\n").replace("\"", "'").replace("\\","/"),
+                 'body': row[2].replace("\n", "\\n").replace("\"", "'").replace("\\","/"),
+                 'count': count, 'created':decodeDate(row[1])})
     if len(data) > batch_size:
+      # start time
+      start = time.perf_counter_ns()
       wikipedia.insert_many(data)
+      # stop time
+      took = (time.perf_counter_ns() - start)
+      totaltimeNs += took
       data.clear()
-      print('Loaded ' + str(total) + ' ' + str( round((total/line_limit) * 100, 2)) +  '% \n')
+      print('Loaded ' + str(total) + ' ' + str( round((total/line_limit) * 100, 2)) +
+            '%  in total ' + str(totaltimeNs / 1000000) + 'ms Batch:' + 
+            str(took/1000000) + 'ms Avg:' + str( (totaltimeNs/ (total/batch_size))/1000000) + 'ms \n')
     total = total + 1
     if total >= line_limit:
       break
     count = count + 1
   if len(data) > 0:
+    # start time
+    start = time.perf_counter_ns()
     wikipedia.insert_many(data)
-    print('Loaded ' + str(total) + ' ' + str( round((total/line_limit) * 100, 2)) +  '% \n')
+    # stop time
+    took = (time.perf_counter_ns() - start)
+    totaltimeNs += took
+    print('Loaded ' + str(total) + ' ' + str( round((total/line_limit) * 100, 2)) +
+          '%  in total ' + str(totaltimeNs / 1000000) + 'ms Batch:' +
+          str(took/1000000) + 'ms Avg:' + str( (totaltimeNs/ (total/batch_size))/1000000) + 'ms \n')
   f.close()
 
   

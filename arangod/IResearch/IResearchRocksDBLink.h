@@ -126,12 +126,12 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
     IndexFactory(application_features::ApplicationServer& server);
 
    public:
-    bool equal(VPackSlice const& lhs,
-               VPackSlice const& rhs,
+    bool equal(VPackSlice lhs,
+               VPackSlice rhs,
                std::string const& dbname) const override;
 
     std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                       VPackSlice const& definition,
+                                       VPackSlice definition,
                                        IndexId id,
                                        bool /*isClusterConstructor*/) const override;
 
