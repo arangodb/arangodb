@@ -150,7 +150,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
     std::pair<bool, bool> volatility, IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
-    int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs, iresearch::CountApproximate countApproximate)
+    int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
+    iresearch::CountApproximate countApproximate, bool allowFiltersMerge)
     : _scoreRegisters(std::move(scoreRegisters)),
       _reader(std::move(reader)),
       _query(query),
@@ -167,7 +168,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _depth(depth),
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
       _countApproximate(countApproximate),
-      _filterConditionIsEmpty(::filterConditionIsEmpty(&_filterCondition)) {
+      _filterConditionIsEmpty(::filterConditionIsEmpty(&_filterCondition)),
+      _allowFiltersMerge(allowFiltersMerge) {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{[&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
@@ -601,7 +603,7 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
   iresearch::QueryContext const queryCtx = { &_trx, plan, plan->getAst(),
                                             &_ctx, _reader.get(), &infos().outVariable(),
                                             // if no scoring we could agressively optimize some filters
-                                            infos().scorers().empty()};
+                                            infos().allowFiltersMerge()};
 
   if (infos().volatileFilter() || !_isInitialized) {  // `_volatileSort` implies `_volatileFilter`
     irs::Or root;

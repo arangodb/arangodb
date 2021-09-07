@@ -179,6 +179,10 @@ void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const
       }
     }
   }
+
+  if (!options.allowFiltersMerge) {
+    builder.add("allowFiltersMerge", VPackValue(options.allowFiltersMerge));
+  }
 }
 
 bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& options) {
@@ -281,6 +285,18 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
         return false;
       }
       options.countApproximate = conditionTypeIt->second;
+    }
+  }
+
+  // allowFiltersMerge
+  {
+    auto const optionSlice = optionsSlice.get("allowFiltersMerge");
+    if (!optionSlice.isNone()) {
+      // 'allowFiltersMerge' is optional
+      if (!optionSlice.isBool()) {
+        return false;
+      }
+      options.allowFiltersMerge = optionSlice.getBool();
     }
   }
 
@@ -437,6 +453,17 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
            return false;
          }
          options.conditionOptimization = conditionTypeIt->second;
+         return true;
+       }},
+       // cppcheck-suppress constStatement
+       {"allowFiltersMerge", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
+                                  aql::AstNode const& value,
+                                  IResearchViewNode::Options& options, std::string& error) {
+         if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
+           error = "bool value expected for option 'allowFiltersMerge'";
+           return false;
+         }
+         options.allowFiltersMerge = value.getBoolValue();
          return true;
        }}};
 
@@ -1660,7 +1687,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                         getRegisterPlan()->varInfo,   // ??? do we need this?
                                         getDepth(),
                                         std::move(outNonMaterializedViewRegs),
-                                        _options.countApproximate};
+                                        _options.countApproximate,
+                                        allowFiltersMerge()};
 
     return std::make_tuple(materializeType, std::move(executorInfos), std::move(registerInfos));
   };

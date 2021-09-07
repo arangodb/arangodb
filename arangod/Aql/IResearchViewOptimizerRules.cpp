@@ -178,7 +178,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
 
   // check filter condition if present
   if (searchCondition.root()) {
-    if (viewNode.scorers().empty()) {
+    if (viewNode.scorers().empty() && viewNode.options().allowFiltersMerge) {
       // we could benefit from merging STARTS_WITH and LEVENSHTEIN_MATCH
       // if there is no scorers (with scorers we can't as it will affect score values)
       // to do so we need to have all levenshtein filters present before first starts_with

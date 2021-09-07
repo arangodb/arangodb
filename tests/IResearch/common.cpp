@@ -635,7 +635,8 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
     irs::Or actualFilter;
     arangodb::iresearch::QueryContext const ctx{&trx, plan, plan->getAst(),
                                                 exprCtx, &irs::sub_reader::empty(),
-                                                &viewNode->outVariable(), viewNode->scorers().empty()};
+                                                &viewNode->outVariable(),
+                                                viewNode->allowFiltersMerge()};
     EXPECT_TRUE(arangodb::iresearch::FilterFactory::filter(&actualFilter, ctx,
                                                            viewNode->filterCondition())
                     .ok());
