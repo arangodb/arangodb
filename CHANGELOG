@@ -1,3 +1,11 @@
+v3.6.13.1 (2021-XX-XX)
+----------------------
+
+* Preselect "create index in background" option when creating indexes in the web
+  UI. The "create index in background" option can be less intrusive because it
+  allows other write operations on the collection to proceed.
+
+
 v3.6.13 (2021-04-07)
 --------------------
 
