@@ -366,8 +366,12 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
 }
 
 void BaseOptions::setCollectionToShard(
-    std::unordered_map<std::string, std::vector<std::string>> const& in) {
-  _collectionToShard = std::move(in);
+    std::unordered_map<std::string, std::string> const& in) {
+  _collectionToShard.clear();
+  _collectionToShard.reserve(in.size());
+  for (auto const& [key, value] : in) {
+    _collectionToShard.emplace(key, std::vector{value});
+  }
 }
 
 arangodb::transaction::Methods* BaseOptions::trx() const { return &_trx; }

@@ -598,7 +598,7 @@ auto QuerySnippet::prepareFirstBranch(
       // there are no local expansions
 
       auto* localGraphNode = ExecutionNode::castTo<LocalGraphNode*>(exp.node);
-      localGraphNode->setCollectionToShard({});  // clear previous information
+      localGraphNode->resetCollectionToShard();  // clear previous information
 
       TRI_ASSERT(localGraphNode->isUsedAsSatellite() == exp.isSatellite);
 
