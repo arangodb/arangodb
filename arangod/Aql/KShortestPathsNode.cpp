@@ -350,10 +350,10 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> reversedUsedIndexes{};
       reversedUsedIndexes.first = buildReverseUsedIndexes();
 
-      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), usedIndexes,
+      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), std::move(usedIndexes),
                                                  opts->getExpressionCtx(),
                                                  opts->collectionToShard());
-      BaseProviderOptions backwardProviderOptions(opts->tmpVar(), reversedUsedIndexes,
+      BaseProviderOptions backwardProviderOptions(opts->tmpVar(), std::move(reversedUsedIndexes),
                                                   opts->getExpressionCtx(),
                                                   opts->collectionToShard());
 
@@ -363,9 +363,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
             KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>;
 
         auto kPathUnique = std::make_unique<KPathRefactored>(
-            SingleServerProvider<SingleServerProviderStep>{opts->query(), forwardProviderOptions,
+            SingleServerProvider<SingleServerProviderStep>{opts->query(), std::move(forwardProviderOptions),
                                                            opts->query().resourceMonitor()},
-            SingleServerProvider<SingleServerProviderStep>{opts->query(), backwardProviderOptions,
+            SingleServerProvider<SingleServerProviderStep>{opts->query(), std::move(backwardProviderOptions),
                                                            opts->query().resourceMonitor()},
             std::move(enumeratorOptions), std::move(validatorOptions),
             opts->query().resourceMonitor());
@@ -382,9 +382,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
             TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>;
         auto kPathUnique = std::make_unique<TracedKPathRefactored>(
             ProviderTracer<SingleServerProvider<SingleServerProviderStep>>{
-                opts->query(), forwardProviderOptions, opts->query().resourceMonitor()},
+                opts->query(), std::move(forwardProviderOptions), opts->query().resourceMonitor()},
             ProviderTracer<SingleServerProvider<SingleServerProviderStep>>{
-                opts->query(), backwardProviderOptions, opts->query().resourceMonitor()},
+                opts->query(), std::move(backwardProviderOptions), opts->query().resourceMonitor()},
             std::move(enumeratorOptions), std::move(validatorOptions),
             opts->query().resourceMonitor());
 

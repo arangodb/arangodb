@@ -43,7 +43,9 @@ namespace graph {
 struct IndexAccessor {
   IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
                 std::optional<size_t> memberToUpdate,
-                std::shared_ptr<arangodb::aql::Expression> expression, size_t cursorId);
+                std::unique_ptr<arangodb::aql::Expression> expression, size_t cursorId);
+  IndexAccessor(IndexAccessor const&) = delete;
+  IndexAccessor(IndexAccessor&&) = default;
 
   aql::AstNode* getCondition() const;
   aql::Expression* getExpression() const;
@@ -59,7 +61,7 @@ struct IndexAccessor {
   // Note: We would prefer to have this a unique_ptr here.
   // However the IndexAccessor is used in std::vector<IndexAccessor>
   // which then refuses to compile (deleted copy constructor)
-  std::shared_ptr<arangodb::aql::Expression> _expression;
+  std::unique_ptr<arangodb::aql::Expression> _expression;
   size_t _cursorId;
 };
 
@@ -70,9 +72,12 @@ struct BaseProviderOptions {
  public:
   BaseProviderOptions(
       aql::Variable const* tmpVar,
-      std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> indexInfo,
+      std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&& indexInfo,
       aql::FixedVarExpressionContext& expressionContext,
       std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap);
+
+  BaseProviderOptions(BaseProviderOptions const&) = delete;
+  BaseProviderOptions(BaseProviderOptions&&) = default;
 
   aql::Variable const* tmpVar() const;
   std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> const& indexInformations() const;

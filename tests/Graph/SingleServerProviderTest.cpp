@@ -115,7 +115,7 @@ class SingleServerProviderTest : public ::testing::Test {
   /*
    * generates a condition #TMP._key == '<toMatch>'
    */
-  std::shared_ptr<aql::Expression> conditionKeyMatches(std::string const& toMatch) {
+  std::unique_ptr<aql::Expression> conditionKeyMatches(std::string const& toMatch) {
     auto expectedKey =
         query->ast()->createNodeValueString(toMatch.c_str(), toMatch.length());
     auto keyAccess =
@@ -125,7 +125,7 @@ class SingleServerProviderTest : public ::testing::Test {
     // This condition cannot be fulfilled
     auto condition = query->ast()->createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
                                                             keyAccess, expectedKey);
-    return std::make_shared<aql::Expression>(query->ast(), condition);
+    return std::make_unique<aql::Expression>(query->ast(), condition);
   }
 };
 
