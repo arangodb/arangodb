@@ -867,8 +867,9 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
         LOG_TOPIC("eb139", INFO, Logger::SUPERVISION)
           << "Attempting to abort supervision job " << job.toJson();
         auto type = job.get("type").copyString();
-        if (type != "moveShard") { // only moveshard may be aborted
-          generateError(Result{400, "Only MoveShard jobs can be aborted"});
+         // only moveshard and cleanoutserver may be aborted
+        if (type != "moveShard" && type != "cleanOutServer") {
+          generateError(Result{400, "Only MoveShard and CleanOutServer jobs can be aborted"});
           return RestStatus::DONE;
         } else if (path[2] != "Pending" && path[2] != "ToDo") {
           generateError(Result{400, path[2] + " jobs can no longer be cancelled."});
@@ -905,7 +906,10 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
           .thenValue([this](AsyncAgencyCommResult&& wr) {
             if (!wr.ok()) {
               if (wr.statusCode() == 412) {
-                generateError(Result{412, "Job is no longer running"});
+                auto results = rw.slice().get("results");
+                if (results[0] == 0 && results[1] == 0) {
+                  generateError(Result{412, "Job is no longer pending or to do"});
+                }
               } else {
                 generateError(wr.asResult());
               }
