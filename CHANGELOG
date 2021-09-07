@@ -1,5 +1,5 @@
-v3.8.2 (XXXX-XX-XX)
--------------------
+v3.8.2-preview.1 (2021-09-07)
+-----------------------------
 
 * (EE only) Bug-fix: If you created a ArangoSearch view on Satellite-
   Collections only and then join with a collection only having a single shard
