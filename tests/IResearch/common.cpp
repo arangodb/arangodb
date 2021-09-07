@@ -148,16 +148,18 @@ namespace iresearch {
     os << lev.field() << ", '";
     std::string termValue(ref_cast<char>(lev.options().term));
     std::string prefixValue(ref_cast<char>(lev.options().prefix));
-     os << termValue << "', " << static_cast<int>(lev.options().max_distance)
-       << ", " << lev.options().with_transpositions
-       << ", " << lev.options().max_terms << ", '" << prefixValue << "']";
+    os << termValue << "', " << static_cast<int>(lev.options().max_distance)
+      << ", " << lev.options().with_transpositions
+      << ", " << lev.options().max_terms << ", '" << prefixValue << "']";
+    return os;
   }
 
   std::ostream& operator<<(std::ostream& os, by_prefix const& filter) {
     os << "STARTS_WITH[";
     os << filter.field() << ", '";
     std::string termValue(ref_cast<char>(filter.options().term));
-     os << termValue << "', " << filter.options().scored_terms_limit << "]";
+    os << termValue << "', " << filter.options().scored_terms_limit << "]";
+    return os;
   }
 
   std::ostream& operator<<(std::ostream& os, filter const& filter) {
@@ -633,7 +635,7 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
     irs::Or actualFilter;
     arangodb::iresearch::QueryContext const ctx{&trx, plan, plan->getAst(),
                                                 exprCtx, &irs::sub_reader::empty(),
-                                                &viewNode->outVariable()};
+                                                &viewNode->outVariable(), viewNode->scorers().empty()};
     EXPECT_TRUE(arangodb::iresearch::FilterFactory::filter(&actualFilter, ctx,
                                                            viewNode->filterCondition())
                     .ok());
