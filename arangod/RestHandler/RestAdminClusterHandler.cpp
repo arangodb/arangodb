@@ -950,7 +950,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
             Result{TRI_ERROR_BAD_PARAMETER, "Only MoveShard and CleanOutServer jobs can be aborted"});
           return RestStatus::DONE;
         } else if (path[2] != "Pending" && path[2] != "ToDo") {
-          generateError(Result,{TRI_ERROR_BAD_PARAMETER, path[2] + " jobs can no longer be cancelled."});
+          generateError(Result{TRI_ERROR_BAD_PARAMETER, path[2] + " jobs can no longer be cancelled."});
           return RestStatus::DONE;
         }
 
