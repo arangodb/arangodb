@@ -966,6 +966,34 @@ void TRI_CreateExternalProcess(char const* executable,
 /// @brief Reads from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
+void TRI_ClosePipe(ExternalProcess* process,
+                   bool read) {
+  if (process == nullptr ||
+      (read && TRI_IS_INVALID_PIPE(process->_readPipe)) ||
+      (!read && TRI_IS_INVALID_PIPE(process->_writePipe))
+      ) {
+    return;
+  }
+
+  auto pipe = (read) ? &process->_readPipe : &process->_writePipe;
+  
+#ifndef _WIN32
+  if (*pipe != -1) {
+    close(*pipe);
+    *pipe = -1;
+  }
+#else
+  if (*pipe != INVALID_HANDLE_VALUE) {
+    CloseHandle(*pipe);
+    *pipe = INVALID_HANDLE_VALUE;
+  }
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reads from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
 TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
                                char* buffer,
                                size_t bufferSize) {

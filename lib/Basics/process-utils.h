@@ -177,6 +177,12 @@ void TRI_CreateExternalProcess(char const* executable,
 /// @brief Reads from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
+void TRI_ClosePipe(ExternalProcess* process,
+                   bool read);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reads from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
 TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
                                char* buffer,
                                size_t bufferSize);
