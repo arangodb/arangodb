@@ -824,7 +824,7 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType> {
   // The skippedRows is a temporary counter used in this function
   // We need to make sure to reset it afterwards.
-  TRI_DEFER(call.resetSkipCount());
+  auto sg = arangodb::scopeGuard([&]() noexcept { call.resetSkipCount(); });
   if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
     if constexpr (isMultiDepExecutor<Executor>) {
       TRI_ASSERT(inputRange.numberDependencies() == _dependencies.size());
@@ -1414,7 +1414,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
         size_t skippedLocal = 0;
         AqlCallType call{};
         if constexpr (executorCanReturnWaiting<Executor>) {
-          TRI_DEFER(ctx.clientCall.resetSkipCount());
+          auto sg = arangodb::scopeGuard([&]() noexcept { ctx.clientCall.resetSkipCount(); });
           ExecutionState executorState = ExecutionState::HASMORE;
           std::tie(executorState, stats, skippedLocal, call) =
               _executor.skipRowsRange(_lastRange, ctx.clientCall);
@@ -1557,7 +1557,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
             << printTypeInfo() << " all produced, fast forward to end up (sub-)query.";
 
         AqlCall callCopy = ctx.clientCall;
-        TRI_DEFER(ctx.clientCall.resetSkipCount());
+        auto sg = arangodb::scopeGuard([&]() noexcept { ctx.clientCall.resetSkipCount(); });
         if constexpr (executorHasSideEffects<Executor>) {
           if (ctx.stack.needToSkipSubquery()) {
             // Fast Forward call.

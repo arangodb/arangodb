@@ -58,7 +58,7 @@ class ReadUnlocker {
   /// The constructor unlocks the lock, the destructors acquires a read-lock.
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ReadUnlocker(ReadWriteLock* readWriteLock)
+  explicit ReadUnlocker(ReadWriteLock* readWriteLock) noexcept
       : _readWriteLock(readWriteLock) {
     _readWriteLock->unlockRead();
   }

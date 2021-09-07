@@ -62,8 +62,8 @@ class text_token_stemming_stream final
 
    attributes attrs_;
    std::locale locale_;
-   std::shared_ptr<sb_stemmer> stemmer_;
    std::string term_buf_; // buffer for the last evaluated term
+   std::unique_ptr<sb_stemmer, void(*)(sb_stemmer*)> stemmer_;
    bool term_eof_;
 };
 

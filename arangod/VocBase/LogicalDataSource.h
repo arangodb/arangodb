@@ -155,13 +155,6 @@ class LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   Result properties(velocypack::Builder& builder, Serialization context) const;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief updates properties of an existing DataSource
-  /// @param definition the properties being updated
-  /// @param partialUpdate modify only the specified properties (false == all)
-  //////////////////////////////////////////////////////////////////////////////
-  virtual Result properties(velocypack::Slice const& definition, bool partialUpdate) = 0;
-
   virtual Result rename(std::string&& newName) = 0;
   bool system() const noexcept { return _system; }
   Type const& type() const noexcept { return _type; }
@@ -171,7 +164,7 @@ class LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append implementation-specific values to the data-source definition
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result appendVelocyPack(velocypack::Builder&, Serialization context) const {
+  virtual Result appendVelocyPack(velocypack::Builder&, Serialization) const {
     return {}; // NOOP by default
   }
 

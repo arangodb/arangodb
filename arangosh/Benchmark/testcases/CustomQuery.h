@@ -47,7 +47,7 @@ namespace arangodb::arangobench {
         size_t length;
         auto* p = TRI_SlurpFile(file.c_str(), &length);
         if (p != nullptr) {
-          auto guard = scopeGuard([&p]() { TRI_Free(p); });
+          auto guard = scopeGuard([&p]() noexcept { TRI_Free(p); });
           _query = std::string(p, length);
         }
       }

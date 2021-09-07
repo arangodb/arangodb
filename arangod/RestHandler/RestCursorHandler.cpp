@@ -123,7 +123,7 @@ RestStatus RestCursorHandler::continueExecute() {
 }
 
 void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
-  TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
+  auto sg = arangodb::scopeGuard([&]() noexcept { RestVocbaseBaseHandler::shutdownExecute(isFinalized); });
 
   // request not done yet
   if (!isFinalized) {
@@ -262,7 +262,7 @@ RestStatus RestCursorHandler::processQuery() {
 
   {
     // always clean up
-    auto guard = scopeGuard([this]() { unregisterQuery(); });
+    auto guard = scopeGuard([this]() noexcept { unregisterQuery(); });
 
     // continue handler is registered earlier
     auto state = _query->execute(_queryResult);
@@ -428,7 +428,7 @@ void RestCursorHandler::registerQuery(std::unique_ptr<arangodb::aql::Query> quer
 /// @brief unregister the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::unregisterQuery() {
+void RestCursorHandler::unregisterQuery() noexcept {
   TRI_IF_FAILURE("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled") {
     _query->debugKillQuery();
   }
