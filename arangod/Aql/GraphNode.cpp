@@ -466,12 +466,14 @@ void GraphNode::setGraphInfoAndCopyColls(std::vector<Collection*> const& edgeCol
                                          std::vector<Collection*> const& vertexColls) {
   _graphInfo.openArray();
   for (auto& it : edgeColls) {
+    TRI_ASSERT(it != nullptr);
     _edgeColls.emplace_back(it);
     _graphInfo.add(VPackValue(it->name()));
   }
   _graphInfo.close();
 
   for (auto& it : vertexColls) {
+    TRI_ASSERT(it != nullptr);
     addVertexCollection(*it);
   }
 }
@@ -547,6 +549,7 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& e : _edgeColls) {
+      TRI_ASSERT(e != nullptr);
       auto const& shard = collectionToShardName(e->name());
       // if the mapped shard for a collection is empty, it means that
       // we have an edge collection that is only relevant on some of the
@@ -561,6 +564,7 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& v : _vertexColls) {
+      TRI_ASSERT(v != nullptr);
       // if the mapped shard for a collection is empty, it means that
       // we have a vertex collection that is only relevant on some of the
       // target servers
@@ -631,6 +635,7 @@ CostEstimate GraphNode::estimateCost() const {
     double baseCost = 1;
     size_t baseNumItems = 0;
     for (auto& e : _edgeColls) {
+      TRI_ASSERT(e != nullptr);
       auto count = e->count(_options->trx(), transaction::CountType::TryCache);
       // Assume an estimate if 10% hit rate
       baseCost *= count / 10;
@@ -794,9 +799,11 @@ std::vector<aql::Collection const*> GraphNode::collections() const {
   set.reserve(_edgeColls.size() + _vertexColls.size());
 
   for (auto const& collPointer : _edgeColls) {
+    TRI_ASSERT(collPointer != nullptr);
     set.emplace(collPointer);
   }
   for (auto const& collPointer : _vertexColls) {
+    TRI_ASSERT(collPointer != nullptr);
     set.emplace(collPointer);
   }
 
