@@ -331,7 +331,7 @@ void FieldIterator::reset(VPackSlice doc, FieldMeta const& linkMeta) {
   _slice = doc;
   _begin = nullptr;
   _end = nullptr;
-  _currentTypedAnalyzer = nullptr;
+  _currentTypedAnalyzer.reset();
   _currentTypedAnalyzerValue = nullptr;
   _primitiveTypeResetter = nullptr;
   _stack.clear();
@@ -468,7 +468,7 @@ bool FieldIterator::setValue(VPackSlice const value,
         if (!analyzer->next()) {
           return false;
         }
-        _currentTypedAnalyzer = analyzer.get();
+        _currentTypedAnalyzer = analyzer;
         _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
         TRI_ASSERT(_currentTypedAnalyzerValue);
         setBoolValue(_currentTypedAnalyzerValue->value);
@@ -489,7 +489,7 @@ bool FieldIterator::setValue(VPackSlice const value,
         if (!analyzer->next()) {
           return false;
         }
-        _currentTypedAnalyzer = analyzer.get();
+        _currentTypedAnalyzer = analyzer;
         _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
         TRI_ASSERT(_currentTypedAnalyzerValue);
         setNumericValue(_currentTypedAnalyzerValue->value);
@@ -536,7 +536,7 @@ void FieldIterator::next() {
        _primitiveTypeResetter(_value._analyzer.get(), _currentTypedAnalyzerValue->value);
        return;
      } else {
-       _currentTypedAnalyzer = nullptr;
+       _currentTypedAnalyzer.reset();
      }
   }
 
