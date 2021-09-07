@@ -60,6 +60,8 @@
 #include "search/scorers.hpp"
 #include "search/term_filter.hpp"
 #include "search/ngram_similarity_filter.hpp"
+#include "search/levenshtein_filter.hpp"
+#include "search/prefix_filter.hpp"
 #include "utils/string.hpp"
 #include "utils/utf8_path.hpp"
 
@@ -133,11 +135,29 @@ namespace iresearch {
 
   std::ostream& operator<<(std::ostream& os, by_ngram_similarity const& filter) {
     os << "NGRAM_SIMILARITY[";
+    os << filter.field() << ", ";
     for (auto ngram : filter.options().ngrams) {
       os << ngram.c_str();
     }
     os << "," << filter.options().threshold << "]";
     return os;
+  }
+
+  std::ostream& operator<<(std::ostream& os, by_edit_distance const& lev) {
+    os << "LEVENSHTEIN_MATCH[";
+    os << lev.field() << ", '";
+    std::string termValue(ref_cast<char>(lev.options().term));
+    std::string prefixValue(ref_cast<char>(lev.options().prefix));
+     os << termValue << "', " << static_cast<int>(lev.options().max_distance)
+       << ", " << lev.options().with_transpositions
+       << ", " << lev.options().max_terms << ", '" << prefixValue << "']";
+  }
+
+  std::ostream& operator<<(std::ostream& os, by_prefix const& filter) {
+    os << "STARTS_WITH[";
+    os << filter.field() << ", '";
+    std::string termValue(ref_cast<char>(filter.options().term));
+     os << termValue << "', " << filter.options().scored_terms_limit << "]";
   }
 
   std::ostream& operator<<(std::ostream& os, filter const& filter) {
@@ -154,6 +174,10 @@ namespace iresearch {
       return os << static_cast<by_range const&>(filter);
     } else if (type == irs::type<by_ngram_similarity>::id()) {
       return os << static_cast<by_ngram_similarity const&>(filter);
+    } else if (type == irs::type<by_edit_distance>::id()) {
+      return os << static_cast<by_edit_distance const&>(filter);
+    } else if (type == irs::type<by_prefix>::id()) {
+      return os << static_cast<by_prefix const&>(filter);
     } else {
       return os << "[Unknown filter]";
     }

@@ -3583,7 +3583,7 @@ Result fromFuncStartsWith(
             if (options->prefix.empty()) {
               // no-prefix. Maybe term contains suitable prefix ?
               if (options->term.size() > startsWith.size() && 
-                  std::memcmp(options->term.data(), startsWith.c_str(), startsWith.size())) {
+                  0 == std::memcmp(options->term.data(), startsWith.c_str(), startsWith.size())) {
                 // common prefix found.
                 options->prefix = irs::ref_cast<irs::byte_type>(startsWith);
                 options->term.erase(options->term.begin(), options->term.begin() + startsWith.size());
@@ -3616,10 +3616,10 @@ Result fromFuncStartsWith(
                      return {};
                    }
                  }
-                // FIXME: if levenshtein term.size() + prefix.size() + max_distance < startsWith.size()
-                //        this is impossible condition so we could replace whole conjunction with an empty
-                //        filter. But current API does not allow filters removal
-                //        Also we could check if there is a contradiction in prefixes and make an empty filter.
+               // FIXME: if levenshtein term.size() + prefix.size() + max_distance < startsWith.size()
+               //        this is impossible condition so we could replace whole conjunction with an empty
+               //        filter. But current API does not allow filters removal
+               //        Also we could check if there is a contradiction in prefixes and make an empty filter.
               }
             }
           }
