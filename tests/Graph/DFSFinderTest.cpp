@@ -645,7 +645,6 @@ TEST_P(DFSFinderTest, path_loop) {
     result.clear();
     auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
 }
