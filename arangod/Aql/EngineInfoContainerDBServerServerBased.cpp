@@ -87,6 +87,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   auto const& restrictToShards = query.queryOptions().restrictToShards;
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
+    TRI_ASSERT(col != nullptr);
 #ifdef USE_ENTERPRISE
     if (query.trxForOptimization().isInaccessibleCollection(col->id())) {
       _inaccessible.insert(col->name());
@@ -103,6 +104,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   // It might in fact be empty, if we only have edge collections in a graph.
   // Or if we guarantee to never read vertex data.
   for (auto const& col : vertices) {
+    TRI_ASSERT(col != nullptr);
 #ifdef USE_ENTERPRISE
     if (query.trxForOptimization().isInaccessibleCollection(col->id())) {
       _inaccessible.insert(col->name());
@@ -120,7 +122,11 @@ std::vector<ShardID> EngineInfoContainerDBServerServerBased::TraverserEngineShar
   std::vector<ShardID> localShards;
   for (auto const& shard : *shardIds) {
     auto const& it = shardMapping.find(shard);
-    TRI_ASSERT(it != shardMapping.end());
+    if (it == shardMapping.end()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, 
+          "no entry for shard '" + shard + "' in shard mapping table (" + std::to_string(shardMapping.size()) + " entries)");
+    }
     if (it->second == server) {
       localShards.emplace_back(shard);
       _hasShard = true;
@@ -853,7 +859,7 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack
 #endif
 }
 
-// Insert the Variables information into the message to be send to DBServers
+// Insert the Variables information into the message to be sent to DBServers
 void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("variables"));
@@ -861,7 +867,7 @@ void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypa
   _query.ast()->variables()->toVelocyPack(builder);
 }
 
-// Insert the Snippets information into the message to be send to DBServers
+// Insert the Snippets information into the message to be sent to DBServers
 void EngineInfoContainerDBServerServerBased::addSnippetPart(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
@@ -875,7 +881,7 @@ void EngineInfoContainerDBServerServerBased::addSnippetPart(
   builder.close();  // snippets
 }
 
-// Insert the TraversalEngine information into the message to be send to DBServers
+// Insert the TraversalEngine information into the message to be sent to DBServers
 std::vector<bool> EngineInfoContainerDBServerServerBased::addTraversalEnginesPart(
     arangodb::velocypack::Builder& infoBuilder,
     std::unordered_map<ShardID, ServerID> const& shardMapping, ServerID const& server) const {
