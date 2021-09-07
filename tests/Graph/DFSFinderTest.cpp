@@ -538,7 +538,6 @@ TEST_P(DFSFinderTest, path_depth_1_to_2) {
   }
 
   {
-    result.clear();
     // Try again to make sure we stay at non-existing
     auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
