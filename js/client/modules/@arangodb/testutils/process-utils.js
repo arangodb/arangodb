@@ -775,7 +775,7 @@ function getMemProfSnapshot(instanceInfo, options, counter) {
       }
 
       let fnMetrics = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.metrics`);
-      let metricsReply = download(arangod.url + '/_admin/metrics', opts);
+      let metricsReply = download(arangod.url + '/_admin/metrics/v2', opts);
       if (metricsReply.code === 200) {
         fs.write(fnMetrics, metricsReply.body);
         print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);

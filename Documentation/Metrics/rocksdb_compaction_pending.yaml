@@ -1,7 +1,7 @@
 name: rocksdb_compaction_pending
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "compaction-pending" - sum over column families
+  Number of RocksDB column families with pending compaction.
 unit: number
 type: gauge
 category: RocksDB

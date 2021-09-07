@@ -40,7 +40,6 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "AqlCall.h"
-#include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
 
 #include <Logger/LogMacros.h>
@@ -57,7 +56,7 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     RegisterId outputRegister, aql::QueryContext& query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, arangodb::aql::Projections projections,
-    bool random, bool count)
+    bool random, bool count, ReadOwnWrites readOwnWrites)
     : _query(query),
       _collection(collection),
       _outVariable(outVariable),
@@ -66,7 +65,8 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
       _outputRegisterId(outputRegister),
       _produceResult(produceResult),
       _random(random),
-      _count(count) {}
+      _count(count),
+      _readOwnWrites(readOwnWrites) {}
 
 Collection const* EnumerateCollectionExecutorInfos::getCollection() const {
   return _collection;
@@ -113,9 +113,10 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   TRI_ASSERT(_trx.status() == transaction::Status::RUNNING);
   _cursor = _trx.indexScan(_infos.getCollection()->name(),
-                                    (_infos.getRandom()
-                                         ? transaction::Methods::CursorType::ANY
-                                         : transaction::Methods::CursorType::ALL));
+                           (_infos.getRandom()
+                             ? transaction::Methods::CursorType::ANY
+                             : transaction::Methods::CursorType::ALL),
+                           infos.canReadOwnWrites());
 
   if (_infos.getProduceResult()) {
     _documentProducer =

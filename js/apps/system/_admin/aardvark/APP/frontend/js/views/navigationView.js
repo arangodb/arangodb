@@ -200,20 +200,6 @@
           active: false
         }
       ],
-      analyzers: [
-        {
-          name: 'Analyzers',
-          route: 'analyzers',
-          active: true
-        }
-      ],
-      views: [
-        {
-          name: 'Views',
-          route: 'views',
-          active: true
-        }
-      ],
       queries: [
         {
           name: 'Editor',

@@ -177,6 +177,9 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 
 /// @brief destroys a query
 Query::~Query() {
+  unregisterQueryInTransactionState();
+  TRI_ASSERT(!_registeredQueryInTrx);
+  
   _resourceMonitor.decreaseMemoryUsage(_resultMemoryUsage);
   _resultMemoryUsage = 0;
 
@@ -296,6 +299,7 @@ void Query::prepareQuery(SerializationFormat format) {
     if (_queryProfile) {
       _queryProfile->registerInQueryList();
     }
+    registerQueryInTransactionState();
 
     enterState(QueryExecutionState::ValueType::EXECUTION);
   } catch (arangodb::basics::Exception const& ex) {
@@ -326,6 +330,15 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // put in bind parameters
   parser.ast()->injectBindParameters(_bindParameters, this->resolver());
+
+  if (parser.ast()->containsUpsertNode()) {
+    // UPSERTs and intermediate commits do not play nice together, because the
+    // intermediate commit invalidates the read-own-write iterator required by
+    // the subquery. Setting intermediateCommitSize and intermediateCommitCount
+    // to UINT64_MAX allows us to effectively disable intermediate commits.
+    _queryOptions.transactionOptions.intermediateCommitSize = UINT64_MAX;
+    _queryOptions.transactionOptions.intermediateCommitCount = UINT64_MAX;
+  }
 
   TRI_ASSERT(_trx == nullptr);
   // needs to be created after the AST collected all collections
@@ -1075,6 +1088,22 @@ void Query::init(bool createProfile) {
   _ast = std::make_unique<Ast>(*this);
 }
 
+void Query::registerQueryInTransactionState() {
+  // register ourselves in the TransactionState
+  TRI_ASSERT(!_registeredQueryInTrx);
+  _trx->state()->beginQuery(isModificationQuery());
+  _registeredQueryInTrx = true;
+}
+
+void Query::unregisterQueryInTransactionState() noexcept {
+  if (_registeredQueryInTrx) {
+    TRI_ASSERT(_trx != nullptr && _trx->state() != nullptr);
+    // unregister ourselves in the TransactionState
+    _trx->state()->endQuery(isModificationQuery());
+    _registeredQueryInTrx = false;
+  }
+}
+  
 /// @brief calculate a hash for the query, once
 uint64_t Query::hash() {
   if (!_queryHashCalculated) {
@@ -1199,7 +1228,6 @@ CollectionNameResolver const& Query::resolver() const {
 
 /// @brief create a transaction::Context
 std::shared_ptr<transaction::Context> Query::newTrxContext() const {
-
   TRI_ASSERT(_transactionContext != nullptr);
   TRI_ASSERT(_trx != nullptr);
 
@@ -1265,7 +1293,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   network::RequestOptions options;
   options.database = query.vocbase().name();
   options.timeout = network::Timeout(60.0);  // Picked arbitrarily
-  options.continuationLane = RequestLane::CLUSTER_AQL_CONTINUATION;
+  options.continuationLane = RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR;
   //  options.skipScheduler = true;
 
   VPackBuffer<uint8_t> body;
@@ -1341,6 +1369,10 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 } // namespace
 
 aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
+  ScopeGuard endQueryGuard([this]() noexcept {
+    unregisterQueryInTransactionState();
+  });
+
   ShutdownState exp = _shutdownState.load(std::memory_order_relaxed);
   if (exp == ShutdownState::Done) {
     return ExecutionState::DONE;
@@ -1371,7 +1403,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
 
   // Only one thread is allowed to call commit
   if (errorCode == TRI_ERROR_NO_ERROR) {
-    ScopeGuard guard([this](){
+    ScopeGuard guard([this]() noexcept {
       // If we exit here we need to throw the error.
       // The caller will handle the error and will call this method
       // again using an errorCode != NO_ERROR.

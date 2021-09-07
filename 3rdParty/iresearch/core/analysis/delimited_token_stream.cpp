@@ -231,9 +231,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
 /// @brief args is a delimiter to use for tokenization
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
-  return irs::memory::make_shared<irs::analysis::delimited_token_stream>(
-    args
-  );
+  return irs::memory::make_unique<irs::analysis::delimited_token_stream>(args);
 }
 
 bool normalize_text_config(const irs::string_ref& delimiter, std::string& definition) {

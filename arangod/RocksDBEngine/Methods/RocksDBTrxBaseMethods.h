@@ -68,9 +68,9 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   /// performed
   Result addOperation(DataSourceId collectionId, RevisionId revisionId,
                       TRI_voc_document_operation_e opType) override;
-                                           
-  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
-                      rocksdb::PinnableSlice* val) final override;
+
+  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
+                      rocksdb::Slice const&, rocksdb::PinnableSlice*, ReadOwnWrites) override;
   rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
                                rocksdb::Slice const&,
                                rocksdb::PinnableSlice*) final override;
@@ -98,7 +98,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   rocksdb::TransactionDB* _db{nullptr};
 
   /// @brief shared read options which can be used by operations
-  rocksdb::ReadOptions _readOptions{};
+  ReadOptions _readOptions{};
 
   /// @brief rocksdb transaction may be null for read only transactions
   rocksdb::Transaction* _rocksTransaction{nullptr};

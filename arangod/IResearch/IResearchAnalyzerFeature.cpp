@@ -95,7 +95,6 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 namespace StringUtils = arangodb::basics::StringUtils;
 
-static const Features EMPTY_FEATURES_INSTANCE;
 char constexpr ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars)
 size_t constexpr ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
 size_t constexpr DEFAULT_POOL_SIZE = 8;  // arbitrary value
@@ -1057,10 +1056,9 @@ void AnalyzerPool::setKey(irs::string_ref const& key) {
   _key = irs::string_ref(_config.c_str() + keyOffset, key.size());
 }
 
-irs::analysis::analyzer::ptr AnalyzerPool::get() const noexcept {
+AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
   try {
-    // FIXME do not use shared_ptr
-    return _cache.emplace(_type, _properties).release();
+    return _cache.emplace(_type, _properties);
   } catch (basics::Exception const& e) {
     LOG_TOPIC("c9256", WARN, iresearch::TOPIC)
         << "caught exception while instantiating an arangosearch analizer type "
@@ -1079,7 +1077,7 @@ irs::analysis::analyzer::ptr AnalyzerPool::get() const noexcept {
         << _type << "' properties '" << _properties << "'";
   }
 
-  return nullptr;
+  return {};
 }
 
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::ApplicationServer& server)

@@ -102,7 +102,7 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask, bool hex)
       return nullptr; // hex-decoding failed
     }
   }
-  return irs::memory::make_shared<irs::analysis::token_stopwords_stream>(
+  return irs::memory::make_unique<irs::analysis::token_stopwords_stream>(
     std::move(tokens));
 }
 

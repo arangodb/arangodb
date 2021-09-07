@@ -1,7 +1,7 @@
 name: rocksdb_free_disk_space
 introducedIn: "3.8.0"
 help: |
-  Free disk space in bytes on volume used by RocksDB
+  Free disk space in bytes on volume used by RocksDB.
 unit: bytes
 type: gauge
 category: RocksDB
