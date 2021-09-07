@@ -64,7 +64,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
           forceOneShardAttributeValue + ":test:" + forceOneShardAttributeValue, shardId);
     } else {
       auto const& shardKeys = col->getCollection().get()->shardKeys();
-      TRI_ASSERT(shardKeys.size());
+      TRI_ASSERT(!shardKeys.empty());
       auto const& shardKey = shardKeys.at(0);
       if (shardKey == "_key:") {
         errorCode =
