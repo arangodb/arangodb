@@ -95,6 +95,10 @@ struct QueryOptions {
   /// @brief hack to be used only for /_api/export, contains the name of
   /// the target collection
   std::string exportCollection;
+
+  /// @brief shard key attribute value used to push a query down
+  /// to a single server
+  std::string forceOneShardAttributeValue;
   
   /// @brief optimizer rules to turn off/on manually
   std::vector<std::string> optimizerRules;
