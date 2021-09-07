@@ -151,7 +151,7 @@ struct LogMultiplexerImplementationBase {
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
             typename E = StreamEntryView<T>>
   auto getIteratorInternal() -> std::unique_ptr<TypedLogRangeIterator<E>> {
-    return _guardedData.template doUnderLock([](MultiplexerData<Spec>& self) {
+    return _guardedData.doUnderLock([](MultiplexerData<Spec>& self) {
       auto& block = self.template getBlockForDescriptor<StreamDescriptor>();
       return block.getIterator();
     });
