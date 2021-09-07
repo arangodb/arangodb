@@ -979,6 +979,8 @@ void TRI_ClosePipe(ExternalProcess* process,
   
 #ifndef _WIN32
   if (*pipe != -1) {
+    FILE *stream = fdopen(*pipe, "w");
+    fflush(stream);
     close(*pipe);
     *pipe = -1;
   }
@@ -1015,9 +1017,9 @@ TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
 /// @brief writes from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_read_return_t TRI_WritePipe(ExternalProcess const* process,
-                                 char const* buffer,
-                                size_t bufferSize) {
+bool TRI_WritePipe(ExternalProcess const* process,
+                   char const* buffer,
+                   size_t bufferSize) {
   if (process == nullptr || TRI_IS_INVALID_PIPE(process->_writePipe)) {
     return 0;
   }

@@ -191,9 +191,9 @@ TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
 /// @brief Reads from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_read_return_t TRI_WritePipe(ExternalProcess const* process,
-                                char const* buffer,
-                                size_t bufferSize);
+bool TRI_WritePipe(ExternalProcess const* process,
+                   char const* buffer,
+                   size_t bufferSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
