@@ -1,13 +1,12 @@
-/* global arangoHelper, frontendConfig */
-
 import { isEqual, sortBy } from 'lodash';
 import minimatch from 'minimatch';
 import React, { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
+import { ArangoTable, ArangoTD, ArangoTH } from '../../components/arango/table';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '../../components/modal/Modal';
 import { Cell, Grid } from '../../components/pure-css/grid';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
-import { getChangeHandler } from '../../utils/helpers';
+import { getChangeHandler, usePermissions } from '../../utils/helpers';
 import Actions from './Actions';
 import AddAnalyzer from './AddAnalyzer';
 import { typeNameMap } from './constants';
@@ -68,10 +67,7 @@ const FilterHelpModal = () => {
 
 const AnalyzersReactView = () => {
   const { data } = useSWR('/analyzer', (path) => getApiRouteForCurrentDB().get(path));
-  const { data: permData } = useSWR(
-    `/user/${arangoHelper.getCurrentJwtUsername()}/database/${frontendConfig.db}`,
-    (path) => getApiRouteForCurrentDB().get(path)
-  );
+  const { data: permData } = usePermissions();
 
   const [filterExpr, setFilterExpr] = useState('');
   const [filteredAnalyzers, setFilteredAnalyzers] = useState([]);
@@ -175,13 +171,13 @@ const AnalyzersReactView = () => {
               </label>
             </Cell>
           </Grid>
-          <table className={'arango-table'}>
+          <ArangoTable className={'arango-table'}>
             <thead>
             <tr>
-              <th className={'arango-table-th table-cell0'}>DB</th>
-              <th className={'arango-table-th table-cell1'}>Name</th>
-              <th className={'arango-table-th table-cell2'}>Type</th>
-              <th className={'arango-table-th table-cell3'}>Actions</th>
+              <ArangoTH seq={0}>DB</ArangoTH>
+              <ArangoTH seq={1}>Name</ArangoTH>
+              <ArangoTH seq={2}>Type</ArangoTH>
+              <ArangoTH seq={3}>Actions</ArangoTH>
             </tr>
             </thead>
             <tbody>
@@ -189,22 +185,22 @@ const AnalyzersReactView = () => {
               filteredAnalyzers.length
                 ? filteredAnalyzers.map(analyzer => (
                   <tr key={analyzer.name}>
-                    <td className={'arango-table-td table-cell0'}>{analyzer.db}</td>
-                    <td className={'arango-table-td table-cell1'}>{analyzer.name}</td>
-                    <td className={'arango-table-td table-cell2'}>{typeNameMap[analyzer.type]}</td>
-                    <td className={'arango-table-td table-cell3'}>
+                    <ArangoTD seq={0}>{analyzer.db}</ArangoTD>
+                    <ArangoTD seq={1}>{analyzer.name}</ArangoTD>
+                    <ArangoTD seq={2}>{typeNameMap[analyzer.type]}</ArangoTD>
+                    <ArangoTD seq={3}>
                       <Actions analyzer={analyzer} permission={permission}/>
-                    </td>
+                    </ArangoTD>
                   </tr>
                 ))
                 : <tr>
-                  <td className={'arango-table-td table-cell0'} colSpan={4}>
+                  <ArangoTD seq={0} colSpan={4}>
                     No analyzers found.
-                  </td>
+                  </ArangoTD>
                 </tr>
             }
             </tbody>
-          </table>
+          </ArangoTable>
         </Cell>
       </Grid>
     </div>;
