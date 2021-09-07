@@ -946,13 +946,18 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
         auto type = job.get("type").copyString();
          // only moveshard and cleanoutserver may be aborted
         if (type != "moveShard" && type != "cleanOutServer") {
-          generateError(Result{400, "Only MoveShard and CleanOutServer jobs can be aborted"});
+          generateError(
+            Result{TRI_ERROR_BAD_PARAMETER, "Only MoveShard and CleanOutServer jobs can be aborted"});
           return RestStatus::DONE;
         } else if (path[2] != "Pending" && path[2] != "ToDo") {
-          generateError(Result{400, path[2] + " jobs can no longer be cancelled."});
+          generateError(Result,{TRI_ERROR_BAD_PARAMETER, path[2] + " jobs can no longer be cancelled."});
           return RestStatus::DONE;
         }
 
+        // This tranaction aims at killing a job that is todo or pending.
+        // A todo job could be pending in the meantime however a pending
+        // job can never be todo again. Response ist evaluated in 412 result
+        // below.
         auto sendTransaction = [&] {
           VPackBuffer<uint8_t> trxBody;
           { VPackBuilder builder(trxBody);
@@ -982,10 +987,12 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
           sendTransaction()
           .thenValue([this](AsyncAgencyCommResult&& wr) {
             if (!wr.ok()) {
+              // Only if no longer pending or todo.
               if (wr.statusCode() == 412) {
                 auto results = rw.slice().get("results");
                 if (results[0] == 0 && results[1] == 0) {
-                  generateError(Result{412, "Job is no longer pending or to do"});
+                  generateError(
+                    Result{TRI_ERROR_HTTP_PRECONDITION_FAILED, "Job is no longer pending or to do"});
                 }
               } else {
                 generateError(wr.asResult());
