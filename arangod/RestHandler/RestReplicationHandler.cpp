@@ -351,7 +351,7 @@ RestStatus RestReplicationHandler::execute() {
       // this may throw when too many threads are going into tailing
       rf.trackTailingStart();
 
-      auto guard = scopeGuard([&rf]() { rf.trackTailingEnd(); });
+      auto guard = scopeGuard([&rf]() noexcept { rf.trackTailingEnd(); });
 
       handleCommandLoggerFollow();
     } else if (command == OpenTransactions) {
@@ -2043,7 +2043,9 @@ void RestReplicationHandler::handleCommandRestoreView() {
       }
     }
 
-    auto res = LogicalView::create(view, _vocbase, slice);  // must create() since view was drop()ed
+    // must create() since view was drop()ed
+    auto res = LogicalView::create(
+      view, _vocbase, slice, false);
 
     if (!res.ok()) {
       generateError(res);
@@ -2423,16 +2425,15 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
  
-  auto cleanup = scopeGuard([&body, this]() {
-    // untrack the (async) replication client, so the WAL may be cleaned
-    arangodb::ServerId const serverId{StringUtils::uint64(
-        basics::VelocyPackHelper::getStringValue(body, "serverId", ""))};
-    SyncerId const syncerId = SyncerId{StringUtils::uint64(
-        basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
-    std::string const clientInfo =
-        basics::VelocyPackHelper::getStringValue(body, "clientInfo", "");
-
+  auto cleanup = scopeGuard([&body, this]() noexcept {
     try {
+      // untrack the (async) replication client, so the WAL may be cleaned
+      arangodb::ServerId const serverId{StringUtils::uint64(
+          basics::VelocyPackHelper::getStringValue(body, "serverId", ""))};
+      SyncerId const syncerId = SyncerId{StringUtils::uint64(
+          basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
+      std::string const clientInfo =
+          basics::VelocyPackHelper::getStringValue(body, "clientInfo", "");
       _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId, clientInfo);
     } catch (std::exception const& ex) {
       // not much we can do here except logging

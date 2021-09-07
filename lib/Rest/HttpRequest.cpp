@@ -226,7 +226,10 @@ void HttpRequest::parseHeader(char* start, size_t length) {
                 ++q;
               }
 
-              _databaseName = normalizeUtf8ToNFC(::url_decode(pathBegin, q));
+              _databaseName = ::url_decode(pathBegin, q);
+              if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+              }
 
               pathBegin = q;
             }
@@ -433,7 +436,10 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       }
 
       TRI_ASSERT(q >= start);
-      _databaseName = normalizeUtf8ToNFC(::url_decode(start, q));
+      _databaseName = ::url_decode(start, q);
+      if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+      }
       _fullUrl.assign(q, end - q);
 
       start = q;

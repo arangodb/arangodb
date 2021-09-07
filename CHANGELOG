@@ -51,6 +51,13 @@ devel
   several clients concurrently inserts data and use custom analyzer
   with non-string return type
 
+* Updated ArangoDB Starter to 0.15.2.
+
+* SEARCH-238: Improved SortNodes placement optimization in cluster so 
+  late materialization could cover more cases
+
+* Fix some memory leaks after adding optimization rule for AqlAnalyzer.
+
 * Fix internal iterator states after intermediate commits in write
   transactions. Iterators could point to invalid data after an
   intermediate commit, producing undefined behavior.

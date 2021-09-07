@@ -198,7 +198,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     if (vocbase == nullptr) {
       return nullptr;
     }
-    TRI_DEFER(vocbase->release());
+    auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
     return static_cast<RocksDBCollection*>(
         vocbase->lookupCollection(dbColPair.second)->getPhysical());
   }
@@ -216,7 +216,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     if (vb == nullptr) {
       return nullptr;
     }
-    TRI_DEFER(vb->release());
+    auto sg = arangodb::scopeGuard([&]() noexcept { vb->release(); });
 
     auto coll = vb->lookupCollection(std::get<1>(triple));
 

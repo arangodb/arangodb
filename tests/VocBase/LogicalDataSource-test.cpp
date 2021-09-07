@@ -54,11 +54,13 @@ class LogicalViewImpl : public arangodb::LogicalView {
   virtual arangodb::Result renameImpl(std::string const&) override {
     return arangodb::Result();
   }
-  virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties,
-                                      bool partialUpdate) override {
+  virtual arangodb::Result properties(
+      arangodb::velocypack::Slice /*properties*/,
+      bool /*isUserRequest*/,
+      bool /*partialUpdate*/) override {
     return arangodb::Result();
   }
-  virtual bool visitCollections(CollectionVisitor const& visitor) const override {
+  virtual bool visitCollections(CollectionVisitor const& /*visitor*/) const override {
     return true;
   }
 };

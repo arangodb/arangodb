@@ -156,10 +156,11 @@ void VstRequest::parseHeaderInformation() {
     auto version = vHeader.at(0).getInt();       // version
     auto type = vHeader.at(1).getInt();          // type
     { 
-      VPackSlice dbName = vHeader.at(2);
-      VPackValueLength l;
-      char const* p = dbName.getString(l);
-      _databaseName = normalizeUtf8ToNFC(p, l); // database
+      VPackSlice dbName = vHeader.at(2);         // database
+      _databaseName = dbName.copyString(); 
+      if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+      }
     }
     _type = meta::toEnum<RequestType>(vHeader.at(3).getInt());  // request type
     _requestPath = vHeader.at(4).copyString();  // request (path)

@@ -62,9 +62,9 @@ class LogicalView : public LogicalDataSource {
   template <typename Target, typename Source>
   inline static typename meta::adjustConst<Source, Target>::reference cast(Source& view) noexcept {
     typedef typename meta::adjustConst<
-        Source, typename std::enable_if<std::is_base_of<LogicalView, Target>::value &&
-                                            std::is_same<typename std::remove_const<Source>::type, LogicalView>::value,
-                                        Target>::type>
+        Source, std::enable_if_t<std::is_base_of_v<LogicalView, Target> &&
+                                 std::is_same_v<typename std::remove_const<Source>::type, LogicalView>,
+                                 Target>>
         target_type_t;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -102,7 +102,19 @@ class LogicalView : public LogicalDataSource {
     return static_cast<target_type_t>(view);
 #endif
   }
-  
+
+  using LogicalDataSource::properties;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief updates properties of an existing DataSource
+  /// @param definition the properties being updated
+  /// @param partialUpdate modify only the specified properties (false == all)
+  /// @param ctx request context
+  //////////////////////////////////////////////////////////////////////////////
+  virtual Result properties(velocypack::Slice definition,
+                            bool isUserRequest,
+                            bool partialUpdate) = 0;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief queries properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
@@ -125,10 +137,11 @@ class LogicalView : public LogicalDataSource {
   ///        on success non-null, on failure undefined
   /// @param vocbase database where the view resides
   /// @param definition the view definition
+  /// @param isUserRequest creation request is coming from a user
   /// @return success and sets 'view' or failure
   //////////////////////////////////////////////////////////////////////////////
   static Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                       velocypack::Slice definition);
+                       velocypack::Slice definition, bool isUserRequest);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an existing view
@@ -140,8 +153,9 @@ class LogicalView : public LogicalDataSource {
   /// @param callback if false is returned then enumiration stops
   /// @return full enumeration finished successfully
   //////////////////////////////////////////////////////////////////////////////
-  static bool enumerate(TRI_vocbase_t& vocbase,
-                        std::function<bool(std::shared_ptr<LogicalView> const&)> const& callback);
+  static bool enumerate(
+    TRI_vocbase_t& vocbase,
+    std::function<bool(std::shared_ptr<LogicalView> const&)> const& callback);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief instantiates an existing view according to a definition
@@ -169,13 +183,14 @@ class LogicalView : public LogicalDataSource {
   virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
 
  protected:
-  LogicalView(TRI_vocbase_t& vocbase, velocypack::Slice const& definition);
+  LogicalView(TRI_vocbase_t& vocbase, velocypack::Slice definition);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief queries properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result appendVelocyPackImpl(velocypack::Builder& builder,
-                                     Serialization context) const = 0;
+  virtual Result appendVelocyPackImpl(
+    velocypack::Builder& builder,
+    Serialization context) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop implementation-specific parts of an existing view
@@ -203,7 +218,7 @@ class LogicalView : public LogicalDataSource {
 ////////////////////////////////////////////////////////////////////////////////
 struct LogicalViewHelperClusterInfo {
   static Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                          velocypack::Slice const& definition) noexcept;
+                          velocypack::Slice definition) noexcept;
 
   static Result drop(LogicalView const& view) noexcept;
 
@@ -219,7 +234,7 @@ struct LogicalViewHelperClusterInfo {
 ////////////////////////////////////////////////////////////////////////////////
 struct LogicalViewHelperStorageEngine {
   static Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                          velocypack::Slice const& definition) noexcept;
+                          velocypack::Slice definition) noexcept;
 
   static Result destruct(LogicalView const& view) noexcept;
   static Result drop(LogicalView const& view) noexcept;

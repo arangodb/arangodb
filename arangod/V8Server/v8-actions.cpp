@@ -1805,7 +1805,7 @@ static void JS_RunInRestrictedContext(v8::FunctionCallbackInfo<v8::Value> const&
     v8g->_securityContext = JavaScriptSecurityContext::createRestrictedContext();
 
     // make sure the old context will be restored
-    auto guard = scopeGuard([&oldContext, &v8g]() {
+    auto guard = scopeGuard([&oldContext, &v8g]() noexcept {
       v8g->_securityContext = oldContext;
     });
 

@@ -153,7 +153,7 @@ ServerState::~ServerState() = default;
 /// @brief create the (sole) instance
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState* ServerState::instance() { return Instance; }
+ServerState* ServerState::instance() noexcept { return Instance; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string representation of a role

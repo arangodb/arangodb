@@ -142,9 +142,12 @@ RestStatus RestDatabaseHandler::createDatabase() {
     events::CreateDatabase("", Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID), _context);
     return RestStatus::DONE;
   }
-  VPackValueLength l;
-  char const* p = nameVal.getString(l);
-  std::string dbName = normalizeUtf8ToNFC(p, l);
+  std::string dbName = nameVal.copyString();
+  if (dbName != normalizeUtf8ToNFC(dbName)) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+    events::CreateDatabase(dbName, Result(TRI_ERROR_ARANGO_ILLEGAL_NAME), _context);
+    return RestStatus::DONE;
+  }
 
   VPackSlice options = body.get("options");
   VPackSlice users = body.get("users");
@@ -180,7 +183,12 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
     return RestStatus::DONE;
   }
 
-  std::string const dbName = normalizeUtf8ToNFC(suffixes[0].data(), suffixes[0].size());
+  std::string const& dbName = suffixes[0];
+  if (dbName != normalizeUtf8ToNFC(dbName)) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+    events::DropDatabase(dbName, Result(TRI_ERROR_ARANGO_ILLEGAL_NAME), _context);
+    return RestStatus::DONE;
+  }
   Result res = methods::Databases::drop(_context, &_vocbase, dbName);
 
   if (res.ok()) {

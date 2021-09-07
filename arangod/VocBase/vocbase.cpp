@@ -336,7 +336,7 @@ void TRI_vocbase_t::registerCollection(bool doLock,
                                  _dataSourceLockWriteOwner, doLock);
 
     checkCollectionInvariants();
-    TRI_DEFER(checkCollectionInvariants());
+    auto sg = arangodb::scopeGuard([&]() noexcept { checkCollectionInvariants(); });
 
     // check name
     auto it = _dataSourceByName.try_emplace(name, collection);
@@ -1400,7 +1400,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollectionInterna
 }
 
 /// @brief releases a collection from usage
-void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) {
+void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) noexcept {
   collection->statusLock().unlock();
 }
 
