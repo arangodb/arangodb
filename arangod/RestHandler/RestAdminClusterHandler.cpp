@@ -984,7 +984,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
 
         return waitForFuture(
           sendTransaction()
-          .thenValue([this, &jobId](AsyncAgencyCommResult&& wr) {
+          .thenValue([=](AsyncAgencyCommResult&& wr) {
             if (!wr.ok()) {
               // Only if no longer pending or todo.
               if (wr.statusCode() == 412) {
@@ -993,11 +993,15 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
                     results[1].getNumber<uint64_t>() == 0) {
                   generateError(
                     Result{TRI_ERROR_HTTP_PRECONDITION_FAILED, "Job is no longer pending or to do"});
+                  return;
                 }
               } else {
                 generateError(wr.asResult());
+                return;
               }
             }
+
+            
 
             VPackBuffer<uint8_t> payload;
             {
@@ -1009,17 +1013,15 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
             }
             resetResponse(rest::ResponseCode::OK);
             response()->setPayload(std::move(payload));
-            return futures::makeFuture(RestStatus::DONE);
           })
           .thenError<VPackException>([this](VPackException const& e) {
             generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-            return futures::makeFuture(RestStatus::DONE);
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-            return futures::makeFuture(RestStatus::DONE);
           }));
+
       }
     }
 
