@@ -3600,7 +3600,7 @@ Result fromFuncStartsWith(
                   return {};
                 }
                } else {
-                // maybe we could enlarge prefix to cover us?
+                 // maybe we could enlarge prefix to cover us?
                  if (std::memcmp(options->prefix.data(), startsWith.c_str(),
                                  options->prefix.size()) == 0) {
                    // looks promising - beginning of the levenshtein prefix is ok
@@ -3616,11 +3616,16 @@ Result fromFuncStartsWith(
                      return {};
                    }
                  }
-               // FIXME: if levenshtein term.size() + prefix.size() + max_distance < startsWith.size()
-               //        this is impossible condition so we could replace whole conjunction with an empty
-               //        filter. But current API does not allow filters removal
-               //        Also we could check if there is a contradiction in prefixes and make an empty filter.
               }
+            }
+            if ((options->term.size() +
+                 options->prefix.size() +
+                 options->max_distance) < startsWith.size()) {
+                     // last optimization effort - we can't fulfill this conjunction.
+                     // make it empty
+                     filter->clear();
+                     filter->add<irs::empty>();
+                     return {};
             }
           }
         }

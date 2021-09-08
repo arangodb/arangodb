@@ -12139,6 +12139,28 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       "RETURN d",
       expected);
   }
+  // make it empty with prefix
+  {
+    irs::Or expected;
+    auto& andFilter =  expected.add<irs::And>().add<irs::empty>();
+    assertFilterOptimized(
+      vocbase(),
+      "FOR d IN testView SEARCH STARTS_WITH(d.name, 'foobar12345')"
+      "AND LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo')"
+      "RETURN d",
+      expected);
+  }
+  // make it empty
+  {
+    irs::Or expected;
+    auto& andFilter =  expected.add<irs::And>().add<irs::empty>();
+    assertFilterOptimized(
+      vocbase(),
+      "FOR d IN testView SEARCH STARTS_WITH(d.name, 'foobar12345')"
+      "AND LEVENSHTEIN_MATCH(d.name, 'foobar', 2, false, 63)"
+      "RETURN d",
+      expected);
+  }
   // empty prefix case - not match
   {
     irs::Or expected;

@@ -143,6 +143,11 @@ namespace iresearch {
     return os;
   }
 
+  std::ostream& operator<<(std::ostream& os, empty const&) {
+    os << "EMPTY[]";
+    return os;
+  }
+
   std::ostream& operator<<(std::ostream& os, by_edit_distance const& lev) {
     os << "LEVENSHTEIN_MATCH[";
     os << lev.field() << ", '";
@@ -180,6 +185,8 @@ namespace iresearch {
       return os << static_cast<by_edit_distance const&>(filter);
     } else if (type == irs::type<by_prefix>::id()) {
       return os << static_cast<by_prefix const&>(filter);
+    } else if (type == irs::type<empty>::id()) {
+      return os << static_cast<empty const&>(filter);
     } else {
       return os << "[Unknown filter]";
     }
