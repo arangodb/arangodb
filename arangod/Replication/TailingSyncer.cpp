@@ -922,7 +922,8 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   VPackSlice properties = data.get("properties");
 
   if (properties.isObject()) {
-    return view->properties(properties, false);  // always a full-update
+    // always a full-update
+    return view->properties(properties, false, false);
   }
 
   return {};
@@ -931,8 +932,8 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
 /// @brief apply a single marker from the continuous log
 Result TailingSyncer::applyLogMarker(VPackSlice const& slice, 
                                      ApplyStats& applyStats,
-                                     TRI_voc_tick_t firstRegularTick,
-                                     TRI_voc_tick_t markerTick, 
+                                     TRI_voc_tick_t /*firstRegularTick*/,
+                                     TRI_voc_tick_t /*markerTick*/,
                                      TRI_replication_operation_e type) {
   // handle marker type
   if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_REMOVE) {
@@ -1092,7 +1093,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
       _analyzersModified.clear();
     }
   };
-  TRI_DEFER(reloader());
+  auto sg = arangodb::scopeGuard([&]() noexcept { reloader(); });
 
   StringBuffer& data = response->getBody();
   char const* p = data.begin();
@@ -1208,8 +1209,12 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
 /// catches exceptions
 Result TailingSyncer::run() {
   try {
-    auto guard = scopeGuard([this]() {
-      abortOngoingTransactions();
+    auto guard = scopeGuard([this]() noexcept {
+      try {
+          abortOngoingTransactions();
+      } catch(std::exception const& ex) {
+          LOG_TOPIC("6f832", ERR, Logger::REPLICATION) << "Failed to abort ongoing transactions: " << ex.what();
+      }
     });
     return runInternal();
   } catch (arangodb::basics::Exception const& ex) {
@@ -1827,7 +1832,7 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
       // to get out of stalled requests to failed/non-responsive leaders quicker.
       double oldTimeout = client->params().getRequestTimeout();
       client->params().setRequestTimeout(std::min(_state.applier._requestTimeout, 10.0));
-      auto guard = scopeGuard([&]() {
+      auto guard = scopeGuard([&]() noexcept {
         client->params().setRequestTimeout(oldTimeout);
       });
       auto headers = replutils::createHeaders();

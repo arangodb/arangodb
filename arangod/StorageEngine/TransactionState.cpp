@@ -434,7 +434,7 @@ void TransactionState::resetTransactionId() {
 #endif
 
 /// @brief update the status of a transaction
-void TransactionState::updateStatus(transaction::Status status) {
+void TransactionState::updateStatus(transaction::Status status) noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_status != transaction::Status::CREATED && _status != transaction::Status::RUNNING) {
     LOG_TOPIC("257ea", ERR, Logger::FIXME)

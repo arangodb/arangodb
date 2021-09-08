@@ -36,7 +36,7 @@ class TraceEntry {
   TraceEntry();
   ~TraceEntry();
 
-  void addTiming(double timeTaken);
+  void addTiming(double timeTaken) noexcept;
 
   friend auto operator<<(std::ostream& out, TraceEntry const& entry) -> std::ostream&;
 
