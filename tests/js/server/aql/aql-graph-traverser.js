@@ -2523,7 +2523,7 @@ function complexFilteringSuite() {
           '@eCol': en,
           'start': vertex.A
         };
-       db._query(query, bindVars);
+        db._query(query, bindVars);
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_QUERY_VARIABLE_REDECLARED.code);
