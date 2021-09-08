@@ -898,7 +898,7 @@ TEST_F(CleanOutServerTest, when_the_cleanout_server_job_aborts_abort_all_subjobs
       EXPECT_TRUE(writes.get("/arango/Target/ToDo/1-0").get("op").copyString() ==
                   "delete");
       // a not yet started job will be moved to finished
-      EXPECT_TRUE(std::string(writes.get("/arango/Target/Finished/1-0").typeName()) ==
+      EXPECT_TRUE(std::string(writes.get("/arango/Target/Failed/1-0").typeName()) ==
                   "object");
       auto preconds = q->slice()[0][1];
       EXPECT_TRUE(preconds.get("/arango/Target/ToDo/1-0").get("oldEmpty").isFalse());
