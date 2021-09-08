@@ -1080,7 +1080,7 @@ void LogicalCollection::persistPhysicalCollection() {
   engine.createCollection(vocbase(), *this);
 }
 
-basics::ReadWriteLock& LogicalCollection::statusLock() { return _statusLock; }
+basics::ReadWriteLock& LogicalCollection::statusLock() noexcept { return _statusLock; }
 
 /// @brief Defer a callback to be executed when the collection
 ///        can be dropped. The callback is supposed to drop

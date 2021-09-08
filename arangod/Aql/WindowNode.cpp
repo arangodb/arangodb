@@ -47,7 +47,7 @@ WindowBounds::WindowBounds(Type type,
                            AqlValue&& preceding,
                            AqlValue&& following)
     : _type(type) {
-  auto g = scopeGuard([&] {
+  auto g = scopeGuard([&]() noexcept {
     preceding.destroy();
     following.destroy();
   });

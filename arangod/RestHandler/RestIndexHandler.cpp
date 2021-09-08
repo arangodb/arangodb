@@ -114,7 +114,7 @@ RestStatus RestIndexHandler::continueExecute() {
 }
 
 void RestIndexHandler::shutdownExecute(bool isFinalized) noexcept {
-  TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
+  auto sg = arangodb::scopeGuard([&]() noexcept { RestVocbaseBaseHandler::shutdownExecute(isFinalized); });
 
   // request not done yet
   if (!isFinalized) {

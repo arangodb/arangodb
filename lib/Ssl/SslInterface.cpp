@@ -202,7 +202,7 @@ std::string sslPBKDF2HS1(char const* salt, size_t saltLength, char const* pass,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  TRI_DEFER(TRI_Free(dk));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_Free(dk); });
 
   PKCS5_PBKDF2_HMAC_SHA1(pass, (int)passLength, (const unsigned char*)salt,
                          (int)saltLength, iter, keyLength, dk);
@@ -235,7 +235,7 @@ std::string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  TRI_DEFER(TRI_Free(dk));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_Free(dk); });
 
   PKCS5_PBKDF2_HMAC(pass, (int)passLength, (const unsigned char*)salt,
                     (int)saltLength, iter, evp_md, keyLength, dk);
@@ -268,7 +268,7 @@ std::string sslHMAC(char const* key, size_t keyLength, char const* message,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  TRI_DEFER(TRI_Free(md));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_Free(md); });
   unsigned int md_len;
 
   HMAC(evp_md, key, (int)keyLength, (const unsigned char*)message, messageLen, md, &md_len);

@@ -113,7 +113,7 @@ RestStatus RestAdminExecuteHandler::execute() {
         v8g->_currentRequest = TRI_RequestCppToV8(isolate, v8g, _request.get(), &adminExecuteAction);
         v8g->_currentResponse = v8::Object::New(isolate);
 
-        auto guard = scopeGuard([&v8g, &isolate]() {
+        auto guard = scopeGuard([&v8g, &isolate]() noexcept {
           v8g->_currentRequest = v8::Undefined(isolate);
           v8g->_currentResponse = v8::Undefined(isolate);
         });
