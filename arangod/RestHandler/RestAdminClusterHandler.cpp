@@ -981,7 +981,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
           }
           return AsyncAgencyComm().sendWriteTransaction(60s, std::move(trxBody));
         };
-          
+
         return waitForFuture(
           sendTransaction()
           .thenValue([this, &jobId](AsyncAgencyCommResult&& wr) {
@@ -998,7 +998,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
                 generateError(wr.asResult());
               }
             }
-            
+
             VPackBuffer<uint8_t> payload;
             {
               VPackBuilder builder(payload);
