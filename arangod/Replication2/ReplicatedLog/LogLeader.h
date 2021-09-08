@@ -254,7 +254,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
                                                   TermIndexPair const& lastAvailableIndex) const
         -> std::pair<AppendEntriesRequest, TermIndexPair>;
 
-    [[nodiscard]] auto calculateCommitLag() const noexcept -> double;
+    [[nodiscard]] auto calculateCommitLag() const noexcept
+        -> std::chrono::duration<double, std::milli>;
 
     LogLeader& _self;
     InMemoryLog _inMemoryLog;

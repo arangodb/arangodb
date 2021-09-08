@@ -35,7 +35,7 @@ namespace arangodb::replication2::replicated_log {
 
 struct FollowerStatistics : LogStatistics {
   AppendEntriesErrorReason lastErrorReason;
-  double lastRequestLatencyMS;
+  std::chrono::duration<double, std::milli> lastRequestLatencyMS;
   FollowerState internalState;
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics;
@@ -46,7 +46,7 @@ struct LeaderStatus {
   LogTerm term;
   std::unordered_map<ParticipantId, FollowerStatistics> follower;
   // now() - insertTP of last uncommitted entry
-  double commitLagMS;
+  std::chrono::duration<double, std::milli> commitLagMS;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;

@@ -115,12 +115,12 @@ auto FollowerState::withUpToDate() noexcept -> FollowerState {
   return FollowerState(std::in_place, UpToDate{});
 }
 
-auto FollowerState::withErrorBackoff(double duration, std::size_t retryCount) noexcept
+auto FollowerState::withErrorBackoff(std::chrono::duration<double, std::milli> duration, std::size_t retryCount) noexcept
     -> FollowerState {
   return FollowerState(std::in_place, ErrorBackoff{duration, retryCount});
 }
 
-auto FollowerState::withRequestInFlight(double duration) noexcept -> FollowerState {
+auto FollowerState::withRequestInFlight(std::chrono::duration<double, std::milli> duration) noexcept -> FollowerState {
   return FollowerState(std::in_place, RequestInFlight{duration});
 }
 
@@ -131,10 +131,12 @@ constexpr static std::string_view requestInFlightString = "request-in-flight";
 auto FollowerState::fromVelocyPack(velocypack::Slice slice) -> FollowerState {
   auto state = slice.get("state").extract<std::string_view>();
   if (state == errorBackoffString) {
-    return FollowerState::withErrorBackoff(slice.get("durationMS").extract<double>(),
-                                           slice.get("retryCount").extract<std::size_t>());
+    return FollowerState::withErrorBackoff(
+        std::chrono::duration<double, std::milli>{slice.get("durationMS").extract<double>()},
+        slice.get("retryCount").extract<std::size_t>());
   } else if (state == requestInFlightString) {
-    return FollowerState::withRequestInFlight(slice.get("durationMS").extract<double>());
+    return FollowerState::withRequestInFlight(std::chrono::duration<double, std::milli>{
+        slice.get("durationMS").extract<double>()});
   } else {
     return FollowerState::withUpToDate();
   }
@@ -148,13 +150,13 @@ void FollowerState::toVelocyPack(velocypack::Builder& builder) const {
 
     auto operator()(FollowerState::ErrorBackoff const& err) {
       builder.add("state", VPackValue(errorBackoffString));
-      builder.add("durationMS", VPackValue(err.durationMS));
+      builder.add("durationMS", VPackValue(err.durationMS.count()));
       builder.add("retryCount", VPackValue(err.retryCount));
     }
 
     auto operator()(FollowerState::RequestInFlight const& rif) {
       builder.add("state", VPackValue(requestInFlightString));
-      builder.add("durationMS", VPackValue(rif.durationMS));
+      builder.add("durationMS", VPackValue(rif.durationMS.count()));
     }
 
     velocypack::Builder& builder;

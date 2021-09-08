@@ -45,18 +45,20 @@ struct FollowerState {
 
   struct UpToDate {};
   struct ErrorBackoff {
-    double durationMS;
+    std::chrono::duration<double, std::milli> durationMS;
     std::size_t retryCount;
   };
   struct RequestInFlight {
-    double durationMS;
+    std::chrono::duration<double, std::milli> durationMS;
   };
 
   std::variant<UpToDate, ErrorBackoff, RequestInFlight> value;
 
   static auto withUpToDate() noexcept -> FollowerState;
-  static auto withErrorBackoff(double, std::size_t retryCount) noexcept -> FollowerState;
-  static auto withRequestInFlight(double) noexcept -> FollowerState;
+  static auto withErrorBackoff(std::chrono::duration<double, std::milli>,
+                               std::size_t retryCount) noexcept -> FollowerState;
+  static auto withRequestInFlight(std::chrono::duration<double, std::milli>) noexcept
+      -> FollowerState;
   static auto fromVelocyPack(velocypack::Slice) -> FollowerState;
   void toVelocyPack(velocypack::Builder&) const;
 

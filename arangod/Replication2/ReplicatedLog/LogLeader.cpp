@@ -428,29 +428,26 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.term = term;
     for (FollowerInfo const& f : leaderData._follower) {
       auto lastRequestLatencyMS =
-          std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f._lastRequestLatency)
-              .count();
+          std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f._lastRequestLatency);
       auto state = std::invoke([&] {
         switch (f._state) {
           case FollowerInfo::State::ERROR_BACKOFF:
             return FollowerState::withErrorBackoff(
                 std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
-                    f._errorBackoffEndTP - std::chrono::steady_clock::now())
-                    .count(),
+                    f._errorBackoffEndTP - std::chrono::steady_clock::now()),
                 f.numErrorsSinceLastAnswer);
           case FollowerInfo::State::REQUEST_IN_FLIGHT:
             return FollowerState::withRequestInFlight(
                 std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
-                    std::chrono::steady_clock::now() - f._lastRequestStartTP)
-                    .count());
+                    std::chrono::steady_clock::now() - f._lastRequestStartTP));
           default:
             return FollowerState::withUpToDate();
-                     }
-                   });
-      status.follower.emplace(
-          f._impl->getParticipantId(),
-          FollowerStatistics{
-              LogStatistics{f.lastAckedEntry, f.lastAckedCommitIndex}, f.lastErrorReason, lastRequestLatencyMS, state});
+        }
+      });
+      status.follower.emplace(f._impl->getParticipantId(),
+                              FollowerStatistics{LogStatistics{f.lastAckedEntry, f.lastAckedCommitIndex},
+                                                 f.lastErrorReason,
+                                                 lastRequestLatencyMS, state});
     }
 
     status.commitLagMS = leaderData.calculateCommitLag();
@@ -855,18 +852,17 @@ replicated_log::LogLeader::GuardedLeaderData::GuardedLeaderData(replicated_log::
     : _self(self), _inMemoryLog(std::move(inMemoryLog)) {}
 
 auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag() const noexcept
-    -> double {
+    -> std::chrono::duration<double, std::milli> {
   auto memtry = _inMemoryLog.getEntryByIndex(_commitIndex + 1);
   if (memtry.has_value()) {
     return std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
-               std::chrono::steady_clock::now() - memtry->insertTp())
-        .count();
+               std::chrono::steady_clock::now() - memtry->insertTp());
   } else {
     TRI_ASSERT(_commitIndex == _inMemoryLog.getLastIndex())
         << "If there is no entry following the commitIndex the last index "
            "should be the commitIndex. _commitIndex = "
         << _commitIndex << ", lastIndex = " << _inMemoryLog.getLastIndex();
-    return 0;
+    return {};
   }
 }
 
