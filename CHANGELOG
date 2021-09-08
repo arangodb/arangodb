@@ -1,4 +1,4 @@
-v3.6.13.1 (2021-XX-XX)
+v3.6.13.1 (2021-09-08)
 ----------------------
 
 * Preselect "create index in background" option when creating indexes in the web
