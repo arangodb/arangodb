@@ -602,7 +602,6 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
   ExecutionPlan const* plan = &infos().plan();
   iresearch::QueryContext const queryCtx = { &_trx, plan, plan->getAst(),
                                             &_ctx, _reader.get(), &infos().outVariable(),
-                                            // if no scoring we could agressively optimize some filters
                                             infos().allowFiltersMerge()};
 
   if (infos().volatileFilter() || !_isInitialized) {  // `_volatileSort` implies `_volatileFilter`

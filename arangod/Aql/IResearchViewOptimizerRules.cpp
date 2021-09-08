@@ -77,13 +77,12 @@ inline IResearchViewStoredValues const& storedValues(arangodb::LogicalView const
   return viewImpl.storedValues();
 }
 
-/// @brief Moves all LEVENSHTEIN_MATCH  before STRATS_WITH in every AND nodes
+/// @brief Moves all LEVENSHTEIN_MATCH before STARTS_WITH in every AND node
 ///        to make it possible later optimize out STARTS_WITH covered by LEVENSHTEIN_MATCH
 /// @param condition SEARCH condition node
 /// @param plan current query plan
 void groupStartsAndLevenshtein(arangodb::aql::AstNode& condition, ExecutionPlan& plan) {
   auto numMembers = condition.numMembers();
-  //arangodb::iresearch::QueryContext queryContextForOptimization;
   for (size_t memberIdx = 0; memberIdx < numMembers; ++memberIdx) {
     auto current = condition.getMemberUnchecked(memberIdx);
     TRI_ASSERT(current);
@@ -178,7 +177,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
 
   // check filter condition if present
   if (searchCondition.root()) {
-    if (viewNode.scorers().empty() && viewNode.options().allowFiltersMerge) {
+    if (viewNode.allowFiltersMerge()) {
       // we could benefit from merging STARTS_WITH and LEVENSHTEIN_MATCH
       // if there is no scorers (with scorers we can't as it will affect score values)
       // to do so we need to have all levenshtein filters present before first starts_with
