@@ -906,9 +906,11 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
           .thenValue([this](AsyncAgencyCommResult&& wr) {
             if (!wr.ok()) {
               if (wr.statusCode() == 412) {
-                auto results = rw.slice().get("results");
-                if (results[0] == 0 && results[1] == 0) {
-                  generateError(Result{412, "Job is no longer pending or to do"});
+                auto results = wr.slice().get("results");
+                if (results[0].getNumber<int64_t>() == 0 &&
+                    results[1].getNumber<int64_t>() == 0) {
+                  generateError(Result{TRI_ERROR_HTTP_PRECONDITION_FAILED,
+                                       "Job is no longer pending or to do"});
                 }
               } else {
                 generateError(wr.asResult());
@@ -917,7 +919,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
             return futures::makeFuture();
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -940,7 +942,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
 
   } catch (VPackException const& e) {
-    generateError(Result{e.errorCode(), e.what()});
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
   } catch (std::exception const& e) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
   }
