@@ -1204,7 +1204,7 @@ function MovingShardsSuite ({useData}) {
         checkCollectionContents(otherNumDocuments);
       }
     },
-    
+
   };
 }
 
