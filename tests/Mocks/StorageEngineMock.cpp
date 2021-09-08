@@ -171,7 +171,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
                 } else {
                   return cb(token, doc.get(arangodb::StaticStrings::FromString));
                 }
-              });
+              }, arangodb::ReadOwnWrites::no);
           // We can only have good responses here.
           // Otherwise storage and Index do differ
           TRI_ASSERT(res.ok());
