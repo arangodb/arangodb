@@ -492,7 +492,7 @@ TEST_F(skip_reader_test, seek) {
       auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       reader.prepare(
-        std::move(in), [&lower, &upper, &calls_count](size_t level, irs::index_input& in) {
+        std::move(in), [&lower, &upper, &calls_count](size_t level, irs::data_input& in) {
           ++calls_count;
 
           if (in.eof()) {
@@ -788,7 +788,7 @@ TEST_F(skip_reader_test, seek) {
       auto in = dir.open(file, irs::IOAdvice::RANDOM);
       ASSERT_FALSE(!in);
       reader.prepare(
-        std::move(in), [&lower, &upper, &calls_count](size_t level, irs::index_input& in) {
+        std::move(in), [&lower, &upper, &calls_count](size_t level, irs::data_input& in) {
           ++calls_count;
 
           if (in.eof()) {
@@ -993,7 +993,7 @@ TEST_F(skip_reader_test, seek) {
       auto in = dir.open(file, irs::IOAdvice::RANDOM);
       ASSERT_FALSE(!in);
       reader.prepare(
-        std::move(in), [&lower, &last_level, &upper, &calls_count](size_t level, irs::index_input& in) {
+        std::move(in), [&lower, &last_level, &upper, &calls_count](size_t level, irs::data_input& in) {
           ++calls_count;
 
           if (last_level > level) {
@@ -1170,7 +1170,7 @@ TEST_F(skip_reader_test, seek) {
       auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       reader.prepare(
-        std::move(in), [&lower, &last_level, &upper, &calls_count](size_t level, irs::index_input &in) {
+        std::move(in), [&lower, &last_level, &upper, &calls_count](size_t level, irs::data_input &in) {
           ++calls_count;
 
           if (last_level > level) {

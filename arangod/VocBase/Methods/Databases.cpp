@@ -22,10 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Databases.h"
-#include "Basics/Common.h"
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Common.h"
+#include "Basics/FeatureFlags.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -194,17 +195,22 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
-  auto failureGuard = scopeGuard([&ci, info]() {
-    LOG_TOPIC("8cc61", ERR, Logger::FIXME)
-      << "Failed to create database '" << info.getName() << "', rolling back.";
-    Result res = ci.cancelCreateDatabaseCoordinator(info);
-    if (!res.ok()) {
-      // this cannot happen since cancelCreateDatabaseCoordinator keeps retrying
-      // indefinitely until the cancellation is either successful or the cluster
-      // is shut down.
-      LOG_TOPIC("92157", ERR, Logger::FIXME)
-        << "Failed to rollback creation of database '" << info.getName() <<
-        "'. Cleanup will happen through a supervision job.";
+  auto failureGuard = scopeGuard([&ci, info]() noexcept {
+    try {
+      LOG_TOPIC("8cc61", ERR, Logger::CLUSTER)
+          << "Failed to create database '" << info.getName() << "', rolling back.";
+      Result res = ci.cancelCreateDatabaseCoordinator(info);
+      if (!res.ok()) {
+        // this cannot happen since cancelCreateDatabaseCoordinator keeps
+        // retrying indefinitely until the cancellation is either successful or
+        // the cluster is shut down.
+        LOG_TOPIC("92157", ERR, Logger::CLUSTER)
+            << "Failed to rollback creation of database '" << info.getName()
+            << "'. Cleanup will happen through a supervision job.";
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("fdc1e", ERR, Logger::CLUSTER)
+          << "Failed to rollback database creation: " << ex.what();
     }
   });
 
@@ -273,7 +279,7 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   TRI_ASSERT(vocbase != nullptr);
   TRI_ASSERT(!vocbase->isDangling());
 
-  TRI_DEFER(vocbase->release());
+  auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
 
   Result res = grantCurrentUser(info, 10);
   if (!res.ok()) {
@@ -302,6 +308,16 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   if (!res.ok()) {
     events::CreateDatabase(dbName, res, exec);
     return res;
+  }
+
+  if (createInfo.replicationVersion() == replication::Version::TWO &&
+      !replication2::EnableReplication2) {
+    using namespace std::string_view_literals;
+    auto const message = R"(Replication version 2 is disabled in this binary, but trying to create a version 2 database.)"sv;
+    LOG_TOPIC("e768d", ERR, Logger::REPLICATION2) << message;
+    // Should not happen during testing
+    TRI_ASSERT(false);
+    return Result(TRI_ERROR_NOT_IMPLEMENTED, message);
   }
 
   if (ServerState::instance()->isCoordinator() /* REVIEW! && !localDatabase*/) {

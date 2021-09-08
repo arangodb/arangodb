@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Result.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #include "Cache/CacheManagerFeature.h"
@@ -41,6 +42,7 @@
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -57,12 +59,16 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
+#include <atomic>
+#include <cstddef>
+#include <memory>
 
 using namespace arangodb;
 
@@ -158,6 +164,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, db);
     }
   }
+  
   res = _rocksMethods->beginTransaction();
   if (res.ok()) {
     maybeDisableIndexing();
@@ -293,6 +300,29 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
   ++statistics()._transactionsAborted;
 
   return result;
+}
+
+void RocksDBTransactionState::beginQuery(bool isModificationQuery) {
+  auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
+  if (trxMethods) {
+    trxMethods->beginQuery(isModificationQuery);
+  }
+}
+
+void RocksDBTransactionState::endQuery(bool isModificationQuery) noexcept {
+  auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
+  if (trxMethods) {
+    trxMethods->endQuery(isModificationQuery);
+  }
+}
+
+/// @brief whether or not a RocksDB iterator in this transaction must check its
+/// bounds during iteration in addition to setting iterator_lower_bound or
+/// iterate_upper_bound. this is currently true for all iterators that are based
+/// on in-flight writes of the current transaction. it is never necessary to
+/// check bounds for read-only transactions
+bool RocksDBTransactionState::iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const {
+  return _rocksMethods->iteratorMustCheckBounds(readOwnWrites);
 }
 
 TRI_voc_tick_t RocksDBTransactionState::lastOperationTick() const noexcept {

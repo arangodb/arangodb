@@ -242,6 +242,8 @@ class StaticStrings {
   static std::string const Version;
   static std::string const WriteConcern;
   static std::string const ShardingSingle;
+  static std::string const ReplicationVersion;
+  static std::string const ReplicatedLogs;
 
   // graph attribute names
   static std::string const GraphCollection;
@@ -317,6 +319,21 @@ class StaticStrings {
   static std::string const RevisionTreeResume;
   static std::string const RevisionTreeVersion;
   static std::string const FollowingTermId;
+
+  // Replication 2.0
+  static std::string const Config;
+  static std::string const CurrentTerm;
+  static std::string const Follower;
+  static std::string const Id;
+  static std::string const Index;
+  static std::string const Leader;
+  static std::string const LocalStatus;
+  static std::string const Participants;
+  static std::string const ServerId;
+  static std::string const Spearhead;
+  static std::string const TargetConfig;
+  static std::string const Term;
+  static std::string const CommitIndex;
 
   // generic attribute names
   static std::string const AttrCoordinator;

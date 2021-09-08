@@ -1070,7 +1070,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
         // sorted results
 
         AstNode* clone = ast->shallowCopyForModify(inNode);
-        TRI_DEFER(FINALIZE_SUBTREE(clone));
+        auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(clone); });
         // set sortedness bit for the IN operator
         clone->setBoolValue(true);
         // finally adjust the variable inside the IN calculation
@@ -1123,7 +1123,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
     setter->setParent(calculationNode);
 
     AstNode* clone = ast->shallowCopyForModify(inNode);
-    TRI_DEFER(FINALIZE_SUBTREE(clone));
+    auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(clone); });
     // set sortedness bit for the IN operator
     clone->setBoolValue(true);
     // finally adjust the variable inside the IN calculation
@@ -2834,7 +2834,7 @@ void arangodb::aql::useIndexesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan
 
   std::unordered_map<ExecutionNodeId, ExecutionNode*> changes;
 
-  auto cleanupChanges = scopeGuard([&changes]() -> void {
+  auto cleanupChanges = scopeGuard([&changes]() noexcept {
     for (auto& v : changes) {
       delete v.second;
     }
@@ -4654,6 +4654,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
                                                 OptimizerRule const& rule) {
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  VarSet usedBySort;
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
   bool modified = false;
@@ -4715,14 +4716,37 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
 
         case EN::SORT: {
           auto thisSortNode = ExecutionNode::castTo<SortNode*>(inspectNode);
-
+          usedBySort.clear();
+          thisSortNode->getVariablesUsedHere(usedBySort);
           // remember our cursor...
           parents = inspectNode->getParents();
           // then unlink the filter/calculator from the plan
           plan->unlinkNode(inspectNode);
           // and re-insert into plan in front of the remoteNode
           if (thisSortNode->_reinsertInCluster) {
-            plan->insertDependency(rn, inspectNode);
+            // let's look for the best place for that SORT.
+            // We could skip over several calculations if
+            // they are not needed for our sort. So we could calculate
+            // more lazily and even make late materialization possible
+            ExecutionNode* insertPoint = rn;
+            auto current  = insertPoint->getFirstDependency();
+            while (current != nullptr &&
+                   current->getType() == EN::CALCULATION) {
+              auto nn = ExecutionNode::castTo<CalculationNode*>(current);
+              if (!nn->expression()->isDeterministic()) {
+                // let's not touch non-deterministic calculation
+                // as results may depend on calls count and sort could change this
+                break;
+              }
+              auto variable = nn->outVariable();
+              if (usedBySort.find(variable) == usedBySort.end()) {
+                insertPoint = current;
+              } else {
+                break;  // first node used by sort. We should stop here.
+              }
+              current = current->getFirstDependency();
+            }
+            plan->insertDependency(insertPoint, inspectNode);
           }
 
           gatherNode->elements(thisSortNode->elements());
@@ -7898,6 +7922,57 @@ void arangodb::aql::enableAsyncPrefetching(ExecutionPlan& plan) {
   plan.root()->walk(walker);
 }
 
+void arangodb::aql::enableReadOwnWritesForUpsertSubquery(ExecutionPlan& plan) {
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  plan.findNodesOfType(nodes, EN::UPSERT, true);
+
+  // An upsert is roughly translated to the following:
+  //   LET #x = ( <subquery> )
+  //   LET $OLD = #x[0]
+  //   UPSERT $OLD INSERT ... UPDATE ... IN col
+  //
+  // The subquery is always of the form
+  //   FOR #y IN col FILTER <#y matches sample> LIMIT 0, 1 RETURN #y.
+  // This subquery is optimized like every other; whether it can use any
+  // indexes depends on the FILTER condition.
+  // So what we do here is for each UPSERT get the input variable's setter
+  // (CalculationNode). The calculation expression is always an indexed access
+  // with a reference to the subquery. From the subquery end we simply search
+  // upwards until we find the subquery's FOR node (which must be either an
+  // IndexNode or EnumerateCollectionNode), so we can set the read-own-writes
+  // flag.
+
+  for (auto n : nodes) {
+    auto node = ExecutionNode::castTo<UpsertNode const*>(n);
+    auto inputVar = node->inDocVariable();
+    auto setter = plan.getVarSetBy(inputVar->id);
+    if (setter == nullptr) {
+      continue;
+    }
+    TRI_ASSERT(setter->getType() == EN::CALCULATION);
+    auto* exprNode = ExecutionNode::castTo<CalculationNode const*>(setter)->expression()->node();
+    TRI_ASSERT(exprNode->type == NODE_TYPE_INDEXED_ACCESS);
+    TRI_ASSERT(exprNode->getMember(0)->type == NODE_TYPE_REFERENCE);
+    Variable const* v = static_cast<Variable const*>(exprNode->getMember(0)->getData());
+    auto current = plan.getVarSetBy(v->id);
+    TRI_ASSERT(current->getType() == EN::SUBQUERY_END);
+    while (current != nullptr) {
+      if (current->getType() == EN::SUBQUERY_START) {
+        // we reached the subquery start without finding an Index or Enumerate node
+        // that should never happen!
+        TRI_ASSERT(false);
+        break;
+      }
+      if (current->getType() == EN::INDEX || current->getType() == EN::ENUMERATE_COLLECTION) {
+        ExecutionNode::castTo<DocumentProducingNode*>(current)->setCanReadOwnWrites(ReadOwnWrites::yes);
+        break;
+      }
+      current = current->getFirstDependency();
+    }
+  }
+}
+
 void arangodb::aql::activateCallstackSplit(ExecutionPlan& plan) {
   if (willUseV8(plan)) {
     // V8 requires thread local context configuration, so we cannot
@@ -8419,5 +8494,6 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
     distributeNode->setVariable(variable);
     plan.insertBefore(distributeNode, calcNode);
     plan.clearVarUsageComputed();
+    plan.findVarUsage();
   }
 }

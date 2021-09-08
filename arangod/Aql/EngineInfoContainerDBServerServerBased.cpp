@@ -300,8 +300,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
 
   ErrorCode cleanupReason = TRI_ERROR_CLUSTER_TIMEOUT;
-
-  auto cleanupGuard = scopeGuard([this, &serverToQueryId, &cleanupReason]() {
+  
+  auto cleanupGuard = scopeGuard([this, &serverToQueryId, &cleanupReason]() noexcept {
     try {
       transaction::Methods& trx = _query.trxForOptimization();
       auto requests = cleanupEngines(cleanupReason, _query.vocbase().name(), serverToQueryId);
@@ -336,7 +336,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   _query.queryOptions().ttl =
       std::max<double>(oldTtl, transaction::Manager::idleTTLDBServer);
 
-  auto ttlGuard = scopeGuard([this, oldTtl]() {
+  auto ttlGuard = scopeGuard([this, oldTtl]() noexcept {
     // restore previous TTL value
     _query.queryOptions().ttl = oldTtl;
   });
@@ -754,7 +754,7 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack
 #endif
 }
 
-// Insert the Variables information into the message to be send to DBServers
+// Insert the Variables information into the message to be sent to DBServers
 void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("variables"));
@@ -762,7 +762,7 @@ void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypa
   _query.ast()->variables()->toVelocyPack(builder);
 }
 
-// Insert the Snippets information into the message to be send to DBServers
+// Insert the Snippets information into the message to be sent to DBServers
 void EngineInfoContainerDBServerServerBased::addSnippetPart(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
@@ -776,7 +776,7 @@ void EngineInfoContainerDBServerServerBased::addSnippetPart(
   builder.close();  // snippets
 }
 
-// Insert the TraversalEngine information into the message to be send to DBServers
+// Insert the TraversalEngine information into the message to be sent to DBServers
 std::vector<bool> EngineInfoContainerDBServerServerBased::addTraversalEnginesPart(
     arangodb::velocypack::Builder& infoBuilder,
     std::unordered_map<ShardID, ServerID> const& shardMapping, ServerID const& server) const {

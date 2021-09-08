@@ -223,7 +223,10 @@ void Graph::insertOrphanCollections(VPackSlice const arr) {
         "'orphanCollections' are not an array in the graph definition");
   }
   for (auto const& c : VPackArrayIterator(arr)) {
-    THROW_ARANGO_EXCEPTION_IF_FAIL(validateOrphanCollection(c));
+    auto res = validateOrphanCollection(c);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(std::move(res));
+    }
     addOrphanCollection(c.copyString());
   }
 }

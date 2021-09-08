@@ -260,7 +260,8 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
       auto col = collections.get(collectionName);
       TRI_ASSERT(col != nullptr);  // failed to add collection
       OperationOptions opts{};
-      ModificationExecutorInfos execInfos{0,
+      ModificationExecutorInfos execInfos{fakedQuery->rootEngine(), 
+                                          0,
                                           RegisterPlan::MaxRegisterId,
                                           RegisterPlan::MaxRegisterId,
                                           0,

@@ -618,6 +618,7 @@ DumpFeature::DumpFeature(application_features::ApplicationServer& server, int& e
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;
   _options.outputPath = buildFilename(currentDirectory().result(), "dump");
+  _options.threadCount = std::max(uint32_t(_options.threadCount), static_cast<uint32_t>(NumberOfCores::getValue()));
 }
 
 std::string DumpFeature::featureName() { return ::FeatureName; }
@@ -651,7 +652,8 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
   options->addOption(
       "--threads",
       "maximum number of collections/shards to process in parallel",
-      new UInt32Parameter(&_options.threadCount))
+      new UInt32Parameter(&_options.threadCount),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic))
       .setIntroducedIn(30400);
 
   options->addOption("--dump-data", "dump collection data",
@@ -775,7 +777,13 @@ Result DumpFeature::runSingleDump(httpclient::SimpleHttpClient& client,
   if (res.fail()) {
     return res;
   }
-  TRI_DEFER(::endBatch(client, "", batchId));
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    try {
+      ::endBatch(client, "", batchId);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("c4938", ERR, Logger::DUMP) << "Failed to end batch: " << ex.what();
+    }
+  });
 
   // get the cluster inventory
   std::string const url = "/_api/replication/inventory?includeSystem=" +

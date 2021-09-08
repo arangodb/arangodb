@@ -106,7 +106,7 @@ RestStatus RestAuthHandler::execute() {
 
   bool isValid = false;
 
-  auto guard = scopeGuard([&]() {
+  auto guard = scopeGuard([&]() noexcept {
     try {
       if (isValid) {
         events::LoggedIn(*_request, username);

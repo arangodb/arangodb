@@ -96,7 +96,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   /// @brief attempts to locate an entry in the index
   std::unique_ptr<IndexIterator> lookup(transaction::Methods*,
-                                        arangodb::velocypack::Slice const, bool reverse) const;
+                                        arangodb::velocypack::Slice const, bool reverse, ReadOwnWrites readOwnWrites) const;
 
   Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
                                              arangodb::aql::AstNode const* node,
@@ -113,7 +113,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
                                                       arangodb::aql::AstNode const* node,
                                                       arangodb::aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts) override;
+                                                      IndexIteratorOptions const& opts,
+                                                      ReadOwnWrites readOwnWrites) override;
 
   void afterTruncate(TRI_voc_tick_t tick,
                      arangodb::transaction::Methods* trx) override;

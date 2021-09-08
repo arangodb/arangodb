@@ -52,20 +52,10 @@ doc_iterator::ptr term_query::execute(
     return doc_iterator::empty();
   }
 
-  // find term using cached state
-  auto terms = state->reader->iterator();
+  auto* reader = state->reader;
+  assert(reader);
 
-  if (IRS_UNLIKELY(!terms)) {
-    return doc_iterator::empty();
-  }
-
-  // use bytes_ref::blank here since we need just to "jump" to the cached state,
-  // and we are not interested in term value itself
-  if (!terms->seek(bytes_ref::NIL, *state->cookie)) {
-    return doc_iterator::empty();
-  }
-
-  auto docs = terms->postings(ord.features());
+  auto docs = reader->postings(*state->cookie, ord.features());
   assert(docs);
 
   if (!ord.empty()) {

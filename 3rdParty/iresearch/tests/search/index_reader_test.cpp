@@ -97,11 +97,11 @@ TEST(directory_reader_test, open_newest_index) {
     virtual irs::segment_meta_reader::ptr get_segment_meta_reader() const override { return nullptr; }
     virtual irs::document_mask_writer::ptr get_document_mask_writer() const override { return nullptr; }
     virtual irs::document_mask_reader::ptr get_document_mask_reader() const override { return nullptr; }
-    virtual irs::field_writer::ptr get_field_writer(bool volatile_attributes) const override { return nullptr; }
+    virtual irs::field_writer::ptr get_field_writer(bool) const override { return nullptr; }
     virtual irs::field_reader::ptr get_field_reader() const override { return nullptr; }
     virtual irs::column_meta_writer::ptr get_column_meta_writer() const override { return nullptr; }
     virtual irs::column_meta_reader::ptr get_column_meta_reader() const override { return nullptr; }
-    virtual irs::columnstore_writer::ptr get_columnstore_writer() const override { return nullptr; }
+    virtual irs::columnstore_writer::ptr get_columnstore_writer(bool) const override { return nullptr; }
     virtual irs::columnstore_reader::ptr get_columnstore_reader() const override { return nullptr; }
   };
 
@@ -576,7 +576,7 @@ TEST(segment_reader_test, open) {
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("A")), (terms->min)());
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("E")), (terms->max)());
 
-        auto term = terms->iterator();
+        auto term = terms->iterator(irs::SeekMode::NORMAL);
 
         // check term: A
         {
@@ -585,7 +585,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(1, docs->value());
             ASSERT_FALSE(docs->next());
@@ -599,7 +599,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(2, docs->value());
             ASSERT_FALSE(docs->next());
@@ -614,7 +614,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(3, docs->value());
             ASSERT_FALSE(docs->next());
@@ -629,7 +629,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(4, docs->value());
             ASSERT_FALSE(docs->next());
@@ -644,7 +644,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(5, docs->value());
             ASSERT_FALSE(docs->next());
@@ -680,7 +680,7 @@ TEST(segment_reader_test, open) {
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("xyz")), (terms->min)());
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("xyz")), (terms->max)());
 
-        auto term = terms->iterator();
+        auto term = terms->iterator(irs::SeekMode::NORMAL);
 
         // check term: xyz
         {
@@ -689,7 +689,7 @@ TEST(segment_reader_test, open) {
 
           /* check docs */
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(1, docs->value());
             ASSERT_TRUE(docs->next());
@@ -722,7 +722,7 @@ TEST(segment_reader_test, open) {
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abcd")), (terms->min)());
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("vczc")), (terms->max)());
 
-        auto term = terms->iterator();
+        auto term = terms->iterator(irs::SeekMode::NORMAL);
 
         // check term: abcd
         {
@@ -731,7 +731,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(1, docs->value());
             ASSERT_TRUE(docs->next());
@@ -748,7 +748,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(2, docs->value());
             ASSERT_TRUE(docs->next());
@@ -775,7 +775,7 @@ TEST(segment_reader_test, open) {
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abcd")), (terms->min)());
         ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abcde")), (terms->max)());
 
-        auto term = terms->iterator();
+        auto term = terms->iterator(irs::SeekMode::NORMAL);
 
         // check term: abcd
         {
@@ -784,7 +784,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(1, docs->value());
             ASSERT_FALSE(docs->next());
@@ -799,7 +799,7 @@ TEST(segment_reader_test, open) {
 
           // check docs
           {
-            auto docs = term->postings(irs::flags::empty_instance());
+            auto docs = term->postings(irs::IndexFeatures::NONE);
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(4, docs->value());
             ASSERT_FALSE(docs->next());

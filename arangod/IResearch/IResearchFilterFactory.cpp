@@ -470,11 +470,9 @@ struct FilterContext {
   irs::boost_t boost;
 };  // FilterContext
 
-typedef std::function<
-  Result(char const* funcName, irs::boolean_filter*,
-         QueryContext const&, FilterContext const&,
-         aql::AstNode const&)
-> ConvertionHandler;
+using ConvertionHandler = Result(*)(char const* funcName, irs::boolean_filter*,
+                                    QueryContext const&, FilterContext const&,
+                                    aql::AstNode const&);
 
 // forward declaration
 Result filter(irs::boolean_filter* filter,
@@ -1115,7 +1113,7 @@ Result fromGeoDistanceInterval(
     }
   }
 
-  double_t distance;
+  double_t distance{};
   ScopedAqlValue distanceValue(*node.value);
   if (filter || distanceValue.isConstant()) {
     if (!distanceValue.execute(ctx)) {
@@ -2833,7 +2831,6 @@ Result fromFuncPhraseLevenshteinMatch(char const* funcName,
       } collector(opts.max_terms);
 
       irs::visit(*ctx.index, filter->field(),
-                 irs::by_phrase::required(),
                  irs::by_edit_distance::visitor(opts),
                  collector);
 
@@ -3269,7 +3266,7 @@ Result fromFuncPhrase(
   size_t valueArgsEnd = argc;
 
   irs::by_phrase* phrase = nullptr;
-  irs::analysis::analyzer::ptr analyzer;
+  AnalyzerPool::CacheType::ptr analyzer;
   // prepare filter if execution phase
   if (filter) {
     std::string name;
@@ -3833,7 +3830,7 @@ Result fromFuncGeoContainsIntersect(
   return {};
 }
 
-std::map<irs::string_ref, ConvertionHandler> const FCallUserConvertionHandlers;
+frozen::map<irs::string_ref, ConvertionHandler, 0> constexpr FCallUserConvertionHandlers{};
 
 Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
                      FilterContext const& filterCtx, aql::AstNode const& node) {
@@ -3877,7 +3874,7 @@ Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
   return entry->second(entry->first.c_str(), filter, ctx, filterCtx, *args);
 }
 
-std::map<irs::string_ref, ConvertionHandler> const FCallSystemConvertionHandlers{
+frozen::map<irs::string_ref, ConvertionHandler, 13> constexpr FCallSystemConvertionHandlers{
   // filter functions
   {"PHRASE", fromFuncPhrase},
   {"STARTS_WITH", fromFuncStartsWith},

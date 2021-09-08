@@ -574,7 +574,7 @@ Result GraphManager::ensureCollections(
     createdInitialName = createdCollectionName;
   }
 
-  ScopeGuard guard([&]() {
+  ScopeGuard guard([&]() noexcept {
     // rollback initial collection, in case it got created
     if (!createdInitialName.empty()) {
       std::shared_ptr<LogicalCollection> coll;

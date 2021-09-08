@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
+#include "Logger/LogMacros.h"
 #include "Rest/GeneralResponse.h"
 #include "Transaction/StandaloneContext.h"
 
@@ -156,8 +157,13 @@ void InternalRestTraverserHandler::queryEngine() {
   TRI_ASSERT(engine != nullptr);
 
   auto& registry = _registry;  // For the guard
-  auto cleanup =
-      scopeGuard([registry, &engineId]() { registry->closeEngine(engineId); });
+  auto cleanup = scopeGuard([registry, &engineId]() noexcept {
+    try {
+        registry->closeEngine(engineId);
+    } catch(std::exception const& ex) {
+        LOG_TOPIC("dfc7a", ERR, Logger::AQL) << "Failed to close engine: " << ex.what();
+    }
+  });
 
   if (option == "lock") {
     THROW_ARANGO_EXCEPTION_MESSAGE(

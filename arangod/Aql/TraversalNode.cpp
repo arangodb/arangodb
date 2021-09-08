@@ -707,6 +707,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
                                          bool const withProperties) const {
+  graphCloneHelper(plan, c, withProperties);
   if (isVertexOutVariableAccessed()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
@@ -736,7 +737,6 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
 
   c._conditionVariables.reserve(_conditionVariables.size());
   for (auto const& it : _conditionVariables) {
-    //#warning TODO: check if not cloning variables breaks anything
     if (withProperties) {
       c._conditionVariables.emplace(it->clone());
     } else {

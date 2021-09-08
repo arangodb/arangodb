@@ -187,7 +187,9 @@ auto DistributeExecutor::extractInput(SharedAqlItemBlockPtr const& block,
 
 auto DistributeExecutor::getClient(VPackSlice input) const -> std::string {
   auto res = _infos.getResponsibleClient(input);
-  THROW_ARANGO_EXCEPTION_IF_FAIL(res.result());
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(std::move(res).result());
+  }
   return res.get();
 }
 

@@ -41,6 +41,7 @@ TraverserEngineShardLists::TraverserEngineShardLists(
 #endif
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
+    TRI_ASSERT(col != nullptr);
 #ifdef USE_ENTERPRISE
     if (trx.isInaccessibleCollection(col->id())) {
       _inaccessible.insert(col->name());
@@ -58,6 +59,7 @@ TraverserEngineShardLists::TraverserEngineShardLists(
   // It might in fact be empty, if we only have edge collections in a graph.
   // Or if we guarantee to never read vertex data.
   for (auto const& col : vertices) {
+    TRI_ASSERT(col != nullptr);
 #ifdef USE_ENTERPRISE
     if (trx.isInaccessibleCollection(col->id())) {
       _inaccessible.insert(col->name());
@@ -76,7 +78,11 @@ std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
   std::vector<ShardID> localShards;
   for (auto const& shard : *shardIds) {
     auto const& it = shardMapping.find(shard);
-    TRI_ASSERT(it != shardMapping.end());
+    if (it == shardMapping.end()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, 
+          "no entry for shard '" + shard + "' in shard mapping table (" + std::to_string(shardMapping.size()) + " entries)");
+    }
     if (it->second == server) {
       localShards.emplace_back(shard);
       // Guaranteed that the traversal will be executed on this server.

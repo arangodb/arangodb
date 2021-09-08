@@ -143,6 +143,7 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
 
   auto executorInfos = ModificationExecutorInfos(
+      &engine,
       inDocRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       _plan->getAst()->query(), std::move(options), collection(),
@@ -231,6 +232,7 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
 
   ModificationExecutorInfos infos(
+      &engine,
       inputRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       _plan->getAst()->query(), std::move(options), collection(),
@@ -350,6 +352,7 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   auto executorInfos = ModificationExecutorInfos(
+      &engine,
       inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),
@@ -433,6 +436,7 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   auto executorInfos = ModificationExecutorInfos(
+      &engine,
       inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),
@@ -536,8 +540,11 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
 
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
+  // We must not disable indexing for UPSERTs because the subquery might rely on a non-unique secondary index
+  options.canDisableIndexing = false;
 
   auto executorInfos = ModificationExecutorInfos(
+      &engine,
       inDoc, insert, update, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),

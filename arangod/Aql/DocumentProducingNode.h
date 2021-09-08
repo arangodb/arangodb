@@ -80,6 +80,10 @@ class DocumentProducingNode {
   /// @brief wheter or not the node can be used for counting
   bool doCount() const;
 
+  ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
+
+  void setCanReadOwnWrites(ReadOwnWrites v) noexcept { _readOwnWrites = v; }
+
  protected:
   Variable const* _outVariable;
 
@@ -90,6 +94,10 @@ class DocumentProducingNode {
   std::unique_ptr<Expression> _filter;
 
   bool _count;
+
+  /// @brief Whether we should read our own writes performed by the current query.
+  /// ATM this is only necessary for UPSERTS.
+  ReadOwnWrites _readOwnWrites{ReadOwnWrites::no};
 };
 
 }  // namespace aql

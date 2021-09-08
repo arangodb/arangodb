@@ -30,6 +30,8 @@
 #include "Basics/Result.h"
 #include "IResearchLinkMock.h"
 #include "Indexes/IndexIterator.h"
+#include "Mocks/IResearchLinkMock.h"
+#include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -78,7 +80,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual bool dropIndex(arangodb::IndexId iid) override;
   virtual void figuresSpecific(bool details, arangodb::velocypack::Builder&) override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAllIterator(
-      arangodb::transaction::Methods* trx) const override;
+      arangodb::transaction::Methods* trx, arangodb::ReadOwnWrites readOwnWrites) const override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAnyIterator(
       arangodb::transaction::Methods* trx) const override;
   virtual std::unique_ptr<arangodb::ReplicationIterator> getReplicationIterator(
@@ -91,7 +93,8 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
 
   virtual arangodb::Result lookupKey(
       arangodb::transaction::Methods*, arangodb::velocypack::StringRef,
-      std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>&) const override;
+      std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>&,
+      arangodb::ReadOwnWrites) const override;
   virtual size_t memory() const override;
   virtual uint64_t numberDocuments(arangodb::transaction::Methods* trx) const override;
   virtual std::string const& path() const override;
@@ -102,13 +105,16 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
 
   virtual arangodb::Result read(arangodb::transaction::Methods*,
                                 arangodb::velocypack::StringRef const& key,
-                                arangodb::IndexIterator::DocumentCallback const& cb) const override;
+                                arangodb::IndexIterator::DocumentCallback const& cb,
+                                arangodb::ReadOwnWrites) const override;
   virtual arangodb::Result read(arangodb::transaction::Methods* trx,
                                 arangodb::LocalDocumentId const& token,
-                                arangodb::IndexIterator::DocumentCallback const& cb) const override;
+                                arangodb::IndexIterator::DocumentCallback const& cb,
+                                arangodb::ReadOwnWrites) const override;
   virtual bool readDocument(arangodb::transaction::Methods* trx,
                             arangodb::LocalDocumentId const& token,
-                            arangodb::ManagedDocumentResult& result) const override;
+                            arangodb::ManagedDocumentResult& result,
+                            arangodb::ReadOwnWrites) const override;
   virtual arangodb::Result remove(arangodb::transaction::Methods& trx,
                                   arangodb::velocypack::Slice slice,
                                   arangodb::ManagedDocumentResult& previous,
@@ -272,6 +278,12 @@ class StorageEngineMock : public arangodb::StorageEngine {
 
   static std::shared_ptr<arangodb::iresearch::IResearchLinkMock> buildLinkMock(
       arangodb::IndexId id, arangodb::LogicalCollection& collection, VPackSlice const& info);
+
+  auto createReplicatedLog(TRI_vocbase_t& vocbase, arangodb::replication2::LogId id)
+      -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> override;
+  auto dropReplicatedLog(TRI_vocbase_t& vocbase,
+                         std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const& ptr)
+      -> arangodb::Result override;
 
  private:
   TRI_voc_tick_t _releasedTick;
