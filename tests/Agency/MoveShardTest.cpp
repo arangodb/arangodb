@@ -1613,7 +1613,7 @@ TEST_F(MoveShardTest, a_moveshard_job_that_just_made_it_to_todo_can_simply_be_ab
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
                 "delete");
-    EXPECT_TRUE(std::string(writes.get("/arango/Target/Finished/1").typeName()) ==
+    EXPECT_TRUE(std::string(writes.get("/arango/Target/Failed/1").typeName()) ==
                 "object");
     auto precond = q->slice()[0][1];
     EXPECT_TRUE(precond.get("/arango/Target/ToDo/1").get("oldEmpty").isFalse());

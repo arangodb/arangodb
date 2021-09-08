@@ -1097,7 +1097,7 @@ function MovingShardsSuite ({useData}) {
       assertTrue(cancelAgencyJob(id));
       assertTrue(maintenanceMode("off"));
       var job = require("@arangodb/cluster").queryAgencyJob(result.json.id);
-      assertEqual(job.status, "Finished");
+      assertEqual(job.status, "Failed");
       assertEqual(job.abort);
       assertTrue(waitForSupervision());
       checkCollectionContents();
