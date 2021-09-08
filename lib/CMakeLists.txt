@@ -208,7 +208,7 @@ add_library(arango STATIC
   ${ADDITIONAL_LIB_ARANGO_SOURCES}
 )
 
-# The following is necessary to compile MerkleTree.cp without RTTI
+# The following is necessary to compile MerkleTree.cpp without RTTI.
 # RTTI needs to be disabled because the file contains a class that
 # is derived from some Snappy base class, which itself is compiled
 # with -fno-rtti. Mixing RTTI code and non-RTTI code can cause 
