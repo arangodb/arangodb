@@ -863,7 +863,6 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
       VPackSlice job = res.at(0).get(path);
 
       if (job.isObject()) {
-        LOG_DEVEL << job.toJson();
         LOG_TOPIC("eb139", INFO, Logger::SUPERVISION)
           << "Attempting to abort supervision job " << job.toJson();
         auto type = job.get("type").copyString();
