@@ -169,7 +169,7 @@ std::vector<std::string> optimizerOptionsAvailable = {
 };
 
 constexpr size_t disabledDnfOptimizationStart = 2;
-}
+} // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -178,7 +178,6 @@ constexpr size_t disabledDnfOptimizationStart = 2;
 // dedicated to https://github.com/arangodb/arangodb/issues/8294
   // a IN [ x ] && a == y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_1) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
 
@@ -409,8 +408,6 @@ TEST_P(IResearchQueryOptimizationTest, test_4) {
 
       assertFilterOptimized(vocbase(), query, expected);
     }
-   
-
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocs[0].vpack()),
     };
@@ -1730,7 +1727,6 @@ TEST_P(IResearchQueryOptimizationTest, test_25) {
 }
   // a IN [ x ] && a != y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_26) {
-
   size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
@@ -1809,7 +1805,7 @@ TEST_P(IResearchQueryOptimizationTest, test_27) {
     if (optimizeType < disabledDnfOptimizationStart) {
       EXPECT_TRUE(findEmptyNodes(vocbase(), query));
     } else {
-      // no optimization will give us redundant nodes, but that is expected 
+      // no optimization will give us redundant nodes, but that is expected
       EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
         { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
       EXPECT_FALSE(findEmptyNodes(vocbase(), query));
@@ -1880,7 +1876,7 @@ TEST_P(IResearchQueryOptimizationTest, test_28) {
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
-      std::string("FOR d IN testView SEARCH d.values IN ['B'] AND d.values != 'C'" ) + o + " RETURN d";
+      std::string("FOR d IN testView SEARCH d.values IN ['B'] AND d.values != 'C'") + o + " RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
       { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
@@ -2008,7 +2004,6 @@ TEST_P(IResearchQueryOptimizationTest, test_29) {
 
   // a IN [ x ] && a < y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_30) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2141,7 +2136,7 @@ TEST_P(IResearchQueryOptimizationTest, test_32) {
           *filter.mutable_field() = mangleStringIdentity("values");
           filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
         }
-      } else{
+      } else {
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
@@ -2952,7 +2947,7 @@ TEST_P(IResearchQueryOptimizationTest, test_45) {
     {
       if (optimizeType < disabledDnfOptimizationStart) {
         irs::And expected;
-        auto& root = expected; 
+        auto& root = expected;
         {
           auto& filter = root.add<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
@@ -3876,7 +3871,6 @@ TEST_P(IResearchQueryOptimizationTest, test_59) {
 
   // a != x && a == y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_60) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -3950,7 +3944,7 @@ TEST_P(IResearchQueryOptimizationTest, test_61) {
     {
       if (optimizeType < disabledDnfOptimizationStart) {
         irs::And expected;
-        auto& root = expected; 
+        auto& root = expected;
         {
           auto& filter = root.add<irs::Not>().filter<irs::by_term>();
           *filter.mutable_field() = mangleStringIdentity("values");
@@ -4767,7 +4761,7 @@ TEST_P(IResearchQueryOptimizationTest, test_76) {
     // check structure
     {
       irs::Or expected;
-      auto& root = expected.add<irs::And>();      
+      auto& root = expected.add<irs::And>();
       {
         auto& filter = root.add<irs::Not>().filter<irs::by_term>();
         *filter.mutable_field() = mangleStringIdentity("values");
@@ -5139,7 +5133,6 @@ TEST_P(IResearchQueryOptimizationTest, test_82) {
 
   // a != x && a >= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_83) {
-
   for (auto& o : optimizerOptionsAvailable) {
     std::string const query =
       std::string("FOR d IN testView SEARCH d.values != '0' AND d.values >= '0'") + o + "RETURN d";
@@ -5196,7 +5189,6 @@ TEST_P(IResearchQueryOptimizationTest, test_83) {
 
   // a != x && a >= y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_84) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5251,7 +5243,6 @@ TEST_P(IResearchQueryOptimizationTest, test_84) {
 
   // a != x && a >= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_85) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5308,7 +5299,6 @@ TEST_P(IResearchQueryOptimizationTest, test_85) {
 
   // a != x && a >= y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_86) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5363,7 +5353,6 @@ TEST_P(IResearchQueryOptimizationTest, test_86) {
 
   // a != x && a > y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_87) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5420,7 +5409,6 @@ TEST_P(IResearchQueryOptimizationTest, test_87) {
 
   // a != x && a > y, x < y
 TEST_P(IResearchQueryOptimizationTest, test_88) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5475,7 +5463,6 @@ TEST_P(IResearchQueryOptimizationTest, test_88) {
 
   // a != x && a > y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_89) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5532,7 +5519,6 @@ TEST_P(IResearchQueryOptimizationTest, test_89) {
 
   // a != x && a > y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_90) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5587,7 +5573,6 @@ TEST_P(IResearchQueryOptimizationTest, test_90) {
 
   // a != x && a > y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_91) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5644,7 +5629,6 @@ TEST_P(IResearchQueryOptimizationTest, test_91) {
 
   // a != x && a > y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_92) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6385,7 +6369,6 @@ TEST_P(IResearchQueryOptimizationTest, test_102) {
 
   // a < x && a < y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_103) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6436,7 +6419,6 @@ TEST_P(IResearchQueryOptimizationTest, test_103) {
 
   // a < x && a < y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_104) {
-
   std::vector<arangodb::velocypack::Slice> expectedDocs{
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
   };
@@ -8625,7 +8607,6 @@ TEST_P(IResearchQueryOptimizationTest, test_136) {
 
   // a >= x && a == y, x > y
 TEST_P(IResearchQueryOptimizationTest, test_137) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -11077,13 +11058,12 @@ TEST_P(IResearchQueryOptimizationTest, test_176) {
 
 // check double negation is always collapsed
 TEST_P(IResearchQueryOptimizationTest, test_177) {
-
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
 
     std::string const query =
       std::string("FOR d IN testView SEARCH  NOT( NOT (d.values == 'B'))") + o + "RETURN d";
-     
+
     EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
       { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
 
@@ -11127,7 +11107,7 @@ TEST_P(IResearchQueryOptimizationTest, test_177) {
   }
 }
 
-// check DNF conversion disabled 
+// check DNF conversion disabled
 TEST_P(IResearchQueryOptimizationTest, test_178) {
   auto dnfConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
@@ -11681,7 +11661,7 @@ TEST_P(IResearchQueryOptimizationTest, test_181) {
 }
 
 
-// check Negation conversion disabled 
+// check Negation conversion disabled
 TEST_P(IResearchQueryOptimizationTest, test_182) {
   auto negationConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
@@ -11739,9 +11719,7 @@ TEST_P(IResearchQueryOptimizationTest, test_182) {
       assertFilterOptimized(vocbase(), query, expected);
     }
 
-    std::vector<arangodb::velocypack::Slice> expectedDocs{
-
-    };
+    std::vector<arangodb::velocypack::Slice> expectedDocs{};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -11767,7 +11745,7 @@ TEST_P(IResearchQueryOptimizationTest, test_182) {
   }
 }
 
-// check Negation conversion disabled 
+// check Negation conversion disabled
 TEST_P(IResearchQueryOptimizationTest, test_183) {
   auto negationConvertedExpected = [](irs::Or& expected) {
     auto& root = expected.add<irs::And>();
@@ -11825,9 +11803,7 @@ TEST_P(IResearchQueryOptimizationTest, test_183) {
       assertFilterOptimized(vocbase(), query, expected);
     }
 
-    std::vector<arangodb::velocypack::Slice> expectedDocs{
-
-    };
+    std::vector<arangodb::velocypack::Slice> expectedDocs{};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -12164,7 +12140,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
   // empty prefix case - not match
   {
     irs::Or expected;
-    auto& andFilter = expected.add<irs::And>(); 
+    auto& andFilter = expected.add<irs::And>();
     auto& filter = andFilter.add<irs::by_edit_distance>();
     *filter.mutable_field() = mangleString("name", "identity");
     {
@@ -12192,7 +12168,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
   // prefix not match
   {
     irs::Or expected;
-    auto& andFilter = expected.add<irs::And>(); 
+    auto& andFilter = expected.add<irs::And>();
     auto& filter = andFilter.add<irs::by_edit_distance>();
     *filter.mutable_field() = mangleString("name", "identity");
     {
@@ -12220,7 +12196,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
   // prefix too long
   {
     irs::Or expected;
-    auto& andFilter = expected.add<irs::And>(); 
+    auto& andFilter = expected.add<irs::And>();
     auto& filter = andFilter.add<irs::by_edit_distance>();
     *filter.mutable_field() = mangleString("name", "identity");
     {
@@ -12248,7 +12224,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
   // scorers block optimization
   {
     irs::Or expected;
-    auto& andFilter = expected.add<irs::And>(); 
+    auto& andFilter = expected.add<irs::And>();
     auto& filter = andFilter.add<irs::by_edit_distance>();
     *filter.mutable_field() = mangleString("name", "identity");
     {
@@ -12276,7 +12252,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
   // scorers block optimization + allow
   {
     irs::Or expected;
-    auto& andFilter = expected.add<irs::And>(); 
+    auto& andFilter = expected.add<irs::And>();
     auto& filter = andFilter.add<irs::by_edit_distance>();
     *filter.mutable_field() = mangleString("name", "identity");
     {
@@ -12304,7 +12280,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
   // merging forbidden
   {
     irs::Or expected;
-    auto& andFilter = expected.add<irs::And>(); 
+    auto& andFilter = expected.add<irs::And>();
     auto& filter = andFilter.add<irs::by_edit_distance>();
     *filter.mutable_field() = mangleString("name", "identity");
     {
@@ -12333,7 +12309,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
   // multiprefixes is not merged
   {
     irs::Or expected;
-    auto& andFilter = expected.add<irs::And>(); 
+    auto& andFilter = expected.add<irs::And>();
     auto& filter = andFilter.add<irs::by_edit_distance>();
     *filter.mutable_field() = mangleString("name", "identity");
     {
@@ -12373,7 +12349,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
   // name not match
   {
     irs::Or expected;
-    auto& andFilter = expected.add<irs::And>(); 
+    auto& andFilter = expected.add<irs::And>();
     auto& filter = andFilter.add<irs::by_edit_distance>();
     *filter.mutable_field() = mangleString("name", "identity");
     {
@@ -12401,7 +12377,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
   // prefix could not be enlarged
   {
     irs::Or expected;
-    auto& andFilter = expected.add<irs::And>(); 
+    auto& andFilter = expected.add<irs::And>();
     auto& filter = andFilter.add<irs::by_edit_distance>();
     *filter.mutable_field() = mangleString("name", "identity");
     {
@@ -12429,7 +12405,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
   // prefix could not be enlarged (prefix does not match)
   {
     irs::Or expected;
-    auto& andFilter = expected.add<irs::And>(); 
+    auto& andFilter = expected.add<irs::And>();
     auto& filter = andFilter.add<irs::by_edit_distance>();
     *filter.mutable_field() = mangleString("name", "identity");
     {
@@ -12536,7 +12512,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       " RETURN d",
       expected);
   }
-  // merge multiple resort 2 levs moar sorting  
+  // merge multiple resort 2 levs moar sorting
   {
     irs::Or expected;
     auto& andF = expected.add<irs::And>();

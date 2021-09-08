@@ -241,7 +241,7 @@ Result malformedNode(aql::AstNodeType type) {
   return {TRI_ERROR_BAD_PARAMETER, message};
 }
 
-} // error
+} // namespace error
 
 bool setupGeoFilter(FieldMeta::Analyzer const& a,
                     S2RegionTermIndexer::Options& opts) {
@@ -403,7 +403,7 @@ Result getAnalyzerByName(
   }
   auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
 
-  analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),	
+  analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),
                                  ctx.trx->state()->analyzersRevision());
 
   if (!analyzer) {
@@ -2084,7 +2084,6 @@ Result fromFuncAnalyzer(
 
     shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
       analyzerId, ctx.trx->vocbase().name(), false);  // args
-
   }
 
   FilterContext const subFilterContext(analyzerValue, filterCtx.boost); // override analyzer
