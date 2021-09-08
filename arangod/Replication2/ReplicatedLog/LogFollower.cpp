@@ -470,7 +470,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() cons
 }
 
 auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
-  auto const compactionStop = std::min(_largestCommonIndex, _releaseIndex);
+  auto const compactionStop = std::min(_largestCommonIndex, _releaseIndex + 1);
   LOG_CTX("080d5", TRACE, _follower._loggerContext)
       << "compaction index calculated as " << compactionStop;
   if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {
