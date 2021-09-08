@@ -942,7 +942,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
       if (job.isObject()) {
         LOG_TOPIC("eb139", INFO, Logger::SUPERVISION)
           << "Attempting to abort supervision job " << job.toJson();
-        auto type = job.get("type").copyString();
+        auto type = job.get("type").stringView();
          // only moveshard and cleanoutserver may be aborted
         if (type != "moveShard" && type != "cleanOutServer") {
           generateError(
@@ -981,10 +981,10 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
           }
           return AsyncAgencyComm().sendWriteTransaction(60s, std::move(trxBody));
         };
-
-        waitForFuture(
+          
+        return waitForFuture(
           sendTransaction()
-          .thenValue([this](AsyncAgencyCommResult&& wr) {
+          .thenValue([this, &jobId](AsyncAgencyCommResult&& wr) {
             if (!wr.ok()) {
               // Only if no longer pending or todo.
               if (wr.statusCode() == 412) {
@@ -998,26 +998,28 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
                 generateError(wr.asResult());
               }
             }
-            return futures::makeFuture();
+            
+            VPackBuffer<uint8_t> payload;
+            {
+              VPackBuilder builder(payload);
+              VPackObjectBuilder ob(&builder);
+              builder.add("job", VPackValue(jobId));
+              builder.add("status", VPackValue("aborted"));
+              builder.add("error", VPackValue(false));
+            }
+            resetResponse(rest::ResponseCode::OK);
+            response()->setPayload(std::move(payload));
+            return futures::makeFuture(RestStatus::DONE);
           })
           .thenError<VPackException>([this](VPackException const& e) {
             generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            return futures::makeFuture(RestStatus::DONE);
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            return futures::makeFuture(RestStatus::DONE);
           }));
-        VPackBuffer<uint8_t> payload;
-        {
-          VPackBuilder builder(payload);
-          VPackObjectBuilder ob(&builder);
-          builder.add("job", VPackValue(jobId));
-          builder.add("status", VPackValue("aborted"));
-          builder.add("error", VPackValue(false));
-        }
-        resetResponse(rest::ResponseCode::OK);
-        response()->setPayload(std::move(payload));
-        return RestStatus::DONE;
       }
     }
 
