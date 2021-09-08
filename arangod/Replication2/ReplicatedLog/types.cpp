@@ -124,10 +124,9 @@ auto FollowerState::withRequestInFlight(double duration) noexcept -> FollowerSta
   return FollowerState(std::in_place, RequestInFlight{duration});
 }
 
-constexpr const static std::string_view upToDateString = "up-to-date";
-constexpr const static std::string_view errorBackoffString = "error-backoff";
-constexpr const static std::string_view requestInFlightString =
-    "request-in-flight";
+constexpr static std::string_view upToDateString = "up-to-date";
+constexpr static std::string_view errorBackoffString = "error-backoff";
+constexpr static std::string_view requestInFlightString = "request-in-flight";
 
 auto FollowerState::fromVelocyPack(velocypack::Slice slice) -> FollowerState {
   auto state = slice.get("state").extract<std::string_view>();

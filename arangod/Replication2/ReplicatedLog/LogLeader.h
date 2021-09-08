@@ -163,12 +163,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     AppendEntriesErrorReason lastErrorReason = AppendEntriesErrorReason::NONE;
     LoggerContext const logContext;
 
-    enum State {
+    enum class State {
       IDLE,
       PREPARE,
       ERROR_BACKOFF,
       REQUEST_IN_FLIGHT,
-    } _state = IDLE;
+    } _state = State::IDLE;
   };
 
   struct LocalFollower final : AbstractFollower {
