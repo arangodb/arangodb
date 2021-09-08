@@ -1001,8 +1001,6 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
               }
             }
 
-            
-
             VPackBuffer<uint8_t> payload;
             {
               VPackBuilder builder(payload);
@@ -1021,7 +1019,6 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
           }));
-
       }
     }
 
