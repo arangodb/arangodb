@@ -929,8 +929,8 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
           builder.add("status", VPackValue("aborted"));
           builder.add("error", VPackValue(false));
         }
-        resetResponse(rest::ResponseCode::OK);
         response()->setPayload(std::move(payload));
+        resetResponse(rest::ResponseCode::OK);
         return RestStatus::DONE;
       }
     }
