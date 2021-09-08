@@ -154,6 +154,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief return the scorers to pass to the view
   std::vector<Scorer> const& scorers() const noexcept { return _scorers; }
 
+  // we could merge if it is allowed in general and there are no scores - as changing
+  // filters will affect score and we will lose backward compatibility
   bool allowFiltersMerge() const noexcept { return _options.allowFiltersMerge && _scorers.empty(); }
 
   /// @brief set the scorers to pass to the view

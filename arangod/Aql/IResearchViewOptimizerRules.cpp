@@ -180,8 +180,6 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
   if (searchCondition.root()) {
     if (viewNode.allowFiltersMerge()) {
       // we could benefit from merging STARTS_WITH and LEVENSHTEIN_MATCH
-      // if there is no scorers (with scorers we can't as it will affect score values)
-      // to do so we need to have all levenshtein filters present before first starts_with
       pushStartsWithToBack(*searchCondition.root());
     }
     auto filterCreated = FilterFactory::filter(
