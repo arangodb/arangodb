@@ -630,7 +630,6 @@ function MovingShardsSuite ({useData}) {
         if (useData) {
           // insert some documents
           let nd = (otherNumDocuments === 0) ? numDocuments : otherNumDocuments;
-          print(coll.name());
           coll.insert(_.range(0, nd).map(v => ({ value: v, x: "someString" + v })));
         }
 
@@ -653,7 +652,6 @@ function MovingShardsSuite ({useData}) {
     let nd = (otherNumDocuments === 0) ? numDocuments : otherNumDocuments;
     const numDocs = useData ? nd : 0;
     for(const collection of c) {
-      print(collection.name());
       assertEqual(numDocs, collection.count());
       const values = db._query(
         'FOR doc IN @@col SORT doc.value RETURN doc.value',
@@ -1104,7 +1102,7 @@ function MovingShardsSuite ({useData}) {
       assertEqual(job.abort);
       assertTrue(waitForSupervision());
       checkCollectionContents();
-    },    
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kill todo moveShard job
@@ -1141,7 +1139,7 @@ function MovingShardsSuite ({useData}) {
         assertTrue(waitForSupervision());
         checkCollectionContents(otherNumDocuments);
       }
-    },    
+    },
 
   };
 }
