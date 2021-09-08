@@ -100,8 +100,13 @@ void CacheManagerFeature::start() {
   }
 
   auto scheduler = SchedulerFeature::SCHEDULER;
-  auto postFn = [scheduler](std::function<void()> fn) {
-    scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
+  auto postFn = [scheduler](std::function<void()> fn) -> bool {
+    try {
+      scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
+      return true;
+    } catch (...) {
+      return false;
+    }
   };
 
   SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();

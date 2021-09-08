@@ -165,9 +165,8 @@ void ManagerFeature::queueGarbageCollection() {
   // The RequestLane needs to be something which is `HIGH` priority, otherwise
   // all threads executing this might be blocking, waiting for a lock to be
   // released.
-  auto workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
-      arangodb::RequestLane::CLUSTER_INTERNAL, std::chrono::seconds(2), _gcfunc);
-
+  auto workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(arangodb::RequestLane::CLUSTER_INTERNAL,
+                                                                         std::chrono::seconds(2), _gcfunc);
   std::lock_guard<std::mutex> guard(_workItemMutex);
   _workItem = std::move(workItem);
 }

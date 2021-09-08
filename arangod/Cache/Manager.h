@@ -74,7 +74,7 @@ class Rebalancer;      // forward declaration
 ////////////////////////////////////////////////////////////////////////////////
 class Manager {
  protected:
-  typedef std::function<void(std::function<void()>)> PostFn;
+  typedef std::function<bool(std::function<void()>)> PostFn;
 
  public:
   static const std::uint64_t minSize;
@@ -164,7 +164,7 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Post a function to the scheduler
   //////////////////////////////////////////////////////////////////////////////
-  void post(std::function<void()> fn);
+  bool post(std::function<void()> fn);
   
   SharedPRNGFeature& sharedPRNG() const noexcept { return _sharedPRNG; }
 

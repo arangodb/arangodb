@@ -50,7 +50,7 @@ class FreeMemoryTask : public std::enable_shared_from_this<FreeMemoryTask> {
                  std::shared_ptr<Cache>);
   ~FreeMemoryTask();
 
-  void dispatch();
+  bool dispatch();
 
  private:
   void run();
@@ -72,7 +72,7 @@ class MigrateTask : public std::enable_shared_from_this<MigrateTask> {
               std::shared_ptr<Cache>, std::shared_ptr<Table>);
   ~MigrateTask();
 
-  void dispatch();
+  bool dispatch();
 
  private:
   void run();

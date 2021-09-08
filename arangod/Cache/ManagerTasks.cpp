@@ -35,9 +35,9 @@ FreeMemoryTask::FreeMemoryTask(Manager::TaskEnvironment environment,
 
 FreeMemoryTask::~FreeMemoryTask() = default;
 
-void FreeMemoryTask::dispatch() {
+bool FreeMemoryTask::dispatch() {
   _manager.prepareTask(_environment);
-  _manager.post([self = shared_from_this()]() -> void { self->run(); });
+  return _manager.post([self = shared_from_this()]() -> void { self->run(); });
 }
 
 void FreeMemoryTask::run() {
@@ -67,9 +67,9 @@ MigrateTask::MigrateTask(Manager::TaskEnvironment environment, Manager& manager,
 
 MigrateTask::~MigrateTask() = default;
 
-void MigrateTask::dispatch() {
+bool MigrateTask::dispatch() {
   _manager.prepareTask(_environment);
-  _manager.post([self = shared_from_this()]() -> void { self->run(); });
+  return _manager.post([self = shared_from_this()]() -> void { self->run(); });
 }
 
 void MigrateTask::run() {
