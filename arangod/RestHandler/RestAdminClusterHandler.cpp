@@ -898,7 +898,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
         }
 
         waitForFuture(
-          AsyncAgencyComm().sendWriteTransaction(60s, std::move(trxBody));
+          AsyncAgencyComm().sendWriteTransaction(60s, std::move(trxBody))
           .thenValue([this](AsyncAgencyCommResult&& wr) {
             if (!wr.ok()) {
               if (wr.statusCode() == 412) {
