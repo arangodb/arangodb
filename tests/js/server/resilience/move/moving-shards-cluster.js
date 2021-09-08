@@ -366,7 +366,7 @@ function MovingShardsSuite ({useData}) {
 /// @brief order the cluster to clean out a server:
 ////////////////////////////////////////////////////////////////////////////////
 
-  function cleanOutServer(id) {
+  function cleanOutServer(id, dontwait = false) {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
@@ -385,6 +385,9 @@ function MovingShardsSuite ({useData}) {
     }
     console.info("cleanOutServer job:", JSON.stringify(body));
     console.info("result of request:", JSON.stringify(result.json));
+    if (dontwait) {
+      return result;
+    }
     // Now wait until the job we triggered is finished:
     var count = 1200;   // seconds
     while (true) {
@@ -535,11 +538,11 @@ function MovingShardsSuite ({useData}) {
         "Exception for PUT /_admin/cluster/moveShard:", err.stack);
       return false;
     }
+    console.info("moveShard job:", JSON.stringify(body));
+    console.info("result of request:", JSON.stringify(result.json));
     if (dontwait) {
       return result;
     }
-    console.info("moveShard job:", JSON.stringify(body));
-    console.info("result of request:", JSON.stringify(result.json));
     // Now wait until the job we triggered is finished:
     var count = 600;   // seconds
     while (true) {
@@ -1105,7 +1108,7 @@ function MovingShardsSuite ({useData}) {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief kill todo moveShard job
+/// @brief kill pending moveShard job
 ////////////////////////////////////////////////////////////////////////////////
 
     testCancelPendingMoveShard : function() {
@@ -1141,6 +1144,67 @@ function MovingShardsSuite ({useData}) {
       }
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kill todo cleanOutServer job
+////////////////////////////////////////////////////////////////////////////////
+
+    testCancelToDoCleanOutServer : function() {
+      createSomeCollections(1, 1, 3, useData);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var fromServer = servers[0];
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[1].name());
+      var shard = Object.keys(cinfo.shards)[0];
+      assertTrue(maintenanceMode("on"));
+      let result = cleanOutServer(servers[0], true);
+      assertEqual(result.statusCode, 202);
+      let id = JSON.parse(result.body).id;
+      assertTrue(cancelAgencyJob(id));
+      assertTrue(maintenanceMode("off"));
+      var job = queryAgencyJob(result.json.id);
+      assertEqual(job.status, "Failed");
+      assertEqual(job.abort);
+      assertTrue(waitForSupervision());
+      checkCollectionContents();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kill pending moveShard job
+////////////////////////////////////////////////////////////////////////////////
+
+    testCancelPendingCleanOutServer : function() {
+      if (useData) {
+        for (var i = 0; i < c.length; ++i) {
+          c[i].drop();
+        }
+        c = [];
+        let otherNumDocuments = 100000;
+        createSomeCollections(1, 1, 3, useData, otherNumDocuments);
+        assertTrue(waitForSynchronousReplication("_system"));
+        var servers = findCollectionServers("_system", c[0].name());
+        var fromServer = servers[0];
+        var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[0].name());
+        var shard = Object.keys(cinfo.shards)[0];
+        let result = cleanOutServer(fromServer, true);
+        assertEqual(result.statusCode, 202);
+        let id = JSON.parse(result.body).id;
+        while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to start
+          wait(0.1);
+        }
+        assertTrue(cancelAgencyJob(id));
+        while (queryAgencyJob(result.json.id).status === "Pending") { // wait for job to be killed
+          wait(0.1);
+        }
+        var job = queryAgencyJob(result.json.id);
+        assertEqual(job.status, "Failed");
+        assertEqual(job.abort);
+        assertTrue(waitForSupervision());
+        checkCollectionContents(otherNumDocuments);
+      }
+    },
+    
   };
 }
 
