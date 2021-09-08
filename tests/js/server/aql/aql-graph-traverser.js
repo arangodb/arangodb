@@ -2680,7 +2680,9 @@ function complexFilteringSuite() {
     },
 
     testStorePruneConditionPathInVariableExplain: function () {
-      const condition = "p.edges[0].right == true";
+      // note: using NOOPT(...) here to disable the optimization that pulls
+      // certain FILTER conditions into the traversal
+      const condition = "NOOPT(p.edges[0].right) == true";
       let query = `FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
       let bindVars = {
         'eCol': en,
@@ -2700,7 +2702,9 @@ function complexFilteringSuite() {
     },
 
     testStorePruneConditionPathInVariableExplainWithOptions: function () {
-      const condition = "p.edges[0].right == true";
+      // note: using NOOPT(...) here to disable the optimization that pulls
+      // certain FILTER conditions into the traversal
+      const condition = "NOOPT(p.edges[0].right) == true";
       let query = `FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
       let bindVars = {
         'eCol': en,
