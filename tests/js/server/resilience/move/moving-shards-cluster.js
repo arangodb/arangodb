@@ -753,7 +753,7 @@ function MovingShardsSuite ({useData}) {
 /// @brief cleaning out collection with one shard without replication
 ////////////////////////////////////////////////////////////////////////////////
 
-/*    testShrinkNoReplication : function() {
+    testShrinkNoReplication : function() {
       assertTrue(waitForSynchronousReplication("_system"));
       var _dbservers = servers;
       _dbservers.sort();
@@ -1080,7 +1080,7 @@ function MovingShardsSuite ({useData}) {
       assertTrue(waitForSupervision());
       checkCollectionContents();
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kill todo moveShard job
 ////////////////////////////////////////////////////////////////////////////////
