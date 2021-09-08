@@ -38,8 +38,10 @@
 #include <Futures/Promise.h>
 
 #include <algorithm>
-#include <utility>
+#include <Basics/ScopeGuard.h>
+#include <Basics/application-exit.h>
 
+#include <utility>
 #if (_MSC_VER >= 1)
 // suppress warnings:
 #pragma warning(push)
@@ -48,8 +50,6 @@
 // result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
 #pragma warning(disable : 4334)
 #endif
-#include <Basics/ScopeGuard.h>
-#include <Basics/application-exit.h>
 #include <immer/flex_vector.hpp>
 #include <immer/flex_vector_transient.hpp>
 #if (_MSC_VER >= 1)
@@ -206,7 +206,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
 
         auto const end = waitForQueue->upper_bound(self->_commitIndex);
         for (auto it = waitForQueue->begin(); it != end;) {
-          LOG_CTX("37d9c", TRACE, self->_follower._loggerContext)
+          LOG_CTX("69022", TRACE, self->_follower._loggerContext)
               << "resolving promise for index " << it->first;
           toBeResolved->insert(waitForQueue->extract(it++));
         }
@@ -222,7 +222,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       } catch (std::exception const& e) {
         // If those promises are not fulfilled we can not continue.
         // Note that the move constructor of std::multi_map is not noexcept.
-        LOG_CTX("e7a4d", FATAL, self->_follower._loggerContext)
+        LOG_CTX("e7a3d", FATAL, self->_follower._loggerContext)
             << "failed to fulfill replication promises due to exception; "
                "system "
                "can not continue. message: "
@@ -231,10 +231,9 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       } catch (...) {
         // If those promises are not fulfilled we can not continue.
         // Note that the move constructor of std::multi_map is not noexcept.
-        LOG_CTX("c0bbb", FATAL, self->_follower._loggerContext)
+        LOG_CTX("c0bba", FATAL, self->_follower._loggerContext)
             << "failed to fulfill replication promises due to exception; "
-               "system "
-               "can not continue";
+               "system can not continue";
         FATAL_ERROR_EXIT();
       }
     };

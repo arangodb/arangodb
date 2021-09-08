@@ -46,6 +46,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
@@ -75,7 +76,6 @@
 #endif
 #include <immer/flex_vector.hpp>
 #include <immer/flex_vector_transient.hpp>
-#include <utility>
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif

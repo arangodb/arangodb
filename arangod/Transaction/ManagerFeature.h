@@ -52,7 +52,7 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   
   double streamingIdleTimeout() const { return _streamingIdleTimeout; }
 
-  static transaction::Manager* manager() {
+  static transaction::Manager* manager() noexcept {
     return MANAGER.get();
   }
 

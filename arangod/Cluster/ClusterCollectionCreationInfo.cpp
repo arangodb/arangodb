@@ -26,7 +26,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterTypes.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
@@ -36,20 +35,17 @@ using namespace arangodb;
 
 ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
     std::string cID, uint64_t shards, uint64_t replicationFactor,
-    uint64_t writeConcern, bool waitForSync, bool waitForRep,
-    velocypack::Slice const& slice, std::string coordinatorId, RebootId rebootId,
-    std::optional<std::shared_ptr<std::unordered_map<ShardID, replication2::LogId>>> replicatedLogs)
+    uint64_t writeConcern, bool waitForRep, velocypack::Slice const& slice,
+    std::string coordinatorId, RebootId rebootId)
     : collectionID(std::move(cID)),
       numberOfShards(shards),
       replicationFactor(replicationFactor),
       writeConcern(writeConcern),
-      waitForSync(waitForSync),
       waitForReplication(waitForRep),
       json(slice),
       name(basics::VelocyPackHelper::getStringValue(json, StaticStrings::DataSourceName,
-                                                    StaticStrings::Empty)),
+                                                              StaticStrings::Empty)),
       state(ClusterCollectionCreationState::INIT),
-      replicatedLogs(std::move(replicatedLogs)),
       creator(std::in_place, std::move(coordinatorId), rebootId) {
   TRI_ASSERT(creator);
   TRI_ASSERT(creator->rebootId().initialized());

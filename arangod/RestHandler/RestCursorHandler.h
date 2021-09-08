@@ -92,7 +92,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief unregister the currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  void unregisterQuery();
+  void unregisterQuery() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle the result returned by the query. This function is
