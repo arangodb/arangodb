@@ -41,16 +41,16 @@ struct StreamGenericImplementationBase
   using Iterator = TypedLogRangeIterator<StreamEntryView<ValueType>>;
   using WaitForResult = typename StreamInterface<ValueType>::WaitForResult;
 
-  auto waitForIterator(LogIndex index) -> futures::Future<std::unique_ptr<Iterator>> final {
+  auto waitForIterator(LogIndex index) -> futures::Future<std::unique_ptr<Iterator>> override final {
     return implementation().template waitForIteratorInternal<Descriptor>(index);
   }
-  auto waitFor(LogIndex index) -> futures::Future<WaitForResult> final {
+  auto waitFor(LogIndex index) -> futures::Future<WaitForResult> override final {
     return implementation().template waitForInternal<Descriptor>(index);
   }
-  auto release(LogIndex index) -> void final {
+  auto release(LogIndex index) -> void override final {
     return implementation().template releaseInternal<Descriptor>(index);
   }
-  auto getAllEntriesIterator() -> std::unique_ptr<Iterator> final {
+  auto getAllEntriesIterator() -> std::unique_ptr<Iterator> override final {
     return implementation().template getIteratorInternal<Descriptor>();
   }
 

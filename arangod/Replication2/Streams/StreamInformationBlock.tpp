@@ -87,7 +87,6 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIterator()
 
     [[nodiscard]] auto range() const noexcept -> std::pair<LogIndex, LogIndex> override {
       abort();
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
 
     explicit Iterator(ContainerType log)

@@ -220,13 +220,20 @@ struct LogMultiplexerImplementationBase {
   std::shared_ptr<Interface> const _interface;
 };
 
+#if (_MSC_VER >= 1)
+// suppress warnings:
+#pragma warning(push)
+// '<class>': inherits '<method>' via dominance
+#pragma warning(disable : 4250)
+#endif
+
 template <typename Spec, typename Interface>
 struct LogDemultiplexerImplementation
     : LogDemultiplexer<Spec>,  // implement the actual class
       ProxyStreamDispatcher<LogDemultiplexerImplementation<Spec, Interface>, Spec, Stream>,  // use a proxy stream dispatcher
-      LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec, Interface>, Spec, Stream, Interface> {
+      LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec, Interface>, Spec, arangodb::replication2::streams::Stream, Interface> {
   explicit LogDemultiplexerImplementation(std::shared_ptr<Interface> interface_)
-      : LogMultiplexerImplementationBase<LogDemultiplexerImplementation, Spec, Stream, Interface>(
+      : LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec, Interface>, Spec, arangodb::replication2::streams::Stream, Interface>(
             std::move(interface_)) {}
 
   auto digestIterator(LogRangeIterator& iter) -> void override {
@@ -272,11 +279,11 @@ template <typename Spec, typename Interface>
 struct LogMultiplexerImplementation
     : LogMultiplexer<Spec>,
       ProxyStreamDispatcher<LogMultiplexerImplementation<Spec, Interface>, Spec, ProducerStream>,
-      LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec, Interface>, Spec, ProducerStream, Interface> {
+      LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec, Interface>, Spec, arangodb::replication2::streams::ProducerStream, Interface> {
   using SelfClass = LogMultiplexerImplementation<Spec, Interface>;
 
   explicit LogMultiplexerImplementation(std::shared_ptr<Interface> interface_)
-      : LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec, Interface>, Spec, ProducerStream, Interface>(
+      : LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec, Interface>, Spec, arangodb::replication2::streams::ProducerStream, Interface>(
             std::move(interface_)) {}
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>>
@@ -333,8 +340,12 @@ struct LogMultiplexerImplementation
         }
       }
     });
-  }
+  } 
 };
+
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
 
 template <typename Spec>
 auto LogDemultiplexer<Spec>::construct(std::shared_ptr<replicated_log::ILogParticipant> interface_)
