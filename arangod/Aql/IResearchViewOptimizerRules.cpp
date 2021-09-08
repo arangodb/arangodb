@@ -81,7 +81,7 @@ inline IResearchViewStoredValues const& storedValues(arangodb::LogicalView const
 ///        to make it possible later optimize out STARTS_WITH covered by LEVENSHTEIN_MATCH
 /// @param condition SEARCH condition node
 /// @param plan current query plan
-void pushStartsWithToBack(arangodb::aql::AstNode& condition, ExecutionPlan& plan) {
+void pushStartsWithToBack(arangodb::aql::AstNode& condition) {
   auto numMembers = condition.numMembers();
   constexpr irs::string_ref STARTS_WITH {"STARTS_WITH"};
   for (size_t memberIdx = 0; memberIdx < numMembers; ++memberIdx) {
@@ -114,11 +114,11 @@ void pushStartsWithToBack(arangodb::aql::AstNode& condition, ExecutionPlan& plan
             --movePoint;
           }
         } else {
-          pushStartsWithToBack(*andMember, plan);
+          pushStartsWithToBack(*andMember);
         }
       }
     } else {
-      pushStartsWithToBack(*current, plan);
+      pushStartsWithToBack(*current);
     }
   }
 }
@@ -182,7 +182,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
       // we could benefit from merging STARTS_WITH and LEVENSHTEIN_MATCH
       // if there is no scorers (with scorers we can't as it will affect score values)
       // to do so we need to have all levenshtein filters present before first starts_with
-      pushStartsWithToBack(*searchCondition.root(), plan);
+      pushStartsWithToBack(*searchCondition.root());
     }
     auto filterCreated = FilterFactory::filter(
       nullptr,
