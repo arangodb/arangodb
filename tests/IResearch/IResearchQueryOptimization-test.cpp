@@ -12330,6 +12330,46 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       "RETURN d",
       expected);
   }
+  // multiprefixes is not merged
+  {
+    irs::Or expected;
+    auto& andFilter = expected.add<irs::And>(); 
+    auto& filter = andFilter.add<irs::by_edit_distance>();
+    *filter.mutable_field() = mangleString("name", "identity");
+    {
+      auto* opts = filter.mutable_options();
+      opts->max_distance = 2;
+      opts->max_terms = 63;
+      opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+      opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+      opts->with_transpositions = false;
+    }
+    {
+      auto& orFilter = andFilter.add<irs::Or>();
+      orFilter.min_match_count(2);
+      {
+        auto& starts = orFilter.add<irs::by_prefix>();
+        *starts.mutable_field() = mangleString("name", "identity");
+        auto* opt = starts.mutable_options();
+        opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+        opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      }
+      {
+        auto& starts = orFilter.add<irs::by_prefix>();
+        *starts.mutable_field() = mangleString("name", "identity");
+        auto* opt = starts.mutable_options();
+        opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("boo"));
+        opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      }
+    }
+    assertFilterOptimized(
+      vocbase(),
+      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
+      "AND STARTS_WITH(d.name, ['foo', 'boo'], 2) "
+      "OPTIONS {\"allowFiltersMerge\": false } "
+      "RETURN d",
+      expected);
+  }
   // name not match
   {
     irs::Or expected;

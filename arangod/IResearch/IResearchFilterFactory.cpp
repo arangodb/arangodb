@@ -3573,49 +3573,36 @@ Result fromFuncStartsWith(
     filter->boost(filterCtx.boost); // FIXME: should boost new filter, not existing!
 
     // Try to optimize us away
-    if (!isMultiPrefix && ctx.allowFiltersMerge && filter->type() == irs::type<irs::And>::id()) {
+    if (!isMultiPrefix && !prefixes.empty() &&
+         ctx.allowFiltersMerge && filter->type() == irs::type<irs::And>::id()) {
       for (auto& f : *filter) {
         if (f.type() == irs::type<irs::by_edit_distance>::id()) {
           auto& levenshtein = static_cast<irs::by_edit_distance&>(f);
           if (*levenshtein.mutable_field() == name) {
             auto options = levenshtein.mutable_options();
             auto startsWith = prefixes.back().second;
-            if (options->prefix.empty()) {
-              // no-prefix. Maybe term contains suitable prefix ?
-              if (options->term.size() >= startsWith.size() && 
-                  0 == std::memcmp(options->term.data(), startsWith.c_str(), startsWith.size())) {
-                // common prefix found.
-                options->prefix = irs::ref_cast<irs::byte_type>(startsWith);
-                options->term.erase(options->term.begin(), options->term.begin() + startsWith.size());
+            if (startsWith.size() <= options->prefix.size()) {
+              if (std::memcmp(options->prefix.data(), startsWith.c_str(),
+                              startsWith.size()) == 0) {
+                // Nothing to do. We are already covered by this levenshtein prefix
                 return {};
               }
             } else {
-              if (irs::ref_cast<irs::byte_type>(startsWith) == options->prefix) {
-                // clear match. nothing to do. We are already covered by this levenshtein
-                return {};
-              } else if (startsWith.size() < options->prefix.size()) {
-                if (std::memcmp(options->prefix.data(), startsWith.c_str(),
-                                startsWith.size()) == 0) {
-                  // Nothing to do. We are already covered by this levenshtein prefix
+              // maybe we could enlarge prefix to cover us?
+              if (std::memcmp(options->prefix.data(), startsWith.c_str(),
+                              options->prefix.size()) == 0) {
+                // looks promising - beginning of the levenshtein prefix is ok
+                auto prefixTailSize = startsWith.size() - options->prefix.size();
+                if (options->term.size() >= prefixTailSize &&
+                    std::memcmp(options->term.data(),
+                                startsWith.c_str() + options->prefix.size(),
+                                prefixTailSize) == 0) {
+                  // we could enlarge prefix
+                  options->prefix = irs::ref_cast<irs::byte_type>(startsWith);
+                  options->term.erase(options->term.begin(),
+                                      options->term.begin() + prefixTailSize);
                   return {};
                 }
-               } else {
-                 // maybe we could enlarge prefix to cover us?
-                 if (std::memcmp(options->prefix.data(), startsWith.c_str(),
-                                 options->prefix.size()) == 0) {
-                   // looks promising - beginning of the levenshtein prefix is ok
-                   auto prefixTailSize = startsWith.size() - options->prefix.size();
-                   if (options->term.size() >= prefixTailSize &&
-                       std::memcmp(options->term.data(),
-                                   startsWith.c_str() + options->prefix.size(),
-                                   prefixTailSize) == 0) {
-                     // we could enlarge prefix
-                     options->prefix = irs::ref_cast<irs::byte_type>(startsWith);
-                     options->term.erase(options->term.begin(),
-                                         options->term.begin() + prefixTailSize);
-                     return {};
-                   }
-                 }
               }
             }
             if ((options->term.size() +
