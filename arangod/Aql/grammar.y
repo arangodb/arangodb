@@ -33,7 +33,6 @@
 #include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
 
-#include "Logger/LogMacros.h"
 
 %}
 
@@ -650,13 +649,14 @@ prune_and_options:
         // Options
         node->addMember(parser->ast()->createNodeNop());
       } else if (TRI_CaseEqualString($1.value, "OPTIONS")) {
+        const auto* optionsArgument = $2->getMember(1);
         /* Only Options */
-        TRI_ASSERT($2 != nullptr);
-        ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
+        TRI_ASSERT(optionsArgument != nullptr);
+        ::validateOptions(parser, optionsArgument, yylloc.first_line, yylloc.first_column);
         // Prune
         node->addMember(parser->ast()->createNodeNop());
         // Options
-        node->addMember($2);
+        node->addMember(optionsArgument);
       } else {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE' or 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
@@ -1694,7 +1694,6 @@ for_options:
         if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
           parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
         }
-      
         ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
 
         node->addMember(parser->ast()->createNodeNop());
@@ -1711,7 +1710,7 @@ for_options:
           !TRI_CaseEqualString($3.value, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
-      
+     
       ::validateOptions(parser, $4, yylloc.first_line, yylloc.first_column);
 
       auto node = parser->ast()->createNodeArray(2);
@@ -1731,7 +1730,7 @@ options:
       if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
-      
+     
       ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
 
       $$ = $2;

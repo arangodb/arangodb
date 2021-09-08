@@ -2411,11 +2411,11 @@ function complexFilteringSuite() {
         assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
       }
     },
-    
-    testStorePruneConditionInVariable: function () {
-      // The additional parentheses in LENGTH are important for this test!
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @ecol PRUNE pruneCondition = v.value == 75 FILTER pruneCondition RETURN {value: v.value, variable: pruneCondition}`;
-      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @ecol PRUNE v.value == 75 FILTER v.value == 75 RETURN {value: v.value, variable: pruneCondition}`;
+
+    testStorePruneConditionVertexInVariable: function () {
+      let condition = "v.value == 75";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} RETURN pruneCondition`;
+      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition}  RETURN ${condition}`;
       let bindVars = {
         '@eCol': en,
         'start': vertex.A
@@ -2423,33 +2423,303 @@ function complexFilteringSuite() {
       let query1result = db._query(query, bindVars).toArray();
       let query2result = db._query(query2, bindVars).toArray();
       assertTrue(_.isEqual(query1result, query2result));
-  },
-    testStorePruneConditionInVariableExplain: function () {
-      // The additional parentheses in LENGTH are important for this test!
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @ecol PRUNE pruneCondition = v.value == 75 FILTER pruneCondition RETURN {value: v.value, variable: pruneCondition}`;
-      let bindVars = {
-        '@eCol': en,
-        'start': vertex.A
-      };
-      let queryExplain = AQL_EXPLAIN(query).plan.nodes;
-      print(queryExplain);
-      assertTrue(_.isEqual(query1result, query2result));
-  },
-
     },
 
-    testStorePruneConditionInVariableExplainWithOptions: function () {
-      // The additional parentheses in LENGTH are important for this test!
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @ecol PRUNE pruneCondition = v.value == 75 OPTIONS {bfs: true} FILTER pruneCondition RETURN {value: v.value, variable: pruneCondition}`;
-      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @ecol PRUNE v.value == 75 OPTIONS {bfs: true} FILTER v.value == 75 RETURN {value: v.value, variable: pruneCondition}`;
+    testStorePruneConditionVertexInVariableUnusedExplain: function () {
+      let condition = "v.value == 75";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} RETURN 1`;
       let bindVars = {
         '@eCol': en,
         'start': vertex.A
       };
-      let queryExplain = AQL_EXPLAIN(query).plan.nodes;
+      let queryResult = db._query(query, bindVars).toArray();
+      assertEqual(queryResult.length, 4);
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; 
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+          return;
+        }
+      });
+      assertEqual(foundExtraLet, false);
+    },
+
+    testStorePruneConditionVertexInVariableFilter: function () {
+      let condition = "v.value == 75";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {value: v.value, key: v._key}`;
+      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} RETURN {value: v.value, key: v._key}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
       let query1result = db._query(query, bindVars).toArray();
       let query2result = db._query(query2, bindVars).toArray();
+      assertEqual(query1result.length, 1);
+      assertEqual(query2result.length, 1);
       assertTrue(_.isEqual(query1result, query2result));
+      assertEqual(query1result[query1result.length - 1].value, 75);
+      assertEqual(query2result[query2result.length - 1].value, 75);
+      assertEqual(query1result[query1result.length - 1].key, "D");
+      assertEqual(query2result[query2result.length - 1].key, "D");
+    },
+   
+    testStorePruneConditionVertexInVariableFilterWithOptions: function () {
+      let condition = "v.value == 75";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {value: v.value, key: v._key}`;
+      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} OPTIONS {bfs: true} FILTER ${condition} RETURN {value: v.value, key: v._key}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertEqual(query1result.length, 1);
+      assertEqual(query2result.length, 1);
+      assertTrue(_.isEqual(query1result, query2result));
+      assertEqual(query1result[query1result.length - 1].value, 75);
+      assertEqual(query2result[query2result.length - 1].value, 75);
+      assertEqual(query1result[query1result.length - 1].key, "D");
+      assertEqual(query2result[query2result.length - 1].key, "D");
+    },
+ 
+    testStorePruneConditionVertexInVariableFilterLogicalOr: function () {
+      const condition = "v.value == 75 || v.value == 25";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER pruneCondition SORT v._key RETURN {value: v.value, key: v._key}`;
+      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} SORT v._key RETURN {value: v.value, key: v._key}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertEqual(query1result.length, 2);
+      assertEqual(query2result.length, 2);
+      assertTrue(_.isEqual(query1result, query2result));
+      assertEqual(query1result[0].value, 25);
+      assertEqual(query1result[0].key, "B");
+      assertEqual(query1result[1].value, 75);
+      assertEqual(query1result[1].key, "D");
+    },
+
+    testReferToPruneVariableInPruneCondition: function () {
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = v.value == 75 && pruneCondition RETURN 1`;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.A
+        };
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+      }
+    },
+
+    testReassignVariableInPruneCondition: function () {
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE p = v.value == 75 RETURN 1`;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.A
+        };
+       db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_QUERY_VARIABLE_REDECLARED.code);
+      }
+    },
+
+    testStorePruneConditionEdgeInVariable: function () {
+      const condition = "e.left == true";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} RETURN {key: v._key, from: e._from, to: e._to}`;
+      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} RETURN {key: v._key, from: e._from, to: e._to}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertEqual(query1result.length, 4);
+      assertEqual(query2result.length, 4);
+      assertTrue(_.isEqual(query1result, query2result));
+    },
+
+    testStorePruneConditionEdgeInVariableFilter: function () {
+      const condition = "e.right == true";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER ${condition} RETURN {from: e._from, to: e._to}`;
+      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} RETURN {from: e._from, to: e._to}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertEqual(query1result.length, 1);
+      assertEqual(query2result.length, 1);
+      assertTrue(_.isEqual(query1result, query2result));
+      assertEqual(query1result[0].from, `${vn}\/A`);
+      assertEqual(query1result[0].to, `${vn}\/D`);
+    },
+
+    testStorePruneConditionPathInVariable: function () {
+      const condition = "p.edges[0].right == true";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} RETURN {key: v._key}`;
+      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} RETURN {key: v._key}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertEqual(query1result.length, 4);
+      assertEqual(query2result.length, 4);
+      assertTrue(_.isEqual(query1result, query2result));
+    },
+
+    testStorePruneConditionPathInVariableFilter: function () {
+      const condition = "e.right == true";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER ${condition} RETURN {key: v._key}`;
+      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} RETURN {key: v._key}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertEqual(query1result.length, 1);
+      assertEqual(query2result.length, 1);
+      assertTrue(_.isEqual(query1result, query2result));
+      assertEqual(query1result[0].key, 'D');
+    },
+
+    testStorePruneConditionVertexInVariableExplainLogicalOr: function () {
+      const condition = "v.value == 75 || v.value == 25";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN 1`;
+      let bindVars = {
+        'eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+        }
+        if(node.type === "FilterNode") {
+          assertEqual(node["inVariable"]["name"], "pruneCondition");
+        }
+      });
+      assertTrue(foundExtraLet);
+    },
+
+    testStorePruneConditionVertexInVariableExplainLogicalOrWithOptions: function () {
+      const condition = "v.value == 75 || v.value == 25";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN 1`;
+      let bindVars = {
+        'eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+        }
+        if(node.type === "FilterNode") {
+          assertEqual(node["inVariable"]["name"], "pruneCondition");
+        }
+        if(node.type === "TraversalNode") {
+          assertEqual(node["options"]["order"], "bfs");
+        }
+      });
+      assertTrue(foundExtraLet);
+    },
+
+    testStorePruneConditionEdgeInVariableExplain: function () {
+      const condition = "e.right == true";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let bindVars = {
+        'eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+        }
+        if(node.type === "FilterNode") {
+          assertEqual(node["inVariable"]["name"], "pruneCondition");
+        }
+      });
+      assertTrue(foundExtraLet);
+    },
+
+    testStorePruneConditionEdgeInVariableExplainWithOptions: function () {
+      const condition = "e.right == true";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let bindVars = {
+        'eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+        }
+        if(node.type === "FilterNode") {
+          assertEqual(node["inVariable"]["name"], "pruneCondition");
+        }
+        if(node.type === "TraversalNode") {
+          assertEqual(node["options"]["order"], "bfs");
+        }
+      });
+      assertTrue(foundExtraLet);
+    },
+
+    testStorePruneConditionPathInVariableExplain: function () {
+      const condition = "p.edges[0].right == true";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let bindVars = {
+        'eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+        }
+        if(node.type === "FilterNode") {
+          assertEqual(node["inVariable"]["name"], "pruneCondition");
+        }
+      });
+      assertTrue(foundExtraLet);
+    },
+
+    testStorePruneConditionPathInVariableExplainWithOptions: function () {
+      const condition = "p.edges[0].right == true";
+      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let bindVars = {
+        'eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+        }
+        if(node.type === "FilterNode") {
+          assertEqual(node["inVariable"]["name"], "pruneCondition");
+        }
+        if(node.type === "TraversalNode") {
+          assertEqual(node["options"]["order"], "bfs");
+        }
+      });
+      assertTrue(foundExtraLet);
     },
 
     testVertexEarlyPruneHighDepth: function () {
