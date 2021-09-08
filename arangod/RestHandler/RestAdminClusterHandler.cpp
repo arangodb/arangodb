@@ -875,7 +875,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
           return RestStatus::DONE;
         }
 
-        auto sendTransaction = [&] {
+        auto const sendTransaction = [&] {
           VPackBuffer<uint8_t> trxBody;
           { VPackBuilder builder(trxBody);
             { VPackArrayBuilder trxs(&builder);
