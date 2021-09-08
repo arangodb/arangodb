@@ -2414,8 +2414,8 @@ function complexFilteringSuite() {
 
     testStorePruneConditionVertexInVariable: function () {
       let condition = "v.value == 75";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} RETURN pruneCondition`;
-      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition}  RETURN ${condition}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} SORT pruneCondition RETURN pruneCondition`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} SORT ${condition} RETURN ${condition}`;
       let bindVars = {
         '@eCol': en,
         'start': vertex.A
@@ -2427,7 +2427,7 @@ function complexFilteringSuite() {
 
     testStorePruneConditionVertexInVariableUnusedExplain: function () {
       let condition = "v.value == 75";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} RETURN 1`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} RETURN 1`;
       let bindVars = {
         '@eCol': en,
         'start': vertex.A
@@ -2442,13 +2442,13 @@ function complexFilteringSuite() {
           return;
         }
       });
-      assertEqual(foundExtraLet, false);
+      assertFalse(foundExtraLet);
     },
-
+   
     testStorePruneConditionVertexInVariableFilter: function () {
       let condition = "v.value == 75";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {value: v.value, key: v._key}`;
-      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} RETURN {value: v.value, key: v._key}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {value: v.value, key: v._key}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} RETURN {value: v.value, key: v._key}`;
       let bindVars = {
         '@eCol': en,
         'start': vertex.A
@@ -2466,8 +2466,8 @@ function complexFilteringSuite() {
    
     testStorePruneConditionVertexInVariableFilterWithOptions: function () {
       let condition = "v.value == 75";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {value: v.value, key: v._key}`;
-      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} OPTIONS {bfs: true} FILTER ${condition} RETURN {value: v.value, key: v._key}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {value: v.value, key: v._key}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} OPTIONS {bfs: true} FILTER ${condition} RETURN {value: v.value, key: v._key}`;
       let bindVars = {
         '@eCol': en,
         'start': vertex.A
@@ -2485,8 +2485,8 @@ function complexFilteringSuite() {
  
     testStorePruneConditionVertexInVariableFilterLogicalOr: function () {
       const condition = "v.value == 75 || v.value == 25";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER pruneCondition SORT v._key RETURN {value: v.value, key: v._key}`;
-      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} SORT v._key RETURN {value: v.value, key: v._key}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER pruneCondition SORT v._key RETURN {value: v.value, key: v._key}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} SORT v._key RETURN {value: v.value, key: v._key}`;
       let bindVars = {
         '@eCol': en,
         'start': vertex.A
@@ -2503,7 +2503,7 @@ function complexFilteringSuite() {
     },
 
     testReferToPruneVariableInPruneCondition: function () {
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = v.value == 75 && pruneCondition RETURN 1`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = v.value == 75 && pruneCondition RETURN 1`;
       try {
         let bindVars = {
           '@eCol': en,
@@ -2517,7 +2517,7 @@ function complexFilteringSuite() {
     },
 
     testReassignVariableInPruneCondition: function () {
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE p = v.value == 75 RETURN 1`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE p = v.value == 75 RETURN 1`;
       try {
         let bindVars = {
           '@eCol': en,
@@ -2532,8 +2532,8 @@ function complexFilteringSuite() {
 
     testStorePruneConditionEdgeInVariable: function () {
       const condition = "e.left == true";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} RETURN {key: v._key, from: e._from, to: e._to}`;
-      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} RETURN {key: v._key, from: e._from, to: e._to}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} SORT v._key RETURN {key: v._key, from: e._from, to: e._to}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} SORT v._key RETURN {key: v._key, from: e._from, to: e._to}`;
       let bindVars = {
         '@eCol': en,
         'start': vertex.A
@@ -2547,8 +2547,8 @@ function complexFilteringSuite() {
 
     testStorePruneConditionEdgeInVariableFilter: function () {
       const condition = "e.right == true";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER ${condition} RETURN {from: e._from, to: e._to}`;
-      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} RETURN {from: e._from, to: e._to}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER ${condition} RETURN {from: e._from, to: e._to}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} RETURN {from: e._from, to: e._to}`;
       let bindVars = {
         '@eCol': en,
         'start': vertex.A
@@ -2564,8 +2564,8 @@ function complexFilteringSuite() {
 
     testStorePruneConditionPathInVariable: function () {
       const condition = "p.edges[0].right == true";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} RETURN {key: v._key}`;
-      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} RETURN {key: v._key}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} SORT v._key RETURN {key: v._key}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} SORT v._key RETURN {key: v._key}`;
       let bindVars = {
         '@eCol': en,
         'start': vertex.A
@@ -2579,8 +2579,8 @@ function complexFilteringSuite() {
 
     testStorePruneConditionPathInVariableFilter: function () {
       const condition = "e.right == true";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER ${condition} RETURN {key: v._key}`;
-      let query2 = `FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} RETURN {key: v._key}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER ${condition} RETURN {key: v._key}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} RETURN {key: v._key}`;
       let bindVars = {
         '@eCol': en,
         'start': vertex.A
@@ -2595,7 +2595,7 @@ function complexFilteringSuite() {
 
     testStorePruneConditionVertexInVariableExplainLogicalOr: function () {
       const condition = "v.value == 75 || v.value == 25";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN 1`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN 1`;
       let bindVars = {
         'eCol': en,
         'start': vertex.A
@@ -2615,7 +2615,7 @@ function complexFilteringSuite() {
 
     testStorePruneConditionVertexInVariableExplainLogicalOrWithOptions: function () {
       const condition = "v.value == 75 || v.value == 25";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN 1`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN 1`;
       let bindVars = {
         'eCol': en,
         'start': vertex.A
@@ -2638,7 +2638,7 @@ function complexFilteringSuite() {
 
     testStorePruneConditionEdgeInVariableExplain: function () {
       const condition = "e.right == true";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
       let bindVars = {
         'eCol': en,
         'start': vertex.A
@@ -2658,7 +2658,7 @@ function complexFilteringSuite() {
 
     testStorePruneConditionEdgeInVariableExplainWithOptions: function () {
       const condition = "e.right == true";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
       let bindVars = {
         'eCol': en,
         'start': vertex.A
@@ -2683,7 +2683,7 @@ function complexFilteringSuite() {
       // note: using NOOPT(...) here to disable the optimization that pulls
       // certain FILTER conditions into the traversal
       const condition = "NOOPT(p.edges[0].right) == true";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
       let bindVars = {
         'eCol': en,
         'start': vertex.A
@@ -2705,7 +2705,7 @@ function complexFilteringSuite() {
       // note: using NOOPT(...) here to disable the optimization that pulls
       // certain FILTER conditions into the traversal
       const condition = "NOOPT(p.edges[0].right) == true";
-      let query = `FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
       let bindVars = {
         'eCol': en,
         'start': vertex.A
