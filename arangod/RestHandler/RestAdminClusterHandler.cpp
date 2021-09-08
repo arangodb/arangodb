@@ -875,44 +875,64 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
           return RestStatus::DONE;
         }
 
-        VPackBuffer<uint8_t> trxBody;
-        { VPackBuilder builder(trxBody);
-          { VPackArrayBuilder trxs(&builder);
-            if (path[2] == "ToDo") {
+        // This tranaction aims at killing a job that is todo or pending.
+        // A todo job could be pending in the meantime however a pending
+        // job can never be todo again. Response ist evaluated in 412 result
+        // below.
+        auto sendTransaction = [&] {
+          VPackBuffer<uint8_t> trxBody;
+          { VPackBuilder builder(trxBody);
+            { VPackArrayBuilder trxs(&builder);
+              if (path[2] == "ToDo") {
+                VPackArrayBuilder trx(&builder);
+                { VPackObjectBuilder op(&builder);
+                  builder.add("arango/Target/ToDo/" + jobId + "/abort", VPackValue(true)); }
+                { VPackObjectBuilder pre(&builder);
+                  builder.add(VPackValue("arango/Target/ToDo/" + jobId));
+                  { VPackObjectBuilder val(&builder);
+                    builder.add("oldEmpty", VPackValue(false)); }}
+              }
               VPackArrayBuilder trx(&builder);
               { VPackObjectBuilder op(&builder);
-                builder.add("arango/Target/ToDo/" + jobId + "/abort", VPackValue(true)); }
+                builder.add("arango/Target/Pending/" + jobId + "/abort", VPackValue(true)); }
               { VPackObjectBuilder pre(&builder);
-                builder.add(VPackValue("arango/Target/ToDo/" + jobId));
+                builder.add(VPackValue("arango/Target/Pending/" + jobId));
                 { VPackObjectBuilder val(&builder);
                   builder.add("oldEmpty", VPackValue(false)); }}
             }
-            VPackArrayBuilder trx(&builder);
-            { VPackObjectBuilder op(&builder);
-              builder.add("arango/Target/Pending/" + jobId + "/abort", VPackValue(true)); }
-            { VPackObjectBuilder pre(&builder);
-              builder.add(VPackValue("arango/Target/Pending/" + jobId));
-              { VPackObjectBuilder val(&builder);
-                builder.add("oldEmpty", VPackValue(false)); }}
           }
-        }
+          return AsyncAgencyComm().sendWriteTransaction(60s, std::move(trxBody));
+        };
 
-        waitForFuture(
-          AsyncAgencyComm().sendWriteTransaction(60s, std::move(trxBody))
-          .thenValue([this](AsyncAgencyCommResult&& wr) {
+        return waitForFuture(
+          sendTransaction()
+          .thenValue([=](AsyncAgencyCommResult&& wr) {
             if (!wr.ok()) {
+              // Only if no longer pending or todo.
               if (wr.statusCode() == 412) {
                 auto results = wr.slice().get("results");
-                if (results[0].getNumber<int64_t>() == 0 &&
-                    results[1].getNumber<int64_t>() == 0) {
-                  generateError(Result{TRI_ERROR_HTTP_PRECONDITION_FAILED,
-                                       "Job is no longer pending or to do"});
+                if (results[0].getNumber<uint64_t>() == 0 &&
+                    results[1].getNumber<uint64_t>() == 0) {
+                  generateError(
+                    Result{TRI_ERROR_HTTP_PRECONDITION_FAILED, "Job is no longer pending or to do"});
+                  return;
                 }
               } else {
                 generateError(wr.asResult());
+                return;
               }
             }
-            return futures::makeFuture();
+
+            VPackBuffer<uint8_t> payload;
+            {
+              VPackBuilder builder(payload);
+              VPackObjectBuilder ob(&builder);
+              builder.add("job", VPackValue(jobId));
+              builder.add("status", VPackValue("aborted"));
+              builder.add("error", VPackValue(false));
+            }
+            resetResponse(rest::ResponseCode::OK);
+            response()->setPayload(std::move(payload));
           })
           .thenError<VPackException>([this](VPackException const& e) {
             generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
@@ -921,17 +941,6 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
           }));
-        VPackBuffer<uint8_t> payload;
-        {
-          VPackBuilder builder(payload);
-          VPackObjectBuilder ob(&builder);
-          builder.add("job", VPackValue(jobId));
-          builder.add("status", VPackValue("aborted"));
-          builder.add("error", VPackValue(false));
-        }
-        response()->setPayload(std::move(payload));
-        resetResponse(rest::ResponseCode::OK);
-        return RestStatus::DONE;
       }
     }
 
