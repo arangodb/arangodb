@@ -29,8 +29,19 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#if (_MSC_VER >= 1)
+// suppress warnings:
+#pragma warning(push)
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
+#pragma warning(disable : 4267)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+#pragma warning(disable : 4334)
+#endif
 #include <immer/flex_vector.hpp>
 #include <immer/flex_vector_transient.hpp>
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
 
 #include <Basics/Exceptions.h>
 #include <Basics/Guarded.h>
@@ -83,8 +94,8 @@ auto resolvePromiseSets(stream_descriptor_set<Descriptors...>, std::tuple<Pairs.
 
 template <typename Derived, typename Spec, template <typename> typename StreamInterface, typename Interface>
 struct LogMultiplexerImplementationBase {
-  explicit LogMultiplexerImplementationBase(std::shared_ptr<Interface> const& interface)
-      : _guardedData(static_cast<Derived&>(*this)), _interface(interface) {}
+  explicit LogMultiplexerImplementationBase(std::shared_ptr<Interface> const& interface_)
+      : _guardedData(static_cast<Derived&>(*this)), _interface(interface_) {}
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
             typename E = StreamEntryView<T>>
@@ -140,7 +151,7 @@ struct LogMultiplexerImplementationBase {
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
             typename E = StreamEntryView<T>>
   auto getIteratorInternal() -> std::unique_ptr<TypedLogRangeIterator<E>> {
-    return _guardedData.template doUnderLock([](MultiplexerData<Spec>& self) {
+    return _guardedData.doUnderLock([](MultiplexerData<Spec>& self) {
       auto& block = self.template getBlockForDescriptor<StreamDescriptor>();
       return block.getIterator();
     });
@@ -214,9 +225,9 @@ struct LogDemultiplexerImplementation
     : LogDemultiplexer<Spec>,  // implement the actual class
       ProxyStreamDispatcher<LogDemultiplexerImplementation<Spec, Interface>, Spec, Stream>,  // use a proxy stream dispatcher
       LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec, Interface>, Spec, Stream, Interface> {
-  explicit LogDemultiplexerImplementation(std::shared_ptr<Interface> interface)
+  explicit LogDemultiplexerImplementation(std::shared_ptr<Interface> interface_)
       : LogMultiplexerImplementationBase<LogDemultiplexerImplementation, Spec, Stream, Interface>(
-            std::move(interface)) {}
+            std::move(interface_)) {}
 
   auto digestIterator(LogRangeIterator& iter) -> void override {
     this->_guardedData.getLockedGuard()->digestIterator(iter);
@@ -264,9 +275,9 @@ struct LogMultiplexerImplementation
       LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec, Interface>, Spec, ProducerStream, Interface> {
   using SelfClass = LogMultiplexerImplementation<Spec, Interface>;
 
-  explicit LogMultiplexerImplementation(std::shared_ptr<Interface> interface)
+  explicit LogMultiplexerImplementation(std::shared_ptr<Interface> interface_)
       : LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec, Interface>, Spec, ProducerStream, Interface>(
-            std::move(interface)) {}
+            std::move(interface_)) {}
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>>
   auto insertInternal(T const& t) -> LogIndex {
@@ -326,10 +337,10 @@ struct LogMultiplexerImplementation
 };
 
 template <typename Spec>
-auto LogDemultiplexer<Spec>::construct(std::shared_ptr<replicated_log::ILogParticipant> interface)
+auto LogDemultiplexer<Spec>::construct(std::shared_ptr<replicated_log::ILogParticipant> interface_)
     -> std::shared_ptr<LogDemultiplexer> {
   return std::make_shared<streams::LogDemultiplexerImplementation<Spec, replicated_log::ILogParticipant>>(
-      std::move(interface));
+      std::move(interface_));
 }
 
 template <typename Spec>

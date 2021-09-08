@@ -33,7 +33,8 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 template <typename T>
-auto replicated_state::AbstractStateMachine<T>::getIterator(LogIndex first) -> LogIterator {
+auto replicated_state::AbstractStateMachine<T>::getIterator(LogIndex first)
+    -> std::unique_ptr<LogIterator> {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -90,7 +91,7 @@ template <typename T>
 auto replicated_state::AbstractStateMachine<T>::triggerPollEntries()
     -> futures::Future<Result> {
   auto nextIndex =
-      _guardedData.template doUnderLock([&](GuardedData& guard) -> std::optional<LogIndex> {
+      _guardedData.doUnderLock([&](GuardedData& guard) -> std::optional<LogIndex> {
         if (guard.pollOnGoing) {
           return std::nullopt;
         }

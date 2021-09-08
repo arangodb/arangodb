@@ -23,36 +23,17 @@
 
 #pragma once
 
-#include <atomic>
-#include <chrono>
-#include <cstdint>
-#include <functional>
-#include <memory>
-#include <string>
-#include <vector>
-
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgentInterface.h"
-#include "Agency/Node.h"
 #include "Agency/Store.h"
 #include "Agency/TimeString.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
-#include "Cluster/ClusterTypes.h"
 #include "RestServer/MetricsFeature.h"
 
-class Counter;
-namespace arangodb::application_features {
-class ApplicationServer;
-}  // namespace arangodb::application_features
-namespace arangodb::consensus {
-class AgentInterface;
-}  // namespace arangodb::consensus
-template <typename Scale> class Histogram;
-template <typename T> struct log_scale_t;
-
-namespace arangodb::consensus {
+namespace arangodb {
+namespace consensus {
 
 class Agent;
 
@@ -347,5 +328,6 @@ class Supervision : public arangodb::Thread {
  */
 query_t removeTransactionBuilder(std::vector<std::string> const&);
 
+}  // namespace consensus
 }  // namespace arangodb
 

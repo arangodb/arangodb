@@ -130,7 +130,7 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
 
   std::vector<std::thread> threads;
   std::generate_n(std::back_inserter(threads), num_threads, [&]{
-    return std::thread([producer]{
+    return std::thread([&, producer]{
       auto index = LogIndex{0};
       for (std::size_t i = 0; i < num_inserts_per_thread; i++) {
         index = producer->insert(i);

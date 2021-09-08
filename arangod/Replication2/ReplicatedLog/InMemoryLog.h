@@ -26,6 +26,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 #include <Containers/ImmerMemoryPolicy.h>
+#include <velocypack/Builder.h>
 
 #include <optional>
 
@@ -37,7 +38,6 @@
 // result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
 #pragma warning(disable : 4334)
 #endif
-#include <velocypack/Builder.h>
 #include <immer/flex_vector.hpp>
 #if (_MSC_VER >= 1)
 #pragma warning(pop)

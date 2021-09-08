@@ -46,6 +46,7 @@
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 
 #include "Basics/ErrorCode.h"
 #include "Futures/Promise-inl.h"
@@ -75,7 +76,6 @@
 #endif
 #include <immer/flex_vector.hpp>
 #include <immer/flex_vector_transient.hpp>
-#include <utility>
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
