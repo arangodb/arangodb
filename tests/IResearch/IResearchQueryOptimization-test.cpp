@@ -12103,6 +12103,42 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       "RETURN d",
       expected);
   }
+  // prefix enlargement to the whole target
+  {
+    irs::Or expected;
+    auto& filter = expected.add<irs::And>().add<irs::by_edit_distance>();
+    *filter.mutable_field() = mangleString("name", "identity");
+    auto* opts = filter.mutable_options();
+    opts->max_distance = 2;
+    opts->max_terms = 63;
+    opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foobar"));
+    opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref(""));
+    opts->with_transpositions = false;
+    assertFilterOptimized(
+      vocbase(),
+      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'obar', 2, false, 63, 'fo') "
+      "AND STARTS_WITH(d.name, 'foobar') "
+      "RETURN d",
+      expected);
+  }
+  // empty prefix enlargement to the whole target
+  {
+    irs::Or expected;
+    auto& filter = expected.add<irs::And>().add<irs::by_edit_distance>();
+    *filter.mutable_field() = mangleString("name", "identity");
+    auto* opts = filter.mutable_options();
+    opts->max_distance = 2;
+    opts->max_terms = 63;
+    opts->prefix =  irs::ref_cast<irs::byte_type>(irs::string_ref("foobar"));
+    opts->term =  irs::ref_cast<irs::byte_type>(irs::string_ref(""));
+    opts->with_transpositions = false;
+    assertFilterOptimized(
+      vocbase(),
+      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'foobar', 2, false, 63) "
+      "AND STARTS_WITH(d.name, 'foobar') "
+      "RETURN d",
+      expected);
+  }
   // empty prefix case - not match
   {
     irs::Or expected;

@@ -3582,7 +3582,7 @@ Result fromFuncStartsWith(
             auto startsWith = prefixes.back().second;
             if (options->prefix.empty()) {
               // no-prefix. Maybe term contains suitable prefix ?
-              if (options->term.size() > startsWith.size() && 
+              if (options->term.size() >= startsWith.size() && 
                   0 == std::memcmp(options->term.data(), startsWith.c_str(), startsWith.size())) {
                 // common prefix found.
                 options->prefix = irs::ref_cast<irs::byte_type>(startsWith);
@@ -3605,7 +3605,7 @@ Result fromFuncStartsWith(
                                  options->prefix.size()) == 0) {
                    // looks promising - beginning of the levenshtein prefix is ok
                    auto prefixTailSize = startsWith.size() - options->prefix.size();
-                   if (options->term.size() > prefixTailSize &&
+                   if (options->term.size() >= prefixTailSize &&
                        std::memcmp(options->term.data(),
                                    startsWith.c_str() + options->prefix.size(),
                                    prefixTailSize) == 0) {
