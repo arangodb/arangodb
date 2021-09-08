@@ -975,7 +975,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       }
     }
 
-    if (finish("", "", true, "job aborted (1): " + reason, todoPrec)) {
+    if (finish("", "", false, "job aborted (1): " + reason, todoPrec)) {
       return result;
     }
     _status = PENDING;

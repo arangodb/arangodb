@@ -947,7 +947,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
       if (job.isObject()) {
         LOG_TOPIC("eb139", INFO, Logger::SUPERVISION)
           << "Attempting to abort supervision job " << job.toJson();
-        auto type = job.get("type").copyString();
+        auto type = job.get("type").stringView();
          // only moveshard and cleanoutserver may be aborted
         if (type != "moveShard" && type != "cleanOutServer") {
           generateError(Result{TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -962,33 +962,30 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
         // A todo job could be pending in the meantime however a pending
         // job can never be todo again. Response ist evaluated in 412 result
         // below.
-        auto sendTransaction = [&] {
-          VPackBuffer<uint8_t> trxBody;
-          { VPackBuilder builder(trxBody);
-            { VPackArrayBuilder trxs(&builder);
-              if (path[2] == "ToDo") {
-                VPackArrayBuilder trx(&builder);
-                { VPackObjectBuilder op(&builder);
-                  builder.add("arango/Target/ToDo/" + jobId + "/abort", VPackValue(true)); }
-                { VPackObjectBuilder pre(&builder);
-                  builder.add(VPackValue("arango/Target/ToDo/" + jobId));
-                  { VPackObjectBuilder val(&builder);
-                    builder.add("oldEmpty", VPackValue(false)); }}
-              }
+        VPackBuffer<uint8_t> trxBody;
+        { VPackBuilder builder(trxBody);
+          { VPackArrayBuilder trxs(&builder);
+            if (path[2] == "ToDo") {
               VPackArrayBuilder trx(&builder);
               { VPackObjectBuilder op(&builder);
-                builder.add("arango/Target/Pending/" + jobId + "/abort", VPackValue(true)); }
+                builder.add("arango/Target/ToDo/" + jobId + "/abort", VPackValue(true)); }
               { VPackObjectBuilder pre(&builder);
-                builder.add(VPackValue("arango/Target/Pending/" + jobId));
+                builder.add(VPackValue("arango/Target/ToDo/" + jobId));
                 { VPackObjectBuilder val(&builder);
                   builder.add("oldEmpty", VPackValue(false)); }}
             }
+            VPackArrayBuilder trx(&builder);
+            { VPackObjectBuilder op(&builder);
+              builder.add("arango/Target/Pending/" + jobId + "/abort", VPackValue(true)); }
+            { VPackObjectBuilder pre(&builder);
+              builder.add(VPackValue("arango/Target/Pending/" + jobId));
+              { VPackObjectBuilder val(&builder);
+                builder.add("oldEmpty", VPackValue(false)); }}
           }
-          return AsyncAgencyComm().sendWriteTransaction(60s, std::move(trxBody));
-        };
+        }
 
         waitForFuture(
-          sendTransaction()
+          AsyncAgencyComm().sendWriteTransaction(60s, std::move(trxBody))
           .thenValue([this](AsyncAgencyCommResult&& wr) {
             if (!wr.ok()) {
               // Only if no longer pending or todo.
