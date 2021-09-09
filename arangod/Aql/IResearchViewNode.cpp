@@ -180,8 +180,8 @@ void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const
     }
   }
 
-  if (!options.allowFiltersMerge) {
-    builder.add("allowFiltersMerge", VPackValue(options.allowFiltersMerge));
+  if (options.filterOptimization != arangodb::iresearch::FilterOptimization::MAX) {
+    builder.add("filterOptimization", VPackValue(static_cast<int64_t>(options.filterOptimization)));
   }
 }
 
@@ -288,15 +288,16 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
     }
   }
 
-  // allowFiltersMerge
+  // filterOptimization
   {
-    auto const optionSlice = optionsSlice.get("allowFiltersMerge");
+    auto const optionSlice = optionsSlice.get("filterOptimization");
     if (!optionSlice.isNone()) {
-      // 'allowFiltersMerge' is optional
-      if (!optionSlice.isBool()) {
+      // 'filterOptimization' is optional. Missing means MAX
+      if (!optionSlice.isNumber()) {
         return false;
       }
-      options.allowFiltersMerge = optionSlice.getBool();
+      options.filterOptimization =
+        static_cast<arangodb::iresearch::FilterOptimization>(optionSlice.getNumber<int>());
     }
   }
 
@@ -456,14 +457,15 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
          return true;
        }},
        // cppcheck-suppress constStatement
-       {"allowFiltersMerge", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
+       {"filterOptimization", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
                                   aql::AstNode const& value,
                                   IResearchViewNode::Options& options, std::string& error) {
-         if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
-           error = "bool value expected for option 'allowFiltersMerge'";
+         if (!value.isValueType(aql::VALUE_TYPE_INT)) {
+           error = "int value expected for option 'filterOptimization'";
            return false;
          }
-         options.allowFiltersMerge = value.getBoolValue();
+         options.filterOptimization =
+           static_cast<arangodb::iresearch::FilterOptimization>(value.getIntValue());
          return true;
        }}};
 
@@ -1688,7 +1690,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                         getDepth(),
                                         std::move(outNonMaterializedViewRegs),
                                         _options.countApproximate,
-                                        allowFiltersMerge()};
+                                        filterOptimization()};
 
     return std::make_tuple(materializeType, std::move(executorInfos), std::move(registerInfos));
   };

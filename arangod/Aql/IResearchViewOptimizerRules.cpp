@@ -24,6 +24,7 @@
 
 #include "IResearchViewOptimizerRules.h"
 
+#include "Aql/AqlFunctionFeature.h"
 #include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Condition.h"
@@ -77,13 +78,11 @@ inline IResearchViewStoredValues const& storedValues(arangodb::LogicalView const
   return viewImpl.storedValues();
 }
 
-/// @brief Moves all STARTS_WITH in every AND node to the bottom
-///        to make it possible later optimize out STARTS_WITH covered by LEVENSHTEIN_MATCH
+/// @brief Moves all FCALLs in every AND node to the bottom of the AND node
 /// @param condition SEARCH condition node
-/// @param plan current query plan
-void pushStartsWithToBack(arangodb::aql::AstNode& condition) {
+/// @param starts_with Function to push
+void pushFuncToBack(arangodb::aql::AstNode& condition, arangodb::aql::Function const* starts_with) {
   auto numMembers = condition.numMembers();
-  constexpr irs::string_ref STARTS_WITH {"STARTS_WITH"};
   for (size_t memberIdx = 0; memberIdx < numMembers; ++memberIdx) {
     auto current = condition.getMemberUnchecked(memberIdx);
     TRI_ASSERT(current);
@@ -94,14 +93,14 @@ void pushStartsWithToBack(arangodb::aql::AstNode& condition) {
       do {
         auto candidate = current->getMemberUnchecked(movePoint);
         if (candidate->type != arangodb::aql::AstNodeType::NODE_TYPE_FCALL ||
-            arangodb::iresearch::getFuncName(*candidate) != STARTS_WITH) {
+            static_cast<arangodb::aql::Function const*>(candidate->getData()) != starts_with) {
           break;
         }
       } while ((--movePoint) != 0);
       for (size_t andMemberIdx = 0; andMemberIdx < movePoint; ++andMemberIdx) {
         auto andMember = current->getMemberUnchecked(andMemberIdx);
         if (andMember->type == arangodb::aql::AstNodeType::NODE_TYPE_FCALL &&
-            arangodb::iresearch::getFuncName(*andMember) == STARTS_WITH) {
+            static_cast<arangodb::aql::Function const*>(andMember->getData()) == starts_with) {
           TEMPORARILY_UNLOCK_NODE(current);
           auto tmp = current->getMemberUnchecked(movePoint);
           current->changeMember(movePoint--, andMember);
@@ -109,16 +108,16 @@ void pushStartsWithToBack(arangodb::aql::AstNode& condition) {
           while (movePoint > andMemberIdx &&
                  current->getMemberUnchecked(movePoint)->type ==
                      arangodb::aql::AstNodeType::NODE_TYPE_FCALL &&
-                 arangodb::iresearch::getFuncName(
-                     *current->getMemberUnchecked(movePoint)) == STARTS_WITH) {
+                 static_cast<arangodb::aql::Function const*>(
+                     current->getMemberUnchecked(movePoint)->getData()) == starts_with) {
             --movePoint;
           }
         } else {
-          pushStartsWithToBack(*andMember);
+          pushFuncToBack(*andMember, starts_with);
         }
       }
     } else {
-      pushStartsWithToBack(*current);
+      pushFuncToBack(*current, starts_with);
     }
   }
 }
@@ -178,9 +177,12 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
 
   // check filter condition if present
   if (searchCondition.root()) {
-    if (viewNode.allowFiltersMerge()) {
+    if (viewNode.filterOptimization() != arangodb::iresearch::FilterOptimization::None) {
       // we could benefit from merging STARTS_WITH and LEVENSHTEIN_MATCH
-      pushStartsWithToBack(*searchCondition.root());
+      auto& server = plan.getAst()->query().vocbase().server();
+      auto starts_with = server.getFeature<AqlFunctionFeature>().byName("STARTS_WITH");
+      TRI_ASSERT(starts_with);
+      pushFuncToBack(*searchCondition.root(), starts_with);
     }
     auto filterCreated = FilterFactory::filter(
       nullptr,

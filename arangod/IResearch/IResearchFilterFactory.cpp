@@ -3572,7 +3572,7 @@ Result fromFuncStartsWith(
 
     // Try to optimize us away
     if (!isMultiPrefix && !prefixes.empty() &&
-         ctx.allowFiltersMerge && filter->type() == irs::type<irs::And>::id()) {
+         ctx.filterOptimization != FilterOptimization::None && filter->type() == irs::type<irs::And>::id()) {
       for (auto& f : *filter) {
         if (f.type() == irs::type<irs::by_edit_distance>::id()) {
           auto& levenshtein = static_cast<irs::by_edit_distance&>(f);

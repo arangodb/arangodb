@@ -643,7 +643,7 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
     arangodb::iresearch::QueryContext const ctx{&trx, plan, plan->getAst(),
                                                 exprCtx, &irs::sub_reader::empty(),
                                                 &viewNode->outVariable(),
-                                                viewNode->allowFiltersMerge()};
+                                                viewNode->filterOptimization()};
     EXPECT_TRUE(arangodb::iresearch::FilterFactory::filter(&actualFilter, ctx,
                                                            viewNode->filterCondition())
                     .ok());
@@ -835,7 +835,8 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
                   arangodb::aql::ExpressionContext* exprCtx /*= nullptr*/,
                   std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                   std::string const& refName /*= "d"*/,
-                  bool allowFiltersMerge /*= false*/) {
+                  arangodb::iresearch::FilterOptimization filterOptimization
+                    /*= arangodb::iresearch::FilterOptimization::None */) {
   SCOPED_TRACE(testing::Message("assertFilter failed for query:<") << queryString << "> parseOk:" << parseOk << " execOk:" << execOk);
 
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
@@ -887,7 +888,7 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
     }
 
     arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr,
-                                                nullptr, nullptr, ref, allowFiltersMerge};
+                                                nullptr, nullptr, ref, filterOptimization};
     EXPECT_TRUE(
         (parseOk ==
          arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
@@ -907,7 +908,7 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
 
     irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx,
-                                                &irs::sub_reader::empty(), ref, allowFiltersMerge};
+                                                &irs::sub_reader::empty(), ref, filterOptimization};
     EXPECT_EQ(execOk, arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok());
 
     if (execOk) {
@@ -921,10 +922,11 @@ void assertFilterSuccess(TRI_vocbase_t& vocbase, std::string const& queryString,
                          irs::filter const& expected,
                          arangodb::aql::ExpressionContext* exprCtx /*= nullptr*/,
                          std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
-                         std::string const& refName /*= "d"*/, bool allowFiltersMerge /*= false*/
+                         std::string const& refName /*= "d"*/,
+                         arangodb::iresearch::FilterOptimization filterOptimization /*= arangodb::iresearch::FilterOptimization::None */
 ) {
   return assertFilter(vocbase, true, true, queryString, expected, exprCtx,
-                      bindVars, refName, allowFiltersMerge);
+                      bindVars, refName, filterOptimization);
 }
 
 void assertFilterFail(TRI_vocbase_t& vocbase, std::string const& queryString,

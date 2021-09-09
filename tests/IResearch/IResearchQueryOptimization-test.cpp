@@ -12039,7 +12039,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       vocbase(),
       "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
       "AND STARTS_WITH(d.name, 'foo') "
-      "OPTIONS {\"allowFiltersMerge\": true } "
+      "OPTIONS {\"filterOptimization\": -1 } "
       "RETURN d",
       expected);
   }
@@ -12273,7 +12273,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
     assertFilterOptimized(
       vocbase(),
       "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
-      "AND STARTS_WITH(d.name, 'foo') OPTIONS {\"allowFiltersMerge\": true } SORT BM25(d) "
+      "AND STARTS_WITH(d.name, 'foo') OPTIONS {\"filterOptimization\": -1} SORT BM25(d) "
       "RETURN d",
       expected);
   }
@@ -12302,7 +12302,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       vocbase(),
       "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
       "AND STARTS_WITH(d.name, 'foo') "
-      "OPTIONS {\"allowFiltersMerge\": false } "
+      "OPTIONS {\"filterOptimization\": 0 } "
       "RETURN d",
       expected);
   }
@@ -12342,7 +12342,7 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       vocbase(),
       "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, 'bar', 2, false, 63, 'foo') "
       "AND STARTS_WITH(d.name, ['foo', 'boo'], 2) "
-      "OPTIONS {\"allowFiltersMerge\": false } "
+      "OPTIONS {\"filterOptimization\": 0 } "
       "RETURN d",
       expected);
   }

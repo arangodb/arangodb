@@ -28,6 +28,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "VelocyPackHelper.h"
+#include "IResearch/IResearchFilterOptimization.h"
 
 #include "search/sort.hpp"
 #include "utils/noncopyable.hpp"
@@ -242,7 +243,7 @@ struct QueryContext {
   irs::index_reader const* index;
   aql::Variable const* ref;
   /// @brief allow optimize away/modify some conditions during filter building
-  bool allowFiltersMerge {false};
+  FilterOptimization  filterOptimization {FilterOptimization::MAX};
 };  // QueryContext
 
 ////////////////////////////////////////////////////////////////////////////////

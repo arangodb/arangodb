@@ -30,6 +30,7 @@
 #include "Basics/StaticStrings.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
+#include "IResearch/IResearchFilterOptimization.h"
 
 #include <string>
 #include <vector>
@@ -166,13 +167,17 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
                   std::string const& queryString, irs::filter const& expected,
                   arangodb::aql::ExpressionContext* exprCtx = nullptr,
                   std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-                  std::string const& refName = "d", bool allowFiltersMerge = false);
+                  std::string const& refName = "d",
+                  arangodb::iresearch::FilterOptimization filterOptimization
+                    = arangodb::iresearch::FilterOptimization::None);
 
 void assertFilterSuccess(TRI_vocbase_t& vocbase, std::string const& queryString,
                          irs::filter const& expected,
                          arangodb::aql::ExpressionContext* exprCtx = nullptr,
                          std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-                         std::string const& refName = "d", bool allowFiltersMerge = false);
+                         std::string const& refName = "d",
+                         arangodb::iresearch::FilterOptimization filterOptimization
+                           = arangodb::iresearch::FilterOptimization::None);
 
 void assertFilterFail(TRI_vocbase_t& vocbase, std::string const& queryString,
                       arangodb::aql::ExpressionContext* exprCtx = nullptr,
