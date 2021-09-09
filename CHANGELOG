@@ -1,7 +1,8 @@
 devel
 -----
 
-* Fix active failover, so that the new host actually has working foxx services.
+* Fix active failover, so that the new host actually has working
+  foxx services. (BTS-558)
 
 * No runtime limits for shard move and server cleanout jobs, instead
   possibility to cancel them.
