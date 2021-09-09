@@ -35,19 +35,24 @@
 #include <Logger/LogMacros.h>
 #include <Logger/Logger.h>
 #include <Logger/LoggerStream.h>
-#include <chrono>
-#include <functional>
-#include <type_traits>
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <exception>
+#include <functional>
 #include <iterator>
 #include <ratio>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 
+#include "Basics/ErrorCode.h"
+#include "Futures/Promise-inl.h"
+#include "Futures/Promise.h"
+#include "Futures/Unit.h"
+#include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
@@ -57,11 +62,6 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "RestServer/Metrics.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Basics/ErrorCode.h"
-#include "Futures/Promise-inl.h"
-#include "Futures/Promise.h"
-#include "Futures/Unit.h"
-#include "Replication2/DeferredExecution.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "immer/detail/iterator_facade.hpp"
 #include "immer/detail/rbts/rrbtree_iterator.hpp"
@@ -238,6 +238,10 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
         auto messageId = request.messageId;
         LOG_CTX("1b0ec", TRACE, follower->logContext)
             << "sending append entries, messageId = " << messageId;
+
+        // We take the start time here again to have a more precise measurement.
+        // (And do not use follower._lastRequestStartTP)
+        // TODO really needed?
         auto startTime = std::chrono::steady_clock::now();
         // Capture a weak pointer `parentLog` that will be locked
         // when the request returns. If the locking is successful
@@ -415,7 +419,7 @@ auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
 }
 
 auto replicated_log::LogLeader::getStatus() const -> LogStatus {
-  return _guardedLeaderData.doUnderLock([term = _currentTerm](auto& leaderData) {
+  return _guardedLeaderData.doUnderLock([term = _currentTerm](GuardedLeaderData const& leaderData) {
     if (leaderData._didResign) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
@@ -423,11 +427,30 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.local = leaderData.getLocalStatistics();
     status.term = term;
     for (FollowerInfo const& f : leaderData._follower) {
-      status.follower[f._impl->getParticipantId()] = {
-          LogStatistics{f.lastAckedEntry, f.lastAckedCommitIndex}, f.lastErrorReason,
-          std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f._lastRequestLatency)
-              .count()};
+      auto lastRequestLatencyMS =
+          std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f._lastRequestLatency);
+      auto state = std::invoke([&] {
+        switch (f._state) {
+          case FollowerInfo::State::ERROR_BACKOFF:
+            return FollowerState::withErrorBackoff(
+                std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
+                    f._errorBackoffEndTP - std::chrono::steady_clock::now()),
+                f.numErrorsSinceLastAnswer);
+          case FollowerInfo::State::REQUEST_IN_FLIGHT:
+            return FollowerState::withRequestInFlight(
+                std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
+                    std::chrono::steady_clock::now() - f._lastRequestStartTP));
+          default:
+            return FollowerState::withUpToDate();
+        }
+      });
+      status.follower.emplace(f._impl->getParticipantId(),
+                              FollowerStatistics{LogStatistics{f.lastAckedEntry, f.lastAckedCommitIndex},
+                                                 f.lastErrorReason,
+                                                 lastRequestLatencyMS, state});
     }
+
+    status.commitLagMS = leaderData.calculateCommitLag();
     return LogStatus{std::move(status)};
   });
 }
@@ -468,7 +491,7 @@ auto replicated_log::LogLeader::waitFor(LogIndex index) -> WaitForFuture {
     }
     if (leaderData._commitIndex >= index) {
       return futures::Future<WaitForResult>{std::in_place, leaderData._commitIndex,
-                                                                leaderData._lastQuorum};
+                                            leaderData._lastQuorum};
     }
     auto it = leaderData._waitForQueue.emplace(index, WaitForPromise{});
     auto& promise = it->second;
@@ -507,7 +530,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     WaitForQueue toBeResolved;
     auto const end = _waitForQueue.upper_bound(_commitIndex);
     for (auto it = _waitForQueue.begin(); it != end;) {
-      LOG_CTX("37d9c", TRACE, _self._logContext)
+      LOG_CTX("37d9d", TRACE, _self._logContext)
           << "resolving promise for index " << it->first;
       toBeResolved.insert(_waitForQueue.extract(it++));
     }
@@ -517,7 +540,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   } catch (std::exception const& e) {
     // If those promises are not fulfilled we can not continue.
     // Note that the move constructor of std::multi_map is not noexcept.
-    LOG_CTX("e7a4d", FATAL, _self._logContext)
+    LOG_CTX("e7a4e", FATAL, _self._logContext)
         << "failed to fulfill replication promises due to exception; system "
            "can not continue. message: "
         << e.what();
@@ -525,7 +548,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   } catch (...) {
     // If those promises are not fulfilled we can not continue.
     // Note that the move constructor of std::multi_map is not noexcept.
-    LOG_CTX("c0bbb", FATAL, _self._logContext)
+    LOG_CTX("c0bba", FATAL, _self._logContext)
         << "failed to fulfill replication promises due to exception; system "
            "can not continue";
     FATAL_ERROR_EXIT();
@@ -543,7 +566,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntries()
 
 auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerInfo& follower)
     -> std::optional<PreparedAppendEntryRequest> {
-  if (follower.requestInFlight) {
+  if (follower._state != FollowerInfo::State::IDLE) {
     LOG_CTX("1d7b6", TRACE, follower.logContext)
         << "request in flight - skipping";
     return std::nullopt;  // wait for the request to return
@@ -564,7 +587,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerIn
     return std::nullopt;  // nothing to replicate
   }
 
-  follower.requestInFlight = true;
+
   auto const executionDelay = std::invoke([&] {
     using namespace std::chrono_literals;
     if (follower.numErrorsSinceLastAnswer > 0) {
@@ -576,8 +599,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerIn
           << follower.numErrorsSinceLastAnswer << " requests failed, last one was "
           << follower.lastSentMessageId << " - waiting " << executionDelay / 1ms
           << "ms before sending next message.";
+      follower._state = FollowerInfo::State::ERROR_BACKOFF;
+      follower._errorBackoffEndTP = std::chrono::steady_clock::now() + executionDelay;
       return executionDelay;
     } else {
+      follower._state = FollowerInfo::State::PREPARE;
       return 0us;
     }
   });
@@ -597,6 +623,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   req.leaderId = _self._id;
   req.waitForSync = _self._config.waitForSync;
   req.messageId = ++follower.lastSentMessageId;
+
+  follower._state = FollowerInfo::State::REQUEST_IN_FLIGHT;
+  follower._lastRequestStartTP = std::chrono::steady_clock::now();
 
   if (lastAcked) {
     req.prevLogEntry.index = lastAcked->entry().logIndex();
@@ -652,7 +681,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     LOG_CTX("35a32", TRACE, follower.logContext)
         << "received message " << messageId << " - no other requests in flight";
     // there is no request in flight currently
-    follower.requestInFlight = false;
+    follower._state = FollowerInfo::State::IDLE;
   }
   if (res.hasValue()) {
     auto& response = res.get();
@@ -822,6 +851,21 @@ replicated_log::LogLeader::GuardedLeaderData::GuardedLeaderData(replicated_log::
                                                                 InMemoryLog inMemoryLog)
     : _self(self), _inMemoryLog(std::move(inMemoryLog)) {}
 
+auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag() const noexcept
+    -> std::chrono::duration<double, std::milli> {
+  auto memtry = _inMemoryLog.getEntryByIndex(_commitIndex + 1);
+  if (memtry.has_value()) {
+    return std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
+               std::chrono::steady_clock::now() - memtry->insertTp());
+  } else {
+    TRI_ASSERT(_commitIndex == _inMemoryLog.getLastIndex())
+        << "If there is no entry following the commitIndex the last index "
+           "should be the commitIndex. _commitIndex = "
+        << _commitIndex << ", lastIndex = " << _inMemoryLog.getLastIndex();
+    return {};
+  }
+}
+
 auto replicated_log::LogLeader::getReplicatedLogSnapshot() const -> InMemoryLog::log_type {
   auto [log, commitIndex] = _guardedLeaderData.doUnderLock([](auto const& leaderData) {
     if (leaderData._didResign) {
@@ -841,15 +885,16 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
                                    "invalid parameter; log index 0 is invalid");
   }
 
-  return waitFor(index).thenValue([this, self = shared_from_this(), index](auto&& quorum) -> WaitForIteratorFuture {
+  return waitFor(index).thenValue([this, self = shared_from_this(),
+                                   index](auto&& quorum) -> WaitForIteratorFuture {
     auto [actualIndex, iter] = _guardedLeaderData.doUnderLock(
         [&](GuardedLeaderData& leaderData) -> std::pair<LogIndex, std::unique_ptr<LogRangeIterator>> {
           TRI_ASSERT(index <= leaderData._commitIndex);
 
           /*
            * This code here ensures that if only private log entries are present
-           * we do not reply with an empty iterator but instead wait for the next
-           * entry containing payload.
+           * we do not reply with an empty iterator but instead wait for the
+           * next entry containing payload.
            */
 
           auto actualIndex = index;
