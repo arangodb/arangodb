@@ -36,6 +36,7 @@
 #include "velocypack/Parser.h"
 
 #include "IResearch/ExpressionContextMock.h"
+#include "IResearch/IResearchTestCommon.h"
 #include "IResearch/common.h"
 #include "Mocks/IResearchLinkMock.h"
 #include "Mocks/LogLevels.h"
@@ -143,90 +144,6 @@ struct DocIdScorer: public irs::sort {
 };
 
 REGISTER_SCORER_TEXT(DocIdScorer, DocIdScorer::make);
-
-struct TestAttribute : public irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "TestAttribute";
-  }
-};
-
-REGISTER_ATTRIBUTE(TestAttribute);  // required to open reader on segments with analized fields
-
-class TestAnalyzer : public irs::analysis::analyzer {
- public:
-  static constexpr irs::string_ref type_name() noexcept {
-    return "TestAnalyzer";
-  }
-
-  TestAnalyzer() : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) { }
-
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    if (type == irs::type<TestAttribute>::id()) {
-      return &_attr;
-    }
-    if (type == irs::type<irs::increment>::id()) {
-      return &_increment;
-    }
-    if (type == irs::type<irs::term_attribute>::id()) {
-      return &_term;
-    }
-    return nullptr;
-  }
-
-  static ptr make(irs::string_ref const& args) {
-    auto slice = arangodb::iresearch::slice(args);
-    if (slice.isNull()) throw std::exception();
-    if (slice.isNone()) return nullptr;
-    PTR_NAMED(TestAnalyzer, ptr);
-    return ptr;
-  }
-
-  static bool normalize(irs::string_ref const& args, std::string& definition) {
-    // same validation as for make,
-    // as normalize usually called to sanitize data before make
-    auto slice = arangodb::iresearch::slice(args);
-    if (slice.isNull()) throw std::exception();
-    if (slice.isNone()) return false;
-
-    arangodb::velocypack::Builder builder;
-    if (slice.isString()) {
-      VPackObjectBuilder scope(&builder);
-      arangodb::iresearch::addStringRef(builder, "args",
-                                        arangodb::iresearch::getStringRef(slice));
-    } else if (slice.isObject() && slice.hasKey("args") && slice.get("args").isString()) {
-      VPackObjectBuilder scope(&builder);
-      arangodb::iresearch::addStringRef(builder, "args",
-                                        arangodb::iresearch::getStringRef(slice.get("args")));
-    } else {
-      return false;
-    }
-
-    definition = builder.buffer()->toString();
-
-    return true;
-  }
-
-  virtual bool next() override {
-    if (_data.empty()) return false;
-
-    _term.value = irs::bytes_ref(_data.c_str(), 1);
-    _data = irs::bytes_ref(_data.c_str() + 1, _data.size() - 1);
-    return true;
-  }
-
-  virtual bool reset(irs::string_ref const& data) override {
-    _data = irs::ref_cast<irs::byte_type>(data);
-    return true;
-  }
-
- private:
-  irs::bytes_ref _data;
-  irs::increment _increment;
-  irs::term_attribute _term;
-  TestAttribute _attr;
-};
-
-REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normalize);
 
 }
 
