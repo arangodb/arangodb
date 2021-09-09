@@ -3063,7 +3063,7 @@ static void JS_WritePipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (proc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      "didn't find the process identified by <external-identifier> to read the pipe from.");
+      "didn't find the process identified by <external-identifier> to write the pipe into.");
   }
 
   std::string writeBuffer = TRI_ObjectToString(isolate, args[1]);
