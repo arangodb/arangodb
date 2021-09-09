@@ -33,10 +33,27 @@
 #include <map>
 #include <memory>
 
+namespace arangodb {
+class Result;
+}
+
 namespace arangodb::replication2::replicated_log {
 
 struct LogCore;
 struct LogStatus;
+
+struct WaitForResult {
+  /// @brief contains the _current_ commit index. (Not the index waited for)
+  LogIndex currentCommitIndex;
+  /// @brief Quorum information
+  std::shared_ptr<QuorumData const> quorum;
+
+  WaitForResult(LogIndex index, std::shared_ptr<QuorumData const> quorum);
+  WaitForResult() = default;
+  WaitForResult(velocypack::Slice);
+
+  void toVelocyPack(velocypack::Builder&) const;
+};
 
 /**
 * @brief Interface for a log participant: That is, usually either a leader or a
@@ -51,21 +68,23 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto resign() &&
       -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
 
-  using WaitForPromise = futures::Promise<std::shared_ptr<QuorumData const>>;
-  using WaitForFuture = futures::Future<std::shared_ptr<QuorumData const>>;
-  using WaitForIteratorFuture = futures::Future<std::unique_ptr<LogIterator>>;
+  using WaitForPromise = futures::Promise<WaitForResult>;
+  using WaitForFuture = futures::Future<WaitForResult>;
+  using WaitForIteratorFuture = futures::Future<std::unique_ptr<LogRangeIterator>>;
   using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
 
   [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;
   [[nodiscard]] virtual auto waitForIterator(LogIndex index) -> WaitForIteratorFuture;
   [[nodiscard]] virtual auto getTerm() const noexcept -> std::optional<LogTerm>;
+
+  [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
 };
 
 /**
 * @brief Unconfigured log participant, i.e. currently neither a leader nor
 * follower. Holds a LogCore, does nothing else.
 */
-struct LogUnconfiguredParticipant
+struct LogUnconfiguredParticipant final
     : std::enable_shared_from_this<LogUnconfiguredParticipant>,
       ILogParticipant {
   ~LogUnconfiguredParticipant() override;
@@ -76,6 +95,7 @@ struct LogUnconfiguredParticipant
   auto resign() &&
       -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
+  [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
  private:
   std::unique_ptr<LogCore> _logCore;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;

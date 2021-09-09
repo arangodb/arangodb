@@ -57,9 +57,9 @@ auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const -> void
   }
 }
 
-LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t, VPackSlice slice) {
-  term = slice.get(StaticStrings::Term).extract<LogTerm>();
-  config = LogConfig(slice.get(StaticStrings::Config));
+LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t, VPackSlice slice)
+    : term(slice.get(StaticStrings::Term).extract<LogTerm>()),
+      config(slice.get(StaticStrings::Config)) {
   for (auto const& [key, value] :
        VPackObjectIterator(slice.get(StaticStrings::Participants))) {
     TRI_ASSERT(value.isEmptyObject());
@@ -82,9 +82,9 @@ auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
   }
 }
 
-LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice) {
-  id = slice.get(StaticStrings::Id).extract<LogId>();
-  targetConfig = LogConfig(slice.get(StaticStrings::TargetConfig));
+LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice)
+    : id(slice.get(StaticStrings::Id).extract<LogId>()),
+      targetConfig(slice.get(StaticStrings::TargetConfig)) {
   if (auto term = slice.get(StaticStrings::CurrentTerm); !term.isNone()) {
     currentTerm = LogPlanTermSpecification{from_velocypack, term};
   }
@@ -99,7 +99,8 @@ LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term, LogConfig confi
       participants(std::move(participants)) {}
 
 LogPlanSpecification::LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
-                                           LogConfig config) : id(id), currentTerm(std::move(term)), targetConfig(config) {}
+                                           LogConfig config)
+    : id(id), currentTerm(std::move(term)), targetConfig(config) {}
 
 LogCurrentLocalState::LogCurrentLocalState(from_velocypack_t, VPackSlice slice) {
   auto spearheadSlice = slice.get(StaticStrings::Spearhead);
@@ -135,10 +136,11 @@ LogCurrentSupervision::LogCurrentSupervision(from_velocypack_t, VPackSlice slice
   }
 }
 
-LogCurrentSupervisionElection::LogCurrentSupervisionElection(from_velocypack_t, VPackSlice slice) {
-  term = slice.get(StaticStrings::Term).extract<LogTerm>();
-  participantsRequired = slice.get("participantsRequired").getNumericValue<std::size_t>();
-  participantsAvailable = slice.get("participantsAvailable").getNumericValue<std::size_t>();
+LogCurrentSupervisionElection::LogCurrentSupervisionElection(from_velocypack_t, VPackSlice slice)
+    : term(slice.get(StaticStrings::Term).extract<LogTerm>()),
+      participantsRequired(slice.get("participantsRequired").getNumericValue<std::size_t>()),
+      participantsAvailable(
+          slice.get("participantsAvailable").getNumericValue<std::size_t>()) {
   for (auto [key, value] : VPackObjectIterator(slice.get("details"))) {
     detail.emplace(key.copyString(), value.get("code").getNumericValue<ErrorCode>());
   }
@@ -172,21 +174,23 @@ auto LogCurrentSupervisionElection::toVelocyPack(VPackBuilder& builder) const ->
   builder.add("participantsAvailable", VPackValue(participantsAvailable));
   {
     VPackObjectBuilder db(&builder, "details");
-    for (auto const&[server, error] : detail) {
+    for (auto const& [server, error] : detail) {
       builder.add(VPackValue(server));
       ::toVelocyPack(error, builder);
     }
   }
 }
 
-auto agency::toVelocyPack(LogCurrentSupervisionElection::ErrorCode ec, VPackBuilder& builder) -> void {
+auto agency::toVelocyPack(LogCurrentSupervisionElection::ErrorCode ec,
+                          VPackBuilder& builder) -> void {
   VPackObjectBuilder ob(&builder);
   builder.add("code", VPackValue(static_cast<int>(ec)));
   builder.add("message", VPackValue(to_string(ec)));
 }
 
-auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept -> std::string_view {
-  switch(ec) {
+auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept
+    -> std::string_view {
+  switch (ec) {
     case LogCurrentSupervisionElection::ErrorCode::OK:
       return "the server is ok";
     case LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD:

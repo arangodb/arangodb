@@ -39,7 +39,7 @@ void UnconfiguredStatus::toVelocyPack(velocypack::Builder& builder) const {
 
 auto UnconfiguredStatus::fromVelocyPack(velocypack::Slice slice) -> UnconfiguredStatus {
   TRI_ASSERT(slice.get("role").isEqualString("unconfigured"));
-  return UnconfiguredStatus();
+  return {};
 }
 
 void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
@@ -49,6 +49,7 @@ void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
     builder.add(StaticStrings::Leader, VPackValue(*leader));
   }
   builder.add(StaticStrings::Term, VPackValue(term.value));
+  builder.add("largestCommonIndex", VPackValue(largestCommonIndex.value));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
 }
@@ -57,6 +58,7 @@ auto FollowerStatus::fromVelocyPack(velocypack::Slice slice) -> FollowerStatus {
   TRI_ASSERT(slice.get("role").isEqualString(StaticStrings::Follower));
   FollowerStatus status;
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
+  status.largestCommonIndex = slice.get("largestCommonIndex").extract<LogIndex>();
   status.local = LogStatistics::fromVelocyPack(slice);
   if (auto leader = slice.get(StaticStrings::Leader); !leader.isNone()) {
     status.leader = leader.copyString();
@@ -68,6 +70,8 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("role", VPackValue(StaticStrings::Leader));
   builder.add(StaticStrings::Term, VPackValue(term.value));
+  builder.add("largestCommonIndex", VPackValue(largestCommonIndex.value));
+  builder.add("commitLagMS", VPackValue(commitLagMS.count()));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
   {
@@ -84,30 +88,36 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
   LeaderStatus status;
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
   status.local = LogStatistics::fromVelocyPack(slice.get("local"));
+  status.commitLagMS = std::chrono::duration<double, std::milli>{
+      slice.get("commitLagMS").extract<double>()};
   for (auto [key, value] : VPackObjectIterator(slice.get(StaticStrings::Follower))) {
     auto id = ParticipantId{key.copyString()};
     auto stat = FollowerStatistics::fromVelocyPack(value);
-    status.follower.emplace(std::move(id), std::move(stat));
+    status.follower.emplace(std::move(id), stat);
   }
   return status;
 }
 
-void LeaderStatus::FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
+void FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex.value));
   builder.add(VPackValue(StaticStrings::Spearhead));
   spearHead.toVelocyPack(builder);
   builder.add("lastErrorReason", VPackValue(int(lastErrorReason)));
   builder.add("lastErrorReasonMessage", VPackValue(to_string(lastErrorReason)));
-  builder.add("lastRequestLatencyMS", VPackValue(lastRequestLatencyMS));
+  builder.add("lastRequestLatencyMS", VPackValue(lastRequestLatencyMS.count()));
+  builder.add(VPackValue("state"));
+  internalState.toVelocyPack(builder);
 }
 
-auto LeaderStatus::FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics {
+auto FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics {
   FollowerStatistics stats;
   stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
   stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
   stats.lastErrorReason = AppendEntriesErrorReason{slice.get("lastErrorReason").getNumericValue<int>()};
-  stats.lastRequestLatencyMS = slice.get("lastRequestLatencyMS").getDouble();
+  stats.lastRequestLatencyMS = std::chrono::duration<double, std::milli>{
+      slice.get("lastRequestLatencyMS").getDouble()};
+  stats.internalState = FollowerState::fromVelocyPack(slice.get("state"));
   return stats;
 }
 
