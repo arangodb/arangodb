@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "search/boolean_filter.hpp"
+
 namespace arangodb {
 namespace iresearch {
 
@@ -29,5 +31,9 @@ enum class FilterOptimization : int {
   None = 0
 };
 
-}
-} //namespace arangodb
+bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
+                                    irs::string_ref name,
+                                    irs::string_ref startsWith);
+
+} // namespace iresearch
+} // namespace arangodb

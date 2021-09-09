@@ -21,3 +21,59 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/IResearchFilterOptimization.h"
+#include "search/levenshtein_filter.hpp"
+#include "search/prefix_filter.hpp"
+
+namespace arangodb {
+namespace iresearch {
+
+
+bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
+                                    irs::string_ref name,
+                                    irs::string_ref startsWith) {
+  if (filter->type() == irs::type<irs::And>::id()) {
+    for (auto& f : *filter) {
+      if (f.type() == irs::type<irs::by_edit_distance>::id()) {
+        auto& levenshtein = static_cast<irs::by_edit_distance&>(f);
+        if (levenshtein.field() == name) {
+          auto options = levenshtein.mutable_options();
+          if (startsWith.size() <= options->prefix.size()) {
+            if (std::memcmp(options->prefix.data(), startsWith.c_str(),
+                            startsWith.size()) == 0) {
+              // Nothing to do. We are already covered by this levenshtein prefix
+              return true;
+            }
+          } else {
+            // maybe we could enlarge prefix to cover us?
+            if (std::memcmp(options->prefix.data(), startsWith.c_str(),
+                            options->prefix.size()) == 0) {
+              // looks promising - beginning of the levenshtein prefix is ok
+              auto prefixTailSize = startsWith.size() - options->prefix.size();
+              if (options->term.size() >= prefixTailSize &&
+                  std::memcmp(options->term.data(),
+                              startsWith.c_str() + options->prefix.size(),
+                              prefixTailSize) == 0) {
+                // we could enlarge prefix
+                options->prefix = irs::ref_cast<irs::byte_type>(startsWith);
+                options->term.erase(options->term.begin(), options->term.begin() + prefixTailSize);
+                return true;
+              }
+            }
+          }
+          if ((options->term.size() + options->prefix.size() + options->max_distance) <
+              startsWith.size()) {
+            // last optimization effort - we can't fulfill this conjunction.
+            // make it empty
+            filter->clear();
+            filter->add<irs::empty>();
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
+} // namespace iresearch
+} // namespace arangodb
