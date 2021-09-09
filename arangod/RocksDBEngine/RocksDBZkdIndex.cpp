@@ -140,7 +140,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
 
     return true;
   }
-
+ private:
   RocksDBKeyBounds _bound;
   rocksdb::Slice _upperBound;
   zkd::byte_string _cur;
