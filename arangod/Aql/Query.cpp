@@ -1305,11 +1305,10 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   auto ss = query.sharedState();
   TRI_ASSERT(ss != nullptr);
 
-  for (auto const& [serverDst, queryId] : serverQueryIds) {
+  for (auto const& [server, queryId] : serverQueryIds) {
+    TRI_ASSERT(server.substr(0, 7) != "server:");
 
-    TRI_ASSERT(serverDst.substr(0, 7) == "server:");
-
-    auto f = network::sendRequest(pool, serverDst, fuerte::RestVerb::Delete,
+    auto f = network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Delete,
                          "/_api/aql/finish/" + std::to_string(queryId), body, options)
     .thenValue([ss, &query](network::Response&& res) mutable -> Result {
         // simon: checked until 3.5, shutdown result is always ignored
@@ -1491,9 +1490,9 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
           << " The DBServers will eventually clean up the state. The following locks still exist: "
           << " write: " << writeLocked << ": you may not drop these collections until the locks time out."
           << " exclusive: " << exclusiveLocked << ": you may not be able to write into these collections until the locks time out.";
-      for (auto const& [serverDst, queryId] : _serverQueryIds) {
-        TRI_ASSERT(serverDst.substr(0, 7) == "server:");
-        auto msg = "Failed to send unlock request DELETE /_api/aql/finish/" + std::to_string(queryId) + " to " + serverDst + " in database " + vocbase().name();
+
+      for (auto const& [server, queryId] : _serverQueryIds) {
+        auto msg = "Failed to send unlock request DELETE /_api/aql/finish/" + std::to_string(queryId) + " to server:" + server + " in database " + vocbase().name();
         _warnings.registerWarning(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, msg);
         LOG_TOPIC("7c10f", WARN, Logger::QUERIES) << msg;
       }
