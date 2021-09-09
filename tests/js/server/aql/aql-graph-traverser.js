@@ -31,7 +31,7 @@
 'use strict';
 
 const jsunity = require('jsunity');
-const {assertEqual, assertTrue, fail} = jsunity.jsUnity.assertions;
+const {assertEqual, assertTrue, assertFalse, fail} = jsunity.jsUnity.assertions;
 
 const internal = require('internal');
 const db = internal.db;
