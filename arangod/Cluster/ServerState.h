@@ -283,6 +283,9 @@ class ServerState {
 
   /// @brief check equality of engines with other registered servers
   bool checkEngineEquality(AgencyComm&);
+  
+  /// @brief check equality of naming conventions settings with other registered servers
+  bool checkNamingConventionsEquality(AgencyComm&);
 
   /// @brief try to read the rebootID from the Agency
   ResultT<uint64_t> readRebootIdFromAgency(AgencyComm& comm);

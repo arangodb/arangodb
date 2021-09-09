@@ -66,7 +66,10 @@ namespace {
 // adjust this regex too!
 std::regex const uuidRegex(
     "^(SNGL|CRDN|PRMR|AGNT)-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$");
+
+static constexpr char const* extendedNamesDatabasesKey = "extendedNamesDatabases";
 }  // namespace
+
 
 static constexpr char const* currentServersRegisteredPref =
     "/Current/ServersRegistered/";
@@ -443,6 +446,15 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
         << "cluster is unsupported and may cause issues";
     return false;
   }
+  
+  if (!checkNamingConventionsEquality(comm)) {
+    LOG_TOPIC("75972", ERR, arangodb::Logger::STARTUP)
+        << "the usage of different settings for database object naming "
+        << "conventions (i.e. `--database.extended-names-databases` settings) "
+        << "in the cluster is unsupported and may cause follow-up issues. "
+        << "please unify the settings for the startup option `--database.extended-names-databases` "
+        << "on all coordinators and DB servers in this cluster.";
+  }
 
   std::string id;
   bool hadPersistedId = hasPersistedId();
@@ -623,6 +635,34 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
       if (pair.value.isObject()) {
         VPackSlice engineStr = pair.value.get("engine");
         if (engineStr.isString() && !engineStr.isEqualString(engineName)) {
+          return false;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
+/// @brief check equality of naming conventions settings with other registered servers
+bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
+  // our own setting
+  bool const extendedNamesForDatabases = _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
+
+  AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
+  if (result.successful()) {  // no error if we cannot reach agency directly
+
+    auto slicePath = AgencyCommHelper::slicePath(currentServersRegisteredPref);
+    VPackSlice servers = result.slice()[0].get(slicePath);
+    if (!servers.isObject()) {
+      return true;  // do not do anything harsh here
+    }
+
+    for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(servers)) {
+      if (pair.value.isObject()) {
+        VPackSlice setting = pair.value.get(::extendedNamesDatabasesKey);
+        if (setting.isBool() && setting.getBool() != extendedNamesForDatabases) {
+          // different setting detected
           return false;
         }
       }
@@ -841,6 +881,8 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
       builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
       builder.add("engine",
                   VPackValue(_server.getFeature<EngineSelectorFeature>().engineName()));
+      builder.add(::extendedNamesDatabasesKey,
+                  VPackValue(_server.getFeature<DatabaseFeature>().extendedNamesForDatabases()));
       builder.add("timestamp",
                   VPackValue(timepointToString(std::chrono::system_clock::now())));
     }
