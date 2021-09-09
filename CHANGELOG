@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added ArangoSearch condition optimization: STARTS_WITH is merged 
+  with LEVENSHTEIN_MATCH if used in the same AND node and field name and prefix
+  matches.
+
 * (EE only) Bug-fix: If you created a ArangoSearch view on Satellite-
   Collections only and then join with a collection only having a single
   shard the cluster-one-shard-rule was falsely applied and could lead to
