@@ -76,16 +76,19 @@ auto replicated_log::InMemoryLog::getEntryByIndex(LogIndex const idx) const noex
   }
 
   auto const& e = _log.at(idx.value - _first.value);
-  TRI_ASSERT(e.entry().logIndex() == idx);
+  TRI_ASSERT(e.entry().logIndex() == idx)
+      << "idx = " << idx << ", entry = " << e.entry().logIndex();
   return e;
 }
 
 auto replicated_log::InMemoryLog::slice(LogIndex from, LogIndex to) const -> log_type {
   from = std::max(from, _first);
   to = std::max(to, _first);
-  TRI_ASSERT(from <= to);
+  TRI_ASSERT(from <= to) << "from = " << from << ", to = " << to;
   auto res = _log.take(to.value - _first.value).drop(from.value - _first.value);
-  TRI_ASSERT(res.size() <= to.value - from.value);
+  TRI_ASSERT(res.size() <= to.value - from.value)
+      << "res.size() = " << res.size() << ", to = " << to.value
+      << ", from = " << from.value;
   return res;
 }
 
@@ -119,14 +122,10 @@ auto replicated_log::InMemoryLog::getLastIndexOfTerm(LogTerm term) const noexcep
   }
 }
 
-replicated_log::InMemoryLog::InMemoryLog(replicated_log::LogCore const& logCore) {
-  auto iter = logCore.read(LogIndex{0});
-  auto log = _log.transient();
-  while (auto entry = iter->next()) {
-    log.push_back(InMemoryLogEntry(std::move(entry).value()));
-  }
-  _log = std::move(log).persistent();
-  _first =_log.empty() ? LogIndex{1} : _log.front().entry().logIndex();
+auto replicated_log::InMemoryLog::release(LogIndex stop) const -> replicated_log::InMemoryLog {
+  auto [from, to] = getIndexRange();
+  auto newLog = slice(stop, to);
+  return InMemoryLog(newLog);
 }
 
 replicated_log::InMemoryLog::InMemoryLog(log_type log)
@@ -245,6 +244,10 @@ void replicated_log::InMemoryLog::appendInPlace(LoggerContext const& logContext,
 
 auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
                                          log_type entries) const -> InMemoryLog {
+  TRI_ASSERT(entries.empty() || getNextIndex() == entries.front().entry().logIndex())
+      << std::boolalpha << "entries.empty() = " << entries.empty()
+      << ", front = " << entries.front().entry().logIndex()
+      << ", getNextIndex = " << getNextIndex();
   auto transient = _log.transient();
   transient.append(std::move(entries).transient());
   return InMemoryLog{std::move(transient).persistent(), _first};
@@ -252,6 +255,10 @@ auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
 
 auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
                                          log_type_persisted const& entries) const -> InMemoryLog {
+  TRI_ASSERT(entries.empty() || getNextIndex() == entries.front().logIndex())
+      << std::boolalpha << "entries.empty() = " << entries.empty()
+      << ", front = " << entries.front().logIndex()
+      << ", getNextIndex = " << getNextIndex();
   auto transient = _log.transient();
   for (auto const& entry : entries) {
     transient.push_back(InMemoryLogEntry(entry));
@@ -261,7 +268,8 @@ auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
 
 auto replicated_log::InMemoryLog::takeSnapshotUpToAndIncluding(LogIndex until) const
     -> InMemoryLog {
-  return InMemoryLog{_log.take(until.value), _first};
+  TRI_ASSERT(_first <= (until + 1));
+  return InMemoryLog{_log.take(until.value - _first.value + 1), _first};
 }
 
 auto replicated_log::InMemoryLog::copyFlexVector() const -> log_type {
@@ -318,5 +326,19 @@ auto replicated_log::InMemoryLog::dump() const -> std::string {
 }
 
 auto replicated_log::InMemoryLog::getIndexRange() const noexcept -> LogRange {
-  return LogRange(_first, _first + _log.size());
+  return {_first, _first + _log.size()};
+}
+
+auto replicated_log::InMemoryLog::getFirstIndex() const noexcept -> LogIndex {
+  return _first;
+}
+
+auto replicated_log::InMemoryLog::loadFromLogCore(replicated_log::LogCore const& core)
+    -> replicated_log::InMemoryLog {
+  auto iter = core.read(LogIndex{0});
+  auto log = log_type::transient_type{};
+  while (auto entry = iter->next()) {
+    log.push_back(InMemoryLogEntry(std::move(entry).value()));
+  }
+  return InMemoryLog{log.persistent()};
 }

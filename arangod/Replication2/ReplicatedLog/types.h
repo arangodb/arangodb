@@ -89,6 +89,7 @@ enum class AppendEntriesErrorReason {
 struct LogStatistics {
   TermIndexPair spearHead{};
   LogIndex commitIndex{};
+  LogIndex firstIndex{};
 
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice) -> LogStatistics;

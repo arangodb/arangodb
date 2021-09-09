@@ -67,7 +67,7 @@ struct InMemoryLog {
 
  public:
   InMemoryLog() = delete;
-  InMemoryLog(replicated_log::LogCore const& logCore);
+  explicit InMemoryLog(log_type log);
 
   InMemoryLog(InMemoryLog&& other) noexcept;
   InMemoryLog(InMemoryLog const&) = default;
@@ -82,6 +82,7 @@ struct InMemoryLog {
   [[nodiscard]] auto getLastTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto getLastEntry() const noexcept -> std::optional<InMemoryLogEntry>;
   [[nodiscard]] auto getFirstEntry() const noexcept -> std::optional<InMemoryLogEntry>;
+  [[nodiscard]] auto getFirstIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getNextIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getEntryByIndex(LogIndex idx) const noexcept
       -> std::optional<InMemoryLogEntry>;
@@ -97,6 +98,8 @@ struct InMemoryLog {
   // @brief Unconditionally accesses the last element
   [[nodiscard]] auto back() const noexcept -> decltype(_log)::const_reference;
   [[nodiscard]] auto empty() const noexcept -> bool;
+
+  [[nodiscard]] auto release(LogIndex stop) const -> InMemoryLog;
 
   void appendInPlace(LoggerContext const& logContext, InMemoryLogEntry entry);
 
@@ -119,8 +122,9 @@ struct InMemoryLog {
   [[nodiscard]] static auto dump(log_type const& log) -> std::string;
   [[nodiscard]] auto dump() const -> std::string;
 
+
+  [[nodiscard]] static auto loadFromLogCore(LogCore const&) -> InMemoryLog;
  protected:
-  explicit InMemoryLog(log_type log);
   explicit InMemoryLog(log_type log, LogIndex first);
 };
 

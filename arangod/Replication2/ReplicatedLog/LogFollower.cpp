@@ -149,7 +149,19 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   }
 
   // Allocations
-  auto newInMemoryLog = self->_inMemoryLog.append(_loggerContext, req.entries);
+  auto newInMemoryLog = std::invoke([&] {
+    // if prevLogIndex is 0, we want to replace the entire log
+    // Note that req.entries might not start at 1, because the log could be
+    // compacted already.
+    if (req.prevLogEntry.index == LogIndex{0}) {
+      TRI_ASSERT(!req.entries.empty());
+      LOG_CTX("14696", DEBUG, _loggerContext)
+          << "replacing my log. New logs starts at "
+          << req.entries.front().entry().logTermIndexPair() << ".";
+      return InMemoryLog{req.entries};
+    }
+    return self->_inMemoryLog.append(_loggerContext, req.entries);
+  });
   auto iter = std::make_unique<InMemoryPersistedLogIterator>(req.entries);
   auto toBeResolved = std::make_unique<WaitForQueue>();
 
@@ -227,6 +239,18 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     };
 
     auto action = std::invoke([&]() noexcept -> DeferredAction {
+      TRI_ASSERT(req.largestCommonIndex >= self->_largestCommonIndex)
+          << "req.lci = " << req.largestCommonIndex
+          << ", self.lci = " << self->_largestCommonIndex;
+      if (self->_largestCommonIndex < req.largestCommonIndex) {
+        LOG_CTX("fc467", TRACE, self->_follower._loggerContext)
+            << "largest common index went from " << self->_largestCommonIndex
+            << " to " << req.largestCommonIndex << ".";
+        self->_largestCommonIndex = req.largestCommonIndex;
+        // TODO do we want to call checkCompaction here?
+        std::ignore = self->checkCompaction();
+      }
+
       if (self->_commitIndex < req.leaderCommit && !self->_inMemoryLog.empty()) {
         self->_commitIndex =
             std::min(req.leaderCommit, self->_inMemoryLog.back().entry().logIndex());
@@ -274,6 +298,7 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
     status.local = followerData.getLocalStatistics();
     status.leader = _leaderId;
     status.term = _currentTerm;
+    status.largestCommonIndex = followerData._largestCommonIndex;
     return LogStatus{std::move(status)};
   });
 }
@@ -422,14 +447,45 @@ replicated_log::LogFollower::~LogFollower() {
 }
 
 auto LogFollower::release(LogIndex doneWithIdx) -> Result {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return _guardedFollowerData.doUnderLock([&](GuardedFollowerData& self) -> Result {
+    TRI_ASSERT(doneWithIdx <= self._inMemoryLog.getLastIndex());
+    if (doneWithIdx <= self._releaseIndex) {
+      return {};
+    }
+    self._releaseIndex = doneWithIdx;
+    LOG_CTX("a0c95", TRACE, _loggerContext)
+        << "new release index set to " << self._releaseIndex;
+    return self.checkCompaction();
+  });
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() const noexcept
     -> LogStatistics {
   auto result = LogStatistics{};
   result.commitIndex = _commitIndex;
-  result.spearHead.index = _inMemoryLog.getLastIndex();
-  result.spearHead.term = _inMemoryLog.getLastTerm();
+  result.firstIndex = _inMemoryLog.getFirstIndex();
+  result.spearHead = _inMemoryLog.getLastTermIndexPair();
   return result;
+}
+
+auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
+  auto const compactionStop = std::min(_largestCommonIndex, _releaseIndex + 1);
+  LOG_CTX("080d5", TRACE, _follower._loggerContext)
+      << "compaction index calculated as " << compactionStop;
+  if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {
+    // only do a compaction every 1000 entries
+    LOG_CTX("ebb9f", TRACE, _follower._loggerContext)
+        << "won't trigger a compaction, not enough entries. First index = "
+        << _inMemoryLog.getFirstIndex();
+    return {};
+  }
+
+  auto newLog = _inMemoryLog.release(compactionStop);
+  auto res = _logCore->removeFront(compactionStop);
+  if (res.ok()) {
+    _inMemoryLog = std::move(newLog);
+  }
+  LOG_CTX("f1028", TRACE, _follower._loggerContext)
+      << "compaction result = " << res.errorMessage();
+  return res;
 }

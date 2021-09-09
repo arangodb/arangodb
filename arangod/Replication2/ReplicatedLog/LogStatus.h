@@ -44,6 +44,7 @@ struct FollowerStatistics : LogStatistics {
 struct LeaderStatus {
   LogStatistics local;
   LogTerm term;
+  LogIndex largestCommonIndex;
   std::unordered_map<ParticipantId, FollowerStatistics> follower;
   // now() - insertTP of last uncommitted entry
   std::chrono::duration<double, std::milli> commitLagMS;
@@ -56,6 +57,7 @@ struct FollowerStatus {
   LogStatistics local;
   std::optional<ParticipantId> leader;
   LogTerm term;
+  LogIndex largestCommonIndex;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatus;

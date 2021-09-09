@@ -45,7 +45,7 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower, replicated_log::IL
                      ParticipantId const& id, std::unique_ptr<replicated_log::LogCore> logCore,
                      LogTerm term, ParticipantId leaderId)
       : DelayedFollowerLog([&] {
-          auto inMemoryLog = replicated_log::InMemoryLog{*logCore};
+          auto inMemoryLog = replicated_log::InMemoryLog::loadFromLogCore(*logCore);
           return std::make_shared<replicated_log::LogFollower>(
               logContext, std::move(logMetricsMock), id, std::move(logCore),
               term, std::move(leaderId), std::move(inMemoryLog));

@@ -72,7 +72,7 @@ TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
     AppendEntriesRequest request;
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{5};
-    request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{1}};
     request.leaderCommit = LogIndex{1};
     request.messageId = ++nextMessageId;
     request.entries = {};
@@ -292,4 +292,45 @@ TEST_F(FollowerAppendEntriesTest, outdated_message_id) {
   }
 }
 
+TEST_F(FollowerAppendEntriesTest, rewrite_log) {
+  auto follower = makeFollower("follower", LogTerm{5}, "leader");
+
+  {
+    AppendEntriesRequest request;
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{5};
+    request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
+    request.leaderCommit = LogIndex{0};
+    request.messageId = ++nextMessageId;
+    request.entries = {InMemoryLogEntry(
+        PersistingLogEntry(LogTerm{5}, LogIndex{20}, LogPayload::createFromString("some payload")))};
+
+    auto f = follower->appendEntries(std::move(request));
+    ASSERT_TRUE(f.isReady());
+    {
+      auto result = f.get();
+      EXPECT_EQ(result.logTerm, LogTerm{5});
+      EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason::NONE);
+    }
+  }
+
+  {
+    auto status = follower->getStatus();
+    ASSERT_TRUE(std::holds_alternative<FollowerStatus>(status.getVariant()));
+    auto fstatus = std::get<FollowerStatus>(status.getVariant());
+    EXPECT_EQ(fstatus.local.firstIndex, LogIndex{20});
+  }
+
+  auto iter = follower->getLogIterator(LogIndex{1});
+  {
+    auto entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    EXPECT_EQ(entry->logIndex(), LogIndex{20});
+  }
+  {
+    auto entry = iter->next();
+    ASSERT_FALSE(entry.has_value());
+  }
+}
 

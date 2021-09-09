@@ -39,7 +39,7 @@ void UnconfiguredStatus::toVelocyPack(velocypack::Builder& builder) const {
 
 auto UnconfiguredStatus::fromVelocyPack(velocypack::Slice slice) -> UnconfiguredStatus {
   TRI_ASSERT(slice.get("role").isEqualString("unconfigured"));
-  return UnconfiguredStatus();
+  return {};
 }
 
 void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
@@ -49,6 +49,7 @@ void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
     builder.add(StaticStrings::Leader, VPackValue(*leader));
   }
   builder.add(StaticStrings::Term, VPackValue(term.value));
+  builder.add("largestCommonIndex", VPackValue(largestCommonIndex.value));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
 }
@@ -57,6 +58,7 @@ auto FollowerStatus::fromVelocyPack(velocypack::Slice slice) -> FollowerStatus {
   TRI_ASSERT(slice.get("role").isEqualString(StaticStrings::Follower));
   FollowerStatus status;
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
+  status.largestCommonIndex = slice.get("largestCommonIndex").extract<LogIndex>();
   status.local = LogStatistics::fromVelocyPack(slice);
   if (auto leader = slice.get(StaticStrings::Leader); !leader.isNone()) {
     status.leader = leader.copyString();
@@ -68,6 +70,7 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("role", VPackValue(StaticStrings::Leader));
   builder.add(StaticStrings::Term, VPackValue(term.value));
+  builder.add("largestCommonIndex", VPackValue(largestCommonIndex.value));
   builder.add("commitLagMS", VPackValue(commitLagMS.count()));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);

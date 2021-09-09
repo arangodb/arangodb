@@ -261,7 +261,7 @@ struct LogDemultiplexerImplementation
           if (auto locked = weak.lock(); locked) {
             auto that = std::static_pointer_cast<LogDemultiplexerImplementation>(locked);
             auto [nextIndex, promiseSets] = that->_guardedData.doUnderLock([&](auto& self) {
-              self._firstUncommittedIndex = iter->range().second;
+              self._firstUncommittedIndex = iter->range().to;
               self.digestIterator(*iter);
               return std::make_tuple(self._firstUncommittedIndex,
                                      self.getWaitForResolveSetAll(

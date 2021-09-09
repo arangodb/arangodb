@@ -79,7 +79,7 @@ struct DeserializeLogIterator : TypedLogRangeIterator<T> {
     return std::nullopt;
   }
 
-  auto range() const noexcept -> std::pair<LogIndex, LogIndex> override {
+  auto range() const noexcept -> LogRange override {
     return base->range();
   }
 

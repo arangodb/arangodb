@@ -323,7 +323,7 @@ auto replicated_log::LogLeader::construct(
                     std::move(id), term, std::move(inMemoryLog)) {}
   };
 
-  auto log = InMemoryLog{*logCore};
+  auto log = InMemoryLog::loadFromLogCore(*logCore);
   auto const lastIndex = log.getLastTermIndexPair();
   if (lastIndex.term != term) {
     // Immediately append an empty log entry in the new term. This is necessary
@@ -426,6 +426,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     LeaderStatus status;
     status.local = leaderData.getLocalStatistics();
     status.term = term;
+    status.largestCommonIndex = leaderData._largestCommonIndex;
     for (FollowerInfo const& f : leaderData._follower) {
       auto lastRequestLatencyMS =
           std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f._lastRequestLatency);
@@ -630,6 +631,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   if (lastAcked) {
     req.prevLogEntry.index = lastAcked->entry().logIndex();
     req.prevLogEntry.term = lastAcked->entry().logTerm();
+    TRI_ASSERT(req.prevLogEntry.index == follower.lastAckedEntry.index);
   } else {
     req.prevLogEntry.index = LogIndex{0};
     req.prevLogEntry.term = LogTerm{0};
@@ -808,10 +810,17 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
   }
 
   if (newLargestCommonIndex != _largestCommonIndex) {
+    TRI_ASSERT(newLargestCommonIndex > _largestCommonIndex);
     LOG_CTX("851bb", TRACE, _self._logContext)
         << "largest common index went from " << _largestCommonIndex << " to "
         << newLargestCommonIndex;
     _largestCommonIndex = newLargestCommonIndex;
+    // TODO this not the right place to do a sync compaction on the log
+    //      when we want to update the commit index.
+    //      We can either ignore compactions that would be triggered by an lci
+    //      increment (because eventually the state machine will call release
+    //      again) or we put this in a deferred action.
+    std::ignore = checkCompaction();
   }
 
   auto nth = indexes.begin();
@@ -843,6 +852,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
 auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const -> LogStatistics {
   auto result = LogStatistics{};
   result.commitIndex = _commitIndex;
+  result.firstIndex = _inMemoryLog.getFirstIndex();
   result.spearHead = _inMemoryLog.getLastTermIndexPair();
   return result;
 }
@@ -850,6 +860,40 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const ->
 replicated_log::LogLeader::GuardedLeaderData::GuardedLeaderData(replicated_log::LogLeader& self,
                                                                 InMemoryLog inMemoryLog)
     : _self(self), _inMemoryLog(std::move(inMemoryLog)) {}
+
+auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
+  return _guardedLeaderData.doUnderLock([&](GuardedLeaderData& self) -> Result {
+    TRI_ASSERT(doneWithIdx <= self._inMemoryLog.getLastIndex());
+    if (doneWithIdx <= self._releaseIndex) {
+      return {};
+    }
+    self._releaseIndex = doneWithIdx;
+    LOG_CTX("a0c95", TRACE, _logContext) << "new release index set to " << self._releaseIndex;
+    return self.checkCompaction();
+  });
+}
+
+auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction() -> Result {
+  auto const compactionStop = std::min(_largestCommonIndex, _releaseIndex + 1);
+  LOG_CTX("080d5", TRACE, _self._logContext)
+      << "compaction index calculated as " << compactionStop;
+  if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {
+    // only do a compaction every 1000 entries
+    LOG_CTX("ebb9f", TRACE, _self._logContext)
+        << "won't trigger a compaction, not enough entries. First index = "
+        << _inMemoryLog.getFirstIndex();
+    return {};
+  }
+
+  auto newLog = _inMemoryLog.release(compactionStop);
+  auto res = _self._localFollower->release(compactionStop);
+  if (res.ok()) {
+    _inMemoryLog = std::move(newLog);
+  }
+  LOG_CTX("f1028", TRACE, _self._logContext)
+      << "compaction result = " << res.errorMessage();
+  return res;
+}
 
 auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag() const noexcept
     -> std::chrono::duration<double, std::milli> {
@@ -937,10 +981,6 @@ auto replicated_log::LogLeader::construct(
                               term, logContext, std::move(logMetrics));
 }
 
-auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
-  return Result();
-}
-
 auto replicated_log::LogLeader::copyInMemoryLog() const -> replicated_log::InMemoryLog {
   return _guardedLeaderData.getLockedGuard()->_inMemoryLog;
 }
@@ -1026,6 +1066,17 @@ auto replicated_log::LogLeader::LocalFollower::resign() && noexcept
         << _leader._currentTerm;
     return logCore;
   });
+}
+
+auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const -> Result {
+  auto res = _guardedLogCore.doUnderLock([&](auto& core) {
+    LOG_CTX("23745", DEBUG, _logContext)
+        << "local follower releasing with stop at " << stop;
+    return core->removeFront(stop);
+  });
+  LOG_CTX_IF("2aba1", WARN, _logContext, res.fail())
+      << "local follower failed to release log entries: " << res.errorMessage();
+  return res;
 }
 
 replicated_log::LogLeader::PreparedAppendEntryRequest::PreparedAppendEntryRequest(

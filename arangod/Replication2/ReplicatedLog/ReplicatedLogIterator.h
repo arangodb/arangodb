@@ -63,7 +63,7 @@ class ReplicatedLogIterator : public LogRangeIterator {
     return std::nullopt;
   }
 
-  auto range() const noexcept -> std::pair<LogIndex, LogIndex> override {
+  auto range() const noexcept -> LogRange override {
     if (_container.empty()) {
       return {LogIndex{0}, LogIndex{0}};
     } else {

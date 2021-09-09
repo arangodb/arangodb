@@ -78,11 +78,14 @@ class LogFollower final : public ILogParticipant,
     [[nodiscard]] auto getLocalStatistics() const noexcept -> LogStatistics;
     [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
         -> std::unique_ptr<LogRangeIterator>;
+    [[nodiscard]] auto checkCompaction() -> Result;
 
     LogFollower const& _follower;
     InMemoryLog _inMemoryLog;
     std::unique_ptr<LogCore> _logCore;
     LogIndex _commitIndex{0};
+    LogIndex _largestCommonIndex;
+    LogIndex _releaseIndex;
     MessageId _lastRecvMessageId{0};
     Guarded<WaitForQueue, arangodb::basics::UnshackledMutex> _waitForQueue;
   };
