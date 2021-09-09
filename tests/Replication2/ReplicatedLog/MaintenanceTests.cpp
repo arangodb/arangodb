@@ -171,9 +171,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{
-      {logId,
-       replicated_log::LogStatus{
-           replicated_log::FollowerStatus{{}, ParticipantId{"leader"}, LogTerm{4}}}},
+      {logId, replicated_log::LogStatus{replicated_log::FollowerStatus{
+                  {}, ParticipantId{"leader"}, LogTerm{4}, LogIndex{0}}}},
   };
   auto const defaultConfig = LogConfig{};
 

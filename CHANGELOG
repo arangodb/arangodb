@@ -51,6 +51,20 @@ devel
   several clients concurrently inserts data and use custom analyzer
   with non-string return type
 
+* No runtime limits for shard move and server cleanout jobs, instead
+  possibility to cancel them.
+
+* Fix cluster-internal network protocol to HTTP/1 for now. Any other protocol
+  selected via the startup option `--network.protocol` will automatically be
+  switched to HTTP/1. The startup option `--network.protocol` is now deprecated
+  and hidden by default. It will be removed in a future version of arangod.
+  The rationale for this change is to move towards a single protocol for 
+  cluster-internal communication instead of 3 different ones.
+
+* Disable RTTI when compiling Snappy. RTTI used to be disabled previously,
+  up until some Merkle tree improvement PR was merged about one month ago, 
+  which turned on RTTI for compiling Snappy.
+
 * (EE only) Bug-fix: If you created a ArangoSearch view on Satellite-
   Collections only and then join with a collection only having a single
   shard the cluster-one-shard-rule was falsely applied and could lead to
@@ -61,30 +75,30 @@ devel
   now the cluster-one-shard-rule can be applied to improve
   query performance.
 
-* (Enterprise Edition only): added query option `forceOneShardAttributeValue` 
-  to explicitly set a shard key value that will be used during query snippet 
+* (Enterprise Edition only): added query option `forceOneShardAttributeValue`
+  to explicitly set a shard key value that will be used during query snippet
   distribution to limit the query to a specific server in the cluster.
 
-  This query option can be used in complex queries in case the query optimizer 
-  cannot automatically detect that the query can be limited to only a single 
+  This query option can be used in complex queries in case the query optimizer
+  cannot automatically detect that the query can be limited to only a single
   server (e.g. in a disjoint smart graph case).
-  When the option is set to the correct shard key value, the query will be 
-  limited to the target server determined by the shard key value. It thus 
+  When the option is set to the correct shard key value, the query will be
+  limited to the target server determined by the shard key value. It thus
   requires that all collections in the query use the same distribution
   (i.e. `distributeShardsLike` attribute via disjoint SmartGraphs).
-  
-  Limiting the query to a single DB server is a performance optimization 
-  and may make complex queries run a lot faster because of the reduced 
-  setup and teardown costs and the reduced cluster-internal traffic during 
+
+  Limiting the query to a single DB server is a performance optimization
+  and may make complex queries run a lot faster because of the reduced
+  setup and teardown costs and the reduced cluster-internal traffic during
   query execution.
 
-  If the option is set incorrectly, i.e. to a wrong shard key value, then 
-  the query may be shipped to a wrong DB server and may not return results 
-  (i.e. empty result set). It is thus the caller's responsibility to set 
+  If the option is set incorrectly, i.e. to a wrong shard key value, then
+  the query may be shipped to a wrong DB server and may not return results
+  (i.e. empty result set). It is thus the caller's responsibility to set
   the `forceOneShardAttributeValue` correctly or not use it.
 
-  The `forceOneShardAttributeValue` option will only honor string values. 
-  All other values as well as the empty string will be ignored and treated 
+  The `forceOneShardAttributeValue` option will only honor string values.
+  All other values as well as the empty string will be ignored and treated
   as if the option is not set.
 
   If the option is set and the query satisfies the requirements for using
@@ -93,7 +107,7 @@ devel
 
 * Updated ArangoDB Starter to 0.15.2.
 
-* SEARCH-238: Improved SortNodes placement optimization in cluster so 
+* SEARCH-238: Improved SortNodes placement optimization in cluster so
   late materialization could cover more cases
 
 * Fix some memory leaks after adding optimization rule for AqlAnalyzer.
@@ -101,7 +115,7 @@ devel
 * Fix internal iterator states after intermediate commits in write
   transactions. Iterators could point to invalid data after an
   intermediate commit, producing undefined behavior.
-  
+
 * Fix read-own-write behavior in different scenarios:
     - in some cases writes performed by an AQL query could be observed within
       the same query. This was not intended and is fixed now.

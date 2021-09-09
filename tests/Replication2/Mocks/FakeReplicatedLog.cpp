@@ -17,47 +17,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Replication2/TestHelper.h"
+#include "FakeReplicatedLog.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::replicated_log;
+using namespace arangodb::replication2::test;
 
 
-TEST(LogIndexTest, compareOperators) {
-  auto one = LogIndex{1};
-  auto two = LogIndex{2};
-
-  EXPECT_TRUE(one == one);
-  EXPECT_FALSE(one != one);
-  EXPECT_FALSE(one < one);
-  EXPECT_FALSE(one > one);
-  EXPECT_TRUE(one <= one);
-  EXPECT_TRUE(one >= one);
-
-  EXPECT_FALSE(one == two);
-  EXPECT_TRUE(one != two);
-  EXPECT_TRUE(one < two);
-  EXPECT_FALSE(one > two);
-  EXPECT_TRUE(one <= two);
-  EXPECT_FALSE(one >= two);
-
-  EXPECT_FALSE(two == one);
-  EXPECT_TRUE(two != one);
-  EXPECT_FALSE(two < one);
-  EXPECT_TRUE(two > one);
-  EXPECT_FALSE(two <= one);
-  EXPECT_TRUE(two >= one);
+auto TestReplicatedLog::becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId)
+-> std::shared_ptr<DelayedFollowerLog> {
+  auto ptr = ReplicatedLog::becomeFollower(id, term, std::move(leaderId));
+  return std::make_shared<DelayedFollowerLog>(ptr);
 }
 
-TEST(TermIndexPair, compare_operator) {
-  auto A = TermIndexPair{LogTerm{1}, LogIndex{1}};
-  auto B = TermIndexPair{LogTerm{1}, LogIndex{5}};
-  auto C = TermIndexPair{LogTerm{2}, LogIndex{2}};
-
-  EXPECT_TRUE(A < B);
-  EXPECT_TRUE(B < C);
-  EXPECT_TRUE(A < C);
+auto TestReplicatedLog::becomeLeader(ParticipantId const& id, LogTerm term,
+                                     std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const& follower,
+                                     std::size_t writeConcern)
+    -> std::shared_ptr<replicated_log::LogLeader> {
+  LogConfig config;
+  config.writeConcern = writeConcern;
+  config.waitForSync = false;
+  return becomeLeader(config, id, term, follower);
 }

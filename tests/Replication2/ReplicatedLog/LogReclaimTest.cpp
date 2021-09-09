@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/ReplicatedLog/types.h"
-#include "Replication2/TestHelper.h"
+#include "TestHelper.h"
 
 #include <Basics/Exceptions.h>
 
@@ -30,6 +30,7 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
+using namespace arangodb::replication2::test;
 
 TEST_F(ReplicatedLogTest, reclaim_leader_after_term_change) {
 
@@ -42,7 +43,7 @@ TEST_F(ReplicatedLogTest, reclaim_leader_after_term_change) {
   auto idx = leader->insert(LogPayload::createFromString("payload"), false,
                             LogLeader::doNotTriggerAsyncReplication);
   auto f = leader->waitFor(idx).then(
-      [&](futures::Try<std::shared_ptr<QuorumData const>>&& quorum) {
+      [&](futures::Try<WaitForResult>&& quorum) {
         EXPECT_TRUE(quorum.hasException());
         try {
           quorum.throwIfFailed();
@@ -73,7 +74,7 @@ TEST_F(ReplicatedLogTest, reclaim_follower_after_term_change) {
   auto idx = leader->insert(LogPayload::createFromString("payload"), false,
                             LogLeader::doNotTriggerAsyncReplication);
   auto f = follower->waitFor(idx).then(
-      [&](futures::Try<std::shared_ptr<QuorumData const>>&& quorum) {
+      [&](futures::Try<WaitForResult>&& quorum) {
         EXPECT_TRUE(quorum.hasException());
         try {
           quorum.throwIfFailed();
