@@ -135,7 +135,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void addTrxsOngoing(Slice trxs);
 
   /// @brief Remove trxs from list of ongoing ones.
-  void removeTrxsOngoing(Slice trxs);
+  void removeTrxsOngoing(Slice trxs) noexcept;
 
   /// @brief Check whether a trx is ongoing.
   bool isTrxOngoing(std::string& id);

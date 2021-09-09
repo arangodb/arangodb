@@ -35,6 +35,7 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
+using namespace arangodb::replication2::test;
 
 
 struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
@@ -216,7 +217,6 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   using namespace std::chrono_literals;
 
   auto replicatedLog = makeReplicatedLogWithAsyncMockLog(LogId{1});
-  // TODO this test hangs because there is not local follower currently
   auto leaderLog = replicatedLog->becomeLeader("leader", LogTerm{1}, {}, 1);
 
   auto data = ThreadCoordinationData{leaderLog};
@@ -257,7 +257,7 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
 TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
   using namespace std::chrono_literals;
 
-  auto guard = scopeGuard([] {
+  auto guard = scopeGuard([]() noexcept {
     LOG_TOPIC("27bc7", FATAL, Logger::REPLICATION2)
         << "Test terminating early, aborting for debugging";
     FATAL_ERROR_ABORT();

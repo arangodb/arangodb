@@ -564,7 +564,7 @@ void IndexExecutor::initIndexes(InputAqlItemRow& input) {
       };
 
       _infos.query().enterV8Context();
-      TRI_DEFER(cleanup());
+      auto sg = arangodb::scopeGuard([&]() noexcept { cleanup(); });
 
       ISOLATE;
       v8::HandleScope scope(isolate);  // do not delete this!

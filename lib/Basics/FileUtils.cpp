@@ -249,7 +249,7 @@ std::string slurp(std::string const& filename) {
     throwFileReadError(filename);
   }
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   constexpr size_t chunkSize = 8192;
   StringBuffer buffer(chunkSize, false);
@@ -266,7 +266,7 @@ void slurp(std::string const& filename, StringBuffer& result) {
     throwFileReadError(filename);
   }
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   result.reset();
   constexpr size_t chunkSize = 8192;
@@ -285,7 +285,7 @@ Result slurpNoEx(std::string const& filename, StringBuffer& result) {
     return {res, message};
   }
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   result.reset();
   constexpr size_t chunkSize = 8192;
@@ -321,7 +321,7 @@ void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
     throwFileWriteError(filename);
   }
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   while (0 < len) {
     ssize_t n = TRI_WRITE(fd, ptr, static_cast<TRI_write_t>(len));
