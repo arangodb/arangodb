@@ -770,7 +770,7 @@ std::string slurpProgram(std::string const& program) {
          (res._status == TRI_EXT_RUNNING)) {
     auto nRead = TRI_ReadPipe(process, buf, sizeof(buf) - 1);
     if (nRead > 0) {
-      output += std::string(buf, nRead);
+      output.append(buf, nRead);
     }
   }
   return output;
