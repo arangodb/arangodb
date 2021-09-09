@@ -109,6 +109,8 @@ class Query : public QueryContext {
   double getLockTimeout() const noexcept override;
 
   QueryString const& queryString() const { return _queryString; }
+    
+  TEST_VIRTUAL QueryOptions& queryOptions() { return _queryOptions; }
 
   /// @brief return the start time of the query (steady clock value)
   double startTime() const noexcept;
@@ -172,10 +174,6 @@ class Query : public QueryContext {
   }
   
   virtual QueryOptions const& queryOptions() const override {
-    return _queryOptions;
-  }
-  
-  virtual QueryOptions& queryOptions() noexcept override {
     return _queryOptions;
   }
   
