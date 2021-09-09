@@ -157,6 +157,11 @@ struct OperationOptions {
   // defaults to true.
   bool truncateCompact;
 
+  // whether or not this request is a DOCUMENT() call from inside AQL. only set
+  // for exactly this case on a coordinator, in order to make it set a special
+  // header when putting together the requests for DB servers
+  bool documentCallFromAql;
+
   // whether or not indexing can be disabed. We must not disable indexing if we have to ensure
   // that writes become visible to the current query.
   // This is necessary for UPSERTS where the subquery relies on a non-unique secondary index.
