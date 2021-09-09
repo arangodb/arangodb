@@ -140,12 +140,18 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool forceSyncProperties() const { return _forceSyncProperties; }
   void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
+  
+  /// @brief whether or not extended names for databases can be used
   bool extendedNamesForDatabases() const { return _extendedNamesForDatabases; }
-  bool extendedNamesForCollections() const { return _extendedNamesForCollections; }
-  bool extendedNamesForViews() const { return _extendedNamesForViews; }
-  bool extendedNamesForAnalyzers() const { return _extendedNamesForAnalyzers; }
-  // will be called during startup when reading stored value from storage engine
+  /// @brief will be called only during startup when reading stored value from storage engine
   void extendedNamesForDatabases(bool value) { _extendedNamesForDatabases = value; }
+
+  /// @brief currently always false, until feature is implemented
+  bool extendedNamesForCollections() const { return false; }
+  /// @brief currently always false, until feature is implemented
+  bool extendedNamesForViews() const { return false; }
+  /// @brief currently always false, until feature is implemented
+  bool extendedNamesForAnalyzers() const { return false; }
 
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
@@ -193,10 +199,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _checkVersion;
   bool _upgrade;
 
+  /// @brief whether or not the allow extended database names
   bool _extendedNamesForDatabases;
-  bool _extendedNamesForCollections;
-  bool _extendedNamesForViews;
-  bool _extendedNamesForAnalyzers;
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 

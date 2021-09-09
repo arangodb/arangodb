@@ -290,9 +290,6 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _checkVersion(false),
       _upgrade(false),
       _extendedNamesForDatabases(false),
-      _extendedNamesForCollections(false),
-      _extendedNamesForViews(false),
-      _extendedNamesForAnalyzers(false),
       _databasesLists(new DatabasesLists()),
       _started(false) {
   setOptional(false);
@@ -338,24 +335,6 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Experimental))
                      .setIntroducedIn(30900);
   
-  options->addOption("--database.extended-names-collections",
-                     "allow extended characters in collection names",
-                     new BooleanParameter(&_extendedNamesForCollections),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Experimental))
-                     .setIntroducedIn(30900);
-  
-  options->addOption("--database.extended-names-views",
-                     "allow extended characters in view names",
-                     new BooleanParameter(&_extendedNamesForViews),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Experimental))
-                     .setIntroducedIn(30900);
-  
-  options->addOption("--database.extended-names-analyzers",
-                     "allow extended characters in analyzer names",
-                     new BooleanParameter(&_extendedNamesForAnalyzers),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Experimental))
-                     .setIntroducedIn(30900);
-  
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
       "--database.old-system-collections",
@@ -397,24 +376,6 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     LOG_TOPIC("a25b0", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both '--database.check-version' and "
            "'--database.auto-upgrade'";
-    FATAL_ERROR_EXIT();
-  }
-  
-  if (_extendedNamesForCollections) {
-    LOG_TOPIC("b3703", FATAL, arangodb::Logger::FIXME)
-        << "extended names for collections are currently unsupported";
-    FATAL_ERROR_EXIT();
-  }
-  
-  if (_extendedNamesForViews) {
-    LOG_TOPIC("cdf24", FATAL, arangodb::Logger::FIXME)
-        << "extended names for views are currently unsupported";
-    FATAL_ERROR_EXIT();
-  }
-  
-  if (_extendedNamesForAnalyzers) {
-    LOG_TOPIC("29889", FATAL, arangodb::Logger::FIXME)
-        << "extended names for analyzers are currently unsupported";
     FATAL_ERROR_EXIT();
   }
 }
