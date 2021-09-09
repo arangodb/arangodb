@@ -4,6 +4,17 @@ devel
 * No runtime limits for shard move and server cleanout jobs, instead
   possibility to cancel them.
 
+* Fix cluster-internal network protocol to HTTP/1 for now. Any other protocol
+  selected via the startup option `--network.protocol` will automatically be
+  switched to HTTP/1. The startup option `--network.protocol` is now deprecated
+  and hidden by default. It will be removed in a future version of arangod.
+  The rationale for this change is to move towards a single protocol for 
+  cluster-internal communication instead of 3 different ones.
+
+* Disable RTTI when compiling Snappy. RTTI used to be disabled previously,
+  up until some Merkle tree improvement PR was merged about one month ago, 
+  which turned on RTTI for compiling Snappy.
+
 * (EE only) Bug-fix: If you created a ArangoSearch view on Satellite-
   Collections only and then join with a collection only having a single
   shard the cluster-one-shard-rule was falsely applied and could lead to
