@@ -32,6 +32,7 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
+using namespace arangodb::replication2::test;
 
 TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
   auto coreA = makeLogCore(LogId{1});
@@ -169,10 +170,11 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     {
       // Expect the quorum to consist of the follower only
       ASSERT_TRUE(f.isReady());
-      auto quorum = f.get();
-      EXPECT_EQ(quorum->index, LogIndex{2});
-      EXPECT_EQ(quorum->term, LogTerm{1});
-      EXPECT_EQ(quorum->quorum, (std::vector<ParticipantId>{leaderId, followerId}));
+      auto result = f.get();
+      EXPECT_EQ(result.currentCommitIndex, LogIndex{2});
+      EXPECT_EQ(result.quorum->index, LogIndex{2});
+      EXPECT_EQ(result.quorum->term, LogTerm{1});
+      EXPECT_EQ(result.quorum->quorum, (std::vector<ParticipantId>{leaderId, followerId}));
     }
 
     // Follower should have pending append entries
@@ -187,19 +189,23 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
       EXPECT_EQ(status.local.spearHead.index, LogIndex{2});
     }
 
+    // LCI update
+    EXPECT_TRUE(follower->hasPendingAppendEntries());
+    follower->runAsyncAppendEntries();
     EXPECT_FALSE(follower->hasPendingAppendEntries());
   }
   {
-    // Metric should have registered four appendEntries.
+    // Metric should have registered six appendEntries.
     // There was one insert, resulting in one appendEntries each to the follower
     // and the local follower. After the followers responded, the commit index
     // is updated, and both followers get another appendEntries request.
+    // Finally, the LCI is updated with another round of requests.
     auto numAppendEntries =
         countHistogramEntries(_logMetricsMock->replicatedLogAppendEntriesRttUs);
-    EXPECT_EQ(numAppendEntries, 4);
+    EXPECT_EQ(numAppendEntries, 6);
     auto numFollowerAppendEntries =
         countHistogramEntries(_logMetricsMock->replicatedLogFollowerAppendEntriesRtUs);
-    EXPECT_EQ(numFollowerAppendEntries, 4);
+    EXPECT_EQ(numFollowerAppendEntries, 6);
   }
 }
 
@@ -262,7 +268,8 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
     // AppendEntries with prevLogIndex 2 -> success = false
     // AppendEntries with prevLogIndex 0 -> success = true
     // AppendEntries with new commitIndex
-    EXPECT_EQ(number_of_runs, 3);
+    // AppendEntries with new LCI
+    EXPECT_EQ(number_of_runs, 4);
   }
 
   {
@@ -374,10 +381,11 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   // and update of commitIndex on both follower
   {
     ASSERT_TRUE(future.isReady());
-    auto quorum = future.get();
-    EXPECT_EQ(quorum->term, LogTerm{1});
-    EXPECT_EQ(quorum->index, LogIndex{2});
-    EXPECT_EQ(quorum->quorum, (std::vector{leaderId, followerId_1, followerId_2}));
+    auto result = future.get();
+    EXPECT_EQ(result.currentCommitIndex, LogIndex{2});
+    EXPECT_EQ(result.quorum->term, LogTerm{1});
+    EXPECT_EQ(result.quorum->index, LogIndex{2});
+    EXPECT_EQ(result.quorum->quorum, (std::vector{leaderId, followerId_1, followerId_2}));
   }
 
   EXPECT_TRUE(follower_1->hasPendingAppendEntries());
@@ -400,6 +408,12 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{2});
   }
+
+  // LCI updates
+  follower_1->runAsyncAppendEntries();
+  EXPECT_FALSE(follower_1->hasPendingAppendEntries());  // no lci update yet
+  follower_2->runAsyncAppendEntries();
+  EXPECT_TRUE(follower_2->hasPendingAppendEntries());
 
   follower_1->runAsyncAppendEntries();
   EXPECT_FALSE(follower_1->hasPendingAppendEntries());
@@ -483,7 +497,8 @@ TEST_F(ReplicatedLogTest, write_concern_one_immediate_leader_commit_on_startup) 
     }
     // AppendEntries with prevLogIndex 2 -> success = false, replicated log empty
     // AppendEntries with prevLogIndex 2 -> success = true, including commit index
-    EXPECT_EQ(number_of_runs, 2);
+    // AppendEntries with LCI
+    EXPECT_EQ(number_of_runs, 3);
   }
 
   {
