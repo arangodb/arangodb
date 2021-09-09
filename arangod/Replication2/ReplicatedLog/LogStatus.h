@@ -33,18 +33,21 @@
 
 namespace arangodb::replication2::replicated_log {
 
-struct LeaderStatus {
-  struct FollowerStatistics : LogStatistics {
-    AppendEntriesErrorReason lastErrorReason;
-    double lastRequestLatencyMS;
-    void toVelocyPack(velocypack::Builder& builder) const;
-    static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics;
-  };
+struct FollowerStatistics : LogStatistics {
+  AppendEntriesErrorReason lastErrorReason;
+  std::chrono::duration<double, std::milli> lastRequestLatencyMS;
+  FollowerState internalState;
+  void toVelocyPack(velocypack::Builder& builder) const;
+  static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics;
+};
 
+struct LeaderStatus {
   LogStatistics local;
   LogTerm term;
   LogIndex largestCommonIndex;
   std::unordered_map<ParticipantId, FollowerStatistics> follower;
+  // now() - insertTP of last uncommitted entry
+  std::chrono::duration<double, std::milli> commitLagMS;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;

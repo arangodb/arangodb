@@ -152,6 +152,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
                           TermIndexPair lastLogIndex, LoggerContext const& logContext);
 
     std::chrono::steady_clock::duration _lastRequestLatency{};
+    std::chrono::steady_clock::time_point _lastRequestStartTP{};
+    std::chrono::steady_clock::time_point _errorBackoffEndTP{};
     std::shared_ptr<AbstractFollower> _impl;
     TermIndexPair lastAckedEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     LogIndex lastAckedCommitIndex = LogIndex{0};
@@ -160,7 +162,13 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason = AppendEntriesErrorReason::NONE;
     LoggerContext const logContext;
-    bool requestInFlight = false;
+
+    enum class State {
+      IDLE,
+      PREPARE,
+      ERROR_BACKOFF,
+      REQUEST_IN_FLIGHT,
+    } _state = State::IDLE;
   };
 
   struct LocalFollower final : AbstractFollower {
@@ -247,6 +255,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     [[nodiscard]] auto createAppendEntriesRequest(FollowerInfo& follower,
                                                   TermIndexPair const& lastAvailableIndex) const
         -> std::pair<AppendEntriesRequest, TermIndexPair>;
+
+    [[nodiscard]] auto calculateCommitLag() const noexcept
+        -> std::chrono::duration<double, std::milli>;
 
     LogLeader& _self;
     InMemoryLog _inMemoryLog;
