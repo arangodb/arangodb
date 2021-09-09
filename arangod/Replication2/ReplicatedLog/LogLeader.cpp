@@ -549,7 +549,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   } catch (...) {
     // If those promises are not fulfilled we can not continue.
     // Note that the move constructor of std::multi_map is not noexcept.
-    LOG_CTX("c0bba", FATAL, _self._logContext)
+    LOG_CTX("c0bbb", FATAL, _self._logContext)
         << "failed to fulfill replication promises due to exception; system "
            "can not continue";
     FATAL_ERROR_EXIT();
@@ -868,18 +868,18 @@ auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
       return {};
     }
     self._releaseIndex = doneWithIdx;
-    LOG_CTX("a0c95", TRACE, _logContext) << "new release index set to " << self._releaseIndex;
+    LOG_CTX("a0c96", TRACE, _logContext) << "new release index set to " << self._releaseIndex;
     return self.checkCompaction();
   });
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction() -> Result {
   auto const compactionStop = std::min(_largestCommonIndex, _releaseIndex + 1);
-  LOG_CTX("080d5", TRACE, _self._logContext)
+  LOG_CTX("080d6", TRACE, _self._logContext)
       << "compaction index calculated as " << compactionStop;
   if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {
     // only do a compaction every 1000 entries
-    LOG_CTX("ebb9f", TRACE, _self._logContext)
+    LOG_CTX("ebba0", TRACE, _self._logContext)
         << "won't trigger a compaction, not enough entries. First index = "
         << _inMemoryLog.getFirstIndex();
     return {};
@@ -890,7 +890,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction() -> Result {
   if (res.ok()) {
     _inMemoryLog = std::move(newLog);
   }
-  LOG_CTX("f1028", TRACE, _self._logContext)
+  LOG_CTX("f1029", TRACE, _self._logContext)
       << "compaction result = " << res.errorMessage();
   return res;
 }
