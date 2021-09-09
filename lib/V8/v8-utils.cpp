@@ -3079,7 +3079,7 @@ static void JS_ClosePipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("writePipe(<external-identifier>, bool Read)");
+    TRI_V8_THROW_EXCEPTION_USAGE("closePipe(<external-identifier>, bool read)");
   }
 
   TRI_GET_GLOBALS();
