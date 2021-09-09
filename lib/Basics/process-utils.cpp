@@ -1021,7 +1021,7 @@ bool TRI_WritePipe(ExternalProcess const* process,
                    char const* buffer,
                    size_t bufferSize) {
   if (process == nullptr || TRI_IS_INVALID_PIPE(process->_writePipe)) {
-    return 0;
+    return false;
   }
 
 #ifndef _WIN32
