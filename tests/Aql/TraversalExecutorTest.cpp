@@ -266,7 +266,7 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   ExecutorState state;
   mocks::MockAqlServer server;
 
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
 
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
@@ -445,7 +445,7 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
   ExecutorState state;
   mocks::MockAqlServer server;
 
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
 
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};

@@ -385,7 +385,7 @@ std::shared_ptr<arangodb::transaction::Methods> MockAqlServer::createFakeTransac
                                                           noCollections, opts);
 }
 
-std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(
+std::shared_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(
     bool activateTracing, std::string queryString,
     std::function<void(aql::Query&)> callback) const {
   auto bindParams = std::make_shared<VPackBuilder>();
@@ -402,9 +402,9 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(
   }
 
   aql::QueryString fakeQueryString(queryString);
-  auto query = std::make_unique<arangodb::aql::Query>(
+  auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(getSystemDatabase()),
-      fakeQueryString, bindParams, queryOptions.slice());
+      fakeQueryString, bindParams, arangodb::aql::QueryOptions(queryOptions.slice()));
   callback(*query);
   query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
 
