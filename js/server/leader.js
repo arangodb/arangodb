@@ -30,5 +30,5 @@
 
 (function(){
   "use strict";
-require("@arangodb/foxx/manager").healAll();
+  require("@arangodb/foxx/manager").healAll();
 }());
