@@ -3097,7 +3097,7 @@ static void JS_ClosePipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (proc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      "didn't find the process identified by <external-identifier> to read the pipe from.");
+      "didn't find the process identified by <external-identifier> to close the pipe for.");
   }
 
   bool read = TRI_ObjectToBoolean(isolate, args[1]);
