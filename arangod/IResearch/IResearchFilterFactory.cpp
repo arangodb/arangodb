@@ -3576,7 +3576,7 @@ Result fromFuncStartsWith(
       for (auto& f : *filter) {
         if (f.type() == irs::type<irs::by_edit_distance>::id()) {
           auto& levenshtein = static_cast<irs::by_edit_distance&>(f);
-          if (*levenshtein.mutable_field() == name) {
+if (levenshtein.field() == name) {
             auto options = levenshtein.mutable_options();
             auto startsWith = prefixes.back().second;
             if (startsWith.size() <= options->prefix.size()) {
