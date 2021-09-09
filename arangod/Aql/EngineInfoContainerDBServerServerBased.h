@@ -30,6 +30,7 @@
 #include "Aql/ShardLocking.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterTypes.h"
 #include "VocBase/AccessMode.h"
 
 #include <map>
@@ -146,7 +147,7 @@ class EngineInfoContainerDBServerServerBased {
   void addGraphNode(GraphNode* node, bool pushToSingleServer);
 
  private:
-
+ 
   /**
   * @brief Helper method to generate the Request to be send to a specific database server.
   * this request contains all the necessary information to create a transaction with correct shard
@@ -212,7 +213,7 @@ class EngineInfoContainerDBServerServerBased {
 
   // Parse the response of a DBServer to a setup request
   Result parseResponse(VPackSlice response, MapRemoteToSnippet& queryIds,
-                       ServerID const& server, std::string const& serverDest,
+                       ServerID const& server,
                        std::vector<bool> const& didCreateEngine,
                        QueryId& globalQueryId) const;
 

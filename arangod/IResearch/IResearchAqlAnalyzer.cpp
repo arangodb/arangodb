@@ -259,6 +259,10 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
     return _queryOptions;
   }
 
+  virtual arangodb::aql::QueryOptions& queryOptions() noexcept override {
+    return _queryOptions;
+  }
+
   double getLockTimeout() const noexcept override {
     return _queryOptions.transactionOptions.lockTimeout;
   }

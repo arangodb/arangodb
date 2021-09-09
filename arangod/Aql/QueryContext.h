@@ -106,6 +106,8 @@ class QueryContext {
       
   virtual QueryOptions const& queryOptions() const = 0;
   
+  virtual QueryOptions& queryOptions() noexcept = 0;
+  
   /// @brief pass-thru a resolver object from the transaction context
   virtual CollectionNameResolver const& resolver() const = 0;
   
