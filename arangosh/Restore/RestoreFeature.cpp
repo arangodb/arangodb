@@ -1255,17 +1255,21 @@ Result RestoreFeature::RestoreMainJob::restoreData(arangodb::httpclient::SimpleH
 
   // import data. check if we have a datafile
   //  ... there are 4 possible names
+  bool isCompressed = false;
   auto datafile = directory.readableFile(
       collectionName + "_" + arangodb::rest::SslInterface::sslMD5(collectionName) + ".data.json");
   if (!datafile || datafile->status().fail()) {
     datafile = directory.readableFile(
       collectionName + "_" + arangodb::rest::SslInterface::sslMD5(collectionName) + ".data.json.gz");
+    isCompressed = true;
   }
   if (!datafile || datafile->status().fail()) {
     datafile = directory.readableFile(collectionName + ".data.json.gz");
+    isCompressed = true;
   }
   if (!datafile || datafile->status().fail()) {
     datafile = directory.readableFile(collectionName + ".data.json");
+    isCompressed = false;
   }
   if (!datafile || datafile->status().fail()) {
     return {TRI_ERROR_CANNOT_READ_FILE, "could not open data file for collection '" + collectionName + "'"};
@@ -1276,7 +1280,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(arangodb::httpclient::SimpleH
   if (options.progress) {
     LOG_TOPIC("95913", INFO, Logger::RESTORE)
         << "# Loading data into " << collectionType << " collection '" << collectionName
-        << "', data size: " << formatSize(fileSize);
+        << "', data size: " << formatSize(fileSize) << (isCompressed ? " (compressed)" : "");
   }
 
   int64_t numReadForThisCollection = 0;
@@ -1510,6 +1514,7 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer& server, 
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;
   _options.inputPath = buildFilename(currentDirectory().result(), "dump");
+  _options.threadCount = std::max(uint32_t(_options.threadCount), static_cast<uint32_t>(NumberOfCores::getValue()));
 }
 
 void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -1538,7 +1543,8 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options
       ->addOption("--threads",
                   "maximum number of collections to process in parallel",
-                  new UInt32Parameter(&_options.threadCount))
+                  new UInt32Parameter(&_options.threadCount),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic))
       .setIntroducedIn(30400);
 
   options

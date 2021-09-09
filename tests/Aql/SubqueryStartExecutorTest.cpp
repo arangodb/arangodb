@@ -158,7 +158,9 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
 
   // NOTE: Reduce batch size to 1, to enforce a too small output block
   ExecutionBlock::setDefaultBatchSize(1);
-  TRI_DEFER(ExecutionBlock::setDefaultBatchSize(ExecutionBlock::ProductionDefaultBatchSize););
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    ExecutionBlock::setDefaultBatchSize(ExecutionBlock::ProductionDefaultBatchSize);
+  });
   {
     // First test: Validate that the shadowRow is not written
     // We only do a single call here
@@ -287,7 +289,9 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_s
 
   // NOTE: Reduce batch size to 2, to enforce a too small output block, in between the shadow Rows
   ExecutionBlock::setDefaultBatchSize(2);
-  TRI_DEFER(ExecutionBlock::setDefaultBatchSize(ExecutionBlock::ProductionDefaultBatchSize););
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    ExecutionBlock::setDefaultBatchSize(ExecutionBlock::ProductionDefaultBatchSize);
+  });
   {
     // First test: Validate that the shadowRow is not written
     // We only do a single call here

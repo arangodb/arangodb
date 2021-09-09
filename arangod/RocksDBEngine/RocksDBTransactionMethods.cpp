@@ -31,25 +31,26 @@ std::size_t RocksDBTransactionMethods::countInBounds(RocksDBKeyBounds const& bou
   std::size_t count = 0;
 
   // iterator is from read only / trx / writebatch
-  std::unique_ptr<rocksdb::Iterator> iter =
-      this->NewIterator(bounds.columnFamily(), {});
+  std::unique_ptr<rocksdb::Iterator> iter = NewIterator(bounds.columnFamily(), [](ReadOptions& opts) {
+    opts.readOwnWrites = true;
+    // disable a check that we do not create read-own-write iterators with intermediate commits enabled.
+    // we can safely do this here, because our iterator has a limited lifetime and can therefore not
+    // be invalidated by intermediate commits.
+    opts.checkIntermediateCommits = false;
+  });
   iter->Seek(bounds.start());
   auto end = bounds.end();
   rocksdb::Comparator const* cmp = bounds.columnFamily()->GetComparator();
 
-  // extra check to avoid extra comparisons with isElementInRage later;
-  if (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+  // extra check to avoid extra comparisons with isElementInRange later;
+  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     ++count;
     if (isElementInRange) {
-      return count;
+      break;
     }
     iter->Next();
   }
 
-  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
-    iter->Next();
-    ++count;
-  }
   return count;
-};
+}
 #endif

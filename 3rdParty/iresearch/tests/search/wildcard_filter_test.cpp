@@ -498,7 +498,7 @@ TEST_P(wildcard_filter_test_case, visit) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   wildcard_filter_test,
   wildcard_filter_test_case,
   ::testing::Combine(

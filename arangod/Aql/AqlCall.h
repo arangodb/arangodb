@@ -191,7 +191,7 @@ struct AqlCall {
           TRI_ASSERT(n <= i);
           i -= n;
         },
-        [](auto) {},
+        [](Infinity) {},
     };
     std::visit(minus, softLimit);
     std::visit(minus, hardLimit);

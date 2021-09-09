@@ -1,7 +1,7 @@
 name: rocksdb_estimate_pending_compaction_bytes
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-estimate-pending-compaction-bytes" - sum over all column families
+  Estimated number of bytes awaiting RocksDB compaction.
 unit: bytes
 type: gauge
 category: RocksDB

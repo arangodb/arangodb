@@ -1,0 +1,32 @@
+Lessons from Cuckoo
+-------------------
+
+* improve normalizedHash
+* ObjectIterator::next
+* Add tests for empty attribute names
+* throw out types 0x0f to x012
+* remove flag sortAttributeNames
+* 1 element arrays and objects compact
+* refactor close() method
+
+Documentation
+-------------
+* write Performance.md section for speed tests
+* documentation of C++ classes (// ...) (MN)
+
+Testing
+-------
+* automate tests on MacOS and ARM
+* test equal_to with custom types
+
+Features
+--------
+* implement missing type BCD in Builder, Slice, Parser and Dumper
+* unique/distinct/sort for Arrays
+
+Tools
+-----
+* add inspect tool (tools/) for binary vpack values
+* add optional saving of dictionaries from json-to-vpack
+* add optional reading of dictionaries in vpack-to-json
+* automate sizes table generation, add comparison for BSON & MessagePack

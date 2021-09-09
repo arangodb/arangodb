@@ -60,8 +60,8 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
  public:
   RocksDBZkdIndexIterator(LogicalCollection* collection, RocksDBZkdIndexBase* index,
                           transaction::Methods* trx, zkd::byte_string min,
-                          zkd::byte_string max, std::size_t dim)
-      : IndexIterator(collection, trx),
+                          zkd::byte_string max, std::size_t dim, ReadOwnWrites readOwnWrites)
+      : IndexIterator(collection, trx, readOwnWrites),
         _bound(RocksDBKeyBounds::ZkdIndex(index->objectId())),
         _min(std::move(min)),
         _max(std::move(max)),
@@ -493,25 +493,27 @@ arangodb::aql::AstNode* arangodb::RocksDBZkdIndexBase::specializeCondition(
 
 std::unique_ptr<IndexIterator> arangodb::RocksDBZkdIndexBase::iteratorForCondition(
     arangodb::transaction::Methods* trx, const arangodb::aql::AstNode* node,
-    const arangodb::aql::Variable* reference, const arangodb::IndexIteratorOptions& opts) {
+    const arangodb::aql::Variable* reference, const arangodb::IndexIteratorOptions& opts,
+    ReadOwnWrites readOwnWrites) {
 
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
   return std::make_unique<RocksDBZkdIndexIterator<false>>(&_collection, this, trx,
                                                    std::move(min), std::move(max),
-                                                   fields().size());
+                                                   fields().size(), readOwnWrites);
 }
 
 
 std::unique_ptr<IndexIterator> arangodb::RocksDBUniqueZkdIndex::iteratorForCondition(
     arangodb::transaction::Methods* trx, const arangodb::aql::AstNode* node,
-    const arangodb::aql::Variable* reference, const arangodb::IndexIteratorOptions& opts) {
+    const arangodb::aql::Variable* reference, const arangodb::IndexIteratorOptions& opts,
+    ReadOwnWrites readOwnWrites) {
 
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
   return std::make_unique<RocksDBZkdIndexIterator<true>>(&_collection, this, trx,
                                                           std::move(min), std::move(max),
-                                                          fields().size());
+                                                          fields().size(), readOwnWrites);
 }
 
 arangodb::Result arangodb::RocksDBUniqueZkdIndex::insert(

@@ -554,16 +554,6 @@ void Index::toVelocyPack(VPackBuilder& builder,
 
 /// @brief create a VelocyPack representation of the index figures
 /// base functionality (called from derived classes)
-std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures() const {
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject(/*unindexed*/ true);
-  toVelocyPackFigures(*builder);
-  builder->close();
-  return builder;
-}
-
-/// @brief create a VelocyPack representation of the index figures
-/// base functionality (called from derived classes)
 void Index::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("memory", VPackValue(memory()));
@@ -696,7 +686,8 @@ arangodb::aql::AstNode* Index::specializeCondition(arangodb::aql::AstNode* /* no
 std::unique_ptr<IndexIterator> Index::iteratorForCondition(transaction::Methods* /* trx */,
                                                            aql::AstNode const* /* node */,
                                                            aql::Variable const* /* reference */,
-                                                           IndexIteratorOptions const& /* opts */) {
+                                                           IndexIteratorOptions const& /* opts */,
+                                                           ReadOwnWrites /* readOwnWrites */) {
   // the default implementation should never be called
   TRI_ASSERT(false); 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("no default implementation for iteratorForCondition. index type: ") + typeName());

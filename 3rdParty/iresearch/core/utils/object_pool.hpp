@@ -124,7 +124,7 @@ class concurrent_stack : private util::noncopyable {
 
   node_type* pop() noexcept {
     VALGRIND_ONLY(auto lock = make_lock_guard(mutex_);) // suppress valgrind false-positives related to std::atomic_*
-    concurrent_node head = head_.load();
+    concurrent_node head = head_.load(std::memory_order_relaxed);
     concurrent_node new_head;
 
     do {
@@ -134,14 +134,14 @@ class concurrent_stack : private util::noncopyable {
 
       new_head.node = head.node->next.load(std::memory_order_relaxed);
       new_head.version = head.version + 1;
-    } while (!head_.compare_exchange_weak(head, new_head));
+    } while (!head_.compare_exchange_weak(head, new_head, std::memory_order_relaxed));
 
     return head.node;
   }
 
   void push(node_type& new_node) noexcept {
     VALGRIND_ONLY(auto lock = make_lock_guard(mutex_);) // suppress valgrind false-positives related to std::atomic_*
-    concurrent_node head = head_.load();
+    concurrent_node head = head_.load(std::memory_order_relaxed);
     concurrent_node new_head;
 
     do {
@@ -149,7 +149,7 @@ class concurrent_stack : private util::noncopyable {
 
       new_head.node = &new_node;
       new_head.version = head.version + 1;
-    } while (!head_.compare_exchange_weak(head, new_head));
+    } while (!head_.compare_exchange_weak(head, new_head, std::memory_order_relaxed));
   }
 
  private:
@@ -327,7 +327,7 @@ class bounded_object_pool {
   bool visit(const Visitor& visitor) const {
     stack list;
 
-    auto release_all = make_finally([this, &list] () {
+    auto release_all = make_finally([this, &list]()noexcept{
       while (auto* head = list.pop()) {
         free_list_.push(*head);
       }
@@ -518,6 +518,8 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
   /////////////////////////////////////////////////////////////////////////////
   class ptr : util::noncopyable {
    public:
+
+    ptr() noexcept : owner_(nullptr) {}
     ptr(typename T::ptr&& value,
         unbounded_object_pool& owner
     ) : value_(std::move(value)),
@@ -532,13 +534,14 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
 
     ptr& operator=(ptr&& rhs) noexcept {
       if (this != &rhs) {
+        reset();
         value_ = std::move(rhs.value_);
         owner_ = rhs.owner_;
         rhs.owner_ = nullptr;
       }
       return *this;
     }
-
+   
     ~ptr() noexcept {
       reset();
     }
@@ -547,8 +550,6 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
       reset_impl(value_, owner_);
     }
 
-    // FIXME handle potential bad_alloc in shared_ptr constructor
-    // mark method as noexcept and move back all the stuff in case of error
     std::shared_ptr<element_type> release() {
       auto* raw = get();
       auto moved_value = make_move_on_copy(std::move(value_));

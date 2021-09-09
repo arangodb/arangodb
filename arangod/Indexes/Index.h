@@ -371,7 +371,6 @@ class Index {
       std::underlying_type<Serialize>::type flags) const;
 
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
   virtual void load() = 0;
   virtual void unload() = 0;
@@ -410,7 +409,8 @@ class Index {
   virtual std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
                                                               aql::AstNode const* node,
                                                               aql::Variable const* reference,
-                                                              IndexIteratorOptions const& opts);
+                                                              IndexIteratorOptions const& opts,
+                                                              ReadOwnWrites readOwnWrites);
 
   bool canUseConditionPart(arangodb::aql::AstNode const* access,
                            arangodb::aql::AstNode const* other,

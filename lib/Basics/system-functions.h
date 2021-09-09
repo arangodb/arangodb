@@ -50,7 +50,7 @@ void TRI_gmtime(time_t, struct tm*);
 time_t TRI_timegm(struct tm*);
 
 // seconds with microsecond resolution
-double TRI_microtime();
+double TRI_microtime() noexcept;
 
 namespace arangodb {
 namespace utilities {

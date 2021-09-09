@@ -562,6 +562,8 @@ AstNode* Ast::createNodeUpsert(AstNodeType type, AstNode const* docVariable,
   node->addMember(createNodeReference(Variable::NAME_OLD));
   node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_NEW), false));
 
+  this->setContainsUpsertNode();
+
   return node;
 }
 
@@ -2050,7 +2052,6 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     TraversalContext(transaction::Methods& t) : trx(t) {}
     
     std::unordered_set<std::string> writeCollectionsSeen;
-    std::unordered_map<std::string, int64_t> collectionsFirstSeen;
     std::unordered_map<Variable const*, AstNode const*> variableDefinitions;
     AqlFunctionsInternalCache aqlFunctionsInternalCache;
     transaction::Methods& trx;
@@ -2096,12 +2097,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     } else if (node->type == NODE_TYPE_COLLECTION_LIST) {
       // a collection list is produced by WITH a, b, c
       // or by traversal declarations
-      // we do not want to descend further, in order to not track
-      // the collections in collectionsFirstSeen
       return false;
-    } else if (node->type == NODE_TYPE_COLLECTION) {
-      // note the level on which we first saw a collection
-      ctx->collectionsFirstSeen.try_emplace(node->getString(), ctx->nestingLevel);
     } else if (node->type == NODE_TYPE_AGGREGATIONS) {
       ++ctx->stopOptimizationRequests;
     } else if (node->type == NODE_TYPE_SUBQUERY) {
@@ -2157,17 +2153,6 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       auto collection = node->getMember(1);
       std::string name = collection->getString();
       ctx->writeCollectionsSeen.emplace(name);
-
-      auto it = ctx->collectionsFirstSeen.find(name);
-
-      if (it != ctx->collectionsFirstSeen.end()) {
-        if ((*it).second < ctx->nestingLevel) {
-          name = "collection '" + name;
-          name.push_back('\'');
-          THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION,
-                                        name.c_str());
-        }
-      }
     } else if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
@@ -4182,6 +4167,12 @@ bool Ast::containsModificationNode() const noexcept { return _containsModificati
 
 void Ast::setContainsModificationNode() noexcept {
   _containsModificationNode = true;
+}
+
+bool Ast::containsUpsertNode() const noexcept { return _containsUpsertNode; }
+
+void Ast::setContainsUpsertNode() noexcept {
+  _containsUpsertNode = true;
 }
 
 void Ast::setContainsParallelNode() noexcept {

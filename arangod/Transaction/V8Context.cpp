@@ -102,7 +102,7 @@ void transaction::V8Context::enterV8Context() {
   v8g->_transactionContext = this;
 }
 
-void transaction::V8Context::exitV8Context() {
+void transaction::V8Context::exitV8Context() noexcept {
   auto v8g = getV8State();
   if (v8g != nullptr && v8g->_transactionContext == this) {
     v8g->_transactionContext = nullptr;

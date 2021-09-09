@@ -21,13 +21,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#include <optional>
-
 #include <Agency/TransactionBuilder.h>
 #include <Basics/ResultT.h>
 #include <Cluster/ClusterTypes.h>
-
 #include <Replication2/ReplicatedLog/AgencyLogSpecification.h>
+#include <optional>
+
+#include "Futures/Future.h"
+
+namespace arangodb {
+class Result;
+}  // namespace arangodb
+namespace arangodb::replication2 {
+class LogId;
+struct LogTerm;
+}  // namespace arangodb::replication2
+namespace arangodb::replication2::agency {
+struct LogCurrentSupervisionElection;
+struct LogPlanSpecification;
+struct LogPlanTermSpecification;
+}  // namespace arangodb::replication2::agency
 
 namespace arangodb::replication2::agency::methods {
 
