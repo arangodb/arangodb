@@ -845,7 +845,7 @@ auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction() -> Result {
-  auto const compactionStop = std::min(_largestCommonIndex, _releaseIndex);
+  auto const compactionStop = std::min(_largestCommonIndex, _releaseIndex+1);
   LOG_CTX("080d5", TRACE, _self._logContext)
       << "compaction index calculated as " << compactionStop;
   if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {
