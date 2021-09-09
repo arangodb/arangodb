@@ -135,9 +135,11 @@ function DatabaseNamesSuite() {
       });
     },
 
-
     testCheckUnicodeDatabaseNames : function () {
       // some of these test strings are taken from https://www.w3.org/2001/06/utf-8-test/UTF-8-demo.html
+      // note: some of these only work because the `_createDatabase()` methods on client and server
+      // NFC-normalize their inputs. But without NFC-normalization, some of these names actually would
+      // not work!
       const names = [
         "mötör",
         "TRÖÖÖÖÖÖÖÖÖTKÄKÄR",
@@ -172,6 +174,8 @@ function DatabaseNamesSuite() {
         "😑 *expressionless* 😒 *unamused* 🙄 *rolling_eyes* 🤔 *thinking*",
         "😳 *flushed* 😞 *disappointed* 😟 *worried* 😠 *angry*",
         "😡 *rage* 😔 *pensive* 😕 *confused*", 
+        "\u00c5", // Angstrom
+        "\u1e69", // s with two combining marks
       ];
 
       names.forEach((name) => {
@@ -196,6 +200,30 @@ function DatabaseNamesSuite() {
           } catch (err2) {}
           // must rethrow to not swallow errors
           throw err;
+        }
+      });
+    },
+
+    testNonNormalizedUnicodeDatabaseNames : function () {
+      const names = [
+        "\u212b", // Angstrom, not normalized
+        "\u0041\u030a", // Angstrom, NFD-normalized
+        "\u0073\u0323\u0307", // s with two combining marks, NFD-normalized
+        "\u006e\u0303\u00f1", // non-normalized sequence
+      ];
+
+      // even though the names are not properly NFC-normalized, this works.
+      // this is because the arangosh (shell_client) will normalize all inputs
+      // when creating a database from a client-provided value. The server-side
+      // JS APIs will do the same. 
+      // however, sending such values via the HTTP API will fail.
+      names.forEach((name) => {
+        db._useDatabase("_system");
+        let d = db._createDatabase(name);
+        try {
+          assertTrue(d);
+        } finally {
+          db._dropDatabase(name);
         }
       });
     },
