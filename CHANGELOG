@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix active failover, so that the new host actually has working foxx services.
+
 * No runtime limits for shard move and server cleanout jobs, instead
   possibility to cancel them.
 
