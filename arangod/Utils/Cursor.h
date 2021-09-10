@@ -84,7 +84,7 @@ class Cursor {
     _isUsed = true;
   }
 
-  void release() {
+  void release() noexcept {
     TRI_ASSERT(_isUsed);
     _isUsed = false;
     _expires = TRI_microtime() + _ttl;

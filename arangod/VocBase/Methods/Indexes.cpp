@@ -335,7 +335,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
                             bool create, VPackBuilder& output) {
   ErrorCode ensureIndexResult = TRI_ERROR_INTERNAL;
   // always log a message at the end of index creation
-  auto logResultToAuditLog = scopeGuard([&]() {
+  auto logResultToAuditLog = scopeGuard([&]() noexcept {
     try {
       events::CreateIndexEnd(collection->vocbase().name(), collection->name(),
                              input, ensureIndexResult);

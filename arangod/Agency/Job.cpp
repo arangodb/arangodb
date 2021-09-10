@@ -88,6 +88,17 @@ Job::~Job() = default;
 // this will be initialized in the AgencyFeature
 std::string Job::agencyPrefix = "arango";
 
+bool Job::considerCancellation() {
+  // Allow for cancellation of shard moves
+  auto val = 
+    _snapshot.hasAsBool(std::string("/Target/") + jobStatus[_status] + "/" + _jobId + "/abort");
+  auto cancelled = val && val.value();
+  if (cancelled) {
+    abort("Killed via API");
+  }
+  return cancelled;
+};
+
 bool Job::finish(std::string const& server, std::string const& shard,
                  bool success, std::string const& reason, query_t const payload) {
   try {  // protect everything, just in case

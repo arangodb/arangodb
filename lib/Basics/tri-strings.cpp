@@ -285,7 +285,7 @@ void TRI_CopyString(char* dst, char const* src, size_t length) {
 /// @brief frees a string
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeString(char* value) { TRI_Free(value); }
+void TRI_FreeString(char* value) noexcept { TRI_Free(value); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sha256 of a string

@@ -143,7 +143,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   bool lockShard(ShardID const& shardId, std::shared_ptr<maintenance::ActionDescription> const& description);
 
   /// @brief Release shard lock. Returns `true` if the shard was locked and `false` otherwise.
-  bool unlockShard(ShardID const& shardId);
+  bool unlockShard(ShardID const& shardId) noexcept;
 
   /// @brief Get shard locks, this copies the whole map of shard locks.
   ShardActionMap getShardLocks() const;

@@ -380,7 +380,7 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
     // that there is no more posted job.
     // otherwise the calling thread may block forever waiting on the
     // posted jobs to finish
-    auto guard = scopeGuard([self]() { self->jobDone(); });
+    auto guard = scopeGuard([self]() noexcept { self->jobDone(); });
 
     cb();
   });
@@ -412,7 +412,7 @@ bool Syncer::JobSynchronizer::jobPosted() {
 }
 
 /// @brief notifies that a job was done
-void Syncer::JobSynchronizer::jobDone() {
+void Syncer::JobSynchronizer::jobDone() noexcept {
   CONDITION_LOCKER(guard, _condition);
 
   TRI_ASSERT(_jobsInFlight == 1);

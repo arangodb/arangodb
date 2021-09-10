@@ -417,7 +417,7 @@ Result BatchInfo::extend(replutils::Connection& connection,
 
 /// @brief send a "finish batch" command
 Result BatchInfo::finish(replutils::Connection& connection,
-                         replutils::ProgressInfo& progress, SyncerId const syncerId) {
+                         replutils::ProgressInfo& progress, SyncerId const syncerId) noexcept {
   if (id == 0) {
     return Result();
   } else if (!connection.valid()) {

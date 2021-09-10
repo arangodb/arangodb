@@ -1369,7 +1369,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 } // namespace
 
 aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
-  ScopeGuard endQueryGuard([this](){
+  ScopeGuard endQueryGuard([this]() noexcept {
     unregisterQueryInTransactionState();
   });
 
@@ -1403,7 +1403,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
 
   // Only one thread is allowed to call commit
   if (errorCode == TRI_ERROR_NO_ERROR) {
-    ScopeGuard guard([this](){
+    ScopeGuard guard([this]() noexcept {
       // If we exit here we need to throw the error.
       // The caller will handle the error and will call this method
       // again using an errorCode != NO_ERROR.
@@ -1505,55 +1505,54 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
   }
 }
 
-  void Query::debugKillQuery() {
+void Query::debugKillQuery() {
 #ifndef ARANGODB_ENABLE_FAILURE_TESTS
-    TRI_ASSERT(false);
-    return;
+  TRI_ASSERT(false);
 #else
-    if (_wasDebugKilled) {
-      return;
-    }
-    bool usingSystemCollection = false;
-    // Ignore queries on System collections, we do not want them to hit failure points
-    // note that we must call the _const_ version of collections() here, because the non-const
-    // version will trigger an assertion failure if the query is already executing!
-    const_cast<Query const*>(this)->collections().visit([&usingSystemCollection](std::string const&, Collection const& col) -> bool {
+  if (_wasDebugKilled) {
+    return;
+  }
+  bool usingSystemCollection = false;
+  // Ignore queries on System collections, we do not want them to hit failure points
+  // note that we must call the _const_ version of collections() here, because the non-const
+  // version will trigger an assertion failure if the query is already executing!
+  const_cast<Query const*>(this)->collections().visit([&usingSystemCollection](std::string const&, Collection const& col) -> bool {
       if (col.getCollection()->system()) {
-        usingSystemCollection = true;
-        return false;
+      usingSystemCollection = true;
+      return false;
       }
       return true;
-    });
+      });
 
-    if (usingSystemCollection) {
-      return;
-    }
+  if (usingSystemCollection) {
+    return;
+  }
 
-    _wasDebugKilled = true;
-    // A query can only be killed under certain circumstances.
-    // We assert here that one of those is true.
-    // a) Query is in the list of current queries, this can be requested by the user and the query can be killed by user
-    // b) Query is in the query registry. In this case the query registry can hit a timeout, which triggers the kill
-    // c) The query id has been handed out to the user (stream query only)
-    bool isStreaming = queryOptions().stream;
-    bool isInList = false;
-    bool isInRegistry = false;
-    auto const& queryList = vocbase().queryList();
-    if (queryList->enabled()) {
-      auto const& current = queryList->listCurrent();
-      for (auto const& it : current) {
-        if (it.id == _queryId) {
-          isInList = true;
-          break;
-        }
+  _wasDebugKilled = true;
+  // A query can only be killed under certain circumstances.
+  // We assert here that one of those is true.
+  // a) Query is in the list of current queries, this can be requested by the user and the query can be killed by user
+  // b) Query is in the query registry. In this case the query registry can hit a timeout, which triggers the kill
+  // c) The query id has been handed out to the user (stream query only)
+  bool isStreaming = queryOptions().stream;
+  bool isInList = false;
+  bool isInRegistry = false;
+  auto const& queryList = vocbase().queryList();
+  if (queryList->enabled()) {
+    auto const& current = queryList->listCurrent();
+    for (auto const& it : current) {
+      if (it.id == _queryId) {
+        isInList = true;
+        break;
       }
     }
-
-    QueryRegistry* registry = QueryRegistryFeature::registry();
-    if (registry != nullptr) {
-      isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
-    }
-    TRI_ASSERT(isInList || isStreaming || isInRegistry || _execState == QueryExecutionState::ValueType::FINALIZATION);
-    kill();
-#endif
   }
+
+  QueryRegistry* registry = QueryRegistryFeature::registry();
+  if (registry != nullptr) {
+    isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
+  }
+  TRI_ASSERT(isInList || isStreaming || isInRegistry || _execState == QueryExecutionState::ValueType::FINALIZATION);
+  kill();
+#endif
+}
