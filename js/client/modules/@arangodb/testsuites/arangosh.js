@@ -274,7 +274,11 @@ function arangosh (options) {
   fs.closePipe(res.pid, false);
   let output = fs.readPipe(res.pid);
   // Arangosh will output a \n on its own, so we will get back 2:
-  let success = output === "bla\n\n";
+  let searchstring = "bla\n\n";
+  if (platform.substr(0, 3) === 'win') {
+    searchstring = "bla\r\n\r\n";
+  }
+  let success = output === searchstring;
 
   let rc = statusExternal(res.pid, true);
   let failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
