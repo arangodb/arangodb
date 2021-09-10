@@ -1,6 +1,9 @@
 devel
 -----
 
+* Allow startup of arangod with an existing database directory that was missing
+  the ZkdIndex column family.
+
 * Truncate must not trigger intermediate commits while in a streaming
   transaction, because that would be against the assumption that
   streaming transactions never do intermediate commits.
