@@ -980,7 +980,9 @@ void TRI_ClosePipe(ExternalProcess* process,
 #ifndef _WIN32
   if (*pipe != -1) {
     FILE* stream = fdopen(*pipe, "w");
-    fflush(stream);
+    if (stream != nullptr) {
+      fflush(stream);
+    }
     close(*pipe);
     *pipe = -1;
   }
