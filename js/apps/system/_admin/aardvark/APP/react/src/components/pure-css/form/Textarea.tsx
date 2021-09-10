@@ -5,6 +5,7 @@ import PlainLabel from "./PlainLabel";
 
 const StyledTextarea = styled.textarea`
   width: 90%;
+  resize: vertical;
 `;
 
 type TextareaProps = {
