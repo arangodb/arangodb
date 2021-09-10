@@ -30,5 +30,7 @@
 
 (function(){
   "use strict";
-  require("@arangodb/foxx/manager").healAll();
+  if (require("internal").threadNumber === 0) {
+    require("@arangodb/foxx/manager").healAll();
+  }
 }());
