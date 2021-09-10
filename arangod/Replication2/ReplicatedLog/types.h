@@ -25,6 +25,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <variant>
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
@@ -39,6 +40,35 @@ class Slice;
 }  // namespace arangodb::velocypack
 
 namespace arangodb::replication2::replicated_log {
+
+struct FollowerState {
+
+  struct UpToDate {};
+  struct ErrorBackoff {
+    std::chrono::duration<double, std::milli> durationMS;
+    std::size_t retryCount;
+  };
+  struct RequestInFlight {
+    std::chrono::duration<double, std::milli> durationMS;
+  };
+
+  std::variant<UpToDate, ErrorBackoff, RequestInFlight> value;
+
+  static auto withUpToDate() noexcept -> FollowerState;
+  static auto withErrorBackoff(std::chrono::duration<double, std::milli>,
+                               std::size_t retryCount) noexcept -> FollowerState;
+  static auto withRequestInFlight(std::chrono::duration<double, std::milli>) noexcept
+      -> FollowerState;
+  static auto fromVelocyPack(velocypack::Slice) -> FollowerState;
+  void toVelocyPack(velocypack::Builder&) const;
+
+  FollowerState() = default;
+ private:
+  template<typename... Args>
+  explicit FollowerState(std::in_place_t, Args&&... args) : value(std::forward<Args>(args)...) {}
+};
+
+auto to_string(FollowerState const&) -> std::string_view;
 
 struct AppendEntriesRequest;
 struct AppendEntriesResult;
@@ -59,6 +89,7 @@ enum class AppendEntriesErrorReason {
 struct LogStatistics {
   TermIndexPair spearHead{};
   LogIndex commitIndex{};
+  LogIndex firstIndex{};
 
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice) -> LogStatistics;

@@ -69,8 +69,8 @@ struct IResearchLinkHelper {
   //////////////////////////////////////////////////////////////////////////////
   static bool equal(
     application_features::ApplicationServer& server,
-    velocypack::Slice const& lhs,
-    velocypack::Slice const& rhs,
+    velocypack::Slice lhs,
+    velocypack::Slice rhs,
     irs::string_ref const& dbname);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -99,7 +99,7 @@ struct IResearchLinkHelper {
     velocypack::Slice definition,
     bool isCreation,
     TRI_vocbase_t const& vocbase,
-    const LinkVersion* version = nullptr,
+    LinkVersion defaultVersion,
     IResearchViewSort const* primarySort = nullptr,
     irs::type_info::type_id const* primarySortCompression = nullptr,
     IResearchViewStoredValues const* storedValues = nullptr,
@@ -137,14 +137,14 @@ struct IResearchLinkHelper {
   /// @param view the view to associate created links with
   /// @param links the link modification definitions, null link == link removal
   /// @param stale links to remove if there is no creation definition in 'links'
-  /// @param linkVersion link version for creation
+  /// @param linkVersion link version for creation if not set in a definition
   //////////////////////////////////////////////////////////////////////////////
   static Result updateLinks(
     std::unordered_set<DataSourceId>& modified,
     LogicalView& view,
     velocypack::Slice links,
-    std::unordered_set<DataSourceId> const& stale = {},
-    LinkVersion linkVersion = LinkVersion::MAX);
+    LinkVersion defaultVersion,
+    std::unordered_set<DataSourceId> const& stale = {});
 
  private:
   IResearchLinkHelper() = delete;

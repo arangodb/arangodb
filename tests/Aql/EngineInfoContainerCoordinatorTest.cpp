@@ -137,7 +137,7 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
   
   auto oldRole = ServerState::instance()->getRole();
   ServerState::instance()->setRole(ServerState::RoleEnum::ROLE_COORDINATOR);
-  auto guard = scopeGuard([=] {
+  auto guard = scopeGuard([=]() noexcept {
     ServerState::instance()->setRole(oldRole);
   });
   

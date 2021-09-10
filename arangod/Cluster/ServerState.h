@@ -75,7 +75,7 @@ class ServerState {
 
  public:
   /// @brief create the (sole) instance
-  static ServerState* instance();
+  static ServerState* instance() noexcept;
 
   /// @brief get the string representation of a role
   static std::string roleToString(RoleEnum);

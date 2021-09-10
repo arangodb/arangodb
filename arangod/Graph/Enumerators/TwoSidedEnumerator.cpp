@@ -40,9 +40,10 @@
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/QueueTracer.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
 
-#include <Graph/Types/ValidationResult.h>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -54,12 +55,12 @@ using namespace arangodb::graph;
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::Ball(
     Direction dir, ProviderType&& provider, GraphOptions const& options,
-    arangodb::ResourceMonitor& resourceMonitor)
+    PathValidatorOptions validatorOptions, arangodb::ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor),
       _interior(resourceMonitor),
       _queue(resourceMonitor),
       _provider(std::move(provider)),
-      _validator(_interior),
+      _validator(_provider, _interior, std::move(validatorOptions)),
       _direction(dir),
       _minDepth(options.getMinDepth()) {}
 
@@ -67,9 +68,10 @@ template <class QueueType, class PathStoreType, class ProviderType, class PathVa
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::~Ball() = default;
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::reset(VertexRef center) {
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::reset(
+    VertexRef center, size_t depth) {
   clear();
-  auto firstStep = _provider.startVertex(center);
+  auto firstStep = _provider.startVertex(center, depth);
   _shell.emplace(std::move(firstStep));
 }
 
@@ -144,9 +146,9 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     // Notes for the future:
     // Vertices are now fetched. Thnink about other less-blocking and batch-wise
     // fetching (e.g. re-fetch at some later point).
-    // TODO: Discuss how to optimize here. Currently we'll mark looseEnds in fetch as fetched.
-    // This works, but we might create a batch limit here in the future.
-    // Also discuss: Do we want (re-)fetch logic here?
+    // TODO: Discuss how to optimize here. Currently we'll mark looseEnds in
+    // fetch as fetched. This works, but we might create a batch limit here in
+    // the future. Also discuss: Do we want (re-)fetch logic here?
     // TODO: maybe we can combine this with prefetching of paths
   }
 }
@@ -245,10 +247,13 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::TwoSidedEnumerator(
     ProviderType&& forwardProvider, ProviderType&& backwardProvider,
-    TwoSidedEnumeratorOptions&& options, arangodb::ResourceMonitor& resourceMonitor)
+    TwoSidedEnumeratorOptions&& options, PathValidatorOptions validatorOptions,
+    arangodb::ResourceMonitor& resourceMonitor)
     : _options(std::move(options)),
-      _left{Direction::FORWARD, std::move(forwardProvider), _options, resourceMonitor},
-      _right{Direction::BACKWARD, std::move(backwardProvider), _options, resourceMonitor},
+      _left{Direction::FORWARD, std::move(forwardProvider), _options,
+            validatorOptions, resourceMonitor},
+      _right{Direction::BACKWARD, std::move(backwardProvider), _options,
+             std::move(validatorOptions), resourceMonitor},
       _resultPath{_left.provider(), _right.provider()} {}
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
@@ -293,7 +298,7 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
  */
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::reset(
-    VertexRef source, VertexRef target) {
+    VertexRef source, VertexRef target, size_t depth) {
   _results.clear();
   _left.reset(source);
   _right.reset(target);
@@ -424,27 +429,30 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 }
 
 /* SingleServerProvider Section */
+using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<::arangodb::graph::SingleServerProvider::Step>,
-    ::arangodb::graph::PathStore<SingleServerProvider::Step>, SingleServerProvider,
-    ::arangodb::graph::PathValidator<PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::PATH>>;
+    ::arangodb::graph::FifoQueue<SingleServerProviderStep>,
+    ::arangodb::graph::PathStore<SingleServerProviderStep>, SingleServerProvider<SingleServerProviderStep>,
+    ::arangodb::graph::PathValidator<SingleServerProvider<SingleServerProviderStep>, PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH>>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::graph::SingleServerProvider::Step>>,
-    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>,
-    ::arangodb::graph::ProviderTracer<SingleServerProvider>,
-    ::arangodb::graph::PathValidator<::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::PATH>>;
+    ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<SingleServerProviderStep>>,
+    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProviderStep>>,
+    ::arangodb::graph::ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
+    ::arangodb::graph::PathValidator<::arangodb::graph::ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
+                                     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProviderStep>>, VertexUniquenessLevel::PATH>>;
 
 /* ClusterProvider Section */
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProvider::Step>,
     ::arangodb::graph::PathStore<ClusterProvider::Step>, ClusterProvider,
-    ::arangodb::graph::PathValidator<PathStore<ClusterProvider::Step>, VertexUniquenessLevel::PATH>>;
+    ::arangodb::graph::PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>, VertexUniquenessLevel::PATH>>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProvider::Step>>,
     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<ClusterProvider::Step>>,
     ::arangodb::graph::ProviderTracer<ClusterProvider>,
-    ::arangodb::graph::PathValidator<::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::PATH>>;
+    ::arangodb::graph::PathValidator<::arangodb::graph::ProviderTracer<ClusterProvider>,
+                                     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::PATH>>;

@@ -48,6 +48,8 @@ class StaticStrings {
   static std::string const AttachmentString;
   static std::string const IdString;
   static std::string const KeyString;
+  static std::string const PrefixOfKeyString;
+  static std::string const PostfixOfKeyString;
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
@@ -246,7 +248,9 @@ class StaticStrings {
   // graph attribute names
   static std::string const GraphCollection;
   static std::string const IsDisjoint;
+  static std::string const IsHybrid;
   static std::string const GraphIsSatellite;
+  static std::string const GraphSatellites;
   static std::string const GraphIsSmart;
   static std::string const GraphFrom;
   static std::string const GraphTo;
@@ -254,9 +258,9 @@ class StaticStrings {
   static std::string const GraphSmartGraphAttribute;
   static std::string const GraphDropCollections;
   static std::string const GraphDropCollection;
-  static std::string const GraphCreateCollections;
   static std::string const GraphCreateCollection;
   static std::string const GraphEdgeDefinitions;
+  static std::string const GraphEdgeDefinitionType;
   static std::string const GraphOrphans;
   static std::string const GraphInitial;
   static std::string const GraphInitialCid;

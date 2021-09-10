@@ -132,6 +132,48 @@ struct TermIndexPair : implement_compare<TermIndexPair> {
 auto operator<=(TermIndexPair, TermIndexPair) noexcept -> bool;
 auto operator<<(std::ostream&, TermIndexPair) -> std::ostream&;
 
+struct LogRange {
+  LogIndex from;
+  LogIndex to;
+
+  LogRange(LogIndex from, LogIndex to) noexcept;
+
+  [[nodiscard]] auto empty() const noexcept -> bool;
+  [[nodiscard]] auto count() const noexcept -> std::size_t;
+  [[nodiscard]] auto contains(LogIndex idx) const noexcept -> bool;
+
+  friend auto operator<<(std::ostream& os, LogRange const& r) -> std::ostream&;
+  friend auto intersect(LogRange a, LogRange b) noexcept -> LogRange;
+
+  struct Iterator {
+    auto operator++() noexcept -> Iterator&;
+    auto operator++(int) noexcept -> Iterator;
+    auto operator*() const noexcept -> LogIndex;
+    auto operator->() const noexcept -> LogIndex const*;
+    friend auto operator==(Iterator const& a, Iterator const& b) noexcept -> bool;
+    friend auto operator!=(Iterator const& a, Iterator const& b) noexcept -> bool;
+
+   private:
+    friend LogRange;
+    explicit Iterator(LogIndex idx) : current(idx) {}
+    LogIndex current;
+  };
+
+  friend auto operator==(LogRange, LogRange) noexcept -> bool;
+  friend auto operator!=(LogRange, LogRange) noexcept -> bool;
+
+  [[nodiscard]] auto begin() const noexcept -> Iterator;
+  [[nodiscard]] auto end() const noexcept -> Iterator;
+};
+
+auto operator<<(std::ostream& os, LogRange const& r) -> std::ostream&;
+auto intersect(LogRange a, LogRange b) noexcept -> LogRange;
+auto operator==(LogRange, LogRange) noexcept -> bool;
+auto operator!=(LogRange, LogRange) noexcept -> bool;
+
+auto operator==(LogRange::Iterator const& a, LogRange::Iterator const& b) noexcept -> bool;
+auto operator!=(LogRange::Iterator const& a, LogRange::Iterator const& b) noexcept -> bool;
+
 struct LogPayload {
   explicit LogPayload(velocypack::UInt8Buffer dummy);
 
@@ -240,12 +282,25 @@ class LogId : public arangodb::basics::Identifier {
 
 auto to_string(LogId logId) -> std::string;
 
-struct LogIterator {
-  virtual ~LogIterator() = default;
+template<typename T>
+struct TypedLogIterator {
+  virtual ~TypedLogIterator() = default;
   // The returned view is guaranteed to stay valid until a successive next()
   // call (only).
-  virtual auto next() -> std::optional<LogEntryView> = 0;
+  virtual auto next() -> std::optional<T> = 0;
 };
+
+template<typename T>
+struct TypedLogRangeIterator : TypedLogIterator<T> {
+  // returns the index interval [from, to)
+  // Note that this does not imply that all indexes in the range [from, to)
+  // are returned. Hence (to - from) is only an upper bound on the number of
+  // entries returned.
+  virtual auto range() const noexcept -> LogRange = 0;
+};
+
+using LogIterator = TypedLogIterator<LogEntryView>;
+using LogRangeIterator = TypedLogRangeIterator<LogEntryView>;
 
 struct LogConfig {
   std::size_t writeConcern = 1;

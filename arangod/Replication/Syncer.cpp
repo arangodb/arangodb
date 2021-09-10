@@ -381,7 +381,7 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
       // that there is no more posted job.
       // otherwise the calling thread may block forever waiting on the
       // posted jobs to finish
-      auto guard = scopeGuard([self]() { self->jobDone(); });
+      auto guard = scopeGuard([self]() noexcept { self->jobDone(); });
 
       cb();
     });
@@ -422,7 +422,7 @@ bool Syncer::JobSynchronizer::jobPosted() {
 }
 
 /// @brief notifies that a job was done
-void Syncer::JobSynchronizer::jobDone() {
+void Syncer::JobSynchronizer::jobDone() noexcept {
   CONDITION_LOCKER(guard, _condition);
 
   TRI_ASSERT(_jobsInFlight == 1);
@@ -945,7 +945,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
       }
     }
 
-    return view->properties(slice, false);  // always a full-update
+    // always a full-update
+    return view->properties(slice, false, false);
   }
 
   // check for name conflicts
@@ -968,7 +969,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
 
   try {
     LogicalView::ptr empty;  // ignore result
-    return LogicalView::create(empty, vocbase, merged.slice());
+    return LogicalView::create(
+      empty, vocbase, merged.slice(), false);
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -979,7 +981,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
 }
 
 /// @brief drops a view, based on the VelocyPack provided
-Result Syncer::dropView(arangodb::velocypack::Slice const& slice, bool reportError) {
+Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
+                        bool /*reportError*/) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
