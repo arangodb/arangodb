@@ -28,7 +28,7 @@ namespace iresearch {
 
 enum class FilterOptimization : int {
   MAX = -1,
-  None = 0
+  NONE = 0
 };
 
 bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,

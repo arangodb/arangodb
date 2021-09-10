@@ -3573,7 +3573,7 @@ Result fromFuncStartsWith(
 
     // Try to optimize us away
     if (!isMultiPrefix && !prefixes.empty() &&
-        ctx.filterOptimization != FilterOptimization::None  && 
+        ctx.filterOptimization != FilterOptimization::NONE  && 
         arangodb::iresearch::includeStartsWithInLevenshtein(filter, name,
                                                             prefixes.back().second)) {
       return {};

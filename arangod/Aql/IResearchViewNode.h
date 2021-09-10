@@ -159,7 +159,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   // filters will affect score and we will lose backward compatibility
   FilterOptimization filterOptimization() const noexcept {
     if (!_scorers.empty()) {
-      return FilterOptimization::None;
+      return FilterOptimization::NONE;
     }
     return _options.filterOptimization;
   }

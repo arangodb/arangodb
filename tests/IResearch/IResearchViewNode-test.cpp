@@ -2530,7 +2530,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
     arangodb::aql::AstNode attributeValue(arangodb::aql::NODE_TYPE_VALUE);
     attributeValue.setValueType(arangodb::aql::VALUE_TYPE_INT);
     attributeValue.setIntValue(
-      static_cast<int64_t>(arangodb::iresearch::FilterOptimization::None));
+      static_cast<int64_t>(arangodb::iresearch::FilterOptimization::NONE));
     arangodb::aql::AstNode attributeName(arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
     attributeName.addMember(&attributeValue);
     std::string name{ "filterOptimization" };
@@ -2564,7 +2564,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
       arangodb::iresearch::IResearchViewNode const deserialized(*query.plan(), nodeSlice);
       EXPECT_EQ(node.empty(), deserialized.empty());
       EXPECT_EQ(deserialized.options().filterOptimization,
-                arangodb::iresearch::FilterOptimization::None);
+                arangodb::iresearch::FilterOptimization::NONE);
     }
 
     // factory method
@@ -2574,7 +2574,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
       auto& deserialized =
           dynamic_cast<arangodb::iresearch::IResearchViewNode&>(*deserializedNode);
       EXPECT_EQ(deserialized.options().filterOptimization,
-                arangodb::iresearch::FilterOptimization::None);
+                arangodb::iresearch::FilterOptimization::NONE);
     }
   }
 }

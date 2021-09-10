@@ -177,7 +177,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
 
   // check filter condition if present
   if (searchCondition.root()) {
-    if (viewNode.filterOptimization() != arangodb::iresearch::FilterOptimization::None) {
+    if (viewNode.filterOptimization() != arangodb::iresearch::FilterOptimization::NONE) {
       // we could benefit from merging STARTS_WITH and LEVENSHTEIN_MATCH
       auto& server = plan.getAst()->query().vocbase().server();
       auto starts_with = server.getFeature<AqlFunctionFeature>().byName("STARTS_WITH");

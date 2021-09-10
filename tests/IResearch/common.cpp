@@ -836,7 +836,7 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
                   std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                   std::string const& refName /*= "d"*/,
                   arangodb::iresearch::FilterOptimization filterOptimization
-                    /*= arangodb::iresearch::FilterOptimization::None */) {
+                    /*= arangodb::iresearch::FilterOptimization::NONE */) {
   SCOPED_TRACE(testing::Message("assertFilter failed for query:<") << queryString << "> parseOk:" << parseOk << " execOk:" << execOk);
 
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
@@ -923,7 +923,7 @@ void assertFilterSuccess(TRI_vocbase_t& vocbase, std::string const& queryString,
                          arangodb::aql::ExpressionContext* exprCtx /*= nullptr*/,
                          std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                          std::string const& refName /*= "d"*/,
-                         arangodb::iresearch::FilterOptimization filterOptimization /*= arangodb::iresearch::FilterOptimization::None */
+                         arangodb::iresearch::FilterOptimization filterOptimization /*= arangodb::iresearch::FilterOptimization::NONE */
 ) {
   return assertFilter(vocbase, true, true, queryString, expected, exprCtx,
                       bindVars, refName, filterOptimization);
