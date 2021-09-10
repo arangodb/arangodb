@@ -859,7 +859,7 @@ Future<OperationResult> transaction::Methods::documentAsync(std::string const& c
 /// @brief read one or multiple documents in a collection, coordinator
 #ifndef USE_ENTERPRISE
 Future<OperationResult> transaction::Methods::documentCoordinator(
-    std::string const& collectionName, VPackSlice value, OperationOptions& options) {
+    std::string const& collectionName, VPackSlice value, OperationOptions const& options) {
   if (!value.isArray()) {
     arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
     if (key.empty()) {
