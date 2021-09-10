@@ -401,9 +401,18 @@ ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice sli
 }
 
 /// @briefs creates a new document key, the input slice is ignored here
-std::string LogicalCollection::createKey(VPackSlice) {
+std::string LogicalCollection::createKey(VPackSlice input) {
+  if (isSatToSmartEdgeCollection() || isSmartToSatEdgeCollection()) {
+    return createSmartToSatKey(input);
+  }
   return keyGenerator()->generate();
 }
+
+#ifndef USE_ENTERPRISE
+std::string LogicalCollection::createSmartToSatKey(VPackSlice) {
+  return keyGenerator()->generate();
+}
+#endif
 
 void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(_physical != nullptr);
@@ -613,9 +622,7 @@ Result LogicalCollection::rename(std::string&& newName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-ErrorCode LogicalCollection::close() {
-  return getPhysical()->close();
-}
+ErrorCode LogicalCollection::close() { return getPhysical()->close(); }
 
 arangodb::Result LogicalCollection::drop() {
   // make sure collection has been closed
@@ -1226,6 +1233,10 @@ void LogicalCollection::setInternalValidatorTypes(uint64_t type) {
   _internalValidatorTypes = type;
 }
 
+uint64_t LogicalCollection::getInternalValidatorTypes() const {
+  return _internalValidatorTypes;
+}
+
 void LogicalCollection::addInternalValidator(std::unique_ptr<arangodb::ValidatorBase> validator) {
   // For the time beeing we only allow ONE internal validator.
   // This however is a non-necessary restriction and can be leveraged at any
@@ -1253,6 +1264,14 @@ bool LogicalCollection::isRemoteSmartEdgeCollection() const noexcept {
 
 bool LogicalCollection::isSmartEdgeCollection() const noexcept {
   return (_internalValidatorTypes & InternalValidatorType::LogicalSmartEdge) != 0;
+}
+
+bool LogicalCollection::isSatToSmartEdgeCollection() const noexcept {
+  return (_internalValidatorTypes & InternalValidatorType::SatToSmartEdge) != 0;
+}
+
+bool LogicalCollection::isSmartToSatEdgeCollection() const noexcept {
+  return (_internalValidatorTypes & InternalValidatorType::SmartToSatEdge) != 0;
 }
 
 #ifndef USE_ENTERPRISE

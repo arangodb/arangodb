@@ -38,7 +38,7 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-ClusterEdgeCursor::ClusterEdgeCursor(graph::BaseOptions const* opts) 
+ClusterEdgeCursor::ClusterEdgeCursor(graph::BaseOptions const* opts)
     : _position(0),
       _opts(opts),
       _cache(static_cast<ClusterTraverserCache*>(opts->cache())),
@@ -46,8 +46,8 @@ ClusterEdgeCursor::ClusterEdgeCursor(graph::BaseOptions const* opts)
   TRI_ASSERT(_cache != nullptr);
 
   if (_cache == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "no cache present for cluster edge cursor");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no cache present for cluster edge cursor");
   }
 }
 
@@ -66,7 +66,7 @@ void ClusterEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
     callback(EdgeDocumentToken(edge), edge, _position);
   }
 }
-  
+
 ClusterTraverserEdgeCursor::ClusterTraverserEdgeCursor(traverser::TraverserOptions const* opts)
     : ClusterEdgeCursor(opts) {}
 
@@ -75,7 +75,8 @@ traverser::TraverserOptions const* ClusterTraverserEdgeCursor::traverserOptions(
   return dynamic_cast<traverser::TraverserOptions const*>(_opts);
 }
 
-void ClusterTraverserEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId, uint64_t depth) {
+void ClusterTraverserEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId,
+                                       uint64_t depth) {
   _edgeList.clear();
   _position = 0;
 
@@ -83,18 +84,20 @@ void ClusterTraverserEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId,
   TRI_ASSERT(trx != nullptr);
   TRI_ASSERT(_cache != nullptr);
 
-  Result res = fetchEdgesFromEngines(*trx, *_cache, traverserOptions()->getExpressionCtx(), vertexId, depth, _edgeList);
+  Result res = fetchEdgesFromEngines(*trx, *_cache, traverserOptions()->getExpressionCtx(),
+                                     vertexId, depth, _edgeList);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
   _httpRequests += _cache->engines()->size();
 }
 
-ClusterShortestPathEdgeCursor::ClusterShortestPathEdgeCursor(graph::BaseOptions const* opts, bool backward)
-    : ClusterEdgeCursor(opts),
-      _backward(backward) {}
+ClusterShortestPathEdgeCursor::ClusterShortestPathEdgeCursor(graph::BaseOptions const* opts,
+                                                             bool backward)
+    : ClusterEdgeCursor(opts), _backward(backward) {}
 
-void ClusterShortestPathEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId, uint64_t /*depth*/) {
+void ClusterShortestPathEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId,
+                                          uint64_t /*depth*/) {
   _edgeList.clear();
   _position = 0;
 
@@ -102,7 +105,8 @@ void ClusterShortestPathEdgeCursor::rearm(arangodb::velocypack::StringRef vertex
   transaction::BuilderLeaser b(trx);
 
   b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
-  Result res = fetchEdgesFromEngines(*trx, *_cache, b->slice(), _backward, _edgeList, _cache->insertedDocuments());
+  Result res = fetchEdgesFromEngines(*trx, *_cache, b->slice(), _backward,
+                                     _edgeList, _cache->insertedDocuments());
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }

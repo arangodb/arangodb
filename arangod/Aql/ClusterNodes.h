@@ -222,10 +222,16 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   CostEstimate estimateCost() const override final;
 
   Variable const* getVariable() const noexcept { return _variable; }
-  
+
   void setVariable(Variable const* var) noexcept { _variable = var; }
-  
+
   ExecutionNodeId getTargetNodeId() const noexcept { return _targetNodeId; }
+
+  void addSatellite(aql::Collection*);
+
+  std::vector<aql::Collection*> const getSatellites() const noexcept {
+    return _satellites;
+  }
 
  protected:
   /// @brief export to VelocyPack
@@ -234,9 +240,13 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
  private:
   /// @brief the variable we must inspect to know where to distribute
   Variable const* _variable;
-  
+
   /// @brief the id of the target ExecutionNode this DistributeNode belongs to.
   ExecutionNodeId _targetNodeId;
+
+  /// @brief List of Satellite collections this node needs to distribute data to
+  /// in a satellite manner.
+  std::vector<aql::Collection*> _satellites;
 };
 
 /// @brief class GatherNode
