@@ -166,6 +166,7 @@ void ClusterIndexFactory::linkIndexFactories(application_features::ApplicationSe
   static const PrimaryIndexFactory primaryIndexFactory(server, "primary");
   static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist");
   static const DefaultIndexFactory ttlIndexFactory(server, "ttl");
+  static const DefaultIndexFactory zkdIndexFactory(server, "zkd");
 
   factory.emplace(edgeIndexFactory._type, edgeIndexFactory);
   factory.emplace(fulltextIndexFactory._type, fulltextIndexFactory);
@@ -177,6 +178,7 @@ void ClusterIndexFactory::linkIndexFactories(application_features::ApplicationSe
   factory.emplace(primaryIndexFactory._type, primaryIndexFactory);
   factory.emplace(skiplistIndexFactory._type, skiplistIndexFactory);
   factory.emplace(ttlIndexFactory._type, ttlIndexFactory);
+  factory.emplace(zkdIndexFactory._type, zkdIndexFactory);
 }
 
 ClusterIndexFactory::ClusterIndexFactory(application_features::ApplicationServer& server)

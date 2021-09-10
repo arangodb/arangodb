@@ -836,6 +836,8 @@ endif()
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 
+add_library(arango_zkd STATIC Zkd/ZkdHelper.cpp)
+
 add_library(arango_restart_action STATIC
   RestServer/RestartAction.cpp
 )
@@ -919,6 +921,7 @@ add_library(arango_rocksdb STATIC
   ${ROCKSDB_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
 )
+target_link_libraries(arango_rocksdb arango_zkd)
 
 add_dependencies(arango_rocksdb snappy)
 

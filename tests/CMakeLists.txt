@@ -289,7 +289,11 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/LogicalView-test.cpp
   VocBase/VersionTest.cpp
   VPackDeserializer/BasicTests.cpp
-  ${ADDITIONAL_TEST_SOURCES})
+  Zkd/Conversion.cpp
+  Zkd/Library.cpp
+  ${ADDITIONAL_TEST_SOURCES}
+)
+
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/AppendEntriesBatchTest.cpp
