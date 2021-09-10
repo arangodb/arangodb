@@ -83,6 +83,7 @@ struct GraphTestSetup
     // setup required application features
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::transaction::ManagerFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(), false);
     server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);

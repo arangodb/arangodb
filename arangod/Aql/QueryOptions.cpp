@@ -106,18 +106,17 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   }
 
   VPackSlice value;
-    
+
   // use global memory limit value first
   if (QueryOptions::defaultMemoryLimit > 0) {
     memoryLimit = QueryOptions::defaultMemoryLimit;
   }
-  
+
   // numeric options
   value = slice.get("memoryLimit");
   if (value.isNumber()) {
     size_t v = value.getNumber<size_t>();
-    if (v > 0 && 
-        (allowMemoryLimitOverride || v < memoryLimit)) {
+    if (v > 0 && (allowMemoryLimitOverride || v < memoryLimit)) {
       // only allow increasing the memory limit if the respective startup option
       // is set. and if it is set, only allow decreasing the memory limit
       memoryLimit = v;
@@ -140,7 +139,7 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (value.isNumber()) {
     maxNodesPerCallstack = value.getNumber<size_t>();
   }
-  
+
   value = slice.get("maxRuntime");
   if (value.isNumber()) {
     maxRuntime = value.getNumber<double>();
@@ -262,7 +261,8 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));
-  builder.add(StaticStrings::GraphTraversalProfileLevel, VPackValue(static_cast<uint32_t>(traversalProfile)));
+  builder.add(StaticStrings::GraphTraversalProfileLevel,
+              VPackValue(static_cast<uint32_t>(traversalProfile)));
   builder.add("allPlans", VPackValue(allPlans));
   builder.add("verbosePlans", VPackValue(verbosePlans));
   builder.add("stream", VPackValue(stream));
@@ -272,6 +272,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
   builder.add("verboseErrors", VPackValue(verboseErrors));
+
   if (!forceOneShardAttributeValue.empty()) {
     builder.add("forceOneShardAttributeValue", VPackValue(forceOneShardAttributeValue));
   }

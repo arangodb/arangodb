@@ -4,6 +4,23 @@ devel
 * Fix active failover, so that the new host actually has working
   foxx services. (BTS-558)
 
+* Added multidimensional indexes which can be used to efficiently intersect
+  multiple range queries. They are currently limited to IEEE-754 double values.
+  Given documents of the form {x: 12.9, y: -284.0, z: 0.02} one can define a
+  multidimensional index using the new type 'zkd' on the fields ["x", "y", "z"].
+
+  The AQL optimizer will then consider this index when doing queries on multiple
+  ranges, for example:
+
+    FOR p IN points
+        FILTER x0 <= p.x && p.x <= x1
+        FILTER y0 <= p.y && p.y <= y1
+        FILTER z0 <= p.z && p.z <= z1
+        RETURN p
+
+  The index implements the relation <=, == and >= natively. Strict relations are
+  emulated using post filtering. Ranges can be unbounded on one or both sides.
+
 * No runtime limits for shard move and server cleanout jobs, instead
   possibility to cancel them.
 
