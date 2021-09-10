@@ -1,6 +1,9 @@
 devel
 -----
 
+* Allow startup of arangod with an existing database directory that was missing
+  the ZkdIndex column family.
+
 * Added ArangoSearch condition optimization: STARTS_WITH is merged 
   with LEVENSHTEIN_MATCH if used in the same AND node and field name and prefix
   matches.
