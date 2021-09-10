@@ -1,8 +1,10 @@
 import { JsonEditor as Editor } from 'jsoneditor-react';
-import React, { useEffect, useState } from 'react';
-import Ajv from 'ajv';
+import React, { useCallback, useEffect, useState } from 'react';
+import Ajv, { ErrorObject } from 'ajv';
 import { FormProps, formSchema, FormState, State } from "../constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
+import { usePrevious } from "../../../utils/helpers";
+import { isEqual } from 'lodash';
 
 const ajv = new Ajv({
   allErrors: true,
@@ -16,6 +18,20 @@ type JsonFormProps = Pick<FormProps, 'formState' | 'dispatch'> & Pick<State, 're
 
 const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
   const [formErrors, setFormErrors] = useState<string[]>([]);
+  const prevFormState = usePrevious(formState);
+
+  const raiseError = useCallback((errors: ErrorObject[] | null | undefined) => {
+    if (Array.isArray(errors)) {
+      dispatch({ type: 'lockJsonForm' });
+
+      setFormErrors(errors.map(error =>
+        `
+          ${error.keyword} error: ${error.instancePath} ${error.message}.
+          Schema: ${JSON.stringify(error.params)}
+        `
+      ));
+    }
+  }, [dispatch]);
 
   const changeHandler = (json: FormState) => {
     if (validate(json)) {
@@ -25,22 +41,16 @@ const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
       });
       dispatch({ type: 'unlockJsonForm' });
       setFormErrors([]);
-    } else if (Array.isArray(validate.errors)) {
-      dispatch({ type: 'lockJsonForm' });
-
-      setFormErrors(validate.errors.map(error =>
-        `
-          ${error.keyword} error: ${error.instancePath} ${error.message}.
-          Schema: ${JSON.stringify(error.params)}
-        `
-      ));
+    } else {
+      raiseError(validate.errors);
     }
   };
 
   useEffect(() => {
-    setFormErrors([]);
-    dispatch({ type: 'unlockJsonForm' });
-  }, [dispatch, renderKey]);
+    if (!isEqual(prevFormState, formState) && !validate(formState)) {
+      raiseError(validate.errors);
+    }
+  }, [formState, prevFormState, raiseError]);
 
   return <Grid>
     <Cell size={'1'}>
