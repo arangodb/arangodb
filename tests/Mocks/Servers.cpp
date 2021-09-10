@@ -396,9 +396,6 @@ std::shared_ptr<arangodb::transaction::Methods> MockAqlServer::createFakeTransac
 std::shared_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(
     bool activateTracing, std::string queryString,
     std::function<void(aql::Query&)> callback) const {
-  auto bindParams = std::make_shared<VPackBuilder>();
-  bindParams->openObject();
-  bindParams->close();
   VPackBuilder queryOptions;
   queryOptions.openObject();
   if (activateTracing) {
@@ -409,10 +406,9 @@ std::shared_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(
     queryString = "RETURN 1";
   }
 
-  aql::QueryString fakeQueryString(queryString);
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(getSystemDatabase()),
-      fakeQueryString, bindParams, arangodb::aql::QueryOptions(queryOptions.slice()));
+      aql::QueryString(queryString), nullptr, arangodb::aql::QueryOptions(queryOptions.slice()));
   callback(*query);
   query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
 
@@ -528,9 +524,6 @@ void MockClusterServer::startFeatures() {
 std::shared_ptr<arangodb::aql::Query> MockClusterServer::createFakeQuery(
     bool activateTracing, std::string queryString,
     std::function<void(aql::Query&)> callback) const {
-  auto bindParams = std::make_shared<VPackBuilder>();
-  bindParams->openObject();
-  bindParams->close();
   VPackBuilder queryOptions;
   queryOptions.openObject();
   if (activateTracing) {
@@ -541,10 +534,9 @@ std::shared_ptr<arangodb::aql::Query> MockClusterServer::createFakeQuery(
     queryString = "RETURN 1";
   }
 
-  aql::QueryString fakeQueryString(queryString);
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(getSystemDatabase()),
-      fakeQueryString, bindParams, arangodb::aql::QueryOptions(queryOptions.slice()));
+      aql::QueryString(queryString), nullptr, arangodb::aql::QueryOptions(queryOptions.slice()));
   callback(*query);
   query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
 
