@@ -32,7 +32,12 @@
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -64,10 +69,17 @@ size_t PathStoreTracer<PathStoreImpl>::append(Step step) {
 }
 
 template <class PathStoreImpl>
-typename PathStoreImpl::Step PathStoreTracer<PathStoreImpl>::get(size_t position) const {
+typename PathStoreImpl::Step PathStoreTracer<PathStoreImpl>::getStep(size_t position) const {
   double start = TRI_microtime();
-  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["get"].addTiming(TRI_microtime() - start); });
-  return _impl.get(position);
+  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["getStep"].addTiming(TRI_microtime() - start); });
+  return _impl.getStep(position);
+}
+
+template <class PathStoreImpl>
+typename PathStoreImpl::Step& PathStoreTracer<PathStoreImpl>::getStepReference(size_t position) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["getStepReference"].addTiming(TRI_microtime() - start); });
+  return _impl.getStepReference(position);
 }
 
 template <class PathStoreImpl>
@@ -104,24 +116,50 @@ auto PathStoreTracer<PathStoreImpl>::visitReversePath(
   return _impl.visitReversePath(step, visitor);
 }
 
-/* SingleServerProvider Section */
+template <class PathStoreImpl>
+auto PathStoreTracer<PathStoreImpl>::modifyReversePath(Step& step,
+                                                       const std::function<bool(Step&)>& visitor)
+    -> bool {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["modifyReversePath"].addTiming(TRI_microtime() - start); });
+  return _impl.modifyReversePath(step, visitor);
+}
 
-template class ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>;
+/* SingleServerProvider Section */
+using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
+
+template class ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProviderStep>>;
 
 // Tracing
-template void ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::buildPath<
-    PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>>(
-    ProviderTracer<SingleServerProvider>::Step const& vertex,
-    PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
+template void ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProviderStep>>::buildPath<
+    PathResult<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
+               ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>>(
+    ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step const& vertex,
+    PathResult<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
+               ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>& path) const;
 
-template void ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::buildPath<
-    SingleProviderPathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>>(
-    ProviderTracer<SingleServerProvider>::Step const& vertex,
-    SingleProviderPathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
+template void arangodb::graph::PathStoreTracer<PathStore<SingleServerProviderStep>>::reverseBuildPath<
+    ProviderTracer<SingleServerProvider<SingleServerProviderStep>>>(
+    ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step const& vertex,
+    PathResult<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
+               ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>& path) const;
 
-template void arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
-    ProviderTracer<SingleServerProvider>::Step const& vertex,
-    PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
+#ifdef USE_ENTERPRISE
+template class ::arangodb::graph::PathStoreTracer<PathStore<enterprise::SmartGraphStep>>;
+
+template void ::arangodb::graph::PathStoreTracer<PathStore<enterprise::SmartGraphStep>>::buildPath<
+    PathResult<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
+        ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step>>(
+    ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step const& vertex,
+    PathResult<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
+        ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step>& path) const;
+
+template void arangodb::graph::PathStoreTracer<PathStore<enterprise::SmartGraphStep>>::reverseBuildPath<
+    ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>>(
+    ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step const& vertex,
+    PathResult<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
+        ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step>& path) const;
+#endif
 
 /* ClusterProvider Section */
 

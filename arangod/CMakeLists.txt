@@ -199,12 +199,14 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/PathManagement/PathStore.cpp
   Graph/PathManagement/PathStoreTracer.cpp
   Graph/PathManagement/PathValidator.cpp
+  Graph/PathManagement/PathValidatorOptions.cpp
   Graph/Options/OneSidedEnumeratorOptions.cpp
   Graph/Options/TwoSidedEnumeratorOptions.cpp
   Graph/Providers/ClusterProvider.cpp
   Graph/Providers/SingleServerProvider.cpp
   Graph/Providers/BaseProviderOptions.cpp
   Graph/Providers/ProviderTracer.cpp
+  Graph/Steps/SingleServerProviderStep.cpp
   Graph/Types/UniquenessLevel.cpp
   Graph/Types/ValidationResult.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
@@ -420,6 +422,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SubqueryStartExecutor.cpp
   Aql/Timing.cpp
   Aql/TraversalConditionFinder.cpp
+  Aql/TraverserEngineShardLists.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
   Aql/UnsortedGatherExecutor.cpp
@@ -834,6 +837,8 @@ endif()
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 
+add_library(arango_zkd STATIC Zkd/ZkdHelper.cpp)
+
 add_library(arango_restart_action STATIC
   RestServer/RestartAction.cpp
 )
@@ -917,6 +922,7 @@ add_library(arango_rocksdb STATIC
   ${ROCKSDB_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
 )
+target_link_libraries(arango_rocksdb arango_zkd)
 
 add_dependencies(arango_rocksdb snappy)
 
