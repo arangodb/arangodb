@@ -262,7 +262,7 @@ function arangosh (options) {
   print('\n--------------------------------------------------------------------------------');
   print('pipe through external arangosh');
   print('--------------------------------------------------------------------------------');
-  let section = "ArangoshPipeThrough";
+  let section = "testArangoshPipeThrough";
   let args = pu.makeArgs.arangosh(options);
   args['javascript.execute-string'] = "print(require('internal').pollStdin())";
 
