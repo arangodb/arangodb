@@ -800,7 +800,7 @@ ErrorCode arangodb::basics::StringBuffer::inflate(std::stringstream& out,
   strm.avail_in = (int)len;
   strm.next_in = ((unsigned char*)this->c_str()) + skip;
 
-  auto guard = scopeGuard([&strm] { (void)inflateEnd(&strm); });
+  auto guard = scopeGuard([&strm]() noexcept { (void)inflateEnd(&strm); });
 
   auto buffer = std::make_unique<char[]>(bufferSize);
 
@@ -878,7 +878,7 @@ ErrorCode arangodb::basics::StringBuffer::inflate(arangodb::basics::StringBuffer
   strm.avail_in = (int)len;
   strm.next_in = start;
 
-  auto guard = scopeGuard([&strm] { (void)inflateEnd(&strm); });
+  auto guard = scopeGuard([&strm]() noexcept { (void)inflateEnd(&strm); });
 
   auto buffer = std::make_unique<char[]>(bufferSize);
 

@@ -132,7 +132,7 @@ time_t TRI_timegm(struct tm* tm) {
 #endif
 }
 
-double TRI_microtime() {
+double TRI_microtime() noexcept {
   return std::chrono::duration<double>(  // time since epoch in seconds
              std::chrono::system_clock::now().time_since_epoch())
       .count();

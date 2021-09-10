@@ -48,7 +48,7 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
     PathSnippet() noexcept;
     PathSnippet(arangodb::velocypack::StringRef pred, graph::EdgeDocumentToken&& path) noexcept;
     PathSnippet(PathSnippet&& other) noexcept = default;
-    PathSnippet& operator=(PathSnippet&& other) noexcept = default;
+    PathSnippet& operator=(PathSnippet&& other) ARANGODB_NOEXCEPT_ASSIGN_OP = default;
     
     bool empty() const noexcept {
       return _pred.empty();

@@ -51,7 +51,7 @@ class V8Context final : public Context {
                                                  bool& responsibleForCommit) override;
   
   void enterV8Context();
-  void exitV8Context();
+  void exitV8Context() noexcept;
 
   /// @brief unregister the transaction from the context
   void unregisterTransaction() noexcept override;

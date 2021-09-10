@@ -285,7 +285,7 @@ void H2CommTask<T>::initNgHttp2Session() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  auto cbScope = scopeGuard([&] { nghttp2_session_callbacks_del(callbacks); });
+  auto cbScope = scopeGuard([&]() noexcept { nghttp2_session_callbacks_del(callbacks); });
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, H2CommTask<T>::on_begin_headers);
   nghttp2_session_callbacks_set_on_header_callback(callbacks, H2CommTask<T>::on_header);
