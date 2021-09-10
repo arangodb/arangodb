@@ -2721,21 +2721,9 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #endif
 
   if (hasData) {
-    char c[3] = {0};
-    TRI_read_return_t n = TRI_READ(STDIN_FILENO, c, 3);
-    if (n == 3) {  // arrow keys are garbled
-      if (c[2] == 'D') {
-        TRI_V8_RETURN(v8::Integer::New(isolate, 37));
-      }
-      if (c[2] == 'A') {
-        TRI_V8_RETURN(v8::Integer::New(isolate, 38));
-      }
-      if (c[2] == 'C') {
-        TRI_V8_RETURN(v8::Integer::New(isolate, 39));
-      }
-    } else if (n == 1) {
-      TRI_V8_RETURN(v8::Integer::New(isolate, c[0]));
-    }
+    char c[1024] = {0};
+    TRI_read_return_t n = TRI_READ(STDIN_FILENO, c, sizeof(c) - 1);
+    TRI_V8_RETURN_STD_STRING(std::string(c, n));
   }
   TRI_V8_RETURN(v8::Integer::New(isolate, 0));
   TRI_V8_TRY_CATCH_END
