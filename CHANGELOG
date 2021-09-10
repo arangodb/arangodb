@@ -1,6 +1,10 @@
 devel
 -----
 
+* Truncate must not trigger intermediate commits while in a streaming
+  transaction, because that would be against the assumption that
+  streaming transactions never do intermediate commits.
+
 * Added ArangoSearch condition optimization: STARTS_WITH is merged 
   with LEVENSHTEIN_MATCH if used in the same AND node and field name and prefix
   matches.
