@@ -57,7 +57,7 @@ BreadthFirstEnumerator::~BreadthFirstEnumerator() {
 
 void BreadthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
   PathEnumerator::setStartVertex(startVertex);
-  
+
   _schreier.clear();
   _schreierIndex = 0;
   _lastReturned = 0;
@@ -161,6 +161,10 @@ bool BreadthFirstEnumerator::next() {
           }
         }
 
+        if (!validDisjointPath(nextIdx, vId)) {
+          return;
+        }
+
         growStorage();
         TRI_ASSERT(_schreier.capacity() > _schreier.size());
         _schreier.emplace_back(nextIdx, std::move(eid), vId);
@@ -214,7 +218,8 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::edgeToAqlValue(size_t index) {
   return _opts->cache()->fetchEdgeAqlResult(_schreier[index].edge);
 }
 
-VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t index, bool fromPrune) {
+VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result,
+                                                      size_t index, bool fromPrune) {
   _tempPathHelper.clear();
   while (index != 0) {
     // Walk backwards through the path and push everything found on the local
@@ -352,7 +357,8 @@ void BreadthFirstEnumerator::growStorage() {
 
   TRI_ASSERT(capacity > _schreier.size());
   if (capacity > _schreier.capacity()) {
-    arangodb::ResourceUsageScope guard(_opts->resourceMonitor(), (capacity - _schreier.capacity()) * pathStepSize());
+    arangodb::ResourceUsageScope guard(_opts->resourceMonitor(),
+                                       (capacity - _schreier.capacity()) * pathStepSize());
 
     _schreier.reserve(capacity);
 
@@ -364,3 +370,10 @@ void BreadthFirstEnumerator::growStorage() {
 constexpr size_t BreadthFirstEnumerator::pathStepSize() const noexcept {
   return sizeof(void*) + sizeof(PathStep) + 2 * sizeof(NextStep);
 }
+
+#ifndef USE_ENTERPRISE
+bool BreadthFirstEnumerator::validDisjointPath(size_t /*index*/,
+                                               arangodb::velocypack::StringRef const& /*vertex*/) const {
+  return true;
+}
+#endif

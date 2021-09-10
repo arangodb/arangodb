@@ -90,7 +90,7 @@ TRI_edge_direction_e parseDirection(AstNode const* node) {
   return uint64ToDirection(dirNode->getIntValue());
 }
 
-}
+}  // namespace
 
 GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
                      TRI_vocbase_t* vocbase, AstNode const* direction,
@@ -300,9 +300,10 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _defaultDirection(uint64ToDirection(arangodb::basics::VelocyPackHelper::stringUInt64(
           base.get("defaultDirection")))),
       _optionsBuilt(false),
-      _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isSmart", false)),
-      _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isDisjoint", false)) {
-
+      _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(base, StaticStrings::IsSmart,
+                                                                   false)),
+      _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(base, StaticStrings::IsDisjoint,
+                                                                      false)) {
   if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
@@ -356,7 +357,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   auto getAqlCollectionFromName = [&](std::string const& name) -> aql::Collection& {
     // if the collection was already existent in the query, addCollection will
     // just return it.
-    return *query.collections().add(name, AccessMode::Type::READ, aql::Collection::Hint::Collection);
+    return *query.collections().add(name, AccessMode::Type::READ,
+                                    aql::Collection::Hint::Collection);
   };
 
   auto vPackDirListIter = VPackArrayIterator(dirList);
@@ -511,7 +513,9 @@ std::string const& GraphNode::collectionToShardName(std::string const& collName)
 
   auto found = _collectionToShard.find(collName);
   if (found == _collectionToShard.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "unable to find shard '" + collName + "' in query shard map");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                   "unable to find shard '" + collName +
+                                       "' in query shard map");
   }
   return found->second;
 }
@@ -692,6 +696,18 @@ void GraphNode::getConditionVariables(std::vector<Variable const*>& res) const {
 Collection const* GraphNode::collection() const {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   TRI_ASSERT(!_edgeColls.empty());
+  for (auto const* c : _edgeColls) {
+    // We are required to valuate non-satellites above
+    // satellites, as the collection is used as the protoype
+    // for this graphs sharding.
+    // The Satellite collection does not have sharding.
+    TRI_ASSERT(c != nullptr);
+    if (!c->isSatellite()) {
+      return c;
+    }
+  }
+  // We have not found any non-satellite Collection
+  // just return the first satellite then.
   TRI_ASSERT(_edgeColls.front() != nullptr);
   return _edgeColls.front();
 }
@@ -719,8 +735,8 @@ void GraphNode::enhanceEngineInfo(VPackBuilder& builder) const {
 }
 #endif
 
-void GraphNode::addEdgeCollection(Collections const& collections, std::string const& name,
-                                  TRI_edge_direction_e dir) {
+void GraphNode::addEdgeCollection(Collections const& collections,
+                                  std::string const& name, TRI_edge_direction_e dir) {
   auto aqlCollection = collections.get(name);
   if (aqlCollection != nullptr) {
     addEdgeCollection(*aqlCollection, dir);

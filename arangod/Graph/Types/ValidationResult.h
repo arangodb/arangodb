@@ -39,6 +39,8 @@ class ValidationResult {
   bool isPruned() const noexcept;
   bool isFiltered() const noexcept;
 
+  void combine(Type t) noexcept;
+
  private:
   Type _type;
 };
