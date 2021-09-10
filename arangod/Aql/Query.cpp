@@ -167,8 +167,8 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 Query::Query(std::shared_ptr<transaction::Context> ctx,
              QueryString queryString, std::shared_ptr<VPackBuilder> bindParameters,
              QueryOptions options)
-    : Query(0, std::move(ctx), std::move(queryString), std::move(bindParameters), std::move(options),
-            std::make_shared<SharedQueryState>(_transactionContext->vocbase().server())) {}
+    : Query(0, ctx, std::move(queryString), std::move(bindParameters), std::move(options),
+            std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 /// @brief destroys a query
 Query::~Query() {
