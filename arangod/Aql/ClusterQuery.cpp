@@ -45,7 +45,7 @@ using namespace arangodb::aql;
 
 ClusterQuery::ClusterQuery(QueryId id, std::shared_ptr<transaction::Context> ctx,
                            QueryOptions options)
-    : Query(id, std::move(ctx), aql::QueryString(), 
+    : Query(id, ctx, aql::QueryString(), 
             /*bindParams*/ nullptr, std::move(options),
             /*sharedState*/ ServerState::instance()->isDBServer()
                 ? nullptr
@@ -64,12 +64,14 @@ ClusterQuery::~ClusterQuery() {
                                                               std::shared_ptr<transaction::Context> ctx,
                                                               aql::QueryOptions options) {
   // workaround to enable make_shared on a class with a private/protected constructor
-  struct MakeSharedQuery final : public ClusterQuery {
+  struct MakeSharedQuery : public ClusterQuery {
     MakeSharedQuery(QueryId id,
                     std::shared_ptr<transaction::Context> ctx,
                     aql::QueryOptions options)
       : ClusterQuery(id, std::move(ctx), std::move(options)) {}
   };
+  
+  TRI_ASSERT(ctx != nullptr);
 
   return std::make_shared<MakeSharedQuery>(id, std::move(ctx), std::move(options));
 }
