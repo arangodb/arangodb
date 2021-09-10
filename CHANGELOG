@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added ArangoSearch condition optimization: STARTS_WITH is merged 
+  with LEVENSHTEIN_MATCH if used in the same AND node and field name and prefix
+  matches.
+
 * Added multidimensional indexes which can be used to efficiently intersect
   multiple range queries. They are currently limited to IEEE-754 double values.
   Given documents of the form {x: 12.9, y: -284.0, z: 0.02} one can define a
