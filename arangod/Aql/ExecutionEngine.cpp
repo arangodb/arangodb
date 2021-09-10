@@ -52,32 +52,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-// @brief Local struct to create the
-// information required to build traverser engines
-// on DB servers.
-struct TraverserEngineShardLists {
-  explicit TraverserEngineShardLists(size_t length) {
-    // Make sure they all have a fixed size.
-    edgeCollections.resize(length);
-  }
-
-  ~TraverserEngineShardLists() = default;
-
-  // Mapping for edge collections to shardIds.
-  // We have to retain the ordering of edge collections, all
-  // vectors of these in one run need to have identical size.
-  // This is because the conditions to query those edges have the
-  // same ordering.
-  std::vector<std::vector<ShardID>> edgeCollections;
-
-  // Mapping for vertexCollections to shardIds.
-  std::unordered_map<std::string, std::vector<ShardID>> vertexCollections;
-
-#ifdef USE_ENTERPRISE
-  std::set<ShardID> inaccessibleShards;
-#endif
-};
-
 /**
  * @brief Create AQL blocks from a list of ExectionNodes
  * Only works in cluster mode

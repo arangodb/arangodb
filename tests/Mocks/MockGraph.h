@@ -87,8 +87,8 @@ class MockGraph {
   MockGraph() {}
   ~MockGraph() {}
 
-  void addEdge(std::string from, std::string to, double weight = 1.0);
-  void addEdge(size_t from, size_t to, double weight = 1.0);
+  EdgeDef addEdge(std::string from, std::string to, double weight = 1.0);
+  EdgeDef addEdge(size_t from, size_t to, double weight = 1.0);
 
   auto edges() const -> std::vector<EdgeDef> const& { return _edges; }
   auto vertices() const -> std::unordered_set<VertexDef, hashVertexDef> const& {
@@ -121,9 +121,11 @@ class MockGraph {
       arangodb::graph::BaseOptions& opts) const;
 
   void storeData(TRI_vocbase_t& vocbase, std::string const& vertexCollectionName,
-                 std::string const& edgeCollectionName) const;
+                 std::string const& edgeCollectionName,
+                 std::string const& edgeCollectionSecondName = "",
+                 std::vector<EdgeDef> const& secondEdges = {}) const;
 
- private:
+ protected:
   std::vector<std::pair<std::string, std::string>> const& getVertexShardNameServerPairs() const {
     return _vertexShards;
   }
@@ -131,13 +133,13 @@ class MockGraph {
     return _edgeShards;
   }
 
- private:
+ protected:
   std::vector<EdgeDef> _edges;
   std::unordered_set<VertexDef, hashVertexDef> _vertices;
-
   std::string _vertexCollectionName{"v"};
   std::string _edgeCollectionName{"e"};
 
+ private:
   std::vector<std::pair<std::string, std::string>> _vertexShards{
       {"s9870", "PRMR_0001"}};
   std::vector<std::pair<std::string, std::string>> _edgeShards{
