@@ -2706,9 +2706,17 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("pollStdin()");
   }
 
-  bool hasData;
+  bool hasData = false;
 #ifdef _WIN32
-  hasData = _kbhit() != 0;
+  auto hin = ::GetStdHandle(STD_INPUT_HANDLE);
+  if (GetFileType(hin) == FILE_TYPE_PIPE) {
+    DWORD numBytes = 0;
+    if (PeekNamedPipe(hin, nullptr, 0, nullptr, &numBytes, nullptr)) {
+      hasData = numBytes > 0;
+    }
+  } else {
+    hasData = _kbhit() != 0;
+  }
 #else
   struct timeval tv;
   fd_set fds;
