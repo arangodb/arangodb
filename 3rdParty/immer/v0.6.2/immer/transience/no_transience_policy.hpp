@@ -26,7 +26,7 @@ struct no_transience_policy
             struct owner
             {
                 operator edit () const { return {}; }
-                owner& operator=(const owner&) { return *this; };
+                //owner& operator=(const owner&) { return *this; }; -- already fixed upstream
             };
 
             struct ownee

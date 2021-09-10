@@ -2934,7 +2934,12 @@ function complexFilteringSuite() {
       // 1 Edge (Tri1->Tri2)
       // 1 Primary (Tri2)
 
-      assertEqual(stats.scannedIndex, 1);
+      if (isCluster) {
+        // one edge and one vertex lookup
+        assertEqual(stats.scannedIndex, 2);
+      } else {
+        assertEqual(stats.scannedIndex, 1);
+      }
 
       assertEqual(stats.filtered, 1);
     },
@@ -3018,7 +3023,7 @@ function complexFilteringSuite() {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (2 B) (0 D)
         // 2 Primary Lookups (C, F)
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 9);
       } else {
         // 2 Edge Lookups (A)
         // 2 Primary (B, D) for Filtering
@@ -3061,7 +3066,7 @@ function complexFilteringSuite() {
         // 1 Primary lookup A
         // 2 Primary lookup B,D
         // 4 Primary Lookups (C, F, E, G)
-        assertTrue(stats.scannedIndex <= 7);
+        assertTrue(stats.scannedIndex <= 13);
       } else {
         // 2 Edge Lookups (A)
         // 4 Edge Lookups (2 B) (2 D)
@@ -3105,7 +3110,7 @@ function complexFilteringSuite() {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (0 B) (2 D)
         // 2 Primary Lookups (E, G)
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 8);
       } else {
         // 2 Edge Lookups (A)
         // 2 Primary Lookups for Eval (B, D)
@@ -3146,7 +3151,7 @@ function complexFilteringSuite() {
         // 1 Primary (B)
         // 2 Edge
         // 2 Primary (C,F)
-        assertTrue(stats.scannedIndex <= 4);
+        assertTrue(stats.scannedIndex <= 7);
       } else {
         // 2 Edge Lookups (A)
         // 2 Edge Lookups (B)
@@ -3189,7 +3194,7 @@ function complexFilteringSuite() {
         // they may be inserted in the vertexToFetch list, which
         // lazy loads all vertices in it.
         if (stats.scannedIndex !== 8) {
-          assertTrue(stats.scannedIndex <= 5);
+          assertTrue(stats.scannedIndex <= 10);
         }
       } else {
         // 2 Edge Lookups (A)
@@ -3244,7 +3249,7 @@ function complexFilteringSuite() {
           // 2 Primary lookup B,D
           // 2 Edge Lookups (2 B) (0 D)
           // 2 Primary Lookups (C, F)
-          assertTrue(stats.scannedIndex <= 5, stats.scannedIndex);
+          assertTrue(stats.scannedIndex <= 8, stats.scannedIndex);
         } else {
           // Cluster uses a lookup cache.
           // Pointless in single-server mode
@@ -3302,7 +3307,7 @@ function complexFilteringSuite() {
           // 2 Primary lookup B,D
           // 2 Edge Lookups (2 B) (0 D)
           // 2 Primary Lookups (C, F)
-          assertTrue(stats.scannedIndex <= 5);
+          assertTrue(stats.scannedIndex <= 8);
         } else {
           // Cluster uses a lookup cache.
           // Pointless in single-server mode
@@ -3352,7 +3357,7 @@ function complexFilteringSuite() {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (2 B) (0 D)
         // 2 Primary Lookups (C, F)
-        assertTrue(stats.scannedIndex <= 7);
+        assertTrue(stats.scannedIndex <= 13, stats.scannedIndex);
       } else {
         // 2 Edge Lookups (A)
         // 2 Primary (B, D) for Filtering
@@ -4162,7 +4167,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -4207,7 +4212,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 4);
+        assertTrue(stats.scannedIndex <= 8, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -4236,7 +4241,7 @@ function optimizeQuantifierSuite() {
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 4);
+        assertTrue(stats.scannedIndex <= 8, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -4266,7 +4271,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -4311,7 +4316,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 4);
+        assertTrue(stats.scannedIndex <= 8, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -4339,7 +4344,7 @@ function optimizeQuantifierSuite() {
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 4);
+        assertTrue(stats.scannedIndex <= 8);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -4370,7 +4375,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -4401,7 +4406,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 3);
+        assertTrue(stats.scannedIndex <= 7, stats.scannedIndex);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -4432,7 +4437,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -4464,7 +4469,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 3);
+        assertTrue(stats.scannedIndex <= 7, stats.scannedIndex);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -4496,7 +4501,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 9, stats.scannedIndex);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 9);
@@ -4528,7 +4533,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 3);
+        assertTrue(stats.scannedIndex <= 6, stats.scannedIndex);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);

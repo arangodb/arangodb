@@ -45,25 +45,6 @@ using namespace arangodb::transaction;
 using namespace arangodb::traverser;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
 
-namespace {
-arangodb::velocypack::StringRef getEdgeDestination(arangodb::velocypack::Slice edge,
-                                                   arangodb::velocypack::StringRef origin) {
-  if (edge.isString()) {
-    return edge.stringRef();
-  }
-
-  TRI_ASSERT(edge.isObject());
-  auto from = edge.get(arangodb::StaticStrings::FromString);
-  TRI_ASSERT(from.isString());
-  if (from.stringRef() == origin) {
-    auto to = edge.get(arangodb::StaticStrings::ToString);
-    TRI_ASSERT(to.isString());
-    return to.stringRef();
-  }
-  return from.stringRef();
-}
-}  // namespace
-
 TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
     : BaseOptions(query),
       _baseVertexExpression(nullptr),
@@ -749,6 +730,37 @@ auto TraverserOptions::explicitDepthLookupAt() const -> std::unordered_set<std::
   return result;
 }
 
+#ifndef USE_ENTERPRISE
+auto TraverserOptions::setDisjoint() -> void { return; }
+
+auto TraverserOptions::isDisjoint() const -> bool { return false; }
+
+auto TraverserOptions::isSatelliteLeader() const -> bool {
+  // Can only be called in Enterprise code.
+  // Return false as security net.
+  TRI_ASSERT(false);
+  return false;
+}
+#endif
+
+auto TraverserOptions::getEdgeDestination(arangodb::velocypack::Slice edge,
+                                          arangodb::velocypack::StringRef origin) const
+    -> arangodb::velocypack::StringRef {
+  if (edge.isString()) {
+    return edge.stringRef();
+  }
+
+  TRI_ASSERT(edge.isObject());
+  auto from = edge.get(arangodb::StaticStrings::FromString);
+  TRI_ASSERT(from.isString());
+  if (from.stringRef() == origin) {
+    auto to = edge.get(arangodb::StaticStrings::ToString);
+    TRI_ASSERT(to.isString());
+    return to.stringRef();
+  }
+  return from.stringRef();
+}
+
 bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vertex,
                                                 uint64_t depth) {
   arangodb::aql::Expression* expression = nullptr;
@@ -765,10 +777,16 @@ bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vert
   return evaluateExpression(expression, vertex);
 }
 
+#ifndef USE_ENTERPRISE
+bool TraverserOptions::checkSmartDestination(VPackSlice edge, velocypack::StringRef sourceVertex) const {
+  return false;
+}
+#endif
+
 bool TraverserOptions::destinationCollectionAllowed(VPackSlice edge,
-                                                    velocypack::StringRef sourceVertex) {
+                                                    velocypack::StringRef sourceVertex) const {
   if (hasVertexCollectionRestrictions()) {
-    auto destination = ::getEdgeDestination(edge, sourceVertex);
+    auto destination = getEdgeDestination(edge, sourceVertex);
     auto collection = transaction::helpers::extractCollectionFromId(destination);
     if (std::find(vertexCollections.begin(), vertexCollections.end(),
                   std::string_view(collection.data(), collection.size())) ==
@@ -777,6 +795,11 @@ bool TraverserOptions::destinationCollectionAllowed(VPackSlice edge,
       return false;
     }
   }
+#ifdef USE_ENTERPRISE
+  if (!checkSmartDestination(edge, sourceVertex)) {
+    return false;
+  }
+#endif
 
   return true;
 }
@@ -873,7 +896,8 @@ auto TraverserOptions::estimateDepth() const noexcept -> uint64_t {
 
 void TraverserOptions::readProduceInfo(VPackSlice obj) {
   _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
-  _producePathsVertices = VPackHelper::getBooleanValue(obj, "producePathsVertices", true);
+  _producePathsVertices =
+      VPackHelper::getBooleanValue(obj, "producePathsVertices", true);
   _producePathsEdges = VPackHelper::getBooleanValue(obj, "producePathsEdges", true);
   _producePathsWeights = VPackHelper::getBooleanValue(obj, "producePathsWeights", true);
 }
