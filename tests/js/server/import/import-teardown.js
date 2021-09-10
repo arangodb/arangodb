@@ -50,6 +50,9 @@
   db._drop("UnitTestsImportCsvBrokenHeaders");
   db._drop("UnitTestsImportCsvConvert");
   db._drop("UnitTestsImportCsvNoConvert");
+  db._drop("UnitTestsImportCsvTypesBoolean");
+  db._drop("UnitTestsImportCsvTypesNumber");
+  db._drop("UnitTestsImportCsvTypesString");
   db._drop("UnitTestsImportCsvNoEol");
   db._drop("UnitTestsImportTsv1");
   db._drop("UnitTestsImportTsv1Gz");

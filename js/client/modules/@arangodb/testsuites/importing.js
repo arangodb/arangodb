@@ -170,6 +170,33 @@ const impTodos = [{
   convert: false,
   backslash: true
 }, {
+  id: 'csvtypesboolean',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesBoolean',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: false,
+  datatype: "value=boolean",
+}, {
+  id: 'csvtypesnumber',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesNumber',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: false,
+  datatype: "value=number",
+}, {
+  id: 'csvtypesstring',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesString',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: false,
+  datatype: "value=string",
+}, {
   id: 'csvnoeol',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-noeol.csv')),
   coll: 'UnitTestsImportCsvNoEol',

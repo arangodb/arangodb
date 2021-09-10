@@ -64,6 +64,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   std::string _typeImport;
   std::string _headersFile;
   std::vector<std::string> _translations;
+  std::vector<std::string> _datatypes;
   std::vector<std::string> _removeAttributes;
   bool _overwrite;
   std::string _quote;
