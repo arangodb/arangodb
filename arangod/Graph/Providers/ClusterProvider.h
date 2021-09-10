@@ -121,6 +121,16 @@ class ClusterProvider {
 
     VertexType getVertexIdentifier() const { return _vertex.getID(); }
 
+    std::string getCollectionName() const {
+      auto collectionNameResult = extractCollectionName(_vertex.getID());
+      if (collectionNameResult.fail()) {
+        THROW_ARANGO_EXCEPTION(collectionNameResult.result());
+      }
+      return collectionNameResult.get().first;
+    };
+
+    bool isResponsible(transaction::Methods* trx) const;
+
     friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
 
    private:
@@ -143,7 +153,7 @@ class ClusterProvider {
 
   void clear();
 
-  auto startVertex(VertexType vertex) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;

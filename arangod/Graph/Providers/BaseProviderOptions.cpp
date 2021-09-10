@@ -27,10 +27,23 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
-                             aql::AstNode* condition, std::optional<size_t> memberToUpdate)
-    : _idx(idx), _indexCondition(condition), _memberToUpdate(memberToUpdate) {}
+                             aql::AstNode* condition, std::optional<size_t> memberToUpdate,
+                             std::unique_ptr<arangodb::aql::Expression> expression,
+                             size_t cursorId)
+    : _idx(idx),
+      _indexCondition(condition),
+      _memberToUpdate(memberToUpdate),
+      _cursorId(cursorId) {
+  if (expression != nullptr) {
+    _expression = std::move(expression);
+  }
+}
 
 aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
+
+aql::Expression* IndexAccessor::getExpression() const {
+  return _expression.get();
+}
 
 transaction::Methods::IndexHandle IndexAccessor::indexHandle() const {
   return _idx;
@@ -40,23 +53,52 @@ std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
   return _memberToUpdate;
 }
 
-BaseProviderOptions::BaseProviderOptions(aql::Variable const* tmpVar,
-                                         std::vector<IndexAccessor> indexInfo,
-                                         std::map<std::string, std::string> const& collectionToShardMap)
+size_t IndexAccessor::cursorId() const { return _cursorId; }
+
+BaseProviderOptions::BaseProviderOptions(
+    aql::Variable const* tmpVar,
+    std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&& indexInfo,
+    aql::FixedVarExpressionContext& expressionContext,
+    std::unordered_map<std::string, std::vector<std::string>> const& collectionToShardMap)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
-      _collectionToShardMap(collectionToShardMap) {}
+      _expressionContext(expressionContext),
+      _collectionToShardMap(collectionToShardMap),
+      _weightCallback(std::nullopt) {}
 
 aql::Variable const* BaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
 }
 
-std::vector<IndexAccessor> const& BaseProviderOptions::indexInformations() const {
+// first is global index information, second is depth-based index information.
+std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> const&
+BaseProviderOptions::indexInformations() const {
   return _indexInformation;
 }
 
-std::map<std::string, std::string> const& BaseProviderOptions::collectionToShardMap() const {
+std::unordered_map<std::string, std::vector<std::string>> const& BaseProviderOptions::collectionToShardMap() const {
   return _collectionToShardMap;
+}
+
+aql::FixedVarExpressionContext& BaseProviderOptions::expressionContext() const {
+  return _expressionContext;
+}
+
+bool BaseProviderOptions::hasWeightMethod() const {
+  return _weightCallback.has_value();
+}
+
+void BaseProviderOptions::setWeightEdgeCallback(WeightCallback callback) {
+  _weightCallback = std::move(callback);
+}
+
+double BaseProviderOptions::weightEdge(double prefixWeight,
+                                       arangodb::velocypack::Slice edge) const {
+  if (!hasWeightMethod()) {
+    // We do not have a weight. Hardcode.
+    return 1.0;
+  }
+  return _weightCallback.value()(prefixWeight, edge);
 }
 
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(
