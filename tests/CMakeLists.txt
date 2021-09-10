@@ -62,6 +62,8 @@ set(ARANGODB_TESTS_COMMON_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PreparedResponseConnectionPool.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraph.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraphProvider.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Basics/icu-helper.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/AgencyMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/common.cpp
@@ -237,12 +239,11 @@ set(ARANGODB_TESTS_SOURCES
   Graph/KPathFinderTest.cpp
   Graph/DFSFinderTest.cpp
   Graph/KShortestPathsFinder.cpp
-  Graph/MockGraph.cpp
-  Graph/MockGraphProvider.cpp
   Graph/PathStoreTest.cpp
   Graph/PathValidatorTest.cpp
   Graph/FifoQueueTest.cpp
   Graph/LifoQueueTest.cpp
+  Graph/WeightedQueueTest.cpp
   Graph/SingleServerProviderTest.cpp
   Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
@@ -391,7 +392,8 @@ endif ()
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
-  )
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
+)
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_include_directories(arangodbtests_replication2 PRIVATE
