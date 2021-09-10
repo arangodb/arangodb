@@ -908,12 +908,12 @@ void HeartbeatThread::runSingleServer() {
 
         // ensure everyone has server access
         ServerState::instance()->setFoxxmaster(_myId);
-        auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
-        auto database = sysDbFeature.use();
-        server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
-          database.get(), "server/leader.js", nullptr);
         auto prv = ServerState::setServerMode(ServerState::Mode::DEFAULT);
         if (prv == ServerState::Mode::REDIRECT) {
+          auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
+          auto database = sysDbFeature.use();
+          server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
+            database.get(), "server/leader.js", nullptr);
           LOG_TOPIC("98325", INFO, Logger::HEARTBEAT)
               << "Successful leadership takeover: "
               << "All your base are belong to us";
