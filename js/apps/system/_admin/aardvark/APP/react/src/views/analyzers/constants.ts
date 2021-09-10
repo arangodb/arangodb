@@ -582,7 +582,11 @@ const pipelineSchema = mergeBase({
               stopwordsSchema,
               collationSchema,
               segmentationSchema
-            ]
+            ],
+            errorMessage: {
+              discriminator: '/type should be one of "delimiter", "stem", "norm", "ngram", "text", "aql",' +
+                ' "stopwords", "collation", "segmentation"'
+            }
           },
           default: []
         }
@@ -672,6 +676,10 @@ export const formSchema: JSONSchemaType<FormState> = {
     geojsonSchema,
     geopointSchema
   ],
+  errorMessage: {
+    discriminator: '/type should be one of "identity", "delimiter", "stem", "norm", "ngram", "text", "aql",' +
+      ' "stopwords", "collation", "segmentation", "pipeline", "geojson", "geopoint"'
+  },
   required: ['name', 'features']
 };
 

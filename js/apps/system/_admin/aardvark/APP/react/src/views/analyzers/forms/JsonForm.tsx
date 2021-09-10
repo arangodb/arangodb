@@ -4,7 +4,8 @@ import Ajv, { ErrorObject } from 'ajv';
 import { FormProps, formSchema, FormState, State } from "../constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import { usePrevious } from "../../../utils/helpers";
-import { isEqual } from 'lodash';
+import { has, isEqual } from 'lodash';
+import ajvErrors from 'ajv-errors';
 
 const ajv = new Ajv({
   allErrors: true,
@@ -12,6 +13,7 @@ const ajv = new Ajv({
   discriminator: true,
   $data: true
 });
+ajvErrors(ajv);
 const validate = ajv.compile(formSchema);
 
 type JsonFormProps = Pick<FormProps, 'formState' | 'dispatch'> & Pick<State, 'renderKey'>;
@@ -24,11 +26,18 @@ const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
     if (Array.isArray(errors)) {
       dispatch({ type: 'lockJsonForm' });
 
-      setFormErrors(errors.map(error =>
-        `
-          ${error.keyword} error: ${error.instancePath} ${error.message}.
-          Schema: ${JSON.stringify(error.params)}
-        `
+      setFormErrors(errors.map(error => {
+          if (has(error.params, 'errors')) {
+            return `
+              ${error.params.errors[0].keyword} error: ${error.instancePath}${error.message}.
+            `;
+          } else {
+            return `
+              ${error.keyword} error: ${error.instancePath} ${error.message}.
+              Schema: ${JSON.stringify(error.params)}
+            `;
+          }
+        }
       ));
     }
   }, [dispatch]);
