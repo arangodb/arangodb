@@ -766,6 +766,15 @@ std::string slurpProgram(std::string const& program) {
     THROW_ARANGO_EXCEPTION(res);
   }
   process = TRI_LookupSpawnedProcess(external._pid);
+  if (process == nullptr) {
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
+    LOG_TOPIC("a557c", TRACE, arangodb::Logger::FIXME)
+      << StringUtils::concatT("process gone? '",
+                              program, "': ",
+                              TRI_last_error());
+    THROW_ARANGO_EXCEPTION(res);
+  }
   while (res = TRI_CheckExternalProcess(external, false, 0),
          (res._status == TRI_EXT_RUNNING)) {
     auto nRead = TRI_ReadPipe(process, buf, sizeof(buf) - 1);
