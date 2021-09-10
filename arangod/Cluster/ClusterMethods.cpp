@@ -526,7 +526,7 @@ struct CreateOperationCtx {
     VPackSlice keySlice = value.get(StaticStrings::KeyString);
     if (keySlice.isNone()) {
       // The user did not specify a key, let's create one:
-      _key = collinfo.keyGenerator()->generate();
+      _key = collinfo.createKey(value);
     } else {
       userSpecifiedKey = true;
       if (keySlice.isString()) {

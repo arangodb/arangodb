@@ -82,17 +82,8 @@ JOB_STATUS CleanOutServer::status() {
   }
 
   if (found > 0) {  // some subjob still running
-    // timeout here:
-    auto tmp_time =
-        _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated");
-    std::string timeCreatedString = tmp_time.value();
-    Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
-    Supervision::TimePoint now(std::chrono::system_clock::now());
-    if (now - timeCreated > std::chrono::duration<double>(86400.0)) { // 1 day
-      abort("job timed out");
-      return FAILED;
-    }
-    return PENDING;
+    // consider cancellation
+    return considerCancellation() ? FAILED : PENDING;
   }
 
   Node::Children const& failed = _snapshot.hasAsChildren(failedPrefix).value().get();
@@ -198,6 +189,11 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
 }
 
 bool CleanOutServer::start(bool& aborts) {
+
+  if (considerCancellation()) {
+    return false;
+  }
+
   // If anything throws here, the run() method catches it and finishes
   // the job.
 

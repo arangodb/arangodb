@@ -151,6 +151,7 @@ add_library(arango STATIC
   Basics/tri-strings.cpp
   Basics/tri-zip.cpp
   Containers/MerkleTree.cpp
+  Containers/MerkleTreeHelpers.cpp
   Containers/ImmerMemoryPolicy.h
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
@@ -207,6 +208,26 @@ add_library(arango STATIC
   Zip/zip.cpp
   ${ADDITIONAL_LIB_ARANGO_SOURCES}
 )
+
+# The following is necessary to compile MerkleTree.cpp without RTTI.
+# RTTI needs to be disabled because the file contains a class that
+# is derived from some Snappy base class, which itself is compiled
+# with -fno-rtti. Mixing RTTI code and non-RTTI code can cause
+# problems during linking. Here is what "man g++" has to say:
+#     Mixing code compiled with -frtti with that compiled with
+#     -fno-rtti may not work. For example, programs may fail to
+#     link if a class compiled with -fno-rtti is used as a
+#     base for a class compiled with -frtti.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  set_source_files_properties(
+    Containers/MerkleTreeHelpers.cpp
+    PROPERTIES COMPILE_FLAGS "/GR-")
+else()
+  set_source_files_properties(
+    Containers/MerkleTreeHelpers.cpp
+    PROPERTIES COMPILE_FLAGS "-fno-rtti")
+endif()
+
 
 target_link_libraries(arango
   s2
