@@ -273,6 +273,7 @@ function arangosh (options) {
   fs.writePipe(res.pid, "bla\n");
   fs.closePipe(res.pid, false);
   let output = fs.readPipe(res.pid);
+  // Arangosh will output a \n on its own, so we will get back 2:
   let success = output === "bla\n\n";
 
   let rc = statusExternal(res.pid, true);
