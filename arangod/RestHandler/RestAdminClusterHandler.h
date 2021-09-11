@@ -47,6 +47,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
  private:
+  static std::string const CancelJob;
   static std::string const Health;
   static std::string const NumberOfServers;
   static std::string const Maintenance;
@@ -87,6 +88,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleCleanoutServer();
   RestStatus handleResignLeadership();
   RestStatus handleMoveShard();
+  RestStatus handleCancelJob();
   RestStatus handleQueryJobStatus();
 
   RestStatus handleRemoveServer();

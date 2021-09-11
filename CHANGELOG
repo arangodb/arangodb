@@ -1,6 +1,9 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* No runtime limits for shard move and server cleanout jobs, instead possibility
+  to cancel them.
+
 * (EE only) Bug-fix: If you created a ArangoSearch view on Satellite-
   Collections only and then join with a collection only having a single shard
   the cluster-one-shard-rule was falsely applied and could lead to empty view
@@ -48,7 +51,7 @@ v3.8.2 (XXXX-XX-XX)
   several clients concurrently inserts data and use custom analyzer with
   non-string return type.
 
-* Fix a rare shutdown race in RocksDBShaCalculatorThread. 
+* Fix a rare shutdown race in RocksDBShaCalculatorThread.
 
 * Reduce internal priority of AQL execution. This prevents possible deadlocks
   with modification operations in a cluster and replicationFactor >= 2, and can
