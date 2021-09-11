@@ -1,15 +1,13 @@
 v3.7.15 (XXXX-XX-XX)
 --------------------
 
-* (EE only) Bug-fix: If you created a ArangoSearch view on Satellite-
-  Collections only and then join with a collection only having a single
-  shard the cluster-one-shard-rule was falsely applied and could lead to
-  empty view results. The Rule will now detect the situation properly,
-  and not trigger.
+* (EE only) Bug-fix: If you created a ArangoSearch view on Satellite-Collections
+  only and then join with a collection only having a single shard the
+  cluster-one-shard-rule was falsely applied and could lead to empty view
+  results. The Rule will now detect the situation properly, and not trigger.
 
-* (EE only) If you have a query using only satellite collections,
-  now the cluster-one-shard-rule can be applied to improve
-  query performance.
+* (EE only) If you have a query using only satellite collections, now the
+  cluster-one-shard-rule can be applied to improve query performance.
 
 * Updated ArangoDB Starter to 0.15.2.
 
