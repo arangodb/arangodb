@@ -9,6 +9,9 @@ v3.7.15 (XXXX-XX-XX)
 * (EE only) If you have a query using only satellite collections, now the
   cluster-one-shard-rule can be applied to improve query performance.
 
+* No runtime limits for shard move and server cleanout jobs, instead possibility
+  to cancel them.
+
 * Updated ArangoDB Starter to 0.15.2.
 
 * Make statistics available in metrics API even if `--server.statistics` is set

@@ -212,6 +212,9 @@ void RestAqlHandler::setupClusterQuery() {
     return;
   }
 
+  LOG_TOPIC("f9e30", DEBUG, arangodb::Logger::AQL)
+    << "Setting up cluster AQL with " << querySlice.toJson();
+
   VPackSlice coordinatorRebootIdSlice = querySlice.get(StaticStrings::AttrCoordinatorRebootId);
   VPackSlice coordinatorIdSlice = querySlice.get(StaticStrings::AttrCoordinatorId);
   RebootId rebootId(0);
@@ -293,7 +296,7 @@ void RestAqlHandler::setupClusterQuery() {
     }
   }
   collectionBuilder.close();
-  
+
   // simon: making this write breaks queries where DOCUMENT function
   // is used in a coordinator-snippet above a DBServer-snippet
   AccessMode::Type access = AccessMode::Type::READ;
@@ -301,7 +304,7 @@ void RestAqlHandler::setupClusterQuery() {
   auto q = std::make_unique<ClusterQuery>(clusterQueryId, 
                                           createTransactionContext(access),
                                           std::move(options));
-  
+
   VPackBufferUInt8 buffer;
   VPackBuilder answerBuilder(buffer);
   answerBuilder.openObject();
@@ -476,7 +479,7 @@ RestStatus RestAqlHandler::execute() {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
                       "query with id " + suffixes[1] + " not found");
       }
-      
+
       break;
     }
 
@@ -775,7 +778,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     } else {
       items->toVelocyPack(&_engine->getQuery().vpackOptions(), answerBuilder);
     }
-    
+
   } else if (operation == "skipSome") {
     auto atMost = VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
                                                             ExecutionBlock::DefaultBatchSize);
@@ -860,12 +863,12 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
   }
 
   answerBuilder.close();
-  
+
   VPackOptions const* opts = &VPackOptions::Defaults;
   if (_engine) { // might be destroyed on shutdown
     opts = &_engine->getQuery().vpackOptions();
   }
-  
+
   generateResult(rest::ResponseCode::OK, std::move(answerBuffer), opts);
 
   return RestStatus::DONE;

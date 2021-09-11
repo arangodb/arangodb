@@ -1539,7 +1539,7 @@ static int clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbna
   for (auto const& sid : DBServers) {
     VPackBuffer<uint8_t> buffer(body.size());
     buffer.append(body);
-    auto f = network::sendRequest(pool, "server:" + sid, verb, path,
+    auto f = network::sendRequestRetry(pool, "server:" + sid, verb, path,
                                   std::move(buffer), reqOpts, headers);
     futures.emplace_back(std::move(f));
   }

@@ -676,8 +676,9 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
       reqOpts.timeout = network::Timeout(5.0 * 60.0);
       reqOpts.database = _vocbaseGuard.database().name();
       
-      responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
-                                                  path, std::move(buffer), reqOpts));
+      responses.emplace_back(network::sendRequestRetry(pool, "server:" + server,
+                                                  fuerte::RestVerb::Post, path,
+                                                  std::move(buffer), reqOpts));
       
       LOG_PREGEL("6ae66", DEBUG) << "Initializing Server " << server;
     }
@@ -899,7 +900,7 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
   std::vector<futures::Future<network::Response>> responses;
   
   for (auto const& server : _dbServers) {
-    responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
+    responses.emplace_back(network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Post,
                                                 base + path, buffer, reqOpts));
   }
   

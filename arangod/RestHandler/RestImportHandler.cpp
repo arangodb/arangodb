@@ -874,6 +874,7 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
       updateReplace.openArray();
       size_t pos = 0;
 
+      TRI_ASSERT(resultSlice.length() == babies.slice().length());
       for (VPackSlice it : VPackArrayIterator(resultSlice)) {
         if (!it.hasKey(StaticStrings::Error) || !it.get(StaticStrings::Error).getBool()) {
           ++result._numCreated;
