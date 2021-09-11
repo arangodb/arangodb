@@ -282,6 +282,7 @@ velocypack::Options const& transaction::Methods::vpackOptions() const {
 }
 
 /// @brief Find out if any of the given requests has ended in a refusal
+/// by a leader.
 static bool findRefusal(std::vector<futures::Try<network::Response>> const& responses) {
   for (auto const& it : responses) {
     if (it.hasValue() && it.get().ok() &&
@@ -312,7 +313,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
   _state = _transactionContext->acquireState(options, _mainTransaction);
   TRI_ASSERT(_state != nullptr);
 }
-  
+
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
                               std::string const& collectionName, AccessMode::Type type)
     : transaction::Methods(std::move(ctx), transaction::Options{}) {
@@ -626,7 +627,7 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
     std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
-      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
     }
   }
 
@@ -893,7 +894,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
       return futures::makeFuture(
-        OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options));
+        OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
     }
   }
 
@@ -1048,6 +1049,17 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
+
+    // This failure point is to test the case that a former leader has
+    // resigned in the meantime but still gets an insert request from
+    // a coordinator who does not know this yet. That is, the test sets
+    // the failure point on all servers, including the current leader.
+    TRI_IF_FAILURE("documents::insertLeaderRefusal") {
+      if (value.isObject() && value.hasKey("ThisIsTheRetryOnLeaderRefusalTest")) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
+      }
+    }
+
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
@@ -1223,7 +1235,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     }
   }
 
-  TRI_ASSERT(!value.isArray() || options.silent || resultBuilder.slice().length() == value.length()); 
+  TRI_ASSERT(!value.isArray() || options.silent || resultBuilder.slice().length() == value.length());
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
@@ -1236,7 +1248,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
     // Now replicate the good operations on all followers:
     return replicateOperations(collection.get(), followers, options, value,
-                               TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs, 
+                               TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs,
                                excludePositions, *collection->followers())
     .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) {
       if (!res.ok()) {
@@ -1492,7 +1504,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     res = workForOneDocument(newValue, false);
   }
 
-  TRI_ASSERT(!newValue.isArray() || options.silent || resultBuilder.slice().length() == newValue.length()); 
+  TRI_ASSERT(!newValue.isArray() || options.silent || resultBuilder.slice().length() == newValue.length());
 
   auto resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
@@ -1704,7 +1716,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     res = workForOneDocument(value, false);
   }
 
-  TRI_ASSERT(!value.isArray() || options.silent || resultBuilder.slice().length() == value.length()); 
+  TRI_ASSERT(!value.isArray() || options.silent || resultBuilder.slice().length() == value.length());
 
   auto resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
@@ -1777,7 +1789,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
     std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
-      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
     }
   }
 
@@ -1912,7 +1924,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
         // change it in the loop!
         network::Headers headers;
         ClusterTrxMethods::addTransactionHeader(*this, f, headers);
-        auto future = network::sendRequest(pool, "server:" + f, fuerte::RestVerb::Put,
+        auto future = network::sendRequestRetry(pool, "server:" + f, fuerte::RestVerb::Put,
                                            path, body, reqOpts, std::move(headers));
         futures.emplace_back(std::move(future));
       }
@@ -1931,10 +1943,10 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
             // intentionally do NOT remove the follower from the list of
             // known servers here. if we do, we will not be able to
             // send the commit/abort to the follower later. However, we
-            // still need to send the commit/abort to the follower at 
+            // still need to send the commit/abort to the follower at
             // transaction end, because the follower may be responsbile
-            // for _other_ shards as well. 
-            // it does not matter if we later commit the writes of the shard 
+            // for _other_ shards as well.
+            // it does not matter if we later commit the writes of the shard
             // from which we just removed the follower, because the follower
             // is now dropped and will try to get back in sync anyway, so
             // it will run the full shard synchronization process.
@@ -2390,7 +2402,7 @@ Future<Result> Methods::replicateOperations(
             opName = "insert w/ overwriteMode replace";
           } else if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
             opName = "insert w/ overwriteMode ingore";
-          } 
+          }
         }
         if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
           // extra parameters only required for update
@@ -2557,17 +2569,17 @@ Future<Result> Methods::replicateOperations(
             << "dropping follower " << follower << " for shard "
             << collection->vocbase().name() << "/" << collection->name()
             << ": failure reason: " << replicationFailureReason
-            << ", http response code: " << (int) resp.statusCode() 
+            << ", http response code: " << (int) resp.statusCode()
             << ", error message: " << resp.combinedResult().errorMessage();
 
           Result res = collection->followers()->remove(follower);
           // intentionally do NOT remove the follower from the list of
           // known servers here. if we do, we will not be able to
           // send the commit/abort to the follower later. However, we
-          // still need to send the commit/abort to the follower at 
+          // still need to send the commit/abort to the follower at
           // transaction end, because the follower may be responsbile
-          // for _other_ shards as well. 
-          // it does not matter if we later commit the writes of the shard 
+          // for _other_ shards as well.
+          // it does not matter if we later commit the writes of the shard
           // from which we just removed the follower, because the follower
           // is now dropped and will try to get back in sync anyway, so
           // it will run the full shard synchronization process.

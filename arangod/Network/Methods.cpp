@@ -326,11 +326,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       }
 
       case fuerte::Error::CouldNotConnect:
-      case fuerte::Error::ConnectionClosed:
-      case fuerte::Error::Timeout:
       case fuerte::Error::Canceled: {
-        // Note that this case includes the refusal of a leader to accept
-        // the operation, in which case we have to flush ClusterInfo:
 
         auto const now = std::chrono::steady_clock::now();
         auto tryAgainAfter = now - _startTime;
@@ -364,6 +360,11 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         break;
       }
 
+      case fuerte::Error::ConnectionClosed:
+      case fuerte::Error::Timeout:
+      // In these cases we have to report an error, since we cannot know
+      // if the request actually went out and was received and executed
+      // on the other side.
       default:  // a "proper error" which has to be returned to the client
         resolvePromise();
         break;
@@ -381,6 +382,11 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         resolvePromise();
         return true;  // done
 
+      case fuerte::StatusMisdirectedRequest:
+        // This is an expected leader refusing to execute an operation
+        // (which could consider itself a follower in the meantime).
+        // We need to retry to eventually wait for a failover and for us
+        // recognizing the new leader.
       case fuerte::StatusServiceUnavailable:
         return false;  // goto retry
 
@@ -390,6 +396,11 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
           return false;  // goto retry
         }
         [[fallthrough]];
+      case fuerte::StatusNotAcceptable:
+        // This is, for example, a follower refusing to do the bidding
+        // of a leader. Or, it could be a leader refusing a to do a
+        // replication. In both cases, we must not retry because we must
+        // drop the follower.
       default:  // a "proper error" which has to be returned to the client
         _tmp_err = Error::NoError;
         resolvePromise();

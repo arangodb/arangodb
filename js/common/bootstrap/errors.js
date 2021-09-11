@@ -167,7 +167,7 @@
     "ERROR_CLUSTER_INSUFFICIENT_DBSERVERS" : { "code" : 1487, "message" : "the number of current dbservers is lower than the requested replicationFactor" },
     "ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER" : { "code" : 1488, "message" : "a follower could not be dropped in agency" },
     "ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION" : { "code" : 1489, "message" : "a shard leader refuses to perform a replication operation" },
-    "ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION" : { "code" : 1490, "message" : "a shard follower refuses to perform an operation that is not a replication" },
+    "ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION" : { "code" : 1490, "message" : "a shard follower refuses to perform an operation" },
     "ERROR_CLUSTER_SHARD_LEADER_RESIGNED" : { "code" : 1491, "message" : "a (former) shard leader refuses to perform an operation, because it has resigned in the meantime" },
     "ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED" : { "code" : 1492, "message" : "some agency operation failed" },
     "ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING" : { "code" : 1495, "message" : "leadership challenge is ongoing" },

@@ -205,9 +205,13 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
                     resp->header.metaByKey(arangodb::StaticStrings::Location);
                 redirectOrError(man, endpoint, location);
                 return ::agencyAsyncInquiry(man, std::move(meta), std::move(body));
+              } else if (result.statusCode() != fuerte::StatusServiceUnavailable) {
+                // When hitting 503, i.e. no leader,  in multi-host agency, we need
+                // to keep inquiring until the agency becomes responsive again,
+                // i.e. 200/307 or timeout, which is correctly reported to the client.
+                return futures::makeFuture(AsyncAgencyCommResult{result.error, std::move(resp)});
               }
-              return futures::makeFuture(AsyncAgencyCommResult{result.error,
-                                                               std::move(resp)});  // otherwise return error as is
+              [[fallthrough]];
             case Error::Canceled:
               if (man.server().isStopping()) {
                 return futures::makeFuture(
@@ -312,7 +316,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
                     AsyncAgencyCommResult{result.error, std::move(resp)});
               }
 
-              // 503 redirect
+              // 307 redirect
               if (resp->statusCode() == StatusTemporaryRedirect) {
                 // get the Location header
                 std::string const& location =
@@ -332,7 +336,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
             }
 
             [[fallthrough]];
-            
+
             case Error::Canceled: {
               if (man.server().isStopping() || req == nullptr) {
                 return futures::makeFuture(
@@ -347,7 +351,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
             case Error::WriteError:
             case Error::ReadError:
             case Error::CloseRequested: {
-              TRI_ASSERT(req != nullptr); 
+              TRI_ASSERT(req != nullptr);
 
               // inquire the request
               man.reportError(endpoint);
