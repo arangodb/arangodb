@@ -1,8 +1,8 @@
 v3.7.15 (XXXX-XX-XX)
 --------------------
 
-* No runtime limits for shard move and server cleanout jobs, instead
-  possibility to cancel them.
+* No runtime limits for shard move and server cleanout jobs, instead possibility
+  to cancel them.
 
 * Updated ArangoDB Starter to 0.15.2.
 
