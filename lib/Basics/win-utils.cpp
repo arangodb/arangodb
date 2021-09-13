@@ -257,6 +257,52 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
   return fileDescriptor;
 }
 
+
+TRI_read_return_t TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
+  char* ptr = static_cast<char*>(Buffer);
+  size_t remainLength = length;
+  while (0 < remainLength) {
+    DWORD read;
+    if (ReadFile(fd, ptr, static_cast<DWORD>(remainLength), &read, nullptr)) {
+      ptr += read;
+      remainLength -= read;
+    } else {
+      auto err = GetLastError();
+      if (err == ERROR_NO_DATA) {
+        continue;
+      } else if (err == ERROR_BROKEN_PIPE) {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        LOG_TOPIC("87f53", ERR, arangodb::Logger::FIXME)
+          << "cannot read, end-of-file";
+        return static_cast<TRI_read_return_t>(length - remainLength);
+      } else {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        LOG_TOPIC("c9c0d", ERR, arangodb::Logger::FIXME) << "cannot read: " << TRI_LAST_ERROR_STR;
+        return static_cast<TRI_read_return_t>(length - remainLength);
+      }
+    }
+  }
+
+  return static_cast<TRI_read_return_t>(length);
+}
+
+bool TRI_WRITE_POINTER(HANDLE fd, void const* buffer, size_t length) {
+  char const* ptr = static_cast<char const*>(buffer);
+  while (0 < length) {
+    DWORD len = static_cast<DWORD>(length);
+    DWORD written = 0;
+    if (!WriteFile(fd, ptr, len, &written, nullptr)) {
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      LOG_TOPIC("420b2", ERR, arangodb::Logger::FIXME) << "cannot write: " << TRI_LAST_ERROR_STR;
+      return false;
+    }
+    ptr += written;
+    length -= written;
+  }
+
+  return true;
+}
+
 FILE* TRI_FOPEN(char const* filename, char const* mode) {
   icu::UnicodeString fn(filename);
   icu::UnicodeString umod(mode);

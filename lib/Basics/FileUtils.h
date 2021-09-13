@@ -145,9 +145,6 @@ std::string dirname(std::string const&);
 // returns the output of a program
 std::string slurpProgram(std::string const& program);
 
-// returns the output of a program
-int slurpProgramWithExitcode(std::string const& program, std::string& output);
-
 }  // namespace FileUtils
 }  // namespace basics
 }  // namespace arangodb

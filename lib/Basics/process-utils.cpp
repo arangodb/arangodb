@@ -211,7 +211,7 @@ ExternalProcess::~ExternalProcess() {
 ExternalProcessStatus::ExternalProcessStatus()
     : _status(TRI_EXT_NOT_STARTED), _exitStatus(0), _errorMessage() {}
 
-static ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
+ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
     auto found = std::find_if(ExternalProcesses.begin(), ExternalProcesses.end(),
@@ -959,6 +959,78 @@ void TRI_CreateExternalProcess(char const* executable,
     return;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reads from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ClosePipe(ExternalProcess* process,
+                   bool read) {
+  if (process == nullptr ||
+      (read && TRI_IS_INVALID_PIPE(process->_readPipe)) ||
+      (!read && TRI_IS_INVALID_PIPE(process->_writePipe))
+      ) {
+    return;
+  }
+
+  auto pipe = (read) ? &process->_readPipe : &process->_writePipe;
+  
+#ifndef _WIN32
+  if (*pipe != -1) {
+    FILE* stream = fdopen(*pipe, "w");
+    if (stream != nullptr) {
+      fflush(stream);
+    }
+    close(*pipe);
+    *pipe = -1;
+  }
+#else
+  if (*pipe != INVALID_HANDLE_VALUE) {
+    CloseHandle(*pipe);
+    *pipe = INVALID_HANDLE_VALUE;
+  }
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reads from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
+                               char* buffer,
+                               size_t bufferSize) {
+  if (process == nullptr || TRI_IS_INVALID_PIPE(process->_readPipe)) {
+    return 0;
+  }
+
+  memset(buffer, 0, bufferSize);
+
+#ifndef _WIN32
+  return TRI_ReadPointer(process->_readPipe, buffer, bufferSize);
+#else
+  return TRI_READ_POINTER(process->_readPipe, buffer, bufferSize);
+#endif
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_WritePipe(ExternalProcess const* process,
+                   char const* buffer,
+                   size_t bufferSize) {
+  if (process == nullptr || TRI_IS_INVALID_PIPE(process->_writePipe)) {
+    return false;
+  }
+
+#ifndef _WIN32
+  return TRI_WritePointer(process->_writePipe, buffer, bufferSize);
+#else
+  return TRI_WRITE_POINTER(process->_writePipe, buffer, bufferSize);
+#endif
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
