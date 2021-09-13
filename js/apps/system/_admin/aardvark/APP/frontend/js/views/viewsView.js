@@ -281,7 +281,9 @@
       primarySortTableContent.push(
         window.modalView.createTableEntry(
           'newPrimarySort',
-          'Primary Sort',
+          {
+            noLabel: true // Dummy object. Entry will only be created if this is set as a String.
+          },
           ['Field', 'Direction'],
           [[
             window.modalView.createTextEntry(
@@ -317,7 +319,9 @@
       storedValuesTableContent.push(
         window.modalView.createTableEntry(
           'newStoredValues',
-          'Stored Values',
+          {
+            noLabel: true // Dummy object. Entry will only be created if this is set as a String.
+          },
           ['Fields (one per line)', 'Compression'],
           [[
             window.modalView.createBlobEntry(
