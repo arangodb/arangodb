@@ -56,12 +56,10 @@ class IndexHint {
   std::string typeName() const;
   std::string toString() const;
 
-  bool isTryNewIndex() const noexcept { return _tryNewIndex; }
   size_t getLookahead() const noexcept { return _lookahead; }
  private:
   HintType _type;
   bool _forced;
-  bool _tryNewIndex = false;
   size_t _lookahead = 1;
 
   // actual hint is a recursive structure, with the data type determined by the

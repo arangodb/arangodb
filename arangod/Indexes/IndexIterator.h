@@ -285,11 +285,9 @@ struct IndexIteratorOptions {
   bool evaluateFCalls = true;
   /// @brief enable caching
   bool enableCache = true;
-  /// @brief whether trying the new zkd index method
-  bool tryNewIndex = false;
   /// @brief number of lookahead elements considered before computing the next
   /// intersection of the Z-curve with the search range
-  size_t lookahead = 1;
+  size_t lookahead = 2;
 };
   
 /// index estimate map, defined here because it was convenient
