@@ -115,7 +115,7 @@ function createInput(row) {
     }
 }
 
-function generateAdvancedSection(header, content) { console.log(header)%>
+function generateAdvancedSection(header, content) { %>
 <div class="accordion" id="accordion<%=advancedCounter%>">
   <div class="accordion-group">
     <div class="accordion-heading">
@@ -148,7 +148,12 @@ var createTR = function(row) {
 %>
 
 <tr class="tableRow" id="<%= 'row_' + row.id %>">
-    <th class="collectionTh"><%= row.label%><%= mandatory %>:</th>
+  <% if (typeof row.label === 'string') { %>
+    <th class="collectionTh">
+      <%= row.label%><%= mandatory %>:
+    </th>
+  <% } %>
+
     <th class="collectionTh"<%= row.info ? '' : ' colspan="2"' %>>
         <% createInput(row) %>
         <% if (row.info) { %>
