@@ -724,7 +724,7 @@ std::string slurpProgram(std::string const& program) {
 
     LOG_TOPIC("a557b", TRACE, arangodb::Logger::FIXME)
       << "open failed for file '" << program
-      << "': " << TRI_last_error());
+      << "': " << TRI_last_error();
     THROW_ARANGO_EXCEPTION(res);
   }
   process = TRI_LookupSpawnedProcess(external._pid);
@@ -733,7 +733,7 @@ std::string slurpProgram(std::string const& program) {
 
     LOG_TOPIC("a557c", TRACE, arangodb::Logger::FIXME)
       << "process gone? '" << program
-      << "': " << TRI_last_error());
+      << "': " << TRI_last_error();
     THROW_ARANGO_EXCEPTION(res);
   }
   while (res = TRI_CheckExternalProcess(external, false, 0),
