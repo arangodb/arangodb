@@ -274,7 +274,7 @@
         type: this.tables.TABLE,
         head,
         rows,
-        style
+        style: style + " ; display: table; "
       };
     },
 
