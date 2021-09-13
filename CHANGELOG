@@ -1,6 +1,12 @@
 devel
 -----
 
+* APM-70: allow PRUNE condition to be stored in a variable.
+
+  This feature allows the PRUNE condition to be stored in a variable, and 
+  this variable can be used as a condition for some other statement, such 
+  as FILTER.
+
 * Allow startup of arangod with an existing database directory that was missing
   the ZkdIndex column family.
 
