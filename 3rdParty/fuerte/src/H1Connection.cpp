@@ -194,15 +194,17 @@ void H1Connection<ST>::finishConnect() {
   // If it has already gone off, we might have a completion handler
   // already posted on the iocontext. However, this will not touch anything
   // if we have first set the state to `Connected`.
-  FUERTE_ASSERT(this->_active.load());
   auto exp = Connection::State::Connecting;
   if (this->_state.compare_exchange_strong(exp, Connection::State::Connected)) {
+    FUERTE_ASSERT(this->_active.load());
     this->asyncWriteNextRequest();  // starts writing if queue non-empty
   } else {
     FUERTE_LOG_ERROR << "finishConnect: found state other than 'Connecting': "
                      << static_cast<int>(exp);
-    FUERTE_ASSERT(false);
-    // If this happens, we probably have a sleeping barber
+    FUERTE_ASSERT(exp == Connection::State::Closed);
+    // If this happens, then the connection has been shut down before
+    // it could be fully connected, but the completion handler of the
+    // connect call was still scheduled. No more work to do.
   }
 }
 

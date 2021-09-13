@@ -251,7 +251,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
     return false;
   }
 
-  auto guard = scopeGuard([&content] { TRI_FreeString(content); });
+  auto guard = scopeGuard([&content]() noexcept { TRI_FreeString(content); });
 
   if (content == nullptr) {
     LOG_TOPIC("89c6f", ERR, arangodb::Logger::FIXME)

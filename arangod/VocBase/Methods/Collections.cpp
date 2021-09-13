@@ -613,7 +613,8 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
     ignoreKeys.insert({StaticStrings::DistributeShardsLike, StaticStrings::IsSmart,
                        StaticStrings::NumberOfShards, StaticStrings::ReplicationFactor,
                        StaticStrings::MinReplicationFactor,
-                       StaticStrings::ShardKeys, StaticStrings::ShardingStrategy});
+                       StaticStrings::ShardKeys, StaticStrings::ShardingStrategy,
+                       StaticStrings::IsDisjoint});
 
     // this transaction is held longer than the following if...
     auto trx = ctxt.trx(AccessMode::Type::READ, true, false);
@@ -951,7 +952,7 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt,
     }
 
     // We directly read the entire cursor. so batchsize == limit
-    auto iterator = trx.indexScan(cname, transaction::Methods::CursorType::ALL);
+    auto iterator = trx.indexScan(cname, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
     iterator->allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
       cb(doc.resolveExternal());
@@ -990,7 +991,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   checksum = 0;
 
   // We directly read the entire cursor. so batchsize == limit
-  auto iterator = trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL);
+  auto iterator = trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments([&](LocalDocumentId const& /*token*/, VPackSlice slice) {
     uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString();

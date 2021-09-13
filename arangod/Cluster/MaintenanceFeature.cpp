@@ -1133,7 +1133,7 @@ bool MaintenanceFeature::lockShard(
   return pair.second;
 }
 
-bool MaintenanceFeature::unlockShard(ShardID const& shardId) {
+bool MaintenanceFeature::unlockShard(ShardID const& shardId) noexcept {
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
   auto it = _shardActionMap.find(shardId);
   if (it == _shardActionMap.end()) {

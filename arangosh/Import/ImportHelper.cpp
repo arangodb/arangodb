@@ -265,7 +265,7 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
   }
   parser._dataAdd = this;
 
-  auto guard = scopeGuard([&parser]() {
+  auto guard = scopeGuard([&parser]() noexcept {
     TRI_DestroyCsvParser(&parser);
   });
   

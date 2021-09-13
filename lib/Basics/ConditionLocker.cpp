@@ -55,7 +55,7 @@ ConditionLocker::ConditionLocker(ConditionVariable* conditionVariable,
 
 #else
 
-ConditionLocker::ConditionLocker(ConditionVariable* conditionVariable)
+ConditionLocker::ConditionLocker(ConditionVariable* conditionVariable) noexcept
     : _conditionVariable(conditionVariable), _isLocked(true) {
   _conditionVariable->lock();
 }
@@ -93,13 +93,13 @@ bool ConditionLocker::wait(std::chrono::microseconds timeout) {
 }
 
 /// @brief broadcasts an event
-void ConditionLocker::broadcast() { _conditionVariable->broadcast(); }
+void ConditionLocker::broadcast() noexcept { _conditionVariable->broadcast(); }
 
 /// @brief signals an event
-void ConditionLocker::signal() { _conditionVariable->signal(); }
+void ConditionLocker::signal() noexcept { _conditionVariable->signal(); }
 
 /// @brief unlocks the variable (handle with care, no exception allowed)
-void ConditionLocker::unlock() {
+void ConditionLocker::unlock() noexcept {
   if (_isLocked) {
     _conditionVariable->unlock();
     _isLocked = false;
@@ -107,7 +107,7 @@ void ConditionLocker::unlock() {
 }
 
 /// @brief relock the variable after unlock
-void ConditionLocker::lock() {
+void ConditionLocker::lock() noexcept {
   TRI_ASSERT(!_isLocked);
   _conditionVariable->lock();
   _isLocked = true;

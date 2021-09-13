@@ -198,12 +198,14 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/PathManagement/PathStore.cpp
   Graph/PathManagement/PathStoreTracer.cpp
   Graph/PathManagement/PathValidator.cpp
+  Graph/PathManagement/PathValidatorOptions.cpp
   Graph/Options/OneSidedEnumeratorOptions.cpp
   Graph/Options/TwoSidedEnumeratorOptions.cpp
   Graph/Providers/ClusterProvider.cpp
   Graph/Providers/SingleServerProvider.cpp
   Graph/Providers/BaseProviderOptions.cpp
   Graph/Providers/ProviderTracer.cpp
+  Graph/Steps/SingleServerProviderStep.cpp
   Graph/Types/UniquenessLevel.cpp
   Graph/Types/ValidationResult.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
@@ -419,6 +421,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SubqueryStartExecutor.cpp
   Aql/Timing.cpp
   Aql/TraversalConditionFinder.cpp
+  Aql/TraverserEngineShardLists.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
   Aql/UnsortedGatherExecutor.cpp
@@ -566,7 +569,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/types.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
-  )
+)
 
 set (LIB_ARANGO_METRICS_SOURCES
   RestServer/Metrics.cpp
@@ -742,6 +745,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
   RestHandler/RestSupervisionStateHandler.cpp
+  RestHandler/RestSupportInfoHandler.cpp
   RestHandler/RestSystemReportHandler.cpp
   RestHandler/RestTasksHandler.cpp
   RestHandler/RestTimeHandler.cpp
@@ -761,6 +765,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
+  RestServer/EnvironmentFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FlushFeature.cpp
   RestServer/FortuneFeature.cpp
@@ -768,6 +773,8 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/InitDatabaseFeature.cpp
   RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
+  RestServer/LogBufferFeature.cpp
+  RestServer/MaxMapCountFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
@@ -820,7 +827,10 @@ if (USE_MAINTAINER_MODE)
 endif()
 
 if (NOT MSVC)
-  set(LIB_ARANGOSERVER_SOURCES ${LIB_ARANGOSERVER_SOURCES} GeneralServer/AcceptorUnixDomain.cpp)
+  set(LIB_ARANGOSERVER_SOURCES ${LIB_ARANGOSERVER_SOURCES} 
+    GeneralServer/AcceptorUnixDomain.cpp
+    RestServer/DaemonFeature.cpp
+    RestServer/SupervisorFeature.cpp)
 endif()
 
 include(ClusterEngine/CMakeLists.txt)

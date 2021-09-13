@@ -60,10 +60,10 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
  public:
   RocksDBZkdIndexIterator(LogicalCollection* collection, RocksDBZkdIndexBase* index,
                           transaction::Methods* trx, zkd::byte_string min,
-                          zkd::byte_string max, std::size_t dim,
-                          bool tryNewIndex,
+                          zkd::byte_string max, std::size_t dim, ReadOwnWrites readOwnWrites,
+			  bool tryNewIndex,
                           size_t lookahead)
-      : IndexIterator(collection, trx),
+      : IndexIterator(collection, trx, readOwnWrites),
         _bound(RocksDBKeyBounds::ZkdIndex(index->objectId())),
         _min(std::move(min)),
         _max(std::move(max)),
@@ -222,7 +222,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
 
     return true;
   }
-
+ private:
   RocksDBKeyBounds _bound;
   rocksdb::Slice _upperBound;
   zkd::byte_string _cur;
@@ -578,25 +578,27 @@ arangodb::aql::AstNode* arangodb::RocksDBZkdIndexBase::specializeCondition(
 
 std::unique_ptr<IndexIterator> arangodb::RocksDBZkdIndexBase::iteratorForCondition(
     arangodb::transaction::Methods* trx, const arangodb::aql::AstNode* node,
-    const arangodb::aql::Variable* reference, const arangodb::IndexIteratorOptions& opts) {
+    const arangodb::aql::Variable* reference, const arangodb::IndexIteratorOptions& opts,
+    ReadOwnWrites readOwnWrites) {
 
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
   return std::make_unique<RocksDBZkdIndexIterator<false>>(&_collection, this, trx,
                                                    std::move(min), std::move(max),
-                                                   fields().size(), opts.tryNewIndex, opts.lookahead);
+                                                   fields().size(), readOwnWrites, opts.tryNewIndex, opts.lookahead);
 }
 
 
 std::unique_ptr<IndexIterator> arangodb::RocksDBUniqueZkdIndex::iteratorForCondition(
     arangodb::transaction::Methods* trx, const arangodb::aql::AstNode* node,
-    const arangodb::aql::Variable* reference, const arangodb::IndexIteratorOptions& opts) {
+    const arangodb::aql::Variable* reference, const arangodb::IndexIteratorOptions& opts,
+    ReadOwnWrites readOwnWrites) {
 
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
   return std::make_unique<RocksDBZkdIndexIterator<true>>(&_collection, this, trx,
                                                           std::move(min), std::move(max),
-                                                          fields().size(), opts.tryNewIndex, opts.lookahead);
+                                                          fields().size(), readOwnWrites, opts.tryNewIndex, opts.lookahead);
 }
 
 arangodb::Result arangodb::RocksDBUniqueZkdIndex::insert(

@@ -135,7 +135,7 @@ arangodb::LogicalDataSource::Type const& readType(arangodb::velocypack::Slice in
 
 // The Slice contains the part of the plan that
 // is relevant for this collection.
-LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& info, bool isAStub)
+LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info, bool isAStub)
     : LogicalDataSource(
           LogicalCollection::category(),
           ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN), vocbase,
@@ -398,9 +398,18 @@ ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice sli
 }
 
 /// @briefs creates a new document key, the input slice is ignored here
-std::string LogicalCollection::createKey(VPackSlice) {
+std::string LogicalCollection::createKey(VPackSlice input) {
+  if (isSatToSmartEdgeCollection() || isSmartToSatEdgeCollection()) {
+    return createSmartToSatKey(input);
+  }
   return keyGenerator()->generate();
 }
+
+#ifndef USE_ENTERPRISE
+std::string LogicalCollection::createSmartToSatKey(VPackSlice) {
+  return keyGenerator()->generate();
+}
+#endif
 
 void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(_physical != nullptr);
@@ -413,8 +422,8 @@ void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   _physical->prepareIndexes(indexesSlice);
 }
 
-std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(transaction::Methods* trx) {
-  return _physical->getAllIterator(trx);
+std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(transaction::Methods* trx, ReadOwnWrites readOwnWrites) {
+  return _physical->getAllIterator(trx, readOwnWrites);
 }
 
 std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(transaction::Methods* trx) {
@@ -610,9 +619,7 @@ Result LogicalCollection::rename(std::string&& newName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-ErrorCode LogicalCollection::close() {
-  return getPhysical()->close();
-}
+ErrorCode LogicalCollection::close() { return getPhysical()->close(); }
 
 arangodb::Result LogicalCollection::drop() {
   // make sure collection has been closed
@@ -832,7 +839,7 @@ void LogicalCollection::includeVelocyPackEnterprise(VPackBuilder&) const {
 
 void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
 
-arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, bool) {
+arangodb::Result LogicalCollection::properties(velocypack::Slice slice, bool) {
   // the following collection properties are intentionally not updated,
   // as updating them would be very complicated:
   // - _cid
@@ -1029,7 +1036,7 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(std::string const& idxName
   return getPhysical()->lookupIndex(idxName);
 }
 
-std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice const& info) const {
+std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice info) const {
   if (!info.isObject()) {
     // Compatibility with old v8-vocindex.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1037,7 +1044,7 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice const& info) co
   return getPhysical()->lookupIndex(info);
 }
 
-std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice const& info, bool& created) {
+std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info, bool& created) {
   auto idx = _physical->createIndex(info, /*restore*/ false, created);
   if (idx) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();
@@ -1080,7 +1087,7 @@ void LogicalCollection::persistPhysicalCollection() {
   engine.createCollection(vocbase(), *this);
 }
 
-basics::ReadWriteLock& LogicalCollection::statusLock() { return _statusLock; }
+basics::ReadWriteLock& LogicalCollection::statusLock() noexcept { return _statusLock; }
 
 /// @brief Defer a callback to be executed when the collection
 ///        can be dropped. The callback is supposed to drop
@@ -1223,6 +1230,10 @@ void LogicalCollection::setInternalValidatorTypes(uint64_t type) {
   _internalValidatorTypes = type;
 }
 
+uint64_t LogicalCollection::getInternalValidatorTypes() const {
+  return _internalValidatorTypes;
+}
+
 void LogicalCollection::addInternalValidator(std::unique_ptr<arangodb::ValidatorBase> validator) {
   // For the time beeing we only allow ONE internal validator.
   // This however is a non-necessary restriction and can be leveraged at any
@@ -1250,6 +1261,14 @@ bool LogicalCollection::isRemoteSmartEdgeCollection() const noexcept {
 
 bool LogicalCollection::isSmartEdgeCollection() const noexcept {
   return (_internalValidatorTypes & InternalValidatorType::LogicalSmartEdge) != 0;
+}
+
+bool LogicalCollection::isSatToSmartEdgeCollection() const noexcept {
+  return (_internalValidatorTypes & InternalValidatorType::SatToSmartEdge) != 0;
+}
+
+bool LogicalCollection::isSmartToSatEdgeCollection() const noexcept {
+  return (_internalValidatorTypes & InternalValidatorType::SmartToSatEdge) != 0;
 }
 
 #ifndef USE_ENTERPRISE

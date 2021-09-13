@@ -91,11 +91,11 @@ struct basic_sort : irs::sort {
     explicit prepared_sort(size_t idx) : idx(idx) {
     }
 
-    const irs::flags& features() const override {
-      return irs::flags::empty_instance();
+    virtual irs::IndexFeatures features() const override {
+      return irs::IndexFeatures::NONE;
     }
 
-    irs::score_function prepare_scorer(
+    virtual irs::score_function prepare_scorer(
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,
@@ -9880,10 +9880,22 @@ TEST(disjunction_test, next) {
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      size_t heap{0};
+      auto visitor = [](void* ptr, disjunction::adapter& iter) {
+        EXPECT_FALSE(irs::doc_limits::eof(iter.doc->value));
+        auto pval = static_cast<uint32_t*>(ptr); 
+        *pval = *pval + 1;
+        return true;
+      };
       for ( ; it.next(); ) {
         result.push_back( it.value() );
+        it.visit(&heap, visitor);
       }
+      ASSERT_GT(heap, 0); // some iterators should be visited
+      heap = 0;
       ASSERT_FALSE(it.next());
+      it.visit(&heap, visitor);
+      ASSERT_EQ(0, heap); // nothing to visit
       ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
 
@@ -15130,7 +15142,7 @@ TEST(Or_test, boosted_not) {
 
 #endif // IRESEARCH_DLL
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   boolean_filter_test,
   boolean_filter_test_case,
   ::testing::Combine(

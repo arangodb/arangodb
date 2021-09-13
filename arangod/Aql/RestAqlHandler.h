@@ -42,7 +42,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestAqlHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLUSTER_AQL; }
+  RequestLane lane() const override final;
   RestStatus execute() override;
   RestStatus continueExecute() override;
   void shutdownExecute(bool isFinalized) noexcept override;

@@ -25,13 +25,15 @@
 
 #include "shared.hpp"
 
+namespace iresearch {
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class range
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
 class range {
  public:
-  typedef T value_type;
+  using value_type = T;
 
   constexpr range() noexcept: begin_(nullptr), end_(nullptr) {}
   constexpr range(value_type* data, size_t size) noexcept: begin_(data), end_(data + size) {}
@@ -47,10 +49,18 @@ class range {
   constexpr value_type* end() noexcept { return end_; }
   constexpr const value_type* begin() const noexcept { return begin_; }
   constexpr const value_type* end() const noexcept { return end_; }
+  constexpr bool operator==(const range& rhs) const noexcept {
+    return std::equal(begin_, end_, rhs.begin_, rhs.end_);
+  }
+  constexpr bool operator!=(const range& rhs) const noexcept {
+    return !(*this == rhs);
+  }
 
  private:
   T* begin_;
   T* end_;
 }; // range
+
+}
 
 #endif // IRESEARCH_RANGE_H

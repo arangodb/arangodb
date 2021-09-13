@@ -131,11 +131,12 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
         auto const numParticipants = newLeaderSet.size();
         if (ADB_UNLIKELY(numParticipants == 0 ||
                          numParticipants > std::numeric_limits<uint16_t>::max())) {
-          ASSERT_OR_THROW_ARANGO_EXCEPTION_MESSAGE(
+          abortOrThrow(
               TRI_ERROR_NUMERIC_OVERFLOW,
               basics::StringUtils::concatT(
                   "Number of participants out of range, should be between ", 1,
-                  " and ", std::numeric_limits<uint16_t>::max(), ", but is ", numParticipants));
+                  " and ", std::numeric_limits<uint16_t>::max(), ", but is ", numParticipants),
+              ADB_HERE);
         }
         auto const maxIdx = static_cast<uint16_t>(numParticipants - 1);
         // Randomly select one of the best participants
@@ -222,8 +223,6 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
                             TermIndexPair{lastEntry->entry().logTerm(),
                                           lastEntry->entry().logIndex() + 1});
     } else {
-      // this can only happen if we drop log entries, check the code below before removing the assert
-      TRI_ASSERT(false);
       TRI_ASSERT(prevLog.index < lastEntry->entry().logIndex());
       TRI_ASSERT(prevLog.index < log.getFirstEntry()->entry().logIndex());
       // the given index too old, reset to (0, 0)

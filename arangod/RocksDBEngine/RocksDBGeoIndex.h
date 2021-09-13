@@ -60,7 +60,8 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
                                                       arangodb::aql::AstNode const* node,
                                                       arangodb::aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts) override;
+                                                      IndexIteratorOptions const& opts,
+                                                      ReadOwnWrites readOwnWrites) override;
 
   bool canBeDropped() const override { return true; }
 

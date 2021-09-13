@@ -61,8 +61,10 @@ class IRESEARCH_API by_ngram_similarity
  public:
   DECLARE_FACTORY();
 
-  // returns set of features required for filter 
-  static const flags& features();
+  // returns set of features required for filter
+  static constexpr IndexFeatures required() noexcept {
+    return IndexFeatures::FREQ | IndexFeatures::POS;
+  }
 
   using filter::prepare;
 

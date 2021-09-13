@@ -178,7 +178,7 @@ auto zkd::RandomBitReader::getBit(std::size_t index) const -> Bit {
     return Bit::ZERO;
   }
 
-  auto b = _ref[byte] & (1_b << (7 - nibble));
+  auto b = (_ref[byte] >> (7 - nibble)) & 1_b;
   return b != 0_b ? Bit::ONE : Bit::ZERO;
 }
 
@@ -208,7 +208,11 @@ auto zkd::RandomBitManipulator::setBit(std::size_t index, Bit value) -> void {
     _ref.resize(byte + 1);
   }
   auto bit = 1_b << (7 - nibble);
-  _ref[byte] = (_ref[byte] & ~bit) | (value == Bit::ONE ? bit : 0_b);
+  if (value == Bit::ONE) {
+    _ref[byte] |= bit;
+  } else {
+    _ref[byte] &= ~bit;
+  }
 }
 
 auto zkd::RandomBitManipulator::bits() const -> std::size_t {

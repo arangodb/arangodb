@@ -134,6 +134,25 @@ Note: Make sure that your source path does not contain spaces otherwise the buil
 ArangoDB uses a build system called [Oskar](https://github.com/arangodb/oskar).
 Please refer to the documentation of Oskar for details.
 
+Optimizations and limit of architecture (list of possible CPU instuctions) are set using this `cmake` option
+in addition to the other options:
+
+```
+-DTARGET_ARCHITECTURE
+```
+
+Oskar uses predefined architecture which is defined in `./VERSIONS` file or `westmere` if it's not defined.
+
+Note: if you use more modern architecture for optimizations or any additional implementation with extended
+set of CPU instructions please notice that result could be different to the default one.
+
+If you would like to disable architecture-specific optimizations or your CPU architecture isn't recognized
+by `cmake` module the following option could be used:
+
+```
+-DUSE_OPTIMIZE_FOR_ARCHITECTURE="OFF"
+```
+
 For building the ArangoDB starter checkout the
 [ArangoDB Starter](https://github.com/arangodb-helper/arangodb).
 

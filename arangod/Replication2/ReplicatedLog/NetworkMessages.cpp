@@ -60,6 +60,7 @@ AppendEntriesRequest::AppendEntriesRequest(AppendEntriesRequest&& other) noexcep
       leaderId(std::move(other.leaderId)),
       prevLogEntry(other.prevLogEntry),
       leaderCommit(other.leaderCommit),
+      largestCommonIndex(other.largestCommonIndex),
       messageId(other.messageId),
       entries(std::move(other.entries)),
       waitForSync(other.waitForSync) {
@@ -108,6 +109,7 @@ auto AppendEntriesRequest::operator=(replicated_log::AppendEntriesRequest&& othe
   leaderId = std::move(other.leaderId);
   prevLogEntry = other.prevLogEntry;
   leaderCommit = other.leaderCommit;
+  largestCommonIndex = other.largestCommonIndex;
   messageId = other.messageId;
   waitForSync = other.waitForSync;
   entries = std::move(other.entries);
@@ -203,27 +205,27 @@ auto replicated_log::AppendEntriesResult::withConflict(LogTerm term,
                                                        replicated_log::MessageId id,
                                                        TermIndexPair conflict) noexcept
 -> replicated_log::AppendEntriesResult {
-  return AppendEntriesResult(term, id, conflict);
+  return {term, id, conflict};
 }
 
 auto replicated_log::AppendEntriesResult::withRejection(LogTerm term, MessageId id,
                                                         AppendEntriesErrorReason reason) noexcept
 -> AppendEntriesResult {
-  return AppendEntriesResult(term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                             reason, id);
+  return {term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+                             reason, id};
 }
 
 auto replicated_log::AppendEntriesResult::withPersistenceError(LogTerm term,
                                                                replicated_log::MessageId id,
                                                                Result const& res) noexcept
 -> replicated_log::AppendEntriesResult {
-  return AppendEntriesResult(term, res.errorNumber(),
-                             AppendEntriesErrorReason::PERSISTENCE_FAILURE, id);
+  return {term, res.errorNumber(),
+                             AppendEntriesErrorReason::PERSISTENCE_FAILURE, id};
 }
 
 auto replicated_log::AppendEntriesResult::withOk(LogTerm term, replicated_log::MessageId id) noexcept
 -> replicated_log::AppendEntriesResult {
-  return AppendEntriesResult(term, id);
+  return {term, id};
 }
 
 auto replicated_log::AppendEntriesResult::isSuccess() const noexcept -> bool {
@@ -238,6 +240,7 @@ void replicated_log::AppendEntriesRequest::toVelocyPack(velocypack::Builder& bui
     builder.add(VPackValue("prevLogEntry"));
     prevLogEntry.toVelocyPack(builder);
     builder.add("leaderCommit", VPackValue(leaderCommit.value));
+    builder.add("largestCommonIndex", VPackValue(largestCommonIndex.value));
     builder.add("messageId", VPackValue(messageId));
     builder.add("waitForSync", VPackValue(waitForSync));
     builder.add("entries", VPackValue(VPackValueType::Array));
@@ -254,6 +257,7 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slic
   auto leaderId = ParticipantId{slice.get("leaderId").copyString()};
   auto prevLogEntry = TermIndexPair::fromVelocyPack(slice.get("prevLogEntry"));
   auto leaderCommit = slice.get("leaderCommit").extract<LogIndex>();
+  auto largestCommonIndex = slice.get("largestCommonIndex").extract<LogIndex>();
   auto messageId = slice.get("messageId").extract<MessageId>();
   auto waitForSync = slice.get("waitForSync").extract<bool>();
   auto entries = std::invoke([&] {
@@ -266,19 +270,20 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slic
     return std::move(transientEntries).persistent();
   });
 
-  return AppendEntriesRequest{leaderTerm,        leaderId,  prevLogEntry,
-                              leaderCommit,      messageId, waitForSync,
-                              std::move(entries)};
+  return AppendEntriesRequest{leaderTerm,   leaderId,           prevLogEntry,
+                              leaderCommit, largestCommonIndex, messageId,
+                              waitForSync,  std::move(entries)};
 }
 
 replicated_log::AppendEntriesRequest::AppendEntriesRequest(
     LogTerm leaderTerm, ParticipantId leaderId, TermIndexPair prevLogEntry,
-    LogIndex leaderCommit, replicated_log::MessageId messageId,
-    bool waitForSync, EntryContainer entries)
+    LogIndex leaderCommit, LogIndex largestCommonIndex,
+    replicated_log::MessageId messageId, bool waitForSync, EntryContainer entries)
     : leaderTerm(leaderTerm),
       leaderId(std::move(leaderId)),
       prevLogEntry(prevLogEntry),
       leaderCommit(leaderCommit),
+      largestCommonIndex(largestCommonIndex),
       messageId(messageId),
       entries(std::move(entries)),
       waitForSync(waitForSync) {}

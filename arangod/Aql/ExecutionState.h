@@ -25,8 +25,7 @@
 
 #include <iosfwd>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 enum class ExecutionState {
   // done with this block, definitely no more results
@@ -57,5 +56,4 @@ std::ostream& operator<<(std::ostream& ostream, ExecutionState state);
 
 std::ostream& operator<<(std::ostream& ostream, ExecutorState state);
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

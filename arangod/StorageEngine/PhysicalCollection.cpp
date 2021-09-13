@@ -359,7 +359,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
   VPackSlice s = value.get(StaticStrings::KeyString);
   if (s.isNone()) {
     TRI_ASSERT(!isRestore);  // need key in case of restore
-    auto keyString = _logicalCollection.keyGenerator()->generate();
+    auto keyString = _logicalCollection.createKey(value);
 
     if (keyString.empty()) {
       return Result(TRI_ERROR_ARANGO_OUT_OF_KEYS);
@@ -578,16 +578,18 @@ std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
 
 void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
                                          std::function<bool(Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const {
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   result.openArray();
-  for (std::shared_ptr<Index> const& idx : _indexes) {
-    std::underlying_type<Index::Serialize>::type flags = Index::makeFlags();
+  {
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    for (std::shared_ptr<Index> const& idx : _indexes) {
+      std::underlying_type<Index::Serialize>::type flags = Index::makeFlags();
 
-    if (!filter(idx.get(), flags)) {
-      continue;
+      if (!filter(idx.get(), flags)) {
+        continue;
+      }
+
+      idx->toVelocyPack(result, flags);
     }
-
-    idx->toVelocyPack(result, flags);
   }
   result.close();
 }

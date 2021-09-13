@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include "Aql/types.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
+#include "Aql/types.h"
 #include "Cluster/ClusterTypes.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
@@ -81,10 +81,13 @@ class GraphNode : public ExecutionNode {
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
  public:
+  // QueryPlan decided that we use this graph as a satellite
   bool isUsedAsSatellite() const;
+  // Defines whether a GraphNode can fully be pushed down to a DBServer
   bool isLocalGraphNode() const;
+  // Will wait as soon as any of our collections is a satellite (in sync)
   void waitForSatelliteIfRequired(ExecutionEngine const* engine) const;
-
+  // Can be fully pushed down to a DBServer and is available on all DBServers
   bool isEligibleAsSatelliteTraversal() const;
 
  protected:
@@ -186,8 +189,8 @@ class GraphNode : public ExecutionNode {
   void injectVertexCollection(aql::Collection& other);
 
   std::vector<aql::Collection const*> collections() const;
-  void setCollectionToShard(std::map<std::string, std::string> const& map) {
-    _collectionToShard = map;
+  void resetCollectionToShard() {
+    _collectionToShard.clear();
   }
   void addCollectionToShard(std::string const& coll, std::string const& shard) {
     // NOTE: Do not replace this by emplace or insert.
@@ -197,11 +200,26 @@ class GraphNode : public ExecutionNode {
 
   graph::Graph const* graph() const noexcept;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // Internal helpers used in tests to modify enterprise detections.
+  // These should not be used in production, as their detection
+  // is implemented in constructors.
+  void setIsSmart(bool target) {
+    _isSmart = target;
+  }
+
+  void setIsDisjoint(bool target) {
+    _isDisjoint = target;
+  }
+#endif
  protected:  
   void doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const override;
 
+  void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone, bool withProperties) const;
+
  private:
-  void addEdgeCollection(aql::Collections const& collections, std::string const& name, TRI_edge_direction_e dir);
+  void addEdgeCollection(aql::Collections const& collections,
+                         std::string const& name, TRI_edge_direction_e dir);
   void addEdgeCollection(aql::Collection& collection, TRI_edge_direction_e dir);
   void addVertexCollection(aql::Collections const& collections, std::string const& name);
   void addVertexCollection(aql::Collection& collection);
@@ -264,7 +282,7 @@ class GraphNode : public ExecutionNode {
   std::unordered_map<ServerID, aql::EngineId> _engines;
 
   /// @brief list of shards involved, required for one-shard-databases
-  std::map<std::string, std::string> _collectionToShard;
+  std::unordered_map<std::string, std::string> _collectionToShard;
 };
 
 }  // namespace aql
