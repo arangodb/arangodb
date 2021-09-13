@@ -271,19 +271,12 @@ bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBa
   auto& queue = _queues[queueNo];
   if (bounded) {
     auto maxSize = _maxFifoSizes[queueNo];
-    auto queueFull = [&](){
+    if (queue.numCountedItems.fetch_add(1, std::memory_order_relaxed) > maxSize) {
+      queue.numCountedItems.fetch_sub(1, std::memory_order_relaxed);
       LOG_TOPIC("98d94", DEBUG, Logger::THREADS)
         << "unable to push job to scheduler queue: queue is full";
       logQueueFullEveryNowAndThen(queueNo, maxSize);
       ++_metricsQueueFull;
-    };
-    if (queue.numCountedItems.load(std::memory_order_relaxed) > maxSize) {
-      queueFull();
-      return false;
-    }
-    if (queue.numCountedItems.fetch_add(1, std::memory_order_relaxed) > maxSize) {
-      queue.numCountedItems.fetch_sub(1, std::memory_order_relaxed);
-      queueFull();
       return false;
     }
   }
