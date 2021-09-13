@@ -79,7 +79,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx,
-                            arangodb::velocypack::StringRef key) const;
+                            arangodb::velocypack::StringRef key,
+                            ReadOwnWrites readOwnWrites) const;
 
   /// @brief reads a revision id from the primary index
   /// if the document does not exist, this function will return false
@@ -90,7 +91,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   /// in this case the caller must fetch the revision id from the actual
   /// document
   bool lookupRevision(transaction::Methods* trx, arangodb::velocypack::StringRef key,
-                      LocalDocumentId& id, RevisionId& revisionId) const;
+                      LocalDocumentId& id, RevisionId& revisionId, ReadOwnWrites) const;
 
   Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
                                              arangodb::aql::AstNode const* node,
@@ -104,7 +105,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
                                                       arangodb::aql::AstNode const* node,
                                                       arangodb::aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts) override;
+                                                      IndexIteratorOptions const& opts,
+                                                      ReadOwnWrites readOwnWrites) override;
 
   arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
                                               arangodb::aql::Variable const* reference) const override;
@@ -153,7 +155,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   /// @brief create the iterator, for a single attribute, EQ operator
   std::unique_ptr<IndexIterator> createEqIterator(transaction::Methods*, arangodb::aql::AstNode const*,
-                                                  arangodb::aql::AstNode const*);
+                                                  arangodb::aql::AstNode const*, ReadOwnWrites readOwnWrites);
   
   /// @brief populate the keys builder with the keys from the array, in either
   /// forward or backward order

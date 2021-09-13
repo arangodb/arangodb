@@ -558,7 +558,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional object
-    static VPackStringRef const fieldName("primarySort");
+    auto& fieldName = StaticStrings::PrimarySortField;
     std::string errorSubField;
 
     auto const field = slice.get(fieldName);
@@ -567,7 +567,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
     if (!mask->_primarySort) {
       _primarySort = defaults._primarySort;
     } else if (!_primarySort.fromVelocyPack(field, errorSubField)) {
-      errorField = fieldName.toString();
+      errorField = fieldName;
       if (!errorSubField.empty()) {
         errorField += errorSubField;
       }
@@ -578,7 +578,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional object
-    static VPackStringRef const fieldName("storedValues");
+    auto& fieldName = StaticStrings::StoredValuesField;
     std::string errorSubField;
 
     auto const field = slice.get(fieldName);
@@ -587,7 +587,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
     if (!mask->_storedValues) {
       _storedValues = defaults._storedValues;
     } else if (!_storedValues.fromVelocyPack(field, errorSubField)) {
-      errorField = fieldName.toString();
+      errorField = fieldName;
       if (!errorSubField.empty()) {
         errorField += errorSubField;
       }
@@ -597,8 +597,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
   }
   {
     // optional string (only if primarySort present)
-    static VPackStringRef const fieldName("primarySortCompression");
-    auto const field = slice.get(fieldName);
+    auto const field = slice.get(StaticStrings::PrimarySortCompressionField);
     mask->_primarySortCompression = !field.isNone();
     if (mask->_primarySortCompression) {
       _primarySortCompression = nullptr;
@@ -672,14 +671,14 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
   }
 
   if ((!ignoreEqual || _primarySort != ignoreEqual->_primarySort) && (!mask || mask->_primarySort)) {
-    velocypack::ArrayBuilder arrayScope(&builder, "primarySort");
+    velocypack::ArrayBuilder arrayScope(&builder, StaticStrings::PrimarySortField);
     if (!_primarySort.toVelocyPack(builder)) {
       return false;
     }
   }
 
   if ((!ignoreEqual || _storedValues != ignoreEqual->_storedValues) && (!mask || mask->_storedValues)) {
-    velocypack::ArrayBuilder arrayScope(&builder, "storedValues");
+    velocypack::ArrayBuilder arrayScope(&builder, StaticStrings::StoredValuesField);
     if (!_storedValues.toVelocyPack(builder)) {
       return false;
     }
@@ -688,7 +687,7 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
   if ((!ignoreEqual || _primarySortCompression != ignoreEqual->_primarySortCompression) && 
       (!mask || mask->_primarySortCompression)) {
     auto compression = columnCompressionToString(_primarySortCompression);
-    addStringRef(builder, "primarySortCompression", compression);
+    addStringRef(builder, StaticStrings::PrimarySortCompressionField, compression);
   }
 
   return true;

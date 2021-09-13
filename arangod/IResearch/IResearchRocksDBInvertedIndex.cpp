@@ -37,14 +37,15 @@ IResearchRocksDBInvertedIndexFactory::IResearchRocksDBInvertedIndexFactory(appli
     : IndexTypeFactory(server) {
 }
 
-bool IResearchRocksDBInvertedIndexFactory::equal(velocypack::Slice const& lhs,
-                                          velocypack::Slice const& rhs,
+bool IResearchRocksDBInvertedIndexFactory::equal(velocypack::Slice lhs,
+                                          velocypack::Slice rhs,
                                           std::string const& dbname) const {
+  // FIXME: implement!
   return false;
 }
 
 std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(LogicalCollection& collection,
-                                                                  velocypack::Slice const& definition,
+                                                                  velocypack::Slice definition,
                                                                   IndexId id,
                                                                   bool isClusterConstructor) const {
   IResearchViewMeta indexMeta;

@@ -330,8 +330,13 @@ void CommitTask::operator()() {
 
   IResearchDataStore::CommitResult code = IResearchDataStore::CommitResult::UNDEFINED;
 
-  auto reschedule = scopeGuard([&code, link, this](){
-    finalize(link, code);
+  auto reschedule = scopeGuard([&code, link, this]() noexcept{
+    try {
+      finalize(link, code);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("ad67d", ERR, iresearch::TOPIC)
+          << "failed to call finalize: " << ex.what();
+    }
   });
 
   // reload RuntimeState
@@ -465,12 +470,16 @@ void ConsolidationTask::operator()() {
     return;
   }
 
-  auto reschedule = scopeGuard([this](){
-    for (auto count = state->pendingConsolidations.load(); count < 1; ) {
-      if (state->pendingConsolidations.compare_exchange_weak(count, count + 1)) {
-        schedule(consolidationIntervalMsec);
-        break;
+  auto reschedule = scopeGuard([this]() noexcept {
+    try {
+      for (auto count = state->pendingConsolidations.load(); count < 1; ) {
+        if (state->pendingConsolidations.compare_exchange_weak(count, count + 1)) {
+          schedule(consolidationIntervalMsec);
+          break;
+        }
       }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("2642a", ERR, iresearch::TOPIC) << "failed to reschedule: " << ex.what();
     }
   });
 

@@ -27,7 +27,12 @@
 #include <velocypack/HashedStringRef.h>
 #include "Containers/HashSet.h"
 
+#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
+#include "Graph/Providers/TypeAliases.h"
+#include "Graph/TraverserOptions.h"
+
 #include <numeric>
+#include <unordered_map>
 
 namespace arangodb {
 
@@ -37,27 +42,33 @@ class Builder;
 
 namespace graph {
 
-template <class ProviderType, class Step>
-class SingleProviderPathResult {
-  using VertexRef = arangodb::velocypack::HashedStringRef;
+template <class ProviderType, class PathStoreType, class Step>
+class SingleProviderPathResult : public PathResultInterface {
 
  public:
-  SingleProviderPathResult(ProviderType& provider);
+  SingleProviderPathResult(Step step, ProviderType& provider, PathStoreType& store);
   auto clear() -> void;
   auto appendVertex(typename Step::Vertex v) -> void;
   auto prependVertex(typename Step::Vertex v) -> void;
   auto appendEdge(typename Step::Edge e) -> void;
   auto prependEdge(typename Step::Edge e) -> void;
-  auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void;
-  
+
+  auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void override;
+
   auto isEmpty() const -> bool;
+  ProviderType* getProvider() { return &_provider; }
+  PathStoreType* getStore() { return &_store; }
+  Step& getStep() { return _step; }
 
  private:
+  Step _step;
+
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;
-  
+
   // Provider for the path
   ProviderType& _provider;
+  PathStoreType& _store;
 };
 }  // namespace graph
 }  // namespace arangodb

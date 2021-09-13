@@ -34,6 +34,7 @@
 #include "FileUtils.h"
 
 #include "Basics/operating-system.h"
+#include "Basics/process-utils.h"
 
 #ifdef TRI_HAVE_DIRENT_H
 #include <dirent.h>
@@ -248,7 +249,7 @@ std::string slurp(std::string const& filename) {
     throwFileReadError(filename);
   }
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   constexpr size_t chunkSize = 8192;
   StringBuffer buffer(chunkSize, false);
@@ -265,7 +266,7 @@ void slurp(std::string const& filename, StringBuffer& result) {
     throwFileReadError(filename);
   }
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   result.reset();
   constexpr size_t chunkSize = 8192;
@@ -284,7 +285,7 @@ Result slurpNoEx(std::string const& filename, StringBuffer& result) {
     return {res, message};
   }
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   result.reset();
   constexpr size_t chunkSize = 8192;
@@ -320,7 +321,7 @@ void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
     throwFileWriteError(filename);
   }
 
-  TRI_DEFER(TRI_CLOSE(fd));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   while (0 < len) {
     ssize_t n = TRI_WRITE(fd, ptr, static_cast<TRI_write_t>(len));
@@ -739,80 +740,51 @@ void makePathAbsolute(std::string& path) {
   }
 }
 
-static void throwProgramError(std::string const& filename) {
-  auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-
-  LOG_TOPIC("a557b", TRACE, arangodb::Logger::FIXME)
-      << StringUtils::concatT("open failed for file '", filename, "': ", TRI_last_error());
-
-  THROW_ARANGO_EXCEPTION(res);
-}
-
 std::string slurpProgram(std::string const& program) {
-#ifdef _WIN32
-  icu::UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
-  FILE* fp = _wpopen(reinterpret_cast<wchar_t const*>(uprog.getTerminatedBuffer()), L"r");
-#else
-  FILE* fp = popen(program.c_str(), "r");
-#endif
+  ExternalProcess const* process;
+  ExternalId external;
+  ExternalProcessStatus res;
+  std::string output;
+  std::vector<std::string> moreArgs;
+  std::vector<std::string> additionalEnv;
+  char buf[1024];
 
-  constexpr size_t chunkSize = 8192;
-  StringBuffer buffer(chunkSize, false);
+  moreArgs.push_back(std::string("version"));
 
-  if (fp) {
-    int c;
+  TRI_CreateExternalProcess(program.c_str(),
+                            moreArgs,
+                            additionalEnv,
+                            true,
+                            &external);
+  if (external._pid == TRI_INVALID_PROCESS_ID) {
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    while ((c = getc(fp)) != EOF) {
-      buffer.appendChar((char)c);
-    }
-
-#ifdef _WIN32
-    int res = _pclose(fp);
-#else
-    int res = pclose(fp);
-#endif
-
-    if (res != 0) {
-      throwProgramError(program);
-    }
-  } else {
-    throwProgramError(program);
+    LOG_TOPIC("a557b", TRACE, arangodb::Logger::FIXME)
+      << StringUtils::concatT("open failed for file '",
+                              program, "': ",
+                              TRI_last_error());
+    THROW_ARANGO_EXCEPTION(res);
   }
+  process = TRI_LookupSpawnedProcess(external._pid);
+  if (process == nullptr) {
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-  return std::string(buffer.data(), buffer.length());
+    LOG_TOPIC("a557c", TRACE, arangodb::Logger::FIXME)
+      << StringUtils::concatT("process gone? '",
+                              program, "': ",
+                              TRI_last_error());
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  while (res = TRI_CheckExternalProcess(external, false, 0),
+         (res._status == TRI_EXT_RUNNING)) {
+    auto nRead = TRI_ReadPipe(process, buf, sizeof(buf) - 1);
+    if (nRead > 0) {
+      output.append(buf, nRead);
+    }
+  }
+  return output;
 }
 
-int slurpProgramWithExitcode(std::string const& program, std::string& output) {
-#ifdef _WIN32
-  icu::UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
-  FILE* fp = _wpopen(reinterpret_cast<wchar_t const*>(uprog.getTerminatedBuffer()), L"r");
-#else
-  FILE* fp = popen(program.c_str(), "r");
-#endif
-
-  constexpr size_t chunkSize = 8192;
-  StringBuffer buffer(chunkSize, false);
-
-  if (fp) {
-    int c;
-
-    while ((c = getc(fp)) != EOF) {
-      buffer.appendChar((char)c);
-    }
-
-#ifdef _WIN32
-    int res = _pclose(fp);
-#else
-    int res = pclose(fp);
-#endif
-
-    output = std::string(buffer.data(), buffer.length());
-    return res;
-  }
-
-  throwProgramError(program);
-  return 1;   // Just to please the compiler.
-};
 
 }  // namespace FileUtils
 }  // namespace basics

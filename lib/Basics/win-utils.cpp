@@ -258,6 +258,22 @@ TRI_read_return_t TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
   return static_cast<TRI_read_return_t>(length);
 }
 
+bool TRI_WRITE_POINTER(HANDLE fd, void const* buffer, size_t length) {
+  char const* ptr = static_cast<char const*>(buffer);
+  while (0 < length) {
+    DWORD len = static_cast<DWORD>(length);
+    DWORD written = 0;
+    if (!WriteFile(fd, ptr, len, &written, nullptr)) {
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      LOG_TOPIC("420b2", ERR, arangodb::Logger::FIXME) << "cannot write: " << TRI_LAST_ERROR_STR;
+      return false;
+    }
+    ptr += written;
+    length -= written;
+  }
+
+  return true;
+}
 
 FILE* TRI_FOPEN(char const* filename, char const* mode) {
   icu::UnicodeString fn(filename);
@@ -325,7 +341,7 @@ arangodb::Result translateWindowsError(DWORD error) {
 
 std::string windowsErrorToUTF8(DWORD errorNum) {
   LPWSTR buffer = nullptr;
-  TRI_DEFER(::LocalFree(buffer);)
+  auto sg = arangodb::scopeGuard([&]() noexcept { ::LocalFree(buffer); });
   size_t size =
       FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
                          FORMAT_MESSAGE_IGNORE_INSERTS,

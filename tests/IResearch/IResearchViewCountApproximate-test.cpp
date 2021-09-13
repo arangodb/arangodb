@@ -223,7 +223,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
         "\"" + collectionName1 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\"},"
         "\"" + collectionName2 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\"}"
       "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -509,7 +509,8 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       viewNode.outVariable(), viewNode.filterCondition(), {false, false},
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
-      arangodb::iresearch::CountApproximate::Exact);
+      arangodb::iresearch::CountApproximate::Exact,
+      arangodb::iresearch::FilterOptimization::MAX);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable> dummyProxy(emptyExecutors, 0);
@@ -579,7 +580,8 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
                                                 viewNode.getRegisterPlan()->varInfo,
                                                 0,
                                                 arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
-                                                arangodb::iresearch::CountApproximate::Exact);
+                                                arangodb::iresearch::CountApproximate::Exact,
+                                                arangodb::iresearch::FilterOptimization::MAX);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable> dummyProxy(emptyExecutors, 0);
@@ -650,7 +652,8 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
                                                 viewNode.getRegisterPlan()->varInfo,
                                                 0,
                                                 arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
-                                                arangodb::iresearch::CountApproximate::Cost);
+                                                arangodb::iresearch::CountApproximate::Cost,
+                                                arangodb::iresearch::FilterOptimization::MAX);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable> dummyProxy(emptyExecutors, 0);

@@ -66,7 +66,8 @@ class IndexExecutorInfos {
                      std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
                      std::vector<Variable const*>&& expInVars,
                      std::vector<RegisterId>&& expInRegs, bool hasV8Expression,
-                     bool count, AstNode const* condition, bool oneIndexCondition,
+                     bool count, ReadOwnWrites readOwnWrites, AstNode const* condition,
+                     bool oneIndexCondition,
                      std::vector<transaction::Methods::IndexHandle> indexes,
                      Ast* ast, IndexIteratorOptions options,
                      IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
@@ -90,6 +91,8 @@ class IndexExecutorInfos {
   std::vector<std::unique_ptr<NonConstExpression>> const& getNonConstExpressions() const noexcept;
   bool hasMultipleExpansions() const noexcept;
   bool getCount() const noexcept;
+
+  ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
 
   /// @brief whether or not all indexes are accessed in reverse order
   IndexIteratorOptions getOptions() const;
@@ -170,6 +173,8 @@ class IndexExecutorInfos {
   bool _count;
 
   bool _oneIndexCondition;
+
+  ReadOwnWrites const _readOwnWrites;
 };
 
 /**

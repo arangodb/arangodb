@@ -103,6 +103,7 @@ class Index {
     TRI_IDX_TYPE_PERSISTENT_INDEX,
     TRI_IDX_TYPE_IRESEARCH_LINK,
     TRI_IDX_TYPE_NO_ACCESS_INDEX,
+    TRI_IDX_TYPE_ZKD_INDEX,
     TRI_IDX_TYPE_INVERTED_INDEX
   };
   
@@ -409,7 +410,8 @@ class Index {
   virtual std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
                                                               aql::AstNode const* node,
                                                               aql::Variable const* reference,
-                                                              IndexIteratorOptions const& opts);
+                                                              IndexIteratorOptions const& opts,
+                                                              ReadOwnWrites readOwnWrites);
 
   bool canUseConditionPart(arangodb::aql::AstNode const* access,
                            arangodb::aql::AstNode const* other,

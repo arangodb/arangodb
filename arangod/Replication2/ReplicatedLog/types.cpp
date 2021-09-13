@@ -71,10 +71,10 @@ void replicated_log::QuorumData::toVelocyPack(velocypack::Builder& builder) cons
   }
 }
 
-
 void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex.value));
+  builder.add("firstIndex", VPackValue(firstIndex.value));
   builder.add(VPackValue(StaticStrings::Spearhead));
   spearHead.toVelocyPack(builder);
 }
@@ -82,6 +82,7 @@ void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) c
 auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice) -> LogStatistics {
   LogStatistics stats;
   stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
+  stats.firstIndex = slice.get("firstIndex").extract<LogIndex>();
   stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
   return stats;
 }
@@ -110,4 +111,73 @@ auto arangodb::replication2::replicated_log::to_string(AppendEntriesErrorReason 
       << "Invalid AppendEntriesErrorReason "
       << static_cast<std::underlying_type_t<decltype(reason)>>(reason);
   FATAL_ERROR_ABORT();
+}
+
+auto FollowerState::withUpToDate() noexcept -> FollowerState {
+  return FollowerState(std::in_place, UpToDate{});
+}
+
+auto FollowerState::withErrorBackoff(std::chrono::duration<double, std::milli> duration, std::size_t retryCount) noexcept
+    -> FollowerState {
+  return FollowerState(std::in_place, ErrorBackoff{duration, retryCount});
+}
+
+auto FollowerState::withRequestInFlight(std::chrono::duration<double, std::milli> duration) noexcept -> FollowerState {
+  return FollowerState(std::in_place, RequestInFlight{duration});
+}
+
+constexpr static std::string_view upToDateString = "up-to-date";
+constexpr static std::string_view errorBackoffString = "error-backoff";
+constexpr static std::string_view requestInFlightString = "request-in-flight";
+
+auto FollowerState::fromVelocyPack(velocypack::Slice slice) -> FollowerState {
+  auto state = slice.get("state").extract<std::string_view>();
+  if (state == errorBackoffString) {
+    return FollowerState::withErrorBackoff(
+        std::chrono::duration<double, std::milli>{slice.get("durationMS").extract<double>()},
+        slice.get("retryCount").extract<std::size_t>());
+  } else if (state == requestInFlightString) {
+    return FollowerState::withRequestInFlight(std::chrono::duration<double, std::milli>{
+        slice.get("durationMS").extract<double>()});
+  } else {
+    return FollowerState::withUpToDate();
+  }
+}
+
+void FollowerState::toVelocyPack(velocypack::Builder& builder) const {
+  struct ToVelocyPackVisitor {
+    auto operator()(FollowerState::UpToDate const&) {
+      builder.add("state", VPackValue(upToDateString));
+    }
+
+    auto operator()(FollowerState::ErrorBackoff const& err) {
+      builder.add("state", VPackValue(errorBackoffString));
+      builder.add("durationMS", VPackValue(err.durationMS.count()));
+      builder.add("retryCount", VPackValue(err.retryCount));
+    }
+
+    auto operator()(FollowerState::RequestInFlight const& rif) {
+      builder.add("state", VPackValue(requestInFlightString));
+      builder.add("durationMS", VPackValue(rif.durationMS.count()));
+    }
+
+    velocypack::Builder& builder;
+  };
+
+  VPackObjectBuilder ob(&builder);
+  std::visit(ToVelocyPackVisitor{builder}, value);
+}
+
+auto to_string(FollowerState const& state) -> std::string_view {
+  struct ToStringVisitor {
+    auto operator()(FollowerState::UpToDate const&) { return upToDateString; }
+    auto operator()(FollowerState::ErrorBackoff const& err) {
+      return errorBackoffString;
+    }
+    auto operator()(FollowerState::RequestInFlight const& rif) {
+      return requestInFlightString;
+    }
+  };
+
+  return std::visit(ToStringVisitor{}, state.value);
 }

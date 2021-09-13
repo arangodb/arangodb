@@ -150,7 +150,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
     std::pair<bool, bool> volatility, IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
-    int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs, iresearch::CountApproximate countApproximate)
+    int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
+    iresearch::CountApproximate countApproximate, iresearch::FilterOptimization filterOptimization)
     : _scoreRegisters(std::move(scoreRegisters)),
       _reader(std::move(reader)),
       _query(query),
@@ -167,7 +168,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _depth(depth),
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
       _countApproximate(countApproximate),
-      _filterConditionIsEmpty(::filterConditionIsEmpty(&_filterCondition)) {
+      _filterConditionIsEmpty(::filterConditionIsEmpty(&_filterCondition)),
+      _filterOptimization(filterOptimization) {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{[&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
@@ -599,7 +601,8 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
 
   ExecutionPlan const* plan = &infos().plan();
   iresearch::QueryContext const queryCtx = { &_trx, plan, plan->getAst(),
-                                            &_ctx, _reader.get(), &infos().outVariable()};
+                                            &_ctx, _reader.get(), &infos().outVariable(),
+                                            infos().filterOptimization()};
 
   if (infos().volatileFilter() || !_isInitialized) {  // `_volatileSort` implies `_volatileFilter`
     irs::Or root;
@@ -706,7 +709,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   TRI_ASSERT(documentId.isSet());
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
-    if (ADB_UNLIKELY(!collection.getPhysical()->read(&_trx, documentId, ctx.callback).ok())) {
+    if (ADB_UNLIKELY(!collection.getPhysical()->read(&_trx, documentId, ctx.callback, ReadOwnWrites::no).ok())) {
       return false;
     }
   } else if constexpr ((Traits::MaterializeType & MaterializeType::LateMaterialize) ==

@@ -172,7 +172,7 @@ class TransactionState {
   }
 
   /// @brief update the status of a transaction
-  void updateStatus(transaction::Status status);
+  void updateStatus(transaction::Status status) noexcept;
 
   /// @brief whether or not a specific hint is set for the transaction
   bool hasHint(transaction::Hints::Hint hint) const { return _hints.has(hint); }
@@ -193,6 +193,9 @@ class TransactionState {
   virtual uint64_t numCommits() const = 0;
 
   virtual bool hasFailedOperations() const = 0;
+
+  virtual void beginQuery(bool /*isModificationQuery*/) {}
+  virtual void endQuery(bool /*isModificationQuery*/) noexcept {}
 
   TransactionCollection* findCollection(DataSourceId cid) const;
 

@@ -88,7 +88,9 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex, publi
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
                                                     aql::AstNode const* node,
                                                     aql::Variable const* reference,
-                                                    IndexIteratorOptions const& opts) override {
+                                                    IndexIteratorOptions const& opts,
+                                                    ReadOwnWrites readOwnWrites) override {
+    TRI_ASSERT(readOwnWrites == ReadOwnWrites::no); // FIXME: check - should we ever care?
     return IResearchInvertedIndex::iteratorForCondition(&IResearchDataStore::collection(), trx, node, reference, opts);
   }
 
@@ -134,12 +136,12 @@ class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
   explicit IResearchRocksDBInvertedIndexFactory(application_features::ApplicationServer& server);
   virtual ~IResearchRocksDBInvertedIndexFactory() = default;
 
-  bool equal(velocypack::Slice const& lhs, velocypack::Slice const& rhs,
+  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
              std::string const& dbname) const override;
 
   /// @brief instantiate an Index definition
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                     velocypack::Slice const& definition, IndexId id,
+                                     velocypack::Slice definition, IndexId id,
                                      bool isClusterConstructor) const override;
 
   /// @brief normalize an Index definition prior to instantiation/persistence

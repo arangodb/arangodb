@@ -65,6 +65,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/IResearchPDP.h"
 #include "Logger/LogMacros.h"
@@ -241,7 +242,7 @@ Result malformedNode(aql::AstNodeType type) {
   return {TRI_ERROR_BAD_PARAMETER, message};
 }
 
-} // error
+} // namespace error
 
 void setupAllTypedFilter(irs::Or& disjunction, 
                          std::string&& mangledName,
@@ -482,11 +483,9 @@ struct FilterContext {
   bool isSearchFilter; // filter is building for SEARCH clause
 };  // FilterContext
 
-typedef std::function<
-  Result(char const* funcName, irs::boolean_filter*,
-         QueryContext const&, FilterContext const&,
-         aql::AstNode const&)
-> ConvertionHandler;
+using ConvertionHandler = Result(*)(char const* funcName, irs::boolean_filter*,
+                                    QueryContext const&, FilterContext const&,
+                                    aql::AstNode const&);
 
 // forward declaration
 Result filter(irs::boolean_filter* filter,
@@ -3712,17 +3711,29 @@ Result fromFuncStartsWith(
 
     TRI_ASSERT(filterCtx.analyzer);
     kludge::mangleField(name, filterCtx.isSearchFilter, filterCtx.analyzer);
-    filter->boost(filterCtx.boost);
+
+    // Try to optimize us away
+    if (!isMultiPrefix && !prefixes.empty() &&
+        ctx.filterOptimization != FilterOptimization::NONE  && 
+        arangodb::iresearch::includeStartsWithInLevenshtein(filter, name,
+                                                            prefixes.back().second)) {
+      return {};
+    }
 
     if (isMultiPrefix) {
       auto& minMatchFilter = filter->add<irs::Or>();
       minMatchFilter.min_match_count(static_cast<size_t>(minMatchCount));
+      minMatchFilter.boost(filterCtx.boost);
       // become a new root
       filter = &minMatchFilter;
     }
 
     for (size_t i = 0, size = prefixes.size(); i < size; ++i) {
       auto& prefixFilter = filter->add<irs::by_prefix>();
+      if (!isMultiPrefix) {
+        TRI_ASSERT(prefixes.size() == 1);
+        prefixFilter.boost(filterCtx.boost);
+      }
       if (i + 1 < size) {
         *prefixFilter.mutable_field() = name;
       } else {
@@ -3972,7 +3983,7 @@ Result fromFuncGeoContainsIntersect(
   return {};
 }
 
-std::map<irs::string_ref, ConvertionHandler> const FCallUserConvertionHandlers;
+frozen::map<irs::string_ref, ConvertionHandler, 0> constexpr FCallUserConvertionHandlers{};
 
 Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
                      FilterContext const& filterCtx, aql::AstNode const& node) {
@@ -4016,7 +4027,7 @@ Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
   return entry->second(entry->first.c_str(), filter, ctx, filterCtx, *args);
 }
 
-std::map<irs::string_ref, ConvertionHandler> const FCallSystemConvertionHandlers{
+frozen::map<irs::string_ref, ConvertionHandler, 13> constexpr FCallSystemConvertionHandlers{
   // filter functions
   {"PHRASE", fromFuncPhrase},
   {"STARTS_WITH", fromFuncStartsWith},

@@ -332,6 +332,9 @@ Index::IndexType Index::type(char const* type, size_t len) {
   if (::typeMatch(type, len, "geo2")) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
+  if (::typeMatch(type, len, "zkd")) {
+    return TRI_IDX_TYPE_ZKD_INDEX;
+  }
   std::string const& tmp = arangodb::iresearch::DATA_SOURCE_TYPE.name();
   if (::typeMatch(type, len, tmp.c_str())) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
@@ -377,6 +380,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return arangodb::iresearch::DATA_SOURCE_TYPE.name().c_str();
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
+    case TRI_IDX_TYPE_ZKD_INDEX:
+      return "zkd";
     case TRI_IDX_TYPE_INVERTED_INDEX:
       return arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data();
     case TRI_IDX_TYPE_UNKNOWN: {
@@ -686,7 +691,8 @@ arangodb::aql::AstNode* Index::specializeCondition(arangodb::aql::AstNode* /* no
 std::unique_ptr<IndexIterator> Index::iteratorForCondition(transaction::Methods* /* trx */,
                                                            aql::AstNode const* /* node */,
                                                            aql::Variable const* /* reference */,
-                                                           IndexIteratorOptions const& /* opts */) {
+                                                           IndexIteratorOptions const& /* opts */,
+                                                           ReadOwnWrites /* readOwnWrites */) {
   // the default implementation should never be called
   TRI_ASSERT(false); 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("no default implementation for iteratorForCondition. index type: ") + typeName());

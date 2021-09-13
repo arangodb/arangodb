@@ -103,7 +103,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
                                  aql::AstNode const& condition, IResearchInvertedIndex* index,
                                  aql::Variable const* variable, int64_t mutableConditionIdx,
                                  std::string_view extraName)
-    : IndexIterator(collection, trx), _index(index),
+    : IndexIterator(collection, trx, ReadOwnWrites::no), _index(index),
       _variable(variable), _mutableConditionIdx(mutableConditionIdx), _extraName(extraName) {
     resetFilter(condition);
   }
