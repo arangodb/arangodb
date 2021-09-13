@@ -4,6 +4,19 @@ devel
 * Fix active failover, so that the new host actually has working
   foxx services. (BTS-558)
 
+* APM-70: allow PRUNE condition to be stored in a variable.
+
+  This feature allows the PRUNE condition to be stored in a variable, and 
+  this variable can be used as a condition for some other statement, such 
+  as FILTER.
+
+* Allow startup of arangod with an existing database directory that was missing
+  the ZkdIndex column family.
+
+* Truncate must not trigger intermediate commits while in a streaming
+  transaction, because that would be against the assumption that
+  streaming transactions never do intermediate commits.
+
 * Added ArangoSearch condition optimization: STARTS_WITH is merged 
   with LEVENSHTEIN_MATCH if used in the same AND node and field name and prefix
   matches.

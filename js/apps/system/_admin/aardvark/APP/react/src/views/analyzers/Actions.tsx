@@ -111,7 +111,7 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
           {showJsonForm ? 'Switch to form view' : 'Switch to code view'}
         </button>
       </ModalHeader>
-      <ModalBody maximize={true}>
+      <ModalBody maximize={true} show={show}>
         <Grid>
           {
             showJsonForm

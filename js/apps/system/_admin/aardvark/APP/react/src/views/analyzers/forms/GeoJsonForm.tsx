@@ -22,7 +22,7 @@ const GeoJsonForm = ({ formState, dispatch, disabled }: FormProps) => {
       <Select label={'Type'} value={typeProperty || 'shape'} onChange={updateType} disabled={disabled}>
         <option value={'shape'}>Shape</option>
         <option value={'centroid'}>Centroid</option>
-        <option value={'point'}>point</option>
+        <option value={'point'}>Point</option>
       </Select>
     </Cell>
     <Cell size={'1'}>
