@@ -19,7 +19,7 @@ const BaseForm = ({ formState, dispatch, disabled }: FormProps) => {
 
   return <Grid>
     <Cell size={'1-2'}>
-      <Textbox label={'Analyzer Name'} type={'text'} placeholder={'Analyzer Name'} value={name || ''}
+      <Textbox label={'Analyzer Name'} type={'text'} value={name || ''}
                onChange={updateName} required={true} disabled={disabled}/>
     </Cell>
 

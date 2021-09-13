@@ -74,7 +74,7 @@ namespace arangodb::arangobench {
     }
 
     bool isDeprecated() const noexcept override {
-      return false;
+      return true;
     }
 
   };
