@@ -58,6 +58,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/directories.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
