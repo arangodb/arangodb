@@ -200,13 +200,6 @@
           active: false
         }
       ],
-      analyzers: [
-        {
-          name: 'Analyzers',
-          route: 'analyzers',
-          active: true
-        }
-      ],
       queries: [
         {
           name: 'Editor',

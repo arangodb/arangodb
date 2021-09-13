@@ -179,6 +179,10 @@ void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const
       }
     }
   }
+
+  if (options.filterOptimization != arangodb::iresearch::FilterOptimization::MAX) {
+    builder.add("filterOptimization", VPackValue(static_cast<int64_t>(options.filterOptimization)));
+  }
 }
 
 bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& options) {
@@ -281,6 +285,19 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
         return false;
       }
       options.countApproximate = conditionTypeIt->second;
+    }
+  }
+
+  // filterOptimization
+  {
+    auto const optionSlice = optionsSlice.get("filterOptimization");
+    if (!optionSlice.isNone()) {
+      // 'filterOptimization' is optional. Missing means MAX
+      if (!optionSlice.isNumber()) {
+        return false;
+      }
+      options.filterOptimization =
+        static_cast<arangodb::iresearch::FilterOptimization>(optionSlice.getNumber<int>());
     }
   }
 
@@ -437,6 +454,18 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
            return false;
          }
          options.conditionOptimization = conditionTypeIt->second;
+         return true;
+       }},
+       // cppcheck-suppress constStatement
+       {"filterOptimization", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
+                                  aql::AstNode const& value,
+                                  IResearchViewNode::Options& options, std::string& error) {
+         if (!value.isValueType(aql::VALUE_TYPE_INT)) {
+           error = "int value expected for option 'filterOptimization'";
+           return false;
+         }
+         options.filterOptimization =
+           static_cast<arangodb::iresearch::FilterOptimization>(value.getIntValue());
          return true;
        }}};
 
@@ -1660,7 +1689,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                         getRegisterPlan()->varInfo,   // ??? do we need this?
                                         getDepth(),
                                         std::move(outNonMaterializedViewRegs),
-                                        _options.countApproximate};
+                                        _options.countApproximate,
+                                        filterOptimization()};
 
     return std::make_tuple(materializeType, std::move(executorInfos), std::move(registerInfos));
   };
