@@ -43,7 +43,6 @@ struct ModificationOptions : OperationOptions {
       : OperationOptions(),
         ignoreErrors(false),
         ignoreDocumentNotFound(false),
-        readCompleteInput(true),
         consultAqlWriteFilter(false),
         exclusive(false) {}
 
@@ -51,7 +50,6 @@ struct ModificationOptions : OperationOptions {
 
   bool ignoreErrors;
   bool ignoreDocumentNotFound;
-  bool readCompleteInput;
   bool consultAqlWriteFilter;
   bool exclusive;
 };

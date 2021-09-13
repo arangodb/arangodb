@@ -109,11 +109,9 @@ function ahuacatlMultiModifySuite () {
       assertTrue(c1.exists("1"));
       assertEqual(2009, c3.count());
 
-      // check that 'readCompleteInput' option is set
       var nodes = AQL_EXPLAIN(q, { "@cn": cn1, "@e": cn3 }).plan.nodes, found = false;
       nodes.forEach(function(node) {
         if (node.type === 'RemoveNode') {
-          assertTrue(node.modificationFlags.readCompleteInput);
           found = true;
         }
       });
@@ -370,11 +368,9 @@ function ahuacatlMultiModifySuite () {
       assertEqual(0, c1.count());
       assertEqual(2010, c2.count());
 
-      // check that 'readCompleteInput' option is set
       var nodes = AQL_EXPLAIN(q, { "@cn1": cn1, "@cn2": cn2 }).plan.nodes, found = false;
       nodes.forEach(function(node) {
         if (node.type === 'RemoveNode') {
-          assertFalse(node.modificationFlags.readCompleteInput);
           found = true;
         }
       });

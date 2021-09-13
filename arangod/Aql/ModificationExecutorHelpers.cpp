@@ -205,7 +205,6 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
   out.keepNull = in.keepNull;
   out.mergeObjects = in.mergeObjects;
   // in.ignoreDocumentNotFound;
-  // in.readCompleteInput;
   out.isRestore = in.isRestore;
   // in.consultAqlWriteFilter;
   // in.exclusive;

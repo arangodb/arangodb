@@ -909,39 +909,6 @@ ModificationOptions ExecutionPlan::parseModificationOptions(QueryContext& query,
 /// @brief create modification options from an AST node
 ModificationOptions ExecutionPlan::createModificationOptions(char const* operationName, AstNode const* node) {
   ModificationOptions options = parseModificationOptions(_ast->query(), operationName, node, /*addWarnings*/ true);
-
-  // this means a data-modification query must first read the entire input data
-  // before starting with the modifications
-  // this is safe in all cases
-  // the flag can be set to false later to execute read and write operations in
-  // lockstep
-  options.readCompleteInput = true;
-
-  if (!_ast->functionsMayAccessDocuments()) {
-    // no functions in the query can access document data...
-    bool isReadWrite = false;
-
-    if (_ast->containsTraversal()) {
-      // its unclear which collections the traversal will access
-      isReadWrite = true;
-    } else {
-      _ast->query().collections().visit([&isReadWrite](std::string const&, aql::Collection& collection) {
-        if (collection.isReadWrite()) {
-          // stop iterating
-          isReadWrite = true;
-          return false;
-        }
-        return true;
-      });
-    }
-
-    if (!isReadWrite) {
-      // no collection is used in both read and write mode
-      // this means the query's write operation can use read & write in lockstep
-      options.readCompleteInput = false;
-    }
-  }
-
   return options;
 }
 

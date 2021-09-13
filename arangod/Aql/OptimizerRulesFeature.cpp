@@ -329,11 +329,6 @@ void OptimizerRulesFeature::addRules() {
   registerRule("fuse-filters", fuseFiltersRule, OptimizerRule::fuseFiltersRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  // patch update statements
-  registerRule("patch-update-statements", patchUpdateStatementsRule,
-               OptimizerRule::patchUpdateStatementsRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-
 #ifdef USE_ENTERPRISE
   // must be the first cluster optimizer rule
   registerRule("cluster-one-shard", clusterOneShardRule, OptimizerRule::clusterOneShardRule,

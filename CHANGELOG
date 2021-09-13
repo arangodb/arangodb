@@ -1,6 +1,13 @@
 devel
 -----
 
+* Remove internal AQL query option `readComplete` that controled if all
+  inputs for a modification operation (UPDATE / REPLACE / REMOVE) were
+  read into memory first. This was a necessity with the MMFiles storage
+  engine in cases when a query read from a collection and wrote into it
+  in the same query. With the RocksDB engine and its snapshotting, we
+  never need to read the entire inputs into memory first.
+
 * APM-70: allow PRUNE condition to be stored in a variable.
 
   This feature allows the PRUNE condition to be stored in a variable, and 
