@@ -374,10 +374,6 @@ int main(int argc, char* argv[]) {
 
   TRI_GET_ARGV(argc, argv);
 #if _WIN32
-  // Set the codepage for the console output to UTF-8 so that unicode characters
-  // are displayed correctly.
-  SetConsoleOutputCP(CP_UTF8);
-
   if (argc > 1 && TRI_EqualString("--start-service", argv[1])) {
     ARGC = argc;
     ARGV = argv;
