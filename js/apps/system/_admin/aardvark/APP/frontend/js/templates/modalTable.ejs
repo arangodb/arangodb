@@ -1,4 +1,6 @@
 <%
+let advancedCounter = 2;
+
 function createInput(row) {
     switch(row.type) {
         case 'text':
@@ -113,12 +115,38 @@ function createInput(row) {
     }
 }
 
+function generateAdvancedSection(header, content) { console.log(header)%>
+<div class="accordion" id="accordion<%=advancedCounter%>">
+  <div class="accordion-group">
+    <div class="accordion-heading">
+      <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion<%=advancedCounter%>" href="#collapseOne<%=advancedCounter%>">
+        <span><%= header %></span><span><b class="caret"></b></span>
+      </a>
+      </div>
+      <div id="collapseOne<%=advancedCounter%>" class="accordion-body collapse out">
+        <div class="accordion-inner">
+          <table>
+            <tbody>
+            <%
+            _.each(content, function (row) {
+              createTR(row);
+            });
+            %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<% advancedCounter++;}
+
 var createTR = function(row) {
     var mandatory = '';
     if (row.mandatory) {
         mandatory = '*';
     }
 %>
+
 <tr class="tableRow" id="<%= 'row_' + row.id %>">
     <th class="collectionTh"><%= row.label%><%= mandatory %>:</th>
     <th class="collectionTh"<%= row.info ? '' : ' colspan="2"' %>>
@@ -148,27 +176,10 @@ var createTR = function(row) {
   <% if (info) { %>
     <%= info %>
   <% } %>
-  <% if (advancedContent) { %>
-    <div class="accordion" id="accordion2">
-      <div class="accordion-group">
-        <div class="accordion-heading">
-          <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion2" href="#collapseOne">
-            <span><%=advancedContent.header%></span><span><b class="caret"></b></span>
-          </a>
-        </div>
-        <div id="collapseOne" class="accordion-body collapse out">
-          <div class="accordion-inner">
-            <table>
-              <tbody>
-                <%
-                _.each(advancedContent.content, function(row) {
-                  createTR(row);
-                });
-                %>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  <% } %>
+  <% if (advancedContent && Array.isArray(advancedContent)) {
+    _.forEach(advancedContent, function (aC) {
+      generateAdvancedSection(aC.header, aC.content);
+    });
+  } else if (advancedContent) {
+    generateAdvancedSection(advancedContent.header, advancedContent.content);
+  } %>

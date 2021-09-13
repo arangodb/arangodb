@@ -450,24 +450,37 @@
         this.delegateEvents();
       }
 
-      if ($('#accordion2')) {
-        $('#accordion2 .accordion-toggle').bind('click', function () {
-          if ($('#collapseOne').is(':visible')) {
-            $('#collapseOne').hide();
-            setTimeout(function () {
-              $('.accordion-toggle').addClass('collapsed');
-            }, 100);
-          } else {
-            $('#collapseOne').show();
-            setTimeout(function () {
-              $('.accordion-toggle').removeClass('collapsed');
-            }, 100);
-          }
+      let enableAccordion = function (counter) {
+        const timeoutDuration = 100;
+        if ($(`#accordion${counter}`)) {
+          $(`#accordion${counter} .accordion-toggle`).bind('click', function () {
+            if ($(`#collapseOne${counter}`).is(':visible')) {
+              $(`#collapseOne${counter}`).hide();
+              setTimeout(function () {
+                $(`#accordion${counter} .accordion-toggle`).addClass('collapsed');
+              }, timeoutDuration);
+            } else {
+              $(`#collapseOne${counter}`).show();
+              setTimeout(function () {
+                $(`#accordion${counter} .accordion-toggle`).removeClass('collapsed');
+              }, timeoutDuration);
+            }
+          });
+          $(`#collapseOne${counter}`).hide();
+          setTimeout(function () {
+            $(`#accordion${counter} .accordion-toggle`).addClass('collapsed');
+          }, timeoutDuration);
+        }
+      };
+
+      if (advancedContent && Array.isArray(advancedContent)) {
+        let c = 2;
+        _.each(advancedContent, function(entry) {
+          enableAccordion(c);
+          c++;
         });
-        $('#collapseOne').hide();
-        setTimeout(function () {
-          $('.accordion-toggle').addClass('collapsed');
-        }, 100);
+      } else if (advancedContent) {
+        enableAccordion(2);
       }
 
       if (!divID) {

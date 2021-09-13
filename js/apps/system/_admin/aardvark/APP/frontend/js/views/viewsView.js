@@ -226,8 +226,10 @@
     createViewModal: function () {
       var buttons = [];
       var tableContent = [];
-      var advanced = {};
-      var advancedTableContent = [];
+      var advanced = [];
+      let primarySortTableContent = [];
+      let storedValuesTableContent = [];
+      let advancedTableContent = [];
 
       tableContent.push(
         window.modalView.createTextEntry(
@@ -276,7 +278,7 @@
         )
       );
 
-      tableContent.push(
+      primarySortTableContent.push(
         window.modalView.createTableEntry(
           'newPrimarySort',
           'Primary Sort',
@@ -312,7 +314,7 @@
         )
       );
 
-      tableContent.push(
+      storedValuesTableContent.push(
         window.modalView.createTableEntry(
           'newStoredValues',
           'Stored Values',
@@ -394,8 +396,21 @@
           ]
         )
       );
-      advanced.header = 'Advanced';
-      advanced.content = advancedTableContent;
+
+      advanced.push({
+        header: 'Primary Sort',
+        content: primarySortTableContent
+      });
+
+      advanced.push({
+        header: 'Stored Values',
+        content: storedValuesTableContent
+      });
+
+      advanced.push({
+        header: 'Advanced',
+        content: advancedTableContent
+      });
 
       buttons.push(
         window.modalView.createSuccessButton('Create', this.submitCreateView.bind(this))

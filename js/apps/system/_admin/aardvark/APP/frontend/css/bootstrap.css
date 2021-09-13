@@ -5621,7 +5621,7 @@ a.badge:hover {
 }
 
 .accordion {
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .accordion-group {
