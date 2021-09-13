@@ -81,6 +81,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/files.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/memory.h"
