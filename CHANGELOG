@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated OpenSSL to 1.1.1l and OpenLDAP to 2.4.59.
+
 * APM-70: allow PRUNE condition to be stored in a variable.
 
   This feature allows the PRUNE condition to be stored in a variable, and 
