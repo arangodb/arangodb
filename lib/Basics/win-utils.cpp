@@ -60,6 +60,7 @@
 #include "Basics/directories.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
