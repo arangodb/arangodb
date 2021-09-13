@@ -112,7 +112,12 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   char const* typeName() const override { return "edge-index-iterator"; }
 
-  bool hasExtra() const override { return true; }
+  bool hasExtra() const override {
+    TRI_IF_FAILURE("RocksDBEdgeIndex::disableHasExtra") {
+      return false;
+    }
+    return true;
+  }
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index

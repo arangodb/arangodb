@@ -29,15 +29,19 @@
 
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::graph;
 
 template <class ProviderImpl>
 ProviderTracer<ProviderImpl>::ProviderTracer(arangodb::aql::QueryContext& queryContext,
-                                             Options opts,
-                                             arangodb::ResourceMonitor& resourceMonitor)
-    : _impl{queryContext, opts, resourceMonitor} {}
+                                             Options opts, arangodb::ResourceMonitor& resourceMonitor)
+    : _impl{queryContext, std::move(opts), resourceMonitor} {}
 
 template <class ProviderImpl>
 ProviderTracer<ProviderImpl>::~ProviderTracer() {
@@ -48,10 +52,12 @@ ProviderTracer<ProviderImpl>::~ProviderTracer() {
 }
 
 template <class ProviderImpl>
-typename ProviderImpl::Step ProviderTracer<ProviderImpl>::startVertex(VertexType vertex) {
+typename ProviderImpl::Step ProviderTracer<ProviderImpl>::startVertex(VertexType vertex,
+                                                                      size_t depth,
+                                                                      double weight) {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept { _stats["startVertex"].addTiming(TRI_microtime() - start); });
-  return _impl.startVertex(vertex);
+  return _impl.startVertex(vertex, depth, weight);
 }
 
 template <class ProviderImpl>
@@ -107,5 +113,12 @@ transaction::Methods* ProviderTracer<ProviderImpl>::trx() {
   return _impl.trx();
 }
 
-template class ::arangodb::graph::ProviderTracer<arangodb::graph::SingleServerProvider>;
+using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
+
+template class ::arangodb::graph::ProviderTracer<arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
+
+#ifdef USE_ENTERPRISE
+template class ::arangodb::graph::ProviderTracer<arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>>;
+#endif
+
 template class ::arangodb::graph::ProviderTracer<arangodb::graph::ClusterProvider>;
