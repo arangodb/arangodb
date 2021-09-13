@@ -42,7 +42,6 @@ std::size_t RocksDBTransactionMethods::countInBounds(RocksDBKeyBounds const& bou
   auto end = bounds.end();
   rocksdb::Comparator const* cmp = bounds.columnFamily()->GetComparator();
 
-  // extra check to avoid extra comparisons with isElementInRange later;
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     ++count;
     if (isElementInRange) {
