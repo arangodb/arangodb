@@ -29,6 +29,8 @@ v3.8.2 (XXXX-XX-XX)
   a lot of modifications, creating the WriteBatch copy might incur some
   overhead that can now lead to decreased performance.
 
+* Updated OpenSSL to 1.1.1l and OpenLDAP to 2.4.59.
+
 * No runtime limits for shard move and server cleanout jobs, instead possibility
   to cancel them.
 
