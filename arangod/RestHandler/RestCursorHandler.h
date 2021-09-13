@@ -113,7 +113,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief register the currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  void registerQuery(std::unique_ptr<arangodb::aql::Query> query);
+  void registerQuery(std::shared_ptr<arangodb::aql::Query> query);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cancel the currently running query
@@ -159,7 +159,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::aql::Query> _query;
+  std::shared_ptr<arangodb::aql::Query> _query;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reference to a queryResult, which is reused after waiting.

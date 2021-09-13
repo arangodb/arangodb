@@ -43,8 +43,8 @@ namespace tests {
 namespace aql {
 class TraversalNodeTest : public ::testing::Test {
   MockAqlServer _server{};
-  std::unique_ptr<Query> _query{_server.createFakeQuery()};
-  std::unique_ptr<Query> _otherQuery{_server.createFakeQuery()};
+  std::shared_ptr<Query> _query{_server.createFakeQuery()};
+  std::shared_ptr<Query> _otherQuery{_server.createFakeQuery()};
   std::string _startNode{"v/123"};
   AstNode* _start{nullptr};
   AstNode* _direction{nullptr};
