@@ -175,7 +175,7 @@ void TRI_CreateExternalProcess(char const* executable,
                                bool usePipes, ExternalId* pid);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Reads from the pipe of processes
+/// @brief Closes the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ClosePipe(ExternalProcess* process,
