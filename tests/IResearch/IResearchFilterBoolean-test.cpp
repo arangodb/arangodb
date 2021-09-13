@@ -1221,13 +1221,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         ")] == '1') RETURN d";
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
@@ -1301,13 +1301,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "]) RETURN d";
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
@@ -1379,13 +1379,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "FOR d IN collection FILTER not (d.a < _NONDETERM_('1')) RETURN d";
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
@@ -1458,13 +1458,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "RETURN d";
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
@@ -1539,13 +1539,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "RETURN d";
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
@@ -1618,13 +1618,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "1.5) RETURN d";
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
@@ -1698,13 +1698,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "FOR d IN collection FILTER not (d.a < 1+d.b) RETURN d";
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
@@ -2649,13 +2649,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         "FOR d IN collection FILTER d.a.b.c > _NONDETERM_('15') or d.a.b.c < "
         "'40' RETURN d";
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
@@ -2736,13 +2736,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         "FOR d IN collection FILTER boost(d.a.b.c > _NONDETERM_('15') or "
         "d.a.b.c < '40', 2.5) RETURN d";
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
@@ -3073,13 +3073,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         "FOR d IN collection FILTER d.a.b.c < '1' and not d.c.b.a == '2' "
         "RETURN d";
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
@@ -3474,13 +3474,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     std::string const queryString =
         "FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b < 40 RETURN d";
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
@@ -3558,13 +3558,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         "FOR d IN collection FILTER boost(d.a[*].b > 15, 0.5) and d.a[*].b < "
         "40 RETURN d";
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
@@ -3905,13 +3905,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     std::string const queryString =
         "FOR d IN collection FILTER d.a[*].b >= 15 and d.a[*].b <= 40 RETURN d";
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
@@ -4074,13 +4074,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     std::string const queryString =
         "FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b <= 40 RETURN d";
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();
@@ -6068,13 +6068,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         "FOR d IN collection FILTER d.a.b.c > _NONDETERM_('15') and d.a.b.c < "
         "'40' RETURN d";
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr);
 
-    auto const parseResult = query.parse();
+    auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
-    auto* ast = query.ast();
+    auto* ast = query->ast();
     ASSERT_TRUE(ast);
 
     auto* root = ast->root();

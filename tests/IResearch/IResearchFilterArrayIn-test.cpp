@@ -1494,13 +1494,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+      auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
         nullptr);
 
-      auto const parseResult = query.parse();
+      auto const parseResult = query->parse();
       ASSERT_TRUE(parseResult.result.ok());
 
-      auto* ast = query.ast();
+      auto* ast = query->ast();
       ASSERT_TRUE(ast);
 
       auto* root = ast->root();
@@ -1599,13 +1599,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+      auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
         nullptr);
 
-      auto const parseResult = query.parse();
+      auto const parseResult = query->parse();
       ASSERT_TRUE(parseResult.result.ok());
 
-      auto* ast = query.ast();
+      auto* ast = query->ast();
       ASSERT_TRUE(ast);
 
       auto* root = ast->root();
@@ -1712,13 +1712,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+      auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
         nullptr);
 
-      auto const parseResult = query.parse();
+      auto const parseResult = query->parse();
       ASSERT_TRUE(parseResult.result.ok());
 
-      auto* ast = query.ast();
+      auto* ast = query->ast();
       ASSERT_TRUE(ast);
 
       auto* root = ast->root();
@@ -1821,13 +1821,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+      auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
         nullptr);
 
-      auto const parseResult = query.parse();
+      auto const parseResult = query->parse();
       ASSERT_TRUE(parseResult.result.ok());
 
-      auto* ast = query.ast();
+      auto* ast = query->ast();
       ASSERT_TRUE(ast);
 
       auto* root = ast->root();
@@ -3185,13 +3185,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+      auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
         nullptr);
 
-      auto const parseResult = query.parse();
+      auto const parseResult = query->parse();
       ASSERT_TRUE(parseResult.result.ok());
 
-      auto* ast = query.ast();
+      auto* ast = query->ast();
       ASSERT_TRUE(ast);
 
       auto* root = ast->root();
@@ -3295,13 +3295,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+      auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
         nullptr);
 
-      auto const parseResult = query.parse();
+      auto const parseResult = query->parse();
       ASSERT_TRUE(parseResult.result.ok());
 
-      auto* ast = query.ast();
+      auto* ast = query->ast();
       ASSERT_TRUE(ast);
 
       auto* root = ast->root();
@@ -3406,13 +3406,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+      auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
         nullptr);
 
-      auto const parseResult = query.parse();
+      auto const parseResult = query->parse();
       ASSERT_TRUE(parseResult.result.ok());
 
-      auto* ast = query.ast();
+      auto* ast = query->ast();
       ASSERT_TRUE(ast);
 
       auto* root = ast->root();

@@ -747,7 +747,7 @@ void RocksDBEngine::start() {
       auto const replicatedLogsName = RocksDBColumnFamilyManager::name(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs);
       auto const zkdIndexName = RocksDBColumnFamilyManager::name(
-          RocksDBColumnFamilyManager::Family::ReplicatedLogs);
+          RocksDBColumnFamilyManager::Family::ZkdIndex);
 
       for (auto const& it : cfFamilies) {
         auto it2 = std::find(existingColumnFamilies.begin(),
