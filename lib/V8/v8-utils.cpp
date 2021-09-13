@@ -3032,10 +3032,6 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Read
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_WritePipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
