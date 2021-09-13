@@ -2706,9 +2706,17 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("pollStdin()");
   }
 
-  bool hasData;
+  bool hasData = false;
 #ifdef _WIN32
-  hasData = _kbhit() != 0;
+  auto hin = ::GetStdHandle(STD_INPUT_HANDLE);
+  if (GetFileType(hin) == FILE_TYPE_PIPE) {
+    DWORD numBytes = 0;
+    if (PeekNamedPipe(hin, nullptr, 0, nullptr, &numBytes, nullptr)) {
+      hasData = numBytes > 0;
+    }
+  } else {
+    hasData = _kbhit() != 0;
+  }
 #else
   struct timeval tv;
   fd_set fds;
@@ -2721,21 +2729,9 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #endif
 
   if (hasData) {
-    char c[3] = {0};
-    TRI_read_return_t n = TRI_READ(STDIN_FILENO, c, 3);
-    if (n == 3) {  // arrow keys are garbled
-      if (c[2] == 'D') {
-        TRI_V8_RETURN(v8::Integer::New(isolate, 37));
-      }
-      if (c[2] == 'A') {
-        TRI_V8_RETURN(v8::Integer::New(isolate, 38));
-      }
-      if (c[2] == 'C') {
-        TRI_V8_RETURN(v8::Integer::New(isolate, 39));
-      }
-    } else if (n == 1) {
-      TRI_V8_RETURN(v8::Integer::New(isolate, c[0]));
-    }
+    char c[1024] = {0};
+    TRI_read_return_t n = TRI_READ(STDIN_FILENO, c, sizeof(c) - 1);
+    TRI_V8_RETURN_STD_STRING(std::string(c, n));
   }
   TRI_V8_RETURN(v8::Integer::New(isolate, 0));
   TRI_V8_TRY_CATCH_END
@@ -3033,6 +3029,75 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto result = TRI_V8_PAIR_STRING(isolate, content, read_len);
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JS_Read
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_WritePipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("writePipe(<external-identifier>, string)");
+  }
+
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+
+  if (!v8security.isAllowedToControlProcesses(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external processes");
+  }
+
+  TRI_pid_t pid = static_cast<TRI_pid_t>(TRI_ObjectToInt64(isolate, args[0]));
+  ExternalProcess const* proc = TRI_LookupSpawnedProcess(pid);
+
+  if (proc == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      "didn't find the process identified by <external-identifier> to write the pipe into.");
+  }
+
+  std::string writeBuffer = TRI_ObjectToString(isolate, args[1]);
+  if (TRI_WritePipe(proc, writeBuffer.c_str(), writeBuffer.length())) {
+    TRI_V8_RETURN_TRUE();
+  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_ClosePipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("closePipe(<external-identifier>, bool read)");
+  }
+
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+
+  if (!v8security.isAllowedToControlProcesses(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external processes");
+  }
+
+  TRI_pid_t pid = static_cast<TRI_pid_t>(TRI_ObjectToInt64(isolate, args[0]));
+  ExternalProcess* proc = TRI_LookupSpawnedProcess(pid);
+
+  if (proc == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      "didn't find the process identified by <external-identifier> to close the pipe for.");
+  }
+
+  bool read = TRI_ObjectToBoolean(isolate, args[1]);
+  TRI_ClosePipe(proc, read);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -5717,6 +5782,9 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RAND"), JS_Rand);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_READ"), JS_Read);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_READPIPE"), JS_ReadPipe);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_WRITEPIPE"), JS_WritePipe);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_CLOSEPIPE"), JS_ClosePipe);
+
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_READ64"), JS_Read64);
   TRI_AddGlobalFunctionVocbase(isolate,
