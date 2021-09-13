@@ -393,6 +393,50 @@ function dumpIntegrationSuite () {
         } catch (err) {}
       }
     },
+    
+    testDumpAllDatabasesWithOverwrite: function () {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--all-databases', 'true'];
+        runDump(path, args, 0);
+        
+        // run the dump a second time, to overwrite all data in the target directory
+        args.push('--overwrite');
+        args.push('true');
+
+        let tree = runDump(path, args, 0);
+        db._useDatabase("maçã");
+        assertEqual(-1, tree.indexOf("maçã"));
+        assertNotEqual(-1, tree.indexOf(db._id())); 
+        checkDumpJsonFile("maçã", fs.join(path, db._id()), db._id());
+        checkCollections(tree, path, db._id());
+        db._useDatabase("_system");
+        assertNotEqual(-1, tree.indexOf("_system"));
+        assertEqual(-1, tree.indexOf(db._id())); 
+        checkDumpJsonFile("_system", fs.join(path, db._name()), db._id());
+        checkCollections(tree, path, db._name());
+        db._useDatabase("testName");
+        assertNotEqual(-1, tree.indexOf("testName"));
+        assertEqual(-1, tree.indexOf(db._id())); 
+        checkDumpJsonFile("testName", fs.join(path, db._name()), db._id());
+        checkCollections(tree, path, db._name());
+        db._useDatabase("😀");
+        assertEqual(-1, tree.indexOf("😀")); 
+        assertNotEqual(-1, tree.indexOf(db._id()));
+        checkDumpJsonFile("😀", fs.join(path, db._id()), db._id());
+        checkCollections(tree, path, db._id());
+        db._useDatabase("ﻚﻠﺑ ﻞﻄﻴﻓ");
+        assertEqual(-1, tree.indexOf("ﻚﻠﺑ ﻞﻄﻴﻓ"));
+        assertNotEqual(-1, tree.indexOf(db._id()));
+        checkDumpJsonFile("ﻚﻠﺑ ﻞﻄﻴﻓ", fs.join(path, db._id()), db._id()); 
+        checkCollections(tree, path, db._id());
+      } finally {
+        try {
+          fs.removeDirectory(path);
+          db._useDatabase("_system");
+        } catch (err) {}
+      }
+    },
 
     testDumpCompressedEncryptedWithEnvelope: function () {
       if (!require("internal").isEnterprise()) {

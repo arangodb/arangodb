@@ -836,7 +836,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     LOG_TOPIC("4af42", INFO, Logger::DUMP) << "Dumping database '" << dbName << "' (" << dbId << ")";
     _directory = std::make_unique<ManagedDirectory>(
         server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, ::getDatabaseDirName(dbName, dbId)),
-        true, true, _options.useGzip);
+        !_options.overwrite, true, _options.useGzip);
 
     if (_directory->status().fail()) {
       LOG_TOPIC("94201", ERR, Logger::DUMP) << _directory->status().errorMessage();

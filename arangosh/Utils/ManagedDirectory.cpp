@@ -258,7 +258,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
     // path exists, but is a file, not a directory
     if (!isDirectory) {
       _status.reset(TRI_ERROR_FILE_EXISTS,
-                    "path specified already exists as a non-directory file");
+                    std::string("the specified path '") + _path + "' already exists as a non-directory file");
       return;
     }
 
@@ -267,7 +267,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
       // directory exists, has files, and we aren't allowed to overwrite
       if (requireEmpty) {
         _status.reset(TRI_ERROR_CANNOT_OVERWRITE_FILE,
-                      "path specified is a non-empty directory");
+                      std::string("the specified path '") + _path + "' is a non-empty directory");
         return;
       }
 
