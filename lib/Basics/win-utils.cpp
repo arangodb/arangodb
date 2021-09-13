@@ -39,6 +39,9 @@
 #include <iomanip>
 #include <locale>
 
+#include "Basics/Common.h"
+#include "Basics/operating-system.h"
+
 #include "win-utils.h"
 
 #include <VersionHelpers.h>
