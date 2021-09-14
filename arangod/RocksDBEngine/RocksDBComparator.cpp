@@ -45,22 +45,25 @@ int compareIndexedValues(arangodb::velocypack::Slice const& lhs,
 
   arangodb::velocypack::ArrayIterator lhsIter(lhs);
   arangodb::velocypack::ArrayIterator rhsIter(rhs);
-  size_t const lLength = lhsIter.size();
-  size_t const rLength = rhsIter.size();
 
-  while (lhsIter.valid() || rhsIter.valid()) {
-    size_t i = lhsIter.index();
+  do {
+    bool lhsValid = lhsIter.valid();
+    bool rhsValid = rhsIter.valid();
+
+    if (!lhsValid && !rhsValid) {
+      return static_cast<int>(lhsIter.size() - rhsIter.size());
+    }
+
     int res = arangodb::basics::VelocyPackHelper::compare(
-        (i < lLength ? *lhsIter : VPackSlice::noneSlice()),
-        (i < rLength ? *rhsIter : VPackSlice::noneSlice()), true);
+        (lhsValid ? *lhsIter : VPackSlice::noneSlice()),
+        (rhsValid ? *rhsIter : VPackSlice::noneSlice()), true);
     if (res != 0) {
       return res;
     }
+
     ++lhsIter;
     ++rhsIter;
-  }
-
-  return static_cast<int>(lLength - rLength);
+  } while (true);
 }
 
 } // namespace

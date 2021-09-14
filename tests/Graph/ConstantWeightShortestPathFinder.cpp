@@ -71,7 +71,7 @@ class ConstantWeightShortestPathFinderTest : public ::testing::Test {
   GraphTestSetup s;
   MockGraphDatabase gdb;
 
-  std::unique_ptr<arangodb::aql::Query> query;
+  std::shared_ptr<arangodb::aql::Query> query;
   std::unique_ptr<arangodb::graph::ShortestPathOptions> spo;
 
   ConstantWeightShortestPathFinder* finder;

@@ -199,9 +199,9 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
     EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), queryString,
       {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase()),
                                arangodb::aql::QueryString(queryString), nullptr);
-    auto const res = query.explain();
+    auto const res = query->explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();
     arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
@@ -705,9 +705,9 @@ TEST_P(IResearchQueryNoMaterializationTest, matchSortButNotEnoughAttributes) {
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), queryString,
              {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
+  auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase()),
                              arangodb::aql::QueryString(queryString), nullptr);
-  auto const res = query.explain(); // this should not crash!
+  auto const res = query->explain(); // this should not crash!
   ASSERT_TRUE(res.data);
   auto const explanation = res.data->slice();
   arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
