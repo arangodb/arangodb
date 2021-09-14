@@ -47,6 +47,10 @@ devel
   (`_key` values) are not affected by this feature and will remain as in
   previous versions of ArangoDB.
 
+* Fixed issue #14720: Bulk import ignores onDuplicate in 3.8.0.
+  The "onDuplicate" attribute was ignored by the `/_api/import` REST API when
+  not specifying the "type" URL parameter.
+
 * Updated OpenSSL to 1.1.1l and OpenLDAP to 2.4.59.
 
 * APM-70: allow PRUNE condition to be stored in a variable.
