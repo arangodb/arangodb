@@ -141,7 +141,7 @@ char* AstResources::registerLongString(char* copy, size_t length) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  auto guard = scopeGuard([copy]() {
+  auto guard = scopeGuard([copy]() noexcept {
     // in case something goes wrong, we must free the string we got to prevent
     // memleaks
     TRI_FreeString(copy);

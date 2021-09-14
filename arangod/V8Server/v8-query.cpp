@@ -59,11 +59,11 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection co
                             std::string const& aql, std::shared_ptr<VPackBuilder> const& bindVars) {
   TRI_ASSERT(col != nullptr);
 
-  arangodb::aql::Query query(transaction::V8Context::Create(col->vocbase(), true),
-                             arangodb::aql::QueryString(aql),
-                             bindVars);
+  auto query = arangodb::aql::Query::create(transaction::V8Context::Create(col->vocbase(), true),
+                                            arangodb::aql::QueryString(aql),
+                                            bindVars);
 
-  arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate);
+  arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         queryResult.result.is(TRI_ERROR_QUERY_KILLED)) {
@@ -215,7 +215,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   resultBuilder.openArray();
   
   // We directly read the entire cursor. so batchsize == limit
-  auto iterator = trx.indexScan(collectionName, transaction::Methods::CursorType::ALL);
+  auto iterator = trx.indexScan(collectionName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments(
       [&resultBuilder](LocalDocumentId const&, VPackSlice slice) {

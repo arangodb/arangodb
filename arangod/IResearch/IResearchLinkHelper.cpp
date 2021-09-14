@@ -215,11 +215,27 @@ Result dropLink<arangodb::iresearch::IResearchViewCoordinator>(
   return methods::Indexes::drop(&collection, builder.slice());
 }
 
+struct State {
+  std::shared_ptr<LogicalCollection> _collection;
+  size_t _collectionsToLockOffset; // std::numeric_limits<size_t>::max() == removal only
+  std::shared_ptr<IResearchLink> _link;
+  size_t _linkDefinitionsOffset;
+  Result _result; // operation result
+  bool _stale = false; // request came from the stale list
+  explicit State(size_t collectionsToLockOffset)
+    : State(collectionsToLockOffset, std::numeric_limits<size_t>::max()) {}
+  State(size_t collectionsToLockOffset, size_t linkDefinitionsOffset)
+    : _collectionsToLockOffset(collectionsToLockOffset),
+      _linkDefinitionsOffset(linkDefinitionsOffset) {
+  }
+};
+
 template <typename ViewType>
 Result modifyLinks(
     std::unordered_set<DataSourceId>& modified,
     ViewType& view,
     velocypack::Slice const& links,
+    LinkVersion defaultVersion,
     std::unordered_set<DataSourceId> const& stale = {}) {
   LOG_TOPIC("4bdd2", DEBUG, arangodb::iresearch::TOPIC)
       << "link modification request for view '" << view.name() << "', original definition:" << links.toString();
@@ -231,18 +247,6 @@ Result modifyLinks(
     };
   }
 
-  struct State {
-    std::shared_ptr<LogicalCollection> _collection;
-    size_t _collectionsToLockOffset; // std::numeric_limits<size_t>::max() == removal only
-    std::shared_ptr<IResearchLink> _link;
-    size_t _linkDefinitionsOffset;
-    Result _result; // operation result
-    bool _stale = false; // request came from the stale list
-    explicit State(size_t collectionsToLockOffset)
-      : State(collectionsToLockOffset, std::numeric_limits<size_t>::max()) {}
-    State(size_t collectionsToLockOffset, size_t linkDefinitionsOffset)
-      : _collectionsToLockOffset(collectionsToLockOffset), _linkDefinitionsOffset(linkDefinitionsOffset) {}
-  };
   std::vector<std::string> collectionsToLock;
   std::vector<std::pair<velocypack::Builder, IResearchLinkMeta>> linkDefinitions;
   std::vector<State> linkModifications;
@@ -253,7 +257,8 @@ Result modifyLinks(
     if (!collection.isString()) {
       return {
         TRI_ERROR_BAD_PARAMETER,
-        std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "' offset '" + basics::StringUtils::itoa(linksItr.index()) + '"'
+        std::string("error parsing link parameters from json for arangosearch view '") +
+        view.name() + "' offset '" + basics::StringUtils::itoa(linksItr.index()) + '"'
       };
     }
 
@@ -267,9 +272,6 @@ Result modifyLinks(
       continue; // only removal requested
     }
 
-    // use the latest version for newly creating links
-    const uint32_t linkVersionForCreation = static_cast<uint32_t>(LinkVersion::MAX);
-
     velocypack::Builder normalized;
 
     normalized.openObject();
@@ -279,9 +281,11 @@ Result modifyLinks(
     //        Maintenance.cpp:compareIndexes(...) via
     //        arangodb::Index::Compare(...)
     //        hence must use 'isCreation=true' for normalize(...) to match
-    auto res = IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
-        normalized, link, true, view.vocbase(), &linkVersionForCreation,
-        &view.primarySort(), &view.primarySortCompression(), &view.storedValues(),
+    // normalize to validate analyzer definitions
+    auto res = IResearchLinkHelper::normalize(
+        normalized, link, true, view.vocbase(),
+        defaultVersion, &view.primarySort(),
+        &view.primarySortCompression(), &view.storedValues(),
         link.get(arangodb::StaticStrings::IndexId), collectionName);
 
     if (!res.ok()) {
@@ -323,8 +327,10 @@ Result modifyLinks(
     std::string error;
     IResearchLinkMeta linkMeta;
 
+    // validated and normalized with 'isCreation=true' above via normalize(...)
     if (!linkMeta.init(view.vocbase().server(),
-                       namedJson.slice(), true, error, view.vocbase().name())) {  // validated and normalized with 'isCreation=true' above via normalize(...)
+                       namedJson.slice(), true, error,
+                       view.vocbase().name())) {
       return {
         TRI_ERROR_BAD_PARAMETER,
         std::string("error parsing link parameters from json for arangosearch view '") + view.name() +
@@ -401,9 +407,8 @@ Result modifyLinks(
       }
 
       if (state._link       // links currently exists
-          && !state._stale  // did not originate from the stale list (remove
-                            // stale links lower)
-          && state._linkDefinitionsOffset >= linkDefinitions.size()) {  // link removal request
+          && !state._stale  // did not originate from the stale list (remove stale links lower)
+          && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
         LOG_TOPIC("a58da", TRACE, arangodb::iresearch::TOPIC)
             << "found link '" << state._link->id() << "' for collection '"
             << state._collection->name() << "' - slated for removal";
@@ -538,7 +543,9 @@ Result modifyLinks(
 
   return {
     TRI_ERROR_ARANGO_ILLEGAL_STATE,
-    std::string("failed to update links while updating arangosearch view '") + view.name() + "', retry same request or examine errors for collections: " + error };
+    "failed to update links while updating arangosearch view '" + view.name() +
+    "', retry same request or examine errors for collections: " + error
+  };
 }
 
 }  // namespace
@@ -567,8 +574,8 @@ namespace iresearch {
 
 /*static*/ bool IResearchLinkHelper::equal(
     application_features::ApplicationServer& server,
-    velocypack::Slice const& lhs,
-    velocypack::Slice const& rhs,
+    velocypack::Slice lhs,
+    velocypack::Slice rhs,
     irs::string_ref const& dbname) {
   if (!lhs.isObject() || !rhs.isObject()) {
     return false;
@@ -652,7 +659,7 @@ namespace iresearch {
     velocypack::Slice definition,
     bool isCreation,
     TRI_vocbase_t const& vocbase,
-    const uint32_t* version /*= nullptr*/,
+    LinkVersion defaultVersion,
     IResearchViewSort const* primarySort, /* = nullptr */
     irs::type_info::type_id const* primarySortCompression /*= nullptr*/,
     IResearchViewStoredValues const* storedValues, /* = nullptr */
@@ -666,20 +673,21 @@ namespace iresearch {
 
   std::string error;
   IResearchLinkMeta meta;
+  IResearchLinkMeta::Mask mask;
 
   // @note: implicit analyzer validation via IResearchLinkMeta done in 2 places:
   //        IResearchLinkHelper::normalize(...) if creating via collection API
   //        ::modifyLinks(...) (via call to normalize(...) prior to getting
   //        superuser) if creating via IResearchLinkHelper API
-  if (!meta.init(vocbase.server(), definition, true, error, vocbase.name())) {
+  if (!meta.init(vocbase.server(), definition, true, error, vocbase.name(), IResearchLinkMeta::DEFAULT(), &mask)) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       "error parsing arangosearch link parameters from json: " + error };
   }
 
-  if (version) {
-    assert(LinkVersion{version} >= LinkVersion::MIN && LinkVersion{version} <= LinkVersion::MAX);
-    meta._version = *version;
+  if (!mask._version) {
+    // use default version if not explicitly set
+    meta._version = static_cast<uint32_t>(defaultVersion);
   }
 
   auto res = canUseAnalyzers(meta, vocbase); // same validation as in modifyLinks(...) for Views API
@@ -851,25 +859,22 @@ namespace iresearch {
     std::unordered_set<DataSourceId>& modified,
     LogicalView& view,
     velocypack::Slice links,
-    std::unordered_set<DataSourceId> const& stale /*= {}*/ ) {
+    LinkVersion defaultVersion,
+    std::unordered_set<DataSourceId> const& stale /*= {}*/) {
   LOG_TOPIC("00bf9", TRACE, arangodb::iresearch::TOPIC)
       << "beginning IResearchLinkHelper::updateLinks";
   try {
     if (ServerState::instance()->isCoordinator()) {
-      return modifyLinks<IResearchViewCoordinator>( // modify
-        modified, // modified cids
-        LogicalView::cast<IResearchViewCoordinator>(view), // modified view
-        links, // link modifications
-        stale // stale links
-      );
+      return modifyLinks<IResearchViewCoordinator>(
+        modified,
+        LogicalView::cast<IResearchViewCoordinator>(view),
+        links, defaultVersion, stale);
     }
 
-    return modifyLinks<IResearchView>( // modify
-      modified, // modified cids
-      LogicalView::cast<IResearchView>(view), // modified view
-      links, // link modifications
-      stale // stale links
-    );
+    return modifyLinks<IResearchView>(
+      modified,
+      LogicalView::cast<IResearchView>(view),
+      links, defaultVersion, stale);
   } catch (basics::Exception& e) {
     LOG_TOPIC("72dde", WARN, arangodb::iresearch::TOPIC)
       << "caught exception while updating links for arangosearch view '" << view.name() << "': " << e.code() << " " << e.what();

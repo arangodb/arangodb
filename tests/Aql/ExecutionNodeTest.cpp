@@ -43,7 +43,7 @@ namespace arangodb::tests::aql {
 class ExecutionNodeTest : public ::testing::Test {
  protected:
   mocks::MockAqlServer server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
   Ast ast;
   ExecutionPlan plan;
 

@@ -47,13 +47,13 @@ using namespace arangodb;
 static arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
                                                std::string const& queryString,
                                                std::shared_ptr<transaction::Context> ctx) {
-  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString), nullptr);
+  auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString), nullptr);
 
   arangodb::aql::QueryResult result;
   while (true) {
-    auto state = query.execute(result);
+    auto state = query->execute(result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
-      query.sharedState()->waitForAsyncWakeup();
+      query->sharedState()->waitForAsyncWakeup();
     } else {
       break;
     }
@@ -231,7 +231,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
 
 TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
   auto beforeRole = arangodb::ServerState::instance()->getRole();
-  auto roleGuard = scopeGuard([&]() {
+  auto roleGuard = scopeGuard([&]() noexcept {
     arangodb::ServerState::instance()->setRole(beforeRole);
   });
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);

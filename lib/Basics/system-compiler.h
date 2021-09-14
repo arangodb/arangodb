@@ -74,3 +74,11 @@
 #endif
 #endif
 
+// pretty function name macro
+#if defined(__clang__) || defined(__GNUC__)
+#define ARANGODB_PRETTY_FUNCTION __PRETTY_FUNCTION__
+#elif defined(_MSC_VER)
+#define ARANGODB_PRETTY_FUNCTION __FUNCSIG__
+#else
+#define ARANGODB_PRETTY_FUNCTION __func__
+#endif

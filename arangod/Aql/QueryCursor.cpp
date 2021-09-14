@@ -145,7 +145,7 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // QueryStreamCursor class
 // .............................................................................
 
-QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
+QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
                                      size_t batchSize, double ttl)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false),
       _query(std::move(q)),
@@ -217,21 +217,26 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder)
   }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  TRI_DEFER(
+  ScopeGuard sg([&]() noexcept {
     TRI_IF_FAILURE("QueryCursor::directKillAfterQueryIsGettingDumped") {
       debugKillQuery();
     }
-  )
+  });
 #endif
 
   TRI_ASSERT(batchSize() > 0);
   LOG_TOPIC("9af59", TRACE, Logger::QUERIES)
     << "executing query " << _id << ": '"
     << _query->queryString().extract(1024) << "'";
-  
-  auto guard = scopeGuard([&] {
-    if (_query) {
-      _query->exitV8Context();
+
+  auto guard = scopeGuard([&]() noexcept {
+    try {
+      if (_query) {
+        _query->exitV8Context();
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("a2bf8", ERR, Logger::QUERIES)
+          << "Failed to exit V8 context: " << ex.what();
     }
   });
 
@@ -274,11 +279,11 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
     debugKillQuery();
   }
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  TRI_DEFER(
+  ScopeGuard sg([&]() noexcept {
     TRI_IF_FAILURE("QueryCursor::directKillAfterQueryIsGettingDumpedSynced") {
       debugKillQuery();
     }
-  )
+  });
 #endif
   TRI_ASSERT(batchSize() > 0);
   LOG_TOPIC("9dada", TRACE, Logger::QUERIES)
@@ -287,10 +292,15 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
 
   std::shared_ptr<SharedQueryState> ss = _query->sharedState();
   ss->resetWakeupHandler();
-  
-  auto guard = scopeGuard([&] {
-    if (_query) {
-      _query->exitV8Context();
+
+  auto guard = scopeGuard([&]() noexcept {
+    try {
+      if (_query) {
+        _query->exitV8Context();
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("db997", ERR, Logger::QUERIES)
+          << "Failed to exit V8 context: " << ex.what();
     }
   });
 

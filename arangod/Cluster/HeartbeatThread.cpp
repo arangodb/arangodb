@@ -878,7 +878,14 @@ void HeartbeatThread::runSingleServer() {
         }
         _agency.setTransient(transientPath, builder.slice(), static_cast<uint64_t>(ttl), timeout);
       };
-      TRI_DEFER(sendTransient());
+      auto sg = arangodb::scopeGuard([&]() noexcept {
+        try {
+          sendTransient();
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("1b5a3", WARN, Logger::HEARTBEAT)
+              << "Best effort heart beat failed: " << ex.what();
+        }
+      });
 
       // Case 2: Current server is leader
       if (leader.compareString(_myId) == 0) {
@@ -1345,7 +1352,7 @@ bool HeartbeatThread::sendServerState() {
   LOG_TOPIC("3369a", TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
 
   auto const start = std::chrono::steady_clock::now();
-  TRI_DEFER({
+  ScopeGuard sg([&]() noexcept {
     auto timeDiff = std::chrono::steady_clock::now() - start;
     _heartbeat_send_time_ms.count(
         std::chrono::duration_cast<std::chrono::milliseconds>(timeDiff).count());

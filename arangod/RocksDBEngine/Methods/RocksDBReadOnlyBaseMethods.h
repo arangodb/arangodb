@@ -70,6 +70,11 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
     return RollbackToSavePoint();
   }
   void PopSavePoint() override {}
+  
+  bool iteratorMustCheckBounds(ReadOwnWrites) const override {
+    // we never have to check the bounds for read-only iterators
+    return false;
+  }
 };
 
 }  // namespace arangodb
