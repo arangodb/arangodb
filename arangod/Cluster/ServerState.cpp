@@ -448,12 +448,13 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
   }
   
   if (!checkNamingConventionsEquality(comm)) {
-    LOG_TOPIC("75972", ERR, arangodb::Logger::STARTUP)
+    LOG_TOPIC("75972", FATAL, arangodb::Logger::STARTUP)
         << "the usage of different settings for database object naming "
         << "conventions (i.e. `--database.extended-names-databases` settings) "
         << "in the cluster is unsupported and may cause follow-up issues. "
         << "please unify the settings for the startup option `--database.extended-names-databases` "
         << "on all coordinators and DB servers in this cluster.";
+    return false;
   }
 
   std::string id;
