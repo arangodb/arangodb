@@ -86,7 +86,7 @@ struct ExternalId {
 };
 #else
 struct ExternalId {
-  DWORD _pid;
+  TRI_pid_t _pid;
   HANDLE _readPipe;
   HANDLE _writePipe;
 
@@ -171,7 +171,7 @@ void TRI_SetProcessTitle(char const* title);
 
 void TRI_CreateExternalProcess(char const* executable,
                                std::vector<std::string> const& arguments,
-                               std::vector<std::string> additionalEnv,
+                               std::vector<std::string> const& additionalEnv,
                                bool usePipes, ExternalId* pid);
 
 ////////////////////////////////////////////////////////////////////////////////
