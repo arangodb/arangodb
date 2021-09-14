@@ -79,7 +79,7 @@ class IndexIterator {
   IndexIterator& operator=(IndexIterator const&) = delete;
   IndexIterator() = delete;
 
-  IndexIterator(LogicalCollection* collection, transaction::Methods* trx);
+  IndexIterator(LogicalCollection* collection, transaction::Methods* trx, ReadOwnWrites readOwnWrites);
 
   virtual ~IndexIterator() = default;
 
@@ -164,6 +164,8 @@ class IndexIterator {
   virtual bool hasCovering() const { return false; }
  
  protected:
+  ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
+
   virtual bool rearmImpl(arangodb::aql::AstNode const* node,
                          arangodb::aql::Variable const* variable,
                          IndexIteratorOptions const& opts);
@@ -183,13 +185,16 @@ class IndexIterator {
   LogicalCollection* _collection;
   transaction::Methods* _trx;
   bool _hasMore;
+
+ private:
+  ReadOwnWrites const _readOwnWrites;
 };
 
 /// @brief Special iterator if the condition cannot have any result
 class EmptyIndexIterator final : public IndexIterator {
  public:
   EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx)
-      : IndexIterator(collection, trx) {}
+      : IndexIterator(collection, trx, ReadOwnWrites::no) {}
 
   ~EmptyIndexIterator() = default;
 
@@ -222,7 +227,7 @@ class MultiIndexIterator final : public IndexIterator {
  public:
   MultiIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                      arangodb::Index const* index, std::vector<std::unique_ptr<IndexIterator>> iterators)
-      : IndexIterator(collection, trx),
+      : IndexIterator(collection, trx, ReadOwnWrites::no),
         _iterators(std::move(iterators)),
         _currentIdx(0),
         _current(nullptr),

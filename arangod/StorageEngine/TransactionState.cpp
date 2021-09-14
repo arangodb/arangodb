@@ -51,7 +51,6 @@ using namespace arangodb;
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
-      _lastWrittenOperationTick(0),
       _type(AccessMode::Type::READ),
       _status(transaction::Status::CREATED),
       _arena(),
@@ -199,10 +198,6 @@ Result TransactionState::addCollectionInternal(DataSourceId cid, std::string con
   TransactionCollection* trxColl = findCollection(cid, position);
 
   if (trxColl != nullptr) {
-    static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
-                      AccessMode::Type::READ < AccessMode::Type::WRITE &&
-                      AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
-                  "AccessMode::Type total order fail");
     LOG_TRX("ad6d0", TRACE, this)
         << "updating collection usage " << cid << ": '" << cname << "'";
 

@@ -52,6 +52,7 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -59,6 +60,11 @@ using namespace arangodb::rest;
 using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
+
+namespace {
+VPackStringRef const writeKey("write");
+VPackStringRef const exclusiveKey("exclusive");
+} // namespace
 
 RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
                                GeneralRequest* request, GeneralResponse* response,
@@ -112,9 +118,15 @@ void RestAqlHandler::setupClusterQuery() {
   
   TRI_IF_FAILURE("Query::setupTimeoutFailSequence") {
     // simulate lock timeout during query setup
-    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    uint32_t r = 100;
+    TRI_IF_FAILURE("Query::setupTimeoutFailSequenceRandom") {
+      r = RandomGenerator::interval(uint32_t(100));
+    }
+    if (r >= 96) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    }
   }
-
+  
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
@@ -231,6 +243,8 @@ void RestAqlHandler::setupClusterQuery() {
     options.ttl = _queryRegistry->defaultTTL();
   }
 
+  AccessMode::Type access = AccessMode::Type::READ;
+
   // TODO: technically we could change the code in prepareClusterQuery to parse
   //       the collection info directly
   // Build the collection information
@@ -238,7 +252,7 @@ void RestAqlHandler::setupClusterQuery() {
   collectionBuilder.openArray();
   for (auto const& lockInf : VPackObjectIterator(lockInfoSlice)) {
     if (!lockInf.value.isArray()) {
-      LOG_TOPIC("1dc00", ERR, arangodb::Logger::AQL)
+      LOG_TOPIC("1dc00", WARN, arangodb::Logger::AQL)
           << "Invalid VelocyPack: \"lockInfo." << lockInf.key.copyString()
           << "\" is required but not an array.";
       generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -249,7 +263,7 @@ void RestAqlHandler::setupClusterQuery() {
     }
     for (VPackSlice col : VPackArrayIterator(lockInf.value)) {
       if (!col.isString()) {
-        LOG_TOPIC("9e29f", ERR, arangodb::Logger::AQL)
+        LOG_TOPIC("9e29f", WARN, arangodb::Logger::AQL)
             << "Invalid VelocyPack: \"lockInfo." << lockInf.key.copyString()
             << "\" is required but not an array.";
         generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -262,18 +276,23 @@ void RestAqlHandler::setupClusterQuery() {
       collectionBuilder.add("name", col);
       collectionBuilder.add("type", lockInf.key);
       collectionBuilder.close();
+
+      if (!AccessMode::isWriteOrExclusive(access) && lockInf.key.isEqualString(::writeKey)) {
+        access = AccessMode::Type::WRITE;
+      } else if (!AccessMode::isExclusive(access) && lockInf.key.isEqualString(::exclusiveKey)) {
+        access = AccessMode::Type::EXCLUSIVE;
+      }
     }
   }
   collectionBuilder.close();
 
-  // simon: making this write breaks queries where DOCUMENT function
-  // is used in a coordinator-snippet above a DBServer-snippet
-  AccessMode::Type access = AccessMode::Type::READ;
-  const double ttl = options.ttl;
+  double const ttl = options.ttl;
   // creates a StandaloneContext or a leased context
   auto q = std::make_unique<ClusterQuery>(clusterQueryId, 
                                           createTransactionContext(access),
                                           std::move(options));
+  
+  TRI_ASSERT(clusterQueryId == 0 || clusterQueryId == q->id());
 
   VPackBufferUInt8 buffer;
   VPackBuilder answerBuilder(buffer);
