@@ -87,6 +87,7 @@
 #include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
+#include "Basics/files.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -211,7 +212,7 @@ ExternalProcess::~ExternalProcess() {
 ExternalProcessStatus::ExternalProcessStatus()
     : _status(TRI_EXT_NOT_STARTED), _exitStatus(0), _errorMessage() {}
 
-static ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
+ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
     auto found = std::find_if(ExternalProcesses.begin(), ExternalProcesses.end(),
@@ -251,7 +252,7 @@ static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void StartExternalProcess(ExternalProcess* external, bool usePipes,
-                                 std::vector<std::string> additionalEnv) {
+                                 std::vector<std::string> const& additionalEnv) {
   int pipe_server_to_child[2];
   int pipe_child_to_server[2];
 
@@ -293,8 +294,8 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
     }
 
     // add environment variables
-    for (auto it : additionalEnv) {
-      putenv(TRI_DuplicateString(it.c_str()));
+    for (auto const& it : additionalEnv) {
+      putenv(TRI_DuplicateString(it.c_str(), it.size()));
     }
 
     // execute worker
@@ -374,7 +375,7 @@ static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
   } while (false);
 
 static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
-  int err;
+  auto err = TRI_ERROR_NO_ERROR;
 
   appendChar(buf, '"');
 
@@ -458,9 +459,10 @@ static int wAppendQuotedArg(std::wstring& buf, wchar_t const* p) {
   buf += L'"';
   return TRI_ERROR_NO_ERROR;
 }
+
 static std::wstring makeWindowsArgs(ExternalProcess* external) {
   size_t i;
-  int err = TRI_ERROR_NO_ERROR;
+  auto err = TRI_ERROR_NO_ERROR;
   std::wstring res;
 
   if ((external->_executable.find('/') == std::string::npos) &&
@@ -546,7 +548,7 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
 }
 
 static void StartExternalProcess(ExternalProcess* external, bool usePipes,
-                                 std::vector<std::string> additionalEnv) {
+                                 std::vector<std::string> const& additionalEnv) {
   HANDLE hChildStdinRd = NULL, hChildStdinWr = NULL;
   HANDLE hChildStdoutRd = NULL, hChildStdoutWr = NULL;
   bool fSuccess;
@@ -895,7 +897,7 @@ void TRI_SetProcessTitle(char const* title) {
 
 void TRI_CreateExternalProcess(char const* executable,
                                std::vector<std::string> const& arguments,
-                               std::vector<std::string> additionalEnv,
+                               std::vector<std::string> const& additionalEnv,
                                bool usePipes, ExternalId* pid) {
   size_t const n = arguments.size();
   // create the external structure
@@ -913,7 +915,7 @@ void TRI_CreateExternalProcess(char const* executable,
 
   memset(external->_arguments, 0, (n + 2) * sizeof(char*));
 
-  external->_arguments[0] = TRI_DuplicateString(executable);
+  external->_arguments[0] = TRI_DuplicateString(executable, strlen(executable));
   if (external->_arguments[0] == nullptr) {
     // OOM
     pid->_pid = TRI_INVALID_PROCESS_ID;
@@ -921,7 +923,7 @@ void TRI_CreateExternalProcess(char const* executable,
   }
 
   for (size_t i = 0; i < n; ++i) {
-    external->_arguments[i + 1] = TRI_DuplicateString(arguments[i].c_str());
+    external->_arguments[i + 1] = TRI_DuplicateString(arguments[i].c_str(), arguments[i].size());
     if (external->_arguments[i + 1] == nullptr) {
       // OOM
       pid->_pid = TRI_INVALID_PROCESS_ID;
@@ -959,6 +961,78 @@ void TRI_CreateExternalProcess(char const* executable,
     return;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Closes the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ClosePipe(ExternalProcess* process,
+                   bool read) {
+  if (process == nullptr ||
+      (read && TRI_IS_INVALID_PIPE(process->_readPipe)) ||
+      (!read && TRI_IS_INVALID_PIPE(process->_writePipe))
+      ) {
+    return;
+  }
+
+  auto pipe = (read) ? &process->_readPipe : &process->_writePipe;
+  
+#ifndef _WIN32
+  if (*pipe != -1) {
+    FILE* stream = fdopen(*pipe, "w");
+    if (stream != nullptr) {
+      fflush(stream);
+    }
+    close(*pipe);
+    *pipe = -1;
+  }
+#else
+  if (*pipe != INVALID_HANDLE_VALUE) {
+    CloseHandle(*pipe);
+    *pipe = INVALID_HANDLE_VALUE;
+  }
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reads from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
+                               char* buffer,
+                               size_t bufferSize) {
+  if (process == nullptr || TRI_IS_INVALID_PIPE(process->_readPipe)) {
+    return 0;
+  }
+
+  memset(buffer, 0, bufferSize);
+
+#ifndef _WIN32
+  return TRI_ReadPointer(process->_readPipe, buffer, bufferSize);
+#else
+  return TRI_READ_POINTER(process->_readPipe, buffer, bufferSize);
+#endif
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_WritePipe(ExternalProcess const* process,
+                   char const* buffer,
+                   size_t bufferSize) {
+  if (process == nullptr || TRI_IS_INVALID_PIPE(process->_writePipe)) {
+    return false;
+  }
+
+#ifndef _WIN32
+  return TRI_WritePointer(process->_writePipe, buffer, bufferSize);
+#else
+  return TRI_WRITE_POINTER(process->_writePipe, buffer, bufferSize);
+#endif
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
