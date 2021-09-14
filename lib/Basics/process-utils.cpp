@@ -374,7 +374,7 @@ static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
     }                                             \
   } while (false);
 
-static ErrorCode appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
+static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
   auto err = TRI_ERROR_NO_ERROR;
 
   appendChar(buf, '"');
@@ -418,7 +418,7 @@ static ErrorCode appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
   return TRI_ERROR_NO_ERROR;
 }
 
-static ErrorCode wAppendQuotedArg(std::wstring& buf, wchar_t const* p) {
+static int wAppendQuotedArg(std::wstring& buf, wchar_t const* p) {
   buf += L'"';
 
   while (*p != 0) {
