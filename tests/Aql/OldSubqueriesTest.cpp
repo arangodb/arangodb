@@ -21,6 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Utils/OperationOptions.h"
 #include "gtest/gtest.h"
 
 #include "QueryHelper.h"
@@ -544,7 +545,7 @@ TEST_F(OldSubqueriesTest, splice_subquery_with_upsert) {
     EXPECT_TRUE(document.get("_key").isString());
     EXPECT_EQ(std::string{"myKey"}, document.get("_key").copyString());
     return true;
-  });
+  }, ReadOwnWrites::no);
   ASSERT_TRUE(called);
   ASSERT_TRUE(result.ok());
 }

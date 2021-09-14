@@ -195,6 +195,9 @@ class TransactionState {
 
   virtual bool hasFailedOperations() const = 0;
 
+  virtual void beginQuery(bool /*isModificationQuery*/) {}
+  virtual void endQuery(bool /*isModificationQuery*/) noexcept {}
+
   TransactionCollection* findCollection(DataSourceId cid) const;
 
   /// @brief make a exclusive transaction, only valid before begin
@@ -233,9 +236,7 @@ class TransactionState {
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
   ///       transaction is committed
-  TRI_voc_tick_t lastOperationTick() const noexcept {
-    return _lastWrittenOperationTick;
-  }
+  virtual TRI_voc_tick_t lastOperationTick() const noexcept { return 0; }
 
   void acceptAnalyzersRevision(QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
@@ -281,9 +282,6 @@ class TransactionState {
 
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
-
-  /// @brief tick of last added & written operation
-  TRI_voc_tick_t _lastWrittenOperationTick;
 
   /// @brief access type (read|write)
   AccessMode::Type _type;
