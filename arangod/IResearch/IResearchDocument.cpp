@@ -500,7 +500,7 @@ bool FieldIterator::setValue(VPackSlice const value,
       }
       break;
     default: {
-      iresearch::kludge::mangleField(_nameBuffer, false, valueAnalyzer);
+      iresearch::kludge::mangleField(_nameBuffer, true, valueAnalyzer);
       _value._analyzer = std::move(analyzer);
       _value._fieldFeatures = pool->fieldFeatures();
       _value._indexFeatures = pool->indexFeatures();
