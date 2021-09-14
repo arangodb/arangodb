@@ -224,8 +224,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           if (idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
               idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX &&
               idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX &&
-              idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX &&
-              idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+              idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
             // only the above index types are supported
             return false;
           }
