@@ -4496,6 +4496,12 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
     }
   }
 
+  bool usePipes = false;
+
+  if (3 <= args.Length()) {
+    usePipes = TRI_ObjectToBoolean(isolate, args[2]);
+  }
+
   std::vector<std::string> additionalEnv;
 
   if (4 <= args.Length()) {
@@ -4518,14 +4524,23 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
     }
   }
 
-  bool usePipes = false;
+  auto workingDirectory = FileUtils::currentDirectory().result();
+  std::string subProcessWorkingDirectory = workingDirectory;
 
-  if (3 <= args.Length()) {
-    usePipes = TRI_ObjectToBoolean(isolate, args[2]);
+  if (5 <= args.Length()) {
+    TRI_Utf8ValueNFC name(isolate, args[4]);
+    if (*name == nullptr) {
+      TRI_V8_THROW_TYPE_ERROR("<workingDirectory> must be a string");
+    }
+
+    subProcessWorkingDirectory = std::string(*name, name.length());
   }
-
   ExternalId external;
+  if (subProcessWorkingDirectory != workingDirectory) {
+    FileUtils::changeDirectory(subProcessWorkingDirectory);
+  }
   TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes, &external);
+  FileUtils::changeDirectory(workingDirectory);
 
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
@@ -4611,9 +4626,9 @@ static void JS_ExecuteExternalAndWait(v8::FunctionCallbackInfo<v8::Value> const&
   auto context = TRI_IGETC;
 
   // extract the arguments
-  if (5 < args.Length() || args.Length() < 1) {
+  if (6 < args.Length() || args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "executeExternalAndWait(<filename>[, <arguments> [,<usePipes>, [, <timeoutms> [, <env>] ] ] ])");
+        "executeExternalAndWait(<filename>[, <arguments> [,<usePipes>, [, <timeoutms> [, <env> [, <workingDirectory> ] ] ] ] ])");
   }
 
   TRI_Utf8ValueNFC name(isolate, args[0]);
@@ -4666,6 +4681,16 @@ static void JS_ExecuteExternalAndWait(v8::FunctionCallbackInfo<v8::Value> const&
     }
   }
 
+  bool usePipes = false;
+  if (args.Length() >= 3) {
+    usePipes = TRI_ObjectToBoolean(isolate, args[2]);
+  }
+
+  uint32_t timeoutms = 0;
+  if (args.Length() >= 4) {
+    timeoutms = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[3], true));
+  }
+
   std::vector<std::string> additionalEnv;
 
   if (5 <= args.Length()) {
@@ -4688,18 +4713,23 @@ static void JS_ExecuteExternalAndWait(v8::FunctionCallbackInfo<v8::Value> const&
     }
   }
 
-  bool usePipes = false;
-  if (args.Length() >= 3) {
-    usePipes = TRI_ObjectToBoolean(isolate, args[2]);
-  }
+  auto workingDirectory = FileUtils::currentDirectory().result();
+  std::string subProcessWorkingDirectory = workingDirectory;
 
-  uint32_t timeoutms = 0;
-  if (args.Length() >= 4) {
-    timeoutms = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[3], true));
-  }
+  if (5 <= args.Length()) {
+    TRI_Utf8ValueNFC name(isolate, args[4]);
+    if (*name == nullptr) {
+      TRI_V8_THROW_TYPE_ERROR("<workingDirectory> must be a string");
+    }
 
+    subProcessWorkingDirectory = std::string(*name, name.length());
+  }
   ExternalId external;
+  if (subProcessWorkingDirectory != workingDirectory) {
+    FileUtils::changeDirectory(subProcessWorkingDirectory);
+  }
   TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes, &external);
+  FileUtils::changeDirectory(workingDirectory);
 
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
