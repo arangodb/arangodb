@@ -166,8 +166,9 @@ void arangodb::rocksdbStartupVersionCheck(application_features::ApplicationServe
           // user is trying to switch back from extended names to traditional names.
           // this is unsupported
           LOG_TOPIC("1d4f6", FATAL, Logger::ENGINES)
-              << "it is unsupported to change the value of the startup option `--database.extended-names-databases`"
-              << " back to `false` after it was set to `true` before.";
+              << "It is unsupported to change the value of the startup option `--database.extended-names-databases`"
+              << " back to `false` after it was set to `true` before. "
+              << "Please remove the setting `--database.extended-names-databases true` from the startup options.";
           FATAL_ERROR_EXIT();
         }
       }
