@@ -441,7 +441,7 @@
       inputs.attr('id', (idx, id) => id ? `${id.split('-')[0]}-${_.uniqueId()}` : id);
 
       if (!newRow.find('button.delete').length) {
-        const lastCell = newRow.children().last();
+        const lastCell = newRow.children().last().find('span');
         $(`
             <button style="margin-left: 5px;"
                     class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete addDelete">
