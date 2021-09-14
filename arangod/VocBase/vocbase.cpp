@@ -1066,7 +1066,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
                                             StaticStrings::DataSourceName, "");
     bool isSystem = VelocyPackHelper::getBooleanValue(parameters, StaticStrings::DataSourceSystem, false);
     bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForCollections();
-    valid &= CollectionNameValidator::isAllowedName(isSystem, extendedNames, arangodb::velocypack::StringRef(name));
+    valid = CollectionNameValidator::isAllowedName(isSystem, extendedNames, arangodb::velocypack::StringRef(name));
   }
 
   if (!valid) {

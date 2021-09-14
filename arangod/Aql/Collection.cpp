@@ -244,10 +244,8 @@ std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(std::string const
                                    "The index id cannot be empty.");
   }
 
-  for (std::size_t i = 0; i < idxId.size(); ++i) {
-    if (idxId[i] < '0' || idxId[i] > '9') {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-    }
+  if (!idxId.empty() && !Index::validateId(idxId.data(), idxId.size())) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
   }
   
   auto iid = arangodb::IndexId{arangodb::basics::StringUtils::uint64(idxId)};

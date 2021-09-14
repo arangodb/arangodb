@@ -388,6 +388,22 @@ char const* Index::oldtypeName(Index::IndexType type) {
   return "";
 }
 
+/// @brief validate an index id (i.e. ^[0-9]+$)
+bool Index::validateId(char const* p, size_t length) {
+  // totally empty id string is not allowed
+  if (length == 0) {
+    return false;
+  }
+  char const* e = p + length;
+  while (p < e) {
+    if (*p < '0' || *p > '9') {
+      return false;
+    }
+    ++p;
+  }
+  return true;
+}
+
 /// @brief validate an index handle (collection name + / + index id)
 bool Index::validateHandle(bool extendedNames, arangodb::velocypack::StringRef handle) noexcept {
   std::size_t pos = handle.find('/');
@@ -401,15 +417,7 @@ bool Index::validateHandle(bool extendedNames, arangodb::velocypack::StringRef h
   }
   // check remainder (index id)
   handle = handle.substr(pos + 1);
-  if (handle.empty()) {
-    return false;
-  }
-  for (std::size_t i = 0; i < handle.size(); ++i) {
-    if (handle[i] < '0' || handle[i] > '9') {
-      return false;
-    }
-  }
-  return true;
+  return validateId(handle.data(), handle.size());
 }
 
 /// @brief validate an index handle (collection name + / + index name)

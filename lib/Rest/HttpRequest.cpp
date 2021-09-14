@@ -51,10 +51,15 @@ std::string url_decode(const char* begin, const char* end) {
     std::string::value_type c = (*i);
     if (c == '%') {
       if (i + 2 < end) {
-        int h = StringUtils::hex2int(i[1], 0) << 4;
-        h += StringUtils::hex2int(i[2], 0);
+        int h = StringUtils::hex2int(i[1], 256) << 4;
+        h += StringUtils::hex2int(i[2], 256);
+        if (h >= 256) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid encoding value in request URL");
+        }
         out.push_back(static_cast<char>(h & 0xFF));
         i += 2;
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid encoding value in request URL");
       }
     } else if (c == '+') {
       out.push_back(' ');

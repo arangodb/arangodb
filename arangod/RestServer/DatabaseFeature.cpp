@@ -1288,10 +1288,7 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       }
 
       std::string const databaseName = it.get("name").copyString();
-      std::string id;
-      if (it.hasKey("id")) {
-        id = it.get("id").copyString();
-      }
+      std::string const id = VelocyPackHelper::getStringValue(it, "id", "");
       std::string const dirName = ::getDatabaseDirName(databaseName, id);
       
       // create app directory for database if it does not exist

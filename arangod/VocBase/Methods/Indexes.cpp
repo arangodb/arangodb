@@ -523,10 +523,9 @@ static bool ExtractIndexHandle(VPackSlice const& arg, bool extendedNames,
     return true;
   }
 
-  for (std::size_t i = 0; i < handle.size(); ++i) {
-    if (handle[i] < '0' || handle[i] > '9') {
-      return false;
-    }
+  if (!handle.empty() &&
+      !Index::validateId(handle.data(), handle.size())) {
+    return false;
   }
   iid = IndexId{StringUtils::uint64(handle.data(), handle.size())};
   return true;
@@ -583,10 +582,8 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
         !ExtractIndexName(val, extendedNames, collectionName, name)) {
       return Result(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
     }
-  }
-
-  // extract the index identifier from an object
-  else if (val.isObject()) {
+  } else if (val.isObject()) {
+    // extract the index identifier from an object
     VPackSlice iidVal = val.get(StaticStrings::IndexId);
     if (!ExtractIndexHandle(iidVal, extendedNames, collectionName, iid)) {
       VPackSlice nameVal = val.get(StaticStrings::IndexName);

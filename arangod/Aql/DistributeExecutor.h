@@ -103,8 +103,6 @@ class DistributeExecutor {
    * @param rowIndex
    * @return std::string Identifier used by the client
    */
-  auto extractInput(SharedAqlItemBlockPtr const& block, size_t rowIndex) const
-      -> velocypack::Slice;
   auto getClient(velocypack::Slice input) const -> std::string;
 
  private:

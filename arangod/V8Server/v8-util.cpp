@@ -63,7 +63,7 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> arg,
   }
 
   // the handle must always be an ASCII string. These is no need to normalize it
-  // first - TODO: is this true with extended collection names?
+  // first. 
   v8::String::Utf8Value str(isolate, arg);
 
   if (*str == nullptr) {

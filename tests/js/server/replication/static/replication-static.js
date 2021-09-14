@@ -1963,7 +1963,7 @@ function BaseTestConfig () {
     testTailingWithTooHighSequenceNumber: function () {
       connectToLeader();
 
-      const dbPrefix = db._name() === '_system' ? '' : '/_db/' + db._name();
+      const dbPrefix = db._name() === '_system' ? '' : '/_db/' + encodeURIComponent(db._name());
 
       const {lastTick: snapshotTick, id: replicationContextId} = arango.POST(`${dbPrefix}/_api/replication/batch?syncerId=123`, {ttl: 120});
 

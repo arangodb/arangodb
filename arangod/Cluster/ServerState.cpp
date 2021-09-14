@@ -446,14 +446,8 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
         << "cluster is unsupported and may cause issues";
     return false;
   }
-  
+ 
   if (!checkNamingConventionsEquality(comm)) {
-    LOG_TOPIC("75972", FATAL, arangodb::Logger::STARTUP)
-        << "the usage of different settings for database object naming "
-        << "conventions (i.e. `--database.extended-names-databases` settings) "
-        << "in the cluster is unsupported and may cause follow-up issues. "
-        << "please unify the settings for the startup option `--database.extended-names-databases` "
-        << "on all coordinators and DB servers in this cluster.";
     return false;
   }
 
@@ -660,12 +654,37 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
     }
 
     for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(servers)) {
-      if (pair.value.isObject()) {
-        VPackSlice setting = pair.value.get(::extendedNamesDatabasesKey);
-        if (setting.isBool() && setting.getBool() != extendedNamesForDatabases) {
-          // different setting detected
-          return false;
+      if (!pair.value.isObject()) {
+        continue;
+      }
+      VPackSlice setting = pair.value.get(::extendedNamesDatabasesKey);
+      if (setting.isBool() && setting.getBool() != extendedNamesForDatabases) {
+        // different setting detected. bail out!
+        LOG_TOPIC("75972", FATAL, arangodb::Logger::STARTUP)
+          << "The usage of different settings for database object naming "
+          << "conventions (i.e. `--database.extended-names-databases` settings) "
+          << "in the cluster is unsupported and may cause follow-up issues. "
+          << "Please unify the settings for the startup option `--database.extended-names-databases` "
+          << "on all coordinators and DB servers in this cluster.";
+
+        std::string msg;
+        for (VPackObjectIterator::ObjectPair p : VPackObjectIterator(servers)) {
+          if (!p.value.isObject()) {
+            continue;
+          }
+          VPackSlice s = p.value.get(::extendedNamesDatabasesKey);
+          if (!msg.empty()) {
+            msg += ", ";
+          }
+          msg += "[" + p.key.copyString() + ": " + (s.isBool() ? (s.getBool() ? "true" : "false") : "not set") + "]";
         }
+
+        if (!msg.empty()) {
+          LOG_TOPIC("1220d", FATAL, arangodb::Logger::STARTUP)
+            << "The following effective settings exist for `--database.extended-names-databases` "
+            << "for the servers in this cluster, either explicitly configured or persisted on database servers: " << msg;
+        }
+        return false;
       }
     }
   }

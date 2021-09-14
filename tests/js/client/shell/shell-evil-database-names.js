@@ -31,7 +31,7 @@
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
-const dbs = ["testDatabase", "abc123", "maçã", "mötör", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "かわいい犬"];
+const dbs = ["testDatabase", "abc123", "maçã", "mötör", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "かわいい犬", "let%2Fus%26test%3Fthis"];
 
 function EvilDatabaseNamesSuite () {
   'use strict';

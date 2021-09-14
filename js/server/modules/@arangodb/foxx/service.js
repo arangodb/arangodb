@@ -718,8 +718,7 @@ module.exports =
     }
 
     static get _systemAppPath () {
-      // TODO: should this be STARTUP_PATH here?
-      return APP_PATH ? (
+      return STARTUP_PATH ? (
         path.join(STARTUP_PATH, 'apps', 'system')
         ) : undefined;
     }
