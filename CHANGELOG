@@ -1,6 +1,10 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #14720: Bulk import ignores onDuplicate in 3.8.0.
+  The "onDuplicate" attribute was ignored by the `/_api/import` REST API when
+  not specifying the "type" URL parameter.
+
 * Fix internal iterator states after intermediate commits in write transactions.
   Iterators could point to invalid data after an intermediate commit, producing
   undefined behavior.
