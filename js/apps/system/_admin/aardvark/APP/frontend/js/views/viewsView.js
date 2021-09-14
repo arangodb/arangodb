@@ -427,7 +427,7 @@
     addRow: function (e) {
       e.stopPropagation();
 
-      const row = $(e.currentTarget).closest('tr');
+      const row = $(e.currentTarget).closest('table').find('tbody').children().last();
       const newRow = row.clone(true);
       const idParts = newRow.attr('id').split('-');
 
@@ -441,12 +441,12 @@
       inputs.attr('id', (idx, id) => id ? `${id.split('-')[0]}-${_.uniqueId()}` : id);
 
       if (!newRow.find('button.delete').length) {
-        const addButton = newRow.find('button.add');
+        const lastCell = newRow.children().last();
         $(`
             <button style="margin-left: 5px;"
                     class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete addDelete">
             </button>
-        `).insertAfter(addButton);
+        `).appendTo(lastCell);
       }
 
       newRow.insertAfter(row);

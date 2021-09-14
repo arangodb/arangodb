@@ -80,7 +80,11 @@ function createInput(row) {
 
                     <th style="height: unset;"><%= header %></th>
                 <% }); %>
-                <th style="height: unset; min-width: 30px;">+ / &times;</th>
+                <th style="height: unset; min-width: 30px;">
+                    <span style="display: inline-flex">
+                                <button class="graphViewer-icon-button gv-icon-small add addAfter"></button>
+                    </span>
+                </th>
             </tr>
             </thead>
         <% } %>
@@ -98,7 +102,6 @@ function createInput(row) {
                 <% }); %>
                 <td>
                             <span style="display: inline-flex">
-                                <button class="graphViewer-icon-button gv-icon-small add addAfter"></button>
                                 <% if (idx) {%>
                                 <button style="margin-left: 5px;"
                                         class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete addDelete">
