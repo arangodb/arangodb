@@ -873,14 +873,14 @@ Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase,
   result.openObject();
   {
     buildBindVars(StaticStrings::Statistics15Collection);
-    arangodb::aql::Query query(transaction::StandaloneContext::Create(*sysVocbase),
-                               arangodb::aql::QueryString(stats15Query),
-                               bindVars);
+    auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*sysVocbase),
+                                              arangodb::aql::QueryString(stats15Query),
+                                              bindVars);
 
-    query.queryOptions().cache = false;
-    query.queryOptions().skipAudit = true;
+    query->queryOptions().cache = false;
+    query->queryOptions().skipAudit = true;
 
-    aql::QueryResult queryResult = query.executeSync();
+    aql::QueryResult queryResult = query->executeSync();
 
     if (queryResult.result.fail()) {
       return queryResult.result;
@@ -891,14 +891,14 @@ Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase,
 
   {
     buildBindVars(StaticStrings::StatisticsCollection);
-    arangodb::aql::Query query(transaction::StandaloneContext::Create(*sysVocbase),
-                               arangodb::aql::QueryString(statsSamplesQuery),
-                               bindVars);
+    auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*sysVocbase),
+                                              arangodb::aql::QueryString(statsSamplesQuery),
+                                              bindVars);
 
-    query.queryOptions().cache = false;
-    query.queryOptions().skipAudit = true;
+    query->queryOptions().cache = false;
+    query->queryOptions().skipAudit = true;
 
-    aql::QueryResult queryResult = query.executeSync();
+    aql::QueryResult queryResult = query->executeSync();
 
     if (queryResult.result.fail()) {
       return queryResult.result;

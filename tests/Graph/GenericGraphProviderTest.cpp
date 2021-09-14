@@ -63,7 +63,7 @@ class GraphProviderTest : public ::testing::Test {
   std::unique_ptr<GraphTestSetup> s{nullptr};
   std::unique_ptr<MockGraphDatabase> singleServer{nullptr};
   std::unique_ptr<mocks::MockServer> server{nullptr};
-  std::unique_ptr<arangodb::aql::Query> query{nullptr};
+  std::shared_ptr<arangodb::aql::Query> query{nullptr};
   std::unique_ptr<std::unordered_map<ServerID, aql::EngineId>> clusterEngines{nullptr};
   std::unique_ptr<arangodb::transaction::Methods> _trx{};
 
@@ -135,19 +135,19 @@ class GraphProviderTest : public ::testing::Test {
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server.getSystemDatabase());
-        arangodb::aql::Query fakeQuery(ctx, queryString, nullptr);
+        auto fakeQuery = arangodb::aql::Query::create(ctx, queryString, nullptr);
         try {
-          fakeQuery.collections().add("s9880", AccessMode::Type::READ,
-                                      arangodb::aql::Collection::Hint::Shard);
-        } catch (...) {
+          fakeQuery->collections().add("s9880", AccessMode::Type::READ,
+                                       arangodb::aql::Collection::Hint::Shard);
+        } catch(...) {
         }
-        fakeQuery.prepareQuery(SerializationFormat::SHADOWROWS);
-        auto ast = fakeQuery.ast();
+        fakeQuery->prepareQuery(SerializationFormat::SHADOWROWS);
+        auto ast = fakeQuery->ast();
         auto tmpVar = ast->variables()->createTemporaryVariable();
         auto tmpVarRef = ast->createNodeReference(tmpVar);
         auto tmpIdNode = ast->createNodeValueString("", 0);
 
-        ShortestPathOptions opts{fakeQuery};
+        ShortestPathOptions opts{*fakeQuery};
         opts.setVariable(tmpVar);
 
         auto const* access =
@@ -157,7 +157,7 @@ class GraphProviderTest : public ::testing::Test {
             ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpIdNode);
         auto fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
         fromCondition->addMember(cond);
-        opts.addLookupInfo(fakeQuery.plan(), "s9880", StaticStrings::FromString, fromCondition);
+        opts.addLookupInfo(fakeQuery->plan(), "s9880", StaticStrings::FromString, fromCondition);
 
         auto const* revAccess =
             ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::ToString.c_str(),
@@ -166,7 +166,7 @@ class GraphProviderTest : public ::testing::Test {
                                                             revAccess, tmpIdNode);
         auto toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
         toCondition->addMember(revCond);
-        opts.addReverseLookupInfo(fakeQuery.plan(), "s9880",
+        opts.addReverseLookupInfo(fakeQuery->plan(), "s9880",
                                   StaticStrings::FromString, toCondition);
 
         std::tie(preparedResponses, engineId) =
@@ -194,7 +194,7 @@ class GraphProviderTest : public ::testing::Test {
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server->getSystemDatabase());
-        query = std::make_unique<arangodb::aql::Query>(ctx, queryString, nullptr);
+        query = arangodb::aql::Query::create(ctx, queryString, nullptr);
 
         query->collections().add("v", AccessMode::Type::READ,
                                  arangodb::aql::Collection::Hint::Collection);

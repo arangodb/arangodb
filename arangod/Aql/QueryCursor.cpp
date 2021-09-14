@@ -145,7 +145,7 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // QueryStreamCursor class
 // .............................................................................
 
-QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
+QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
                                      size_t batchSize, double ttl)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false),
       _query(std::move(q)),

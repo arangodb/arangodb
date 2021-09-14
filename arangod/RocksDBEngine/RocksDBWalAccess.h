@@ -57,6 +57,13 @@ class RocksDBWalAccess final : public WalAccess {
                        MarkerCallback const&) const override;
 
  private:
+  /// @brief helper function to print WAL contents. this is only used for
+  /// debugging
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void printWal(WalAccess::Filter const& filter, size_t chunkSize,
+                MarkerCallback const&) const;
+#endif
+
   RocksDBEngine& _engine;
 };
 }  // namespace arangodb
