@@ -355,6 +355,16 @@ _Enterprise Edition only_
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 
+### wcwidth
+
+* Name: wcwidth
+* Version: commit 27f12a21fc7f49f134d17bffcdd500bca272c550
+* Date: 2020-08-07T11:23:03+0200
+* Project Home: https://github.com/termux/wcwidth
+* License: https://github.com/termux/wcwidth/blob/master/LICENSE.txt
+* License Name: MIT License
+* License Id: MIT
+
 ### Google Test
 
 * Name: Google Test (gtest)
