@@ -921,6 +921,15 @@ namespace {
 
       if (begin->shouldExpand &&
           first.isArray() && second.isArray()) {
+        if (first.length() != second.length()) {
+          // Nonequal length, so there is a difference!
+          // We have to play this carefully here. It is possible that the
+          // set of values found is the same, but we must err on the side
+          // of caution in this case and use the slow path. Note in
+          // particular that the following code returns `true`, if one
+          // of the arrays is empty, which is not correct!
+          return false;
+        }
         auto next = begin + 1;
         VPackArrayIterator it1(first), it2(second);
         while (it1.valid() && it2.valid()) {

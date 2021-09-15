@@ -1,6 +1,8 @@
 v3.7.15 (XXXX-XX-XX)
 --------------------
 
+* Fixed a bug for array indexes on update of documents. See BTS-548.
+
 * Updated OpenSSL to 1.1.1l and OpenLDAP to 2.4.59.
 
 * (EE only) Bug-fix: If you created a ArangoSearch view on Satellite-Collections
