@@ -331,7 +331,16 @@ class IResearchViewExecutorBase {
     // before and after.
     void assertSizeCoherence() const noexcept;
 
-    std::vector<irs::bytes_ref>& getStoredValues() noexcept;
+    //std::vector<irs::bytes_ref>& getStoredValues() noexcept;
+    template<bool copy>
+    void pushStoredValue(irs::bytes_ref value) {
+      if constexpr (copy) {
+        _ownedStoredData.emplace_back(value);
+        _storedValuesBuffer.emplace_back(_ownedStoredData.back());
+      } else {
+        _storedValuesBuffer.push_back(value);
+      }
+    }
 
     std::vector<irs::bytes_ref> const& getStoredValues() const noexcept;
 
@@ -348,6 +357,9 @@ class IResearchViewExecutorBase {
     std::vector<ValueType> _keyBuffer;
     std::vector<AqlValue> _scoreBuffer;
     std::vector<irs::bytes_ref> _storedValuesBuffer;
+    // buffer to hold data read from columnstore in case
+    // of temporary pointer returned from reader (e.g. encryption)
+    std::vector<irs::bstring> _ownedStoredData;
     size_t _numScoreRegisters;
     size_t _keyBaseIdx;
   };

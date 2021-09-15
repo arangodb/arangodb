@@ -354,11 +354,11 @@ void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushVa
   _keyBuffer.emplace_back(std::forward<Args>(args)...);
 }
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
-std::vector<irs::bytes_ref>& IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getStoredValues() noexcept {
-  return _storedValuesBuffer;
-}
+//template <typename Impl, typename Traits>
+//template <typename ValueType>
+//std::vector<irs::bytes_ref>& IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getStoredValues() noexcept {
+//  return _storedValuesBuffer;
+//}
 
 template <typename Impl, typename Traits>
 template <typename ValueType>
@@ -389,6 +389,7 @@ void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::reset(
   _keyBuffer.clear();
   _scoreBuffer.clear();
   _storedValuesBuffer.clear();
+  _ownedStoredData.clear();
 }
 
 template <typename Impl, typename Traits>
@@ -764,14 +765,16 @@ void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(irs::document con
   TRI_ASSERT(reader.itr);
   TRI_ASSERT(reader.value);
   auto const& payload = reader.value->value;
-  auto& storedValues = _indexReadBuffer.getStoredValues();
-  storedValues.emplace_back();
-  auto& storedValue = storedValues.back();
+  //auto& storedValues = _indexReadBuffer.getStoredValues();
+  //storedValues.emplace_back();
+  //auto& storedValue = storedValues.back();
   bool const found = (doc.value == reader.itr->seek(doc.value));
   if (found && !payload.empty()) {
-    storedValue = payload;
+    //storedValue = payload;
+    _indexReadBuffer.pushStoredValue<true>(payload);
   } else {
-    storedValue = ref<irs::byte_type>(VPackSlice::nullSlice());
+    //storedValue = ref<irs::byte_type>(VPackSlice::nullSlice());
+    _indexReadBuffer.pushStoredValue<true>(ref<irs::byte_type>(VPackSlice::nullSlice()));
   }
 }
 
