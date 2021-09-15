@@ -771,10 +771,10 @@ void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(irs::document con
   bool const found = (doc.value == reader.itr->seek(doc.value));
   if (found && !payload.empty()) {
     //storedValue = payload;
-    _indexReadBuffer.pushStoredValue<true>(payload);
+    _indexReadBuffer.template pushStoredValue<true>(payload);
   } else {
     //storedValue = ref<irs::byte_type>(VPackSlice::nullSlice());
-    _indexReadBuffer.pushStoredValue<true>(ref<irs::byte_type>(VPackSlice::nullSlice()));
+    _indexReadBuffer.template pushStoredValue<true>(ref<irs::byte_type>(VPackSlice::nullSlice()));
   }
 }
 
