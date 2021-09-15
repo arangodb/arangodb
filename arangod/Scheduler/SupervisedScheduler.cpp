@@ -22,6 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <atomic>
+#include <cstdint>
 #include <memory>
 
 #include <velocypack/Value.h>
@@ -249,18 +251,34 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
                                arangodb_scheduler_medium_prio_queue_length{}),
                            _server.getFeature<arangodb::MetricsFeature>().add(
                                arangodb_scheduler_low_prio_queue_length{})} {
-  _queues[0].reserve(maxQueueSize);
-  _queues[1].reserve(fifo1Size);
-  _queues[2].reserve(fifo2Size);
-  _queues[3].reserve(fifo3Size);
+  _queues[0].queue.reserve(maxQueueSize);
+  _queues[1].queue.reserve(fifo1Size);
+  _queues[2].queue.reserve(fifo2Size);
+  _queues[3].queue.reserve(fifo3Size);
   TRI_ASSERT(fifo3Size > 0);
 }
 
 SupervisedScheduler::~SupervisedScheduler() = default;
 
-bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> work) {
+bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> work, bool bounded) {
   if (!_acceptingNewJobs.load(std::memory_order_relaxed)) {
     return false;
+  }
+
+  auto const queueNo = static_cast<size_t>(PriorityRequestLane(lane));
+  TRI_ASSERT(queueNo < NumberOfQueues);
+
+  auto& queue = _queues[queueNo];
+  if (bounded) {
+    auto maxSize = _maxFifoSizes[queueNo];
+    if (queue.numCountedItems.fetch_add(1, std::memory_order_relaxed) > maxSize) {
+      queue.numCountedItems.fetch_sub(1, std::memory_order_relaxed);
+      LOG_TOPIC("98d94", DEBUG, Logger::THREADS)
+        << "unable to push job to scheduler queue: queue is full";
+      logQueueFullEveryNowAndThen(queueNo, maxSize);
+      ++_metricsQueueFull;
+      return false;
+    }
   }
 
   // use memory order acquire to make sure, pushed item is visible
@@ -272,23 +290,27 @@ bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBa
 
   uint64_t const approxQueueLength = jobsSubmitted - jobsDone;
 
-  auto const queueNo = static_cast<size_t>(PriorityRequestLane(lane));
-
-  TRI_ASSERT(queueNo < NumberOfQueues);
   TRI_ASSERT(isStopping() == false);
 
-  if (!_queues[queueNo].bounded_push(work.get())) {
-    _jobsSubmitted.fetch_sub(1, std::memory_order_release);
-
-    uint64_t maxSize = _maxFifoSizes[queueNo];
-
-    LOG_TOPIC("98d94", DEBUG, Logger::THREADS)
-        << "unable to push job to scheduler queue: queue is full";
-    logQueueFullEveryNowAndThen(queueNo, maxSize);
-    ++_metricsQueueFull;
-    return false;
+  auto makePointer = [bounded](WorkItemBase* p) {
+    if (bounded) {
+      // if this is a bounded enqueue, we set the pointer's LSB to signal that
+      // this item has been counted, so we can decrease the counter once the
+      // item has been dequeued.
+      return reinterpret_cast<WorkItemBase*>(reinterpret_cast<std::uintptr_t>(p) | 1);
+    }
+    return p;
+  };
+  try { 
+    _queues[queueNo].queue.push(makePointer(work.get()));
+  } catch(...) {
+    if (bounded) {
+      queue.numCountedItems.fetch_sub(1, std::memory_order_relaxed);
+    }
+    throw;
   }
-
+  std::ignore = work.release(); // queue now has ownership for the WorkItemBase
+  
   _metricsQueueLengths[queueNo].get() += 1;
 
   // queue now has ownership for the WorkItemBase
@@ -726,7 +748,14 @@ std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
       }
       maxCheckedQueue = i;
       WorkItemBase* res;
-      if (this->_queues[i].pop(res)) {
+      if (this->_queues[i].queue.pop(res)) {
+        auto raw = reinterpret_cast<std::uintptr_t>(res);
+        if (raw & 1) {
+          // LSB is set, so this is a counted item
+          // -> need to decrement counter and clear the bit
+          _queues[i].numCountedItems.fetch_sub(1, std::memory_order_relaxed);
+          res = reinterpret_cast<WorkItemBase*>(raw - 1);
+        }
         _metricsQueueLengths[i].get() -= 1;
         return res;
       }

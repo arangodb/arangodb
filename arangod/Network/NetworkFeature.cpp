@@ -43,24 +43,9 @@
 namespace {
 void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
                             std::function<void(bool)>& gcfunc, std::chrono::seconds offset) {
-  bool queued = false;
-  {
-    std::lock_guard<std::mutex> guard(mutex);
-    std::tie(queued, workItem) =
-        arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
-            [&gcfunc, offset]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
-              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
-                                                                       offset, gcfunc);
-            },
-            arangodb::Logger::COMMUNICATION,
-            "queue transaction garbage collection");
-  }
-  if (!queued) {
-    LOG_TOPIC("c8b3d", FATAL, arangodb::Logger::COMMUNICATION)
-        << "Failed to queue transaction garbage collection, for 5 minutes, "
-           "exiting.";
-    FATAL_ERROR_EXIT();
-  }
+  std::lock_guard<std::mutex> guard(mutex);
+  workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
+    arangodb::RequestLane::INTERNAL_LOW, offset, gcfunc);
 }
 
 constexpr double CongestionRatio = 0.5;

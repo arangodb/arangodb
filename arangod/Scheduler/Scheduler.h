@@ -30,6 +30,7 @@
 #include <functional>
 #include <mutex>
 #include <queue>
+#include <utility>
 
 #include "Futures/Future.h"
 #include "Futures/Unit.h"
@@ -64,19 +65,23 @@ class Scheduler {
   typedef std::chrono::steady_clock clock;
   typedef std::shared_ptr<DelayedWorkItem> WorkHandle;
 
+  template<typename F, std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
+  void queue(RequestLane lane, F&& fn) noexcept {
+    doQueue(lane, std::forward<F>(fn), false);
+  }
 
   template<typename F, std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
-  [[nodiscard]] bool queue(RequestLane lane, F&& fn) {
-    auto item = std::make_unique<Scheduler::WorkItem<std::decay_t<F>>>(std::forward<F>(fn));
-    return queueItem(lane, std::move(item));
+  [[nodiscard]]
+  bool tryBoundedQueue(RequestLane lane, F&& fn) noexcept {
+    return doQueue(lane, std::forward<F>(fn), true);
   }
 
   // Enqueues a task after delay - this uses the queue functions above.
   // WorkHandle is a shared_ptr to a DelayedWorkItem. If all references the DelayedWorkItem
-  // are dropped, the task is canceled. It will return true if queued, false
-  // otherwise
-  virtual std::pair<bool, WorkHandle> queueDelay(RequestLane lane, clock::duration delay,
-                                                 fu2::unique_function<void(bool canceled)> handler);
+  // are dropped, the task is canceled.
+  [[nodiscard]]
+  virtual WorkHandle queueDelayed(RequestLane lane, clock::duration delay,
+                                  fu2::unique_function<void(bool canceled)> handler) noexcept;
 
   class DelayedWorkItem {
    public:
@@ -114,13 +119,10 @@ class Scheduler {
         // The following code moves the _handler into the Scheduler.
         // Thus any reference to class to self in the _handler will be released
         // as soon as the scheduler executed the _handler lambda.
-        bool queued = _scheduler->queue(_lane, [handler = std::move(_handler),
-                                                arg]() mutable  {
-                                                  handler(arg);
-                                                });
-        if (!queued) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
-        }
+        _scheduler->queue(_lane, [handler = std::move(_handler),
+                                  arg]() mutable  {
+                                    handler(arg);
+                                  });
       }
     }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -151,7 +153,16 @@ class Scheduler {
 
   // Enqueues a task - this is implemented on the specific scheduler
   // May throw.
-  [[nodiscard]] virtual bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item) = 0;
+  [[nodiscard]] virtual bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item, bool bounded) = 0;
+
+ private:
+  template<typename F, std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
+  bool doQueue(RequestLane lane, F&& fn, bool bounded) {
+    auto item = std::make_unique<Scheduler::WorkItem<std::decay_t<F>>>(std::forward<F>(fn));
+    auto result = queueItem(lane, std::move(item), bounded);
+    TRI_ASSERT(result || bounded);
+    return result;
+  }
 
  public:
   // delay Future returns a future that will be fulfilled after the given duration
@@ -166,7 +177,7 @@ class Scheduler {
     futures::Promise<bool> p;
     futures::Future<bool> f = p.getFuture();
 
-    auto item = queueDelay(RequestLane::DELAYED_FUTURE, d,
+    auto item = queueDelayed(RequestLane::DELAYED_FUTURE, d,
       [pr = std::move(p)](bool cancelled) mutable { pr.setValue(cancelled); });
 
     return std::move(f).thenValue([item = std::move(item)](bool cancelled) {
