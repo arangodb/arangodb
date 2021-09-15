@@ -87,17 +87,17 @@ AqlCallStack const defaultStack{AqlCallList{AqlCall{}}};
 }
 
 /// @brief internal constructor, Used to construct a full query or a ClusterQuery
-Query::Query(QueryId id, std::shared_ptr<transaction::Context> const& ctx,
-             QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
-             aql::QueryOptions&& options,
+Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
+             QueryString queryString, std::shared_ptr<VPackBuilder> bindParameters,
+             aql::QueryOptions options,
              std::shared_ptr<SharedQueryState> sharedState)
     : QueryContext(ctx->vocbase(), id),
       _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
-      _queryString(queryString),
-      _transactionContext(ctx),
+      _queryString(std::move(queryString)),
+      _transactionContext(std::move(ctx)),
       _sharedState(std::move(sharedState)),
       _v8Context(nullptr),
-      _bindParameters(_resourceMonitor, bindParameters),
+      _bindParameters(_resourceMonitor, bindParameters), 
       _queryOptions(std::move(options)),
       _trx(nullptr),
       _startTime(currentSteadyClockValue()),
@@ -106,8 +106,8 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> const& ctx,
       _shutdownState(ShutdownState::None),
       _executionPhase(ExecutionPhase::INITIALIZE),
       _resultCode(std::nullopt),
-      _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
-      _embeddedQuery(ctx->isV8Context() && transaction::V8Context::isEmbedded()),
+      _contextOwnedByExterior(_transactionContext->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
+      _embeddedQuery(_transactionContext->isV8Context() && transaction::V8Context::isEmbedded()),
       _registeredInV8Context(false),
       _queryKilled(false),
       _queryHashCalculated(false) {
@@ -161,18 +161,13 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> const& ctx,
   _user = ExecContext::current().user();
 }
 
-/// @brief public constructor, Used to construct a full query
-Query::Query(std::shared_ptr<transaction::Context> const& ctx,
-             QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
-             QueryOptions&& options)
-    : Query(0, ctx, queryString, bindParameters, std::move(options),
-            std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
-
-Query::Query(std::shared_ptr<transaction::Context> const& ctx,
-             QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
-             VPackSlice options)
-    : Query(0, ctx, queryString, bindParameters,
-            QueryOptions(options),
+/// Used to construct a full query. the constructor is protected to ensure
+/// that call sites only create Query objects using the `create` factory
+/// method
+Query::Query(std::shared_ptr<transaction::Context> ctx,
+             QueryString queryString, std::shared_ptr<VPackBuilder> bindParameters,
+             QueryOptions options)
+    : Query(0, ctx, std::move(queryString), std::move(bindParameters), std::move(options),
             std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 /// @brief destroys a query
@@ -222,6 +217,28 @@ Query::~Query() {
   LOG_TOPIC("f5cee", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime)
       << " Query::~Query this: " << (uintptr_t)this;
+}
+ 
+/// @brief factory function for creating a query. this must be used to
+/// ensure that Query objects are always created using shared_ptrs.
+/*static*/ std::shared_ptr<Query> Query::create(std::shared_ptr<transaction::Context> ctx,
+                                                QueryString queryString,
+                                                std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+                                                aql::QueryOptions options) {
+  // workaround to enable make_shared on a class with a private/protected constructor
+  struct MakeSharedQuery : public Query {
+    MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
+                    QueryString queryString,
+                    std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+                    aql::QueryOptions options)
+      : Query(std::move(ctx), std::move(queryString), 
+              std::move(bindParameters), std::move(options)) {}
+  };
+
+  TRI_ASSERT(ctx != nullptr);
+
+  return std::make_shared<MakeSharedQuery>(std::move(ctx), std::move(queryString), 
+                                           std::move(bindParameters), std::move(options));
 }
 
 /// @brief return the user that started the query
@@ -1505,55 +1522,54 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
   }
 }
 
-  void Query::debugKillQuery() {
+void Query::debugKillQuery() {
 #ifndef ARANGODB_ENABLE_FAILURE_TESTS
-    TRI_ASSERT(false);
-    return;
+  TRI_ASSERT(false);
 #else
-    if (_wasDebugKilled) {
-      return;
-    }
-    bool usingSystemCollection = false;
-    // Ignore queries on System collections, we do not want them to hit failure points
-    // note that we must call the _const_ version of collections() here, because the non-const
-    // version will trigger an assertion failure if the query is already executing!
-    const_cast<Query const*>(this)->collections().visit([&usingSystemCollection](std::string const&, Collection const& col) -> bool {
+  if (_wasDebugKilled) {
+    return;
+  }
+  bool usingSystemCollection = false;
+  // Ignore queries on System collections, we do not want them to hit failure points
+  // note that we must call the _const_ version of collections() here, because the non-const
+  // version will trigger an assertion failure if the query is already executing!
+  const_cast<Query const*>(this)->collections().visit([&usingSystemCollection](std::string const&, Collection const& col) -> bool {
       if (col.getCollection()->system()) {
-        usingSystemCollection = true;
-        return false;
+      usingSystemCollection = true;
+      return false;
       }
       return true;
-    });
+      });
 
-    if (usingSystemCollection) {
-      return;
-    }
+  if (usingSystemCollection) {
+    return;
+  }
 
-    _wasDebugKilled = true;
-    // A query can only be killed under certain circumstances.
-    // We assert here that one of those is true.
-    // a) Query is in the list of current queries, this can be requested by the user and the query can be killed by user
-    // b) Query is in the query registry. In this case the query registry can hit a timeout, which triggers the kill
-    // c) The query id has been handed out to the user (stream query only)
-    bool isStreaming = queryOptions().stream;
-    bool isInList = false;
-    bool isInRegistry = false;
-    auto const& queryList = vocbase().queryList();
-    if (queryList->enabled()) {
-      auto const& current = queryList->listCurrent();
-      for (auto const& it : current) {
-        if (it.id == _queryId) {
-          isInList = true;
-          break;
-        }
+  _wasDebugKilled = true;
+  // A query can only be killed under certain circumstances.
+  // We assert here that one of those is true.
+  // a) Query is in the list of current queries, this can be requested by the user and the query can be killed by user
+  // b) Query is in the query registry. In this case the query registry can hit a timeout, which triggers the kill
+  // c) The query id has been handed out to the user (stream query only)
+  bool isStreaming = queryOptions().stream;
+  bool isInList = false;
+  bool isInRegistry = false;
+  auto const& queryList = vocbase().queryList();
+  if (queryList->enabled()) {
+    auto const& current = queryList->listCurrent();
+    for (auto const& it : current) {
+      if (it.id == _queryId) {
+        isInList = true;
+        break;
       }
     }
-
-    QueryRegistry* registry = QueryRegistryFeature::registry();
-    if (registry != nullptr) {
-      isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
-    }
-    TRI_ASSERT(isInList || isStreaming || isInRegistry || _execState == QueryExecutionState::ValueType::FINALIZATION);
-    kill();
-#endif
   }
+
+  QueryRegistry* registry = QueryRegistryFeature::registry();
+  if (registry != nullptr) {
+    isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
+  }
+  TRI_ASSERT(isInList || isStreaming || isInRegistry || _execState == QueryExecutionState::ValueType::FINALIZATION);
+  kill();
+#endif
+}

@@ -32,10 +32,7 @@
 namespace arangodb::replication2::replicated_log {
 
 // ReplicatedLog-internal iterator over PersistingLogEntries
-struct PersistedLogIterator {
-  virtual ~PersistedLogIterator() = default;
-  virtual auto next() -> std::optional<PersistingLogEntry> = 0;
-};
+struct PersistedLogIterator : TypedLogIterator<PersistingLogEntry> {};
 
 /**
  * @brief Interface to persist a replicated log locally. Implemented by

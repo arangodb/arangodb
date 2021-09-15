@@ -27,8 +27,7 @@
 #include <unordered_map>
 
 #include "Cluster/ClusterTypes.h"
-#include "InMemoryLog.h"
-#include "ReplicatedLog.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 namespace arangodb::replication2::algorithms {

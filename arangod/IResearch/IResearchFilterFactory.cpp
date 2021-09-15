@@ -65,6 +65,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/IResearchPDP.h"
 #include "Logger/LogMacros.h"
@@ -241,7 +242,7 @@ Result malformedNode(aql::AstNodeType type) {
   return {TRI_ERROR_BAD_PARAMETER, message};
 }
 
-} // error
+} // namespace error
 
 bool setupGeoFilter(FieldMeta::Analyzer const& a,
                     S2RegionTermIndexer::Options& opts) {
@@ -403,7 +404,7 @@ Result getAnalyzerByName(
   }
   auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
 
-  analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),	
+  analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),
                                  ctx.trx->state()->analyzersRevision());
 
   if (!analyzer) {
@@ -2084,7 +2085,6 @@ Result fromFuncAnalyzer(
 
     shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
       analyzerId, ctx.trx->vocbase().name(), false);  // args
-
   }
 
   FilterContext const subFilterContext(analyzerValue, filterCtx.boost); // override analyzer
@@ -3570,17 +3570,29 @@ Result fromFuncStartsWith(
 
     TRI_ASSERT(filterCtx.analyzer);
     kludge::mangleField(name, filterCtx.analyzer);
-    filter->boost(filterCtx.boost);
+
+    // Try to optimize us away
+    if (!isMultiPrefix && !prefixes.empty() &&
+        ctx.filterOptimization != FilterOptimization::NONE  && 
+        arangodb::iresearch::includeStartsWithInLevenshtein(filter, name,
+                                                            prefixes.back().second)) {
+      return {};
+    }
 
     if (isMultiPrefix) {
       auto& minMatchFilter = filter->add<irs::Or>();
       minMatchFilter.min_match_count(static_cast<size_t>(minMatchCount));
+      minMatchFilter.boost(filterCtx.boost);
       // become a new root
       filter = &minMatchFilter;
     }
 
     for (size_t i = 0, size = prefixes.size(); i < size; ++i) {
       auto& prefixFilter = filter->add<irs::by_prefix>();
+      if (!isMultiPrefix) {
+        TRI_ASSERT(prefixes.size() == 1);
+        prefixFilter.boost(filterCtx.boost);
+      }
       if (i + 1 < size) {
         *prefixFilter.mutable_field() = name;
       } else {

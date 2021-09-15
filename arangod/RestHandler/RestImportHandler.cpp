@@ -628,8 +628,8 @@ bool RestImportHandler::createFromKeyValueList() {
   bool const complete = _request->parsedValue("complete", false);
   bool const overwrite = _request->parsedValue("overwrite", false);
   _ignoreMissing = _request->parsedValue("ignoreMissing", false);
-  OperationOptions opOptions(_context);
-  opOptions.waitForSync = _request->parsedValue("waitForSync", false);
+  OperationOptions opOptions = buildOperationOptions();
+  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
 
   // extract the collection name
   bool found;

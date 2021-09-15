@@ -314,10 +314,10 @@ class TtlThread final : public Thread {
           bindVars->add("limit", VPackValue(std::min(properties.maxCollectionRemoves, limitLeft)));
           bindVars->close();
 
-          aql::Query query(transaction::StandaloneContext::Create(*vocbase),
-                           aql::QueryString(::removeQuery), bindVars);
-          query.collections().add(collection->name(), AccessMode::Type::WRITE, aql::Collection::Hint::Shard);
-          aql::QueryResult queryResult = query.executeSync();
+          auto query = aql::Query::create(transaction::StandaloneContext::Create(*vocbase),
+                                          aql::QueryString(::removeQuery), std::move(bindVars));
+          query->collections().add(collection->name(), AccessMode::Type::WRITE, aql::Collection::Hint::Shard);
+          aql::QueryResult queryResult = query->executeSync();
 
           if (queryResult.result.fail()) {
             // we can probably live with an error here...

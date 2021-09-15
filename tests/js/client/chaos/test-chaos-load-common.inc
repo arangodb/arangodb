@@ -306,8 +306,8 @@ function BaseChaosSuite(testOpts) {
         tests.push(["p" + i, code]);
       }
 
-      // run the suite for 5 minutes
-      runParallelArangoshTests(tests, 5 * 60, coordination_cn);
+      // run the suite for 3 minutes
+      runParallelArangoshTests(tests, 3 * 60, coordination_cn);
 
       print("Finished load test - waiting for cluster to get in sync before checking consistency.");
       clearAllFailurePoints();
@@ -317,7 +317,9 @@ function BaseChaosSuite(testOpts) {
   };
 }
 
-const params = ["IntermediateCommits", "FailurePoints", "Delays", "Truncate", "VaryingOverwriteMode", "StreamingTransactions"];
+const params = ["IntermediateCommits", "FailurePoints", "Delays", "StreamingTransactions"];
+
+const fixedParams = ["Truncate", "VaryingOverwriteMode"]; // these parameters are always enabled
 
 const makeConfig = (paramValues) => {
   let suffix = "";
@@ -326,6 +328,10 @@ const makeConfig = (paramValues) => {
     suffix += paramValues[j] ? "_with_" : "_no_";
     suffix += params[j];
     opts["with" + params[j]] = paramValues[j];
+  }
+  for (const p of fixedParams) {
+    suffix += "_with_" + p;
+    opts["with" + p] = true;
   }
   return { suffix: suffix, options: opts };
 };
