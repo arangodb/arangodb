@@ -102,7 +102,8 @@ void CacheManagerFeature::start() {
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
     try {
-      return scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
+      scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
+      return true;
     } catch (...) {
       return false;
     }
