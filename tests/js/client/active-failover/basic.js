@@ -305,7 +305,7 @@ function loadFoxxIntoZip(path) {
     buffer: content
   };
 }
-function checkFoxxService() {
+function checkFoxxService(readOnly) {
   const onlyJson = {
     'accept': 'application/json',
     'accept-content-type': 'application/json'
@@ -315,8 +315,8 @@ function checkFoxxService() {
 
   [
     '/_db/_system/_admin/aardvark/index.html',
-    '/_db/_system/itz/index'
-    //, '/_db/_system/crud/xxx'
+    '/_db/_system/itz/index',
+    '/_db/_system/crud/xxx'
   ].forEach(route => {
     for (let i=0; i < 200; i++) {
       try {
@@ -353,38 +353,38 @@ function checkFoxxService() {
   assertEqual(parsedBody.name, "Chalchihuitlicue");
   assertTrue(parsedBody.summoned);
 
- //print("Foxx: crud testing get xxx");
- //reply = arango.GET_RAW('/_db/_system/crud/xxx', onlyJson);
- //assertEqual(reply.code, "200");
- //parsedBody = JSON.parse(reply.body);
- //assertEqual(parsedBody, []);
- //
- //print("Foxx: crud testing POST xxx");
- //
- //reply = arango.POST_RAW('/_db/_system/crud/xxx', {_key: "test"})
- //if (options.readOnly) {
- //  assertEqual(reply.code, "400");
- //} else {
- //  assertEqual(reply.code, "201");
- //}
- //
- //print("Foxx: crud testing get xxx");
- //reply = arango.GET_RAW('/_db/_system/crud/xxx', onlyJson);
- //assertEqual(reply.code, "200");
- //parsedBody = JSON.parse(reply.body);
- //if (options.readOnly) {
- //  assertEqual(parsedBody, []);
- //} else {
- //  assertEqual(parsedBody.length, 1);
- //}
- //
- //print('Foxx: crud testing delete document')
- //reply = arango.DELETE_RAW('/_db/_system/crud/xxx/' + 'test');
- //if (options.readOnly) {
- //  assertEqual(reply.code, "400");
- //} else {
- //  assertEqual(reply.code, "204");
- //}
+  print("Foxx: crud testing get xxx");
+  reply = arango.GET_RAW('/_db/_system/crud/xxx', onlyJson);
+  assertEqual(reply.code, "200");
+  parsedBody = JSON.parse(reply.body);
+  assertEqual(parsedBody, []);
+
+  print("Foxx: crud testing POST xxx");
+
+  reply = arango.POST_RAW('/_db/_system/crud/xxx', {_key: "test"});
+  if (readOnly) {
+    assertEqual(reply.code, "400");
+  } else {
+    assertEqual(reply.code, "201");
+  }
+
+  print("Foxx: crud testing get xxx");
+  reply = arango.GET_RAW('/_db/_system/crud/xxx', onlyJson);
+  assertEqual(reply.code, "200");
+  parsedBody = JSON.parse(reply.body);
+  if (readOnly) {
+    assertEqual(parsedBody, []);
+  } else {
+    assertEqual(parsedBody.length, 1);
+  }
+
+  print('Foxx: crud testing delete document');
+  reply = arango.DELETE_RAW('/_db/_system/crud/xxx/' + 'test');
+  if (readOnly) {
+    assertEqual(reply.code, "400");
+  } else {
+    assertEqual(reply.code, "204");
+  }
 }
 
 function installFoxx(mountpoint, which, mode) {
@@ -501,42 +501,74 @@ function ActiveFailoverSuite() {
     testFailover: function () {
       const itzpapalotlPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'itzpapalotl');
       const itzpapalotlZip = loadFoxxIntoZip(itzpapalotlPath);
-
       installFoxx("/itz", itzpapalotlZip);
-      checkFoxxService();
+
+      const minimalWorkingServicePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'crud');
+      const minimalWorkingZip = loadFoxxIntoZip(minimalWorkingServicePath);
+      installFoxx('/crud', minimalWorkingZip);
+
+      checkFoxxService(false);
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
 
-      suspended = instanceinfo.arangods.filter(arangod => arangod.endpoint === currentLead);
-      suspended.forEach(arangod => {
-        print("Suspending Leader: ", arangod.endpoint);
-        assertTrue(suspendExternal(arangod.pid));
-      });
-
+      let suspended;
       let oldLead = currentLead;
-      // await failover and check that follower get in sync
-      currentLead = checkForFailover(currentLead);
-      assertNotEqual(currentLead, oldLead);
-      print("Failover to new leader : ", currentLead);
+      try {
+        suspended = instanceinfo.arangods.filter(arangod => arangod.endpoint === currentLead);
+        suspended.forEach(arangod => {
+          print("Suspending Leader: ", arangod.endpoint);
+          assertTrue(suspendExternal(arangod.pid));
+        });
 
-      internal.wait(5); // settle down, heartbeat interval is 1s
-      assertEqual(checkData(currentLead), 10000);
-      print("New leader has correct data");
+        // await failover and check that follower get in sync
+        currentLead = checkForFailover(currentLead);
+        assertNotEqual(currentLead, oldLead);
+        print("Failover to new leader : ", currentLead);
 
-      // check the remaining followers get in sync
-      assertTrue(checkInSync(currentLead, servers, oldLead));
+        internal.wait(5); // settle down, heartbeat interval is 1s
+        assertEqual(checkData(currentLead), 10000);
+        print("New leader has correct data");
 
-      connectToServer(currentLead);
-      checkFoxxService();
+        // check the remaining followers get in sync
+        assertTrue(checkInSync(currentLead, servers, oldLead));
 
-      // restart the old leader
-      suspended.forEach(arangod => {
-        print("Resuming: ", arangod.endpoint);
-        assertTrue(continueExternal(arangod.pid));
-      });
-      suspended = [];
+        connectToServer(currentLead);
+        checkFoxxService(false);
 
-      assertTrue(checkInSync(currentLead, servers));
+      } finally {
+        // restart the old leader
+        suspended.forEach(arangod => {
+          print("Resuming: ", arangod.endpoint);
+          assertTrue(continueExternal(arangod.pid));
+        });
+        assertTrue(checkInSync(currentLead, servers));
+        // after its in sync, halt all others so it becomes the leader again
+        suspended = instanceinfo.arangods.filter(arangod =>
+          (arangod.endpoint !== oldLead) && (arangod.role === 'single'));
+        suspended.forEach(arangod => {
+          print("Suspending all but old Leader: ", arangod.endpoint);
+          assertTrue(suspendExternal(arangod.pid));
+        });
+        currentLead = checkForFailover(currentLead);
+        assertEqual(currentLead, oldLead);
+        connectToServer(currentLead);
+        // restart the other followers so the system is all up and running again
+        suspended.forEach(arangod => {
+          print("Resuming: ", arangod.endpoint);
+          assertTrue(continueExternal(arangod.pid));
+        });
+        assertTrue(checkInSync(currentLead, servers));
+        let stati = [];
+        ["/itz", "/crud"].forEach(mount => {
+          try {
+            print("Uninstalling " + mount);
+            let res = arango.DELETE(
+              "/_db/_system/_admin/aardvark/foxxes?teardown=true&mount=" + mount);
+            stati.push(res.error);
+          } catch (e) {}
+        });
+        assertEqual(stati, [false, false]);
+      }
     },
 
     // More complex case: We want to get the most up to date follower
