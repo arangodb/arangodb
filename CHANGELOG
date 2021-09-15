@@ -1,6 +1,9 @@
 v3.7.15 (XXXX-XX-XX)
 --------------------
 
+* Fix active failover, so that the new host actually has working
+  foxx services. (BTS-558)
+
 * Updated OpenSSL to 1.1.1l and OpenLDAP to 2.4.59.
 
 * (EE only) Bug-fix: If you created a ArangoSearch view on Satellite-Collections
