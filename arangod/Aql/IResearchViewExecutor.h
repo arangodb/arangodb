@@ -335,8 +335,8 @@ class IResearchViewExecutorBase {
     template<bool copy>
     void pushStoredValue(irs::bytes_ref value) {
       if constexpr (copy) {
-        _ownedStoredData.emplace_back(value);
-        _storedValuesBuffer.emplace_back(_ownedStoredData.back());
+        _ownedStoredData.emplace_front(value);
+        _storedValuesBuffer.emplace_back(_ownedStoredData.front());
       } else {
         _storedValuesBuffer.push_back(value);
       }
@@ -359,7 +359,7 @@ class IResearchViewExecutorBase {
     std::vector<irs::bytes_ref> _storedValuesBuffer;
     // buffer to hold data read from columnstore in case
     // of temporary pointer returned from reader (e.g. encryption)
-    std::vector<irs::bstring> _ownedStoredData;
+    std::forward_list<irs::bstring> _ownedStoredData;
     size_t _numScoreRegisters;
     size_t _keyBaseIdx;
   };
