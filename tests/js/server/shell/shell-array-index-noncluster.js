@@ -315,7 +315,7 @@ function arraySkiplistIndexSuite () {
 /// @brief test: Test update of an array index where entries are changed:
 ////////////////////////////////////////////////////////////////////////////////
 
-    testPersistentArrayIndexUpdates : function () {
+    testPersistentArrayIndexUpdates2 : function () {
       collection.ensureIndex({type:"persistent", fields: ["a[*].b"], unique: true});
 
       let meta = collection.insert({a: [{b:"xyz"}]});
