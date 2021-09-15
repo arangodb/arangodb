@@ -72,7 +72,7 @@ class RestBaseHandler : public rest::RestHandler {
 
  protected:
   
-  /// @brief parses the body as VelocyPack, generates body
+  /// @brief parses the body (request) as VelocyPack, generates body
   arangodb::velocypack::Slice parseVPackBody(bool& success);
 
   template <typename Payload>
