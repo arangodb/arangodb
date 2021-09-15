@@ -366,6 +366,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(std::string cons
 }
 
 OperationResult GraphManager::createGraph(VPackSlice document, bool waitForSync) const {
+  LOG_DEVEL << "graph manager createGraph";
   OperationOptions options(ExecContext::current());
   VPackSlice graphNameSlice = document.get("name");
   if (!graphNameSlice.isString()) {
@@ -1084,29 +1085,29 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
                                                                   VPackSlice input) const {
   try {
     TRI_ASSERT(input.isObject());
-    if (ServerState::instance()->isCoordinator()) {
-      VPackSlice s = input.get(StaticStrings::IsSmart);
-      if (s.isBoolean() && s.getBoolean()) {
-        s = input.get("options");
-        if (s.isObject()) {
-          s = s.get(StaticStrings::ReplicationFactor);
-          if ((s.isNumber() && s.getNumber<int>() == 0) ||
-              (s.isString() && s.stringRef() == "satellite")) {
-            return Result{TRI_ERROR_BAD_PARAMETER,
-                          "invalid combination of 'isSmart' and 'satellite' "
-                          "replicationFactor"};
-          }
+
+    VPackSlice s = input.get(StaticStrings::IsSmart);
+    if (s.isBoolean() && s.getBoolean()) {
+      s = input.get("options");
+      if (s.isObject()) {
+        s = s.get(StaticStrings::ReplicationFactor);
+        if ((s.isNumber() && s.getNumber<int>() == 0) ||
+            (s.isString() && s.stringRef() == "satellite")) {
+          return Result{TRI_ERROR_BAD_PARAMETER,
+                        "invalid combination of 'isSmart' and 'satellite' "
+                        "replicationFactor"};
         }
       }
-
-      // validate numberOfShards and replicationFactor
-      Result res =
-          ShardingInfo::validateShardsAndReplicationFactor(input.get("options"),
-                                                           _vocbase.server(), true);
-      if (res.fail()) {
-        return res;
-      }
     }
+
+    // validate numberOfShards and replicationFactor
+    Result res =
+        ShardingInfo::validateShardsAndReplicationFactor(input.get("options"),
+                                                         _vocbase.server(), true);
+    if (res.fail()) {
+      return res;
+    }
+
     return Graph::fromUserInput(_vocbase, graphName, input,
                                 input.get(StaticStrings::GraphOptions));
   } catch (arangodb::basics::Exception const& e) {
