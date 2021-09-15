@@ -301,7 +301,14 @@ bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBa
     }
     return p;
   };
-  _queues[queueNo].queue.push(makePointer(work.get()));
+  try { 
+    _queues[queueNo].queue.push(makePointer(work.get()));
+  } catch(...) {
+    if (bounded) {
+      queue.numCountedItems.fetch_sub(1, std::memory_order_relaxed);
+    }
+    throw;
+  }
   std::ignore = work.release(); // queue now has ownership for the WorkItemBase
   
   _metricsQueueLengths[queueNo].get() += 1;
