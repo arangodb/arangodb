@@ -258,6 +258,7 @@ class Methods {
   ///        it is already locked!)
   ENTERPRISE_VIRT Result documentFastPath(std::string const& collectionName,
                                           arangodb::velocypack::Slice value,
+                                          OperationOptions const& options,
                                           arangodb::velocypack::Builder& result);
 
   /// @brief return one  document from a collection, fast path
@@ -362,13 +363,14 @@ class Methods {
   std::unique_ptr<IndexIterator> indexScanForCondition(IndexHandle const&,
                                                        arangodb::aql::AstNode const*,
                                                        arangodb::aql::Variable const*,
-                                                       IndexIteratorOptions const&);
+                                                       IndexIteratorOptions const&,
+                                                       ReadOwnWrites readOwnWrites);
 
   /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
   std::unique_ptr<IndexIterator> indexScan(std::string const& collectionName,
-                                           CursorType cursorType);
+                                           CursorType cursorType, ReadOwnWrites readOwnWrites);
 
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*, AccessMode::Type) const;
@@ -412,10 +414,10 @@ class Methods {
 
   Future<OperationResult> documentCoordinator(std::string const& collectionName,
                                               VPackSlice value,
-                                              OperationOptions& options);
+                                              OperationOptions const& options);
 
   Future<OperationResult> documentLocal(std::string const& collectionName,
-                                        VPackSlice value, OperationOptions& options);
+                                        VPackSlice value, OperationOptions const& options);
 
   Future<OperationResult> insertCoordinator(std::string const& collectionName,
                                             VPackSlice value,

@@ -607,6 +607,31 @@ function lateDocumentMaterializationRuleTestSuite () {
       let result = AQL_EXECUTE(query);
       assertEqual(1, result.json.length);
       assertEqual(result.json[0]._key, 'c0');
+    },
+    testConstrainedSortOnDbServer() {
+      let query = "FOR d IN " + prefixIndexCollectionName  + " FILTER d.obj.b == {sb: 'b_val_0'} " +
+                  "SORT d.obj.b LIMIT 10 RETURN {key: d._key, value:  d.some_value_from_doc}";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let materializeNodeFound = false;
+      let nodeDependency = null;
+      plan.nodes.forEach(function(node) {
+        if( node.type === "MaterializeNode") {
+          assertFalse(materializeNodeFound);
+          assertEqual(nodeDependency.type, isCluster ? "SortNode" : "LimitNode");
+          materializeNodeFound = true;
+        }
+        nodeDependency = node;
+      });
+      assertTrue(materializeNodeFound);
+      let result = AQL_EXECUTE(query);
+      assertEqual(1, result.json.length);
+      let expected = new Set(['c0']);
+      result.json.forEach(function(doc) {
+        assertTrue(expected.has(doc.key));
+        expected.delete(doc.key);
+      });
+      assertEqual(0, expected.size);
     }
   };
 }

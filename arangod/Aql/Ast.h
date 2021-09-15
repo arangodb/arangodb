@@ -127,6 +127,8 @@ class Ast {
   /// @brief whether or not query contains any modification operations
   bool containsModificationNode() const noexcept;
   void setContainsModificationNode() noexcept;
+  bool containsUpsertNode() const noexcept;
+  void setContainsUpsertNode() noexcept;
   void setContainsParallelNode() noexcept;
   bool willUseV8() const noexcept;
   void setWillUseV8() noexcept;
@@ -640,6 +642,8 @@ class Ast {
   /// @brief contains INSERT / UPDATE / REPLACE / REMOVE
   bool _containsModificationNode;
   
+  bool _containsUpsertNode{false};
+
   /// @brief contains a parallel traversal
   bool _containsParallelNode;
   

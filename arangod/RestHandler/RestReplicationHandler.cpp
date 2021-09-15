@@ -3429,7 +3429,7 @@ Result RestReplicationHandler::createBlockingTransaction(
       auto rGuard = std::make_unique<RebootCookie>(
         ci.rebootTracker().callMeOnChange(RebootTracker::PeerState(serverId, rebootId),
                                           std::move(f), std::move(comment)));
-      auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::WRITE);
+      auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::WRITE, /*isSideUser*/ false);
     
       if (!ctx) {
         // Trx does not exist. So we assume it got cancelled.
@@ -3509,7 +3509,7 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(
   }
 
   try {
-    auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::READ);
+    auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::READ, /*isSideUser*/ false);
     if (!ctx) {
       // Trx does not exist. So we assume it got cancelled.
       return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL,

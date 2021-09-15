@@ -205,7 +205,7 @@ class FieldIterator {
   IndexId _linkId;
 
   // Support for outputting primitive type from analyzer
-  irs::analysis::analyzer* _currentTypedAnalyzer{nullptr};
+  std::shared_ptr<irs::analysis::analyzer> _currentTypedAnalyzer;
   VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
 

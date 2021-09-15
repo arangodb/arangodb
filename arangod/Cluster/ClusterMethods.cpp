@@ -1841,6 +1841,9 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       for (auto const& it : opCtx.shardMap) {
         network::Headers headers;
         addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
+        if (options.documentCallFromAql) {
+          headers.try_emplace(StaticStrings::AqlDocumentCall, "true");
+        }
         std::string url;
         VPackBuffer<uint8_t> buffer;
 
@@ -1922,6 +1925,9 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
       if (addMatch) {
         headers.try_emplace("if-match", slice.get(StaticStrings::RevString).copyString());
+      }
+      if (options.documentCallFromAql) {
+        headers.try_emplace(StaticStrings::AqlDocumentCall, "true");
       }
 
       futures.emplace_back(network::sendRequestRetry(
