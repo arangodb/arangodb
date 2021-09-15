@@ -334,7 +334,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
   TestShortestPathOptions options;
   TokenTranslator& translator;
 

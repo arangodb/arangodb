@@ -48,7 +48,7 @@ QueryRegistry::~QueryRegistry() {
 }
 
 /// @brief insert
-void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard) {
+void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard) {
   TRI_ASSERT(!ServerState::instance()->isSingleServer());
 
   TRI_ASSERT(query != nullptr);
@@ -209,7 +209,7 @@ void QueryRegistry::closeEngine(EngineId engineId) {
 
 /// @brief destroy
 // cppcheck-suppress virtualCallInConstructor
-std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& vocbase,
+std::shared_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& vocbase,
                                                           QueryId id, ErrorCode errorCode) {
   std::unique_ptr<QueryInfo> queryInfo;
 
@@ -520,7 +520,7 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
 }
 
 /// @brief constructor for a regular query
-QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard)
+QueryRegistry::QueryInfo::QueryInfo(std::shared_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard)
     : _query(std::move(query)),
       _timeToLive(ttl),
       _expires(TRI_microtime() + ttl),

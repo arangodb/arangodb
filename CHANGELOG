@@ -1,6 +1,20 @@
 devel
 -----
 
+* Fixed display of unicode characters in Windows console.
+
+* Fixed issue BTS-531 "Error happens during EXE package installation if
+  non-ASCII characters are present in target path".
+  
+* Fix active failover, so that the new host actually has working
+  foxx services. (BTS-558)
+
+* Fixed issue #14720: Bulk import ignores onDuplicate in 3.8.0.
+  The "onDuplicate" attribute was ignored by the `/_api/import` REST API when
+  not specifying the "type" URL parameter.
+
+* Updated OpenSSL to 1.1.1l and OpenLDAP to 2.4.59.
+
 * APM-70: allow PRUNE condition to be stored in a variable.
 
   This feature allows the PRUNE condition to be stored in a variable, and 
