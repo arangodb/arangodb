@@ -275,6 +275,40 @@ function arraySkiplistIndexSuite () {
       catch (err) {
         assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Multiple identical elements in array with unique constraint
+////////////////////////////////////////////////////////////////////////////////
+
+    testPersistentArrayIndexUpdates : function () {
+      collection.ensureIndex({type:"persistent", fields: ["a[*].b"], unique: true});
+
+      let meta = collection.insert({a: [{b:"xyz"}]});
+
+      try {
+        collection.insert({a: [{b:"xyz"}]});
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      collection.update(meta._key, {a: []});
+
+      let meta2 = collection.insert({a: [{b:"xyz"}]});  // must work again
+
+      try {
+        collection.insert({a: [{b:"xyz"}]});
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      collection.replace(meta2._key, {a: []});
+
+      collection.insert({a: [{b:"xyz"}]});  // must work again
     }
 
   };
