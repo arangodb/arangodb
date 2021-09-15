@@ -6888,15 +6888,15 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     EXPECT_TRUE(vocbase == &view->vocbase());
 
     // dummy query
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(*vocbase),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(*vocbase),
                                arangodb::aql::QueryString("RETURN 1"), nullptr);
-    query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+    query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
-    arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
+    arangodb::aql::SingletonNode singleton(query->plan(), arangodb::aql::ExecutionNodeId{0});
 
     arangodb::aql::Variable const outVariable("variable", 0, false);
 
-    arangodb::iresearch::IResearchViewNode node(*query.plan(),
+    arangodb::iresearch::IResearchViewNode node(*query->plan(),
                                                 arangodb::aql::ExecutionNodeId{42},
                                                 *vocbase,  // database
                                                 view,      // view
@@ -6916,8 +6916,8 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     node.setVarUsageValid();
     singleton.planRegisters();
     node.planRegisters();
-    auto singletonBlock = singleton.createBlock(*query.rootEngine(), cache);
-    auto execBlock = node.createBlock(*query.rootEngine(), cache);
+    auto singletonBlock = singleton.createBlock(*query->rootEngine(), cache);
+    auto execBlock = node.createBlock(*query->rootEngine(), cache);
     ASSERT_TRUE(nullptr != execBlock);
     ASSERT_TRUE(nullptr !=
                 dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::NoResultsExecutor>*>(

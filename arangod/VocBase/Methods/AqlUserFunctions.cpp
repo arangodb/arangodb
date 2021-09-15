@@ -150,9 +150,9 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
       "REMOVE { _key: fn._key} in @@col RETURN 1");
 
   {
-    arangodb::aql::Query query(transaction::V8Context::CreateWhenRequired(vocbase, true),
-                               arangodb::aql::QueryString(aql), binds);
-    aql::QueryResult queryResult = query.executeSync();
+    auto query = arangodb::aql::Query::create(transaction::V8Context::CreateWhenRequired(vocbase, true),
+                                              arangodb::aql::QueryString(aql), std::move(binds));
+    aql::QueryResult queryResult = query->executeSync();
 
     if (queryResult.result.fail()) {
       if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -349,9 +349,9 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
   binds->add("@col", VPackValue(StaticStrings::AqlFunctionsCollection));
   binds->close();
 
-  arangodb::aql::Query query(transaction::V8Context::CreateWhenRequired(vocbase, true),
-                             arangodb::aql::QueryString(aql), binds);
-  aql::QueryResult queryResult = query.executeSync();
+  auto query = arangodb::aql::Query::create(transaction::V8Context::CreateWhenRequired(vocbase, true),
+                                            arangodb::aql::QueryString(aql), std::move(binds));
+  aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||

@@ -327,10 +327,9 @@ struct V8Cursor final {
     auto* cursors = vocbase->cursorRepository();  // create a cursor
     double ttl = std::numeric_limits<double>::max();
         
-    auto ctx = transaction::V8Context::CreateWhenRequired(*vocbase, true);
-    auto q = std::make_unique<aql::Query>(ctx,
-                                          aql::QueryString(queryString), std::move(bindVars),
-                                          options.slice());
+    auto q = aql::Query::create(transaction::V8Context::CreateWhenRequired(*vocbase, true),
+                                aql::QueryString(queryString), std::move(bindVars),
+                                aql::QueryOptions(options.slice()));
     
     // specify ID 0 so it uses the external V8 context
     Cursor* cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
