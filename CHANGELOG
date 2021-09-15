@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fixed display of unicode characters in Windows console.
+
+* Fixed issue BTS-531 "Error happens during EXE package installation if
+  non-ASCII characters are present in target path".
+  
 * Fix active failover, so that the new host actually has working
   foxx services. (BTS-558)
 
