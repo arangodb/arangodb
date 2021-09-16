@@ -741,6 +741,12 @@ constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE            
 /// invalid new term.
 constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM                 = ErrorCode{1425};
 
+/// 1426: ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED
+/// "not enough replicas for the configured write-concern are present"
+/// Will be raised when there are not enough replicas of a shard available to
+/// fulfill the write-concern for a write operation.
+constexpr auto TRI_ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED                 = ErrorCode{1426};
+
 /// 1446: ERROR_CLUSTER_NOT_FOLLOWER
 /// "not a follower"
 /// Will be raised when an operation is sent to a non-following server.

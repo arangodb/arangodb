@@ -18,7 +18,7 @@ struct elsa<ErrorCode> {
 #include <cinttypes>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 355> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 356> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -293,6 +293,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 355> ErrorMessage
       "the replicated log of the participant is gone"},
     {TRI_ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM,  // 1425
       "an invalid term was given"},
+    {TRI_ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED,  // 1426
+      "not enough replicas for the configured write-concern are present"},
     {TRI_ERROR_CLUSTER_NOT_FOLLOWER,  // 1446
       "not a follower"},
     {TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED,  // 1447
