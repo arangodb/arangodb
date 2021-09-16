@@ -298,119 +298,101 @@ IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(
   }
 }
 
-template <typename Impl, typename Traits>
-IResearchViewExecutorBase<Impl, Traits>::IndexReadBufferEntry::IndexReadBufferEntry(size_t keyIdx) noexcept
+
+IndexReadBufferEntry::IndexReadBufferEntry(size_t keyIdx) noexcept
     : _keyIdx(keyIdx) {}
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
-IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::IndexReadBuffer::ScoreIterator::ScoreIterator(
+template <typename ValueType, bool copyStored>
+IndexReadBuffer<ValueType, copyStored>::IndexReadBuffer::ScoreIterator::ScoreIterator(
     std::vector<AqlValue>& scoreBuffer, size_t keyIdx, size_t numScores) noexcept
     : _scoreBuffer(scoreBuffer), _scoreBaseIdx(keyIdx * numScores), _numScores(numScores) {
   TRI_ASSERT(_scoreBaseIdx + _numScores <= _scoreBuffer.size());
 }
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
-std::vector<AqlValue>::iterator IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<
-    ValueType>::IndexReadBuffer::ScoreIterator::begin() noexcept {
+template <typename ValueType, bool copyStored>
+std::vector<AqlValue>::iterator IndexReadBuffer<
+    ValueType, copyStored>::IndexReadBuffer::ScoreIterator::begin() noexcept {
   return _scoreBuffer.begin() + static_cast<ptrdiff_t>(_scoreBaseIdx);
 }
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
-std::vector<AqlValue>::iterator IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<
-    ValueType>::IndexReadBuffer::ScoreIterator::end() noexcept {
+template <typename ValueType, bool copyStored>
+std::vector<AqlValue>::iterator IndexReadBuffer<
+    ValueType, copyStored>::IndexReadBuffer::ScoreIterator::end() noexcept {
   return _scoreBuffer.begin() + static_cast<ptrdiff_t>(_scoreBaseIdx + _numScores);
 }
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
-IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::IndexReadBuffer(size_t const numScoreRegisters)
+template <typename ValueType, bool copyStored>
+IndexReadBuffer<ValueType, copyStored>::IndexReadBuffer(size_t const numScoreRegisters)
     : _numScoreRegisters(numScoreRegisters), _keyBaseIdx(0) {}
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
-ValueType const& IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getValue(
-    const IResearchViewExecutorBase::IndexReadBufferEntry bufferEntry) const noexcept {
+template <typename ValueType, bool copyStored>
+ValueType const& IndexReadBuffer<ValueType, copyStored>::getValue(
+    const IndexReadBufferEntry bufferEntry) const noexcept {
   assertSizeCoherence();
   TRI_ASSERT(bufferEntry._keyIdx < _keyBuffer.size());
   return _keyBuffer[bufferEntry._keyIdx];
 }
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
-typename IResearchViewExecutorBase<Impl, Traits>::template IndexReadBuffer<ValueType>::ScoreIterator
-IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getScores(
-    const IResearchViewExecutorBase::IndexReadBufferEntry bufferEntry) noexcept {
+template <typename ValueType, bool copyStored>
+typename  IndexReadBuffer<ValueType, copyStored>::ScoreIterator
+IndexReadBuffer<ValueType, copyStored>::getScores(
+    const IndexReadBufferEntry bufferEntry) noexcept {
   assertSizeCoherence();
   return ScoreIterator{_scoreBuffer, bufferEntry._keyIdx, _numScoreRegisters};
 }
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
+template <typename ValueType, bool copySorted>
 template <typename... Args>
-void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushValue(Args&&... args) {
+void IndexReadBuffer<ValueType, copySorted>::pushValue(Args&&... args) {
   _keyBuffer.emplace_back(std::forward<Args>(args)...);
 }
 
-//template <typename Impl, typename Traits>
-//template <typename ValueType>
-//std::vector<irs::bytes_ref>& IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getStoredValues() noexcept {
-//  return _storedValuesBuffer;
-//}
-
-template <typename Impl, typename Traits>
-template <typename ValueType>
+template <typename ValueType, bool copyStored>
 std::vector<irs::bytes_ref> const&
-IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getStoredValues() const
+IndexReadBuffer<ValueType, copyStored>::getStoredValues() const
     noexcept {
   return _storedValuesBuffer;
 }
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
-void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushScore(float_t const scoreValue) {
+template <typename ValueType, bool copyStored>
+void IndexReadBuffer<ValueType, copyStored>::pushScore(float_t const scoreValue) {
   _scoreBuffer.emplace_back(AqlValueHintDouble{static_cast<double>(scoreValue)});
 }
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
-void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushScoreNone() {
+template <typename ValueType, bool copyStored>
+void IndexReadBuffer<ValueType, copyStored>::pushScoreNone() {
   _scoreBuffer.emplace_back();
 }
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
-void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::reset() noexcept {
+template <typename ValueType, bool copyStored>
+void IndexReadBuffer<ValueType, copyStored>::reset() noexcept {
   // Should only be called after everything was consumed
   TRI_ASSERT(empty());
   _keyBaseIdx = 0;
   _keyBuffer.clear();
   _scoreBuffer.clear();
   _storedValuesBuffer.clear();
-  _ownedStoredData.clear();
+  if constexpr (copyStored) {
+    _ownedStoredData.clear();
+  }
 }
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
-size_t IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::size() const
+template <typename ValueType, bool copyStored>
+size_t IndexReadBuffer<ValueType, copyStored>::size() const
     noexcept {
   assertSizeCoherence();
   return _keyBuffer.size() - _keyBaseIdx;
 }
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
-bool IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::empty() const
+template <typename ValueType, bool copyStored>
+bool IndexReadBuffer<ValueType, copyStored>::empty() const
     noexcept {
   return size() == 0;
 }
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
-typename IResearchViewExecutorBase<Impl, Traits>::IndexReadBufferEntry
-IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pop_front() noexcept {
+template <typename ValueType, bool copyStored>
+IndexReadBufferEntry
+IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
   TRI_ASSERT(!empty());
   TRI_ASSERT(_keyBaseIdx < _keyBuffer.size());
   assertSizeCoherence();
@@ -419,9 +401,8 @@ IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pop_front()
   return entry;
 }
 
-template <typename Impl, typename Traits>
-template <typename ValueType>
-void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::assertSizeCoherence() const
+template <typename ValueType, bool copyStored>
+void IndexReadBuffer<ValueType, copyStored>::assertSizeCoherence() const
     noexcept {
   TRI_ASSERT(_scoreBuffer.size() == _keyBuffer.size() * _numScoreRegisters);
 }
@@ -771,10 +752,10 @@ void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(irs::document con
   bool const found = (doc.value == reader.itr->seek(doc.value));
   if (found && !payload.empty()) {
     //storedValue = payload;
-    _indexReadBuffer.template pushStoredValue<true>(payload);
+    _indexReadBuffer.pushStoredValue(payload);
   } else {
     //storedValue = ref<irs::byte_type>(VPackSlice::nullSlice());
-    _indexReadBuffer.template pushStoredValue<true>(ref<irs::byte_type>(VPackSlice::nullSlice()));
+    _indexReadBuffer.pushStoredValue(ref<irs::byte_type>(VPackSlice::nullSlice()));
   }
 }
 
@@ -1144,7 +1125,7 @@ void IResearchViewExecutor<ordered, materializeType>::saveCollection() {
 template <bool ordered, MaterializeType materializeType>
 bool IResearchViewExecutor<ordered, materializeType>::writeRow(
     IResearchViewExecutor::ReadContext& ctx,
-    IResearchViewExecutor::IndexReadBufferEntry bufferEntry) {
+    IndexReadBufferEntry bufferEntry) {
   TRI_ASSERT(_collection);
 
   return Base::writeRow(ctx, bufferEntry,
@@ -1462,7 +1443,7 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
 template <bool ordered, MaterializeType materializeType>
 bool IResearchViewMergeExecutor<ordered, materializeType>::writeRow(
     IResearchViewMergeExecutor::ReadContext& ctx,
-    IResearchViewMergeExecutor::IndexReadBufferEntry bufferEntry) {
+    IndexReadBufferEntry bufferEntry) {
   auto const& id = this->_indexReadBuffer.getValue(bufferEntry);
   LocalDocumentId const& documentId = id.first;
   TRI_ASSERT(documentId.isSet());

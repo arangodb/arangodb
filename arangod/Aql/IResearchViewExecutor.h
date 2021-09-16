@@ -180,6 +180,111 @@ struct FilterCtx final : irs::attribute_provider {
   iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
 }; // FilterCtx
 
+
+template <typename ValueType, bool>
+class IndexReadBuffer;
+
+class IndexReadBufferEntry {
+ public:
+  IndexReadBufferEntry() = delete;
+
+  size_t getKeyIdx() const noexcept { return _keyIdx; };
+
+ private:
+  template <typename ValueType, bool>
+  friend class IndexReadBuffer;
+
+  explicit inline IndexReadBufferEntry(size_t keyIdx) noexcept;
+
+ protected:
+  size_t _keyIdx;
+}; // IndexReadBufferEntry
+
+// Holds and encapsulates the data read from the iresearch index.
+template <typename ValueType, bool copyStored>
+class IndexReadBuffer {
+ public:
+  class ScoreIterator {
+   public:
+    ScoreIterator() = delete;
+    ScoreIterator(std::vector<AqlValue>& scoreBuffer, size_t keyIdx, size_t numScores) noexcept;
+
+    std::vector<AqlValue>::iterator begin() noexcept;
+
+    std::vector<AqlValue>::iterator end() noexcept;
+
+   private:
+    std::vector<AqlValue>& _scoreBuffer;
+    size_t _scoreBaseIdx;
+    size_t _numScores;
+  };
+
+ public:
+  IndexReadBuffer() = delete;
+  explicit IndexReadBuffer(size_t numScoreRegisters);
+
+  ValueType const& getValue(IndexReadBufferEntry bufferEntry) const noexcept;
+
+  ScoreIterator getScores(IndexReadBufferEntry bufferEntry) noexcept;
+
+  template <typename... Args>
+  void pushValue(Args&&... args);
+
+  // A note on the scores: instead of saving an array of AqlValues, we could
+  // save an array of floats plus a bitfield noting which entries should be
+  // None.
+
+  void pushScore(float_t scoreValue);
+
+  void pushScoreNone();
+
+  void reset() noexcept;
+
+  size_t size() const noexcept;
+
+  bool empty() const noexcept;
+
+  IndexReadBufferEntry pop_front() noexcept;
+
+  // This is violated while documents and scores are pushed, but must hold
+  // before and after.
+  void assertSizeCoherence() const noexcept;
+
+  // std::vector<irs::bytes_ref>& getStoredValues() noexcept;
+  void pushStoredValue(irs::bytes_ref value) {
+    if constexpr (copyStored) {
+      _ownedStoredData.emplace_front(value);
+      _storedValuesBuffer.emplace_back(_ownedStoredData.front());
+    } else {
+      _storedValuesBuffer.push_back(value);
+    }
+  }
+
+  std::vector<irs::bytes_ref> const& getStoredValues() const noexcept;
+
+ private:
+  // _keyBuffer, _scoreBuffer, _storedValuesBuffer together hold all the
+  // information read from the iresearch index.
+  // For the _scoreBuffer, it holds that
+  //   _scoreBuffer.size() == _keyBuffer.size() * infos().getNumScoreRegisters()
+  // and all entries
+  //   _scoreBuffer[i]
+  // correspond to
+  //   _keyBuffer[i / getNumScoreRegisters()]
+  // .
+  
+  std::vector<ValueType> _keyBuffer;
+  std::vector<AqlValue> _scoreBuffer;
+  std::vector<irs::bytes_ref> _storedValuesBuffer;
+  // buffer to hold data read from columnstore in case
+  // of temporary pointer returned from reader (e.g. encryption)
+  typename std::conditional<copyStored,
+                   std::forward_list<irs::bstring>,
+                   void>::type _ownedStoredData;
+  size_t _numScoreRegisters;
+  size_t _keyBaseIdx;
+};  // IndexReadBuffer
+
 template <typename Impl>
 struct IResearchViewExecutorTraits;
 
@@ -262,107 +367,6 @@ class IResearchViewExecutorBase {
     IndexIterator::DocumentCallback callback;
   };  // ReadContext
 
-  template <typename ValueType>
-  class IndexReadBuffer;
-
-  class IndexReadBufferEntry {
-   public:
-    IndexReadBufferEntry() = delete;
-
-    size_t getKeyIdx() const noexcept { return _keyIdx; };
-
-   private:
-    template <typename ValueType>
-    friend class IndexReadBuffer;
-
-    explicit inline IndexReadBufferEntry(size_t keyIdx) noexcept;
-
-   protected:
-    size_t _keyIdx;
-  };
-
-  // Holds and encapsulates the data read from the iresearch index.
-  template <typename ValueType>
-  class IndexReadBuffer {
-   public:
-    class ScoreIterator {
-     public:
-      ScoreIterator() = delete;
-      ScoreIterator(std::vector<AqlValue>& scoreBuffer, size_t keyIdx, size_t numScores) noexcept;
-
-      std::vector<AqlValue>::iterator begin() noexcept;
-
-      std::vector<AqlValue>::iterator end() noexcept;
-
-     private:
-      std::vector<AqlValue>& _scoreBuffer;
-      size_t _scoreBaseIdx;
-      size_t _numScores;
-    };
-
-   public:
-    IndexReadBuffer() = delete;
-    explicit IndexReadBuffer(size_t numScoreRegisters);
-
-    ValueType const& getValue(IndexReadBufferEntry bufferEntry) const noexcept;
-
-    ScoreIterator getScores(IndexReadBufferEntry bufferEntry) noexcept;
-
-    template <typename... Args>
-    void pushValue(Args&&... args);
-
-    // A note on the scores: instead of saving an array of AqlValues, we could
-    // save an array of floats plus a bitfield noting which entries should be
-    // None.
-
-    void pushScore(float_t scoreValue);
-
-    void pushScoreNone();
-
-    void reset() noexcept;
-
-    size_t size() const noexcept;
-
-    bool empty() const noexcept;
-
-    IndexReadBufferEntry pop_front() noexcept;
-
-    // This is violated while documents and scores are pushed, but must hold
-    // before and after.
-    void assertSizeCoherence() const noexcept;
-
-    //std::vector<irs::bytes_ref>& getStoredValues() noexcept;
-    template<bool copy>
-    void pushStoredValue(irs::bytes_ref value) {
-      if constexpr (copy) {
-        _ownedStoredData.emplace_front(value);
-        _storedValuesBuffer.emplace_back(_ownedStoredData.front());
-      } else {
-        _storedValuesBuffer.push_back(value);
-      }
-    }
-
-    std::vector<irs::bytes_ref> const& getStoredValues() const noexcept;
-
-   private:
-    // _keyBuffer, _scoreBuffer, _storedValuesBuffer together hold all the
-    // information read from the iresearch index.
-    // For the _scoreBuffer, it holds that
-    //   _scoreBuffer.size() == _keyBuffer.size() * infos().getNumScoreRegisters()
-    // and all entries
-    //   _scoreBuffer[i]
-    // correspond to
-    //   _keyBuffer[i / getNumScoreRegisters()]
-    // .
-    std::vector<ValueType> _keyBuffer;
-    std::vector<AqlValue> _scoreBuffer;
-    std::vector<irs::bytes_ref> _storedValuesBuffer;
-    // buffer to hold data read from columnstore in case
-    // of temporary pointer returned from reader (e.g. encryption)
-    std::forward_list<irs::bstring> _ownedStoredData;
-    size_t _numScoreRegisters;
-    size_t _keyBaseIdx;
-  };
 
  public:
   IResearchViewExecutorBase() = delete;
@@ -405,7 +409,7 @@ class IResearchViewExecutorBase {
   AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   Infos& _infos;
   InputAqlItemRow _inputRow;
-  IndexReadBuffer<typename Traits::IndexBufferValueType> _indexReadBuffer;
+  IndexReadBuffer<typename Traits::IndexBufferValueType, true> _indexReadBuffer;
   iresearch::ViewExpressionContext _ctx;
   FilterCtx _filterCtx;  // filter context
   std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
@@ -430,7 +434,6 @@ class IResearchViewExecutor
   friend Base;
 
   using ReadContext = typename Base::ReadContext;
-  using IndexReadBufferEntry = typename Base::IndexReadBufferEntry;
 
   size_t skip(size_t toSkip);
   size_t skipAll();
@@ -490,7 +493,6 @@ class IResearchViewMergeExecutor
   friend Base;
 
   using ReadContext = typename Base::ReadContext;
-  using IndexReadBufferEntry = typename Base::IndexReadBufferEntry;
 
   struct Segment {
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
