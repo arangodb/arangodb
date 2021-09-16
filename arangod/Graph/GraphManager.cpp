@@ -366,7 +366,6 @@ ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(std::string cons
 }
 
 OperationResult GraphManager::createGraph(VPackSlice document, bool waitForSync) const {
-  LOG_DEVEL << "graph manager createGraph";
   OperationOptions options(ExecContext::current());
   VPackSlice graphNameSlice = document.get("name");
   if (!graphNameSlice.isString()) {
