@@ -1947,3 +1947,8 @@ constexpr auto TRI_ERROR_LICENSE_RESOURCE_EXHAUSTED                             
 /// The license does not hold features of an ArangoDB license.
 constexpr auto TRI_ERROR_LICENSE_INVALID                                         = ErrorCode{9006};
 
+/// 9007: ERROR_LICENSE_CONFLICT
+/// "conflicting license"
+/// The license has one or more inferior features.
+constexpr auto TRI_ERROR_LICENSE_CONFLICT                                        = ErrorCode{9007};
+
