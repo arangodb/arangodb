@@ -375,25 +375,15 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
-  try {
-    bool queued = SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), cb]() {
-      // whatever happens next, when we leave this here, we need to indicate
-      // that there is no more posted job.
-      // otherwise the calling thread may block forever waiting on the
-      // posted jobs to finish
-      auto guard = scopeGuard([self]() noexcept { self->jobDone(); });
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), cb]() {
+    // whatever happens next, when we leave this here, we need to indicate
+    // that there is no more posted job.
+    // otherwise the calling thread may block forever waiting on the
+    // posted jobs to finish
+    auto guard = scopeGuard([self]() noexcept { self->jobDone(); });
 
-      cb();
-    });
-
-    if (!queued) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
-    }
-  } catch (...) {
-    // will get here only if Scheduler::post threw
-    jobDone();
-    throw;
-  }
+    cb();
+  });
 }
 
 /// @brief notifies that a job was posted

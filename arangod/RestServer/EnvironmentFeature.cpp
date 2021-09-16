@@ -79,7 +79,7 @@ void EnvironmentFeature::prepare() {
 #elif _WIN32
   // TODO: improve Windows version detection
   _operatingSystem = "windows";
-#elif __apple__
+#elif __APPLE__
   // TODO: improve MacOS version detection
   _operatingSystem = "macos";
 #else

@@ -771,21 +771,20 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
 
       // we can safely ignore the result here, because we will try to
       // claim the task ourselves anyway.
-      std::ignore =
-          SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                             [block = this, task = _prefetchTask,
-                                              stack = ctx.stack]() mutable {
-                                               if (!task->tryClaim()) {
-                                                 return;
-                                               }
-                                               // task is a copy of the PrefetchTask shared_ptr, and we will only
-                                               // attempt to execute the task if we successfully claimed the task.
-                                               // i.e., it does not matter if this task lingers around in the
-                                               // scheduler queue even after the execution block has been destroyed,
-                                               // because in this case we will not be able to claim the task and
-                                               // simply return early without accessing the block.
-                                               task->execute(*block, stack);
-                                             });
+      SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                          [block = this, task = _prefetchTask,
+                                          stack = ctx.stack]() mutable {
+                                            if (!task->tryClaim()) {
+                                              return;
+                                            }
+                                            // task is a copy of the PrefetchTask shared_ptr, and we will only
+                                            // attempt to execute the task if we successfully claimed the task.
+                                            // i.e., it does not matter if this task lingers around in the
+                                            // scheduler queue even after the execution block has been destroyed,
+                                            // because in this case we will not be able to claim the task and
+                                            // simply return early without accessing the block.
+                                            task->execute(*block, stack);
+                                          });
     }
 
     if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {

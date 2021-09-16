@@ -150,7 +150,7 @@ void Worker<V, E, M>::setupWorker() {
   // of time. Therefore this is performed asynchronously
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), cb = std::move(cb)] {
+  scheduler->queue(RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), cb = std::move(cb)] {
     try {
       _graphStore->loadShards(&_config, cb);
     } catch (std::exception const& ex) {
@@ -163,10 +163,6 @@ void Worker<V, E, M>::setupWorker() {
       throw;
     }
   });
-  if (!queued) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                   "No available thread to load shards");
-  }
 }
 
 template <typename V, typename E, typename M>
@@ -338,7 +334,7 @@ void Worker<V, E, M>::_startProcessing() {
 
   auto self = shared_from_this();
   for (size_t i = 0; i < numT; i++) {
-    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, i, numT, numSegments] {
+    scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, i, numT, numSegments] {
       if (_state != WorkerState::COMPUTING) {
         LOG_PREGEL("f0e3d", WARN)
             << "Execution aborted prematurely.";
@@ -356,10 +352,6 @@ void Worker<V, E, M>::_startProcessing() {
         _finishedProcessing();  // last thread turns the lights out
       }
     });
-    if (!queued) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                     "No thread available to start processing");
-    }
   }
 
   // TRI_ASSERT(_runningThreads == i);
@@ -552,8 +544,7 @@ void Worker<V, E, M>::_continueAsync() {
   // wait for new messages before beginning to process
   int64_t milli = _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
   // start next iteration in $milli mseconds.
-  bool queued = false;
-  std::tie(queued, _workHandle) = SchedulerFeature::SCHEDULER->queueDelay(
+  _workHandle = SchedulerFeature::SCHEDULER->queueDelayed(
       RequestLane::INTERNAL_LOW, std::chrono::milliseconds(milli), [this, self = shared_from_this()](bool cancelled) {
         if (!cancelled) {
           {  // swap these pointers atomically
@@ -571,10 +562,6 @@ void Worker<V, E, M>::_continueAsync() {
           _startProcessing();
         }
       });
-  if (!queued) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUEUE_FULL, "No thread available to continue execution.");
-  }
 }
 
 template <typename V, typename E, typename M>
@@ -701,7 +688,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), this] {
+  scheduler->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), this] {
     if (_state != WorkerState::RECOVERING) {
       LOG_PREGEL("554e2", WARN)
           << "Compensation aborted prematurely.";
@@ -741,10 +728,6 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     package.close();
     _callConductor(Utils::finishedRecoveryPath, package);
   });
-  if (!queued) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUEUE_FULL, "No thread available to queue compensation.");
-  }
 }
 
 template <typename V, typename E, typename M>
@@ -767,15 +750,11 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
   if (!ServerState::instance()->isRunningInCluster()) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), path, message] {
+    scheduler->queue(RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), path, message] {
       VPackBuilder response;
       _feature.handleConductorRequest(*_config.vocbase(), path,
                                       message.slice(), response);
     });
-    if (!queued) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                     "No thread available to call conductor");
-    }
   } else {
     std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
 

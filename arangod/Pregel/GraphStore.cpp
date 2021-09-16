@@ -127,7 +127,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config, std::function<void()> co
       _config->edgeCollectionShards();
   size_t numShards = SIZE_MAX;
 
-  auto poster = [](std::function<void()> fn) -> bool {
+  auto poster = [](std::function<void()> fn) -> void {
     return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, std::move(fn));
   };
   auto queue =
@@ -208,13 +208,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config, std::function<void()> co
     THROW_ARANGO_EXCEPTION(queue->status());
   }
 
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, cb);
-  if (!queued) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                   "No thread available to queue callback, "
-                                   "canceling execution");
-  }
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, cb);
 }
 
 template <typename V, typename E>
@@ -692,7 +686,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config, std::function<void()> 
       << numT << " threads";
 
   for (size_t i = 0; i < numT; ++i) {
-    bool queued = SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [=] {
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [=] {
       size_t startI = i * (numSegments / numT);
       size_t endI = (i + 1) * (numSegments / numT);
       TRI_ASSERT(endI <= numSegments);
@@ -715,15 +709,6 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config, std::function<void()> 
         cb();
       }
     });
-
-    if (!queued) {
-      // couldn't queue this storage task. so now at least count down
-      _runningThreads.fetch_sub(1, std::memory_order_relaxed);
-
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                     "No thread available to queue vertex "
-                                     "storage, canceling execution");
-    }
   }
 }
 
