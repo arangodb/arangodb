@@ -319,14 +319,26 @@ ServerState::Mode ServerState::setServerMode(ServerState::Mode value) {
 }
 
 static std::atomic<bool> _serverstate_readonly(false);
+static std::atomic<bool> _license_readonly(false);
 
 bool ServerState::readOnly() {
-  return _serverstate_readonly.load(std::memory_order_acquire);
+  return _serverstate_readonly.load(std::memory_order_acquire) ||
+    _license_readonly.load(std::memory_order_acquire);
 }
 
 /// @brief set server read-only
-bool ServerState::setReadOnly(bool ro) {
-  return _serverstate_readonly.exchange(ro, std::memory_order_release);
+bool ServerState::setReadOnly(ReadOnlyMode ro) {
+  if(ro == API_FALSE) {
+    _serverstate_readonly.exchange(false, std::memory_order_release);
+  } else if (ro == API_TRUE) {
+    _serverstate_readonly.exchange(true, std::memory_order_release);
+  } else if (ro == LICENSE_FALSE) {
+    _license_readonly.exchange(false, std::memory_order_release);
+  } else if (ro == LICENSE_TRUE) {
+    _license_readonly.exchange(true, std::memory_order_release);
+  }
+  return _serverstate_readonly.load(std::memory_order_acquire) ||
+    _license_readonly.load(std::memory_order_acquire);
 }
 
 // ============ Instance methods =================
@@ -1105,6 +1117,6 @@ Result ServerState::propagateClusterReadOnly(bool mode) {
     // the change, we delay here for 2 seconds.
     std::this_thread::sleep_for(std::chrono::seconds(2));
   }
-  setReadOnly(mode);
+  setReadOnly(mode ? API_TRUE : API_FALSE);
   return Result();
 }
