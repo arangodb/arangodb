@@ -250,16 +250,12 @@ void PregelFeature::scheduleGarbageCollection() {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  auto [queued, handle] = scheduler->queueDelay(RequestLane::INTERNAL_LOW, offset, [this](bool canceled) {
+  auto handle = scheduler->queueDelayed(RequestLane::INTERNAL_LOW, offset, [this](bool canceled) {
     if (!canceled) {
       garbageCollectConductors();
       scheduleGarbageCollection();
     }
   });
-  if (!queued) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                   "No thread available to queue Pregel garbage collection");
-  }
 
   MUTEX_LOCKER(guard, _mutex);
   _gcHandle = std::move(handle);
@@ -392,14 +388,10 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
   // unmapping etc might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber] {
+  scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber] {
     MUTEX_LOCKER(guard, _mutex);
     _workers.erase(executionNumber);
   });
-  if (!queued) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                   "No thread available to queue cleanup.");
-  }
 }
 
 void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,

@@ -344,6 +344,7 @@ endif ()
 
 add_executable(
   arangodbtests
+  ../cmake/activeCodePage.manifest
   ${ARANGODB_TESTS_SOURCES}
   ${ARANGODB_REPLICATION2_TEST_SOURCES}
   main.cpp

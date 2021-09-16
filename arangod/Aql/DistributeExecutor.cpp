@@ -125,24 +125,37 @@ auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, Ski
           choosenMap[key].emplace_back(i);
         }
       } else {
-        auto input = extractInput(block, i);
-        if (!input.isNone()) {
-          // NONE is ignored.
-          // Object is processd
-          // All others throw.
-          TRI_ASSERT(input.isObject());
-          if (_infos.shouldDistributeToAll(input)) {
-            // This input should be added to all clients
-            for (auto const& [key, value] : blockMap) {
-              choosenMap[key].emplace_back(i);
+        // check first input register
+        AqlValue val = InputAqlItemRow{block, i}.getValue(_infos.registerId());
+
+        VPackSlice input = val.slice();  // will throw when wrong type
+        if (input.isNone()) {
+          continue;
+        }
+
+        if (!input.isObject()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL, "DistributeExecutor requires an object as input");
+        }
+        // NONE is ignored.
+        // Object is processd
+        // All others throw.
+        TRI_ASSERT(input.isObject());
+        if (_infos.shouldDistributeToAll(input)) {
+          // This input should be added to all clients
+          for (auto const& [key, value] : blockMap) {
+            choosenMap[key].emplace_back(i);
+          }
+        } else {
+          auto client = getClient(input);
+          if (!client.empty()) {
+            // We can only have clients we are prepared for
+            TRI_ASSERT(blockMap.find(client) != blockMap.end());
+            if (ADB_UNLIKELY(blockMap.find(client) == blockMap.end())) {
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+                  std::string("unexpected client id '") + client + "' found in blockMap");
             }
-          } else {
-            auto client = getClient(input);
-            if (!client.empty()) {
-              // We can only have clients we are prepared for
-              TRI_ASSERT(blockMap.find(client) != blockMap.end());
-              choosenMap[client].emplace_back(i);
-            }
+            choosenMap[client].emplace_back(i);
           }
         }
       }
@@ -166,23 +179,6 @@ auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, Ski
       target.addBlock(skipped, nullptr, {});
     }
   }
-}
-
-auto DistributeExecutor::extractInput(SharedAqlItemBlockPtr const& block,
-                                      size_t rowIndex) const -> VPackSlice {
-  // check first input register
-  AqlValue val = InputAqlItemRow{block, rowIndex}.getValue(_infos.registerId());
-
-  VPackSlice input = val.slice();  // will throw when wrong type
-  if (input.isNone()) {
-    return input;
-  }
-
-  if (!input.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "DistributeExecutor requires an object as input");
-  }
-  return input;
 }
 
 auto DistributeExecutor::getClient(VPackSlice input) const -> std::string {

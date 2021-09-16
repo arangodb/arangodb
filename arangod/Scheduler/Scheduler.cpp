@@ -147,15 +147,14 @@ void Scheduler::runCronThread() {
   }
 }
 
-std::pair<bool, Scheduler::WorkHandle> Scheduler::queueDelay(
-    RequestLane lane, clock::duration delay, fu2::unique_function<void(bool cancelled)> handler) {
+Scheduler::WorkHandle Scheduler::queueDelayed(
+    RequestLane lane, clock::duration delay, fu2::unique_function<void(bool cancelled)> handler) noexcept {
   TRI_ASSERT(!isStopping());
 
   if (delay < std::chrono::milliseconds(1)) {
     // execute directly
-    bool queued =
-        queue(lane, [handler = std::move(handler)]() mutable { handler(false); });
-    return std::make_pair(queued, nullptr);
+    queue(lane, [handler = std::move(handler)]() mutable { handler(false); });
+    return nullptr;
   }
 
   auto item = std::make_shared<DelayedWorkItem>(std::move(handler), lane, this);
@@ -170,7 +169,7 @@ std::pair<bool, Scheduler::WorkHandle> Scheduler::queueDelay(
     }
   }
 
-  return std::make_pair(true, item);
+  return item;
 }
 
 /*
