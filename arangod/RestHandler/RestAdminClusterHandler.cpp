@@ -1729,7 +1729,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
               std::string memberName = member.key.copyString();
 
               auto future =
-                  network::sendRequestRetry(pool, endpoint, fuerte::RestVerb::Get,
+                  network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
                                        "/_api/agency/config", VPackBuffer<uint8_t>())
                       .then([endpoint = std::move(endpoint), memberName = std::move(memberName)](
                                 futures::Try<network::Response>&& resp) mutable {
