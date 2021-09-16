@@ -217,7 +217,7 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   std::optional<RevisionId> handleRevision() const;
 
  private:
-  graph::GraphManager _gmngr;
+  graph::GraphManager _graphManager;
 };
 }  // namespace arangodb
 

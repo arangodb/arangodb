@@ -363,18 +363,19 @@ void Graph::toPersistence(VPackBuilder& builder) const {
   builder.add(StaticStrings::KeyString, VPackValue(_graphName));
 
   // Cluster Information
-  if (arangodb::ServerState::instance()->isRunningInCluster()) {
-    builder.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
-    if (isSatellite()) {
-      builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
-    } else {
-      builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
-      builder.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));  // deprecated
-      builder.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
-    }
-    builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
-    builder.add(StaticStrings::GraphIsSatellite, VPackValue(isSatellite()));
+  // Will be also persisted in SingleServer operation mode as we'll support creating
+  // SmartGraphs in SingleServer mode as well. This information will be necessary in case
+  // we dump & restore from SingleServer to a clustered environment.
+  builder.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
+  if (isSatellite()) {
+    builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
+  } else {
+    builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
+    builder.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));  // deprecated
+    builder.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
   }
+  builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
+  builder.add(StaticStrings::GraphIsSatellite, VPackValue(isSatellite()));
 
   // EdgeDefinitions
   builder.add(VPackValue(StaticStrings::GraphEdgeDefinitions));
