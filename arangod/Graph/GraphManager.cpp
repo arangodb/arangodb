@@ -1084,17 +1084,21 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
                                                                   VPackSlice input) const {
   try {
     TRI_ASSERT(input.isObject());
-    if (ServerState::instance()->isCoordinator()) {
+    // TODO: check if it is executed or accessible by a database server
+    //if (ServerState::instance()->isCoordinator())
+    {
       VPackSlice s = input.get(StaticStrings::IsSmart);
       if (s.isBoolean() && s.getBoolean()) {
         s = input.get("options");
         if (s.isObject()) {
           s = s.get(StaticStrings::ReplicationFactor);
-          if ((s.isNumber() && s.getNumber<int>() == 0) ||
-              (s.isString() && s.stringRef() == "satellite")) {
+          if ((s.isNumber() && s.getNumber<int>() == 0)) {
+            return Result{
+                TRI_ERROR_BAD_PARAMETER,
+                "invalid combination of 'isSmart' and 'replicationFactor'"};
+          } else if (s.isString() && s.stringRef() == "satellite") {
             return Result{TRI_ERROR_BAD_PARAMETER,
-                          "invalid combination of 'isSmart' and 'satellite' "
-                          "replicationFactor"};
+                          "invalid combination of 'isSmart' and 'satellite' "};
           }
         }
       }
