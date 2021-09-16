@@ -60,4 +60,4 @@ Additional Resources
 
 * [General GitHub documentation](https://help.github.com/)
 
-* [GitHub pull request documentation](https://help.github.com/send-pull-requests/)
+* [GitHub pull request documentation](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork/)
