@@ -1,14 +1,13 @@
 devel
 -----
 
-<<<<<<< HEAD
 * Remove internal AQL query option `readComplete` that controled if all
   inputs for a modification operation (UPDATE / REPLACE / REMOVE) were
   read into memory first. This was a necessity with the MMFiles storage
   engine in cases when a query read from a collection and wrote into it
   in the same query. With the RocksDB engine and its snapshotting, we
   never need to read the entire inputs into memory first.
-=======
+
 * Fixed display of unicode characters in Windows console.
 
 * Fixed issue BTS-531 "Error happens during EXE package installation if
@@ -22,7 +21,6 @@ devel
   not specifying the "type" URL parameter.
 
 * Updated OpenSSL to 1.1.1l and OpenLDAP to 2.4.59.
->>>>>>> devel
 
 * APM-70: allow PRUNE condition to be stored in a variable.
 
