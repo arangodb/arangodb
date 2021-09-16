@@ -99,7 +99,7 @@ AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
   TRI_ASSERT(_type != UNPROCESSED);
       
   _expressionContext = ctx;
-  auto guard = scopeGuard([this] {
+  auto guard = scopeGuard([this]() noexcept {
     _expressionContext = nullptr;
   });
 
@@ -945,7 +945,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
 
     auto old = v8g->_expressionContext;
     v8g->_expressionContext = _expressionContext;
-    TRI_DEFER(v8g->_expressionContext = old);
+    auto sg = arangodb::scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
 
     std::string jsName;
     size_t const n = member->numMembers();

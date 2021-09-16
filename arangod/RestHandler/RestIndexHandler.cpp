@@ -114,7 +114,7 @@ RestStatus RestIndexHandler::continueExecute() {
 }
 
 void RestIndexHandler::shutdownExecute(bool isFinalized) noexcept {
-  TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
+  auto sg = arangodb::scopeGuard([&]() noexcept { RestVocbaseBaseHandler::shutdownExecute(isFinalized); });
 
   // request not done yet
   if (!isFinalized) {
@@ -375,14 +375,9 @@ RestStatus RestIndexHandler::createIndex() {
     }
 
     // notify REST handler
-    bool queued = SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self]() {
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self]() {
       self->wakeupHandler();
     });
-    if (!queued) {
-      // not much we can do
-      LOG_TOPIC("466c2", WARN, Logger::FIXME) 
-          << "unable to queue index handler result action";
-    }
   };
 
   // start background thread

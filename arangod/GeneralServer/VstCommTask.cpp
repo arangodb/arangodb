@@ -65,6 +65,7 @@ VstCommTask<T>::VstCommTask(GeneralServer& server, ConnectionInfo info,
   // arbitrary initial reserve value to save a few memory allocations
   // in the most common cases.
   _writeQueue.reserve(32);
+  this->_generalServerFeature.countVstConnection();
 }
 
 template <SocketType T>
@@ -221,7 +222,7 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
   }
 
   // this->_proto->timer.cancel();
-  auto guard = scopeGuard([&] { _messages.erase(chunk.header.messageID()); });
+  auto guard = scopeGuard([&]() noexcept { _messages.erase(chunk.header.messageID()); });
   processMessage(std::move(msg.buffer), chunk.header.messageID());
   return true;
 }
@@ -275,6 +276,8 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
   RequestStatistics::Item const& stat = this->statistics(messageId);
   stat.SET_READ_END();
   stat.ADD_RECEIVED_BYTES(buffer.size());
+
+  this->_generalServerFeature.countVstRequest(buffer.size());
 
   try {
     // handle request types

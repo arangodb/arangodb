@@ -246,7 +246,7 @@ class term_reader : public irs::term_reader {
     }
   }
 
-  virtual irs::seek_term_iterator::ptr iterator() const override;
+  virtual irs::seek_term_iterator::ptr iterator(irs::SeekMode) const override;
   virtual irs::seek_term_iterator::ptr iterator(irs::automaton_table_matcher& a) const override;
   virtual const irs::field_meta& meta() const override { return data_; }
   virtual size_t size() const override { return data_.terms.size(); }
@@ -256,6 +256,9 @@ class term_reader : public irs::term_reader {
   virtual size_t bit_union(
     const cookie_provider& provider,
     size_t* bitset) const override;
+  virtual irs::doc_iterator::ptr postings(
+      const irs::seek_cookie& cookie,
+      irs::IndexFeatures features) const override;
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (irs::type<irs::frequency>::id() == type) {
       return pfreq_;

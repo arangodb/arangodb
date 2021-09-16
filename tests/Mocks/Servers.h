@@ -58,7 +58,13 @@ namespace mocks {
 /// @brief mock application server with no features added
 class MockServer {
  public:
-  MockServer();
+  // Note, setting injectClusterIndexes causes the "create" methods to fail.
+  // this is all hardly worked around the Cluster engine and needs a proper
+  // clean up. It is highly recommended to not set injectClusterIndexes unless
+  // you want to specificly test something that selects an index, but cannot use
+  // it. Use with care for now.
+  MockServer(arangodb::ServerState::RoleEnum = arangodb::ServerState::RoleEnum::ROLE_SINGLE,
+             bool injectClusterIndexes = false);
   virtual ~MockServer();
 
   application_features::ApplicationServer& server();
@@ -121,6 +127,8 @@ class MockServer {
 
  private:
   bool _started;
+  arangodb::ServerState::RoleEnum _oldRole;
+  bool _originalMockingState;
 };
 
 /// @brief a server with almost no features added (Metrics are available
@@ -159,7 +167,7 @@ class MockAqlServer : public MockServer,
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
   // runBeforePrepare gives an entry point to modify the list of collections one want to use within the Query.
-  std::unique_ptr<arangodb::aql::Query> createFakeQuery(
+  std::shared_ptr<arangodb::aql::Query> createFakeQuery(
       bool activateTracing = false, std::string queryString = "",
       std::function<void(arangodb::aql::Query&)> runBeforePrepare =
           [](arangodb::aql::Query&) {}) const;
@@ -202,30 +210,52 @@ class MockClusterServer : public MockServer,
   std::shared_ptr<LogicalCollection> createCollection(
       std::string const& dbName, std::string collectionName,
       std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
-      TRI_col_type_e type);
+      TRI_col_type_e type,
+      VPackSlice additionalProperties = VPackSlice{VPackSlice::nullSlice()});
 
+#ifdef USE_ENTERPRISE
+  std::shared_ptr<LogicalCollection> createSmartCollection(
+      std::string const& dbName, std::string collectionName,
+      std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
+      TRI_col_type_e type,
+      VPackSlice additionalProperties = VPackSlice{VPackSlice::nullSlice()});
+#endif
+
+  void buildCollectionProperties(VPackBuilder& props, std::string const& collectionName,
+                                 std::string const& cid, TRI_col_type_e type,
+                                 VPackSlice additionalProperties);
+
+  void injectCollectionToAgency(std::string const& dbName, VPackBuilder& velocy,
+                                DataSourceId const& planId,
+                                std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs);
+
+  std::shared_ptr<arangodb::aql::Query> createFakeQuery(
+      bool activateTracing = false, std::string queryString = "",
+      std::function<void(arangodb::aql::Query&)> runBeforePrepare =
+          [](arangodb::aql::Query&) {}) const;
   // You can only create specialized types
  protected:
-  MockClusterServer(bool useAgencyMockConnection);
+  MockClusterServer(bool useAgencyMockConnection, arangodb::ServerState::RoleEnum role,
+                    bool injectClusterIndexes = false);
   ~MockClusterServer();
 
  protected:
   // Implementation knows the place when all features are included
   consensus::index_t agencyTrx(std::string const& key, std::string const& value);
   void agencyCreateDatabase(std::string const& name);
-  
+
   // creation of collection is separated
   // as for DBerver at first maintenance should
   // create database and only after collections
   // will be populated in plan.
   void agencyCreateCollections(std::string const& name);
-
   void agencyDropDatabase(std::string const& name);
-protected:
+
+ protected:
   std::unique_ptr<arangodb::network::ConnectionPool> _pool;
+
  private:
   bool _useAgencyMockPool;
-  arangodb::ServerState::RoleEnum _oldRole;
   int _dummy;
 };
 
@@ -243,7 +273,8 @@ class MockDBServer : public MockClusterServer {
 
 class MockCoordinator : public MockClusterServer {
  public:
-  MockCoordinator(bool startFeatures = true, bool useAgencyMockConnection = true);
+  MockCoordinator(bool startFeatures = true, bool useAgencyMockConnection = true,
+                  bool injectClusterIndexes = false);
   ~MockCoordinator();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;

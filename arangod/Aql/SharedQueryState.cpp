@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "Cluster/ServerState.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -129,34 +130,37 @@ void SharedQueryState::queueHandler() {
     return;
   }
 
-  bool queued =
-      scheduler->queue(RequestLane::CLUSTER_AQL_CONTINUATION,
-                       [self = shared_from_this(), cb = _wakeupCb, v = _cbVersion]() {
-                         std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
+  auto const lane = ServerState::instance()->isCoordinator()
+                        ? RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR
+                        : RequestLane::CLUSTER_AQL;
 
-                         do {
-                           bool cntn = false;
-                           try {
-                             cntn = cb();
-                           } catch (...) {
-                           }
+  bool queued = scheduler->tryBoundedQueue(lane, [self = shared_from_this(),
+                                        cb = _wakeupCb, v = _cbVersion]() {
+    std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
-                           lck.lock();
-                           if (v == self->_cbVersion) {
-                             unsigned c = self->_numWakeups--;
-                             TRI_ASSERT(c > 0);
-                             if (c == 1 || !cntn || !self->_valid) {
-                               break;
-                             }
-                           } else {
-                             return;
-                           }
-                           lck.unlock();
-                         } while (true);
+    do {
+      bool cntn = false;
+      try {
+        cntn = cb();
+      } catch (...) {
+      }
 
-                         TRI_ASSERT(lck);
-                         self->queueHandler();
-                       });
+      lck.lock();
+      if (v == self->_cbVersion) {
+        unsigned c = self->_numWakeups--;
+        TRI_ASSERT(c > 0);
+        if (c == 1 || !cntn || !self->_valid) {
+          break;
+        }
+      } else {
+        return;
+      }
+      lck.unlock();
+    } while (true);
+
+    TRI_ASSERT(lck);
+    self->queueHandler();
+  });
 
   if (!queued) { // just invalidate
      _wakeupCb = nullptr;
@@ -168,7 +172,7 @@ void SharedQueryState::queueHandler() {
 bool SharedQueryState::queueAsyncTask(fu2::unique_function<void()> cb) {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler) {
-    return scheduler->queue(RequestLane::CLIENT_AQL, std::move(cb));
+    return scheduler->tryBoundedQueue(RequestLane::CLUSTER_AQL, std::move(cb));
   }
   return false;
 }

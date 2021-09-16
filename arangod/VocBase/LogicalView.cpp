@@ -51,7 +51,7 @@ namespace arangodb {
 // @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this view
-LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition)
+LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice definition)
     : LogicalDataSource(LogicalView::category(),
                         LogicalDataSource::Type::emplace(arangodb::basics::VelocyPackHelper::getStringRef(
                             definition, StaticStrings::DataSourceType, VPackStringRef())),
@@ -109,7 +109,7 @@ bool LogicalView::canUse(arangodb::auth::Level const& level) {
 }
 
 /*static*/ Result LogicalView::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                                      velocypack::Slice definition) {
+                                      velocypack::Slice definition, bool isUserRequest) {
   if (!vocbase.server().hasFeature<ViewTypesFeature>()) {
     std::string name;
     if (definition.isObject()) {
@@ -123,12 +123,12 @@ bool LogicalView::canUse(arangodb::auth::Level const& level) {
   }
   auto& viewTypes = vocbase.server().getFeature<ViewTypesFeature>();
 
-  auto type =
-      basics::VelocyPackHelper::getStringRef(definition, StaticStrings::DataSourceType,
-                                             velocypack::StringRef(nullptr, 0));
+  auto type = basics::VelocyPackHelper::getStringRef(
+    definition, StaticStrings::DataSourceType,
+    VPackStringRef(nullptr, 0));
   auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
 
-  return factory.create(view, vocbase, definition);
+  return factory.create(view, vocbase, definition, isUserRequest);
 }
 
 Result LogicalView::drop() {
@@ -233,7 +233,7 @@ Result LogicalView::rename(std::string&& newName) {
 
 /*static*/ Result LogicalViewHelperClusterInfo::construct(LogicalView::ptr& view,
                                                           TRI_vocbase_t& vocbase,
-                                                          velocypack::Slice const& definition) noexcept {
+                                                          velocypack::Slice definition) noexcept {
   try {
     if (!vocbase.server().hasFeature<ClusterFeature>()) {
       return Result(TRI_ERROR_INTERNAL,
@@ -358,8 +358,9 @@ Result LogicalView::rename(std::string&& newName) {
   return Result(TRI_ERROR_INTERNAL);  // noexcept constructor
 }
 
-/*static*/ Result LogicalViewHelperClusterInfo::rename(LogicalView const& view,
-                                                       std::string const& oldName) noexcept {
+/*static*/ Result LogicalViewHelperClusterInfo::rename(
+    LogicalView const& /*view*/,
+    std::string const& /*oldName*/) noexcept {
   return Result(TRI_ERROR_CLUSTER_UNSUPPORTED);  // renaming a view in a cluster
                                                  // is not supported
 }
@@ -368,9 +369,10 @@ Result LogicalView::rename(std::string&& newName) {
 // --SECTION--                                    LogicalViewHelperStorageEngine
 // -----------------------------------------------------------------------------
 
-/*static*/ Result LogicalViewHelperStorageEngine::construct(LogicalView::ptr& view,
-                                                            TRI_vocbase_t& vocbase,
-                                                            velocypack::Slice const& definition) noexcept {
+/*static*/ Result LogicalViewHelperStorageEngine::construct(
+    LogicalView::ptr& view,
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice definition) noexcept {
   try {
     TRI_set_errno(TRI_ERROR_NO_ERROR);  // reset before calling createView(...)
     auto impl = vocbase.createView(definition);
@@ -394,7 +396,8 @@ Result LogicalView::rename(std::string&& newName) {
   return Result(TRI_ERROR_INTERNAL);  // noexcept constructor
 }
 
-/*static*/ Result LogicalViewHelperStorageEngine::destruct(LogicalView const& view) noexcept {
+/*static*/ Result LogicalViewHelperStorageEngine::destruct(
+    LogicalView const& view) noexcept {
   if (!view.deleted()) {
     return Result();  // NOOP
   }

@@ -775,7 +775,7 @@ function getMemProfSnapshot(instanceInfo, options, counter) {
       }
 
       let fnMetrics = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.metrics`);
-      let metricsReply = download(arangod.url + '/_admin/metrics', opts);
+      let metricsReply = download(arangod.url + '/_admin/metrics/v2', opts);
       if (metricsReply.code === 200) {
         fs.write(fnMetrics, metricsReply.body);
         print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);
@@ -2057,7 +2057,10 @@ function launchFinalize(options, instanceInfo, startTime) {
     } else {
       ports.push('port ' + port);
     }
-    processInfo.push('  [' + arangod.role + '] up with pid ' + arangod.pid + ' on port ' + port);
+    processInfo.push('  [' + arangod.role +
+                     '] up with pid ' + arangod.pid +
+                     ' on port ' + port +
+                     ' - ' + arangod.args['database.directory']);
   });
 
   print(Date() + ' sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');

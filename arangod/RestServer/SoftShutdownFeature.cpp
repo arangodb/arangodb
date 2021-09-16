@@ -43,18 +43,14 @@ using namespace arangodb::options;
 
 namespace {
 
-bool queueShutdownChecker(std::mutex& mutex,
+void queueShutdownChecker(std::mutex& mutex,
     arangodb::Scheduler::WorkHandle& workItem,
     std::function<void(bool)>& checkFunc) {
 
   arangodb::Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
-  bool queued = false;
   std::lock_guard<std::mutex> guard(mutex);
-  std::tie(queued, workItem) =
-      scheduler->queueDelay(arangodb::RequestLane::CLUSTER_INTERNAL,
-                            std::chrono::seconds(2),
-                            checkFunc);
-  return queued;
+  workItem = scheduler->queueDelayed(arangodb::RequestLane::CLUSTER_INTERNAL,
+                                     std::chrono::seconds(2), checkFunc);
 }
 
 }
@@ -98,11 +94,8 @@ SoftShutdownTracker::SoftShutdownTracker(
     }
     if (!this->checkAndShutdownIfAllClear()) {
       // Rearm ourselves:
-      if (!::queueShutdownChecker(this->_workItemMutex, this->_workItem,
-                                  this->_checkFunc)) {
-        // If this does not work, shut down right away:
-        this->initiateActualShutdown();
-      }
+      queueShutdownChecker(this->_workItemMutex, this->_workItem,
+                           this->_checkFunc);
     }
   };
 }
@@ -127,14 +120,7 @@ void SoftShutdownTracker::initiateSoftShutdown() {
   //   - the PregelFeature
 
   // And initiate our checker to watch numbers:
-  if (!::queueShutdownChecker(_workItemMutex, _workItem, _checkFunc)) {
-    // Make it hard in this case:
-    LOG_TOPIC("de425", INFO, Logger::STARTUP)
-        << "Failed to queue soft shutdown checker, doing hard shutdown "
-           "instead.";
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    _server.beginShutdown();
-  }
+  queueShutdownChecker(_workItemMutex, _workItem, _checkFunc);
 }
     
 bool SoftShutdownTracker::checkAndShutdownIfAllClear() const {
@@ -158,16 +144,11 @@ bool SoftShutdownTracker::checkAndShutdownIfAllClear() const {
 void SoftShutdownTracker::initiateActualShutdown() const {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   auto self = shared_from_this();
-  bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this()] {
+  scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this()] {
     // Give the server 2 seconds to finish stuff
     std::this_thread::sleep_for(std::chrono::seconds(2));
     self->_server.beginShutdown();
   });
-  if (queued) {
-    return;
-  }
-  std::this_thread::sleep_for(std::chrono::seconds(2));
-  _server.beginShutdown();
 }
 
 void SoftShutdownTracker::toVelocyPack(VPackBuilder& builder,

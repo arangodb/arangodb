@@ -188,6 +188,10 @@ void TRI_GetFailurePointsDebugging(arangodb::velocypack::Builder& builder) {
     }
   }
   builder.close();
+
+  void TRI_ClearFailurePointsDebugging() noexcept {
+  WRITE_LOCKER(writeLocker, ::failurePointsLock);
+  ::failurePoints.clear();
 }
 #endif
 

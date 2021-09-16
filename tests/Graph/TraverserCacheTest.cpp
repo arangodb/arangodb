@@ -51,11 +51,11 @@ class TraverserCacheTest : public ::testing::Test {
   graph::GraphTestSetup s{};
   graph::MockGraphDatabase gdb;
   arangodb::aql::TraversalStats stats{};
-  std::unique_ptr<arangodb::aql::Query> query{nullptr};
+  std::shared_ptr<arangodb::aql::Query> query{nullptr};
   std::unique_ptr<RefactoredTraverserCache> traverserCache{nullptr};
   std::shared_ptr<transaction::Context> queryContext{nullptr};
   std::unique_ptr<arangodb::transaction::Methods> trx{nullptr};
-  std::map<std::string, std::string> collectionToShardMap{}; // can be empty, only used in standalone mode
+  std::unordered_map<std::string, std::vector<std::string>> collectionToShardMap{};  // can be empty, only used in standalone mode
   arangodb::ResourceMonitor* _monitor;
 
   TraverserCacheTest() : gdb(s.server, "testVocbase") {
@@ -65,7 +65,8 @@ class TraverserCacheTest : public ::testing::Test {
     _monitor = &query->resourceMonitor();
     traverserCache =
         std::make_unique<RefactoredTraverserCache>(trx.get(), query.get(),
-                                                   query->resourceMonitor(), stats, collectionToShardMap);
+                                                   query->resourceMonitor(),
+                                                   stats, collectionToShardMap);
   }
 
   ~TraverserCacheTest() = default;
@@ -85,8 +86,39 @@ TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_is_not_ava
   VPackBuilder builder;
 
   // NOTE: we do not have the data, so we get null for any vertex
-  traverserCache->insertVertexIntoResult(stats, arangodb::velocypack::HashedStringRef(id), builder);
+  traverserCache->insertVertexIntoResult(stats, arangodb::velocypack::HashedStringRef(id),
+                                         builder, false);
   ASSERT_TRUE(builder.slice().isNull());
+  auto all = query->warnings().all();
+  ASSERT_EQ(all.size(), 1);
+  ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  ASSERT_TRUE(all[0].second == expectedMessage);
+
+  // check stats
+  EXPECT_EQ(stats.getHttpRequests(), 0);
+  EXPECT_EQ(stats.getFiltered(), 0);
+  EXPECT_EQ(stats.getScannedIndex(), 0);
+}
+
+TEST_F(TraverserCacheTest, it_should_on_request_return_the_id_aqlvalue_if_vertex_is_not_available) {
+  // prepare graph data - in this case, no data (no vertices and no edges, but collections v and e)
+  graph::MockGraph graph{};
+  gdb.addGraph(graph);
+
+  std::string vertexId = "v/Vertex";
+  std::string expectedMessage = "vertex '" + vertexId + "' not found";
+
+  auto data = VPackParser::fromJson(R"({"_key":"Vertex", "_id": "v/Vertex"})");
+  VPackSlice doc = data->slice();
+  HashedStringRef id{doc.get("_id")};
+  VPackBuilder builder;
+
+  // NOTE: we do not have the data, so we get null for any vertex
+  traverserCache->insertVertexIntoResult(stats, arangodb::velocypack::HashedStringRef(id),
+                                         builder, true);
+  ASSERT_FALSE(builder.slice().isNull());
+  ASSERT_TRUE(builder.slice().isString());
+  ASSERT_EQ(builder.slice().copyString(), "v/Vertex");
   auto all = query->warnings().all();
   ASSERT_EQ(all.size(), 1);
   ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
@@ -129,7 +161,8 @@ TEST_F(TraverserCacheTest, it_should_increase_memory_usage_when_persisting_a_str
   EXPECT_EQ(memoryUsageBefore, _monitor->current());
 }
 
-TEST_F(TraverserCacheTest, it_should_not_increase_memory_usage_twice_when_persisting_two_equal_strings) {
+TEST_F(TraverserCacheTest,
+       it_should_not_increase_memory_usage_twice_when_persisting_two_equal_strings) {
   auto memoryUsageStart = _monitor->current();
 
   auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
@@ -168,7 +201,8 @@ TEST_F(TraverserCacheTest, it_should_increase_memory_usage_twice_when_persisting
   EXPECT_EQ(memoryUsageStart, _monitor->current());
 }
 
-TEST_F(TraverserCacheTest, it_should_increase_memory_usage_twice_when_persisting_a_string_clear_persist_again) {
+TEST_F(TraverserCacheTest,
+       it_should_increase_memory_usage_twice_when_persisting_a_string_clear_persist_again) {
   auto memoryUsageBefore = _monitor->current();
 
   auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
@@ -220,7 +254,8 @@ TEST_F(TraverserCacheTest, it_should_insert_a_vertex_into_a_result_builder) {
   HashedStringRef id{doc.get("_id")};
   VPackBuilder builder;
 
-  traverserCache->insertVertexIntoResult(stats, arangodb::velocypack::HashedStringRef(id), builder);
+  traverserCache->insertVertexIntoResult(stats, arangodb::velocypack::HashedStringRef(id),
+                                         builder, false);
   EXPECT_TRUE(builder.slice().get("_key").isString());
   EXPECT_EQ(builder.slice().get("_key").toString(), "0");
 
@@ -235,7 +270,7 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
   graph.addEdge(0, 1);
   gdb.addGraph(graph);
 
-  std::string edgeKey = "0-1"; // (EdgeKey format: <from>-<to>)
+  std::string edgeKey = "0-1";  // (EdgeKey format: <from>-<to>)
 
   std::shared_ptr<arangodb::LogicalCollection> col =
       gdb.vocbase.lookupCollection("e");
@@ -244,20 +279,21 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
   bool called = false;
   auto result =
       col->getPhysical()->read(trx.get(), arangodb::velocypack::StringRef{edgeKey},
-                               [&fetchedDocumentId, &called, &edgeKey](LocalDocumentId const& ldid, VPackSlice edgeDocument) {
+                               [&fetchedDocumentId, &called,
+                                &edgeKey](LocalDocumentId const& ldid, VPackSlice edgeDocument) {
                                  fetchedDocumentId = ldid.id();
                                  called = true;
                                  EXPECT_TRUE(edgeDocument.isObject());
                                  EXPECT_TRUE(edgeDocument.get("_key").isString());
                                  EXPECT_EQ(edgeKey, edgeDocument.get("_key").copyString());
                                  return true;
-                               });
+                               }, arangodb::ReadOwnWrites::no);
   ASSERT_TRUE(called);
   ASSERT_TRUE(result.ok());
   ASSERT_NE(fetchedDocumentId, 0);
 
-  DataSourceId dataSourceId{col->id()};  // valid
-  LocalDocumentId localDocumentId{fetchedDocumentId}; // valid
+  DataSourceId dataSourceId{col->id()};                // valid
+  LocalDocumentId localDocumentId{fetchedDocumentId};  // valid
   EdgeDocumentToken edt{dataSourceId, localDocumentId};
   VPackBuilder builder;
 
@@ -270,7 +306,7 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
   // check stats
   EXPECT_EQ(stats.getHttpRequests(), 0);
   EXPECT_EQ(stats.getFiltered(), 0);
-  EXPECT_EQ(stats.getScannedIndex(), 0); // <- see note in method: appendEdge
+  EXPECT_EQ(stats.getScannedIndex(), 0);  // <- see note in method: appendEdge
 }
 
 }  // namespace traverser_cache_test

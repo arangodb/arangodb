@@ -35,6 +35,7 @@
 
 #include <analysis/analyzer.hpp>
 #include <analysis/analyzers.hpp>
+#include "analysis/token_streams.hpp"
 #include <index/index_features.hpp>
 #include <index/field_meta.hpp>
 #include <utils/async_utils.hpp>
@@ -177,10 +178,40 @@ class AnalyzerPool : private irs::util::noncopyable {
     VPackSlice slice,
     VPackBuffer<uint8_t>& buf);
 
+    // type tags for primitive token streams
+  struct NullStreamTag {};
+  struct BooleanStreamTag {};
+  struct NumericStreamTag {};
+  struct StringStreamTag {};
+
+  // 'make(...)' method wrapper for irs::analysis::analyzer types
+  struct Builder {
+    using ptr = irs::analysis::analyzer::ptr;
+    DECLARE_FACTORY(irs::string_ref const& type, VPackSlice properties);
+    
+    static ptr make(NullStreamTag) {
+      return std::make_unique<irs::null_token_stream>();
+    }
+
+    static ptr make(BooleanStreamTag) {
+      return std::make_unique<irs::boolean_token_stream>();
+    }
+
+    static ptr make(NumericStreamTag) {
+      return std::make_unique<irs::numeric_token_stream>();
+    }
+
+    static ptr make(StringStreamTag) {
+      return std::make_unique<irs::string_token_stream>();
+    }
+  };
+
+  using CacheType = irs::unbounded_object_pool<Builder>;
+
   explicit AnalyzerPool(irs::string_ref const& name);
 
   // nullptr == error creating analyzer
-  irs::analysis::analyzer::ptr get() const noexcept;
+  CacheType::ptr get() const noexcept;
 
   Features features() const noexcept { return _features; }
   irs::features_t fieldFeatures() const noexcept {
@@ -220,12 +251,6 @@ class AnalyzerPool : private irs::util::noncopyable {
   // required for calling AnalyzerPool::init(...) and AnalyzerPool::setKey(...)
   friend class IResearchAnalyzerFeature;
 
-  // 'make(...)' method wrapper for irs::analysis::analyzer types
-  struct Builder {
-    using ptr = irs::analysis::analyzer::ptr;
-    DECLARE_FACTORY(irs::string_ref const& type, VPackSlice properties);
-  };
-
   void toVelocyPack(velocypack::Builder& builder,
                     irs::string_ref const& name);
 
@@ -236,7 +261,7 @@ class AnalyzerPool : private irs::util::noncopyable {
             LinkVersion version);
   void setKey(irs::string_ref const& type);
 
-  mutable irs::unbounded_object_pool<Builder> _cache;  // cache of irs::analysis::analyzer
+  mutable CacheType _cache;  // cache of irs::analysis::analyzer
   std::vector<irs::type_info::type_id> _fieldFeatures; // cached iresearch field features
   std::string _config;     // non-null type + non-null properties + key
   irs::string_ref _key;    // the key of the persisted configuration for this pool,

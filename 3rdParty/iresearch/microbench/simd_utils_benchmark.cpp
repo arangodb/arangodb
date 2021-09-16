@@ -6,6 +6,7 @@ extern "C" {
 
 #include "store/store_utils.hpp"
 #include "utils/simd_utils.hpp"
+#include "utils/misc.hpp"
 
 namespace {
 
@@ -79,7 +80,8 @@ void BM_avg_encode64(benchmark::State& state) {
   uint64_t values[BLOCK_SIZE];
   for (auto _ : state) {
     std::iota(std::begin(values), std::end(values), ::rand());
-    irs::encode::avg::encode(std::begin(values), std::end(values));
+    auto stats = irs::encode::avg::encode(std::begin(values), std::end(values));
+    benchmark::DoNotOptimize(stats);
   }
 }
 

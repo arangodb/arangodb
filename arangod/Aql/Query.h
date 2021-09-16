@@ -65,7 +65,7 @@ struct QueryProfile;
 enum class SerializationFormat;
 
 /// @brief an AQL query
-class Query : public QueryContext {
+class Query : public QueryContext, public std::enable_shared_from_this<Query> {
  private:
   enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
@@ -74,21 +74,31 @@ class Query : public QueryContext {
 
  protected:
   /// @brief internal constructor, Used to construct a full query or a ClusterQuery
-  Query(QueryId id, std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
-        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-        aql::QueryOptions&& options, std::shared_ptr<SharedQueryState> sharedState);
+  Query(QueryId id, 
+        std::shared_ptr<transaction::Context> ctx, 
+        QueryString queryString,
+        std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+        aql::QueryOptions options, 
+        std::shared_ptr<SharedQueryState> sharedState);
 
+  /// Used to construct a full query. the constructor is protected to ensure
+  /// that call sites only create Query objects using the `create` factory
+  /// method
+  Query(std::shared_ptr<transaction::Context> ctx, 
+        QueryString queryString,
+        std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+        aql::QueryOptions options = aql::QueryOptions{});
+ 
  public:
-  /// @brief public constructor, Used to construct a full query
-  Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
-        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-        aql::QueryOptions&& options);
-  Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
-        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-        arangodb::velocypack::Slice options = arangodb::velocypack::Slice());
-
   virtual ~Query();
 
+  /// @brief factory method for creating a query. this must be used to
+  /// ensure that Query objects are always created using shared_ptrs.
+  static std::shared_ptr<Query> create(std::shared_ptr<transaction::Context> ctx,
+                                       QueryString queryString,
+                                       std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+                                       aql::QueryOptions options = aql::QueryOptions{});
+  
   /// @brief note that the query uses the DataSource
   void addDataSource(std::shared_ptr<arangodb::LogicalDataSource> const& ds);
 
@@ -174,7 +184,7 @@ class Query : public QueryContext {
     return _queryOptions;
   }
   
-  QueryOptions& queryOptions() override {
+  QueryOptions& queryOptions() noexcept override {
     return _queryOptions;
   }
   
@@ -217,6 +227,9 @@ class Query : public QueryContext {
  protected:
   /// @brief initializes the query
   void init(bool createProfile);
+  
+  void registerQueryInTransactionState();
+  void unregisterQueryInTransactionState() noexcept;
 
   /// @brief calculate a hash for the query, once
   uint64_t hash();
@@ -340,6 +353,8 @@ class Query : public QueryContext {
 
   /// @brief user that started the query
   std::string _user;
+
+  bool _registeredQueryInTrx{false};
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // Intentionally initialized here to not

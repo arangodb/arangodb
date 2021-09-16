@@ -2244,8 +2244,8 @@ void Supervision::checkReplicatedLogs() {
   };
 
   // check if Plan has replicated logs
-  auto const& node = snapshot().hasAsNode(planRepLogPrefix);
-  if (!node) {
+  auto const& planNode = snapshot().hasAsNode(planRepLogPrefix);
+  if (!planNode) {
     return;
   }
 
@@ -2267,10 +2267,10 @@ void Supervision::checkReplicatedLogs() {
 
   auto builder = std::make_shared<Builder>();
   auto envelope = arangodb::agency::envelope::into_builder(*builder);
-  for (auto const& [dbName, db] : node->get().children()) {
+  for (auto const& [dbName, db] : planNode->get().children()) {
     for (auto const& [idString, node] : db->children()) {
       auto spec = readPlanSpecification(*node);
-      auto current = std::invoke([&, &dbName = dbName, &idString = idString]() -> LogCurrent {
+      auto current = std::invoke([&, &dbName = dbName, &idString = idString]() -> std::optional<LogCurrent> {
         using namespace cluster::paths;
         auto currentPath =
             aliases::current()
@@ -2278,9 +2278,18 @@ void Supervision::checkReplicatedLogs() {
                 ->database(dbName)
                 ->log(idString)
                 ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
-        return readLogCurrent(snapshot().get(currentPath)->get());
+
+        auto cnode = snapshot().get(currentPath);
+        if (cnode.has_value()) {
+          return readLogCurrent(cnode->get());
+        }
+        return std::nullopt;
       });
-      auto newTermSpec = checkReplicatedLog(dbName, spec, current, info);
+      if (!current.has_value()) {
+        continue;
+      }
+
+      auto newTermSpec = checkReplicatedLog(dbName, spec, *current, info);
 
       envelope = std::visit(
           overload{[&, &dbName = dbName](LogPlanTermSpecification const& newSpec) {

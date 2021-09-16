@@ -83,7 +83,7 @@ class QueryResultCursor final : public arangodb::Cursor {
 /// cursor is deleted (or query exhausted)
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
-  QueryStreamCursor(std::unique_ptr<aql::Query> q, size_t batchSize, double ttl);
+  QueryStreamCursor(std::shared_ptr<aql::Query> q, size_t batchSize, double ttl);
 
   ~QueryStreamCursor();
 
@@ -123,7 +123,7 @@ class QueryStreamCursor final : public arangodb::Cursor {
   velocypack::UInt8Buffer _extrasBuffer;
   std::deque<SharedAqlItemBlockPtr> _queryResults; /// buffered results
   std::shared_ptr<transaction::Context> _ctx; /// cache context
-  std::unique_ptr<aql::Query> _query;
+  std::shared_ptr<aql::Query> _query;
   /// index of the next to-be-returned row in _queryResults.front()
   size_t _queryResultPos;
   
