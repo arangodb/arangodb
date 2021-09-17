@@ -28,7 +28,7 @@ const FilterHelpModal = () => {
         fontSize: '18px'
       }}/>
     </a>
-    <Modal show={show} setShow={setShow}>
+    <Modal show={show} setShow={setShow} cid={'modal-content-filter-help'}>
       <ModalHeader title={'Filter Help'}/>
       <ModalBody>
         <dl>
@@ -192,13 +192,13 @@ const AnalyzersReactView = () => {
               <tbody>
               {
                 filteredAnalyzers.length
-                  ? filteredAnalyzers.map(analyzer => (
+                  ? filteredAnalyzers.map((analyzer, idx) => (
                     <tr key={analyzer.name}>
                       <td className={'arango-table-td table-cell0'}>{analyzer.db}</td>
                       <td className={'arango-table-td table-cell1'}>{analyzer.name}</td>
                       <td className={'arango-table-td table-cell2'}>{typeNameMap[analyzer.type]}</td>
                       <td className={'arango-table-td table-cell3'}>
-                        <Actions analyzer={analyzer} permission={permission}/>
+                        <Actions analyzer={analyzer} permission={permission} modalCidSuffix={idx}/>
                       </td>
                     </tr>
                   ))
