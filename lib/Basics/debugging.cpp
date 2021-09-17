@@ -164,7 +164,7 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
 }
 
 /// @brief clear all failure points
-void TRI_ClearFailurePointsDebugging() {
+void TRI_ClearFailurePointsDebugging() noexcept {
   size_t numExisting = 0;
   {
     WRITE_LOCKER(writeLocker, ::failurePointsLock);
