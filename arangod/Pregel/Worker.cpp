@@ -41,7 +41,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::pregel;
 
-#define LOG_PREGEL(id, level) LOG_TOPIC(id, level, Logger::PREGEL) << "[job " << _config.executionNumber() << "] " 
+#define LOG_PREGEL(logId, level)          \
+  LOG_TOPIC(logId, level, Logger::PREGEL) \
+  << "[job " << _config.executionNumber() << "] " 
 
 #define MY_READ_LOCKER(obj, lock)                                              \
   ReadLocker<ReadWriteLock> obj(&lock, arangodb::basics::LockerType::BLOCKING, \
