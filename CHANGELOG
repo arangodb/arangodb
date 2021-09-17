@@ -1,7 +1,7 @@
 devel
 -----
 
-* Added enterprise licensing error codes and metrics support
+* Added enterprise licensing error codes and metrics support.
 
 * Fixed display of unicode characters in Windows console.
 
