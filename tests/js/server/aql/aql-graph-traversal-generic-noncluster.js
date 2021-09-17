@@ -40,6 +40,12 @@ function graphTraversalGenericGeneralGraphStandaloneSuite() {
     _.each(protoGraph.prepareSmartGraphs(TestVariants.SmartGraphSingleServer), function (testGraph) {
       testGraphs[protoGraph.name()][`${testGraph.name()}-smart`] = testGraph;
     });
+    _.each(protoGraph.prepareDisjointSmartGraphs(TestVariants.DisjointSmartGraphSingleServer), function (testGraph) {
+      testGraphs[protoGraph.name()][`${testGraph.name()}-disjointSmart`] = testGraph;
+    });
+    _.each(protoGraph.prepareSatelliteGraphs(TestVariants.SatelliteGraphSingleServer), function (testGraph) {
+      testGraphs[protoGraph.name()][`${testGraph.name()}-satellite`] = testGraph;
+    });
   });
 
   const suite = {
@@ -81,8 +87,8 @@ function graphTraversalGenericGeneralGraphStandaloneSuite() {
   _.each(testsByGraph, function (localTests, graphName) {
     let graphs = testGraphs[graphName];
     _.each(localTests, function (test, testName) {
-      _.each(graphs, function (graph){
-        suite[testName + '_' + graph.name()] = function () {
+      _.each(graphs, function (graph, name){
+        suite[`${testName}_${name}`] = function () {
           test(graph);
         };
       });
