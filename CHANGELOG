@@ -3,6 +3,11 @@ devel
 
 * Added enterprise licensing error codes and metrics support.
 
+* Avoid the acquisition of a recursive read lock on server shutdown, which
+  could in theory lead to shutdown hangs at least if a concurrent thread is
+  trying to modify the list of collections (very unlikely and never observed
+  until now).
+
 * Fixed display of unicode characters in Windows console.
 
 * Fixed issue BTS-531 "Error happens during EXE package installation if
