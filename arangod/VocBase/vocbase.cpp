@@ -1722,33 +1722,34 @@ std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
   return views;
 }
 
-void TRI_vocbase_t::processCollections(std::function<void(LogicalCollection*)> const& cb,
-                                       bool includeDeleted) {
+void TRI_vocbase_t::processCollectionsOnShutdown(std::function<void(LogicalCollection*)> const& cb) {
+  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+
+  for (auto const& it : _collections) {
+    cb(it.get());
+  }
+}
+
+void TRI_vocbase_t::processCollections(std::function<void(LogicalCollection*)> const& cb) {
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
-  if (includeDeleted) {
-    for (auto const& it : _collections) {
-      cb(it.get());
-    }
-  } else {
-    for (auto& entry : _dataSourceById) {
-      TRI_ASSERT(entry.second);
+  for (auto& entry : _dataSourceById) {
+    TRI_ASSERT(entry.second);
 
-      if (entry.second->category() != LogicalCollection::category()) {
-        continue;
-      }
+    if (entry.second->category() != LogicalCollection::category()) {
+      continue;
+    }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto collection =
-          std::dynamic_pointer_cast<arangodb::LogicalCollection>(entry.second);
-      TRI_ASSERT(collection);
+    auto collection =
+        std::dynamic_pointer_cast<arangodb::LogicalCollection>(entry.second);
+    TRI_ASSERT(collection);
 #else
-      auto collection =
-          std::static_pointer_cast<arangodb::LogicalCollection>(entry.second);
+    auto collection =
+        std::static_pointer_cast<arangodb::LogicalCollection>(entry.second);
 #endif
 
-      cb(collection.get());
-    }
+    cb(collection.get());
   }
 }
 
