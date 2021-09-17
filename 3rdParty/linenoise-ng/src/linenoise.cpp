@@ -2549,7 +2549,7 @@ int InputBuffer::getInputLine(PromptBase& pi) {
       }
 
 #ifndef _WIN32
-      if (c >= 0 && gotResize.exchange(false)) {
+      if (c >= 0 && gotResize.load() && gotResize.exchange(false)) {
         // caught a window resize event
         // now redraw the prompt and line
         pi.promptScreenColumns = getScreenColumns();
