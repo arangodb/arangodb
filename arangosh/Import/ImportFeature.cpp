@@ -152,7 +152,7 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 
   options->addOption("--remove-attribute",
                      "remove an attribute before inserting documents"
-                     " into collection (for csv and tsv only)",
+                     " into collection (for CSV and TSV only)",
                      new VectorParameter<StringParameter>(&_removeAttributes));
 
   std::unordered_set<std::string> types = {"document", "edge"};
