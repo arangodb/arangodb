@@ -1313,9 +1313,9 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
           if (DatabaseNameValidator::isAllowedName(/*isSystem*/ false, /*extendedNames*/ true, 
                                                    arangodb::velocypack::StringRef(databaseName))) {
             errorMsg.append(
-                ". this database name would be allowed when using the "
+                ". This database name would be allowed when using the "
                 "extended naming convention for databases, which is "
-                "currently disabled. the extended naming convention can "
+                "currently disabled. The extended naming convention can "
                 "be enabled via the startup option `--database.extended-names-databases true`");
           }
           res.reset(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID, std::move(errorMsg));
