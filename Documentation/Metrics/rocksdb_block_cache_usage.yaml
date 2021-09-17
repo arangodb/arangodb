@@ -1,7 +1,7 @@
 name: rocksdb_block_cache_usage
 introducedIn: "3.6.1"
 help: |
-  Size of RocksDB block cache entries.
+  Cumulated size of RocksDB block cache entries.
 unit: bytes
 type: gauge
 category: RocksDB
@@ -12,5 +12,5 @@ exposedBy:
   - single
 description: |
   This metric exhibits the RocksDB metric "rocksdb-block-cache-usage".
-  It shows the memory size for the entries residing in the block cache,
+  It shows the total memory size for the entries residing in the block cache,
   in bytes.

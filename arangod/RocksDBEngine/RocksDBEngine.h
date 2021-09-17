@@ -543,6 +543,9 @@ class RocksDBEngine final : public StorageEngine {
   std::deque<RocksDBKeyBounds> _pendingCompactions;
   // number of currently running compaction jobs
   size_t _runningCompactions;
+  
+  Gauge<uint64_t>& _metricsArchivedWalFiles;
+  Gauge<uint64_t>& _metricsPrunableWalFiles;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

@@ -161,8 +161,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   Result shutdownWBReader() {
     Result rv = basics::catchVoidToResult([&]() -> void {
       // update ticks after parsing wal
-      LOG_TOPIC("a4ec8", TRACE, Logger::ENGINES)
-          << "max tick found in WAL: " << _maxTick << ", last HLC value: " << _maxHLC;
+      LOG_TOPIC("a4ec8", INFO, Logger::ENGINES)
+          << "RocksDB recovery finished, max tick found in WAL: " << _maxTick << ", last HLC value: " << _maxHLC;
 
       TRI_UpdateTickServer(_maxTick);
       TRI_HybridLogicalClock(_maxHLC);
@@ -527,14 +527,14 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     WBReader handler(server, _tick);
     rocksdb::SequenceNumber earliest = engine.settingsManager()->earliestSeqNeeded();
     auto minTick = std::min(earliest, engine.releasedTick());
-
-    LOG_TOPIC("fe333", DEBUG, Logger::ENGINES)
-        << "recovery scanning wal starting from seq " << minTick;
+    
+    LOG_TOPIC("fe333", INFO, Logger::ENGINES)
+        << "RocksDB recovery starting, scanning WAL starting from sequence number " << minTick;
 
     // prevent purging of WAL files while we are in here
     RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
 
-    std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
+    std::unique_ptr<rocksdb::TransactionLogIterator> iterator; 
     rocksdb::Status s =
         _db->GetUpdatesSince(minTick, &iterator,
                              rocksdb::TransactionLogIterator::ReadOptions(true));

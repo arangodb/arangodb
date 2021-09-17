@@ -454,22 +454,39 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
   if (!_logicalCollection.useSyncByRevision()) {
     return maxCommitSeq > _revisionTreeApplied.load();
   }
+  
+  bool checkBuffers = true;
 
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
-
-  // have a truncate to apply
-  if (!_revisionTruncateBuffer.empty() && *_revisionTruncateBuffer.begin() <= maxCommitSeq) {
-    return true;
+  
+  TRI_IF_FAILURE("needToPersistRevisionTree::checkBuffers") {
+    checkBuffers = false;
+  }
+  
+  if (!_logicalCollection.system()) {
+    LOG_DEVEL 
+        << "checking if need to persist for " << _logicalCollection.name() 
+        << ", serialized seq: " << _revisionTreeSerializedSeq 
+        << ", applied seq: " << _revisionTreeApplied.load() 
+        << ", created: " << _revisionTreeCreationSeq 
+        << ", check buffers: " << checkBuffers;
   }
 
-  // have insertions to apply
-  if (!_revisionInsertBuffers.empty() && _revisionInsertBuffers.begin()->first <= maxCommitSeq) {
-    return true;
-  }
+  if (checkBuffers) {
+    // have a truncate to apply
+    if (!_revisionTruncateBuffer.empty() && *_revisionTruncateBuffer.begin() <= maxCommitSeq) {
+      return true;
+    }
 
-  // have removals to apply
-  if (!_revisionRemovalBuffers.empty() && _revisionRemovalBuffers.begin()->first <= maxCommitSeq) {
-    return true;
+    // have insertions to apply
+    if (!_revisionInsertBuffers.empty() && _revisionInsertBuffers.begin()->first <= maxCommitSeq) {
+      return true;
+    }
+
+    // have removals to apply
+    if (!_revisionRemovalBuffers.empty() && _revisionRemovalBuffers.begin()->first <= maxCommitSeq) {
+      return true;
+    }
   }
 
   // have applied updates that we haven't persisted
@@ -487,22 +504,28 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
 
 rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksdb::SequenceNumber maxCommitSeq) {
   rocksdb::SequenceNumber seq = maxCommitSeq;
+  bool checkBuffers = true;
 
   // first update so we don't under-report
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
 
   // limit to before any pending buffered updates
-
-  if (!_revisionTruncateBuffer.empty() && *_revisionTruncateBuffer.begin() - 1 < seq) {
-    seq = *_revisionTruncateBuffer.begin() - 1;
+  TRI_IF_FAILURE("needToPersistRevisionTree::checkBuffers") {
+    checkBuffers = false;
   }
 
-  if (!_revisionInsertBuffers.empty() && _revisionInsertBuffers.begin()->first - 1 < seq) {
-    seq = _revisionInsertBuffers.begin()->first - 1;
-  }
+  if (checkBuffers) {
+    if (!_revisionTruncateBuffer.empty() && *_revisionTruncateBuffer.begin() - 1 < seq) {
+      seq = *_revisionTruncateBuffer.begin() - 1;
+    }
 
-  if (!_revisionRemovalBuffers.empty() && _revisionRemovalBuffers.begin()->first - 1 <= seq) {
-    seq = _revisionRemovalBuffers.begin()->first - 1;
+    if (!_revisionInsertBuffers.empty() && _revisionInsertBuffers.begin()->first - 1 < seq) {
+      seq = _revisionInsertBuffers.begin()->first - 1;
+    }
+
+    if (!_revisionRemovalBuffers.empty() && _revisionRemovalBuffers.begin()->first - 1 <= seq) {
+      seq = _revisionRemovalBuffers.begin()->first - 1;
+    }
   }
 
   // limit to before the last thing we applied, since we haven't persisted it
@@ -511,9 +534,18 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
     seq = applied - 1;
   }
 
+  bool adjusted = false;
   // now actually advance it if we can
   if (seq > _revisionTreeSerializedSeq) {
     _revisionTreeSerializedSeq = seq;
+    adjusted = true;
+  }
+  
+  if (!_logicalCollection.system()) {
+    LOG_DEVEL 
+        << "serialized seq for " << _logicalCollection.name() 
+        << ": " << _revisionTreeSerializedSeq 
+        << ", adjusted: " << adjusted;
   }
 
   return _revisionTreeSerializedSeq;
