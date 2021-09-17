@@ -62,8 +62,8 @@ PhysicalCollection::PhysicalCollection(LogicalCollection& collection,
               ? &collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo()
               : nullptr),
       _isDBServer(ServerState::instance()->isDBServer()),
-      _extendedNames(collection.vocbase().server().hasFeature<DatabaseFeature>() ?
-              collection.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections() : false) {}
+      _extendedNames(collection.vocbase().server().hasFeature<DatabaseFeature>() &&
+              collection.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections()) {}
 
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
