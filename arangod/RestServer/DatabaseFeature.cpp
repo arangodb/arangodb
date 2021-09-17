@@ -484,14 +484,13 @@ void DatabaseFeature::stop() {
 #endif
     vocbase->stop();
 
-    vocbase->processCollections(
+    vocbase->processCollectionsOnShutdown(
         [](LogicalCollection* collection) {
           // no one else must modify the collection's status while we are in
           // here
           collection->executeWhileStatusWriteLocked(
               [collection]() { collection->close(); });
-        },
-        true);
+        });
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // i am here for debugging only.
