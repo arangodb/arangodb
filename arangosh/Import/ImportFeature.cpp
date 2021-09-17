@@ -144,8 +144,9 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new VectorParameter<StringParameter>(&_translations));
   
   options->addOption("--datatype",
-                     "force a specific datatype for an attribute (use as "
-                     "\"attribute=type\", for csv and tsv only, takes precendence over --convert)",
+                     "force a specific datatype for an attribute "
+                     "(null/boolean/number/string). Use as \"attribute=type\". "
+                     "For CSV and TSV only. Takes precendence over --convert",
                      new VectorParameter<StringParameter>(&_datatypes))
                      .setIntroducedIn(30900);
 
