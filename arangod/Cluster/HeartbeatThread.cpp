@@ -495,19 +495,12 @@ void HeartbeatThread::runDBServer() {
         auto self = shared_from_this();
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         *getNewsRunning = 1;
-        bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
+        scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
           self->getNewsFromAgencyForDBServer();
           *getNewsRunning = 0;  // indicate completion to trigger a new schedule
         });
-        if (!queued && !isStopping()) {
-          LOG_TOPIC("aacce", WARN, Logger::HEARTBEAT)
-              << "Could not schedule getNewsFromAgency job in scheduler. Don't "
-                 "worry, this will be tried again later.";
-          *getNewsRunning = 0;
-        } else {
-          LOG_TOPIC("aaccf", DEBUG, Logger::HEARTBEAT)
-              << "Have scheduled getNewsFromAgency job.";
-        }
+        LOG_TOPIC("aaccf", DEBUG, Logger::HEARTBEAT)
+            << "Have scheduled getNewsFromAgency job.";
       }
 
       if (isStopping()) {
@@ -1088,19 +1081,11 @@ void HeartbeatThread::runCoordinator() {
         auto self = shared_from_this();
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         *getNewsRunning = 1;
-        bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
+        scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
           self->getNewsFromAgencyForCoordinator();
           *getNewsRunning = 0;  // indicate completion to trigger a new schedule
         });
-        if (!queued) {
-          LOG_TOPIC("aacc2", WARN, Logger::HEARTBEAT)
-              << "Could not schedule getNewsFromAgency job in scheduler. Don't "
-                 "worry, this will be tried again later.";
-          *getNewsRunning = 0;
-        } else {
-          LOG_TOPIC("aacc3", DEBUG, Logger::HEARTBEAT)
-              << "Have scheduled getNewsFromAgency job.";
-        }
+        LOG_TOPIC("aacc3", DEBUG, Logger::HEARTBEAT) << "Have scheduled getNewsFromAgency job.";
       }
 
       CONDITION_LOCKER(locker, _condition);

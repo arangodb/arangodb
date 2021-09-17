@@ -1517,13 +1517,7 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
   while (pit != _promises.end()) {
     if (pit->first < tp) {
       auto pp = std::make_shared<futures::Promise<query_t>>(std::move(pit->second));
-      bool queued = scheduler->queue(
-        RequestLane::CLUSTER_INTERNAL, [pp, qu] { pp->setValue(qu); });
-      if (!queued) {
-        LOG_TOPIC("3647c", WARN, Logger::AGENCY) <<
-          "Failed to schedule logsForTrigger running in main thread";
-        pp->setValue(qu);
-      }
+      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [pp, qu] { pp->setValue(qu); });
       pit = _promises.erase(pit);
     } else {
       ++pit;
@@ -2314,13 +2308,12 @@ void Agent::emptyCbTrashBin() {
   // queue + write.
   auto* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {
-    bool ok = scheduler->queue(RequestLane::INTERNAL_LOW, [&server = server(), envelope = std::move(envelope)] {
+    scheduler->queue(RequestLane::INTERNAL_LOW, [&server = server(), envelope = std::move(envelope)] {
         auto* agent = server.getFeature<AgencyFeature>().agent();
         if (!server.isStopping() && agent) {
           agent->write(envelope);
         }
       });
-    LOG_TOPIC_IF("52461", DEBUG, Logger::AGENCY, !ok) << "Could not schedule callback cleanup job.";
   }
 
 }

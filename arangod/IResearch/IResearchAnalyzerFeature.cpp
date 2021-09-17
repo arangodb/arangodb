@@ -775,25 +775,9 @@ AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
 // Auto-repair of dangling AnalyzersRevisions
 void queueGarbageCollection(std::mutex& mutex, Scheduler::WorkHandle& workItem,
                             std::function<void(bool)>& gcfunc) {
-  bool queued = false;
-  {
-    std::lock_guard<std::mutex> guard(mutex);
-    std::tie(queued, workItem) =
-        basics::function_utils::retryUntilTimeout<Scheduler::WorkHandle>(
-            [&gcfunc]() -> std::pair<bool, Scheduler::WorkHandle> {
-              auto off = std::chrono::seconds(5);
-              return SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW,
-                                                             off, gcfunc);
-            },
-            arangodb::iresearch::TOPIC,
-            "queue analyzers garbage collection");
-  }
-  if (!queued) {
-    LOG_TOPIC("f25ad", FATAL, arangodb::iresearch::TOPIC)
-        << "Failed to queue analyzers garbage collection, for 5 minutes, "
-           "exiting.";
-    FATAL_ERROR_EXIT();
-  }
+  std::lock_guard<std::mutex> guard(mutex);
+  workItem = SchedulerFeature::SCHEDULER->queueDelayed(
+    RequestLane::INTERNAL_LOW, std::chrono::seconds(5), gcfunc);
 }
 
 // first - input type,

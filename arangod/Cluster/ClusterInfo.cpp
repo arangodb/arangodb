@@ -6511,13 +6511,7 @@ void ClusterInfo::triggerWaiting(
     }
     auto pp = std::make_shared<futures::Promise<Result>>(std::move(pit->second));
     if (scheduler && !_server.isStopping()) {
-      bool queued = scheduler->queue(
-        RequestLane::CLUSTER_INTERNAL, [pp] { pp->setValue(Result()); });
-      if (!queued) {
-        LOG_TOPIC("4637c", WARN, Logger::AGENCY) <<
-          "Failed to schedule logsForTrigger running in main thread";
-        pp->setValue(Result());
-      }
+      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [pp] { pp->setValue(Result()); });
     } else {
       pp->setValue(Result(_syncerShutdownCode));
     }
