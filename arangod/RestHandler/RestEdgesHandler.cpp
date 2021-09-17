@@ -114,10 +114,10 @@ aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
   bindParameters->add("vertex", VPackValue(vertexId));
   bindParameters->close();
 
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
-                             aql::QueryString(queryString(dir)),
-                             bindParameters);
-  return query.executeSync();
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(vocbase),
+                                            aql::QueryString(queryString(dir)),
+                                            std::move(bindParameters));
+  return query->executeSync();
 }
 }  // namespace
 

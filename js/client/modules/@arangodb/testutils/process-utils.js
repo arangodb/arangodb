@@ -2062,7 +2062,10 @@ function launchFinalize(options, instanceInfo, startTime) {
     } else {
       ports.push('port ' + port);
     }
-    processInfo.push('  [' + arangod.role + '] up with pid ' + arangod.pid + ' on port ' + port);
+    processInfo.push('  [' + arangod.role +
+                     '] up with pid ' + arangod.pid +
+                     ' on port ' + port +
+                     ' - ' + arangod.args['database.directory']);
   });
 
   print(Date() + ' sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');

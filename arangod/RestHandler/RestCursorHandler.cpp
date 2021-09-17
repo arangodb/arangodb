@@ -207,9 +207,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   
   // simon: access mode can always be write on the coordinator
   const AccessMode::Type mode = AccessMode::Type::WRITE;
-  auto query = std::make_unique<aql::Query>(createTransactionContext(mode),
-      arangodb::aql::QueryString(querySlice.copyString()),
-      bindVarsBuilder, opts);
+  auto query = aql::Query::create(createTransactionContext(mode),
+                                  arangodb::aql::QueryString(querySlice.stringRef()),
+                                  std::move(bindVarsBuilder), aql::QueryOptions(opts));
 
   if (stream) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
@@ -412,7 +412,7 @@ ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
 /// @brief register the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::registerQuery(std::unique_ptr<arangodb::aql::Query> query) {
+void RestCursorHandler::registerQuery(std::shared_ptr<arangodb::aql::Query> query) {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_queryKilled) {

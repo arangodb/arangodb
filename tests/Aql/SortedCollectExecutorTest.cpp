@@ -61,7 +61,7 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
 
   RegIdSet const regToClear = {};
   RegIdSetStack const regToKeep = {{}};
@@ -144,7 +144,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
 
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
@@ -389,7 +389,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+  std::shared_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
 
   RegIdSet regToClear = {};
   RegIdSetStack regToKeep = {{}};
@@ -479,7 +479,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+  std::shared_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
 
   RegIdSet regToClear;
   RegIdSetStack regToKeep = {{}};
@@ -591,7 +591,7 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
 
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
   RegisterId collectRegister;

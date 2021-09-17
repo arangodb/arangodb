@@ -880,7 +880,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return futures::makeFuture(res);
   }
 
-  auto poster = [](std::function<void()> fn) -> bool {
+  auto poster = [](std::function<void()> fn) -> void {
     return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
   };
 
@@ -930,9 +930,9 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt,
     binds->openObject();
     binds->add("@coll", VPackValue(cname));
     binds->close();
-    arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
-                               aql::QueryString(q), binds);
-    aql::QueryResult queryResult = query.executeSync();
+    auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(vocbase),
+                                              aql::QueryString(q), std::move(binds));
+    aql::QueryResult queryResult = query->executeSync();
 
     Result res = queryResult.result;
     if (queryResult.result.ok()) {

@@ -272,7 +272,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
     ASSERT_TRUE(viewFound);
     ASSERT_EQ(expectedApproximation, actualApproximate);
 
-    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
+    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase()),
                                arangodb::aql::QueryString(queryString), nullptr);
 
     auto queryResult = arangodb::tests::executeQuery(vocbase(), queryString, nullptr, expectedFullCount >= 0 ? "{\"fullCount\":true}" : "{}");
@@ -474,11 +474,11 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       " SEARCH d.value >= 2 OPTIONS {countApproximate:'exact', "
       "\"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
-  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
+  auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase()),
                              arangodb::aql::QueryString(queryString), nullptr);
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  ASSERT_TRUE(query.ast());
-  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast(), false);
+  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  ASSERT_TRUE(query->ast());
+  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
   plan->planRegisters();
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
@@ -505,7 +505,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   std::vector<arangodb::iresearch::Scorer> emptyScorers;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader, arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
-      {}, query, emptyScorers, {&sort, 1U}, _view->storedValues(), *plan,
+      {}, *query, emptyScorers, {&sort, 1U}, _view->storedValues(), *plan,
       viewNode.outVariable(), viewNode.filterCondition(), {false, false},
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
@@ -538,11 +538,11 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value >= 1000000 OPTIONS {countApproximate:'exact', \"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
-  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
+  auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase()),
                              arangodb::aql::QueryString(queryString), nullptr);
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  ASSERT_TRUE(query.ast());
-  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast(), false);
+  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  ASSERT_TRUE(query->ast());
+  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
   plan->planRegisters();
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
@@ -569,7 +569,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
   arangodb::aql::IResearchViewExecutorInfos executorInfos(reader,
                                                 arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
                                                 {},
-                                                query,
+                                                *query,
                                                 emptyScorers,
                                                 {&sort, 1U},
                                                 _view->storedValues(),
@@ -610,11 +610,11 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   auto const queryString = std::string("FOR d IN ") + viewName +
       " SEARCH d.value >= 2 OPTIONS {countApproximate:'cost', \"noMaterialization\":false} SORT d.value ASC "
       " COLLECT WITH COUNT INTO c   RETURN c ";
-  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase()),
+  auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase()),
                              arangodb::aql::QueryString(queryString), nullptr);
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  ASSERT_TRUE(query.ast());
-  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast(), false);
+  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  ASSERT_TRUE(query->ast());
+  auto plan = arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
   plan->planRegisters();
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
@@ -641,7 +641,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   arangodb::aql::IResearchViewExecutorInfos executorInfos(reader,
                                                 arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
                                                 {},
-                                                query,
+                                                *query,
                                                 emptyScorers,
                                                 {&sort, 1U},
                                                 _view->storedValues(),

@@ -264,12 +264,12 @@ struct MockGraphDatabase {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  std::unique_ptr<arangodb::aql::Query> getQuery(std::string qry,
+  std::shared_ptr<arangodb::aql::Query> getQuery(std::string qry,
                                                  std::vector<std::string> collections) {
     auto queryString = arangodb::aql::QueryString(qry);
 
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    auto query = std::make_unique<arangodb::aql::Query>(ctx, queryString, nullptr);
+    auto query = arangodb::aql::Query::create(ctx, queryString, nullptr);
     for (auto const& c : collections) {
       query->collections().add(c, AccessMode::Type::READ,
                                arangodb::aql::Collection::Hint::Collection);

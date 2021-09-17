@@ -506,12 +506,12 @@ Result visitAnalyzers(
       }
       // If this is indeed OneShard this should be us!
       TRI_ASSERT(shards->begin()->second.front() == ServerState::instance()->getId());
-      const auto oneShardQueryString = aql::QueryString(
+      auto oneShardQueryString = aql::QueryString(
         "FOR d IN "s + shards->begin()->first + " RETURN d");
-      aql::Query query(transaction::StandaloneContext::Create(vocbase),
-        oneShardQueryString, nullptr);
+      auto query = aql::Query::create(transaction::StandaloneContext::Create(vocbase),
+                                      std::move(oneShardQueryString), nullptr);
 
-      auto result = query.executeSync();
+      auto result = query->executeSync();
 
       if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == result.result.errorNumber()) {
         return {}; // treat missing collection as if there are no analyzers
@@ -593,10 +593,10 @@ Result visitAnalyzers(
     return res;
   }
 
-  aql::Query query(transaction::StandaloneContext::Create(vocbase),
-                   queryString, nullptr);
+  auto query = aql::Query::create(transaction::StandaloneContext::Create(vocbase),
+                                  queryString, nullptr);
 
-  auto result = query.executeSync();
+  auto result = query->executeSync();
 
   if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == result.result.errorNumber()) {
     return {}; // treat missing collection as if there are no analyzers
@@ -775,25 +775,9 @@ AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
 // Auto-repair of dangling AnalyzersRevisions
 void queueGarbageCollection(std::mutex& mutex, Scheduler::WorkHandle& workItem,
                             std::function<void(bool)>& gcfunc) {
-  bool queued = false;
-  {
-    std::lock_guard<std::mutex> guard(mutex);
-    std::tie(queued, workItem) =
-        basics::function_utils::retryUntilTimeout<Scheduler::WorkHandle>(
-            [&gcfunc]() -> std::pair<bool, Scheduler::WorkHandle> {
-              auto off = std::chrono::seconds(5);
-              return SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW,
-                                                             off, gcfunc);
-            },
-            arangodb::iresearch::TOPIC,
-            "queue analyzers garbage collection");
-  }
-  if (!queued) {
-    LOG_TOPIC("f25ad", FATAL, arangodb::iresearch::TOPIC)
-        << "Failed to queue analyzers garbage collection, for 5 minutes, "
-           "exiting.";
-    FATAL_ERROR_EXIT();
-  }
+  std::lock_guard<std::mutex> guard(mutex);
+  workItem = SchedulerFeature::SCHEDULER->queueDelayed(
+    RequestLane::INTERNAL_LOW, std::chrono::seconds(5), gcfunc);
 }
 
 // first - input type,
@@ -1495,8 +1479,8 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
       if (res.fail()) {
         return res;
       }
-      aql::Query query(ctx, aql::QueryString(aql), nullptr);
-      aql::QueryResult queryResult = query.executeSync();
+      auto query = aql::Query::create(ctx, aql::QueryString(aql), nullptr);
+      aql::QueryResult queryResult = query->executeSync();
       if (queryResult.fail()) {
         return queryResult.result;
       }
@@ -1921,9 +1905,9 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
     SingleCollectionTransaction trx(ctx, arangodb::StaticStrings::AnalyzersCollection, AccessMode::Type::WRITE);
     trx.begin();
 
-    aql::Query queryDelete(ctx, queryDeleteString, bindBuilder);
+    auto queryDelete = aql::Query::create(ctx, queryDeleteString, bindBuilder);
 
-    auto deleteResult = queryDelete.executeSync();
+    auto deleteResult = queryDelete->executeSync();
     if (deleteResult.fail()) {
       return {TRI_ERROR_INTERNAL,
               basics::StringUtils::concatT(
@@ -1938,9 +1922,9 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
       arangodb::StaticStrings::AnalyzersDeletedRevision + " >= @rev) " +
       "UPDATE d WITH UNSET(d, '" + arangodb::StaticStrings::AnalyzersDeletedRevision  + "') IN " +
       arangodb::StaticStrings::AnalyzersCollection);
-    aql::Query queryUpdate(ctx, queryUpdateString, bindBuilder);
+    auto queryUpdate = aql::Query::create(ctx, queryUpdateString, bindBuilder);
 
-    auto updateResult = queryUpdate.executeSync();
+    auto updateResult = queryUpdate->executeSync();
     if (updateResult.fail()) {
       return {
         TRI_ERROR_INTERNAL,

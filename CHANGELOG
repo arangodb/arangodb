@@ -24,6 +24,38 @@ devel
   strings again (potentially because they are used for linking to other "_key"
   values).
 
+* Avoid the acquisition of a recursive read lock on server shutdown, which
+  could in theory lead to shutdown hangs at least if a concurrent thread is
+  trying to modify the list of collections (very unlikely and never observed
+  until now).
+
+* Fixed display of unicode characters in Windows console.
+
+* Fixed issue BTS-531 "Error happens during EXE package installation if
+  non-ASCII characters are present in target path".
+  
+* Fix active failover, so that the new host actually has working
+  foxx services. (BTS-558)
+
+* Fixed issue #14720: Bulk import ignores onDuplicate in 3.8.0.
+  The "onDuplicate" attribute was ignored by the `/_api/import` REST API when
+  not specifying the "type" URL parameter.
+
+* Updated OpenSSL to 1.1.1l and OpenLDAP to 2.4.59.
+
+* APM-70: allow PRUNE condition to be stored in a variable.
+
+  This feature allows the PRUNE condition to be stored in a variable, and 
+  this variable can be used as a condition for some other statement, such 
+  as FILTER.
+
+* Allow startup of arangod with an existing database directory that was missing
+  the ZkdIndex column family.
+
+* Truncate must not trigger intermediate commits while in a streaming
+  transaction, because that would be against the assumption that
+  streaming transactions never do intermediate commits.
+
 * Added ArangoSearch condition optimization: STARTS_WITH is merged 
   with LEVENSHTEIN_MATCH if used in the same AND node and field name and prefix
   matches.
