@@ -652,7 +652,6 @@ struct PromptInfo : public PromptBase {
         if (chars >= 0) {
           len += chars;
         } 
-        // ++len;
         if ('\n' == c || ++x >= promptScreenColumns) {
           x = 0;
           ++promptExtraLines;
