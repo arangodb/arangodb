@@ -65,9 +65,12 @@ function runSetup () {
   internal.sleep(5);
 
   assertTrue(c1._revisionTreeVerification().equal);
-  
-  // disable later tree syncs
+ 
+  // don't take into account any buffered updates when decided whether we
+  // need to persist a tree to disk
   internal.debugSetFailAt("needToPersistRevisionTree::checkBuffers");
+  // add extra delays between the decision not to persist the tree and what
+  // we bump our sequence number to
   internal.debugSetFailAt("serializeMeta::delayCallToLastSerializedRevisionTree");
   internal.debugSetFailAt("RocksDBMetaCollection::forceSerialization");
   
@@ -83,7 +86,12 @@ function runSetup () {
 
   waitForUpdatesToFinish(c2);
   
-  // wait long enough so that the tree of c2 is persisted
+  // wait long enough so that the tree of c2 is persisted.
+  // the tree for c1 will not be persisted anymore because of the checkBuffers
+  // failure point above.
+  // the persisting of c2 and the decision that nothing needs to be persisted
+  // for c1 will bump the min sequence number for c1 beyond what was actually
+  // persisted.
   internal.sleep(15);
 
   internal.debugTerminate('crashing server');
