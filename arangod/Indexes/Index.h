@@ -24,6 +24,7 @@
 #pragma once
 
 #include <iosfwd>
+#include <string_view>
 
 #include <velocypack/StringRef.h>
 
@@ -273,7 +274,7 @@ class Index {
   static bool validateHandleName(bool extendedNames, arangodb::velocypack::StringRef name) noexcept;
   
   /// @brief validate an index id (i.e. ^[0-9]+$)
-  static bool validateId(char const* p, size_t length);
+  static bool validateId(std::string_view id);
 
   /// @brief generate a new index id
   static IndexId generateId();

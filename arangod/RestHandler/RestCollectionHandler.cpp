@@ -825,7 +825,7 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
 
 RestStatus RestCollectionHandler::standardResponse() {
   generateOk(rest::ResponseCode::OK, _builder);
-  _response->setHeaderNC(StaticStrings::Location, "/_db/" + StringUtils::encodeURIComponent(_vocbase.name()) + _request->requestPath());
+  _response->setHeaderNC(StaticStrings::Location, "/_db/" + StringUtils::urlEncode(_vocbase.name()) + _request->requestPath());
   return RestStatus::DONE;
 }
 

@@ -523,8 +523,7 @@ static bool ExtractIndexHandle(VPackSlice const& arg, bool extendedNames,
     return true;
   }
 
-  if (!handle.empty() &&
-      !Index::validateId(handle.data(), handle.size())) {
+  if (!handle.empty() && !Index::validateId(std::string_view(handle.data(), handle.size()))) {
     return false;
   }
   iid = IndexId{StringUtils::uint64(handle.data(), handle.size())};

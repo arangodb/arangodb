@@ -325,7 +325,7 @@ void RestVocbaseBaseHandler::generate20x(arangodb::OperationResult const& result
           assembleDocumentId(collectionName,
                              slice.get(StaticStrings::KeyString).copyString(), true));
       _response->setHeaderNC(StaticStrings::Location,
-                             std::string("/_db/" + StringUtils::encodeURIComponent(_request->databaseName()) +
+                             std::string("/_db/" + StringUtils::urlEncode(_request->databaseName()) +
                                          DOCUMENT_PATH + "/" + escapedHandle));
     }
   }
