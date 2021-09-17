@@ -87,7 +87,7 @@ inline void TRI_RemoveFailurePointDebugging(char const*) {}
 
 /// @brief clear all failure points
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_ClearFailurePointsDebugging() noexcept;
+void TRI_ClearFailurePointsDebugging();
 #else
 inline void TRI_ClearFailurePointsDebugging() noexcept {}
 #endif
