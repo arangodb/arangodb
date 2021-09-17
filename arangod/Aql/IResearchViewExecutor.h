@@ -278,15 +278,16 @@ class IndexReadBuffer {
   std::vector<irs::bytes_ref> _storedValuesBuffer;
   // buffer to hold data read from columnstore in case
   // of temporary pointer returned from reader (e.g. encryption)
+  [[maybe_unused]]
   typename std::conditional<copyStored,
                    std::forward_list<irs::bstring>,
-                   void>::type _ownedStoredData;
+                   bool>::type _ownedStoredData{};
   size_t _numScoreRegisters;
   size_t _keyBaseIdx;
 };  // IndexReadBuffer
 
 template <typename Impl>
-struct IResearchViewExecutorTraits;
+struct IResearchViewExecutorTraits {};
 
 template <typename Impl, typename Traits = IResearchViewExecutorTraits<Impl>>
 class IResearchViewExecutorBase {
@@ -409,7 +410,7 @@ class IResearchViewExecutorBase {
   AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   Infos& _infos;
   InputAqlItemRow _inputRow;
-  IndexReadBuffer<typename Traits::IndexBufferValueType, true> _indexReadBuffer;
+  IndexReadBuffer<typename Traits::IndexBufferValueType, Traits::CopyStored> _indexReadBuffer;
   iresearch::ViewExpressionContext _ctx;
   FilterCtx _filterCtx;  // filter context
   std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
@@ -419,11 +420,11 @@ class IResearchViewExecutorBase {
   bool _isInitialized;
 };  // IResearchViewExecutorBase
 
-template <bool ordered, iresearch::MaterializeType materializeType>
+template <bool copyStored, bool ordered, iresearch::MaterializeType materializeType>
 class IResearchViewExecutor
-    : public IResearchViewExecutorBase<IResearchViewExecutor<ordered, materializeType>> {
+    : public IResearchViewExecutorBase<IResearchViewExecutor<copyStored, ordered, materializeType>> {
  public:
-  using Base = IResearchViewExecutorBase<IResearchViewExecutor<ordered, materializeType>>;
+  using Base = IResearchViewExecutorBase<IResearchViewExecutor<copyStored, ordered, materializeType>>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
@@ -469,18 +470,19 @@ class IResearchViewExecutor
   size_t _numScores;
 };  // IResearchViewExecutor
 
-template <bool ordered, iresearch::MaterializeType materializeType>
-struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered, materializeType>> {
+template <bool copyStored, bool ordered, iresearch::MaterializeType materializeType>
+struct IResearchViewExecutorTraits<IResearchViewExecutor<copyStored, ordered, materializeType>> {
   using IndexBufferValueType = LocalDocumentId;
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
+  static constexpr bool CopyStored = copyStored;
 };
 
-template <bool ordered, iresearch::MaterializeType materializeType>
+template <bool copyStored, bool ordered, iresearch::MaterializeType materializeType>
 class IResearchViewMergeExecutor
-    : public IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered, materializeType>> {
+    : public IResearchViewExecutorBase<IResearchViewMergeExecutor<copyStored, ordered, materializeType>> {
  public:
-  using Base = IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered, materializeType>>;
+  using Base = IResearchViewExecutorBase<IResearchViewMergeExecutor<copyStored, ordered, materializeType>>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
@@ -554,12 +556,14 @@ class IResearchViewMergeExecutor
   irs::external_heap_iterator<MinHeapContext> _heap_it;
 };  // IResearchViewMergeExecutor
 
-template <bool ordered, iresearch::MaterializeType materializeType>
-struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered, materializeType>> {
+template <bool copyStored, bool ordered, iresearch::MaterializeType materializeType>
+struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<copyStored, ordered, materializeType>> {
   using IndexBufferValueType = std::pair<LocalDocumentId, LogicalCollection const*>;
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
+  static constexpr bool CopyStored = copyStored;
 };
+
 }  // namespace aql
 }  // namespace arangodb
 
