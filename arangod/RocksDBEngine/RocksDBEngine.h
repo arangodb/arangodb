@@ -311,6 +311,12 @@ class RocksDBEngine final : public StorageEngine {
   virtual TRI_voc_tick_t currentTick() const override;
   virtual TRI_voc_tick_t releasedTick() const override;
   virtual void releaseTick(TRI_voc_tick_t) override;
+
+  /// @brief whether or not the database existed at startup. this function
+  /// provides a valid answer only after start() has successfully finished, 
+  /// so don't call it from other features during their start() if they are
+  /// earlier in the startup sequence
+  bool dbExisted() const noexcept { return _dbExisted; }
   
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
@@ -507,6 +513,9 @@ class RocksDBEngine final : public StorageEngine {
   /// this is used to determine when to execute the potentially expensive
   /// checks for free disk space
   bool _lastHealthCheckSuccessful;
+
+  /// @brief whether or not the DB existed at startup
+  bool _dbExisted;
 
   // code to pace ingest rate of writes to reduce chances of compactions getting
   // too far behind and blocking incoming writes

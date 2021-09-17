@@ -106,7 +106,7 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
-    testRevisionTreeCorruption: function() {
+    testRevisionTreeInconsistency: function() {
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
       assertEqual(c1._revisionTreeSummary().count, 2000);

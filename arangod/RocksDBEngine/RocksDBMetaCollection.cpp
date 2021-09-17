@@ -345,6 +345,13 @@ void RocksDBMetaCollection::setRevisionTree(std::unique_ptr<containers::Revision
   _revisionTreeApplied.store(seq);
   _revisionTreeCreationSeq = seq;
   _revisionTreeSerializedSeq = seq;
+    
+  if (!_logicalCollection.system()) {
+      LOG_DEVEL 
+          << "set revision tree for " << _logicalCollection.name()
+          << ", created: " << _revisionTreeCreationSeq
+          << ", serialized: " << _revisionTreeSerializedSeq;
+    }
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
@@ -538,6 +545,10 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
   // now actually advance it if we can
   if (seq > _revisionTreeSerializedSeq) {
     _revisionTreeSerializedSeq = seq;
+    if (!_logicalCollection.system()) {
+      LOG_DEVEL 
+          << "adjusting seq for " << _logicalCollection.name() << ", seq: " << seq;
+    }
     adjusted = true;
   }
   
@@ -581,6 +592,10 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
       _revisionTree->serializeBinary(output);
       _revisionTreeSerializedSeq = commitSeq;
       _revisionTreeSerializedTime = std::chrono::steady_clock::now();
+
+      if (_revisionTreeSerializedSeq < _revisionTreeCreationSeq) {
+        _revisionTreeCreationSeq = _revisionTreeSerializedSeq;
+      }
     }
     return _revisionTreeSerializedSeq;
   }
@@ -1366,6 +1381,13 @@ void RocksDBMetaCollection::ensureRevisionTree() {
     _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
     _revisionTreeCreationSeq = engine.db()->GetLatestSequenceNumber();
     _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
+
+    if (!_logicalCollection.system()) {
+      LOG_DEVEL 
+          << "created revision tree for " << _logicalCollection.name()
+          << ", created: " << _revisionTreeCreationSeq
+          << ", serialized: " << _revisionTreeSerializedSeq;
+    }
   }
 
   TRI_ASSERT(_revisionTree != nullptr);

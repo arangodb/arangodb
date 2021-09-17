@@ -484,6 +484,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     } catch (std::exception const& ex) {
       LOG_TOPIC("33691", WARN, Logger::ENGINES)
           << context << ": caught exception during revision tree serialization: " << ex.what();
+      // TODO: if we get here, we need to mark the existing tree as broken
+      // and need to rebuild it
     }
 
     appliedSeq = std::min(appliedSeq, seq);

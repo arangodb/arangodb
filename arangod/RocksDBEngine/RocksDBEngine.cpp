@@ -207,6 +207,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _createShaFiles(false),
 #endif
       _lastHealthCheckSuccessful(false),
+      _dbExisted(false),
       _runningCompactions(0),
       _metricsArchivedWalFiles(server.getFeature<arangodb::MetricsFeature>().add(
           rocksdb_archived_wal_files{})),
@@ -823,12 +824,12 @@ void RocksDBEngine::start() {
     FATAL_ERROR_EXIT();
   }
   
-  TRI_ASSERT(_db != nullptr);
-
   // give throttle access to families
   if (_useThrottle) {
     _throttleListener->SetFamilies(cfHandles);
   }
+  
+  TRI_ASSERT(_db != nullptr);
 
   // set our column families
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::Invalid,
@@ -852,6 +853,8 @@ void RocksDBEngine::start() {
 
   // will crash the process if version does not match
   arangodb::rocksdbStartupVersionCheck(_db, dbExisted);
+
+  _dbExisted = dbExisted;
 
   // only enable logger after RocksDB start
   if (logger != nullptr) {
@@ -1367,6 +1370,7 @@ RecoveryState RocksDBEngine::recoveryState() noexcept {
 TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
   return TRI_voc_tick_t(server().getFeature<RocksDBRecoveryManager>().recoveryTick());
 }
+
 void RocksDBEngine::compactRange(RocksDBKeyBounds bounds) {
   {
     WRITE_LOCKER(locker, _pendingCompactionsLock);

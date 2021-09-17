@@ -132,11 +132,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   // max tick found
   uint64_t _maxTick;
   uint64_t _maxHLC;
+  uint64_t _entriesScanned;
   /// @brief last document removed
   RevisionId _lastRemovedDocRid = RevisionId::none();
 
   rocksdb::SequenceNumber _startSequence;    /// start of batch sequence nr
   rocksdb::SequenceNumber& _currentSequence;  /// current sequence nr
+  RocksDBEngine& _engine;
   bool _startOfBatch = false;
 
  public:
@@ -146,9 +148,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       : _server(server),
         _maxTick(TRI_NewTickServer()),
         _maxHLC(0),
+        _entriesScanned(0),
         _lastRemovedDocRid(0),
         _startSequence(0),
-        _currentSequence(currentSequence) {}
+        _currentSequence(currentSequence),
+        _engine(_server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>()) {}
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     // starting new write batch
@@ -160,17 +164,24 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   Result shutdownWBReader() {
     Result rv = basics::catchVoidToResult([&]() -> void {
-      // update ticks after parsing wal
-      LOG_TOPIC("a4ec8", INFO, Logger::ENGINES)
-          << "RocksDB recovery finished, max tick found in WAL: " << _maxTick << ", last HLC value: " << _maxHLC;
+      if (_engine.dbExisted()) {
+        LOG_TOPIC("a4ec8", INFO, Logger::ENGINES)
+            << "RocksDB recovery finished, "
+            << "WAL entries scanned: " << _entriesScanned 
+            << ", max tick found in WAL: " << _maxTick 
+            << ", last HLC value: " << _maxHLC;
+      }
 
+      // update ticks after parsing wal
       TRI_UpdateTickServer(_maxTick);
+
       TRI_HybridLogicalClock(_maxHLC);
     });
     return rv;
   }
 
  private:
+
   void storeMaxHLC(uint64_t hlc) {
     if (hlc > _maxHLC) {
       _maxHLC = hlc;
@@ -185,10 +196,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   // find estimator for index
   RocksDBCollection* findCollection(uint64_t objectId) {
-    RocksDBEngine& engine =
-        _server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
     // now adjust the counter in collections which are already loaded
-    RocksDBEngine::CollectionPair dbColPair = engine.mapObjectToCollection(objectId);
+    RocksDBEngine::CollectionPair dbColPair = _engine.mapObjectToCollection(objectId);
     if (dbColPair.second.empty() || dbColPair.first == 0) {
       // collection with this objectID not known.Skip.
       return nullptr;
@@ -204,9 +213,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
   RocksDBIndex* findIndex(uint64_t objectId) {
-    RocksDBEngine& engine =
-        _server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-    RocksDBEngine::IndexTriple triple = engine.mapObjectToIndex(objectId);
+    RocksDBEngine::IndexTriple triple = _engine.mapObjectToIndex(objectId);
     if (std::get<0>(triple) == 0 && std::get<1>(triple).empty()) {
       return nullptr;
     }
@@ -316,6 +323,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status PutCF(uint32_t column_family_id,
                         const rocksdb::Slice& key,
                         const rocksdb::Slice& value) override {
+    ++_entriesScanned;
+
     LOG_TOPIC("3e5c5", TRACE, Logger::ENGINES)
         << "recovering PUT @ " << _currentSequence << " " << RocksDBKey(key);
     incTick();
@@ -361,9 +370,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       }
     }
 
-    RocksDBEngine& engine =
-        _server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-    for (auto helper : engine.recoveryHelpers()) {
+    for (auto helper : _engine.recoveryHelpers()) {
       helper->PutCF(column_family_id, key, value, _currentSequence);
     }
 
@@ -418,12 +425,12 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
   rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+    ++_entriesScanned;
+
     LOG_TOPIC("5f341", TRACE, Logger::ENGINES)
         << "recovering DELETE @ " << _currentSequence << " " << RocksDBKey(key);
     handleDeleteCF(column_family_id, key);
-    RocksDBEngine& engine =
-        _server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-    for (auto helper : engine.recoveryHelpers()) {
+    for (auto helper : _engine.recoveryHelpers()) {
       helper->DeleteCF(column_family_id, key, _currentSequence);
     }
 
@@ -431,13 +438,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
   rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+    ++_entriesScanned;
+
     LOG_TOPIC("aa997", TRACE, Logger::ENGINES)
         << "recovering SINGLE DELETE @ " << _currentSequence << " " << RocksDBKey(key);
     handleDeleteCF(column_family_id, key);
 
-    RocksDBEngine& engine =
-        _server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-    for (auto helper : engine.recoveryHelpers()) {
+    for (auto helper : _engine.recoveryHelpers()) {
       helper->SingleDeleteCF(column_family_id, key, _currentSequence);
     }
 
@@ -446,14 +453,14 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status DeleteRangeCF(uint32_t column_family_id, const rocksdb::Slice& begin_key,
                                 const rocksdb::Slice& end_key) override {
+    ++_entriesScanned;
+
     LOG_TOPIC("ed6f5", TRACE, Logger::ENGINES)
         << "recovering DELETE RANGE @ " << _currentSequence << " from "
         << RocksDBKey(begin_key) << " to " << RocksDBKey(end_key);
     incTick();
     // drop and truncate can use this, truncate is handled via a Log marker
-    RocksDBEngine& engine =
-        _server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-    for (auto helper : engine.recoveryHelpers()) {
+    for (auto helper : _engine.recoveryHelpers()) {
       helper->DeleteRangeCF(column_family_id, begin_key, end_key, _currentSequence);
     }
 
@@ -489,6 +496,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
   void LogData(const rocksdb::Slice& blob) override {
+    ++_entriesScanned;
+
     // a delete log message appears directly before a Delete
     RocksDBLogType type = RocksDBLogValue::type(blob);
     switch (type) {
@@ -501,9 +510,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         _lastRemovedDocRid = RevisionId::none();  // reset in any other case
         break;
     }
-    RocksDBEngine& engine =
-        _server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-    for (auto helper : engine.recoveryHelpers()) {
+    for (auto helper : _engine.recoveryHelpers()) {
       helper->LogData(blob, _currentSequence);
     }
   }
@@ -516,9 +523,9 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
   Result shutdownRv;
 
   Result res = basics::catchToResult([&, &server = server()]() -> Result {
+    RocksDBEngine& engine = server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+
     Result rv;
-    RocksDBEngine& engine =
-        server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
     for (auto& helper : engine.recoveryHelpers()) {
       helper->prepare();
     }
@@ -527,9 +534,11 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     WBReader handler(server, _tick);
     rocksdb::SequenceNumber earliest = engine.settingsManager()->earliestSeqNeeded();
     auto minTick = std::min(earliest, engine.releasedTick());
-    
-    LOG_TOPIC("fe333", INFO, Logger::ENGINES)
-        << "RocksDB recovery starting, scanning WAL starting from sequence number " << minTick;
+ 
+    if (engine.dbExisted()) {
+      LOG_TOPIC("fe333", INFO, Logger::ENGINES)
+          << "RocksDB recovery starting, scanning WAL starting from sequence number " << minTick;
+    }
 
     // prevent purging of WAL files while we are in here
     RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
