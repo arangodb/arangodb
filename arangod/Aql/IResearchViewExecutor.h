@@ -278,7 +278,6 @@ class IndexReadBuffer {
   std::vector<irs::bytes_ref> _storedValuesBuffer;
   // buffer to hold data read from columnstore in case
   // of temporary pointer returned from reader (e.g. encryption)
-  [[maybe_unused]]
   typename std::conditional<copyStored,
                    std::forward_list<irs::bstring>,
                    bool>::type _ownedStoredData{};
