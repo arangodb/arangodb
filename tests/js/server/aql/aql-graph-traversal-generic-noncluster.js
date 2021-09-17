@@ -25,7 +25,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-const {protoGraphs} = require('@arangodb/testutils/aql-graph-traversal-generic-graphs.js');
+const {protoGraphs, TestVariants} = require('@arangodb/testutils/aql-graph-traversal-generic-graphs.js');
 const {testsByGraph, metaTests} = require('@arangodb/testutils/aql-graph-traversal-generic-tests.js');
 const console = require('console');
 const jsunity = require("jsunity");
@@ -35,7 +35,10 @@ function graphTraversalGenericGeneralGraphStandaloneSuite() {
   let testGraphs = _.fromPairs(_.keys(protoGraphs).map(x => [x, {}]));
   _.each(protoGraphs, function (protoGraph) {
     _.each(protoGraph.prepareSingleServerGraph(), function (testGraph) {
-      testGraphs[protoGraph.name()][testGraph.name()] = testGraph;
+      testGraphs[protoGraph.name()][`${testGraph.name()}-single`] = testGraph;
+    });
+    _.each(protoGraph.prepareSmartGraphs(TestVariants.SmartGraphSingleServer), function (testGraph) {
+      testGraphs[protoGraph.name()][`${testGraph.name()}-smart`] = testGraph;
     });
   });
 

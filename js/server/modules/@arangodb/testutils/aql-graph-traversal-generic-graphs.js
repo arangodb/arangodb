@@ -46,7 +46,8 @@ const TestVariants = Object.freeze({
   GeneralGraph: 2,
   SmartGraph: 3,
   SatelliteGraph: 4,
-  DisjointSmartGraph: 5
+  DisjointSmartGraph: 5,
+  SmartGraphSingleServer: 6
 });
 
 const graphWeightAttribute = 'distance';
@@ -75,6 +76,7 @@ class TestGraph {
         cgm._create(this.name(), [this.eRel], [], options);
         break;
       }
+      case TestVariants.SmartGraphSingleServer:
       case TestVariants.SmartGraph: {
         const options = {
           numberOfShards: this.numberOfShards,
@@ -103,7 +105,7 @@ class TestGraph {
       }
     }
 
-    if (this.testVariant === TestVariants.SingleServer) {
+    if (this.testVariant === TestVariants.SingleServer || this.testVariant === TestVariants.SmartGraphSingleServer) {
       this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices);
     } else {
       const shardAttrsByShardIndex = this._shardAttrPerShard(db[this.vn]);
@@ -131,6 +133,7 @@ class TestGraph {
     switch (this.testVariant) {
       case TestVariants.SingleServer:
       case TestVariants.SatelliteGraph:
+      case TestVariants.SmartGraphSingleServer:
       case TestVariants.GeneralGraph: {
         return `${this.vn}/nonExistingVertex`;
       }
@@ -267,7 +270,7 @@ class ProtoGraph {
     });
   }
 
-  prepareSmartGraphs() {
+  prepareSmartGraphs(variant = TestVariants.SmartGraph) {
     return this.smartShardings.map((sharding, idx) => {
       const {numberOfShards, vertexSharding} = sharding;
       const suffix = ProtoGraph._buildSmartSuffix(sharding, idx);
@@ -278,7 +281,7 @@ class ProtoGraph {
 
       const eRel = sgm._relation(en, vn, vn);
 
-      return new TestGraph(gn, this.edges, eRel, vn, en, vertexSharding, TestVariants.SmartGraph, numberOfShards, this.unconnectedVertices);
+      return new TestGraph(gn, this.edges, eRel, vn, en, vertexSharding, variant, numberOfShards, this.unconnectedVertices);
     });
   }
 
@@ -883,3 +886,4 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
 
 exports.ProtoGraph = ProtoGraph;
 exports.protoGraphs = protoGraphs;
+exports.TestVariants = TestVariants;
