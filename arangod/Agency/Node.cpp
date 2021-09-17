@@ -929,8 +929,8 @@ void Node::toBuilder(Builder& builder, bool showHidden) const {
       if (_children != nullptr) {
         for (auto const& child : *_children) {
           auto const& cptr = child.second;
-          if ((cptr->_ttl != clock::time_point() && cptr->_ttl < clock::now())
-              || (child.first[0] == '.' && !showHidden)) {
+          if ((cptr->_ttl != clock::time_point() && cptr->_ttl < clock::now()) ||
+              (child.first[0] == '.' && !showHidden)) {
             continue;
           }
           builder.add(VPackValue(child.first));
