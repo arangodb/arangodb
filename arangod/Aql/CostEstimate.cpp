@@ -49,6 +49,7 @@ void CostEstimate::invalidate() {
 void CostEstimate::initialize() {
   estimatedCost = 0.0;
   estimatedNrItems = 0;
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isValid());
 }
 
