@@ -365,7 +365,7 @@
     "ERROR_AIR_EXECUTION_ERROR"    : { "code" : 8001, "message" : "error during AIR execution" },
     "ERROR_LICENSE_EXPIRED_OR_INVALID" : { "code" : 9001, "message" : "license has expired or is invalid" },
     "ERROR_LICENSE_SIGNATURE_VERIFICATION" : { "code" : 9002, "message" : "license verification failed" },
-    "ERROR_LICENSE_NON_MATHICHING_ID" : { "code" : 9003, "message" : "non matching license id" },
+    "ERROR_LICENSE_NON_MATCHING_ID" : { "code" : 9003, "message" : "non-matching license id" },
     "ERROR_LICENSE_FEATURE_NOT_ENABLED" : { "code" : 9004, "message" : "feature is not enabled by the license" },
     "ERROR_LICENSE_RESOURCE_EXHAUSTED" : { "code" : 9005, "message" : "the resource is exhausted" },
     "ERROR_LICENSE_INVALID"        : { "code" : 9006, "message" : "invalid license" },

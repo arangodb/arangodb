@@ -1924,13 +1924,13 @@ constexpr auto TRI_ERROR_LICENSE_EXPIRED_OR_INVALID                             
 
 /// 9002: ERROR_LICENSE_SIGNATURE_VERIFICATION
 /// "license verification failed"
-/// Verfication of license failed.
+/// Verification of license failed.
 constexpr auto TRI_ERROR_LICENSE_SIGNATURE_VERIFICATION                          = ErrorCode{9002};
 
-/// 9003: ERROR_LICENSE_NON_MATHICHING_ID
-/// "non matching license id"
+/// 9003: ERROR_LICENSE_NON_MATCHING_ID
+/// "non-matching license id"
 /// The ID of the license does not match the ID of this instance.
-constexpr auto TRI_ERROR_LICENSE_NON_MATHICHING_ID                               = ErrorCode{9003};
+constexpr auto TRI_ERROR_LICENSE_NON_MATCHING_ID                                 = ErrorCode{9003};
 
 /// 9004: ERROR_LICENSE_FEATURE_NOT_ENABLED
 /// "feature is not enabled by the license"

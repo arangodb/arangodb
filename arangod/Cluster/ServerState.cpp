@@ -328,6 +328,7 @@ bool ServerState::readOnly() {
 
 /// @brief set server read-only
 bool ServerState::setReadOnly(ReadOnlyMode ro) {
+  auto ret = readOnly();
   if(ro == API_FALSE) {
     _serverstate_readonly.exchange(false, std::memory_order_release);
   } else if (ro == API_TRUE) {
@@ -337,8 +338,7 @@ bool ServerState::setReadOnly(ReadOnlyMode ro) {
   } else if (ro == LICENSE_TRUE) {
     _license_readonly.exchange(true, std::memory_order_release);
   }
-  return _serverstate_readonly.load(std::memory_order_acquire) ||
-    _license_readonly.load(std::memory_order_acquire);
+  return ret;
 }
 
 // ============ Instance methods =================
@@ -380,7 +380,7 @@ bool ServerState::logoff(double timeout) {
 
   AgencyWriteTransaction unregisterTransaction(operations);
   AgencyComm comm(_server);
-  
+
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...
   int maxTries = static_cast<int>(timeout / 3.0);;
@@ -552,7 +552,7 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
       return "Coordinator";
     case ROLE_SINGLE:
       return "Single";
-    case ROLE_AGENT: 
+    case ROLE_AGENT:
       return "Agent";
     case ROLE_UNDEFINED: {
       return "Undefined";
@@ -1058,9 +1058,9 @@ bool ServerState::isFoxxmaster() const {
   return /*!isRunningInCluster() ||*/ _foxxmaster == getId();
 }
 
-std::string ServerState::getFoxxmaster() const { 
+std::string ServerState::getFoxxmaster() const {
   READ_LOCKER(readLocker, _foxxmasterLock);
-  return _foxxmaster; 
+  return _foxxmaster;
 }
 
 void ServerState::setFoxxmaster(std::string const& foxxmaster) {

@@ -733,8 +733,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 362> ErrorMessage
       "license has expired or is invalid"},
     {TRI_ERROR_LICENSE_SIGNATURE_VERIFICATION,  // 9002
       "license verification failed"},
-    {TRI_ERROR_LICENSE_NON_MATHICHING_ID,  // 9003
-      "non matching license id"},
+    {TRI_ERROR_LICENSE_NON_MATCHING_ID,  // 9003
+      "non-matching license id"},
     {TRI_ERROR_LICENSE_FEATURE_NOT_ENABLED,  // 9004
       "feature is not enabled by the license"},
     {TRI_ERROR_LICENSE_RESOURCE_EXHAUSTED,  // 9005

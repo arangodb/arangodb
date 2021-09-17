@@ -50,7 +50,7 @@ class ServerState {
   };
 
   /// @brief an enum describing the possible states a server can have
-  enum StateEnum {
+  enum class StateEnum {
     STATE_UNDEFINED = 0,  // initial value
     STATE_STARTUP,        // used by all roles
     STATE_SERVING,        // used by all roles
