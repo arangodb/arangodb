@@ -7,6 +7,7 @@ type: gauge
 category: License
 complexity: simple
 exposedBy:
-  - lincens
+  - coordinator
+  - dbserver
 description: |
   This instance's remaining license validity time.
