@@ -1952,3 +1952,8 @@ constexpr auto TRI_ERROR_LICENSE_INVALID                                        
 /// The license has one or more inferior features.
 constexpr auto TRI_ERROR_LICENSE_CONFLICT                                        = ErrorCode{9007};
 
+/// 9008: ERROR_LICENSE_VALIDATION_FAILED
+/// "failed to validate license signature"
+/// Could not verify the license's signature.
+constexpr auto TRI_ERROR_LICENSE_VALIDATION_FAILED                               = ErrorCode{9008};
+

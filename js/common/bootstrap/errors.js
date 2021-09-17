@@ -369,7 +369,8 @@
     "ERROR_LICENSE_FEATURE_NOT_ENABLED" : { "code" : 9004, "message" : "feature is not enabled by the license" },
     "ERROR_LICENSE_RESOURCE_EXHAUSTED" : { "code" : 9005, "message" : "the resource is exhausted" },
     "ERROR_LICENSE_INVALID"        : { "code" : 9006, "message" : "invalid license" },
-    "ERROR_LICENSE_CONFLICT"       : { "code" : 9007, "message" : "conflicting license" }
+    "ERROR_LICENSE_CONFLICT"       : { "code" : 9007, "message" : "conflicting license" },
+    "ERROR_LICENSE_VALIDATION_FAILED" : { "code" : 9008, "message" : "failed to validate license signature" }
   };
 
   // For compatibility with <= 3.3

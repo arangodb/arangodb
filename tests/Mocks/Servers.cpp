@@ -859,7 +859,7 @@ MockCoordinator::MockCoordinator(bool start, bool useAgencyMock, bool injectClus
                         injectClusterIndexes) {
   if (start) {
     MockCoordinator::startFeatures();
-    agencyTrx(".agency", "{\"op\":\"set\",\"new\":{\"timeoutMult\":1,\"term\":1,\"size\":3,\"pool\":{\"AGNT-ca355865-7e34-40b8-91d4-198811e52f44\":\"tcp://[::1]:4001\",\"AGNT-93fa47f7-9f79-493e-b2da-b74487baccae\":\"tcp://[::1]:4003\",\"AGNT-93908f62-5414-4456-be37-2226651b8358\":\"tcp://[::1]:4002\"},\"id\":\"AGNT-ca355865-7e34-40b8-91d4-198811e52f44\",\"active\":[\"AGNT-93908f62-5414-4456-be37-2226651b8358\",\"AGNT-ca355865-7e34-40b8-91d4-198811e52f44\",\"AGNT-93fa47f7-9f79-493e-b2da-b74487baccae\"]}}");
+    agencyTrx("/.agency", R"=({"op":"set","new":{"timeoutMult":1,"term":1,"size":3,"pool":{"AGNT-ca355865-7e34-40b8-91d4-198811e52f44":"tcp://[::1]:4001","AGNT-93fa47f7-9f79-493e-b2da-b74487baccae":"tcp://[::1]:4003","AGNT-93908f62-5414-4456-be37-2226651b8358":"tcp://[::1]:4002"},"id":"AGNT-ca355865-7e34-40b8-91d4-198811e52f44","active":["AGNT-93908f62-5414-4456-be37-2226651b8358","AGNT-ca355865-7e34-40b8-91d4-198811e52f44","AGNT-93fa47f7-9f79-493e-b2da-b74487baccae"]}})=");
     MockCoordinator::createDatabase("_system");
   }
 }

@@ -18,7 +18,7 @@ struct elsa<ErrorCode> {
 #include <cinttypes>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 362> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 363> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -743,5 +743,7 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 362> ErrorMessage
       "invalid license"},
     {TRI_ERROR_LICENSE_CONFLICT,  // 9007
       "conflicting license"},
+    {TRI_ERROR_LICENSE_VALIDATION_FAILED,  // 9008
+      "failed to validate license signature"},
 };
 }
