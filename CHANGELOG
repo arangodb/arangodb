@@ -2,8 +2,8 @@ devel
 -----
 
 * Add `--datatype` startup option to arangoimport, in order to hard-code the
-  datatype for certain attributes in the CSV/TSV import. For example, given
-  the following input file:
+  datatype (null/boolean/number/string) for certain attributes in the CSV/TSV import.
+  For example, given the following input file:
 
       key,price,weight,fk
       123456,200,5,585852
