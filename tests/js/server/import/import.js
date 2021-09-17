@@ -752,6 +752,110 @@ function importTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import with fixed types, overriding --convert for value attr
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportTypesPrecedence : function () {
+      let expected = [
+        { 
+          "id" : 1, 
+          "value" : "null" 
+        }, 
+        { 
+          "id" : 2, 
+          "value" : "false" 
+        }, 
+        { 
+          "id" : 3, 
+          "value" : "true" 
+        }, 
+        { 
+          "id" : 4, 
+          "value" : "-1" 
+        }, 
+        { 
+          "id" : 5, 
+          "value" : "0" 
+        }, 
+        { 
+          "id" : 6, 
+          "value" : "1" 
+        }, 
+        { 
+          "id" : 7, 
+          "value" : "2" 
+        }, 
+        { 
+          "id" : 8, 
+          "value" : "123456.43" 
+        }, 
+        { 
+          "id" : 9, 
+          "value" : "-13323.322" 
+        }, 
+        { 
+          "id" : 10, 
+          "value" : "null" 
+        }, 
+        { 
+          "id" : 11, 
+          "value" : "-1" 
+        }, 
+        { 
+          "id" : 12, 
+          "value" : "0" 
+        }, 
+        { 
+          "id" : 13, 
+          "value" : "1" 
+        }, 
+        { 
+          "id" : 14, 
+          "value" : "2" 
+        }, 
+        { 
+          "id" : 15, 
+          "value" : "3" 
+        }, 
+        { 
+          "id" : 16, 
+          "value" : "-1443.4442" 
+        }, 
+        { 
+          "id" : 17, 
+          "value" : "462.664250" 
+        }, 
+        { 
+          "id" : 18, 
+          "value" : "foo" 
+        }, 
+        { 
+          "id" : 19, 
+          "value" : "" 
+        }, 
+        { 
+          "id" : 20, 
+          "value" : " " 
+        }, 
+        { 
+          "id" : 21, 
+          "value" : "null" 
+        }, 
+        { 
+          "id" : 22, 
+          "value" : "false" 
+        }, 
+        { 
+          "id" : 23, 
+          "value" : "true" 
+        } 
+      ];
+
+      let actual = getQueryResults("FOR i IN UnitTestsImportCsvTypesPrecedence SORT TO_NUMBER(i.id) RETURN i");
+      assertEqual(JSON.stringify(expected), JSON.stringify(actual));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import without trailing eol
 ////////////////////////////////////////////////////////////////////////////////
     

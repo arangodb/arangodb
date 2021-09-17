@@ -53,6 +53,7 @@
   db._drop("UnitTestsImportCsvTypesBoolean");
   db._drop("UnitTestsImportCsvTypesNumber");
   db._drop("UnitTestsImportCsvTypesString");
+  db._drop("UnitTestsImportCsvTypesPrecedence");
   db._drop("UnitTestsImportCsvNoEol");
   db._drop("UnitTestsImportTsv1");
   db._drop("UnitTestsImportTsv1Gz");
