@@ -267,6 +267,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             break;
           }
         }
+
         if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
             healthCheck(options, serverOptions, instanceInfo, customInstanceInfos, startStopHandlers)) {
           continueTesting = true;
@@ -346,6 +347,18 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
                 JSON.stringify(results[te])
             };
             graphCount = graphs.count();
+          }
+          let failurePoints = pu.checkServerFailurePoints(instanceInfo);
+          if (failurePoints.length > 0) {
+            continueTesting = false;
+            results[te] = {
+              status: false,
+              message: 'Cleanup of failure points missing - found failure points engaged: [ ' +
+                JSON.stringify(failurePoints) +
+                ' ] - Original test status: ' +
+                JSON.stringify(results[te])
+            };
+
           }
         } else {
           serverDead = true;

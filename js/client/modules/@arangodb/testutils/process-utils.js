@@ -34,6 +34,7 @@ const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
+const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
 
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -1361,6 +1362,26 @@ function checkInstanceAlive (instanceInfo, options) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief checks whether any instance has failure points set
+// //////////////////////////////////////////////////////////////////////////////
+
+function checkServerFailurePoints(instanceInfo) {
+  let failurePoints = [];
+  instanceInfo.arangods.forEach(arangod => {
+    let fp = debugGetFailurePoints(arangod.endpoint);
+    if (fp.length > 0) {
+      failurePoints.push({
+        "role": arangod.role,
+        "pid":  arangod.pid,
+        "database.directory": arangod['database.directory'],
+        "failurePoints": fp
+      });
+    }
+  });
+  return failurePoints;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief waits for garbage collection using /_admin/execute
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -2473,6 +2494,7 @@ exports.run = {
 exports.shutdownInstance = shutdownInstance;
 exports.getProcessStats = getProcessStats;
 exports.getDeltaProcessStats = getDeltaProcessStats;
+exports.checkServerFailurePoints = checkServerFailurePoints;
 exports.summarizeStats = summarizeStats;
 exports.getMemProfSnapshot = getMemProfSnapshot;
 exports.startArango = startArango;
