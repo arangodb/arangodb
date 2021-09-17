@@ -252,30 +252,26 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
   for (auto const& it : _translations) {
     auto parts = StringUtils::split(it, '=');
-    if (parts.size() != 2) {
-      TRI_ASSERT(parts.size() == 1);
+    if (parts.size() < 2) {
       parts.push_back("");
     }
-    TRI_ASSERT(parts.size() == 2);
     StringUtils::trimInPlace(parts[0]);
     StringUtils::trimInPlace(parts[1]);
 
-    if (parts[0].empty() || parts[1].empty()) {
+    if (parts.size() != 2 || parts[0].empty() || parts[1].empty()) {
       LOG_TOPIC("83ae7", FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
       FATAL_ERROR_EXIT();
     }
   }
   for (auto const& it : _datatypes) {
     auto parts = StringUtils::split(it, '=');
-    if (parts.size() != 2) {
-      TRI_ASSERT(parts.size() == 1);
+    if (parts.size() < 2) {
       parts.push_back("");
     }
-    TRI_ASSERT(parts.size() == 2);
     StringUtils::trimInPlace(parts[0]);
     StringUtils::trimInPlace(parts[1]);
 
-    if (parts[0].empty() ||
+    if (parts.size() != 2 || parts[0].empty() ||
         (parts[1] != "boolean" && parts[1] != "number" && parts[1] != "null" && parts[1] != "string")) {
       LOG_TOPIC("13e75", FATAL, arangodb::Logger::FIXME) 
           << "invalid datatype '" << it << "'. valid types are: "
