@@ -1368,14 +1368,16 @@ function checkInstanceAlive (instanceInfo, options) {
 function checkServerFailurePoints(instanceInfo) {
   let failurePoints = [];
   instanceInfo.arangods.forEach(arangod => {
-    let fp = debugGetFailurePoints(arangod.endpoint);
-    if (fp.length > 0) {
-      failurePoints.push({
-        "role": arangod.role,
-        "pid":  arangod.pid,
-        "database.directory": arangod['database.directory'],
-        "failurePoints": fp
-      });
+    if (arangod.role !== "agent") {
+      let fp = debugGetFailurePoints(arangod.endpoint);
+      if (fp.length > 0) {
+        failurePoints.push({
+          "role": arangod.role,
+          "pid":  arangod.pid,
+          "database.directory": arangod['database.directory'],
+          "failurePoints": fp
+        });
+      }
     }
   });
   return failurePoints;
