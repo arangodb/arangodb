@@ -1011,7 +1011,7 @@ std::vector<RestoreFeature::DatabaseInfo> RestoreFeature::determineDatabaseList(
     // sort by name, with _system last
     // this is necessary because in the system database there is the _users collection,
     // and we have to process users last of all. otherwise we risk updating the
-    // credentials for the user which users the current arangorestore connection, and
+    // credentials for the user which uses the current arangorestore connection, and
     // this will make subsequent arangorestore calls to the server fail with "unauthorized"
     std::sort(databases.begin(), databases.end(), [](auto const& lhs, auto const& rhs) {
       if (lhs.name == StaticStrings::SystemDatabase && rhs.name != StaticStrings::SystemDatabase) {
@@ -1834,7 +1834,6 @@ void RestoreFeature::start() {
 
   // enumerate all databases present in the dump directory (in case of
   // --all-databases=true, or use just the flat files in case of --all-databases=false)
-  //std::vector<std::pair<std::string, VPackBuilder>> databases;
   std::vector<DatabaseInfo> databases = determineDatabaseList(client.databaseName());
 
   std::unique_ptr<SimpleHttpClient> httpClient;
