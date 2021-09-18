@@ -25,16 +25,13 @@
 
 #include <cstddef>
 #include <string>
+#include <string_view>
 
 namespace arangodb {
 
-namespace velocypack {
-class StringRef;
-}  // namespace velocypack
-
 struct NameValidator {
   /// @brief determine whether a data-source name is a system data-source name
-  static bool isSystemName(std::string const& name) noexcept;
+  static bool isSystemName(std::string_view name) noexcept;
 };
 
 struct DatabaseNameValidator {
@@ -53,7 +50,7 @@ struct DatabaseNameValidator {
   /// @brief checks if a database name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
   static bool isAllowedName(bool allowSystem, bool extendedNames,
-                            velocypack::StringRef const& name) noexcept;
+                            std::string_view name) noexcept;
 };
 
 struct CollectionNameValidator {
@@ -69,7 +66,7 @@ struct CollectionNameValidator {
   /// @brief checks if a collection name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
   static bool isAllowedName(bool allowSystem, bool extendedNames,
-                            velocypack::StringRef const& name) noexcept;
+                            std::string_view name) noexcept;
 };
 
 struct ViewNameValidator {
@@ -88,7 +85,7 @@ struct ViewNameValidator {
   /// @brief checks if a view name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
   static bool isAllowedName(bool allowSystem, bool extendedNames,
-                            velocypack::StringRef const& name) noexcept;
+                            std::string_view name) noexcept;
 };
 
 struct IndexNameValidator {
@@ -104,7 +101,7 @@ struct IndexNameValidator {
   /// @brief checks if a index name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
   static bool isAllowedName(bool extendedNames,
-                            velocypack::StringRef const& name) noexcept;
+                            std::string_view name) noexcept;
 };
 
 struct AnalyzerNameValidator {
@@ -120,7 +117,7 @@ struct AnalyzerNameValidator {
   /// @brief checks if an analyzer name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
   static bool isAllowedName(bool extendedNames,
-                            velocypack::StringRef const& name) noexcept;
+                            std::string_view name) noexcept;
 };
 
 }

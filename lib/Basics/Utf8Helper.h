@@ -29,6 +29,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <string_view>
 
 #include <unicode/coll.h>
 #include <unicode/umachine.h>
@@ -212,8 +213,7 @@ char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength, UE
 
 char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLength, UErrorCode* status = nullptr);
 
-std::string normalizeUtf8ToNFC(char const* value, size_t length);
-std::string normalizeUtf8ToNFC(std::string const& name);
+std::string normalizeUtf8ToNFC(std::string_view value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf16 string (NFC) and export it to utf8

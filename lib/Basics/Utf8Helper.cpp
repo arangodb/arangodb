@@ -758,11 +758,11 @@ char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLe
   return utf8Dest;
 }
 
-std::string normalizeUtf8ToNFC(char const* value, size_t length) {
+std::string normalizeUtf8ToNFC(std::string_view value) {
   auto deleter = [](char* data) { TRI_Free(data); };
   size_t outLength = 0;
   UErrorCode status = U_ZERO_ERROR;
-  std::unique_ptr<char, decltype(deleter)> normalized(TRI_normalize_utf8_to_NFC(value, length, &outLength, &status), deleter);
+  std::unique_ptr<char, decltype(deleter)> normalized(TRI_normalize_utf8_to_NFC(value.data(), value.size(), &outLength, &status), deleter);
   if (normalized == nullptr) {
     if (status != U_ZERO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, std::string("invalid UTF-8 string: ") + u_errorName(status));
@@ -770,10 +770,6 @@ std::string normalizeUtf8ToNFC(char const* value, size_t length) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   return std::string(normalized.get(), outLength);
-}
-
-std::string normalizeUtf8ToNFC(std::string const& value) {
-  return normalizeUtf8ToNFC(value.data(), value.size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

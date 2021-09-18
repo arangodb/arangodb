@@ -24,7 +24,6 @@
 #include "NameValidator.h"
 #include "Basics/debugging.h"
 
-#include <velocypack/StringRef.h>
 #include <velocypack/Utf8Helper.h>
 
 #include <cstdint>
@@ -33,14 +32,14 @@
 namespace arangodb {
 
 /// @brief determine whether a name is a system object name
-bool NameValidator::isSystemName(std::string const& name) noexcept {
+bool NameValidator::isSystemName(std::string_view name) noexcept {
   return !name.empty() && name[0] == '_';
 }
 
 /// @brief checks if a database name is valid
 /// returns true if the name is allowed and false otherwise
 bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
-                                          arangodb::velocypack::StringRef const& name) noexcept {
+                                          std::string_view name) noexcept {
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
@@ -109,7 +108,7 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
 /// @brief checks if a collection name is valid
 /// returns true if the name is allowed and false otherwise
 bool CollectionNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
-                                            arangodb::velocypack::StringRef const& name) noexcept {
+                                            std::string_view name) noexcept {
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
@@ -164,7 +163,7 @@ bool CollectionNameValidator::isAllowedName(bool allowSystem, bool extendedNames
 /// @brief checks if a view name is valid
 /// returns true if the name is allowed and false otherwise
 bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
-                                      arangodb::velocypack::StringRef const& name) noexcept {
+                                      std::string_view name) noexcept {
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
@@ -219,7 +218,7 @@ bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
 /// @brief checks if an index name is valid
 /// returns true if the name is allowed and false otherwise
 bool IndexNameValidator::isAllowedName(bool extendedNames,
-                                       arangodb::velocypack::StringRef const& name) noexcept {
+                                       std::string_view name) noexcept {
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
@@ -267,7 +266,7 @@ bool IndexNameValidator::isAllowedName(bool extendedNames,
 /// @brief checks if an analyzer name is valid
 /// returns true if the name is allowed and false otherwise
 bool AnalyzerNameValidator::isAllowedName(bool extendedNames,
-                                          arangodb::velocypack::StringRef const& name) noexcept {
+                                          std::string_view name) noexcept {
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
