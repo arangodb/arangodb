@@ -1011,7 +1011,7 @@ std::vector<RestoreFeature::DatabaseInfo> RestoreFeature::determineDatabaseList(
     // sort by name, with _system last
     // this is necessary because in the system database there is the _users collection,
     // and we have to process users last of all. otherwise we risk updating the
-    // credentials for the user which users the current arangorestore connection, and
+    // credentials for the user which uses the current arangorestore connection, and
     // this will make subsequent arangorestore calls to the server fail with "unauthorized"
     std::sort(databases.begin(), databases.end(), [](auto const& lhs, auto const& rhs) {
       if (lhs.name == StaticStrings::SystemDatabase && rhs.name != StaticStrings::SystemDatabase) {
