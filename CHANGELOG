@@ -47,6 +47,29 @@ devel
   (`_key` values) are not affected by this feature and will remain as in
   previous versions of ArangoDB.
 
+* Add `--datatype` startup option to arangoimport, in order to hard-code the
+  datatype (null/boolean/number/string) for certain attributes in the CSV/TSV import.
+  For example, given the following input file:
+
+      key,price,weight,fk
+      123456,200,5,585852
+      864924,120,10,9998242
+      9949,70,11.5,499494
+      6939926,2130,5,96962612
+
+  When invoking arangoimport with the startup options
+
+      --datatype key=string 
+      --datatype price=number 
+      --datatype weight=number 
+      --datatype fk=string
+
+  it will turn the numeric-looking values in "key" into strings (so that they
+  can be used in the `_key` attribute), but treat the attributes "price" and
+  "weight" as numbers. The values in attribute "fk" finally will be treated as
+  strings again (potentially because they are used for linking to other "_key"
+  values).
+
 * Avoid the acquisition of a recursive read lock on server shutdown, which
   could in theory lead to shutdown hangs at least if a concurrent thread is
   trying to modify the list of collections (very unlikely and never observed
