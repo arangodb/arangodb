@@ -1,14 +1,11 @@
 /*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/*global arango, assertEqual, assertTrue, assertNotNull, assertNotEqual, fail*/
+/*global assertEqual, assertTrue, assertNotNull, assertNotEqual, fail*/
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the document interface
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,10 +19,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
