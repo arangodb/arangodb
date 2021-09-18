@@ -1834,7 +1834,6 @@ void RestoreFeature::start() {
 
   // enumerate all databases present in the dump directory (in case of
   // --all-databases=true, or use just the flat files in case of --all-databases=false)
-  //std::vector<std::pair<std::string, VPackBuilder>> databases;
   std::vector<DatabaseInfo> databases = determineDatabaseList(client.databaseName());
 
   std::unique_ptr<SimpleHttpClient> httpClient;
