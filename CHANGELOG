@@ -1,6 +1,11 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* Prevent stealing of values from AQL const value registers. This fixes an
+  issue for queries that produce constant results (known at query compile time)
+  when the queries are executed directly on a DB server in a cluster (which is
+  not supported, but may happen for troubleshooting).
+
 * Fix active failover, so that the new host actually has working
   foxx services. (BTS-558)
 
