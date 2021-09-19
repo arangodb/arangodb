@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed BTS-562: reduce-extraction-to-projection optimization returns null for 
+  one attribute if nested attributes are named the same.
+
 * Add `--datatype` startup option to arangoimport, in order to hard-code the
   datatype (null/boolean/number/string) for certain attributes in the CSV/TSV import.
   For example, given the following input file:
