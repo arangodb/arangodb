@@ -1,6 +1,9 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-562: reduce-extraction-to-projection optimization returns null for 
+  one attribute if nested attributes are named the same.
+
 * Fix active failover, so that the new host actually has working
   foxx services. (BTS-558)
 
