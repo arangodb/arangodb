@@ -977,6 +977,11 @@ void SupervisedScheduler::trackEndOngoingLowPriorityTask() {
   }
 }
 
+/// @brief returns the last stored dequeue time [ms]
+uint64_t SupervisedScheduler::getLastLowPriorityDequeueTime() const noexcept {
+  return _metricsLastLowPriorityDequeueTime.load();
+}
+
 void SupervisedScheduler::setLastLowPriorityDequeueTime(uint64_t time) noexcept {
   // update only probabilistically, in order to reduce contention on the gauge
   if ((_sharedPRNG.rand() & 7) == 0) {

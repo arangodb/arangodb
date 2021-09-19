@@ -202,6 +202,7 @@ class StaticStrings {
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
   static std::string const XArangoFrontend;
+  static std::string const XArangoQueueTimeSeconds;
 
   // mime types
   static std::string const MimeTypeDump;
