@@ -67,7 +67,7 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice definition)
   }
 
   bool extendedNames = vocbase.server().getFeature<DatabaseFeature>().extendedNamesForViews();
-  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, arangodb::velocypack::StringRef(name()))) {
+  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, name())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 

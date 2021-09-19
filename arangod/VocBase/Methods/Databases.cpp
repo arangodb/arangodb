@@ -183,7 +183,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
 
   bool extendedNames = info.server().getFeature<DatabaseFeature>().extendedNamesForDatabases(); 
 
-  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, arangodb::velocypack::StringRef(info.getName()))) {
+  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, info.getName())) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 

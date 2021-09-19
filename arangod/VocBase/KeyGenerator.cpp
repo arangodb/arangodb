@@ -44,6 +44,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include <array>
+#include <string_view>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -864,7 +865,7 @@ bool KeyGenerator::validateId(char const* key, size_t len, bool extendedNames, s
   if (p == key) {
     // non-numeric id
     if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames,
-                                                arangodb::velocypack::StringRef(key, split))) {
+                                                std::string_view(key, split))) {
       return false;
     }
   } else {

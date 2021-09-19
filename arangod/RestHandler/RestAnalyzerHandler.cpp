@@ -24,6 +24,8 @@
 
 #include "RestAnalyzerHandler.h"
 
+#include <string_view>
+
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
@@ -94,8 +96,8 @@ void RestAnalyzerHandler::createAnalyzer( // create
 
   bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
   if (!AnalyzerNameValidator::isAllowedName(extendedNames,
-                                            velocypack::StringRef(splittedAnalyzerName.second.c_str(),
-                                                                  splittedAnalyzerName.second.size()))) {
+                                            std::string_view(splittedAnalyzerName.second.c_str(),
+                                                             splittedAnalyzerName.second.size()))) {
     generateError(arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       "invalid characters in analyzer name '" + static_cast<std::string>(splittedAnalyzerName.second) + "'"
@@ -381,7 +383,7 @@ void RestAnalyzerHandler::removeAnalyzer(
 
   bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
   if (!AnalyzerNameValidator::isAllowedName(extendedNames,
-                                            velocypack::StringRef(name.c_str(), name.size()))) {
+                                            std::string_view(name.c_str(), name.size()))) {
     generateError(arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("Invalid characters in analyzer name '").append(name)

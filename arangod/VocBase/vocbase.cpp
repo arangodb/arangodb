@@ -1066,7 +1066,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
                                             StaticStrings::DataSourceName, "");
     bool isSystem = VelocyPackHelper::getBooleanValue(parameters, StaticStrings::DataSourceSystem, false);
     bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForCollections();
-    valid = CollectionNameValidator::isAllowedName(isSystem, extendedNames, arangodb::velocypack::StringRef(name));
+    valid = CollectionNameValidator::isAllowedName(isSystem, extendedNames, name);
   }
 
   if (!valid) {
@@ -1202,7 +1202,7 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid, std::string const& 
   }
 
   bool extendedNames = databaseFeature.extendedNamesForViews();
-  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, arangodb::velocypack::StringRef(newName))) {
+  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, newName)) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1421,7 +1421,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
                                             StaticStrings::DataSourceName, "");
   
     bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForCollections();
-    valid &= ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, arangodb::velocypack::StringRef(name));
+    valid &= ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, name);
   }
 
   if (!valid) {

@@ -24,6 +24,8 @@
 
 #include "v8-analyzers.h"
 
+#include <string_view>
+
 #include <velocypack/Parser.h>
 #include <velocypack/StringRef.h>
 
@@ -292,11 +294,11 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool extendedNames = v8g->_server.getFeature<arangodb::DatabaseFeature>().extendedNamesForAnalyzers();
   if (!arangodb::AnalyzerNameValidator::isAllowedName(extendedNames,
-                                                      arangodb::velocypack::StringRef(splittedAnalyzerName.second.c_str(),
-                                                                                      splittedAnalyzerName.second.size()))) {
+                                                      std::string_view(splittedAnalyzerName.second.c_str(),
+                                                                       splittedAnalyzerName.second.size()))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("invalid characters in analyzer name '").append(splittedAnalyzerName.second.c_str()).append("'")
+      std::string("invalid characters in analyzer name '").append(splittedAnalyzerName.second).append("'")
     );
 
     return;
@@ -579,12 +581,11 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool extendedNames = v8g->_server.getFeature<arangodb::DatabaseFeature>().extendedNamesForAnalyzers();
   if (!arangodb::AnalyzerNameValidator::isAllowedName(extendedNames,
-                                                      arangodb::velocypack::StringRef(splittedAnalyzerName.second.c_str(),
-                                                                                      splittedAnalyzerName.second.size()))) {
+                                                      std::string_view(splittedAnalyzerName.second.c_str(),
+                                                                       splittedAnalyzerName.second.size()))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("Invalid characters in analyzer name '").append(splittedAnalyzerName.second)
-        .append("'.")
+      std::string("Invalid characters in analyzer name '").append(splittedAnalyzerName.second).append("'")
     );
   }
 

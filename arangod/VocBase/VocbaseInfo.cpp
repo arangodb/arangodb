@@ -307,7 +307,7 @@ Result CreateDatabaseInfo::checkOptions() {
 
   Result res;
 
-  if (!DatabaseNameValidator::isAllowedName(isSystem, extendedNames, arangodb::velocypack::StringRef(_name))) {
+  if (!DatabaseNameValidator::isAllowedName(isSystem, extendedNames, _name)) {
     res.reset(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 

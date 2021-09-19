@@ -755,7 +755,7 @@ Result Collections::rename(LogicalCollection& collection,
     }
 
     bool extendedNames = collection.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections(); 
-    if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames, arangodb::velocypack::StringRef(newName))) {
+    if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames, newName)) {
       return TRI_ERROR_ARANGO_ILLEGAL_NAME;
     }
   }

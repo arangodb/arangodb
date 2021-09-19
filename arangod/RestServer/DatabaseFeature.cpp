@@ -85,8 +85,7 @@ arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(arangodb::application_f
 /// @brief return either the name of the database to be used as a folder name, or its id if its name contains special characters and is not fully supported in every OS
 [[nodiscard]] std::string getDatabaseDirName(std::string const& databaseName, std::string const& id) { 
   bool isOldStyleName =
-      DatabaseNameValidator::isAllowedName(/*allowSystem*/ true, /*extendedNames*/ false, 
-                                           arangodb::velocypack::StringRef(databaseName));
+      DatabaseNameValidator::isAllowedName(/*allowSystem*/ true, /*extendedNames*/ false, databaseName);
   return (isOldStyleName || id.empty()) ? databaseName : id;
 }
 
@@ -651,7 +650,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   result = nullptr;
 
   bool extendedNames = extendedNamesForDatabases();
-  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, arangodb::velocypack::StringRef(name))) {
+  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, name)) {
     return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};
   }
 
@@ -1309,8 +1308,7 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
           std::string errorMsg(res.errorMessage());
           errorMsg.append(": '").append(databaseName).append("'");
           // check if the name would be allowed when using extended names
-          if (DatabaseNameValidator::isAllowedName(/*isSystem*/ false, /*extendedNames*/ true, 
-                                                   arangodb::velocypack::StringRef(databaseName))) {
+          if (DatabaseNameValidator::isAllowedName(/*isSystem*/ false, /*extendedNames*/ true, databaseName)) {
             errorMsg.append(
                 ". This database name would be allowed when using the "
                 "extended naming convention for databases, which is "

@@ -1158,7 +1158,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
-  if (!AnalyzerNameValidator::isAllowedName(extendedNames, velocypack::StringRef(split.second.c_str(), split.second.size()))) {
+  if (!AnalyzerNameValidator::isAllowedName(extendedNames, std::string_view(split.second.c_str(), split.second.size()))) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       "invalid characters in analyzer name '"s + std::string(split.second) + "'"
@@ -1221,7 +1221,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   auto split = splitAnalyzerName(name);
 
   bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
-  if (!AnalyzerNameValidator::isAllowedName(extendedNames, velocypack::StringRef(split.second.c_str(), split.second.size()))) {
+  if (!AnalyzerNameValidator::isAllowedName(extendedNames, std::string_view(split.second.c_str(), split.second.size()))) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       std::string("invalid characters in analyzer name '") + std::string(split.second) + "'" };
