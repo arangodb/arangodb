@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Escaper.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 
@@ -93,7 +94,8 @@ void UnicodeCharsEscaper::writeCharHelper(uint16_t c, char*& output) {
 }
 
 void UnicodeCharsEscaper::writeCharIntoOutputBuffer(uint32_t c, char*& output, int numBytes) {
-  if (numBytes == 4) {
+  if (numBytes == 4) { // when the unicode requires 4 bytes for representation, its code is escaped with surrogate pairs, the highest and the lowest bytes of the character
+    TRI_ASSERT(c >= 0x10000U);
     c -= 0x10000U;
     uint16_t high = (uint16_t) (((c & 0xffc00U) >> 10) + 0xd800);
     writeCharHelper(high, output);
@@ -118,80 +120,80 @@ void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
   unsigned char const* end = p + message.length();
   while (p < end) {
     unsigned char c = *p;
-    if (c < 128) {
-      if (c < 0x20) {
-        this->_controlHandler.writeCharIntoOutputBuffer(c, buffer, 1);
-      } else {
+    if (c < 128) { // the character is ASCII
+      if (c < 0x20 || c == 0x7f) { // the character is either control, which comprises codes until 32, or is DEL, which is not a visible character
+        this->_controlHandler.writeCharIntoOutputBuffer(c, buffer, 1); //retain or escape the control character
+      } else { // is a visible ascii character
         *buffer++ = c;
       }
-      // single byte
       p++;
-    } else if (c < 224) {
-      if ((p + 1) >= end) {
-        *buffer++ = '?';
-        break;
-      }
-      uint8_t d = (uint8_t) * (p + 1);
-      if ((d & 0xC0) == 0x80) {
-        this->_unicodeHandler.writeCharIntoOutputBuffer(((c & 0x1F) << 6) | (d & 0x3F),
-                                                        buffer, 2);
-        ++p;
-      } else {
-        *buffer++ = '?';
-      }
-      p++;
-    } else if (c < 240) {
-      if ((p + 2) >= end) {
+    } else if (c < 224) { // unicode which requires 2 bytes for representation
+      if ((p + 1) >= end) { // no next byte to represent it, so it's broken unicode
         *buffer++ = '?';
         p++;
         continue;
       }
       uint8_t d = (uint8_t) * (p + 1);
-      if ((d & 0xC0) == 0x80) {
+      if ((d & 0xC0) == 0x80) { // is within the rules for representing unicode characters for the second byte
+        this->_unicodeHandler.writeCharIntoOutputBuffer(((c & 0x1F) << 6) | (d & 0x3F),
+                                                        buffer, 2); // retain or escape the unicode character represented by 2 bytes
+        ++p;
+      } else { // the next byte is broken unicode
+        *buffer++ = '?';
+      }
+      p++;
+    } else if (c < 240) { // unicode which requires 3 bytes for representation
+      if ((p + 2) >= end) { // there's no 2 other sequential bytes to represent the unicode character, so it's broken unicode
+        *buffer++ = '?';
+        p++;
+        continue;
+      }
+      uint8_t d = (uint8_t) * (p + 1);
+      if ((d & 0xC0) == 0x80) { // second byte is within the rules for representing a unicode character that requires 3 bytes for representation
         ++p;
         uint8_t e = (uint8_t) * (p + 1);
-        if ((e & 0xC0) == 0x80) {
+        if ((e & 0xC0) == 0x80) { // third byte is within the rules for representing a unicode character that requires 3 bytes for representation
           ++p;
           this->_unicodeHandler.writeCharIntoOutputBuffer(
-              ((c & 0x0F) << 12) | ((d & 0x3F) << 6) | (e & 0x3F), buffer, 3);
-        } else {
+              ((c & 0x0F) << 12) | ((d & 0x3F) << 6) | (e & 0x3F), buffer, 3); // retain or escape the unicode character represented by 3 bytes
+        } else { // second byte is not within the rules for representing a unicode character
           *buffer++ = '?';
         }
-      } else {
+      } else { // third byte is not within the rules for representing a unicode character
         *buffer++ = '?';
       }
       p++;
-    } else if (c < 248) {
-      if ((p + 3) >= end) {
+    } else if (c < 248) { // unicode which requires 4 bytes for representation
+      if ((p + 3) >= end) { // there's not 3 sequential bytes for representing this unicode character, so it's broken unicode
         *buffer++ = '?';
         p++;
         continue;
       }
       uint8_t d = (uint8_t) * (p + 1);
-      if ((d & 0xC0) == 0x80) {
+      if ((d & 0xC0) == 0x80) { // second byte is within the rules for representing a unicode character that requires 3 bytes for representation
         ++p;
         uint8_t e = (uint8_t) * (p + 1);
-        if ((e & 0xC0) == 0x80) {
+        if ((e & 0xC0) == 0x80) { // third byte is within the rules for representing a unicode character that requires 3 bytes for representation
           ++p;
           uint8_t f = (uint8_t) * (p + 1);
-          if ((f & 0xC0) == 0x80) {
+          if ((f & 0xC0) == 0x80) { // fourth byte is within the rules for representing a unicode character that requires 3 bytes for representation
             p++;
             this->_unicodeHandler.writeCharIntoOutputBuffer(((c & 0x07) << 18) |
                                                                 ((d & 0x3F) << 12) |
                                                                 ((e & 0x3F) << 6) |
                                                                 (f & 0x3F),
-                                                            buffer, 4);
-          } else {
+                                                            buffer, 4); // retain or escape the unicode character represented by 4 bytes
+          } else { // second byte is not within the rules for representing a unicode character
             *buffer++ = '?';
           }
-        } else {
+        } else { // third byte is not within the rules for representing a unicode character
           *buffer++ = '?';
         }
-      } else {
+      } else { // fourth byte is not within the rules for representing a unicode character
         *buffer++ = '?';
       }
       p++;
-    } else {
+    } else { // broken unicode, is not ascii and not represented with 2, 3 or 4 bytes
       *buffer++ = '?';
       // invalid UTF-8 sequence
       break;

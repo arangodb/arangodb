@@ -28,6 +28,8 @@
 
 #include "Logger/Escaper.h"
 
+#include "Logger/LogMacros.h"
+
 #include <string.h>
 #include <string>
 
@@ -40,6 +42,22 @@ using namespace arangodb;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
+
+class EscaperTest : public ::testing::Test {
+ protected:
+  std::string asciiVisibleChars;
+  std::string bigString;
+
+  EscaperTest() {
+    for (int i = 33; i <= 126; ++i) {
+      asciiVisibleChars += i;
+    }
+    while (bigString.size() < 1000) {
+      bigString += asciiVisibleChars;
+    }
+  }
+
+};
 
 template <typename EscaperType>
 void verifyExpectedValues(std::string const& inputString, std::string const& expectedOutput,
@@ -55,8 +73,10 @@ void verifyExpectedValues(std::string const& inputString, std::string const& exp
   EXPECT_EQ(outputString, expectedOutput);
 }
 
-TEST(EscaperTest, test_suppress_control_retain_unicode) {
+TEST_F(EscaperTest, test_suppress_control_retain_unicode) {
   Escaper<ControlCharsSuppressor, UnicodeCharsRetainer> escaper;
+  verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, asciiVisibleChars.size()*4, escaper);
+  verifyExpectedValues(bigString, bigString, bigString.size()*4, escaper);
   verifyExpectedValues("€", "€", 12, escaper);
   verifyExpectedValues(" €  ", " €  ", 24, escaper);
   verifyExpectedValues("mötör", "mötör", 28, escaper);
@@ -77,11 +97,12 @@ TEST(EscaperTest, test_suppress_control_retain_unicode) {
   validUnicode = "𐍈";
   verifyExpectedValues(validUnicode.substr(0, 1), "?", 4, escaper);
   verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "? ", 8, escaper);
-  // invalid unicode: '\ufffe', '\U110000','\ud800', 'test\xFE'
 }
 
-TEST(EscaperTest, test_suppress_control_escape_unicode) {
+TEST_F(EscaperTest, test_suppress_control_escape_unicode) {
   Escaper<ControlCharsSuppressor, UnicodeCharsEscaper> escaper;
+  verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, asciiVisibleChars.size()*6, escaper);
+  verifyExpectedValues(bigString, bigString, bigString.size()*6, escaper);
   verifyExpectedValues("€", "\\u20AC", 18, escaper);
   verifyExpectedValues(" €  ", " \\u20AC  ", 36, escaper);
   verifyExpectedValues("mötör", "m\\u00F6t\\u00F6r", 42, escaper);
@@ -103,8 +124,11 @@ TEST(EscaperTest, test_suppress_control_escape_unicode) {
   verifyExpectedValues("\x07", " ", 6, escaper);
   verifyExpectedValues(std::string("\0", 1), " ", 6, escaper);
 }
-TEST(EscaperTest, test_escape_control_retain_unicode) {
+
+TEST_F(EscaperTest, test_escape_control_retain_unicode) {
   Escaper<ControlCharsEscaper, UnicodeCharsRetainer> escaper;
+  verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, asciiVisibleChars.size()*4, escaper);
+  verifyExpectedValues(bigString, bigString, bigString.size()*4, escaper);
   verifyExpectedValues("€", "€", 12, escaper);
   verifyExpectedValues(" €  ", " €  ", 24, escaper);
   verifyExpectedValues("mötör", "mötör", 28, escaper);
@@ -126,8 +150,11 @@ TEST(EscaperTest, test_escape_control_retain_unicode) {
   verifyExpectedValues("\x07", "\\x07", 4, escaper);
   verifyExpectedValues(std::string("\0", 1), "\\x00", 4, escaper);
 }
-TEST(EscaperTest, test_escape_control_escape_unicode) {
+
+TEST_F(EscaperTest, test_escape_control_escape_unicode) {
   Escaper<ControlCharsEscaper, UnicodeCharsEscaper> escaper;
+  verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, asciiVisibleChars.size()*6, escaper);
+  verifyExpectedValues(bigString, bigString, bigString.size()*6, escaper);
   verifyExpectedValues("€", "\\u20AC", 18, escaper);
   verifyExpectedValues(" €  ", " \\u20AC  ", 36, escaper);
   verifyExpectedValues("mötör", "m\\u00F6t\\u00F6r", 42, escaper);
