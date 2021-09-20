@@ -373,6 +373,7 @@ function setupBinaries (builddir, buildType, configDir) {
       throw new Error('unable to locate ' + checkFiles[b]);
     }
   }
+  global.ARANGOSH_BIN = ARANGOSH_BIN;
 }
 
 // //////////////////////////////////////////////////////////////////////////////

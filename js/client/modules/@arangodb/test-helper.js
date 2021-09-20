@@ -180,8 +180,6 @@ exports.getMetric = function (endpoint, name) {
   }
 };
 
-const arangosh = fs.join(global.ARANGOSH_PATH, 'arangosh' + pu.executableExt);
-
 const debug = function (text) {
   console.warn(text);
 };
@@ -208,7 +206,7 @@ const runShell = function(args, prefix) {
     argv.push(options['javascript.module-directory'][o]);
   }
 
-  let result = internal.executeExternal(arangosh, argv, false /*usePipes*/);
+  let result = internal.executeExternal(global.ARANGOSH_BIN, argv, false /*usePipes*/);
   assertTrue(result.hasOwnProperty('pid'));
   let status = internal.statusExternal(result.pid);
   assertEqual(status.status, "RUNNING");
@@ -249,7 +247,7 @@ while (++saveTries < 100) {
 exports.runShell = runShell;
 
 exports.runParallelArangoshTests = function (tests, duration, cn) {
-  assertTrue(fs.isFile(arangosh), "arangosh executable not found!");
+  assertTrue(fs.isFile(global.ARANGOSH_BIN), "arangosh executable not found!");
   
   assertFalse(db[cn].exists("stop"));
   let clients = [];
