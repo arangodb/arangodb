@@ -33,24 +33,23 @@ const jsunity = require('jsunity');
 const colName1 = 'UnitTestsRecovery1';
 const colName2 = 'UnitTestsRecovery2';
 
+let waitForUpdatesToFinish = (c) => {
+  while (true) {
+    let updates = c._revisionTreePendingUpdates();
+    if (!updates.hasOwnProperty('inserts')) {
+      return;
+    }
+    if (updates.inserts === 0 && updates.removes === 0) {
+      return;
+    }
+    internal.sleep(0.25);
+  }
+};
+
 function runSetup () {
   'use strict';
   jsunity.jsUnity.attachAssertions();
 
-  let waitForUpdatesToFinish = (c) => {
-    while (true) {
-      let updates = c._revisionTreePendingUpdates();
-      if (!updates.hasOwnProperty('inserts')) {
-        return;
-      }
-      if (updates.inserts === 0 && updates.removes === 0) {
-        return;
-      }
-      internal.sleep(0.25);
-    }
-  };
-
-  
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
     docs.push({ value: i });
@@ -108,11 +107,15 @@ function recoverySuite () {
 
     testRevisionTreeInconsistency: function() {
       const c1 = db._collection(colName1);
+      waitForUpdatesToFinish(c1);
+      assertEqual(2000, c1.count());
       assertEqual(c1._revisionTreeSummary().count, c1.count());
       assertEqual(c1._revisionTreeSummary().count, 2000);
       assertTrue(c1._revisionTreeVerification().equal);
 
       const c2 = db._collection(colName2);
+      waitForUpdatesToFinish(c2);
+      assertEqual(1000, c2.count());
       assertEqual(c2._revisionTreeSummary().count, c2.count());
       assertEqual(c2._revisionTreeSummary().count, 1000);
       assertTrue(c2._revisionTreeVerification().equal);

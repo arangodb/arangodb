@@ -511,32 +511,31 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
 
 rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksdb::SequenceNumber maxCommitSeq) {
   rocksdb::SequenceNumber seq = maxCommitSeq;
-  bool checkBuffers = true;
 
   // first update so we don't under-report
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
 
-  // limit to before any pending buffered updates
-  TRI_IF_FAILURE("needToPersistRevisionTree::checkBuffers") {
-    checkBuffers = false;
+  if (!_revisionTruncateBuffer.empty() && *_revisionTruncateBuffer.begin() - 1 < seq) {
+    seq = *_revisionTruncateBuffer.begin() - 1;
+  }
+  
+  if (!_logicalCollection.system()) {
+    LOG_DEVEL 
+        << "lastSerialized seq: " << maxCommitSeq << ", collection: " << _logicalCollection.name() << ", insert min is: " << (_revisionInsertBuffers.empty() ? std::string("-") : std::to_string(_revisionInsertBuffers.begin()->first));
   }
 
-  if (checkBuffers) {
-    if (!_revisionTruncateBuffer.empty() && *_revisionTruncateBuffer.begin() - 1 < seq) {
-      seq = *_revisionTruncateBuffer.begin() - 1;
-    }
+  if (!_revisionInsertBuffers.empty() && _revisionInsertBuffers.begin()->first - 1 < seq) {
+    seq = _revisionInsertBuffers.begin()->first - 1;
+  }
 
-    if (!_revisionInsertBuffers.empty() && _revisionInsertBuffers.begin()->first - 1 < seq) {
-      seq = _revisionInsertBuffers.begin()->first - 1;
-    }
-
-    if (!_revisionRemovalBuffers.empty() && _revisionRemovalBuffers.begin()->first - 1 <= seq) {
-      seq = _revisionRemovalBuffers.begin()->first - 1;
-    }
+  if (!_revisionRemovalBuffers.empty() && _revisionRemovalBuffers.begin()->first - 1 <= seq) {
+    seq = _revisionRemovalBuffers.begin()->first - 1;
   }
 
   // limit to before the last thing we applied, since we haven't persisted it
   rocksdb::SequenceNumber applied = _revisionTreeApplied.load();
+  LOG_DEVEL 
+      << "YY lastSerialized seq: " << maxCommitSeq << ", collection: " << _logicalCollection.name() << ", applied: " << applied;
   if (applied > _revisionTreeSerializedSeq && applied - 1 < seq) {
     seq = applied - 1;
   }
@@ -544,12 +543,16 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
   bool adjusted = false;
   // now actually advance it if we can
   if (seq > _revisionTreeSerializedSeq) {
-    _revisionTreeSerializedSeq = seq;
-    if (!_logicalCollection.system()) {
-      LOG_DEVEL 
-          << "adjusting seq for " << _logicalCollection.name() << ", seq: " << seq;
+    if (_meta.hasBlockerUpTo(seq)) {
+      LOG_DEVEL << "OOOOH: " << _logicalCollection.name();
+    } else {
+      _revisionTreeSerializedSeq = seq;
+      if (!_logicalCollection.system()) {
+        LOG_DEVEL 
+            << "adjusting seq for " << _logicalCollection.name() << ", seq: " << seq;
+      }
+      adjusted = true;
     }
-    adjusted = true;
   }
   
   if (!_logicalCollection.system()) {
@@ -889,7 +892,7 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
     return;
   }
 
-  if (_revisionTreeApplied.load() > seq) {
+  if (_revisionTreeApplied.load() >= seq) {
     TRI_ASSERT(_logicalCollection.vocbase()
                    .server()
                    .getFeature<EngineSelectorFeature>()
@@ -1090,6 +1093,9 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         
+        if (insertIt->first <= _revisionTreeApplied.load()) {
+          LOG_DEVEL << "OOPS. INSERTIT: " << insertIt->first << ", REVISIONTREE: " << _revisionTreeApplied.load();
+        }
         TRI_ASSERT(insertIt->first > _revisionTreeApplied.load());
 
         // apply inserts, without holding the lock

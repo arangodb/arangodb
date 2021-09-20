@@ -699,6 +699,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         // seq anyway, so take the max
   
         rocksdb::SequenceNumber useSeq = std::max(globalSeq, seq);
+        LOG_DEVEL << "recovered seq no for " << coll.name() << " is " << seq;
         rcoll->setRevisionTree(std::move(tree), useSeq);
 
         LOG_TOPIC("92cab", TRACE, Logger::ENGINES)

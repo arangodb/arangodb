@@ -176,6 +176,7 @@ void RocksDBTransactionCollection::prepareTransaction(TransactionId trxId, uint6
 
     auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
     TRI_ASSERT(beginSeq > 0);
+    LOG_DEVEL << "collection " << _collection->name() << ", requesting blocker " << beginSeq;
     coll->meta().placeBlocker(trxId, beginSeq);
   }
 }
