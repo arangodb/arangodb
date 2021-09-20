@@ -1,4 +1,6 @@
-import { isEqual, sortBy } from 'lodash';
+/* global $ */
+
+import { isEqual, sortBy, map } from 'lodash';
 import minimatch from 'minimatch';
 import React, { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
