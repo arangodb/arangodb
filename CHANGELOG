@@ -1,7 +1,10 @@
 v3.7.15 (XXXX-XX-XX)
 --------------------
 
-* Fixed a bug for array indexes on update of documents. See BTS-548.
+* Fixed a bug for array indexes on update of documents (BTS-548).
+
+* Fix active failover, so that the new host actually has working foxx services 
+  (BTS-558).
 
 * Updated OpenSSL to 1.1.1l and OpenLDAP to 2.4.59.
 
