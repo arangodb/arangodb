@@ -70,7 +70,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 };
 ```
 
-### existing Javascript tests
+### Existing Javascript tests
 
 #### [permission] => tests/js/client/permissions / [server_parameters] => tests/js/client/server_parameters / [server_permissions] => client/server_permissions
 This set of testsuites is here to revalidate startup parameters of arangodb processes.
