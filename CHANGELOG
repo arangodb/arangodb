@@ -98,6 +98,10 @@ v3.8.2 (XXXX-XX-XX)
 v3.8.1 (2021-08-27)
 -------------------
 
+* Reduce internal priority of AQL execution. This prevents possible deadlocks
+  with modification operations in a cluster and replicationFactor >= 2, and can
+  also improve responsiveness under high load of AQL queries.
+
 * Updated arangosync to 2.6.0.
 
 * Added protocol specific metrics: histogram about request body size, total
