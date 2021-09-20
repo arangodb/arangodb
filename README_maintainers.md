@@ -18,7 +18,7 @@ Main sections:
 - [Unittests](#unittests)
   - [invoking driver tests](#driver-tests) via scripts/unittests
   - [capturing test communication](#running-tcpdump--windump-for-the-sut) but
-    [maybe also downgrade to JSON](#forcing-downgrade-from-vpack-to-json)
+    [forcing communication to use plain-text JSON](#forcing-downgrade-from-vpack-to-json)
   - [Evaluating previous testruns](#evaluating-json-test-reports-from-previous-testruns)
     sorting by setup time etc. 
 - [what to test where and how](tests/README.md)
