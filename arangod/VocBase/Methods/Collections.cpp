@@ -880,7 +880,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return futures::makeFuture(res);
   }
 
-  auto poster = [](std::function<void()> fn) -> bool {
+  auto poster = [](std::function<void()> fn) -> void {
     return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
   };
 
