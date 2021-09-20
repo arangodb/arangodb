@@ -303,8 +303,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
             if (!collection->system()) {  // we will not drop system collections here
               toDrop.emplace_back(collection);
             }
-          },
-          false);
+          });
 
       for (auto const& collection : toDrop) {
         try {
