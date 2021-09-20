@@ -378,14 +378,12 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   // the transaction id that is returned here is the seqno of the transaction's
   // first write operation in the WAL
   rocksdb::SequenceNumber postCommitSeq = _rocksTransaction->GetId();
-  LOG_DEVEL << "POST COMMIT SEQ1: " << postCommitSeq;
   TRI_ASSERT(postCommitSeq != 0);
   if (ADB_LIKELY(numOps > 0)) {
     // we now need to add 1 for each write operation carried out in the trx
     // to get to the transaction's last operation's seqno
     postCommitSeq += numOps - 1;  // add to get to the next batch
   }
-  LOG_DEVEL << "POST COMMIT SEQ2: " << postCommitSeq;
   // now use the transaction's last seqno for persisting revision trees
   _lastWrittenOperationTick = postCommitSeq;
 

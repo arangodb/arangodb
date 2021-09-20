@@ -478,9 +478,6 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     rocksdb::SequenceNumber seq = maxCommitSeq;
     try {
       seq = rcoll->serializeRevisionTree(output, maxCommitSeq, force);
-      if (!coll.system()) {
-        LOG_DEVEL << "persisted - sequence number for " << coll.name() << " is " << seq;
-      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("33691", WARN, Logger::ENGINES)
           << context << ": caught exception during revision tree serialization: " << ex.what();
@@ -535,15 +532,11 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   
     TRI_IF_FAILURE("serializeMeta::delayCallToLastSerializedRevisionTree") {
       if (!coll.system()) {
-        LOG_DEVEL << "going to sleep for 5 seconds for " << coll.name();
         std::this_thread::sleep_for(std::chrono::seconds(5));
       }
     }
 
     rocksdb::SequenceNumber seq = rcoll->lastSerializedRevisionTree(maxCommitSeq);
-    if (!coll.system()) {
-      LOG_DEVEL << "no persistence - sequence number for " << coll.name() << " is now " << seq;
-    }
     appliedSeq = std::min(appliedSeq, seq);
         
     if (coll.useSyncByRevision()) {
@@ -699,7 +692,6 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         // seq anyway, so take the max
   
         rocksdb::SequenceNumber useSeq = std::max(globalSeq, seq);
-        LOG_DEVEL << "recovered seq no for " << coll.name() << " is " << seq;
         rcoll->setRevisionTree(std::move(tree), useSeq);
 
         LOG_TOPIC("92cab", TRACE, Logger::ENGINES)
