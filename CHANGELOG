@@ -1,6 +1,11 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* Prevent stealing of values from AQL const value registers. This fixes an issue
+  for queries that produce constant results (known at query compile time) when
+  the queries are executed directly on a DB server in a cluster (which is not
+  supported, but may happen for troubleshooting).
+
 * Avoid the acquisition of a recursive read lock on server shutdown, which
   could in theory lead to shutdown hangs at least if a concurrent thread is
   trying to modify the list of collections (very unlikely and never observed
