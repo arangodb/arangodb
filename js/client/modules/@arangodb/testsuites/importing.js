@@ -286,6 +286,36 @@ const impTodos = [{
   create: 'true',
   database: 'UnitTestImportCreateDatabase',
   createDatabase: 'true'
+}, {
+  id: 'importUnicode1',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'maçã',
+}, {
+  id: 'importUnicode2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: '😀',
+}, {
+  id: 'createUnicode1',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'ﻚﻠﺑ ﻞﻄﻴﻓ',
+  createDatabase: 'true'
+}, {
+  id: 'createUnicode2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'abc mötor !" \' & <>',
+  createDatabase: 'true'
 }];
 
 function importing (options) {

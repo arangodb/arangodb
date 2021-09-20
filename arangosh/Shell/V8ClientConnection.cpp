@@ -32,6 +32,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Import/ImportHelper.h"
@@ -294,6 +295,10 @@ std::string V8ClientConnection::endpointSpecification() const {
 
 application_features::ApplicationServer& V8ClientConnection::server() {
   return _server;
+}
+  
+void V8ClientConnection::setDatabaseName(std::string const& value) { 
+  _databaseName = normalizeUtf8ToNFC(value); 
 }
 
 double V8ClientConnection::timeout() const { return _requestTimeout.count(); }

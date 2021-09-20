@@ -1018,6 +1018,74 @@ function importTestSuite () {
         db._useDatabase("_system");
       }
     },
+    
+    testImportDatabaseUnicode : function () {
+      let db = require("@arangodb").db;
+      let dbs = ['maçã', '😀'];
+      try {
+        dbs.forEach((name) => {
+          let testdb = db._useDatabase(name);
+          let expected = [ { "id": 1,
+                             "one": 1,
+                             "three": 3,
+                             "two": 2 },
+                           { "a": 1234,
+                             "b": "the quick fox",
+                             "id": 2,
+                             "jumped":
+                             "over the fox",
+                             "null": null },
+                           { "id": 3,
+                             "not": "important",
+                             "spacing": "is" },
+                           { "  c  ": "h\"'ihi",
+                             "a": true,
+                             "b": false,
+                             "d": "",
+                             "id": 4 },
+                           { "id": 5 } ];
+
+          let actual = getQueryResults("FOR i IN UnitTestsImportJson1 SORT i.id RETURN i");
+          assertEqual(expected, actual);
+        });
+      } finally {
+        db._useDatabase("_system");
+      }
+    },
+    
+    testCreateDatabaseUnicode : function () {
+      let db = require("@arangodb").db;
+      let dbs = ['ﻚﻠﺑ ﻞﻄﻴﻓ', 'abc mötor !" \' & <>'];
+      try {
+        dbs.forEach((name) => {
+          let testdb = db._useDatabase(name);
+          let expected = [ { "id": 1,
+                             "one": 1,
+                             "three": 3,
+                             "two": 2 },
+                           { "a": 1234,
+                             "b": "the quick fox",
+                             "id": 2,
+                             "jumped":
+                             "over the fox",
+                             "null": null },
+                           { "id": 3,
+                             "not": "important",
+                             "spacing": "is" },
+                           { "  c  ": "h\"'ihi",
+                             "a": true,
+                             "b": false,
+                             "d": "",
+                             "id": 4 },
+                           { "id": 5 } ];
+
+          let actual = getQueryResults("FOR i IN UnitTestsImportJson1 SORT i.id RETURN i");
+          assertEqual(expected, actual);
+        });
+      } finally {
+        db._useDatabase("_system");
+      }
+    },
 
   };
 }

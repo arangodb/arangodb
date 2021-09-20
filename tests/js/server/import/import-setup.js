@@ -29,7 +29,7 @@
 
 (function () {
   'use strict';
-  var db = require("@arangodb").db;
+  let db = require("@arangodb").db;
 
   db._drop("UnitTestsImportCsvSkip");
   db._drop("UnitTestsImportJson1");
@@ -65,9 +65,22 @@
   db._drop("UnitTestsImportUniqueConstraints");
   db._drop("UnitTestsImportRemoveAttribute");
   db._drop("UnitTestsImportRemoveAttribute");
-  try {
-    db._dropDatabase("UnitTestImportCreateDatabase");
-  } catch(err) {}
+  
+  let dbs = {
+    "maçã": true, 
+    "😀": true,
+    "ﻚﻠﺑ ﻞﻄﻴﻓ": false, 
+    "abc mötor !\" ' & <>": false, 
+    "UnitTestImportCreateDatabase": false
+  };
+  Object.keys(dbs).forEach((name) => {
+    try {
+      db._dropDatabase(name);
+    } catch(err) {}
+    if (dbs[name]) {
+      db._createDatabase(name);
+    }
+  });
 
   db._create("UnitTestsImportJson1");
   db._create("UnitTestsImportJson1Gz");
