@@ -1318,7 +1318,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       options.timeout = network::Timeout(900.0);  // this can be slow!!!
       options.skipScheduler = true;  // hack to speed up future.get()
 
-      std::string const url = "/_api/collection/" + collection.name() + "/recalculateCount";
+      std::string const url = "/_api/collection/" + StringUtils::urlEncode(collection.name()) + "/recalculateCount";
 
       // send out the request
       auto future = network::sendRequest(pool, ep, fuerte::RestVerb::Put,
