@@ -1,6 +1,9 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-562: reduce-extraction-to-projection optimization returns null for
+  one attribute if nested attributes are named the same.
+
 * Prevent stealing of values from AQL const value registers. This fixes an issue
   for queries that produce constant results (known at query compile time) when
   the queries are executed directly on a DB server in a cluster (which is not
