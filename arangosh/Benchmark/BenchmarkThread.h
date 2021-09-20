@@ -63,7 +63,7 @@ class BenchmarkThread : public arangodb::Thread {
       BenchmarkOperation* operation, basics::ConditionVariable* condition,
       void (*callback)(), int threadNumber, uint64_t const batchSize,
       BenchmarkCounter<uint64_t>* operationsCounter,
-      ClientFeature& client, bool keepAlive, bool async, bool verbose,
+      ClientFeature& client, bool keepAlive, bool async, 
       double histogramIntervalSize, uint64_t histogramNumIntervals )
     : Thread(server, "BenchmarkThread"),
     _operation(operation),
@@ -240,9 +240,9 @@ class BenchmarkThread : public arangodb::Thread {
     }
 
     if (location[0] == '/') {
-      return std::string("/_db/" + t->_databaseName + location);
+      return std::string("/_db/" + basics::StringUtils::urlEncode(t->_databaseName) + location);
     }
-    return std::string("/_db/" + t->_databaseName + "/" + location);
+    return std::string("/_db/" + basics::StringUtils::urlEncode(t->_databaseName) + "/" + location);
   }
 
   /// @brief execute a batch request with numOperations parts

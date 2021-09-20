@@ -90,7 +90,7 @@ void RestActionHandler::executeAction() {
 				 ? rest::ResponseCode::MOVED_PERMANENTLY
 				 : rest::ResponseCode::FOUND);
       _response->setHeaderNC(StaticStrings::Location,
-                             "/_db/" + StringUtils::encodeURIComponent(_vocbase.name()) +
+                             "/_db/" + StringUtils::urlEncode(_vocbase.name()) +
 			     gs.redirectRootTo());
       return;
     }

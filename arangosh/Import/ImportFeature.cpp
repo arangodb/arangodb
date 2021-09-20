@@ -27,6 +27,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
@@ -591,7 +592,7 @@ void ImportFeature::start() {
 ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client, std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
-  builder.add("name", VPackValue(name));
+  builder.add("name", VPackValue(normalizeUtf8ToNFC(name)));
   builder.add("users", VPackValue(VPackValueType::Array));
   builder.openObject();
   builder.add("username", VPackValue(client.username()));
