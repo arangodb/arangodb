@@ -490,24 +490,6 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
     return true;
   }
   
-  /*
-  // TODO: fine tune
-  bool coinFlip = RandomGenerator::interval(static_cast<uint32_t>(5)) == 0;
-  if (coinFlip) {
-    return true;
-  }
-
-  {
-    std::unique_lock<std::mutex> guard(_revisionTreeLock);
-    bool beenTooLong = 30 < std::chrono::duration_cast<std::chrono::seconds>(
-                                std::chrono::steady_clock::now() - _revisionTreeSerializedTime)
-                                .count();
-    if (beenTooLong) {
-      return true;
-    }
-  }
-  */
-
   return false;
 }
 

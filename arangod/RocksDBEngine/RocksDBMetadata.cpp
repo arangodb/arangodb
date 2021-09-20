@@ -483,6 +483,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
           << context << ": caught exception during revision tree serialization: " << ex.what();
       // TODO: if we get here, we need to mark the existing tree as broken
       // and need to rebuild it
+      throw;
     }
 
     appliedSeq = std::min(appliedSeq, seq);

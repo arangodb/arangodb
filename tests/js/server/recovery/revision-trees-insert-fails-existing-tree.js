@@ -114,10 +114,12 @@ function recoverySuite () {
 
     testRevisionTreeInsertFails: function() {
       const c1 = db._collection(colName1);
+      assertEqual(2000, c1.count());
       assertEqual(c1._revisionTreeSummary().count, c1.count());
       assertEqual(c1._revisionTreeSummary().count, 2000);
 
       const c2 = db._collection(colName2);
+      assertEqual(200001, c2.count());
       assertEqual(c2._revisionTreeSummary().count, c2.count());
       assertEqual(c2._revisionTreeSummary().count, 200001);
     },
