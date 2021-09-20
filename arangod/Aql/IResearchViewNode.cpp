@@ -1711,10 +1711,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   TRI_ASSERT(_sort.first == nullptr || !_sort.first->empty());  // guaranteed by optimizer rule
   bool const ordered = !_scorers.empty();
 #ifdef USE_ENTERPRISE
-  TRI_ASSERT(_view->vocbase().server().getFeature<EngineSelectorFeature>().isRocksDB());
+  auto& engineSelectorFeature =  _view->vocbase().server().getFeature<EngineSelectorFeature>();
   bool const encrypted =
-    _view->vocbase().server().getFeature<EngineSelectorFeature>()
-      .engine<RocksDBEngine>().isEncryptionEnabled();
+    engineSelectorFeature.isRocksDB() &&
+    engineSelectorFeature.engine<RocksDBEngine>().isEncryptionEnabled();
 #endif
   
   switch (materializeType) {
