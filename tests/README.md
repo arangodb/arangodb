@@ -1,7 +1,7 @@
 # Tests
-When creating tests, please bear in mind, that every test added will add additional time during the PR-Runs.
+When creating tests, please bear in mind, that every test added will add additional time during the PR runs.
 
-So every test added *will* slow down PRs.
+So every added test *will* slow down PR runs.
 
 Please also note that tests in the CI share a system with other runs in parallel. 
 So CI tests are not a place to max out I/O, Memory, or such.
