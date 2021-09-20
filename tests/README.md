@@ -12,7 +12,7 @@ If splitting a testsuite between read only and writing tests is necessary for th
 
 ### Testsuites
 Testsuites live in `js/client/modules/@arangodb/testsuites/`. This folder is spidered during the startup of `testing.js` and all files in it are loaded automatically.
-Please think twice, whether you need to create a new testsuite, or your test will fit into one of the existing ones. Suites need to be registered within Oskar.
+Please think twice whether you need to create a new testsuite or your test will fit into one of the existing ones. All test suites need to be registered within Oskar in order to be executed during CI tests.
 The Plugin structure works as follows: 
 
 ```
