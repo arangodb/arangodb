@@ -1374,7 +1374,9 @@ function checkInstanceAlive (instanceInfo, options) {
 function checkServerFailurePoints(instanceInfo) {
   let failurePoints = [];
   instanceInfo.arangods.forEach(arangod => {
-    if (arangod.role !== "agent") {
+    // we don't have JWT success atm, so if, skip:
+    if ((arangod.role !== "agent") &&
+        (! 'server.jwt-secret-folder' in arangod.args)) {
       let fp = debugGetFailurePoints(arangod.endpoint);
       if (fp.length > 0) {
         failurePoints.push({
