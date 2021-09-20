@@ -8,7 +8,7 @@ So CI tests are not a place to max out I/O, memory, or such.
 
 So please use *BULK* inserts to slimline the creation of your test data.
 If you can use a common dataset for several tests, please use `setUpAll` and `tearDownAll` to reduce resource usage.
-If splitting a testsuite between read only and writing tests is neccessary for this, please do so.
+If splitting a testsuite between read only and writing tests is necessary for this, please do so.
 
 ### Testsuites
 Testsuites live in `js/client/modules/@arangodb/testsuites/`. This folder is spidered during the startup of `testing.js` and loads the files as plugins.
