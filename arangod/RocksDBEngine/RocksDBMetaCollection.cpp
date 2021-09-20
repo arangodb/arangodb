@@ -494,20 +494,59 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
 }
 
 rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksdb::SequenceNumber maxCommitSeq) {
+  // As explained at the call site in RocksDBMetadata.cpp the purpose of
+  // this function is to compute a sequence number s, which is as large
+  // as possible with the property, that there are and will never be
+  // any changes to the collection with a sequence number larger than
+  // the sequence number of the last persisted version of the revision tree
+  // and smaller than s. Therefore, we can in the end move forward the
+  // in memory sequence number of the latest serialized revision tree.
+  // See below for a proof that we do not miss any transactions!
+  
+  rocksdb::SequenceNumber seq = maxCommitSeq;  // start as large as possible
+  
+  // A transaction commit proceeds as follows:
+  //  1. Note the latest sequence number in the RocksDB WAL, call it "beginSeq"
+  //  2. Create a blocker for all collections involved with beginSeq
+  //  3. Commit the rocksDB transaction, this will result in a WAL sequence
+  //     number for the commit marker called "postCommitSeq". It is at least
+  //     as large as beginSeq and is the last sequence number in the WAL
+  //     containing information about this transaction.
+  //  4. Call `bufferUpdates` on the `RocksDBMetaCollection and submit all
+  //     revisions which have been inserted or removed, which in turns
+  //     queues these operations in _revisionInsertBuffers and
+  //     `_revisionRemoveBuffers` for the revision tree, filed under
+  //     the sequence number `postCommitSeq`.
+  //  5. Remove the blocker for the transaction.
+  // After that, at some stage the pending insertions and removals are
+  // actually applied to the tree and its `_revisionTreeApplied` is moved
+  // forward. The new tree will eventually be persisted again.
+  // Note that since `beginSeq` is always smaller or equal to `postCommitSeq`,
+  // we either have a blocked with `beginSeq` or we have operations
+  // pending with a sequence number `postCommitSeq` or we have applied
+  // the operations to the tree and have thus moved on `_revisionTreeApplied`.
+
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
   
   // bump sequence number forward for the tree only if this is safe
-  if (!_meta.hasBlockerUpTo(maxCommitSeq) && 
-      _revisionTruncateBuffer.empty() && 
+  if (_revisionTruncateBuffer.empty() && 
       _revisionInsertBuffers.empty() && 
       _revisionRemovalBuffers.empty() &&
-      _revisionTreeSerializedSeq < maxCommitSeq) {
-  
+      _revisionTreeSerializedSeq < seq &&
+      !_meta.hasBlockerUpTo(seq)) {
+
+    // If we get here, we can advance `_revisionTreeSerializedSeq` to `seq`,
+    // although we have not actually persisted the tree at `seq`.
+    // All we have to ensure that no transaction has or will ever again
+    // produce a change with a sequence number larger than
+    // `_revisitionTreeSerializedSeq` and smaller than or equal to `seq`.
+    // This is true, since:
+    //    ...
     LOG_TOPIC("32d45", TRACE, Logger::ENGINES)
         << "adjusting sequence number for " << _logicalCollection.name() 
-        << " from " << _revisionTreeSerializedSeq << " to " << maxCommitSeq;
+        << " from " << _revisionTreeSerializedSeq << " to " << seq;
     
-    _revisionTreeSerializedSeq = maxCommitSeq;
+    _revisionTreeSerializedSeq = seq;
   }
   
   return _revisionTreeSerializedSeq;

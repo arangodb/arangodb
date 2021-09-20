@@ -92,7 +92,7 @@ function runSetup () {
   // for c1 will bump the min sequence number for c1 beyond what was actually
   // persisted.
   internal.debugRemoveFailAt("needToPersistRevisionTree::checkBuffers");
-  internal.sleep(15 + 120);
+  internal.sleep(15);
 
   internal.debugTerminate('crashing server');
 }
