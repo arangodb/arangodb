@@ -44,6 +44,7 @@ struct UnicodeCharsRetainer { //worst case 4 digits
 struct UnicodeCharsEscaper { //\u +4 digits
   size_t maxCharLength() const { return 6; }
   void writeCharIntoOutputBuffer(uint32_t c, char*& output, int numBytes);
+  void writeCharHelper(uint16_t c, char*& output);
 };
 
 class GeneralEscaper {

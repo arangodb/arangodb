@@ -27,13 +27,9 @@
 #include "gtest/gtest.h"
 
 #include "Logger/Escaper.h"
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
 
-#include <array>
-#include <cstring>
-#include <string>
 #include <string.h>
+#include <string>
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -45,26 +41,22 @@ using namespace arangodb;
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-template<typename EscaperType>
-void verifyExpectedValues(std::string const& inputString, std::string const& expectedOutput, size_t expectedSize, EscaperType& escaper) {
-  //LOG_DEVEL << "verifyExpectedValues";
+template <typename EscaperType>
+void verifyExpectedValues(std::string const& inputString, std::string const& expectedOutput,
+                          size_t expectedSize, EscaperType& escaper) {
   size_t messageSize = escaper.determineOutputBufferSize(inputString);
-  LOG_DEVEL << "size " << messageSize;
   EXPECT_EQ(messageSize, expectedSize);
   auto buffer = std::make_unique<char[]>(messageSize);
   char* output = buffer.get();
   escaper.writeIntoOutputBuffer(inputString, output);
   size_t outputBufferSize = output - buffer.get();
-//  LOG_DEVEL << "output size " << outputBufferSize;
   std::string outputString(buffer.get(), outputBufferSize);
-//  LOG_DEVEL << "output " << outputString << " " << outputString.size();
   EXPECT_EQ(outputString.compare(expectedOutput), 0);
   EXPECT_EQ(outputString, expectedOutput);
 }
 
 TEST(EscaperTest, test_suppress_control_retain_unicode) {
   Escaper<ControlCharsSuppressor, UnicodeCharsRetainer> escaper;
- // LOG_DEVEL << "SuppressControlRetainUnicode";
   verifyExpectedValues("€", "€", 12, escaper);
   verifyExpectedValues(" €  ", " €  ", 24, escaper);
   verifyExpectedValues("mötör", "mötör", 28, escaper);
@@ -75,13 +67,18 @@ TEST(EscaperTest, test_suppress_control_retain_unicode) {
   verifyExpectedValues("犬\r", "犬 ", 16, escaper);
   verifyExpectedValues("", "", 0, escaper);
   verifyExpectedValues("a", "a", 4, escaper);
-  std::string validUnicode = "€"; 
+  verifyExpectedValues("𐍈", "𐍈", 16, escaper); //\uD800\uDF48
+  verifyExpectedValues("𐍈 ", "𐍈 ", 20, escaper); //\uD800\uDF48
+  std::string validUnicode = "€";
   verifyExpectedValues(validUnicode.substr(0, 1), "?", 4, escaper);
   verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "? ", 8, escaper);
   verifyExpectedValues("\x07", " ", 4, escaper);
-  verifyExpectedValues(std::string("\0", 1),  " ", 4, escaper);
- //invalid unicode: '\ufffe', '\U110000','\ud800', 'test\xFE' 
-  }
+  verifyExpectedValues(std::string("\0", 1), " ", 4, escaper);
+  validUnicode = "𐍈";
+  verifyExpectedValues(validUnicode.substr(0, 1), "?", 4, escaper);
+  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "? ", 8, escaper);
+  // invalid unicode: '\ufffe', '\U110000','\ud800', 'test\xFE'
+}
 
 TEST(EscaperTest, test_suppress_control_escape_unicode) {
   Escaper<ControlCharsSuppressor, UnicodeCharsEscaper> escaper;
@@ -95,12 +92,16 @@ TEST(EscaperTest, test_suppress_control_escape_unicode) {
   verifyExpectedValues("犬\r", "\\u72AC ", 24, escaper);
   verifyExpectedValues("", "", 0, escaper);
   verifyExpectedValues("a", "a", 6, escaper);
-  std::string validUnicode = "€"; 
+  verifyExpectedValues("𐍈", "\\uD800\\uDF48", 24, escaper); //\uD800\uDF48
+  verifyExpectedValues("𐍈 ", "\\uD800\\uDF48 ", 30, escaper); //\uD800\uDF48
+  std::string validUnicode = "€";
+  verifyExpectedValues(validUnicode.substr(0, 1), "?", 6, escaper);
+  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "? ", 12, escaper);
+  validUnicode = "𐍈";
   verifyExpectedValues(validUnicode.substr(0, 1), "?", 6, escaper);
   verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "? ", 12, escaper);
   verifyExpectedValues("\x07", " ", 6, escaper);
-  verifyExpectedValues(std::string("\0", 1),  " ", 6, escaper);
-
+  verifyExpectedValues(std::string("\0", 1), " ", 6, escaper);
 }
 TEST(EscaperTest, test_escape_control_retain_unicode) {
   Escaper<ControlCharsEscaper, UnicodeCharsRetainer> escaper;
@@ -114,11 +115,16 @@ TEST(EscaperTest, test_escape_control_retain_unicode) {
   verifyExpectedValues("犬\r", "犬\\r", 16, escaper);
   verifyExpectedValues("", "", 0, escaper);
   verifyExpectedValues("a", "a", 4, escaper);
-  std::string validUnicode = "€"; 
+  verifyExpectedValues("𐍈", "𐍈", 16, escaper); //\uD800\uDF48
+  verifyExpectedValues("𐍈 ", "𐍈 ", 20, escaper); //\uD800\uDF48
+  std::string validUnicode = "€";
+  verifyExpectedValues(validUnicode.substr(0, 1), "?", 4, escaper);
+  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "?\\n", 8, escaper);
+  validUnicode = "𐍈";
   verifyExpectedValues(validUnicode.substr(0, 1), "?", 4, escaper);
   verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "?\\n", 8, escaper);
   verifyExpectedValues("\x07", "\\x07", 4, escaper);
-  verifyExpectedValues(std::string("\0", 1),  "\\x00", 4, escaper);
+  verifyExpectedValues(std::string("\0", 1), "\\x00", 4, escaper);
 }
 TEST(EscaperTest, test_escape_control_escape_unicode) {
   Escaper<ControlCharsEscaper, UnicodeCharsEscaper> escaper;
@@ -132,11 +138,14 @@ TEST(EscaperTest, test_escape_control_escape_unicode) {
   verifyExpectedValues("犬\r", "\\u72AC\\r", 24, escaper);
   verifyExpectedValues("", "", 0, escaper);
   verifyExpectedValues("a", "a", 6, escaper);
-  std::string validUnicode = "€"; 
+  verifyExpectedValues("𐍈", "\\uD800\\uDF48", 24, escaper); //\uD800\uDF48
+  verifyExpectedValues("𐍈 ", "\\uD800\\uDF48 ", 30, escaper); //\uD800\uDF48
+  std::string validUnicode = "€";
+  verifyExpectedValues(validUnicode.substr(0, 1), "?", 6, escaper);
+  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "?\\n", 12, escaper);
+  validUnicode = "𐍈";
   verifyExpectedValues(validUnicode.substr(0, 1), "?", 6, escaper);
   verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "?\\n", 12, escaper);
   verifyExpectedValues("\x07", "\\x07", 6, escaper);
-  verifyExpectedValues(std::string("\0", 1),  "\\x00", 6, escaper);
+  verifyExpectedValues(std::string("\0", 1), "\\x00", 6, escaper);
 }
-
-

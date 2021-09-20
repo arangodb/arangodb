@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Escaper.h"
-#include <assert.h>
 
 namespace arangodb {
 
@@ -63,18 +62,13 @@ void ControlCharsEscaper::writeCharIntoOutputBuffer(uint32_t c, char*& output, i
 void UnicodeCharsRetainer::writeCharIntoOutputBuffer(uint32_t c, char*& output, int numBytes) {
   if (numBytes == 2) {
     uint16_t num1 = c & 0xffff;
-    uint8_t num2 = ((num1 >> 6) & 0x1f) | 0xc0;
-    uint8_t num3 = (num1 & 0x3f) | 0x80;
-    *output++ = num2;
-    *output++ = num3;
+    *output++ = ((num1 >> 6) & 0x1f) | 0xc0;
+    *output++ = (num1 & 0x3f) | 0x80;
   } else if (numBytes == 3) {
     uint16_t num1 = c & 0xffff;
-    uint8_t num2 = ((num1 >> 12) & 0x0f) | 0xe0;
-    uint8_t num3 = ((num1 >> 6) & 0x3f) | 0x80;
-    uint8_t num4 = (num1 & 0x3f) | 0x80;
-    *output++ = num2;
-    *output++ = num3;
-    *output++ = num4;
+    *output++ = ((num1 >> 12) & 0x0f) | 0xe0;
+    *output++ = ((num1 >> 6) & 0x3f) | 0x80;
+    *output++ = (num1 & 0x3f) | 0x80;
   } else if (numBytes == 4) {
     *output++ = ((c >> 18) & 0x07) | 0xF0;
     *output++ = ((c >> 12) & 0x3f) | 0x80;
@@ -83,7 +77,7 @@ void UnicodeCharsRetainer::writeCharIntoOutputBuffer(uint32_t c, char*& output, 
   }
 }
 
-void UnicodeCharsEscaper::writeCharIntoOutputBuffer(uint32_t c, char*& output, int numBytes) {
+void UnicodeCharsEscaper::writeCharHelper(uint16_t c, char*& output) {
   *output++ = '\\';
   *output++ = 'u';
 
@@ -98,14 +92,28 @@ void UnicodeCharsEscaper::writeCharIntoOutputBuffer(uint32_t c, char*& output, i
   *output++ = (i4 < 10) ? ('0' + i4) : ('A' + i4 - 10);
 }
 
+void UnicodeCharsEscaper::writeCharIntoOutputBuffer(uint32_t c, char*& output, int numBytes) {
+  if (numBytes == 4) {
+    c -= 0x10000U;
+    uint16_t high = (uint16_t) (((c & 0xffc00U) >> 10) + 0xd800);
+    writeCharHelper(high, output);
+    uint16_t low = (c & 0x3ffU) + 0xdc00U;
+    writeCharHelper(low, output);
+  } else {
+    writeCharHelper(c, output);
+  }
+}
+
 template <typename ControlCharHandler, typename UnicodeCharHandler>
-size_t Escaper<ControlCharHandler, UnicodeCharHandler>::determineOutputBufferSize(std::string const& message) const {
+size_t Escaper<ControlCharHandler, UnicodeCharHandler>::determineOutputBufferSize(
+    std::string const& message) const {
   return message.size() * std::max(this->_controlHandler.maxCharLength(),
                                    this->_unicodeHandler.maxCharLength());
 }
 
 template <typename ControlCharHandler, typename UnicodeCharHandler>
-void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(std::string const& message, char*& buffer) {
+void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
+    std::string const& message, char*& buffer) {
   unsigned char const* p = reinterpret_cast<unsigned char const*>(message.data());
   unsigned char const* end = p + message.length();
   while (p < end) {
@@ -125,38 +133,39 @@ void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(std:
       }
       uint8_t d = (uint8_t) * (p + 1);
       if ((d & 0xC0) == 0x80) {
-        this->_unicodeHandler.writeCharIntoOutputBuffer(((c & 0x1F) << 6) | (d & 0x3F), buffer, 2);
+        this->_unicodeHandler.writeCharIntoOutputBuffer(((c & 0x1F) << 6) | (d & 0x3F),
+                                                        buffer, 2);
         ++p;
       } else {
         *buffer++ = '?';
-        break;
       }
       p++;
-    } else if (c < 240) { 
+    } else if (c < 240) {
       if ((p + 2) >= end) {
         *buffer++ = '?';
-        break;
-      } 
+        p++;
+        continue;
+      }
       uint8_t d = (uint8_t) * (p + 1);
       if ((d & 0xC0) == 0x80) {
         ++p;
         uint8_t e = (uint8_t) * (p + 1);
         if ((e & 0xC0) == 0x80) {
           ++p;
-          this->_unicodeHandler.writeCharIntoOutputBuffer(((c & 0x0F) << 12) | ((d & 0x3F) << 6) | (e & 0x3F), buffer, 3);
-        } else { 
+          this->_unicodeHandler.writeCharIntoOutputBuffer(
+              ((c & 0x0F) << 12) | ((d & 0x3F) << 6) | (e & 0x3F), buffer, 3);
+        } else {
           *buffer++ = '?';
-        //  break;
         }
       } else {
         *buffer++ = '?';
-     //   break;
       }
       p++;
     } else if (c < 248) {
       if ((p + 3) >= end) {
         *buffer++ = '?';
-        break;
+        p++;
+        continue;
       }
       uint8_t d = (uint8_t) * (p + 1);
       if ((d & 0xC0) == 0x80) {
@@ -165,21 +174,21 @@ void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(std:
         if ((e & 0xC0) == 0x80) {
           ++p;
           uint8_t f = (uint8_t) * (p + 1);
-          if((f & 0xC0) == 0x80) {
+          if ((f & 0xC0) == 0x80) {
             p++;
-            this->_unicodeHandler.writeCharIntoOutputBuffer(
-                ((c & 0x07) << 18) | ((d & 0x3F) << 12) | ((e & 0x3F) << 6) | (f & 0x3F), buffer, 4);
-          } else { 
+            this->_unicodeHandler.writeCharIntoOutputBuffer(((c & 0x07) << 18) |
+                                                                ((d & 0x3F) << 12) |
+                                                                ((e & 0x3F) << 6) |
+                                                                (f & 0x3F),
+                                                            buffer, 4);
+          } else {
             *buffer++ = '?';
-          //  break;
           }
         } else {
           *buffer++ = '?';
-          //break;
         }
       } else {
         *buffer++ = '?';
-     //   break;
       }
       p++;
     } else {
