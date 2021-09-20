@@ -106,7 +106,7 @@ and orchestrates a sequence:
 - restore it to a fresh SUT
 - check data
 
-Since many create & check functions should be common to *all* suites, the default behavior is to enable them, and only blacklist them out if unsupported.
+Since many create & check functions should be common to *all* suites, the default behavior is to enable them, and only exclude them if unsupported.
 
 The individual files to be used are controlled by code in the testsuite like this:
 
