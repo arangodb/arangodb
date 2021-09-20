@@ -238,7 +238,11 @@ var helpArangoDatabase = arangosh.createHelpHeadline('ArangoDatabase (db) help')
   '  _view(<name>)                         get view by name                  ' + '\n' +
   '  _createView(<name>, <type>,           creates a new view                ' + '\n' +
   '              <properties>)                                               ' + '\n' +
-  '  _dropView(<name>)                     delete a view                     ';
+  '  _dropView(<name>)                     delete a view                     ' + '\n' +
+  '                                                                          ' + '\n' +
+  'License Functions:                                                        ' + '\n' +
+  '  _getLicense()                         get license information           ' + '\n' +
+  '  _setLicense(<license-string>)         set license string                ';
 
 ArangoDatabase.prototype._help = function () {
   internal.print(helpArangoDatabase);
@@ -250,6 +254,35 @@ ArangoDatabase.prototype._help = function () {
 
 ArangoDatabase.prototype.toString = function () {
   return '[object ArangoDatabase "' + this._name() + '"]';
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return license information
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._getLicense = function (options) {
+  let url = "/_admin/license";
+  var requestResult = this._connection.GET(url, {});
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.result;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return license information
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._setLicense = function (options, data) {
+  let url = "/_admin/license?";
+  if (options && options.force) {
+    url += "force=true";
+  }
+  var requestResult = this._connection.PUT(url, {});
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.result;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
