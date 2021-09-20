@@ -365,7 +365,7 @@ struct TRI_vocbase_t {
   /// @param lockWrite acquire write lock (if 'visitor' will modify vocbase)
   /// @return visitation compleated successfully
   typedef std::function<bool(arangodb::LogicalDataSource& dataSource)> dataSourceVisitor;
-  bool visitDataSources(dataSourceVisitor const& visitor, bool lockWrite = false);
+  bool visitDataSources(dataSourceVisitor const& visitor);
 
  private:
   /// @brief callback for collection dropping
