@@ -1098,7 +1098,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
   } catch (basics::Exception const& ex) {
     events::CreateCollection(dbName, name, ex.code());
     throw;
-  } catch (std::exception const& ex) {
+  } catch (std::exception const&) {
     events::CreateCollection(dbName, name, TRI_ERROR_INTERNAL);
     throw;
   }
