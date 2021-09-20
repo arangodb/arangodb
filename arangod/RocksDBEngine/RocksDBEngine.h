@@ -245,6 +245,9 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief whether or not purging of WAL files is currently allowed
   RocksDBFilePurgeEnabler startPurging() noexcept;
 
+  void scheduleTreeRebuild(TRI_voc_tick_t database, std::string const& collection);
+  void processTreeRebuilds();
+
   void compactRange(RocksDBKeyBounds bounds);
   void processCompactions();
 
@@ -545,12 +548,19 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief global health data, updated periodically
   HealthData _healthData;
+  
+  /// @brief lock for _rebuildCollections
+  arangodb::basics::ReadWriteLock _rebuildCollectionsLock;
+  /// @brief map of database/collection-guids for which we need to repair trees
+  std::map<std::pair<TRI_voc_tick_t, std::string>, bool> _rebuildCollections;
+  /// @brief number of currently running tree rebuild jobs jobs
+  size_t _runningRebuilds;
 
-  // lock for _pendingCompactionsLock and _runningCompactions
+  /// @brief lock for _pendingCompactionsLock and _runningCompactions
   arangodb::basics::ReadWriteLock _pendingCompactionsLock;
-  // bounds for compactions that we have to process
+  /// @brief bounds for compactions that we have to process
   std::deque<RocksDBKeyBounds> _pendingCompactions;
-  // number of currently running compaction jobs
+  /// @brief number of currently running compaction jobs
   size_t _runningCompactions;
   
   Gauge<uint64_t>& _metricsArchivedWalFiles;

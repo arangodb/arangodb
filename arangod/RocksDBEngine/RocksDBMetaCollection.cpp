@@ -345,6 +345,7 @@ void RocksDBMetaCollection::setRevisionTree(std::unique_ptr<containers::Revision
   _revisionTreeApplied.store(seq);
   _revisionTreeCreationSeq = seq;
   _revisionTreeSerializedSeq = seq;
+  _revisionTreeSerializedTime = std::chrono::steady_clock::time_point();
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
@@ -594,6 +595,10 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
   _revisionTreeApplied.store(std::numeric_limits<rocksdb::SequenceNumber>::max());
   return commitSeq;
 }
+  
+rocksdb::SequenceNumber RocksDBMetaCollection::revisionTreeApplied() const noexcept {
+  return _revisionTreeApplied.load();
+}
 
 ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNumber>> 
 RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
@@ -690,6 +695,13 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
         std::this_thread::yield();
       }
     }
+    
+    auto lockGuard = scopeGuard([this] { unlockWrite(); });
+    auto res = lockWrite(transaction::Options::defaultLockTimeout);
+    if (res != TRI_ERROR_NO_ERROR) {
+      lockGuard.cancel();
+      THROW_ARANGO_EXCEPTION(res);
+    }
   
     // place a blocker and add a guard to remove it at the end
     TransactionId trxId{0};
@@ -702,6 +714,9 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     trxId = TransactionId(transaction::Context::makeTransactionId());
     _meta.placeBlocker(trxId, blockerSeq);
 
+    // unlock the collection again
+    lockGuard.fire();
+
     auto result = revisionTreeFromCollection(false);
     if (result.fail()) {
       return result.result(); 
@@ -711,17 +726,18 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
 
     TRI_ASSERT(blockerSeq <= beginSeq);
 
-    TRI_ASSERT(!_meta.hasBlockerUpTo(beginSeq));
-    if (_meta.hasBlockerUpTo(beginSeq)) {
-      // should not happen
-      return {TRI_ERROR_LOCKED, "cannot rebuild revision tree now as there are still transaction blockers in place"};
-    }
+    //TRI_ASSERT(!_meta.hasBlockerUpTo(beginSeq - 1));
+    //if (_meta.hasBlockerUpTo(beginSeq - 1)) {
+    //  // should not happen
+    //  return {TRI_ERROR_LOCKED, "cannot rebuild revision tree now as there are still transaction blockers in place"};
+    //}
 
     std::unique_lock<std::mutex> guard(_revisionTreeLock);
     _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
     _revisionTreeApplied = beginSeq;
     _revisionTreeCreationSeq = beginSeq;
-    _revisionTreeSerializedSeq = beginSeq;
+    _revisionTreeSerializedSeq = 0;
+    _revisionTreeSerializedTime = std::chrono::steady_clock::time_point();
 
     {
       // finally remove all pending updates up to including our own sequence number
@@ -803,6 +819,7 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
   _revisionTreeApplied.store(seq);
   _revisionTreeCreationSeq = seq;
   _revisionTreeSerializedSeq = seq;
+  _revisionTreeSerializedTime = std::chrono::steady_clock::time_point();
 }
 
 void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder, bool fromCollection) {

@@ -87,6 +87,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   rocksdb::SequenceNumber serializeRevisionTree(std::string& output,
                                                 rocksdb::SequenceNumber commitSeq,
                                                 bool force);
+  rocksdb::SequenceNumber revisionTreeApplied() const noexcept;
 
   Result rebuildRevisionTree() override;
   void rebuildRevisionTree(std::unique_ptr<rocksdb::Iterator>& iter);

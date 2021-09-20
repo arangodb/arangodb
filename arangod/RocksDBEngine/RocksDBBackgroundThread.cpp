@@ -96,6 +96,15 @@ void RocksDBBackgroundThread::run() {
       bool force = isStopping();
       _engine.replicationManager()->garbageCollect(force);
 
+      if (!force) {
+        try {
+          _engine.processTreeRebuilds();
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("eea93", WARN, Logger::ENGINES) 
+              << "caught exception during tree rebuilding: " << ex.what();
+        }
+      }
+
       uint64_t minTick = _engine.db()->GetLatestSequenceNumber();
       auto cmTick = _engine.settingsManager()->earliestSeqNeeded();
 

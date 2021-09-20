@@ -343,7 +343,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   if (coll.deleted()) {
     return res;
   }
-
+    
+  auto& engine = coll.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   std::string const context = coll.vocbase().name() + "/" + coll.name();
 
   rocksdb::SequenceNumber const maxCommitSeq = committableSeq(appliedSeq);
@@ -354,8 +355,6 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   TransactionId trxId = TransactionId::none();
   
   TRI_IF_FAILURE("TransactionChaos::blockerOnSync") {
-    auto& selector = coll.vocbase().server().getFeature<EngineSelectorFeature>();
-    auto& engine = selector.engine<RocksDBEngine>();
     auto blockerSeq = engine.db()->GetLatestSequenceNumber();
     trxId = TransactionId(transaction::Context::makeTransactionId());
     placeBlocker(trxId, blockerSeq);
@@ -486,7 +485,9 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
           << context << ": caught exception during revision tree serialization: " << ex.what();
       // TODO: if we get here, we need to mark the existing tree as broken
       // and need to rebuild it
-      throw;
+      engine.scheduleTreeRebuild(coll.vocbase().id(), coll.guid());
+      seq = rcoll->revisionTreeApplied();
+//      throw;
     }
 
     appliedSeq = std::min(appliedSeq, seq);
@@ -567,8 +568,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
 
   RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
 
-  auto& selector = coll.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = coll.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   rocksdb::SequenceNumber globalSeq = engine.settingsManager()->earliestSeqNeeded();
 
   // Step 1. load the counter

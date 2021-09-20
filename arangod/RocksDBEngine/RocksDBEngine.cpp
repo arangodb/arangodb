@@ -52,6 +52,7 @@
 #include "Replication/ReplicationClients.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/Metrics.h"
@@ -208,6 +209,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #endif
       _lastHealthCheckSuccessful(false),
       _dbExisted(false),
+      _runningRebuilds(0),
       _runningCompactions(0),
       _metricsArchivedWalFiles(server.getFeature<arangodb::MetricsFeature>().add(
           rocksdb_archived_wal_files{})),
@@ -1369,6 +1371,107 @@ RecoveryState RocksDBEngine::recoveryState() noexcept {
 // current recovery tick
 TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
   return TRI_voc_tick_t(server().getFeature<RocksDBRecoveryManager>().recoveryTick());
+}
+  
+void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database, std::string const& collection) {
+  WRITE_LOCKER(locker, _rebuildCollectionsLock);
+  _rebuildCollections.emplace(std::make_pair(database, collection), /*started*/ false);
+}
+
+void RocksDBEngine::processTreeRebuilds() {
+  Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
+  if (scheduler == nullptr) {
+    return;
+  }
+
+  uint64_t maxParallelRebuilds = 2;
+  uint64_t iterations = 0;
+  while (++iterations <= maxParallelRebuilds) {
+    if (server().isStopping()) {
+      // don't fire off more tree rebuilds while we are shutting down
+      return;
+    }
+
+    std::pair<TRI_voc_tick_t, std::string> candidate{};
+
+    {
+      WRITE_LOCKER(locker, _rebuildCollectionsLock);
+      if (_rebuildCollections.empty() || 
+          _runningRebuilds >= maxParallelRebuilds) {
+        // nothing to do, or too much to do
+        return;
+      }
+
+      for (auto& it : _rebuildCollections) {
+        if (!it.second) {
+          // set to started
+          it.second = true;
+          candidate = it.first;
+          ++_runningRebuilds;
+          break;
+        }
+      }
+    }
+
+    if (candidate.first == 0 || candidate.second.empty()) {
+      return;
+    }
+    
+    bool queued = scheduler->queue(arangodb::RequestLane::CLIENT_SLOW, [this, candidate]() {
+      if (!server().isStopping()) {
+        TRI_vocbase_t* vocbase = nullptr;
+        try {
+          auto& df = server().getFeature<DatabaseFeature>();
+          vocbase = df.useDatabase(candidate.first);
+          if (vocbase != nullptr) {
+            auto collection = vocbase->lookupCollectionByUuid(candidate.second);
+            if (collection != nullptr && !collection->deleted()) {
+              LOG_TOPIC("b96bc", INFO, Logger::ENGINES)
+                  << "starting background rebuild of revision tree for collection " << collection->name();
+              static_cast<RocksDBCollection*>(collection->getPhysical())->rebuildRevisionTree();
+              LOG_TOPIC("2f997", INFO, Logger::ENGINES)
+                  << "successfully rebuilt revision tree for collection " << collection->name();
+            }
+          }
+
+          // tree rebuilding finished. now remove from the list to-be-rebuilt candidates
+          WRITE_LOCKER(locker, _rebuildCollectionsLock);
+          _rebuildCollections.erase(candidate);
+
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("13afc", WARN, Logger::ENGINES) 
+              << "caught exception during tree rebuilding: " << ex.what();
+        } catch (...) {
+          LOG_TOPIC("0bcbf", WARN, Logger::ENGINES) 
+              << "caught unknown exception during tree rebuilding";
+        }
+
+        if (vocbase != nullptr) {
+          vocbase->release();
+        }
+      }
+      
+      // always count down _runningRebuilds!
+      WRITE_LOCKER(locker, _rebuildCollectionsLock);
+      TRI_ASSERT(_runningRebuilds > 0);
+      --_runningRebuilds;
+    });
+
+    if (ADB_UNLIKELY(!queued)) {
+      // in the very unlikely case that queuing the operation in the scheduler has failed,
+      // we will simply mark it again as "to-do"
+      WRITE_LOCKER(locker, _rebuildCollectionsLock);
+
+      TRI_ASSERT(_runningRebuilds > 0);
+      --_runningRebuilds;
+
+      auto it = _rebuildCollections.find(candidate);
+      if (it != _rebuildCollections.end()) {
+        // set back to "not started"
+        (*it).second = false;
+      }
+    }
+  }
 }
 
 void RocksDBEngine::compactRange(RocksDBKeyBounds bounds) {
