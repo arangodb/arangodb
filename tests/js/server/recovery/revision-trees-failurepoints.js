@@ -91,7 +91,8 @@ function runSetup () {
   // the persisting of c2 and the decision that nothing needs to be persisted
   // for c1 will bump the min sequence number for c1 beyond what was actually
   // persisted.
-  internal.sleep(15);
+  internal.debugRemoveFailAt("needToPersistRevisionTree::checkBuffers");
+  internal.sleep(15 + 120);
 
   internal.debugTerminate('crashing server');
 }

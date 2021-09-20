@@ -505,6 +505,24 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
   if (_revisionTreeSerializedSeq <= _revisionTreeCreationSeq) {
     return true;
   }
+  
+  /*
+  // TODO: fine tune
+  bool coinFlip = RandomGenerator::interval(static_cast<uint32_t>(5)) == 0;
+  if (coinFlip) {
+    return true;
+  }
+
+  {
+    std::unique_lock<std::mutex> guard(_revisionTreeLock);
+    bool beenTooLong = 30 < std::chrono::duration_cast<std::chrono::seconds>(
+                                std::chrono::steady_clock::now() - _revisionTreeSerializedTime)
+                                .count();
+    if (beenTooLong) {
+      return true;
+    }
+  }
+  */
 
   return false;
 }
@@ -514,7 +532,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
 
   // first update so we don't under-report
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
-
+/*
   if (!_revisionTruncateBuffer.empty() && *_revisionTruncateBuffer.begin() - 1 < seq) {
     seq = *_revisionTruncateBuffer.begin() - 1;
   }
@@ -539,11 +557,11 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
   if (applied > _revisionTreeSerializedSeq && applied - 1 < seq) {
     seq = applied - 1;
   }
-
+*/
   bool adjusted = false;
   // now actually advance it if we can
-  if (seq > _revisionTreeSerializedSeq) {
-    if (_meta.hasBlockerUpTo(seq)) {
+//  if (seq > _revisionTreeSerializedSeq) {
+    if (_meta.hasBlockerUpTo(seq) || !_revisionTruncateBuffer.empty() || !_revisionInsertBuffers.empty() || !_revisionRemovalBuffers.empty()) {
       LOG_DEVEL << "OOOOH: " << _logicalCollection.name();
     } else {
       _revisionTreeSerializedSeq = seq;
@@ -553,7 +571,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
       }
       adjusted = true;
     }
-  }
+//  }
   
   if (!_logicalCollection.system()) {
     LOG_DEVEL 
@@ -893,6 +911,7 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
   }
 
   if (_revisionTreeApplied.load() >= seq) {
+    LOG_DEVEL << "rejecting too low seq number " << seq << " for collection " << _logicalCollection.name();
     TRI_ASSERT(_logicalCollection.vocbase()
                    .server()
                    .getFeature<EngineSelectorFeature>()
@@ -909,6 +928,7 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
 
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
   if (!inserts.empty()) {
+    LOG_DEVEL << "buffering inserts with seq " << seq << " for collection " << _logicalCollection.name();
     // will default-construct an empty entry if it does not yet exist
     TRI_ASSERT(_revisionInsertBuffers.find(seq) == _revisionInsertBuffers.end());
     auto& elem = _revisionInsertBuffers[seq];
