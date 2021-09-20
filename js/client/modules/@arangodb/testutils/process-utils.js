@@ -34,6 +34,7 @@ const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
+const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
 
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -372,6 +373,7 @@ function setupBinaries (builddir, buildType, configDir) {
       throw new Error('unable to locate ' + checkFiles[b]);
     }
   }
+  global.ARANGOSH_BIN = ARANGOSH_BIN;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1363,6 +1365,31 @@ function checkInstanceAlive (instanceInfo, options) {
     });
   }
   return rc;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks whether any instance has failure points set
+// //////////////////////////////////////////////////////////////////////////////
+
+function checkServerFailurePoints(instanceInfo) {
+  let failurePoints = [];
+  instanceInfo.arangods.forEach(arangod => {
+    // we don't have JWT success atm, so if, skip:
+    if ((arangod.role !== "agent") &&
+        !arangod.args.hasOwnProperty('server.jwt-secret-folder') &&
+        !arangod.args.hasOwnProperty('server.jwt-secret')) {
+      let fp = debugGetFailurePoints(arangod.endpoint);
+      if (fp.length > 0) {
+        failurePoints.push({
+          "role": arangod.role,
+          "pid":  arangod.pid,
+          "database.directory": arangod['database.directory'],
+          "failurePoints": fp
+        });
+      }
+    }
+  });
+  return failurePoints;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2478,6 +2505,7 @@ exports.run = {
 exports.shutdownInstance = shutdownInstance;
 exports.getProcessStats = getProcessStats;
 exports.getDeltaProcessStats = getDeltaProcessStats;
+exports.checkServerFailurePoints = checkServerFailurePoints;
 exports.summarizeStats = summarizeStats;
 exports.getMemProfSnapshot = getMemProfSnapshot;
 exports.startArango = startArango;

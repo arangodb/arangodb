@@ -26,6 +26,9 @@ as its hex code, `\u72AC`.
 	The default value for this flag is set to `false` for compatibility with 
 previous versions.
 
+* Added REST API endpoint `/_admin/debug/failat/all` to retrieve the list
+  of currently enabled failure points. This API is available only if 
+  failure testing is enabled, but not in production.
 
 * APM-60: optionally allow special characters and Unicode characters in
   database names.
