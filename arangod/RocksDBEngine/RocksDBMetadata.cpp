@@ -471,7 +471,10 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     }
   }
 
-  // Step 4. store the revision tree
+  // Step 4. store the revision tree, we potentially store the revision tree
+  // in RocksDB if there are pending changes to it or if there have actually
+  // been changes. Note that `serializeRevisionTree` below reserves the right
+  // to not persist a tree to avoid overly eager RocksDB writes.
   if (rcoll->needToPersistRevisionTree(maxCommitSeq)) {
     output.clear();
      
@@ -540,6 +543,14 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
       }
     }
 
+    // Find out up to which sequence the tree of this collection has been
+    // persisted to RocksDB. We need this to compute the minimum over all
+    // for the persisted `lastSync` value (in `appliedSeq`). Note that on
+    // recovery after a crash (or restart) all WAL entries lower than
+    // the persisted `lastSync` are ignored. Therefore it is imperative
+    // that there are no pending or actual changes for the revision tree
+    // in memory, which will end up in the WAL with a sequence number less
+    // than the computed `seq` number here!
     rocksdb::SequenceNumber seq = rcoll->lastSerializedRevisionTree(maxCommitSeq);
     if (!coll.system()) {
       LOG_DEVEL << "no persistence - sequence number for " << coll.name() << " is now " << seq;
