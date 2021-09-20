@@ -130,7 +130,7 @@ Testdata to be used during the first create etc can be put into `tests/js/server
 
 
 #### [communication, chaos] testsuite to launch parallel load
-These testsuites are intended to launch several arangosh, in order to generate 
+These testsuites are intended to launch several arangosh instances, in order to generate concurrent requests.
 
 
 
