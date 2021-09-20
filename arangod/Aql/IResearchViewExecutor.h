@@ -250,10 +250,17 @@ class IndexReadBuffer {
   // before and after.
   void assertSizeCoherence() const noexcept;
 
+  void preAllocateStoredValuesBuffer(size_t atMost) {
+    if constexpr (copyStored) {
+      _ownedStoredData.reserve(atMost);
+    }
+  }
+
   // std::vector<irs::bytes_ref>& getStoredValues() noexcept;
   void pushStoredValue(irs::bytes_ref value) {
     if constexpr (copyStored) {
-      _ownedStoredData.emplace_front(value);
+      TRI_ASSERT(_ownedStoredData.size() < _ownedStoredData.capacity());
+      _ownedStoredData.emplace_back(value);
       _storedValuesBuffer.emplace_back(_ownedStoredData.front());
     } else {
       _storedValuesBuffer.push_back(value);
@@ -279,7 +286,7 @@ class IndexReadBuffer {
   // buffer to hold data read from columnstore in case
   // of temporary pointer returned from reader (e.g. encryption)
   typename std::conditional<copyStored,
-                   std::forward_list<irs::bstring>,
+                   std::vector<irs::bstring>,
                    bool>::type _ownedStoredData{};
   size_t _numScoreRegisters;
   size_t _keyBaseIdx;

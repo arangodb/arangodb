@@ -429,7 +429,6 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
   IResearchViewStats stats{};
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
-
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool documentWritten = false;
 
@@ -876,7 +875,9 @@ void IResearchViewExecutor<copyStored, ordered, materializeType>::fillBuffer(IRe
   TRI_ASSERT(this->_filter != nullptr);
 
   size_t const atMost = ctx.outputRow.numRowsLeft();
-
+  if constexpr (copyStored) {
+    this->_indexReadBuffer.preAllocateStoredValuesBuffer(atMost);
+  }
   size_t const count = this->_reader->size();
 
   for (; _readerOffset < count;) {
