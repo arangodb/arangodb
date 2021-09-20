@@ -3,7 +3,7 @@ When creating tests, please bear in mind, that every test added will add additio
 
 So every added test *will* slow down PR runs.
 
-Please also note that tests in the CI share a system with other runs in parallel. 
+Please also note that test runs in the CI share the system with other parallel runs. 
 So CI tests are not a place to max out I/O, memory, or such.
 
 So please use *BULK* inserts to slimline the creation of your test data.
