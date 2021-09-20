@@ -19,6 +19,60 @@ devel
   request and return HTTP 412 (precondition failed) with the new error code
   21004 (queue time violated).
 
+* APM-60: optionally allow special characters and Unicode characters in
+  database names.
+
+  This feature allows toggling the naming convention for database names
+  from the previous strict mode, which only allowed selected ASCII characters
+  in database names, to an extended, more relaxed mode. The extended mode 
+  allows additional ASCII characters in database names as well as non-ASCII 
+  UTF-8 characters.
+  The extended mode can be enabled by setting the new startup option 
+  `--database.extended-names-databases` to true. It is turned off by default 
+  and requires an explicit opt-in, simply because some drivers and client
+  applications may not be ready for it yet. The arangod server, the 
+  ArangoDB web interface and the following bundled client tools are prepared 
+  and ready for using the extended database names:
+  - arangobench
+  - arangodump
+  - arangoexport
+  - arangoimport
+  - arangorestore
+  - arangosh
+  More tools and the drivers shipped by ArangoDB will be added to the list in
+  the future. 
+
+  Please note that the extended names for databases should not be turned on
+  during upgrades from previous versions, but only once the upgrade has been
+  completed successfully. In addition, the extended names should not be used
+  in environments that require extracting data into a previous version of
+  ArangoDB, or when database dumps may be restored into a previous version of
+  ArangoDB. This is because older versions may not be able to handle the
+  extended database names. Finally, it should not be turned on in environments
+  in which drivers are in use that haven't been prepared to work with the
+  extended naming convention.
+
+  Warning: turning on the `--database.extended-names-databases` option for a
+  deployment requires it to stay enabled permanently, i.e. it can be changed
+  from `false` to `true` but not back. When enabling it, it is also required
+  to do this consistently on all coordinators and DB servers.
+
+  The extended names for databases will be enabled by default in one of the
+  future releases of ArangoDB, once enough drivers and other client tools
+  have had the chance to adapt.
+
+  Naming conventions for collections, views, analyzers, and document keys
+  (`_key` values) are not affected by this feature and will remain as in
+  previous versions of ArangoDB.
+
+* Prevent stealing of values from AQL const value registers. This fixes an
+  issue for queries that produce constant results (known at query compile time)
+  when the queries are executed directly on a DB server in a cluster (which is
+  not supported, but may happen for troubleshooting).
+
+* Fixed BTS-562: reduce-extraction-to-projection optimization returns null for 
+  one attribute if nested attributes are named the same.
+
 * Add `--datatype` startup option to arangoimport, in order to hard-code the
   datatype (null/boolean/number/string) for certain attributes in the CSV/TSV import.
   For example, given the following input file:
@@ -53,7 +107,7 @@ devel
   non-ASCII characters are present in target path".
   
 * Fix active failover, so that the new host actually has working
-  foxx services. (BTS-558)
+  Foxx services. (BTS-558).
 
 * Fixed issue #14720: Bulk import ignores onDuplicate in 3.8.0.
   The "onDuplicate" attribute was ignored by the `/_api/import` REST API when

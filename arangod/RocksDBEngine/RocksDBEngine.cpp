@@ -764,8 +764,7 @@ void RocksDBEngine::start() {
           LOG_TOPIC("d9df8", FATAL, arangodb::Logger::STARTUP)
               << "column family '" << it.name << "' is missing in database"
               << ". if you are upgrading from an earlier alpha or beta version "
-                 "of ArangoDB 3.2, "
-              << "it is required to restart with a new database directory and "
+                 "of ArangoDB, it is required to restart with a new database directory and "
                  "re-import data";
           FATAL_ERROR_EXIT();
         }
@@ -777,8 +776,7 @@ void RocksDBEngine::start() {
             << existingColumnFamilies.size() << "). "
             << "expecting at least " << minNumberOfColumnFamilies
             << ". if you are upgrading from an earlier alpha or beta version "
-               "of ArangoDB 3.2, "
-            << "it is required to restart with a new database directory and "
+               "of ArangoDB, it is required to restart with a new database directory and "
                "re-import data";
         FATAL_ERROR_EXIT();
       }
@@ -844,7 +842,7 @@ void RocksDBEngine::start() {
                  ->GetID() == 0);
 
   // will crash the process if version does not match
-  arangodb::rocksdbStartupVersionCheck(_db, dbExisted);
+  arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted);
 
   // only enable logger after RocksDB start
   if (logger != nullptr) {
