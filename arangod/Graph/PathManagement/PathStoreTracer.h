@@ -60,7 +60,8 @@ class PathStoreTracer {
   // returns the index of inserted element
   size_t append(Step step);
 
-  auto get(size_t position) const -> Step;
+  auto getStep(size_t position) const -> Step;
+  auto getStepReference(size_t position) -> Step&;
 
   // @brief returns the current vector size
   size_t size() const;
@@ -74,6 +75,8 @@ class PathStoreTracer {
 
   auto visitReversePath(Step const& step, std::function<bool(Step const&)> const& visitor) const
       -> bool;
+
+  auto modifyReversePath(Step& step, std::function<bool(Step&)> const& visitor) -> bool;
 
  private:
   PathStoreImpl _impl;

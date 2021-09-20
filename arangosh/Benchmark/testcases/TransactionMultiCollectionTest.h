@@ -80,7 +80,7 @@ namespace arangodb::arangobench {
     }
 
     bool isDeprecated() const noexcept override {
-      return false;
+      return true;
     }
 
     std::string _c1;

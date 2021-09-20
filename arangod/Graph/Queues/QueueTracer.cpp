@@ -26,9 +26,15 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
 #include "Graph/Providers/ClusterProvider.h"
-#include "Graph/Providers/SingleServerProvider.h"
-#include "Graph/Queues/LifoQueue.h"
 #include "Graph/Queues/FifoQueue.h"
+#include "Graph/Queues/LifoQueue.h"
+#include "Graph/Queues/WeightedQueue.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#endif
+
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
@@ -103,8 +109,17 @@ auto QueueTracer<QueueImpl>::pop() -> typename QueueImpl::Step {
 }
 
 /* SingleServerProvider Section */
-template class ::arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<arangodb::graph::SingleServerProvider::Step>>;
-template class ::arangodb::graph::QueueTracer<arangodb::graph::LifoQueue<arangodb::graph::SingleServerProvider::Step>>;
+using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
+
+template class ::arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<SingleServerProviderStep>>;
+template class ::arangodb::graph::QueueTracer<arangodb::graph::LifoQueue<SingleServerProviderStep>>;
+template class ::arangodb::graph::QueueTracer<arangodb::graph::WeightedQueue<SingleServerProviderStep>>;
+
+#ifdef USE_ENTERPRISE
+template class ::arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<enterprise::SmartGraphStep>>;
+template class ::arangodb::graph::QueueTracer<arangodb::graph::LifoQueue<enterprise::SmartGraphStep>>;
+template class ::arangodb::graph::QueueTracer<arangodb::graph::WeightedQueue<enterprise::SmartGraphStep>>;
+#endif
 
 /* ClusterServerProvider Section */
 template class ::arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<arangodb::graph::ClusterProvider::Step>>;

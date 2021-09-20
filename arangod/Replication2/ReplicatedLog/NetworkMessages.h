@@ -99,6 +99,7 @@ struct AppendEntriesRequest {
   ParticipantId leaderId;
   TermIndexPair prevLogEntry;
   LogIndex leaderCommit;
+  LogIndex largestCommonIndex;
   MessageId messageId;
   EntryContainer entries{};
   bool waitForSync = false;
@@ -106,7 +107,8 @@ struct AppendEntriesRequest {
   AppendEntriesRequest() = default;
   AppendEntriesRequest(LogTerm leaderTerm, ParticipantId leaderId,
                        TermIndexPair prevLogEntry, LogIndex leaderCommit,
-                       MessageId messageId, bool waitForSync, EntryContainer entries);
+                       LogIndex largestCommonIndex, MessageId messageId,
+                       bool waitForSync, EntryContainer entries);
   ~AppendEntriesRequest() noexcept = default;
 
   AppendEntriesRequest(AppendEntriesRequest&& other) noexcept;

@@ -1,9 +1,111 @@
 devel
 -----
 
+* Fixed display of unicode characters in Windows console.
+
+* Fixed issue BTS-531 "Error happens during EXE package installation if
+  non-ASCII characters are present in target path".
+  
+* Fix active failover, so that the new host actually has working
+  foxx services. (BTS-558)
+
+* Fixed issue #14720: Bulk import ignores onDuplicate in 3.8.0.
+  The "onDuplicate" attribute was ignored by the `/_api/import` REST API when
+  not specifying the "type" URL parameter.
+
+* Updated OpenSSL to 1.1.1l and OpenLDAP to 2.4.59.
+
+* APM-70: allow PRUNE condition to be stored in a variable.
+
+  This feature allows the PRUNE condition to be stored in a variable, and 
+  this variable can be used as a condition for some other statement, such 
+  as FILTER.
+
+* Allow startup of arangod with an existing database directory that was missing
+  the ZkdIndex column family.
+
+* Truncate must not trigger intermediate commits while in a streaming
+  transaction, because that would be against the assumption that
+  streaming transactions never do intermediate commits.
+
+* Added ArangoSearch condition optimization: STARTS_WITH is merged 
+  with LEVENSHTEIN_MATCH if used in the same AND node and field name and prefix
+  matches.
+
+* Added multidimensional indexes which can be used to efficiently intersect
+  multiple range queries. They are currently limited to IEEE-754 double values.
+  Given documents of the form {x: 12.9, y: -284.0, z: 0.02} one can define a
+  multidimensional index using the new type 'zkd' on the fields ["x", "y", "z"].
+
+  The AQL optimizer will then consider this index when doing queries on multiple
+  ranges, for example:
+
+    FOR p IN points
+        FILTER x0 <= p.x && p.x <= x1
+        FILTER y0 <= p.y && p.y <= y1
+        FILTER z0 <= p.z && p.z <= z1
+        RETURN p
+
+  The index implements the relation <=, == and >= natively. Strict relations are
+  emulated using post filtering. Ranges can be unbounded on one or both sides.
+
+* No runtime limits for shard move and server cleanout jobs, instead
+  possibility to cancel them.
+
+* Fix cluster-internal network protocol to HTTP/1 for now. Any other protocol
+  selected via the startup option `--network.protocol` will automatically be
+  switched to HTTP/1. The startup option `--network.protocol` is now deprecated
+  and hidden by default. It will be removed in a future version of arangod.
+  The rationale for this change is to move towards a single protocol for 
+  cluster-internal communication instead of 3 different ones.
+
+* Disable RTTI when compiling Snappy. RTTI used to be disabled previously,
+  up until some Merkle tree improvement PR was merged about one month ago, 
+  which turned on RTTI for compiling Snappy.
+
+* (EE only) Bug-fix: If you created a ArangoSearch view on Satellite-
+  Collections only and then join with a collection only having a single
+  shard the cluster-one-shard-rule was falsely applied and could lead to
+  empty view results. The Rule will now detect the situation properly,
+  and not trigger.
+
+* (EE only) If you have a query using only satellite collections,
+  now the cluster-one-shard-rule can be applied to improve
+  query performance.
+
+* (Enterprise Edition only): added query option `forceOneShardAttributeValue`
+  to explicitly set a shard key value that will be used during query snippet
+  distribution to limit the query to a specific server in the cluster.
+
+  This query option can be used in complex queries in case the query optimizer
+  cannot automatically detect that the query can be limited to only a single
+  server (e.g. in a disjoint smart graph case).
+  When the option is set to the correct shard key value, the query will be
+  limited to the target server determined by the shard key value. It thus
+  requires that all collections in the query use the same distribution
+  (i.e. `distributeShardsLike` attribute via disjoint SmartGraphs).
+
+  Limiting the query to a single DB server is a performance optimization
+  and may make complex queries run a lot faster because of the reduced
+  setup and teardown costs and the reduced cluster-internal traffic during
+  query execution.
+
+  If the option is set incorrectly, i.e. to a wrong shard key value, then
+  the query may be shipped to a wrong DB server and may not return results
+  (i.e. empty result set). It is thus the caller's responsibility to set
+  the `forceOneShardAttributeValue` correctly or not use it.
+
+  The `forceOneShardAttributeValue` option will only honor string values.
+  All other values as well as the empty string will be ignored and treated
+  as if the option is not set.
+
+  If the option is set and the query satisfies the requirements for using
+  the option, the query's execution plan will contain the "cluster-one-shard"
+  optimizer rule.
+
 * Updated ArangoDB Starter to 0.15.2.
 
-* SEARCH-238: Improved SortNodes placement optimization in cluster so 
+* SEARCH-238: Improved SortNodes placement optimization in cluster so
   late materialization could cover more cases
 
 * Fix some memory leaks after adding optimization rule for AqlAnalyzer.
@@ -11,7 +113,7 @@ devel
 * Fix internal iterator states after intermediate commits in write
   transactions. Iterators could point to invalid data after an
   intermediate commit, producing undefined behavior.
-  
+
 * Fix read-own-write behavior in different scenarios:
     - in some cases writes performed by an AQL query could be observed within
       the same query. This was not intended and is fixed now.

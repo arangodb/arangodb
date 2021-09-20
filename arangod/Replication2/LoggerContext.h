@@ -58,7 +58,7 @@ struct LogNameValuePair : LoggableValue {
 };
 
 struct LoggerContext {
-  explicit LoggerContext(LogTopic topic) : topic(std::move(topic)) {}
+  explicit LoggerContext(LogTopic const& topic) : topic(topic) {}
 
   template<const char N[], typename T>
   auto with(T&& t) const -> LoggerContext {
@@ -67,8 +67,8 @@ struct LoggerContext {
     return LoggerContext(values.push_back(std::move(pair)), topic);
   }
 
-  auto withTopic(LogTopic newTopic) const {
-    return LoggerContext(values, std::move(newTopic));
+  auto withTopic(LogTopic const& newTopic) const {
+    return LoggerContext(values, newTopic);
   }
 
   friend auto operator<<(std::ostream& os, LoggerContext const& ctx) -> std::ostream& {
@@ -85,12 +85,13 @@ struct LoggerContext {
     return os;
   }
 
-  LogTopic const topic;
-  ::immer::flex_vector<std::shared_ptr<LoggableValue>, arangodb::immer::arango_memory_policy> const values = {};
+  using Container = ::immer::flex_vector<std::shared_ptr<LoggableValue>, arangodb::immer::arango_memory_policy>;
+  LogTopic const& topic;
+  Container const values = {};
 
  private:
-  LoggerContext(decltype(values) values, LogTopic topic)
-      : topic(std::move(topic)), values(std::move(values)) {}
+  LoggerContext(Container values, LogTopic const& topic)
+      : topic(topic), values(std::move(values)) {}
 };
 }
 

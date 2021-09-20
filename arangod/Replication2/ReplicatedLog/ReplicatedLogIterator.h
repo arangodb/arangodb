@@ -42,7 +42,7 @@
 
 namespace arangodb::replication2::replicated_log {
 
-class ReplicatedLogIterator : public LogIterator {
+class ReplicatedLogIterator : public LogRangeIterator {
  public:
   using log_type = ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy>;
 
@@ -61,6 +61,14 @@ class ReplicatedLogIterator : public LogIterator {
       }
     }
     return std::nullopt;
+  }
+
+  auto range() const noexcept -> LogRange override {
+    if (_container.empty()) {
+      return {LogIndex{0}, LogIndex{0}};
+    } else {
+      return {_container.front().entry().logIndex(), _container.back().entry().logIndex() + 1};
+    }
   }
 
  private:

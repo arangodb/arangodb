@@ -101,6 +101,10 @@ RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId, VPackSlice const
   return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, left, right);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::ZkdIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::ZkdIndexValue, indexId, false);
+}
+
 /// used for seeking lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, VPackSlice const& left,
                                                     VPackSlice const& right) {
@@ -228,7 +232,10 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::FulltextIndex);
     case RocksDBEntryType::LegacyGeoIndexValue:
     case RocksDBEntryType::GeoIndexValue:
+    case RocksDBEntryType::UniqueZkdIndexValue:
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex);
+    case RocksDBEntryType::ZkdIndexValue:
+      return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ZkdIndex);
     case RocksDBEntryType::LogEntry:
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
     case RocksDBEntryType::Database:
@@ -385,6 +392,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, bool second)
     : _type(type) {
   switch (_type) {
+    case RocksDBEntryType::ZkdIndexValue:
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::UniqueVPackIndexValue: {
       uint8_t const maxSlice[] = {0x02, 0x03, 0x1f};

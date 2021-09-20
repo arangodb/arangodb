@@ -359,7 +359,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
   VPackSlice s = value.get(StaticStrings::KeyString);
   if (s.isNone()) {
     TRI_ASSERT(!isRestore);  // need key in case of restore
-    auto keyString = _logicalCollection.keyGenerator()->generate();
+    auto keyString = _logicalCollection.createKey(value);
 
     if (keyString.empty()) {
       return Result(TRI_ERROR_ARANGO_OUT_OF_KEYS);

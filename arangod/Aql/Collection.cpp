@@ -186,7 +186,7 @@ std::vector<std::string> Collection::shardKeys(bool normalize) const {
   if (normalize && coll->isSmart() && coll->type() == TRI_COL_TYPE_DOCUMENT) {
     // smart vertex collection always has ["_key:"] as shard keys
     TRI_ASSERT(originalKeys.size() == 1);
-    TRI_ASSERT(originalKeys[0] == "_key:");
+    TRI_ASSERT(originalKeys[0] == StaticStrings::PrefixOfKeyString);
     // now normalize it this to _key
     return std::vector<std::string>{StaticStrings::KeyString};
   }

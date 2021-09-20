@@ -1,4 +1,4 @@
-import { ChangeEvent } from "react";
+import { ChangeEvent, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "./arangoClient";
 
@@ -10,6 +10,17 @@ export const getChangeHandler = (setter: (value: string) => void) => {
     setter(event.currentTarget.value);
   };
 };
+
+export const usePrevious = (value: any) => {
+  const ref = useRef();
+
+  useEffect(() => {
+    ref.current = value;
+  });
+
+  return ref.current;
+};
+
 
 export const usePermissions = () => useSWR(
     `/user/${arangoHelper.getCurrentJwtUsername()}/database/${frontendConfig.db}`,

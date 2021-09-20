@@ -104,17 +104,6 @@ http://s2geometry.io/
 Compression library
 https://github.com/google/snappy
 
-The original Snappy code disables RTTI. This prevents the code from linking with
-ArangoDB, so we need to comment the section in Snappy's CMakeLists.txt that disables
-RTTI unconditionally.
-
-     # Disable RTTI.
-    -string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    -set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
-    +# note: we need cannot disable RTTI because otherwise it won't link on Linux
-    +# string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    +# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
-
 ## snowball
 
 http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided cmake which we maintain.

@@ -62,6 +62,8 @@ set(ARANGODB_TESTS_COMMON_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PreparedResponseConnectionPool.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraph.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraphProvider.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Basics/icu-helper.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/AgencyMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/common.cpp
@@ -237,12 +239,11 @@ set(ARANGODB_TESTS_SOURCES
   Graph/KPathFinderTest.cpp
   Graph/DFSFinderTest.cpp
   Graph/KShortestPathsFinder.cpp
-  Graph/MockGraph.cpp
-  Graph/MockGraphProvider.cpp
   Graph/PathStoreTest.cpp
   Graph/PathValidatorTest.cpp
   Graph/FifoQueueTest.cpp
   Graph/LifoQueueTest.cpp
+  Graph/WeightedQueueTest.cpp
   Graph/SingleServerProviderTest.cpp
   Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
@@ -288,28 +289,45 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/LogicalView-test.cpp
   VocBase/VersionTest.cpp
   VPackDeserializer/BasicTests.cpp
-  ${ADDITIONAL_TEST_SOURCES})
+  Zkd/Conversion.cpp
+  Zkd/Library.cpp
+  ${ADDITIONAL_TEST_SOURCES}
+)
+
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
-  Replication2/AppendEntriesBatchTest.cpp
-  Replication2/ChangeStreamTests.cpp
-  Replication2/CheckLogsTest.cpp
-  Replication2/ConcurrencyTests.cpp
-  Replication2/DetectConflictTest.cpp
-  Replication2/FollowerAppendEntries.cpp
-  Replication2/FollowerWaitFor.cpp
-  Replication2/LeaderAppendEntriesTest.cpp
-  Replication2/LogReclaimTest.cpp
-  Replication2/MaintenanceTests.cpp
-  Replication2/MultiTermTest.cpp
-  Replication2/ReplicatedLogMetricsMock.cpp
-  Replication2/ReplicatedLogTest.cpp
-  Replication2/RewriteLogTest.cpp
-  Replication2/RocksDBLogTest.cpp
-  Replication2/SimpleInsertTests.cpp
-  Replication2/TestHelper.cpp
-  Replication2/UpdateReplicatedLogTests.cpp
-)
+  Replication2/ReplicatedLog/AppendEntriesBatchTest.cpp
+  Replication2/ReplicatedLog/ChangeStreamTests.cpp
+  Replication2/ReplicatedLog/CheckLogsTest.cpp
+  Replication2/ReplicatedLog/ConcurrencyTests.cpp
+  Replication2/ReplicatedLog/DetectConflictTest.cpp
+  Replication2/ReplicatedLog/FollowerAppendEntries.cpp
+  Replication2/ReplicatedLog/FollowerWaitFor.cpp
+  Replication2/ReplicatedLog/LeaderAppendEntriesTest.cpp
+  Replication2/ReplicatedLog/LogReclaimTest.cpp
+  Replication2/ReplicatedLog/MaintenanceTests.cpp
+  Replication2/ReplicatedLog/MultiTermTest.cpp
+  Replication2/Mocks/ReplicatedLogMetricsMock.cpp
+  Replication2/ReplicatedLog/ReplicatedLogTest.cpp
+  Replication2/ReplicatedLog/RewriteLogTest.cpp
+  Replication2/ReplicatedLog/RocksDBLogTest.cpp
+  Replication2/ReplicatedLog/SimpleInsertTests.cpp
+  Replication2/ReplicatedLog/TestHelper.cpp
+  Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
+  Replication2/ReplicatedState/AbstractStateMachinePollTest.cpp
+  Replication2/ReplicatedState/StateMachineTestHelper.cpp
+  Replication2/ReplicatedState/StateMachineTestHelper.h
+  Replication2/Mocks/PersistedLog.cpp
+  Replication2/Mocks/PersistedLog.h
+  Replication2/ReplicatedLog/InMemoryLogTest.cpp
+  Replication2/Streams/LogMultiplexerTest.cpp
+  Replication2/Mocks/FakeReplicatedLog.cpp
+  Replication2/Mocks/FakeReplicatedLog.h
+  Replication2/Streams/TestLogSpecification.cpp
+  Replication2/Streams/TestLogSpecification.h
+  Replication2/Streams/MultiplexerConcurrencyTest.cpp
+  Replication2/Mocks/AsyncFollower.cpp
+  Replication2/Mocks/AsyncFollower.h)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
@@ -326,6 +344,7 @@ endif ()
 
 add_executable(
   arangodbtests
+  ../cmake/activeCodePage.manifest
   ${ARANGODB_TESTS_SOURCES}
   ${ARANGODB_REPLICATION2_TEST_SOURCES}
   main.cpp
@@ -378,7 +397,8 @@ endif ()
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
-  )
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
+)
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_include_directories(arangodbtests_replication2 PRIVATE

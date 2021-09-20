@@ -102,7 +102,8 @@ class Index {
     TRI_IDX_TYPE_TTL_INDEX,
     TRI_IDX_TYPE_PERSISTENT_INDEX,
     TRI_IDX_TYPE_IRESEARCH_LINK,
-    TRI_IDX_TYPE_NO_ACCESS_INDEX
+    TRI_IDX_TYPE_NO_ACCESS_INDEX,
+    TRI_IDX_TYPE_ZKD_INDEX
   };
   
   /// @brief: helper struct returned by index methods that determine the costs

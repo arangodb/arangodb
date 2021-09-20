@@ -35,6 +35,7 @@
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "RocksDBEngine/RocksDBTtlIndex.h"
+#include "RocksDBEngine/RocksDBZkdIndex.h"
 #include "RocksDBIndexFactory.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -255,6 +256,42 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
   }
 };
 
+struct ZkdIndexFactory : public DefaultIndexFactory {
+  ZkdIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_ZKD_INDEX) {}
+
+  std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
+                                               arangodb::velocypack::Slice definition,
+                                               IndexId id,
+                                               bool isClusterConstructor) const override {
+    if (auto isUnique = definition.get(StaticStrings::IndexUnique).isTrue(); isUnique) {
+      return std::make_shared<RocksDBUniqueZkdIndex>(id, collection, definition);
+    }
+
+    return std::make_shared<RocksDBZkdIndex>(id, collection, definition);
+  }
+
+  virtual arangodb::Result normalize(             // normalize definition
+      arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
+      arangodb::velocypack::Slice definition,  // source definition
+      bool isCreation,                         // definition for index creation
+      TRI_vocbase_t const& vocbase             // index vocbase
+  ) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(arangodb::StaticStrings::IndexType,
+                   arangodb::velocypack::Value(
+                       arangodb::Index::oldtypeName(Index::TRI_IDX_TYPE_ZKD_INDEX)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey("objectId")) {
+      normalized.add("objectId",
+                     arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+
+    return IndexFactory::enhanceJsonIndexZkd(definition, normalized, isCreation);
+  }
+};
+
 struct TtlIndexFactory : public DefaultIndexFactory {
   explicit TtlIndexFactory(application_features::ApplicationServer& server,
                            Index::IndexType type)
@@ -339,6 +376,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(application_features::ApplicationServer
     server);
   static const TtlIndexFactory ttlIndexFactory(server, Index::TRI_IDX_TYPE_TTL_INDEX);
   static const PrimaryIndexFactory primaryIndexFactory(server);
+  static const ZkdIndexFactory zkdIndexFactory(server);
 
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);
@@ -351,6 +389,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(application_features::ApplicationServer
   emplace("rocksdb", persistentIndexFactory);
   emplace("skiplist", skiplistIndexFactory);
   emplace("ttl", ttlIndexFactory);
+  emplace("zkd", zkdIndexFactory);
 }
 
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>

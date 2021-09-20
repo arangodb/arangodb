@@ -28,6 +28,7 @@
 #include "RestServer/Metrics.h"
 
 #include <Basics/Exceptions.h>
+#include <Basics/StaticStrings.h>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -63,4 +64,24 @@ auto replicated_log::ILogParticipant::waitForIterator(LogIndex index)
 
 auto replicated_log::ILogParticipant::getTerm() const noexcept -> std::optional<LogTerm> {
   return getStatus().getCurrentTerm();
+}
+
+auto replicated_log::LogUnconfiguredParticipant::release(LogIndex doneWithIdx) -> Result {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+replicated_log::WaitForResult::WaitForResult(LogIndex index,
+                                             std::shared_ptr<QuorumData const> quorum)
+    : currentCommitIndex(index), quorum(std::move(quorum)) {}
+
+void replicated_log::WaitForResult::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add(StaticStrings::CommitIndex, VPackValue(currentCommitIndex));
+  builder.add(VPackValue("quorum"));
+  quorum->toVelocyPack(builder);
+}
+
+replicated_log::WaitForResult::WaitForResult(velocypack::Slice s) {
+  currentCommitIndex = s.get(StaticStrings::CommitIndex).extract<LogIndex>();
+  quorum = std::make_shared<QuorumData>(s.get("quorum"));
 }

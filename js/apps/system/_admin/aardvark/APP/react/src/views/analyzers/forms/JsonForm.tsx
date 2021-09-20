@@ -1,8 +1,11 @@
 import { JsonEditor as Editor } from 'jsoneditor-react';
-import React, { useState } from 'react';
-import Ajv from 'ajv';
+import React, { useCallback, useEffect, useState } from 'react';
+import Ajv, { ErrorObject } from 'ajv';
 import { FormProps, formSchema, FormState, State } from "../constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
+import { usePrevious } from "../../../utils/helpers";
+import { has, isEqual } from 'lodash';
+import ajvErrors from 'ajv-errors';
 
 const ajv = new Ajv({
   allErrors: true,
@@ -10,12 +13,34 @@ const ajv = new Ajv({
   discriminator: true,
   $data: true
 });
+ajvErrors(ajv);
 const validate = ajv.compile(formSchema);
 
 type JsonFormProps = Pick<FormProps, 'formState' | 'dispatch'> & Pick<State, 'renderKey'>;
 
 const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
   const [formErrors, setFormErrors] = useState<string[]>([]);
+  const prevFormState = usePrevious(formState);
+
+  const raiseError = useCallback((errors: ErrorObject[] | null | undefined) => {
+    if (Array.isArray(errors)) {
+      dispatch({ type: 'lockJsonForm' });
+
+      setFormErrors(errors.map(error => {
+          if (has(error.params, 'errors')) {
+            return `
+              ${error.params.errors[0].keyword} error: ${error.instancePath}${error.message}.
+            `;
+          } else {
+            return `
+              ${error.keyword} error: ${error.instancePath} ${error.message}.
+              Schema: ${JSON.stringify(error.params)}
+            `;
+          }
+        }
+      ));
+    }
+  }, [dispatch]);
 
   const changeHandler = (json: FormState) => {
     if (validate(json)) {
@@ -25,17 +50,16 @@ const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
       });
       dispatch({ type: 'unlockJsonForm' });
       setFormErrors([]);
-    } else if (Array.isArray(validate.errors)) {
-      dispatch({ type: 'lockJsonForm' });
-
-      setFormErrors(validate.errors.map(error =>
-        `
-          ${error.keyword} error: ${error.instancePath} ${error.message}.
-          Schema: ${JSON.stringify(error.params)}
-        `
-      ));
+    } else {
+      raiseError(validate.errors);
     }
   };
+
+  useEffect(() => {
+    if (!isEqual(prevFormState, formState) && !validate(formState)) {
+      raiseError(validate.errors);
+    }
+  }, [formState, prevFormState, raiseError]);
 
   return <Grid>
     <Cell size={'1'}>

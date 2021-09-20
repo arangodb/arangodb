@@ -25,36 +25,75 @@
 
 #include <velocypack/HashedStringRef.h>
 #include "Containers/HashSet.h"
+#include "Graph/PathManagement/PathValidatorOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
+namespace aql {
+class PruneExpressionEvaluator;
+}
 namespace graph {
 
 class ValidationResult;
 
-template <class PathStore, VertexUniquenessLevel vertexUniqueness>
+/*
+ * TODO:
+ *
+ * - EdgeUniqueness, like vertex Uniqueness, and sometimes Edge and Vertex Uniqueness enforce each other.
+ *   (e.g. => VertexUniqueness == PATH => EdgeUniquess PATH || NONE.
+ *
+ * - Prune Condition.
+ * - PostFilter Condition.
+ * - Path Conditions. Vertex, Edge maybe in LookupInfo
+ *     (e.g. p.vertices[*].name ALL == "HANS")
+ */
+template <class Provider, class PathStore, VertexUniquenessLevel vertexUniqueness>
 class PathValidator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
-  PathValidator(PathStore const& store);
+  PathValidator(Provider& provider, PathStore const& store, PathValidatorOptions opts);
+  ~PathValidator();
 
   auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
-                    PathValidator<PathStore, vertexUniqueness> const& otherValidator)
+                    PathValidator<Provider, PathStore, vertexUniqueness> const& otherValidator)
       -> ValidationResult;
+
+  void setPruneEvaluator(std::unique_ptr<aql::PruneExpressionEvaluator> eval);
+
+  void setPostFilterEvaluator(std::unique_ptr<aql::PruneExpressionEvaluator> eval);
+
+  void reset();
 
  private:
   PathStore const& _store;
+  Provider& _provider;
 
   // Only for applied vertex uniqueness
   // TODO: Figure out if we can make this Member template dependend
   //       e.g. std::enable_if<vertexUniqueness != NONE>
   ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> _uniqueVertices;
 
+  PathValidatorOptions _options;
+
+  std::unique_ptr<aql::PruneExpressionEvaluator> _pruneEvaluator;
+
+  std::unique_ptr<aql::PruneExpressionEvaluator> _postFilterEvaluator;
+
+  arangodb::velocypack::Builder _tmpObjectBuilder;
+
  private:
+  auto evaluateVertexCondition(typename PathStore::Step const&) -> ValidationResult;
+  auto evaluateVertexRestriction(typename PathStore::Step const& step) -> bool;
+
   auto exposeUniqueVertices() const
       -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> const&;
+
+  auto evaluateVertexExpression(arangodb::aql::Expression* expression,
+                          arangodb::velocypack::Slice value) -> bool;
 };
 }  // namespace graph
 }  // namespace arangodb

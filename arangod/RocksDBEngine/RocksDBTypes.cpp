@@ -109,6 +109,14 @@ static rocksdb::Slice ReplicatedLog(
 static RocksDBEntryType revisionTreeValue = RocksDBEntryType::RevisionTreeValue;
 static rocksdb::Slice RevisionTreeValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&revisionTreeValue), 1);
+
+static RocksDBEntryType zkdIndexValue = RocksDBEntryType::ZkdIndexValue;
+static rocksdb::Slice ZdkIndexValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&zkdIndexValue), 1);
+
+static RocksDBEntryType uniqueZkdIndexValue = RocksDBEntryType::UniqueZkdIndexValue;
+static rocksdb::Slice UniqueZdkIndexValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&uniqueZkdIndexValue), 1);
 }  // namespace
 
 char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
@@ -149,6 +157,10 @@ char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
       return "KeyGeneratorValue";
     case arangodb::RocksDBEntryType::RevisionTreeValue:
       return "RevisionTreeValue";
+    case arangodb::RocksDBEntryType::ZkdIndexValue:
+      return "ZkdIndexValue";
+    case arangodb::RocksDBEntryType::UniqueZkdIndexValue:
+      return "UniqueZkdIndexValue";
     case RocksDBEntryType::LogEntry:
       return "ReplicatedLogEntry";
     case RocksDBEntryType::ReplicatedLog:
@@ -251,6 +263,10 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return KeyGeneratorValue;
     case RocksDBEntryType::RevisionTreeValue:
       return RevisionTreeValue;
+    case RocksDBEntryType::ZkdIndexValue:
+      return ZdkIndexValue;
+    case RocksDBEntryType::UniqueZkdIndexValue:
+      return UniqueZdkIndexValue;
     case RocksDBEntryType::LogEntry:
       return LogEntry;
     case RocksDBEntryType::ReplicatedLog:
