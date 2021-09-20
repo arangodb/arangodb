@@ -28,7 +28,6 @@
 
 #include "Logger/Escaper.h"
 
-#include "Logger/LogMacros.h"
 
 #include <string.h>
 #include <string>
