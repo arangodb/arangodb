@@ -42,6 +42,7 @@
     var cg;
     var vg;
     var meta;
+    const longValue  = "VeryLongValueToNotFitIntoSSOAndTriggerBufferCopyingIssuesIfAnyBlaBlaBla";
 
     function getNodes(query, type, bindVars, options) {
       let stmt = db._createStatement(query);
@@ -2462,6 +2463,16 @@
           db._drop(queryColl);
           db._dropView(queryView);
           analyzers.remove(queryAnalyzer, true);
+        }
+      },
+      testReadStoredValues : function() {
+        var result = db._query("FOR doc IN WithStoredValues SEARCH doc.field3 > 0 OPTIONS { waitForSync : true } SORT doc.field3 ASC " +
+                             " RETURN {f1:doc.field1, f2: doc.field2, f3: doc.field3}").toArray();
+        assertEqual(1499, result.length);
+        for (let k = 0; k < 1499; ++k) {
+          assertEqual(k + 1, result[k].f3);
+          assertEqual(longValue + (k + 1), result[k].f1);
+          assertEqual(longValue, result[k].f2);
         }
       }
     };

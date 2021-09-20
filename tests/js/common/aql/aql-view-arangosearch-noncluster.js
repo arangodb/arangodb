@@ -105,6 +105,16 @@ function iResearchAqlTestSuite () {
       }
       lfc.save(longData);
       
+      
+      
+      db._drop("TestsCollectionWithLongFields");
+      let longData = [];
+      let lfc = db._create("TestsCollectionWithLongFields");
+      for (let k = 0; k < 1500; ++k) {
+        longData.push({field1:longValue + k, field2:longValue, field3: k});
+      }
+      lfc.save(longData);
+      
       try { analyzers.remove("customAnalyzer", true); } catch(err) {}
       analyzers.save("customAnalyzer", "text",  {"locale": "en.utf-8",
                                                  "case": "lower",
@@ -142,6 +152,15 @@ function iResearchAqlTestSuite () {
                                 field1: {},
                                 field2: {},
                                 field3: {}}}}});
+      let wsv = db._createView("WithStoredValues", "arangosearch", 
+                               {storedValues: [["field1"], ["field2"], ["field3"]]});
+      wsv.properties({links:{TestsCollectionWithLongFields: {
+                              storeValues: "id",
+                              analyzers: ["customAnalyzer"],
+                              fields: {
+                                field1: {},
+                                field2: {},
+                                field3: {}}}}});
     },
     tearDownAll : function () {
       db._drop("AnotherUnitTestsCollection");
@@ -150,6 +169,8 @@ function iResearchAqlTestSuite () {
       db._drop("UnitTestsWithArrayCollection");
       db._dropView("WithPrimarySort");
       db._drop("TestsCollectionWithManyFields");
+      db._dropView("WithStoredValues");
+      db._drop("TestsCollectionWithLongFields");
       db._dropView("WithStoredValues");
       db._drop("TestsCollectionWithLongFields");
       analyzers.remove("customAnalyzer", true);
@@ -2649,12 +2670,12 @@ function iResearchAqlTestSuite () {
       var result = db._query("FOR doc IN WithStoredValues SEARCH doc.field3 > 0 OPTIONS { waitForSync : true } SORT doc.field3 ASC " +
                              " RETURN {f1:doc.field1, f2: doc.field2, f3: doc.field3}").toArray();
       assertEqual(1499, result.length);
-	  for (let k = 0; k < 1499; ++k) {
-		assertEqual(k + 1, result[k].f3);
-		assertEqual(longValue + (k + 1), result[k].f1);
-		assertEqual(longValue, result[k].f2);
-	  }
-     }
+      for (let k = 0; k < 1499; ++k) {
+        assertEqual(k + 1, result[k].f3);
+        assertEqual(longValue + (k + 1), result[k].f1);
+        assertEqual(longValue, result[k].f2);
+      }
+    }
     
   };
 }
