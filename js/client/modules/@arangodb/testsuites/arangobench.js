@@ -168,6 +168,23 @@ const benchTodos = [{
   'keep-alive': 'true',
   'server.database': 'arangobench_testdb',
   'create-database': true
+},{
+  'requests': '100',
+  'concurrency': '1',
+  'test-case': 'custom-query',
+  'custom-query': 'RETURN 1',
+  'keep-alive': 'true',
+  // test with Unicode database name
+  'server.database': 'c\\1234 @!§$ имя базы данных юникода!\'',
+  'create-database': true
+},{
+  'requests': '100',
+  'concurrency': '1',
+  'test-case': 'version',
+  'keep-alive': 'true',
+  // test with Unicode database name
+  'server.database': '이것은 테스트입니까 ! @abc " mötör',
+  'create-database': true
 }];
 
 function arangobench (options) {

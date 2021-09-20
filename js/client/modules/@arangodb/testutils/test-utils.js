@@ -271,6 +271,17 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             healthCheck(options, serverOptions, instanceInfo, customInstanceInfos, startStopHandlers)) {
           continueTesting = true;
 
+          // TODO: we are currently filtering out the UnitTestDB here because it is 
+          // created and not cleaned up by a lot of the `authentication` tests. This
+          // should be fixed eventually
+          let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
+          if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
+            results[te] = {
+              status: false,
+              message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(results[te])
+            };
+          }
+
           // Check whether some collections & views were left behind, and if mark test as failed.
           let collectionsAfter = [];
           let viewsAfter = [];
@@ -281,8 +292,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             db._views().forEach(view => {
               viewsAfter.push(view._name);
             });
-          }
-          catch (x) {
+          } catch (x) {
             results[te] = {
               status: false,
               message: 'failed to fetch the currently available collections & views: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
@@ -300,10 +310,10 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             return ! ((name[0] === '_') || (name === "compact") || (name === "election")
                      || (name === "log"));
           });
-          if ((delta.length !== 0) || (deltaViews.length !== 0)){
+          if ((delta.length !== 0) || (deltaViews.length !== 0)) {
             results[te] = {
               status: false,
-              message: 'Cleanup missing - test left over collections / views : ' + delta + ' / ' + deltaViews + '. Original test status: ' + JSON.stringify(results[te])
+              message: 'Cleanup missing - test left over collections / views: ' + delta + ' / ' + deltaViews + '. Original test status: ' + JSON.stringify(results[te])
             };
             collectionsBefore = [];
             viewsBefore = [];
@@ -314,8 +324,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
               db._views().forEach(view => {
                 viewsBefore.push(view._name);
               });
-            }
-            catch (x) {
+            } catch (x) {
               results[te] = {
                 status: false,
                 message: 'failed to fetch the currently available delta collections / views: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
@@ -328,8 +337,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           let graphs;
           try {
             graphs = db._collection('_graphs');
-          }
-          catch (x) {
+          } catch (x) {
             results[te] = {
               status: false,
               message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])

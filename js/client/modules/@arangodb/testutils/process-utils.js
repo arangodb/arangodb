@@ -1086,8 +1086,13 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
   if (what.convert !== undefined) {
     args['convert'] = what.convert ? 'true' : 'false';
   }
+
   if (what.removeAttribute !== undefined) {
     args['remove-attribute'] = what.removeAttribute;
+  }
+
+  if (what.datatype !== undefined) {
+    args['datatype'] = what.datatype;
   }
 
   return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
