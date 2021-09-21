@@ -398,7 +398,6 @@ void LoggerFeature::prepare() {
   Logger::setShowRole(_showRole);
   Logger::setUseColor(_useColor);
   Logger::setTimeFormat(LogTimeFormats::formatFromName(_timeFormatString));
-  //Logger::setUseEscaped(_useEscaped);
   Logger::setUseControlEscaped(_useControlEscaped);
   Logger::setUseUnicodeEscaped(_useUnicodeEscaped);
   Logger::setShowLineNumber(_lineNumber);

@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Julia Puget
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -46,10 +46,14 @@ class EscaperTest : public ::testing::Test {
  protected:
   std::string asciiVisibleChars;
   std::string bigString;
+  std::string controlChars;
 
   EscaperTest() {
     for (int i = 33; i <= 126; ++i) {
       asciiVisibleChars += i;
+    }
+    for (int i = 0; i <= 31; ++i) {
+      controlChars += i;
     }
     while (bigString.size() < 1000) {
       bigString += asciiVisibleChars;
@@ -76,6 +80,8 @@ TEST_F(EscaperTest, test_suppress_control_retain_unicode) {
   Escaper<ControlCharsSuppressor, UnicodeCharsRetainer> escaper;
   verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, asciiVisibleChars.size()*4, escaper);
   verifyExpectedValues(bigString, bigString, bigString.size()*4, escaper);
+verifyExpectedValues(controlChars, "                                ",
+                       controlChars.size()*4, escaper);
   verifyExpectedValues("€", "€", 12, escaper);
   verifyExpectedValues(" €  ", " €  ", 24, escaper);
   verifyExpectedValues("mötör", "mötör", 28, escaper);
@@ -102,6 +108,8 @@ TEST_F(EscaperTest, test_suppress_control_escape_unicode) {
   Escaper<ControlCharsSuppressor, UnicodeCharsEscaper> escaper;
   verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, asciiVisibleChars.size()*6, escaper);
   verifyExpectedValues(bigString, bigString, bigString.size()*6, escaper);
+  verifyExpectedValues(controlChars, "                                ",
+                       controlChars.size()*6, escaper);
   verifyExpectedValues("€", "\\u20AC", 18, escaper);
   verifyExpectedValues(" €  ", " \\u20AC  ", 36, escaper);
   verifyExpectedValues("mötör", "m\\u00F6t\\u00F6r", 42, escaper);
@@ -128,6 +136,9 @@ TEST_F(EscaperTest, test_escape_control_retain_unicode) {
   Escaper<ControlCharsEscaper, UnicodeCharsRetainer> escaper;
   verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, asciiVisibleChars.size()*4, escaper);
   verifyExpectedValues(bigString, bigString, bigString.size()*4, escaper);
+  verifyExpectedValues(controlChars, "\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\t\\n\\x0B\\x0C\\r"
+                       "\\x0E\\x0F\\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17\\x18\\x19\\x1A\\x1B\\x1C\\x1D\\x1E\\x1F",
+                       controlChars.size()*4, escaper);
   verifyExpectedValues("€", "€", 12, escaper);
   verifyExpectedValues(" €  ", " €  ", 24, escaper);
   verifyExpectedValues("mötör", "mötör", 28, escaper);
@@ -154,6 +165,9 @@ TEST_F(EscaperTest, test_escape_control_escape_unicode) {
   Escaper<ControlCharsEscaper, UnicodeCharsEscaper> escaper;
   verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, asciiVisibleChars.size()*6, escaper);
   verifyExpectedValues(bigString, bigString, bigString.size()*6, escaper);
+  verifyExpectedValues(controlChars, "\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\t\\n\\x0B\\x0C\\r"
+                       "\\x0E\\x0F\\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17\\x18\\x19\\x1A\\x1B\\x1C\\x1D\\x1E\\x1F",
+                       controlChars.size()*6, escaper);
   verifyExpectedValues("€", "\\u20AC", 18, escaper);
   verifyExpectedValues(" €  ", " \\u20AC  ", 36, escaper);
   verifyExpectedValues("mötör", "m\\u00F6t\\u00F6r", 42, escaper);

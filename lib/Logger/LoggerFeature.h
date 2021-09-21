@@ -71,7 +71,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _useLocalTime = false;
   bool _useColor = true;
   bool _useControlEscaped = true;
-  bool _useUnicodeEscaped = true;
+  bool _useUnicodeEscaped = false;
   bool _lineNumber = false;
   bool _shortenFilenames = true;
   bool _processId = true;

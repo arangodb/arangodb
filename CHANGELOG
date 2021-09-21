@@ -1,22 +1,22 @@
 devel
 -----
 
-* feature/escape-unicode-control-chars: the server now has two flags for 
-retaining or escaping control and unicode characters in the log. The flag 
-`log.escape` is deprecated and, instead, the new flags 
-`--log.escape-control-chars` and `log.escape-unicode-chars` should be used. 
+* The server now has two flags to control the escaping control and Unicode 
+characters in the log. The flag `--log.escape` is now deprecated and, instead, 
+the new flags `--log.escape-control-chars` and `--log.escape-unicode-chars` 
+should be used. 
 
 - `--log.escape-control-chars`: this flag applies to the control characters, 
-which have hex code below `\x20`, and also the character DEL, with hex code 
-of `\x7f`. When its value is set to false, the control character will be 
-retained, and its actual value will be displayed when it is a visible 
-character, or a space ` ` character will be displayed if it is not a visible 
-character. The same will happen to `DEL` character (code `\xF7`), even though 
-it is not a control character, because it is not visible. For example, 
-control characer `\n` is visible, so a `\n` will be displayed in the log, and 
-control character `BEL` is not visible, so a space ` ` would be displayed.
-When its value is set to true, the hex code for the character is displayed, for 
-example, `BEL` character would be displayed as its hex code, `\x07`.
+which have hex code below `\x20`, and also the character DEL, with hex code of 
+`\x7f`. When its value is set to false, the control character will be retained,
+ and its actual value will be displayed when it is a visible character, or a 
+space ` ` character will be displayed if it is not a visible character. The 
+same will happen to `DEL` character (code `\xF7`), even though it is not a 
+control character, because it is not visible. For example, control characer 
+`\n` is visible, so a `\n` will be displayed in the log, and control character 
+`BEL` is not visible, so a space ` ` would be displayed. When its value is 
+set to true, the hex code for the character is displayed, for example, `BEL` 
+character would be displayed as its hex code, `\x07`.
 	The default value for this flag is `true` for compatibility with 
 previous versions.
 
