@@ -22,6 +22,7 @@
 
 #include "ILogParticipant.h"
 
+#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
@@ -84,4 +85,57 @@ void replicated_log::WaitForResult::toVelocyPack(velocypack::Builder& builder) c
 replicated_log::WaitForResult::WaitForResult(velocypack::Slice s) {
   currentCommitIndex = s.get(StaticStrings::CommitIndex).extract<LogIndex>();
   quorum = std::make_shared<QuorumData>(s.get("quorum"));
+}
+
+auto ::arangodb::replication2::replicated_log::assertQueueNotEmptyOrTryToClear(
+    TryToClearParticipant participant, LoggerContext const& loggerContext,
+    std::multimap<LogIndex, futures::Promise<WaitForResult>>& queue) noexcept -> TryToClearResult {
+  auto const [lcParticipant, ucParticipant, resignError] = std::invoke(
+      [participant]() -> std::tuple<std::string_view, std::string_view, ErrorCode> {
+        switch (participant) {
+          case TryToClearParticipant::Leader:
+            return {"leader", "Leader", TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
+          case TryToClearParticipant::Follower:
+            return {"follower", "Follower",
+                    TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+        }
+      });
+  auto result = TryToClearResult::NoProgress;
+  try {
+    // The queue cannot be empty: resign() clears it while under the mutex,
+    // and waitFor also holds the mutex, but refuses to add entries after
+    // the leader resigned.
+    // This means it should never happen in production code.
+    // It used to happen in the C++ unit tests, but shouldn't any more since
+    // ~ReplicatedLog resigns the participant (if it wasn't dropped already).
+    TRI_ASSERT(queue.empty());
+
+    if (!queue.empty()) {
+      LOG_CTX("c1138", ERR, loggerContext)
+          << ucParticipant << " destroyed, but queue isn't empty!";
+      for (auto it = queue.begin(); it != queue.end(); ) {
+        if (!it->second.isFulfilled()) {
+          it->second.setException(basics::Exception(resignError, __FILE__, __LINE__));
+        } else {
+          LOG_CTX("a1db0", ERR, loggerContext)
+              << "Fulfilled promise in replication queue!";
+        }
+        it = queue.erase(it);
+        result = TryToClearResult::Partial;
+      }
+    }
+    result = TryToClearResult::Cleared;
+  } catch (basics::Exception const& exception) {
+    LOG_CTX("c546f", ERR, loggerContext)
+        << "Caught exception while destroying a log " << lcParticipant << ": "
+        << exception.message();
+  } catch (std::exception const& exception) {
+    LOG_CTX("61f0d", ERR, loggerContext)
+        << "Caught exception while destroying a log " << lcParticipant << ": "
+        << exception.what();
+  } catch (...) {
+    LOG_CTX("338c9", ERR, loggerContext)
+        << "Caught unknown exception while destroying a log " << lcParticipant << "!";
+  }
+  return result;
 }
