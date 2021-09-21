@@ -632,9 +632,11 @@ Result GraphManager::ensureCollections(
   std::vector<std::shared_ptr<LogicalCollection>> created;
   OperationOptions opOptions(ExecContext::current());
 
+  const bool sssg = ServerState::instance()->isSingleServer() && graph.isSmart();
+
   Result finalResult = methods::Collections::create(ctx()->vocbase(), opOptions,
                                                     collectionsToCreate.get(), waitForSync,
-                                                    true, false, nullptr, created);
+                                                    true, false, nullptr, created, sssg);
 #ifdef USE_ENTERPRISE
   if (finalResult.ok()) {
     guard.cancel();

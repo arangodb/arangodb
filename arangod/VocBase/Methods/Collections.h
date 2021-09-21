@@ -99,7 +99,8 @@ struct Collections {
                        bool createWaitsForSyncReplication,
                        bool enforceReplicationFactor, bool isNewDatabase,
                        std::shared_ptr<LogicalCollection> const& colPtr,
-                       std::vector<std::shared_ptr<LogicalCollection>>& ret);
+                       std::vector<std::shared_ptr<LogicalCollection>>& ret,
+                       bool isSingleServerSmartGraph = false); // todo find better name to also match satellite
 
   static Result createSystem(TRI_vocbase_t& vocbase, OperationOptions const&,
                              std::string const& name, bool isNewDatabase,

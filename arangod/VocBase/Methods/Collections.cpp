@@ -240,7 +240,8 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
                            bool createWaitsForSyncReplication,
                            bool enforceReplicationFactor, bool isNewDatabase,
                            std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
-                           std::vector<std::shared_ptr<LogicalCollection>>& ret) {
+                           std::vector<std::shared_ptr<LogicalCollection>>& ret,
+                           bool isSingleServerSmartGraph) {
   ExecContext const& exec = options.context();
   if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
     for (auto const& info : infos) {
@@ -253,12 +254,10 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
   }
 
   TRI_ASSERT(!vocbase.isDangling());
-  bool haveShardingFeature = ServerState::instance()->isCoordinator() &&
-                             vocbase.server().hasFeature<ShardingFeature>();
-  bool addUseRevs = ServerState::instance()->isSingleServerOrCoordinator();
+  bool addUseRevs = ServerState::instance()->isSingleServerOrCoordinator(); // true
   bool useRevs =
       vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB() &&
-      LogicalCollection::currentVersion() >= LogicalCollection::Version::v37;
+      LogicalCollection::currentVersion() >= LogicalCollection::Version::v37; // true
   VPackBuilder builder;
   VPackBuilder helper;
   builder.openArray();
@@ -326,8 +325,8 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
       case ServerState::ROLE_UNDEFINED:
         TRI_ASSERT(false);
     }
-    
-    if (!isLocalCollection) {
+
+    if (!isLocalCollection || isSingleServerSmartGraph) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
         auto factor = vocbase.replicationFactor();
@@ -391,12 +390,13 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
     VPackBuilder merged =
         VPackCollection::merge(info.properties, helper.slice(), false, true);
 
+    bool haveShardingFeature = (ServerState::instance()->isCoordinator() || isSingleServerSmartGraph) &&
+                               vocbase.server().hasFeature<ShardingFeature>();
     if (haveShardingFeature && !info.properties.get(StaticStrings::ShardingStrategy).isString()) {
       // NOTE: We need to do this in a second merge as the feature call requires the
       // DataSourceType to be set in the JSON, which has just been done by the call above.
       helper.clear();
       helper.openObject();
-      TRI_ASSERT(ServerState::instance()->isCoordinator());
       helper.add(StaticStrings::ShardingStrategy,
                  VPackValue(vocbase.server().getFeature<ShardingFeature>().getDefaultShardingStrategyForNewCollection(
                      merged.slice())));
