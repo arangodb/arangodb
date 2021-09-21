@@ -1865,21 +1865,21 @@ futures::Future<OperationResult> transaction::Methods::countAsync(
 /// @brief count the number of documents in a collection
 futures::Future<OperationResult> transaction::Methods::countCoordinator(
     std::string const& collectionName, transaction::CountType type,
-    OperationOptions const& options) {
+    OperationOptions const& options, MethodsApi api) {
   // First determine the collection ID from the name:
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
-  return countCoordinatorHelper(colptr, collectionName, type, options);
+  return countCoordinatorHelper(colptr, collectionName, type, options, api);
 }
 
 #endif
 
 futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
     std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName,
-    transaction::CountType type, OperationOptions const& options) {
+    transaction::CountType type, OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(collinfo != nullptr);
   auto& cache = collinfo->countCache();
 
@@ -1893,7 +1893,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
 
   if (documents == CountCache::NotPopulated) {
     // no cache hit, or detailed results requested
-    return arangodb::countOnCoordinator(*this, collectionName, options)
+    return arangodb::countOnCoordinator(*this, collectionName, options, api)
         .thenValue([&cache, type, options](OperationResult&& res) -> OperationResult {
           if (res.fail()) {
             return std::move(res);
@@ -2718,7 +2718,7 @@ futures::Future<OperationResult> Methods::countInternal(std::string const& colle
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (_state->isCoordinator()) {
-    return countCoordinator(collectionName, type, options);
+    return countCoordinator(collectionName, type, options, api);
   }
 
   if (type == CountType::Detailed) {

@@ -33,6 +33,7 @@
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/GeneralResponse.h"
+#include "Transaction/MethodsApi.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
@@ -119,7 +120,8 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature&,
 
 futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
                                                     std::string const& collname,
-                                                    OperationOptions const& options);
+                                                    OperationOptions const& options,
+                                                    arangodb::transaction::MethodsApi api);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers

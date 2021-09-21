@@ -467,7 +467,6 @@ class Methods {
   auto truncateInternal(std::string const& collectionName, OperationOptions const& options,
                         MethodsApi api) -> Future<OperationResult>;
   // is virtual for IgnoreNoAccessMethods
-  // TODO set skipScheduler: true for network requests
   ENTERPRISE_VIRT auto countInternal(std::string const& collectionName, CountType type,
                                      OperationOptions const& options, MethodsApi api)
       -> futures::Future<OperationResult>;
@@ -481,11 +480,12 @@ class Methods {
 
   futures::Future<OperationResult> countCoordinator(std::string const& collectionName,
                                                     CountType type,
-                                                    OperationOptions const& options);
+                                                    OperationOptions const& options,
+                                                    MethodsApi api);
 
   futures::Future<OperationResult> countCoordinatorHelper(
       std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName,
-      CountType type, OperationOptions const& options);
+      CountType type, OperationOptions const& options, MethodsApi api);
 
   OperationResult countLocal(std::string const& collectionName, CountType type,
                              OperationOptions const& options);
