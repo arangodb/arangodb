@@ -243,6 +243,8 @@
         db._drop("UnitTestsWithArrayCollection");
         db._dropView("WithPrimarySort");
         db._drop("TestsCollectionWithManyFields");
+        db._dropView("WithStoredValues");
+        db._drop("TestsCollectionWithLongFields");
         analyzers.remove("customAnalyzer", true);
       },
 

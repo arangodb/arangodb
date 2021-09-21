@@ -151,8 +151,6 @@ function iResearchAqlTestSuite () {
       db._drop("TestsCollectionWithManyFields");
       db._dropView("WithStoredValues");
       db._drop("TestsCollectionWithLongFields");
-      db._dropView("WithStoredValues");
-      db._drop("TestsCollectionWithLongFields");
       analyzers.remove("customAnalyzer", true);
     },
     setUp : function () {
