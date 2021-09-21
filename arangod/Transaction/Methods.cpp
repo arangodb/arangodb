@@ -1195,8 +1195,8 @@ Future<OperationResult> transaction::Methods::updateAsync(std::string const& cna
 /// if it fails, clean up after itself
 #ifndef USE_ENTERPRISE
 Future<OperationResult> transaction::Methods::modifyCoordinator(
-    std::string const& cname, VPackSlice newValue,
-    OperationOptions const& options, TRI_voc_document_operation_e operation) {
+    std::string const& cname, VPackSlice newValue, OperationOptions const& options,
+    TRI_voc_document_operation_e operation, MethodsApi api) {
   if (!newValue.isArray()) {
     arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(newValue));
     if (key.empty()) {
@@ -1210,7 +1210,7 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
   }
 
   const bool isPatch = (TRI_VOC_DOCUMENT_OPERATION_UPDATE == operation);
-  return arangodb::modifyDocumentOnCoordinator(*this, *colptr, newValue, options, isPatch);
+  return arangodb::modifyDocumentOnCoordinator(*this, *colptr, newValue, options, isPatch, api);
 }
 #endif
 
@@ -2629,7 +2629,7 @@ Future<OperationResult> Methods::updateInternal(std::string const& cname, VPackS
 
   auto f = Future<OperationResult>::makeEmpty();
   if (_state->isCoordinator()) {
-    f = modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+    f = modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_UPDATE, api);
   } else {
     OperationOptions optionsCopy = options;
     f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
@@ -2658,7 +2658,7 @@ Future<OperationResult> Methods::replaceInternal(std::string const& cname, VPack
 
   auto f = Future<OperationResult>::makeEmpty();
   if (_state->isCoordinator()) {
-    f = modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+    f = modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_REPLACE, api);
   } else {
     OperationOptions optionsCopy = options;
     f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_REPLACE);

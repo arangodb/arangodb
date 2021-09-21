@@ -2271,9 +2271,10 @@ void fetchVerticesFromEngines(
 /// @brief modify a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Future<OperationResult> modifyDocumentOnCoordinator(
-    transaction::Methods& trx, LogicalCollection& coll, VPackSlice const& slice,
-    arangodb::OperationOptions const& options, bool const isPatch) {
+futures::Future<OperationResult> modifyDocumentOnCoordinator(
+    transaction::Methods& trx, LogicalCollection& coll,
+    arangodb::velocypack::Slice const& slice, OperationOptions const& options,
+    bool isPatch, transaction::MethodsApi api) {
   // Set a few variables needed for our work:
 
   // First determine the collection ID from the name:
@@ -2335,6 +2336,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
   reqOpts.database = trx.vocbase().name();
   reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
          .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"))
          .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"))
@@ -2365,8 +2367,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 
     Future<Result> f = makeFuture(Result());
     if (isManaged && opCtx.shardMap.size() > 1) {  // lazily begin transactions on leaders
-      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap,
-                                        transaction::MethodsApi::Asynchronous);
+      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
     }
 
     return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))](Result&& r) mutable -> Future<OperationResult> {
@@ -2438,7 +2439,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 
   Future<Result> f = makeFuture(Result());
   if (isManaged && shardIds->size() > 1) {  // lazily begin the transaction
-    f = ::beginTransactionOnAllLeaders(trx, *shardIds, transaction::MethodsApi::Asynchronous);
+    f = ::beginTransactionOnAllLeaders(trx, *shardIds, api);
   }
 
   return std::move(f).thenValue([=, &trx](Result&&) mutable -> Future<OperationResult> {

@@ -213,7 +213,8 @@ void fetchVerticesFromEngines(
 
 futures::Future<OperationResult> modifyDocumentOnCoordinator(
     transaction::Methods& trx, LogicalCollection& coll,
-    arangodb::velocypack::Slice const& slice, OperationOptions const& options, bool isPatch);
+    arangodb::velocypack::Slice const& slice, OperationOptions const& options,
+    bool isPatch, transaction::MethodsApi api);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate a cluster collection on a coordinator

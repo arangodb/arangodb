@@ -407,7 +407,8 @@ class Methods {
   Future<OperationResult> modifyCoordinator(std::string const& collectionName,
                                             VPackSlice newValue,
                                             OperationOptions const& options,
-                                            TRI_voc_document_operation_e operation);
+                                            TRI_voc_document_operation_e operation,
+                                            MethodsApi api);
 
   Future<OperationResult> modifyLocal(std::string const& collectionName,
                                       VPackSlice newValue,
@@ -453,10 +454,8 @@ class Methods {
       -> Future<OperationResult>;
   auto insertInternal(std::string const& collectionName, VPackSlice value,
                       OperationOptions const& options, MethodsApi api) -> Future<OperationResult>;
-  // TODO set skipScheduler: true for network requests
   auto updateInternal(std::string const& collectionName, VPackSlice updateValue,
                       OperationOptions const& options, MethodsApi api) -> Future<OperationResult>;
-  // TODO set skipScheduler: true for network requests
   auto replaceInternal(std::string const& collectionName, VPackSlice replaceValue,
                        OperationOptions const& options, MethodsApi api) -> Future<OperationResult>;
   // TODO set skipScheduler: true for network requests
