@@ -500,32 +500,38 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
   // as possible with the property, that there are and will never be
   // any changes to the collection with a sequence number larger than
   // the sequence number of the last persisted version of the revision tree
-  // and smaller than s. Therefore, we can in the end move forward the
-  // in memory sequence number of the latest serialized revision tree.
+  // *and* smaller than s. Therefore, we can in the end move the in memory
+  // sequence number forward of the latest serialized revision tree.
   // See below for a proof that we do not miss any transactions!
   
   rocksdb::SequenceNumber seq = maxCommitSeq;  // start as large as possible
   
   // A transaction commit proceeds as follows:
+  //
   //  1. Note the latest sequence number in the RocksDB WAL, call it "beginSeq"
-  //  2. Create a blocker for all collections involved with beginSeq
+  //  2. Create a blocker for all collections involved with beginSeq, if this
+  //     is not possible, bump beginSeq forward (by getting a new latest
+  //     sequence number from RocksDB). After this step, we have blockers
+  //     on all collections involved for sequence numbers, which are all
+  //     at most beginSeq in its final state.
   //  3. Commit the rocksDB transaction, this will result in a WAL sequence
-  //     number for the commit marker called "postCommitSeq". It is at least
-  //     as large as beginSeq and is the last sequence number in the WAL
-  //     containing information about this transaction.
+  //     number for the commit marker called "postCommitSeq". It and all
+  //     sequence numbers of write operations for the transaction are larger
+  //     than beginSeq.
   //  4. Call `bufferUpdates` on the `RocksDBMetaCollection and submit all
   //     revisions which have been inserted or removed, which in turns
   //     queues these operations in _revisionInsertBuffers and
   //     `_revisionRemoveBuffers` for the revision tree, filed under
   //     the sequence number `postCommitSeq`.
-  //  5. Remove the blocker for the transaction.
+  //  5. Remove the blockers for the transaction.
+  //
   // After that, at some stage the pending insertions and removals are
   // actually applied to the tree and its `_revisionTreeApplied` is moved
   // forward. The new tree will eventually be persisted again.
-  // Note that since `beginSeq` is always smaller or equal to `postCommitSeq`,
-  // we either have a blocked with `beginSeq` or we have operations
-  // pending with a sequence number `postCommitSeq` or we have applied
-  // the operations to the tree and have thus moved on `_revisionTreeApplied`.
+  // Note that since `beginSeq` is always smaller than any sequence number
+  // involved in the transaction (including `postCommitSeq`),
+  // we always have a blocker with `beginSeq` (or smaller) whenever
+  // we write operations to the WAL.
 
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
   
@@ -541,8 +547,15 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
     // All we have to ensure that no transaction has or will ever again
     // produce a change with a sequence number larger than
     // `_revisitionTreeSerializedSeq` and smaller than or equal to `seq`.
-    // This is true, since:
-    //    ...
+    // This is true, because of the following:
+    // Assume some transaction that touches this collection would end up
+    // with its commit marker at a sequence number between
+    // `_revisionTreeSerializedSeq` and `seq` (i.e. its
+    // `postCommitSeq`). Then it must have before got a blocker for its
+    // `beginSeq` number in Step 2 above. So either, we still see the blocker,
+    // or the corresponding operations have already been added to the buffers,
+    // or they have already been applied to the tree, in which case
+    // _revisionTreeApplied would be larger than `seq`. q.e.d.
     LOG_TOPIC("32d45", TRACE, Logger::ENGINES)
         << "adjusting sequence number for " << _logicalCollection.name() 
         << " from " << _revisionTreeSerializedSeq << " to " << seq;

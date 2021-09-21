@@ -543,12 +543,12 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
 
     // Find out up to which sequence the tree of this collection has been
     // persisted to RocksDB. We need this to compute the minimum over all
-    // for the persisted `lastSync` value (in `appliedSeq`). Note that on
-    // recovery after a crash (or restart) all WAL entries lower than
-    // the persisted `lastSync` are ignored. Therefore it is imperative
-    // that there are no pending or actual changes for the revision tree
-    // in memory, which will end up in the WAL with a sequence number less
-    // than the computed `seq` number here!
+    // collections for the persisted `lastSync` value (in `appliedSeq`).
+    // Note that on recovery after a crash (or restart) all WAL entries
+    // lower than the persisted `lastSync` are ignored. Therefore it
+    // is imperative that there are no pending or actual changes for
+    // the revision tree in memory, which will end up in the WAL with a
+    // sequence number less than the computed `seq` number here!
     rocksdb::SequenceNumber seq = rcoll->lastSerializedRevisionTree(maxCommitSeq);
     appliedSeq = std::min(appliedSeq, seq);
         
