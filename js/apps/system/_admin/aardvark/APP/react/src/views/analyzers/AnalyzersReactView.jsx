@@ -136,7 +136,7 @@ const AnalyzersReactView = () => {
     return <>
       <div className="headerBar">
         <div className="search-field">
-          <input type={'text'} id={'searchInput'} className={'search-input'} value={filterExpr}
+          <input type={'text'} id={'filterInput'} className={'search-input'} value={filterExpr}
                  onChange={getChangeHandler(setFilterExpr)} placeholder={'Filter...'}/>
           <i id="searchSubmit" className="fa fa-search"/>
         </div>
