@@ -975,10 +975,6 @@ uint64_t RocksDBMetaCollection::placeRevisionTreeBlocker(TransactionId transacti
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
   
-  if (!_logicalCollection.useSyncByRevision()) {
-    return db->GetLatestSequenceNumber();
-  }
-
   // make sure that the global revision tree in _revisionTree does not move beyond
   // the sequence number we get here from RocksDB:
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
@@ -995,14 +991,13 @@ uint64_t RocksDBMetaCollection::placeRevisionTreeBlocker(TransactionId transacti
     if (_logicalCollection.vocbase().server().isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
+      
     std::this_thread::yield();
   }
 }
 
 void RocksDBMetaCollection::removeRevisionTreeBlocker(TransactionId transactionId) {
-  if (_logicalCollection.useSyncByRevision()) {
-    _meta.removeBlocker(transactionId);
-  }
+  _meta.removeBlocker(transactionId);
 }
 
 void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,

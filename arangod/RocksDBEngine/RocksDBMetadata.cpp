@@ -129,45 +129,6 @@ Result RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumbe
 }
 
 /**
- * @brief Update a blocker to allow proper commit/serialize semantics
- *
- * Should be called after initializing an internal trx.
- *
- * @param  trxId The identifier for the active transaction (should match input
- *               to earlier `placeBlocker` call)
- * @param  seq   The sequence number from the internal snapshot
- * @return       May return error if we fail to allocate and place blocker
- */
-Result RocksDBMetadata::updateBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
-  return basics::catchToResult([&]() -> Result {
-    Result res;
-    WRITE_LOCKER(locker, _blockerLock);
-
-    auto previous = _blockers.find(trxId);
-    if (_blockers.end() == previous ||
-        _blockersBySeq.end() ==
-            _blockersBySeq.find(std::make_pair(previous->second, trxId))) {
-      res.reset(TRI_ERROR_INTERNAL);
-    }
-
-    auto removed = _blockersBySeq.erase(std::make_pair(previous->second, trxId));
-    if (!removed) {
-      return res.reset(TRI_ERROR_INTERNAL);
-    }
-
-    TRI_ASSERT(seq >= _blockers[trxId]);
-    _blockers[trxId] = seq;
-    auto crosslist = _blockersBySeq.emplace(seq, trxId);
-    if (!crosslist.second) {
-      return res.reset(TRI_ERROR_INTERNAL);
-    }
-    LOG_TOPIC("1587c", TRACE, Logger::ENGINES)
-        << "[" << this << "] updated blocker (" << trxId.id() << ", " << seq << ")";
-    return res;
-  });
-}
-
-/**
  * @brief Removes an existing transaction blocker
  *
  * Should be called after transaction abort/rollback, or after buffering any
@@ -211,12 +172,15 @@ bool RocksDBMetadata::hasBlockerUpTo(rocksdb::SequenceNumber seq) const {
 
 /// @brief returns the largest safe seq to squash updates against
 rocksdb::SequenceNumber RocksDBMetadata::committableSeq(rocksdb::SequenceNumber maxCommitSeq) const {
-  READ_LOCKER(locker, _blockerLock);
-  // if we have a blocker use the lowest counter
   rocksdb::SequenceNumber committable = maxCommitSeq;
-  if (!_blockersBySeq.empty()) {
-    auto it = _blockersBySeq.begin();
-    committable = std::min(it->first, maxCommitSeq);
+
+  {
+    READ_LOCKER(locker, _blockerLock);
+    // if we have a blocker use the lowest counter
+    if (!_blockersBySeq.empty()) {
+      auto it = _blockersBySeq.begin();
+      committable = std::min(it->first, maxCommitSeq);
+    }
   }
   LOG_TOPIC("1587d", TRACE, Logger::ENGINES)
       << "[" << this << "] committableSeq determined to be " << committable;
@@ -255,6 +219,7 @@ bool RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
     it = _stagedAdjs.erase(it);
     didWork = true;
   }
+  
   std::lock_guard<std::mutex> guard(_bufferLock);
   _count._committedSeq = commitSeq;
   return didWork;
@@ -346,6 +311,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   std::string const context = coll.vocbase().name() + "/" + coll.name();
 
   rocksdb::SequenceNumber const maxCommitSeq = committableSeq(appliedSeq);
+  TRI_ASSERT(maxCommitSeq <= appliedSeq);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // simulate another transaction coming along and trying to commit while

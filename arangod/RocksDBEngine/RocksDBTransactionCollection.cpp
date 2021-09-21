@@ -174,7 +174,8 @@ rocksdb::SequenceNumber RocksDBTransactionCollection::prepareTransaction(Transac
     }
 
     auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
-    return coll->placeRevisionTreeBlocker(trxId);
+    rocksdb::SequenceNumber seq = coll->placeRevisionTreeBlocker(trxId);
+    return seq;
   }
 
   return 0;

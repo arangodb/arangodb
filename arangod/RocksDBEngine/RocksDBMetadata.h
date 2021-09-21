@@ -85,18 +85,6 @@ struct RocksDBMetadata final {
   Result placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq);
 
   /**
-   * @brief Update a blocker to allow proper commit/serialize semantics
-   *
-   * Should be called after initializing an internal trx.
-   *
-   * @param  trxId The identifier for the active transaction (should match input
-   *               to earlier `placeBlocker` call)
-   * @param  seq   The sequence number from the internal snapshot
-   * @return       May return error if we fail to allocate and place blocker
-   */
-  Result updateBlocker(TransactionId trxId, rocksdb::SequenceNumber seq);
-
-  /**
    * @brief Removes an existing transaction blocker
    *
    * Should be called after transaction abort/rollback, or after buffering any
