@@ -988,13 +988,20 @@ uint64_t RocksDBMetaCollection::placeRevisionTreeBlocker(TransactionId transacti
   // the sequence number we get here from RocksDB:
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
 
-  rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
-  // Since we have the lock above, the revision tree cannot move beyond
-  // this sequence number before we have actually placed the blocker.
-  TRI_ASSERT(preSeq >= _revisionTreeApplied);
-  _meta.placeBlocker(transactionId, preSeq);
-  // This remains true, even if `placeBlocker` has advanced the sequence number
-  return preSeq;
+  while (true) {
+    rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
+    // Since we have the lock above, the revision tree cannot move beyond
+    // this sequence number before we have actually placed the blocker.
+    if (preSeq >= _revisionTreeApplied && preSeq >= _revisionTreeSerializedSeq) {
+      _meta.placeBlocker(transactionId, preSeq);
+      return preSeq;
+    }
+    
+    if (_logicalCollection.vocbase().server().isStopping()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+    std::this_thread::yield();
+  }
 }
 
 void RocksDBMetaCollection::removeRevisionTreeBlocker(TransactionId transactionId) {

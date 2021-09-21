@@ -83,8 +83,7 @@ void RocksDBMetadata::DocCount::toVelocyPack(VPackBuilder& b) const {
 }
 
 RocksDBMetadata::RocksDBMetadata()
-    : _maxBlockersSequenceNumber(0),
-      _count(0, 0, 0, RevisionId::none()),
+    : _count(0, 0, 0, RevisionId::none()),
       _numberDocuments(0),
       _revisionId(RevisionId::none()) {}
 
@@ -100,12 +99,10 @@ RocksDBMetadata::RocksDBMetadata()
  * @param  seq   The sequence number immediately prior to call
  * @return       May return error if we fail to allocate and place blocker
  */
-Result RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumber& seq) {
+Result RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
   return basics::catchToResult([&]() -> Result {
     Result res;
     WRITE_LOCKER(locker, _blockerLock);
-
-    seq = std::max(seq, _maxBlockersSequenceNumber);
 
     TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
     TRI_ASSERT(_blockersBySeq.end() == _blockersBySeq.find(std::make_pair(seq, trxId)));
@@ -127,7 +124,6 @@ Result RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumbe
       throw;
     }
 
-    _maxBlockersSequenceNumber = seq;
     return res;
   });
 }
@@ -259,6 +255,7 @@ bool RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
     it = _stagedAdjs.erase(it);
     didWork = true;
   }
+  std::lock_guard<std::mutex> guard(_bufferLock);
   _count._committedSeq = commitSeq;
   return didWork;
 }
@@ -267,8 +264,9 @@ bool RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
 void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
                                             RevisionId revId, int64_t adj) {
   TRI_ASSERT(seq != 0 && (adj || revId.isSet()));
-  TRI_ASSERT(seq > _count._committedSeq);
+  
   std::lock_guard<std::mutex> guard(_bufferLock);
+  TRI_ASSERT(seq > _count._committedSeq);
   _bufferedAdjs.try_emplace(seq, Adjustment{revId, adj});
   LOG_TOPIC("1587e", TRACE, Logger::ENGINES)
       << "[" << this << "] buffered adjustment (" << seq << ", " << adj << ", "

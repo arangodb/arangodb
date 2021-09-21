@@ -204,7 +204,6 @@ Result RocksDBSettingsManager::sync(bool force) {
     rocksdb::SequenceNumber appliedSeq = maxSeqNr;
     Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder,
                                              appliedSeq, scratch);
-    TRI_ASSERT(appliedSeq > 0);
     minSeqNr = std::min(minSeqNr, appliedSeq);
 
     const std::string err = "could not sync metadata for collection '";
@@ -226,9 +225,11 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   auto const lastSync = _lastSync.load();
   if (minSeqNr < lastSync) {
-    LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
-    "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
-    TRI_ASSERT(false);
+    if (minSeqNr != 0) {
+      LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
+        "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
+      TRI_ASSERT(false);
+    }
     return Result(); // do not move backwards in time
   }
   TRI_ASSERT(lastSync <= minSeqNr);

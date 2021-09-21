@@ -82,7 +82,7 @@ struct RocksDBMetadata final {
    * @param  seq   The sequence number immediately prior to call
    * @return       May return error if we fail to allocate and place blocker
    */
-  Result placeBlocker(TransactionId trxId, rocksdb::SequenceNumber& seq);
+  Result placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq);
 
   /**
    * @brief Update a blocker to allow proper commit/serialize semantics
@@ -164,7 +164,6 @@ struct RocksDBMetadata final {
   // TODO we should probably use flat_map or abseils Swiss Tables
   std::map<TransactionId, rocksdb::SequenceNumber> _blockers;
   std::set<std::pair<rocksdb::SequenceNumber, TransactionId>> _blockersBySeq;
-  rocksdb::SequenceNumber _maxBlockersSequenceNumber;
 
   DocCount _count;  /// @brief document count struct
 
