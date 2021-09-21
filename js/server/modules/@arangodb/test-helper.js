@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global arango, db */
+/*global arango, db, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Helper for JavaScript Tests
