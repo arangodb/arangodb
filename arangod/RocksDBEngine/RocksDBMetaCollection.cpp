@@ -535,7 +535,7 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
 
     // set the tree to sleep (note: hibernation requests may be ignored if there
     // is not yet a need to hibernate)
-    hibernateRevisionTree();
+    hibernateRevisionTree(guard);
   }
 
   return Result{};
@@ -657,44 +657,39 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     std::string& output, rocksdb::SequenceNumber commitSeq, bool force,
     std::unique_lock<std::mutex> const& lock) {
   TRI_ASSERT(lock.owns_lock());
+  TRI_ASSERT(_logicalCollection.useSyncByRevision());
 
-  if (_logicalCollection.useSyncByRevision()) {
-    if (!_revisionTree && !haveBufferedOperations(lock)) {  // empty collection
-      return commitSeq;
-    }
-    applyUpdates(commitSeq, lock);  // always apply updates...
- 
-    // applyUpdates will make sure we will have a valid tree
-    TRI_ASSERT(_revisionTree != nullptr);
-    TRI_ASSERT(_revisionTree->depth() == revisionTreeDepth);
+  if (!_revisionTree && !haveBufferedOperations(lock)) {  // empty collection
+    return commitSeq;
+  }
+  applyUpdates(commitSeq, lock);  // always apply updates...
 
-    bool neverDone = _revisionTreeSerializedSeq == _revisionTreeCreationSeq;
-    bool coinFlip = RandomGenerator::interval(static_cast<uint32_t>(5)) == 0;
-    bool beenTooLong = 30 < std::chrono::duration_cast<std::chrono::seconds>(
-                                std::chrono::steady_clock::now() - _revisionTreeSerializedTime)
-                                .count();
-    TRI_IF_FAILURE("RocksDBMetaCollection::forceSerialization") {
-      coinFlip = true;
-    }
+  // applyUpdates will make sure we will have a valid tree
+  TRI_ASSERT(_revisionTree != nullptr);
+  TRI_ASSERT(_revisionTree->depth() == revisionTreeDepth);
 
-    TRI_IF_FAILURE("RocksDBMetaCollection::serializeRevisionTree") {
-      return _revisionTreeSerializedSeq;
-    }
-    if (force || neverDone || coinFlip || beenTooLong) {  // ...but only write the tree out sometimes
-      _revisionTree->serializeBinary(output);
-      _revisionTreeSerializedSeq = commitSeq;
-      _revisionTreeSerializedTime = std::chrono::steady_clock::now();
+  bool neverDone = _revisionTreeSerializedSeq == _revisionTreeCreationSeq;
+  bool coinFlip = RandomGenerator::interval(static_cast<uint32_t>(5)) == 0;
+  bool beenTooLong = 30 < std::chrono::duration_cast<std::chrono::seconds>(
+                              std::chrono::steady_clock::now() - _revisionTreeSerializedTime)
+                              .count();
+  TRI_IF_FAILURE("RocksDBMetaCollection::forceSerialization") {
+    coinFlip = true;
+  }
 
-      if (_revisionTreeSerializedSeq < _revisionTreeCreationSeq) {
-        _revisionTreeCreationSeq = _revisionTreeSerializedSeq;
-      }
-    }
+  TRI_IF_FAILURE("RocksDBMetaCollection::serializeRevisionTree") {
     return _revisionTreeSerializedSeq;
   }
-  // if we get here, we aren't using the trees;
-  // mark as don't persist again, tree should be deleted now
-  _revisionTreeApplied = std::numeric_limits<rocksdb::SequenceNumber>::max();
-  return commitSeq;
+  if (force || neverDone || coinFlip || beenTooLong) {  // ...but only write the tree out sometimes
+    _revisionTree->serializeBinary(output);
+    _revisionTreeSerializedSeq = commitSeq;
+    _revisionTreeSerializedTime = std::chrono::steady_clock::now();
+
+    if (_revisionTreeSerializedSeq < _revisionTreeCreationSeq) {
+      _revisionTreeCreationSeq = _revisionTreeSerializedSeq;
+    }
+  }
+  return _revisionTreeSerializedSeq;
 }
   
 ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNumber>> 
@@ -1090,9 +1085,8 @@ Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
   return res;
 }
 
-void RocksDBMetaCollection::hibernateRevisionTree() {
-  std::unique_lock<std::mutex> lock(_revisionTreeLock);
-
+void RocksDBMetaCollection::hibernateRevisionTree(std::unique_lock<std::mutex> const& lock) {
+  TRI_ASSERT(lock.owns_lock());
   if (_revisionTree && !haveBufferedOperations(lock)) {
     _revisionTree->hibernate(/*force*/ false);
   }

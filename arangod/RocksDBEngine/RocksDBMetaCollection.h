@@ -126,9 +126,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   Result bufferTruncate(rocksdb::SequenceNumber seq);
 
-  /// @brief sends the collection's revision tree to hibernation
-  void hibernateRevisionTree();
-
   /// @brief return bounds for all documents
   virtual RocksDBKeyBounds bounds() const = 0;
   
@@ -147,6 +144,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
 
  private:
+  /// @brief sends the collection's revision tree to hibernation
+  void hibernateRevisionTree(std::unique_lock<std::mutex> const& lock);
+
   Result applyUpdatesForTransaction(containers::RevisionTree& tree,
                                     rocksdb::SequenceNumber commitSeq,
                                     std::unique_lock<std::mutex>& lock) const;
