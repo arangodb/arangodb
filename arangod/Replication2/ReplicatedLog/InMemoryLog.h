@@ -26,6 +26,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 #include <Containers/ImmerMemoryPolicy.h>
+#include <velocypack/Builder.h>
 
 #include <optional>
 
@@ -37,7 +38,6 @@
 // result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
 #pragma warning(disable : 4334)
 #endif
-#include <velocypack/Builder.h>
 #include <immer/flex_vector.hpp>
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
@@ -56,15 +56,18 @@ struct PersistedLogIterator;
  */
 struct InMemoryLog {
  public:
-  using log_type =
-      ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy>;
+  template<typename T>
+  using log_type_t = ::immer::flex_vector<T, arangodb::immer::arango_memory_policy>;
+  using log_type = log_type_t<InMemoryLogEntry>;
+  using log_type_persisted = log_type_t<PersistingLogEntry>;
 
  private:
   log_type _log{};
+  LogIndex _first{0};
 
  public:
   InMemoryLog() = delete;
-  InMemoryLog(LoggerContext const& logContext, replicated_log::LogCore const& logCore);
+  explicit InMemoryLog(log_type log);
 
   InMemoryLog(InMemoryLog&& other) noexcept;
   InMemoryLog(InMemoryLog const&) = default;
@@ -79,6 +82,7 @@ struct InMemoryLog {
   [[nodiscard]] auto getLastTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto getLastEntry() const noexcept -> std::optional<InMemoryLogEntry>;
   [[nodiscard]] auto getFirstEntry() const noexcept -> std::optional<InMemoryLogEntry>;
+  [[nodiscard]] auto getFirstIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getNextIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getEntryByIndex(LogIndex idx) const noexcept
       -> std::optional<InMemoryLogEntry>;
@@ -89,34 +93,39 @@ struct InMemoryLog {
   [[nodiscard]] auto getLastIndexOfTerm(LogTerm term) const noexcept
       -> std::optional<LogIndex>;
 
+  [[nodiscard]] auto getIndexRange() const noexcept -> LogRange;
+
   // @brief Unconditionally accesses the last element
   [[nodiscard]] auto back() const noexcept -> decltype(_log)::const_reference;
   [[nodiscard]] auto empty() const noexcept -> bool;
+
+  [[nodiscard]] auto release(LogIndex stop) const -> InMemoryLog;
 
   void appendInPlace(LoggerContext const& logContext, InMemoryLogEntry entry);
 
   [[nodiscard]] auto append(LoggerContext const& logContext, log_type entries) const
       -> InMemoryLog;
   [[nodiscard]] auto append(LoggerContext const& logContext,
-                            ::immer::flex_vector<PersistingLogEntry, arangodb::immer::arango_memory_policy> const& entries) const
-      -> InMemoryLog;
+                            log_type_persisted const& entries) const -> InMemoryLog;
 
   [[nodiscard]] auto getIteratorFrom(LogIndex fromIdx) const -> std::unique_ptr<LogIterator>;
   [[nodiscard]] auto getInternalIteratorFrom(LogIndex fromIdx) const -> std::unique_ptr<PersistedLogIterator>;
   // get an iterator for range [from, to).
   [[nodiscard]] auto getIteratorRange(LogIndex fromIdx, LogIndex toIdx) const
-      -> std::unique_ptr<LogIterator>;
+      -> std::unique_ptr<LogRangeIterator>;
 
   [[nodiscard]] auto takeSnapshotUpToAndIncluding(LogIndex until) const -> InMemoryLog;
 
   [[nodiscard]] auto copyFlexVector() const -> log_type;
 
   // helpful for debugging
-  [[nodiscard]] static auto dump(log_type log) -> std::string;
-  [[nodiscard]] auto dump() -> std::string;
+  [[nodiscard]] static auto dump(log_type const& log) -> std::string;
+  [[nodiscard]] auto dump() const -> std::string;
 
+
+  [[nodiscard]] static auto loadFromLogCore(LogCore const&) -> InMemoryLog;
  protected:
-  explicit InMemoryLog(log_type log);
+  explicit InMemoryLog(log_type log, LogIndex first);
 };
 
 }  // namespace arangodb::replication2::replicated_log

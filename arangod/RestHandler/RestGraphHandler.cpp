@@ -682,9 +682,17 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph, EdgeDefinitio
   OperationResult result(Result(), options);
 
   if (action == EdgeDefinitionAction::CREATE) {
-    result = gops.addEdgeDefinition(body, waitForSync);
+    VPackSlice editOptions = body.get(StaticStrings::GraphOptions);
+    if (!editOptions.isObject()) {
+      editOptions = VPackSlice::emptyObjectSlice();
+    }
+    result = gops.addEdgeDefinition(body, editOptions, waitForSync);
   } else if (action == EdgeDefinitionAction::EDIT) {
-    result = gops.editEdgeDefinition(body, waitForSync, edgeDefinitionName);
+    VPackSlice editOptions = body.get(StaticStrings::GraphOptions);
+    if (!editOptions.isObject()) {
+      editOptions = VPackSlice::emptyObjectSlice();
+    }
+    result = gops.editEdgeDefinition(body, editOptions, waitForSync, edgeDefinitionName);
   } else if (action == EdgeDefinitionAction::REMOVE) {
     // TODO Does this get waitForSync? Not according to the documentation.
     // if not, remove the parameter from eraseEdgeDefinition. What about

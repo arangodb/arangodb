@@ -29,17 +29,16 @@
 #include <limits>
 #include <memory>
 #include <mutex>
-#include <queue>
+//#include <queue>
 #include <shared_mutex>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <type_traits>
+//#include <type_traits>
 #include <utility>
 #include <vector>
 
 #include <snappy.h>
-#include <snappy-sinksource.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -54,8 +53,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/hashes.h"
-
-#include "Logger/LogMacros.h"
+#include "Containers/MerkleTreeHelpers.h"
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 #include "Random/RandomGenerator.h"
@@ -72,86 +70,6 @@ template<typename T> T readUInt(char const*& p) noexcept {
   memcpy(&value, p, sizeof(T));
   p += sizeof(T);
   return arangodb::basics::littleToHost<T>(value);
-};
-
-/// @brief an empty shard that is reused when serializing empty shards
-struct EmptyShard {
-  EmptyShard()
-    : buffer(arangodb::containers::MerkleTreeBase::Data::buildShard(arangodb::containers::MerkleTreeBase::ShardSize)) {}
-
-  char* data() const { return reinterpret_cast<char*>(buffer.get()); }
-
-  arangodb::containers::MerkleTreeBase::Data::ShardType buffer;
-};
-
-/// @brief an empty shard that is reused when serializing empty shards
-EmptyShard const emptyShard;
-
-
-class SnappyStringAppendSink : public snappy::Sink {
- public:
-  explicit SnappyStringAppendSink(std::string& output) 
-      : output(output) {}
-
-  void Append(const char* bytes, size_t n) override {
-    output.append(bytes, n);
-  }
-
- private:
-  std::string& output;
-};
-  
-/// @brief helper class for compressing a Merkle tree using Snappy
-class MerkleTreeSnappySource : public snappy::Source {
- public:
-  explicit MerkleTreeSnappySource(std::uint64_t numberOfShards, 
-                                  std::uint64_t allocationSize,
-                                  arangodb::containers::MerkleTreeBase::Data const& data)
-      : numberOfShards(numberOfShards),
-        data(data), 
-        bytesRead(0),
-        bytesLeftToRead(allocationSize) {}
-  
-  size_t Available() const override {
-    return bytesLeftToRead;
-  }
-  
-  char const* Peek(size_t* len) override {
-    if (bytesRead < arangodb::containers::MerkleTreeBase::MetaSize) {
-      TRI_ASSERT(bytesRead == 0);
-      *len = arangodb::containers::MerkleTreeBase::MetaSize;
-      return reinterpret_cast<char const*>(&data.meta);
-    }
-    
-    TRI_ASSERT(bytesRead >= arangodb::containers::MerkleTreeBase::MetaSize);
-    std::uint64_t shard = (bytesRead - arangodb::containers::MerkleTreeBase::MetaSize) / arangodb::containers::MerkleTreeBase::ShardSize;
-    std::uint64_t offsetInShard = (bytesRead - arangodb::containers::MerkleTreeBase::MetaSize) % arangodb::containers::MerkleTreeBase::ShardSize;
-
-    if (shard < numberOfShards) {
-      *len = arangodb::containers::MerkleTreeBase::ShardSize - offsetInShard;
-      if (shard >= data.shards.size() || data.shards[shard] == nullptr) {
-        // for compressing empty shards, we use the static EmptyShard object,
-        // which consists of one shard that is completely empty
-        return emptyShard.data() + offsetInShard;
-      }
-      return reinterpret_cast<char const*>(data.shards[shard].get()) + offsetInShard;
-    }
-    // no more data
-    *len = 0;
-    return "";
-  }
-
-  void Skip(size_t n) override {
-    bytesRead += n;
-    TRI_ASSERT(n <= bytesLeftToRead);
-    bytesLeftToRead -= n;
-  }
-   
- private:
-  std::uint64_t const numberOfShards;
-  arangodb::containers::MerkleTreeBase::Data const& data;
-  std::uint64_t bytesRead;
-  std::uint64_t bytesLeftToRead;
 };
 
 }  // namespace
@@ -965,8 +883,8 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
     }
     case BinaryFormat::CompressedSnappyFull: {
       output.reserve(16384);
-      ::MerkleTreeSnappySource source(numberOfShards(), allocationSize(meta().depth), _data);
-      ::SnappyStringAppendSink sink(output);
+      arangodb::containers::helpers::MerkleTreeSnappySource source(numberOfShards(), allocationSize(meta().depth), _data);
+      arangodb::containers::helpers::SnappyStringAppendSink sink(output);
       snappy::Compress(&source, &sink);
       break;
     }
@@ -990,7 +908,7 @@ void MerkleTree<Hasher, BranchingBits>::serializeBinary(std::string& output,
       }
 
       TRI_ASSERT(output.size() == MetaSize - sizeof(Meta::Padding) + sizeof(uint32_t) + numberOfShards() * sizeof(uint32_t));
-      ::SnappyStringAppendSink sink(output);
+      arangodb::containers::helpers::SnappyStringAppendSink sink(output);
       for (std::uint64_t i = 0; i < numberOfShards(); ++i) {
         size_t compressedLength = 0;
         bool shardSet = (_data.shards.size() > i && _data.shards[i] != nullptr);

@@ -72,9 +72,9 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBLogValue.cpp
   RocksDBEngine/RocksDBMetaCollection.cpp
   RocksDBEngine/RocksDBMetadata.cpp
-  RocksDBEngine/RocksDBTransactionMethods.cpp
   RocksDBEngine/RocksDBOptimizerRules.cpp
   RocksDBEngine/RocksDBOptionFeature.cpp
+  RocksDBEngine/RocksDBPersistedLog.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
   RocksDBEngine/RocksDBRecoveryManager.cpp
   RocksDBEngine/RocksDBReplicationCommon.cpp
@@ -90,6 +90,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBSettingsManager.cpp
   RocksDBEngine/RocksDBSyncThread.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
+  RocksDBEngine/RocksDBTransactionMethods.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBTtlIndex.cpp
   RocksDBEngine/RocksDBTypes.cpp
@@ -98,6 +99,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBVPackIndex.cpp
   RocksDBEngine/RocksDBValue.cpp
   RocksDBEngine/RocksDBWalAccess.cpp
-  RocksDBEngine/RocksDBPersistedLog.cpp
+  RocksDBEngine/RocksDBZkdIndex.cpp
 )
 set(ROCKSDB_SOURCES ${ROCKSDB_SOURCES} PARENT_SCOPE)

@@ -382,7 +382,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   }
 
   _numIndexCreations.fetch_add(1, std::memory_order_release);
-  auto colGuard = scopeGuard([&] {
+  auto colGuard = scopeGuard([&]() noexcept {
     _numIndexCreations.fetch_sub(1, std::memory_order_release);
     vocbase.release();
   });
@@ -660,7 +660,7 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
   RocksDBReplicationManager* manager = engine.replicationManager();
   RocksDBReplicationContext* ctx = batchId == 0 ? nullptr : manager->find(batchId);
-  auto guard = scopeGuard([manager, ctx]() -> void {
+  auto guard = scopeGuard([manager, ctx]() noexcept {
     if (ctx) {
       manager->release(ctx);
     }
@@ -790,12 +790,16 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
   // avoid OOM error for truncate by committing earlier
   uint64_t const prvICC = state->options().intermediateCommitCount;
-  state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
+  if (!state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
+  }
 
   // push our current transaction on the stack
   state->beginQuery(true);
-  auto stateGuard = scopeGuard([state]() {
+  auto stateGuard = scopeGuard([state, prvICC]() noexcept {
     state->endQuery(true);
+    // reset to previous value after truncate is finished
+    state->options().intermediateCommitCount = prvICC;
   });
 
   uint64_t found = 0;
@@ -843,9 +847,6 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     }
     trackWaitForSync(&trx, options);
   }
-
-  // reset to previous value after truncate is finished
-  state->options().intermediateCommitCount = prvICC;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (state->numCommits() == 0) {

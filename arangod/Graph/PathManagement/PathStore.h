@@ -71,7 +71,10 @@ class PathStore {
   size_t append(Step step);
 
   // @briefs Method returns a step at given position
-  Step get(size_t position) const;
+  Step getStep(size_t position) const;
+
+  // @briefs Method returns a step reference at given position
+  Step& getStepReference(size_t position);
 
   // @brief returns the current vector size
   size_t size() const { return _schreier.size(); }
@@ -79,11 +82,14 @@ class PathStore {
   auto visitReversePath(Step const& step,
                         std::function<bool(Step const&)> const& visitor) const -> bool;
 
+  auto modifyReversePath(Step& step, std::function<bool(Step&)> const& visitor) -> bool;
+
   template <class PathResultType>
   auto buildPath(Step const& vertex, PathResultType& path) const -> void;
 
   template <class ProviderType>
-  auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> void;
+  auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const
+      -> void;
 
  private:
   /// @brief schreier vector to store the visited vertices
@@ -94,4 +100,3 @@ class PathStore {
 
 }  // namespace graph
 }  // namespace arangodb
-

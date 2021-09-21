@@ -28,6 +28,7 @@
 #include <velocypack/StringRef.h>
 
 #include "Basics/Result.h"
+#include "IResearchLinkMock.h"
 #include "Indexes/IndexIterator.h"
 #include "Mocks/IResearchLinkMock.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
@@ -98,6 +99,10 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual uint64_t numberDocuments(arangodb::transaction::Methods* trx) const override;
   virtual std::string const& path() const override;
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) override;
+
+  arangodb::IndexEstMap clusterIndexEstimates(bool allowUpdating,
+                                              arangodb::TransactionId tid) override;
+
   virtual arangodb::Result read(arangodb::transaction::Methods*,
                                 arangodb::velocypack::StringRef const& key,
                                 arangodb::IndexIterator::DocumentCallback const& cb,
@@ -187,7 +192,8 @@ class StorageEngineMock : public arangodb::StorageEngine {
   std::map<std::pair<TRI_voc_tick_t, arangodb::DataSourceId>, arangodb::velocypack::Builder> views;
   std::atomic<size_t> vocbaseCount;
 
-  explicit StorageEngineMock(arangodb::application_features::ApplicationServer& server);
+  explicit StorageEngineMock(arangodb::application_features::ApplicationServer& server,
+                             bool injectClusterIndexes = false);
   arangodb::HealthData healthCheck() override;
   virtual void addOptimizerRules(arangodb::aql::OptimizerRulesFeature& feature) override;
   virtual void addRestHandlers(arangodb::rest::RestHandlerFactory& handlerFactory) override;

@@ -134,7 +134,7 @@ void SharedQueryState::queueHandler() {
                         ? RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR
                         : RequestLane::CLUSTER_AQL;
 
-  bool queued = scheduler->queue(lane, [self = shared_from_this(),
+  bool queued = scheduler->tryBoundedQueue(lane, [self = shared_from_this(),
                                         cb = _wakeupCb, v = _cbVersion]() {
     std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
@@ -172,7 +172,7 @@ void SharedQueryState::queueHandler() {
 bool SharedQueryState::queueAsyncTask(fu2::unique_function<void()> cb) {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler) {
-    return scheduler->queue(RequestLane::CLUSTER_AQL, std::move(cb));
+    return scheduler->tryBoundedQueue(RequestLane::CLUSTER_AQL, std::move(cb));
   }
   return false;
 }

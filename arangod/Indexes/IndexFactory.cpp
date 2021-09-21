@@ -32,6 +32,8 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "RestServer/BootstrapFeature.h"
+#include "RestServer/DatabaseFeature.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -254,7 +256,8 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
       }
     }
 
-    if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(name))) {
+    bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNamesForCollections(); 
+    if (!IndexNameValidator::isAllowedName(extendedNames, name)) {
       return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
 
@@ -301,8 +304,9 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(velocypack::Slice def
 
 /// same for both storage engines
 std::vector<std::string> IndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{"primary", "edge",       "hash", "skiplist",
-                                  "ttl",     "persistent", "geo",  "fulltext"};
+  return std::vector<std::string>{"primary",  "edge",     "hash",
+                                  "skiplist", "ttl",      "persistent",
+                                  "geo",      "fulltext", "zkd"};
 }
 
 std::unordered_map<std::string, std::string> IndexFactory::indexAliases() const {
@@ -572,6 +576,36 @@ Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
     }
 
     builder.add("minLength", VPackValue(minWordLength));
+
+    bool bck = basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexInBackground,
+                                                         false);
+    builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
+  }
+
+  return res;
+}
+
+/// @brief enhances the json of a zkd index
+Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
+                                              VPackBuilder& builder, bool create) {
+  if (auto fieldValueTypes = definition.get("fieldValueTypes");
+      !fieldValueTypes.isString() || !fieldValueTypes.isEqualString("double")) {
+    return Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "zkd index requires `fieldValueTypes` to be set to `double` - future "
+        "releases might lift this requirement");
+  }
+
+  builder.add("fieldValueTypes", VPackValue("double"));
+  Result res = processIndexFields(definition, builder, 1, INT_MAX, create, false);
+
+  if (res.ok()) {
+    if (auto isSparse = definition.get(StaticStrings::IndexSparse).isTrue(); isSparse) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "zkd index does not support sparse property");
+    }
+
+    processIndexUniqueFlag(definition, builder);
 
     bool bck = basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexInBackground,
                                                          false);

@@ -351,7 +351,14 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   }
 
   // if we fail during commit, make sure we remove blockers, etc.
-  auto cleanupCollTrx = scopeGuard([this]() { _state->cleanupCollections(); });
+  auto cleanupCollTrx = scopeGuard([this]() noexcept {
+    try {
+      _state->cleanupCollections();
+    } catch (std::exception const& e) {
+      LOG_TOPIC("62772", ERR, Logger::ENGINES)
+          << "failed to cleanup collections: " << e.what();
+    }
+  });
 
   // total number of sequence ID consuming records
   uint64_t numOps = _rocksTransaction->GetNumPuts() +

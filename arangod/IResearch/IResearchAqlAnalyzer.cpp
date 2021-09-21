@@ -262,7 +262,7 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
     return _queryOptions;
   }
   
-  virtual arangodb::aql::QueryOptions& queryOptions() override {
+  virtual arangodb::aql::QueryOptions& queryOptions() noexcept override {
     return _queryOptions;
   }
 

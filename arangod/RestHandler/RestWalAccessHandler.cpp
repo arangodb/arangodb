@@ -243,7 +243,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   // this may throw when too many threads are going into tailing
   rf.trackTailingStart();
 
-  auto guard = scopeGuard([&rf]() { rf.trackTailingEnd(); });
+  auto guard = scopeGuard([&rf]() noexcept { rf.trackTailingEnd(); });
 
   bool const useVst = (_request->transportType() == Endpoint::TransportType::VST);
 

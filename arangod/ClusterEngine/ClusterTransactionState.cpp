@@ -67,7 +67,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   // set hints
   _hints = hints;
 
-  auto cleanup = scopeGuard([&] {
+  auto cleanup = scopeGuard([&]() noexcept {
     updateStatus(transaction::Status::ABORTED);
     ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted;
   });

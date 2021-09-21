@@ -35,6 +35,8 @@ bool ValidationResult::isFiltered() const noexcept {
   return _type == Type::FILTER;
 }
 
+void ValidationResult::combine(Type t) noexcept { _type = std::max(_type, t); }
+
 std::ostream& arangodb::graph::operator<<(std::ostream& stream, ValidationResult const& res) {
   switch (res._type) {
     case ValidationResult::Type::TAKE:

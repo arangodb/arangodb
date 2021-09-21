@@ -45,12 +45,14 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/StringRef.h>
+#include <velocypack/Utf8Helper.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -142,7 +144,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info, bo
           DataSourceId{Helper::extractIdValue(info)}, ::readGloballyUniqueId(info),
           DataSourceId{Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId))},
           Helper::getStringValue(info, StaticStrings::DataSourceName, ""),
-          TRI_vocbase_t::IsSystemName(
+          NameValidator::isSystemName(
               Helper::getStringValue(info, StaticStrings::DataSourceName, "")) &&
               Helper::getBooleanValue(info, StaticStrings::DataSourceSystem, false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
@@ -179,7 +181,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info, bo
 
   TRI_ASSERT(info.isObject());
 
-  if (!TRI_vocbase_t::IsAllowedName(info)) {
+  bool extendedNames = vocbase.server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+  if (!CollectionNameValidator::isAllowedName(system(), extendedNames, name())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -398,9 +401,18 @@ ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice sli
 }
 
 /// @briefs creates a new document key, the input slice is ignored here
-std::string LogicalCollection::createKey(VPackSlice) {
+std::string LogicalCollection::createKey(VPackSlice input) {
+  if (isSatToSmartEdgeCollection() || isSmartToSatEdgeCollection()) {
+    return createSmartToSatKey(input);
+  }
   return keyGenerator()->generate();
 }
+
+#ifndef USE_ENTERPRISE
+std::string LogicalCollection::createSmartToSatKey(VPackSlice) {
+  return keyGenerator()->generate();
+}
+#endif
 
 void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(_physical != nullptr);
@@ -610,9 +622,7 @@ Result LogicalCollection::rename(std::string&& newName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-ErrorCode LogicalCollection::close() {
-  return getPhysical()->close();
-}
+ErrorCode LogicalCollection::close() { return getPhysical()->close(); }
 
 arangodb::Result LogicalCollection::drop() {
   // make sure collection has been closed
@@ -1080,7 +1090,7 @@ void LogicalCollection::persistPhysicalCollection() {
   engine.createCollection(vocbase(), *this);
 }
 
-basics::ReadWriteLock& LogicalCollection::statusLock() { return _statusLock; }
+basics::ReadWriteLock& LogicalCollection::statusLock() noexcept { return _statusLock; }
 
 /// @brief Defer a callback to be executed when the collection
 ///        can be dropped. The callback is supposed to drop
@@ -1223,6 +1233,10 @@ void LogicalCollection::setInternalValidatorTypes(uint64_t type) {
   _internalValidatorTypes = type;
 }
 
+uint64_t LogicalCollection::getInternalValidatorTypes() const {
+  return _internalValidatorTypes;
+}
+
 void LogicalCollection::addInternalValidator(std::unique_ptr<arangodb::ValidatorBase> validator) {
   // For the time beeing we only allow ONE internal validator.
   // This however is a non-necessary restriction and can be leveraged at any
@@ -1250,6 +1264,14 @@ bool LogicalCollection::isRemoteSmartEdgeCollection() const noexcept {
 
 bool LogicalCollection::isSmartEdgeCollection() const noexcept {
   return (_internalValidatorTypes & InternalValidatorType::LogicalSmartEdge) != 0;
+}
+
+bool LogicalCollection::isSatToSmartEdgeCollection() const noexcept {
+  return (_internalValidatorTypes & InternalValidatorType::SatToSmartEdge) != 0;
+}
+
+bool LogicalCollection::isSmartToSatEdgeCollection() const noexcept {
+  return (_internalValidatorTypes & InternalValidatorType::SmartToSatEdge) != 0;
 }
 
 #ifndef USE_ENTERPRISE

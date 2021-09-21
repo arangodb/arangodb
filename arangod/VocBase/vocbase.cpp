@@ -35,6 +35,7 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
+#include <velocypack/Utf8Helper.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
@@ -87,6 +88,7 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/VersionTracker.h"
+#include "Utilities/NameValidator.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
@@ -334,7 +336,7 @@ void TRI_vocbase_t::registerCollection(bool doLock,
                                  _dataSourceLockWriteOwner, doLock);
 
     checkCollectionInvariants();
-    TRI_DEFER(checkCollectionInvariants());
+    auto sg = arangodb::scopeGuard([&]() noexcept { checkCollectionInvariants(); });
 
     // check name
     auto it = _dataSourceByName.try_emplace(name, collection);
@@ -564,7 +566,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
 /// @brief creates a new collection, worker function
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWorker(VPackSlice parameters) {
   std::string name =
-      arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+      arangodb::basics::VelocyPackHelper::getStringValue(parameters, StaticStrings::DataSourceName, "");
   TRI_ASSERT(!name.empty());
 
   std::string const& dbName = _info.getName();
@@ -1057,14 +1059,18 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
     arangodb::velocypack::Slice parameters) {
   // check that the name does not contain any strange characters
 
-  if (!IsAllowedName(parameters)) {
-    std::string name;
-    std::string const& dbName = _info.getName();
-    if (parameters.isObject()) {
-      name = VelocyPackHelper::getStringValue(parameters,
-                                              StaticStrings::DataSourceName, "");
-    }
+  std::string name;
+  bool valid = parameters.isObject();
+  if (valid) {
+    name = VelocyPackHelper::getStringValue(parameters,
+                                            StaticStrings::DataSourceName, "");
+    bool isSystem = VelocyPackHelper::getBooleanValue(parameters, StaticStrings::DataSourceSystem, false);
+    bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+    valid = CollectionNameValidator::isAllowedName(isSystem, extendedNames, name);
+  }
 
+  if (!valid) {
+    std::string const& dbName = _info.getName();
     events::CreateCollection(dbName, name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -1195,7 +1201,8 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid, std::string const& 
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (!IsAllowedName(IsSystemName(newName), arangodb::velocypack::StringRef(newName))) {
+  bool extendedNames = databaseFeature.extendedNamesForViews();
+  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, newName)) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1393,7 +1400,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollectionInterna
 }
 
 /// @brief releases a collection from usage
-void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) {
+void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) noexcept {
   collection->statusLock().unlock();
 }
 
@@ -1406,15 +1413,19 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto& engine = server().getFeature<EngineSelectorFeature>().engine();
   std::string const& dbName = _info.getName();
+  
+  std::string name;
+  bool valid = parameters.isObject();
+  if (valid) {
+    name = VelocyPackHelper::getStringValue(parameters,
+                                            StaticStrings::DataSourceName, "");
+  
+    bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+    valid &= ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, name);
+  }
 
-  // check that the name does not contain any strange characters
-  if (!IsAllowedName(parameters)) {
-    std::string n;
-    if (parameters.isObject()) {
-      n = VelocyPackHelper::getStringValue(parameters,
-                                           StaticStrings::DataSourceName, "");
-    }
-    events::CreateView(dbName, n, TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  if (!valid) {
+    events::CreateView(dbName, name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1422,12 +1433,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
   auto res = LogicalView::instantiate(view, *this, parameters);
 
   if (!res.ok() || !view) {
-    std::string n;
-    if (parameters.isObject()) {
-      n = VelocyPackHelper::getStringValue(parameters,
-                                           StaticStrings::DataSourceName, "");
-    }
-    events::CreateView(dbName, n, res.errorNumber());
+    events::CreateView(dbName, name, res.errorNumber());
     THROW_ARANGO_EXCEPTION_MESSAGE(
         res.errorNumber(),
         res.errorMessage().empty()
@@ -1620,46 +1626,6 @@ replication::Version TRI_vocbase_t::replicationVersion() const {
   return _info.replicationVersion();
 }
 
-bool TRI_vocbase_t::IsAllowedName(arangodb::velocypack::Slice slice) noexcept {
-  return !slice.isObject()
-             ? false
-             : IsAllowedName(arangodb::basics::VelocyPackHelper::getBooleanValue(
-                                 slice, StaticStrings::DataSourceSystem, false),
-                             arangodb::basics::VelocyPackHelper::getStringRef(
-                                 slice, StaticStrings::DataSourceName, VPackStringRef()));
-}
-
-/// @brief checks if a database name is allowed
-/// returns true if the name is allowed and false otherwise
-bool TRI_vocbase_t::IsAllowedName(bool allowSystem,
-                                  arangodb::velocypack::StringRef const& name) noexcept {
-  size_t length = 0;
-
-  // check allow characters: must start with letter or underscore if system is
-  // allowed
-  for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
-    bool ok;
-    if (length == 0) {
-      ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z') ||
-           (allowSystem && *ptr == '_');
-    } else {
-      ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z') ||
-           (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9');
-    }
-
-    if (!ok) {
-      return false;
-    }
-  }
-
-  return (length > 0 && length <= LogicalCollection::maxNameLength);
-}
-
-/// @brief determine whether a collection name is a system collection name
-/*static*/ bool TRI_vocbase_t::IsSystemName(std::string const& name) noexcept {
-  return !name.empty() && name[0] == '_';
-}
-
 void TRI_vocbase_t::addReplicationApplier() {
   TRI_ASSERT(_type != TRI_VOCBASE_TYPE_COORDINATOR);
   auto* applier = DatabaseReplicationApplier::create(*this);
@@ -1722,33 +1688,34 @@ std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
   return views;
 }
 
-void TRI_vocbase_t::processCollections(std::function<void(LogicalCollection*)> const& cb,
-                                       bool includeDeleted) {
+void TRI_vocbase_t::processCollectionsOnShutdown(std::function<void(LogicalCollection*)> const& cb) {
+  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+
+  for (auto const& it : _collections) {
+    cb(it.get());
+  }
+}
+
+void TRI_vocbase_t::processCollections(std::function<void(LogicalCollection*)> const& cb) {
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
-  if (includeDeleted) {
-    for (auto const& it : _collections) {
-      cb(it.get());
-    }
-  } else {
-    for (auto& entry : _dataSourceById) {
-      TRI_ASSERT(entry.second);
+  for (auto& entry : _dataSourceById) {
+    TRI_ASSERT(entry.second);
 
-      if (entry.second->category() != LogicalCollection::category()) {
-        continue;
-      }
+    if (entry.second->category() != LogicalCollection::category()) {
+      continue;
+    }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto collection =
-          std::dynamic_pointer_cast<arangodb::LogicalCollection>(entry.second);
-      TRI_ASSERT(collection);
+    auto collection =
+        std::dynamic_pointer_cast<arangodb::LogicalCollection>(entry.second);
+    TRI_ASSERT(collection);
 #else
-      auto collection =
-          std::static_pointer_cast<arangodb::LogicalCollection>(entry.second);
+    auto collection =
+        std::static_pointer_cast<arangodb::LogicalCollection>(entry.second);
 #endif
 
-      cb(collection.get());
-    }
+    cb(collection.get());
   }
 }
 

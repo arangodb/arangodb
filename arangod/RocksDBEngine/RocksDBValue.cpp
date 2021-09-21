@@ -59,6 +59,15 @@ RocksDBValue RocksDBValue::VPackIndexValue() {
   return RocksDBValue(RocksDBEntryType::VPackIndexValue);
 }
 
+
+RocksDBValue RocksDBValue::ZkdIndexValue() {
+  return RocksDBValue(RocksDBEntryType::ZkdIndexValue);
+}
+
+RocksDBValue RocksDBValue::UniqueZkdIndexValue(LocalDocumentId const& docId) {
+  return RocksDBValue(RocksDBEntryType::UniqueZkdIndexValue, docId, RevisionId::none());
+}
+
 RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId const& docId) {
   return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId, RevisionId::none());
 }
@@ -170,6 +179,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, 
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::UniqueVPackIndexValue:
+    case RocksDBEntryType::UniqueZkdIndexValue:
     case RocksDBEntryType::PrimaryIndexValue: {
       if (!revision) {
         _buffer.reserve(sizeof(uint64_t));

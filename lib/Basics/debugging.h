@@ -53,6 +53,10 @@
 
 #endif
 
+namespace arangodb::velocypack {
+class Builder;
+}
+
 /// @brief intentionally cause a segmentation violation or other failures
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_TerminateDebugging(char const* value);
@@ -83,9 +87,16 @@ inline void TRI_RemoveFailurePointDebugging(char const*) {}
 
 /// @brief clear all failure points
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_ClearFailurePointsDebugging();
+void TRI_ClearFailurePointsDebugging() noexcept;
 #else
-inline void TRI_ClearFailurePointsDebugging() {}
+inline void TRI_ClearFailurePointsDebugging() noexcept {}
+#endif
+
+/// @brief return all currently set failure points
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+void TRI_GetFailurePointsDebugging(arangodb::velocypack::Builder& builder);
+#else
+inline void TRI_GetFailurePointsDebugging(arangodb::velocypack::Builder&) {}
 #endif
 
 /// @brief returns whether failure point debugging can be used

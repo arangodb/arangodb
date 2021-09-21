@@ -217,7 +217,7 @@ bool ClusterUpgradeFeature::upgradeCoordinator() {
       continue;
     }
 
-    auto guard = scopeGuard([&vocbase]() { vocbase->release(); });
+    auto guard = scopeGuard([&vocbase]() noexcept { vocbase->release(); });
 
     auto res = methods::Upgrade::startupCoordinator(*vocbase);
     if (res.fail()) {

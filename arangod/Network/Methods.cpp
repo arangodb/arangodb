@@ -29,6 +29,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/Utf8Helper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
@@ -149,6 +150,7 @@ auto prepareRequest(ConnectionPool* pool, RestVerb type, std::string path,
                     Headers headers) {
   TRI_ASSERT(path.find("/_db/") == std::string::npos);
   TRI_ASSERT(path.find('?') == std::string::npos);
+  TRI_ASSERT(options.database == normalizeUtf8ToNFC(options.database)); 
 
   auto req = fuerte::createRequest(type, path, options.parameters, std::move(payload));
 
@@ -248,14 +250,10 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
 
       TRI_ASSERT(p->tmp_req != nullptr);
 
-      bool queued = sch->queue(p->continuationLane, [p]() mutable {
+      sch->queue(p->continuationLane, [p]() mutable {
         p->promise.setValue(Response{std::move(p->dest), p->tmp_err,
                                      std::move(p->tmp_req), std::move(p->tmp_res)});
       });
-      if (ADB_UNLIKELY(!queued)) {
-        p->promise.setValue(Response{std::move(p->dest), fuerte::Error::QueueCapacityExceeded,
-                                     std::move(p->tmp_req), nullptr});
-      }
     });
 }
 
@@ -543,16 +541,11 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       return;
     }
 
-    bool queued =
-        sch->queue(_options.continuationLane, [self = shared_from_this()]() mutable {
-          self->_promise.setValue(Response{std::move(self->_destination),
-                                           self->_tmp_err, std::move(self->_tmp_req),
-                                           std::move(self->_tmp_res)});
-        });
-    if (ADB_UNLIKELY(!queued)) {
-      _promise.setValue(Response{std::move(_destination), fuerte::Error::QueueCapacityExceeded,
-                                 std::move(_tmp_req), nullptr});
-    }
+    sch->queue(_options.continuationLane, [self = shared_from_this()]() mutable {
+      self->_promise.setValue(Response{std::move(self->_destination),
+                                       self->_tmp_err, std::move(self->_tmp_req),
+                                       std::move(self->_tmp_res)});
+    });
   }
 
   void retryLater(std::chrono::steady_clock::duration tryAgainAfter) {
@@ -568,23 +561,16 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       return;
     }
 
-    bool queued;
-    std::tie(queued, _workItem) =
-        sch->queueDelay(_options.continuationLane, tryAgainAfter,
-                        [self = shared_from_this()](bool canceled) {
-                          if (canceled) {
-                            self->_promise.setValue(
-                                Response{std::move(self->_destination),
-                                         Error::ConnectionCanceled, nullptr, nullptr});
-                          } else {
-                            self->startRequest();
-                          }
-                        });
-    if (ADB_UNLIKELY(!queued)) {
-      // scheduler queue is full, cannot requeue
-      _promise.setValue(Response{std::move(_destination),
-                                 Error::QueueCapacityExceeded, nullptr, nullptr});
-    }
+    _workItem = sch->queueDelayed(_options.continuationLane, tryAgainAfter,
+      [self = shared_from_this()](bool canceled) {
+        if (canceled) {
+          self->_promise.setValue(
+              Response{std::move(self->_destination),
+                        Error::ConnectionCanceled, nullptr, nullptr});
+        } else {
+          self->startRequest();
+        }
+      });
   }
 };
 

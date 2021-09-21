@@ -491,7 +491,7 @@ class Methods {
 
   /// @brief the transaction context
   std::shared_ptr<transaction::Context> _transactionContext;
-  
+
   bool _mainTransaction;
 
   Future<Result> replicateOperations(

@@ -49,6 +49,7 @@
 #include "Transaction/Helpers.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -204,7 +205,7 @@ std::tuple<Result, DataSourceId, uint64_t> RocksDBReplicationContext::bindCollec
   if (_snapshot == nullptr) {
     // only DBServers require a corrected document count
     const double to = ServerState::instance()->isDBServer() ? 10.0 : 1.0;
-    auto lockGuard = scopeGuard([rcoll] { rcoll->unlockWrite(); });
+    auto lockGuard = scopeGuard([rcoll]() noexcept { rcoll->unlockWrite(); });
     if (!_patchCount.empty() && _patchCount == cname &&
         rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
       // fetch number docs and snapshot under exclusive lock
@@ -252,7 +253,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
 
   auto nameFilter = [&](LogicalCollection const* collection) {
     std::string const& cname = collection->name();
-    if (!includeSystem && TRI_vocbase_t::IsSystemName(cname)) {
+    if (!includeSystem && NameValidator::isSystemName(cname)) {
       // exclude all system collections
       return false;
     }
@@ -339,7 +340,13 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
     basics::StringBuffer& buff, uint64_t chunkSize, bool useEnvelope) {
   TRI_ASSERT(_users > 0);
   CollectionIterator* cIter{nullptr};
-  auto guard = scopeGuard([&] { releaseDumpIterator(cIter); });
+  auto guard = scopeGuard([&]() noexcept {
+    try {
+      releaseDumpIterator(cIter);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("2a670", ERR, Logger::REPLICATION) << "Failed to release dump iterator: " << ex.what();
+    }
+  });
 
   {
     DataSourceId const cid = ::normalizeIdentifier(vocbase, cname);
@@ -413,7 +420,13 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
   TRI_ASSERT(_users > 0 && chunkSize > 0);
 
   CollectionIterator* cIter{nullptr};
-  auto guard = scopeGuard([&] { releaseDumpIterator(cIter); });
+  auto guard = scopeGuard([&]() noexcept {
+    try {
+      releaseDumpIterator(cIter);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("2b670", ERR, Logger::REPLICATION) << "Failed to release dump iterator: " << ex.what();
+    }
+  });
 
   {
     DataSourceId const cid = ::normalizeIdentifier(vocbase, cname);
@@ -482,7 +495,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
                                                           uint64_t chunkSize) {
   TRI_ASSERT(_users > 0 && chunkSize > 0);
   CollectionIterator* cIter{nullptr};
-  auto guard = scopeGuard([&cIter] {
+  auto guard = scopeGuard([&cIter]() noexcept {
     if (cIter) {
       cIter->release();
     }
@@ -615,7 +628,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
                                                      std::string const& lowKey) {
   TRI_ASSERT(_users > 0 && chunkSize > 0);
   CollectionIterator* cIter{nullptr};
-  auto guard = scopeGuard([&cIter] {
+  auto guard = scopeGuard([&cIter]() noexcept {
     if (cIter) {
       cIter->release();
     }
@@ -685,7 +698,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
 
   b.openArray(true);
   while (chunkSize-- > 0 && cIter->hasMore()) {
-    auto scope = scopeGuard([&] {
+    auto scope = scopeGuard([&]() noexcept {
       cIter->iter->Next();
       cIter->lastSortedIteratorOffset++;
     });
@@ -732,7 +745,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     std::string const& lowKey, VPackSlice const& ids) {
   TRI_ASSERT(_users > 0 && chunkSize > 0);
   CollectionIterator* cIter{nullptr};
-  auto guard = scopeGuard([&cIter] {
+  auto guard = scopeGuard([&cIter]() noexcept {
     if (cIter) {
       cIter->release();
     }

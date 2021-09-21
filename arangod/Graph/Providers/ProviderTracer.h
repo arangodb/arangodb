@@ -38,7 +38,7 @@ namespace arangodb {
 namespace aql {
 class QueryContext;
 class TraversalStats;
-}
+}  // namespace aql
 
 namespace graph {
 
@@ -59,10 +59,11 @@ class ProviderTracer {
   ProviderTracer& operator=(ProviderTracer const&) = delete;
   ProviderTracer& operator=(ProviderTracer&&) = default;
 
-  auto startVertex(VertexType vertex) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
-      -> futures::Future<std::vector<Step*>>;                           // rocks
-  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void; // index
+      -> futures::Future<std::vector<Step*>>;
+  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback)
+      -> void;
 
   void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder);
@@ -86,4 +87,3 @@ class ProviderTracer {
 
 }  // namespace graph
 }  // namespace arangodb
-

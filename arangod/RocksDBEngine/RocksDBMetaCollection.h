@@ -61,7 +61,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   uint64_t numberDocuments(transaction::Methods* trx) const override final;
 
   ErrorCode lockWrite(double timeout = 0.0);
-  void unlockWrite();
+  void unlockWrite() noexcept;
   ErrorCode lockRead(double timeout = 0.0);
   void unlockRead();
   

@@ -43,13 +43,16 @@ class DistributeNode;
 class DistributeExecutorInfos : public ClientsExecutorInfos {
  public:
   DistributeExecutorInfos(std::vector<std::string> clientIds, Collection const* collection,
-                          RegisterId regId, ScatterNode::ScatterType type);
+                          RegisterId regId, ScatterNode::ScatterType type,
+                          std::vector<aql::Collection*> satellites);
 
   auto registerId() const noexcept -> RegisterId;
   auto scatterType() const noexcept -> ScatterNode::ScatterType;
 
   auto getResponsibleClient(arangodb::velocypack::Slice value) const
       -> ResultT<std::string>;
+
+  auto shouldDistributeToAll(arangodb::velocypack::Slice value) const -> bool;
 
  private:
   RegisterId _regId;
@@ -63,6 +66,9 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
 
   /// @brief type of distribution that this nodes follows.
   ScatterNode::ScatterType _type;
+
+  /// @brief list of collections that should be used
+  std::vector<aql::Collection*> _satellites;
 };
 
 // The DistributeBlock is actually implemented by specializing
@@ -91,20 +97,8 @@ class DistributeExecutor {
                        std::unordered_map<std::string, ClientBlockData>& blockMap) -> void;
 
  private:
-  /**
-   * @brief Compute which client needs to get this row
-   *        NOTE: Has SideEffects
-   *        If the input value does not contain an object, it is modified inplace with
-   *        a new Object containing a key value!
-   *        Hence this method is not const ;(
-   *
-   * @param block The input block
-   * @param rowIndex
-   * @return std::string Identifier used by the client
-   */
-  auto getClient(SharedAqlItemBlockPtr const& block, size_t rowIndex) const -> std::string;
+  auto getClient(velocypack::Slice input) const -> std::string;
 
- private:
   DistributeExecutorInfos const& _infos;
 
   // a reusable Builder object for building _key values

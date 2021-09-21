@@ -90,7 +90,7 @@ TEST_F(UserManagerClusterTest, regression_forgotten_update) {
 
   TRI_AddFailurePointDebugging(FailureOnLoadDB);
   auto guard = arangodb::scopeGuard(
-      []() { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
+      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
 
   auto um = userManager();
   // If for some reason this EXPECT ever triggers, we can
@@ -132,7 +132,7 @@ TEST_F(UserManagerClusterTest, regression_forgotten_update) {
 TEST_F(UserManagerClusterTest, cacheRevalidationShouldKeepVersionsInLine) {
   TRI_AddFailurePointDebugging(FailureOnLoadDB);
   auto guard = arangodb::scopeGuard(
-      []() { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
+      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
 
   auto um = userManager();
   // If for some reason this EXPECT ever triggers, we can
@@ -161,7 +161,7 @@ TEST_F(UserManagerClusterTest, cacheRevalidationShouldKeepVersionsInLine) {
 TEST_F(UserManagerClusterTest, triggerLocalReloadShouldNotUpdateClusterVersion) {
   TRI_AddFailurePointDebugging(FailureOnLoadDB);
   auto guard = arangodb::scopeGuard(
-      []() { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
+      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
 
   auto um = userManager();
   // If for some reason this EXPECT ever triggers, we can
@@ -198,7 +198,7 @@ TEST_F(UserManagerClusterTest, triggerLocalReloadShouldNotUpdateClusterVersion) 
 TEST_F(UserManagerClusterTest, triggerGlobalReloadShouldUpdateClusterVersion) {
   TRI_AddFailurePointDebugging(FailureOnLoadDB);
   auto guard = arangodb::scopeGuard(
-      []() { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
+      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
 
   auto um = userManager();
   // If for some reason this EXPECT ever triggers, we can

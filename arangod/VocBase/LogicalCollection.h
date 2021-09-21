@@ -83,9 +83,6 @@ class LogicalCollection : public LogicalDataSource {
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
 
-  /// @brief maximal collection name length
-  static constexpr size_t maxNameLength = 256;
-
   enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
 
   /*
@@ -103,11 +100,11 @@ class LogicalCollection : public LogicalDataSource {
     LogicalSmartEdge = 1,
     LocalSmartEdge = 2,
     RemoteSmartEdge = 4,
+    SmartToSatEdge = 8,
+    SatToSmartEdge = 16,
   };
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
-  //////////////////////////////////////////////////////////////////////////////
   static Category const& category() noexcept;
 
   /// @brief hard-coded minimum version number for collections
@@ -312,7 +309,7 @@ class LogicalCollection : public LogicalDataSource {
   void persistPhysicalCollection();
 
   /// lock protecting the status and name
-  basics::ReadWriteLock& statusLock();
+  basics::ReadWriteLock& statusLock() noexcept;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
@@ -349,6 +346,8 @@ class LogicalCollection : public LogicalDataSource {
   // (Technically no issue but will have side-effects on shards)
   void setInternalValidatorTypes(uint64_t type);
 
+  uint64_t getInternalValidatorTypes() const;
+
   bool isShard() const noexcept;
 
   bool isLocalSmartEdgeCollection() const noexcept;
@@ -357,6 +356,10 @@ class LogicalCollection : public LogicalDataSource {
 
   bool isSmartEdgeCollection() const noexcept;
 
+  bool isSatToSmartEdgeCollection() const noexcept;
+
+  bool isSmartToSatEdgeCollection() const noexcept;
+
  protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);
 
@@ -364,6 +367,12 @@ class LogicalCollection : public LogicalDataSource {
                                   Serialization context) const override;
 
   Result updateSchema(VPackSlice schema);
+
+  /**
+   * Enterprise only method. See enterprise code for implementation
+   * Community has a dummy stub.
+   */
+  std::string createSmartToSatKey(arangodb::velocypack::Slice input);
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
