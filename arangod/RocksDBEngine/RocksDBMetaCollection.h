@@ -95,7 +95,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void revisionTreeSummary(VPackBuilder& builder, bool fromCollection);
   void revisionTreePendingUpdates(VPackBuilder& builder);
 
-  void placeRevisionTreeBlocker(TransactionId transactionId) override;
+  uint64_t placeRevisionTreeBlocker(TransactionId transactionId) override;
   void removeRevisionTreeBlocker(TransactionId transactionId) override;
 
   /**
@@ -231,7 +231,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// @revision tree management for replication
   mutable std::mutex _revisionTreeLock;
   std::unique_ptr<RevisionTreeAccessor> _revisionTree;
-  std::atomic<rocksdb::SequenceNumber> _revisionTreeApplied;
+  rocksdb::SequenceNumber _revisionTreeApplied;
   rocksdb::SequenceNumber _revisionTreeCreationSeq;
   rocksdb::SequenceNumber _revisionTreeSerializedSeq;
   std::chrono::steady_clock::time_point _revisionTreeSerializedTime;

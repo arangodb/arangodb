@@ -160,6 +160,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto const maxSeqNr = _db->GetLatestSequenceNumber();
   auto minSeqNr = maxSeqNr;
+  TRI_ASSERT(minSeqNr > 0);
 
   rocksdb::TransactionOptions opts;
   opts.lock_timeout = 50;  // do not wait for locking keys
@@ -203,6 +204,7 @@ Result RocksDBSettingsManager::sync(bool force) {
     rocksdb::SequenceNumber appliedSeq = maxSeqNr;
     Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder,
                                              appliedSeq, scratch);
+    TRI_ASSERT(appliedSeq > 0);
     minSeqNr = std::min(minSeqNr, appliedSeq);
 
     const std::string err = "could not sync metadata for collection '";

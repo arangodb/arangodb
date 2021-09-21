@@ -743,12 +743,11 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
       engine.settingsManager()->sync(false);
     }
 
-    // pre commit sequence needed to place a blocker
-    rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
     auto guard = scopeGuard([&] {  // remove blocker afterwards
-      _meta.removeBlocker(state->id());
+      removeRevisionTreeBlocker(state->id());
     });
-    _meta.placeBlocker(state->id(), seq);
+    // pre commit sequence needed to place a blocker
+    rocksdb::SequenceNumber seq = placeRevisionTreeBlocker(state->id());
 
     rocksdb::WriteBatch batch;
     // delete documents
