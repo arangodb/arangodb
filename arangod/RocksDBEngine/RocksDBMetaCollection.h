@@ -136,18 +136,19 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
  private:
   Result applyUpdatesForTransaction(containers::RevisionTree& tree,
-                                    rocksdb::SequenceNumber commitSeq) const;
+                                    rocksdb::SequenceNumber commitSeq,
+                                    std::unique_lock<std::mutex>& lock) const;
 
   ErrorCode doLock(double timeout, AccessMode::Type mode);
-  bool haveBufferedOperations() const;
+  bool haveBufferedOperations(std::unique_lock<std::mutex> const& lock) const;
   std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree(std::size_t depth) const;
-  void applyUpdates(rocksdb::SequenceNumber commitSeq);
+  void applyUpdates(rocksdb::SequenceNumber commitSeq, std::unique_lock<std::mutex> const& lock);
   void ensureRevisionTree();
 
   // helper function to build revision trees
   std::unique_ptr<containers::RevisionTree> revisionTree(
     rocksdb::SequenceNumber notAfter,
-    std::function<std::unique_ptr<containers::RevisionTree>(std::unique_ptr<containers::RevisionTree>)> const& callback);
+    std::function<std::unique_ptr<containers::RevisionTree>(std::unique_ptr<containers::RevisionTree>, std::unique_lock<std::mutex>& lock)> const& callback);
 
  protected:
   RocksDBMetadata _meta;     /// collection metadata
@@ -228,12 +229,12 @@ class RocksDBMetaCollection : public PhysicalCollection {
   };
 
   /// @revision tree management for replication
+  mutable std::mutex _revisionTreeLock;
   std::unique_ptr<RevisionTreeAccessor> _revisionTree;
   std::atomic<rocksdb::SequenceNumber> _revisionTreeApplied;
   rocksdb::SequenceNumber _revisionTreeCreationSeq;
   rocksdb::SequenceNumber _revisionTreeSerializedSeq;
   std::chrono::steady_clock::time_point _revisionTreeSerializedTime;
-  mutable std::mutex _revisionTreeLock;
 
   // if the types of these containers are changed to some other type, please check the new
   // type's iterator invalidation rules first and if iterators are invalidated when new 
@@ -241,7 +242,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
   std::map<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionInsertBuffers;
   std::map<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionRemovalBuffers;
   std::set<rocksdb::SequenceNumber> _revisionTruncateBuffer;
-  mutable std::mutex _revisionBufferLock;
 };
 
 } // namespace arangodb
