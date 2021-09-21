@@ -295,7 +295,7 @@ bool ClusterCollection::dropIndex(IndexId iid) {
   return false;
 }
 
-std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Methods* /*trx*/) const {
+std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Methods* /*trx*/, ReadOwnWrites) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -308,27 +308,31 @@ Result ClusterCollection::truncate(transaction::Methods& /*trx*/, OperationOptio
 }
 
 Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, VPackStringRef /*key*/,
-                                    std::pair<LocalDocumentId, RevisionId>& /*result*/) const {
+                                    std::pair<LocalDocumentId, RevisionId>& /*result*/,
+                                    ReadOwnWrites) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                arangodb::velocypack::StringRef const& /*key*/,
-                               IndexIterator::DocumentCallback const& /*cb*/) const {
+                               IndexIterator::DocumentCallback const& /*cb*/,
+                               ReadOwnWrites) const {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                              LocalDocumentId const& /*documentId*/,
-                             IndexIterator::DocumentCallback const& /*cb*/) const {
+                             IndexIterator::DocumentCallback const& /*cb*/,
+                             ReadOwnWrites) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
 bool ClusterCollection::readDocument(transaction::Methods* /*trx*/,
                                      LocalDocumentId const& /*documentId*/,
-                                     ManagedDocumentResult& /*result*/) const {
+                                     ManagedDocumentResult& /*result*/,
+                                     ReadOwnWrites) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

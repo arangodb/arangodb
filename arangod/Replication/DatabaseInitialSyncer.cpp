@@ -197,7 +197,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
 
   std::size_t current = 0;
   auto guard = arangodb::scopeGuard(
-      [&current, &stats]() -> void { stats.numDocsRequested += current; });
+      [&current, &stats]() noexcept { stats.numDocsRequested += current; });
   char ridBuffer[arangodb::basics::maxUInt64StringSize];
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response;
   while (current < toFetch.size()) {
@@ -296,7 +296,9 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
         }
 
         arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
-        if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()), mdr)) {
+        // We must see our own writes, because we may have to remove conflicting documents
+        // (that we just inserted) as documents may be replicated in unexpected order.
+        if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()), mdr, arangodb::ReadOwnWrites::yes)) {
           // already have exactly this revision no need to insert
           break;
         }
@@ -356,7 +358,7 @@ DatabaseInitialSyncer::Configuration::Configuration(
     replutils::ProgressInfo& p, SyncerState& s, TRI_vocbase_t& v)
     : applier{a}, batch{bat}, connection{c}, flushed{f}, leader{l}, progress{p}, state{s}, vocbase{v} {}
 
-bool DatabaseInitialSyncer::Configuration::isChild() const {
+bool DatabaseInitialSyncer::Configuration::isChild() const noexcept {
   return state.isChildSyncer;
 }
 
@@ -411,10 +413,10 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
     LOG_TOPIC("0a10d", DEBUG, Logger::REPLICATION)
         << "client: getting leader state to dump " << vocbase().name();
-    
-    auto batchCancelation = scopeGuard([this]() {
+
+    auto batchCancelation = scopeGuard([this]() noexcept {
       if (!_config.isChild()) {
-        batchFinish();
+        std::ignore = batchFinish();
       }
     });
 
@@ -509,7 +511,7 @@ Result DatabaseInitialSyncer::getInventory(VPackBuilder& builder) {
     return r;
   }
 
-  TRI_DEFER(batchFinish());
+  auto sg = arangodb::scopeGuard([&]() noexcept { batchFinish(); });
 
   // caller did not supply an inventory, we need to fetch it
   return fetchInventory(builder);
@@ -1194,22 +1196,27 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
                       ": response does not contain valid 'id' attribute");
   }
 
-  auto shutdown = [&]() -> void {
-    url = baseUrl + "/" + keysId.copyString();
-    std::string msg =
-        "deleting remote collection keys object for collection '" +
-        coll->name() + "' from " + url;
-    _config.progress.set(msg);
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    try {
+      url = baseUrl + "/" + keysId.copyString();
+      std::string msg =
+          "deleting remote collection keys object for collection '" +
+          coll->name() + "' from " + url;
+      _config.progress.set(msg);
 
-    // now delete the keys we ordered
-    std::unique_ptr<httpclient::SimpleHttpResult> response;
-    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-      auto headers = replutils::createHeaders();
-      response.reset(client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0, headers));
-    });
-  };
-
-  TRI_DEFER(shutdown());
+      // now delete the keys we ordered
+      std::unique_ptr<httpclient::SimpleHttpResult> response;
+      _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+        auto headers = replutils::createHeaders();
+        response.reset(client->retryRequest(rest::RequestType::DELETE_REQ, url,
+                                            nullptr, 0, headers));
+      });
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("f8b31", ERR, Logger::REPLICATION)
+          << "Failed to deleting remote collection keys object for collection "
+          << coll->name() << ex.what();
+    }
+  });
 
   VPackSlice const count = slice.get("count");
 
@@ -1377,8 +1384,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   TransactionId blockerId = context->generateId();
   physical->placeRevisionTreeBlocker(blockerId);
   
-  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
-    physical->removeRevisionTreeBlocker(blockerId);
+  auto blockerGuard = scopeGuard([&]() noexcept {  // remove blocker afterwards
+    try {
+        physical->removeRevisionTreeBlocker(blockerId);
+    } catch(std::exception const& ex) {
+        LOG_TOPIC("e020c", ERR, Logger::REPLICATION) << "Failed to remove revision tree blocker: " << ex.what();
+    }
   });
   std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
   transaction::Options options;
@@ -1416,13 +1427,16 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     return Result(res.errorNumber(),
                   concatT("unable to start transaction: ", res.errorMessage()));
   }
-  auto guard = scopeGuard(
-      [trx = trx.get()]() -> void {
-        if (trx->status() == transaction::Status::RUNNING) {
-          trx->abort();
-        }
-       });
-
+  auto guard = scopeGuard([trx = trx.get()]() noexcept {
+    try {
+      if (trx->status() == transaction::Status::RUNNING) {
+        trx->abort();
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("1a537", ERR, Logger::REPLICATION)
+          << "Failed to abort transaction: " << ex.what();
+    }
+  });
 
   // diff with local tree
   //std::pair<std::size_t, std::size_t> fullRange = treeLeader->range();
@@ -2195,7 +2209,7 @@ Result DatabaseInitialSyncer::batchExtend() {
   return _config.batch.extend(_config.connection, _config.progress, _config.state.syncerId);
 }
 
-Result DatabaseInitialSyncer::batchFinish() {
+Result DatabaseInitialSyncer::batchFinish() noexcept {
   return _config.batch.finish(_config.connection, _config.progress, _config.state.syncerId);
 }
 

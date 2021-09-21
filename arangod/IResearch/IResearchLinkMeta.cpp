@@ -41,6 +41,7 @@
 #include "IResearchLinkMeta.h"
 #include "Misc.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VelocyPackHelper.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
@@ -593,9 +594,7 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
 
   {
     // optional sort
-    VPackStringRef constexpr fieldName("primarySort");
-
-    auto const field = slice.get(fieldName);
+    auto const field = slice.get(StaticStrings::PrimarySortField);
     mask->_sort = field.isArray();
 
     if (readAnalyzerDefinition && mask->_sort && !_sort.fromVelocyPack(field, errorField)) {
@@ -605,9 +604,7 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
 
   {
     // optional stored values
-    VPackStringRef constexpr fieldName("storedValues");
-
-    auto const field = slice.get(fieldName);
+    auto const field = slice.get(StaticStrings::StoredValuesField);
     mask->_storedValues = field.isArray();
 
     if (readAnalyzerDefinition &&
@@ -618,9 +615,7 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
   }
   {
     // optional sort compression
-    VPackStringRef constexpr fieldName("primarySortCompression");
-
-    auto const field = slice.get(fieldName);
+    auto const field = slice.get(StaticStrings::PrimarySortCompressionField);
     mask->_sortCompression = field.isString();
 
     if (readAnalyzerDefinition &&
@@ -632,7 +627,7 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
 
   {
     // optional version
-    VPackStringRef constexpr fieldName("version");
+    auto& fieldName = StaticStrings::VersionField;
 
     auto const field = slice.get(fieldName);
     mask->_version = field.isNumber<uint32_t>();
@@ -658,7 +653,7 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
     _analyzerDefinitions.clear();
 
     // optional object list
-    static const std::string fieldName("analyzerDefinitions");
+    auto& fieldName = StaticStrings::AnalyzerDefinitionsField;
 
     mask->_analyzerDefinitions = slice.hasKey(fieldName);
 
@@ -782,9 +777,10 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
           }
         }
 
+        bool extendedNames = server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
         AnalyzerPool::ptr analyzer;
         auto const res = IResearchAnalyzerFeature::createAnalyzerPool(
-          analyzer, name, type, properties, revision, features, LinkVersion{_version});
+          analyzer, name, type, properties, revision, features, LinkVersion{_version}, extendedNames);
 
         if (res.fail() || !analyzer) {
           errorField = fieldName + "[" + std::to_string(itr.index()) + "]";
@@ -827,7 +823,7 @@ bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
   if (writeAnalyzerDefinition
       && (!ignoreEqual || _sort != ignoreEqual->_sort)
       && (!mask || mask->_sort)) {
-    velocypack::ArrayBuilder arrayScope(&builder, "primarySort");
+    velocypack::ArrayBuilder arrayScope(&builder, StaticStrings::PrimarySortField);
     if (!_sort.toVelocyPack(builder)) {
       return false;
     }
@@ -835,7 +831,7 @@ bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
 
   if (writeAnalyzerDefinition
       && (!mask || mask->_storedValues)) {
-    velocypack::ArrayBuilder arrayScope(&builder, "storedValues");
+    velocypack::ArrayBuilder arrayScope(&builder, StaticStrings::StoredValuesField);
     if (!_storedValues.toVelocyPack(builder)) {
       return false;
     }
@@ -843,17 +839,18 @@ bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
 
   if (writeAnalyzerDefinition && (!mask || mask->_sortCompression) && _sortCompression
       && (!ignoreEqual || _sortCompression != ignoreEqual->_sortCompression)) {
-    addStringRef(builder, "primarySortCompression", columnCompressionToString(_sortCompression));
+    addStringRef(builder, StaticStrings::PrimarySortCompressionField,
+                 columnCompressionToString(_sortCompression));
   }
 
   if (writeAnalyzerDefinition && (!mask || mask->_version)) {
-    builder.add("version", VPackValue(_version));
+    builder.add(StaticStrings::VersionField, VPackValue(_version));
   }
 
   // output definitions if 'writeAnalyzerDefinition' requested and not maked
   // this should be the case for the default top-most call
   if (writeAnalyzerDefinition && (!mask || mask->_analyzerDefinitions)) {
-    VPackArrayBuilder arrayScope(&builder, "analyzerDefinitions");
+    VPackArrayBuilder arrayScope(&builder, StaticStrings::AnalyzerDefinitionsField);
 
     for (auto& entry : _analyzerDefinitions) {
       TRI_ASSERT(entry); // ensured by emplace into 'analyzers' above

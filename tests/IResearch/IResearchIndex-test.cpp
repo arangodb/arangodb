@@ -274,7 +274,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       } } \
     } }");
 
-    EXPECT_TRUE(viewImpl->properties(updateJson->slice(), false).ok());
+    EXPECT_TRUE(viewImpl->properties(updateJson->slice(), true, false).ok());
   }
 
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
@@ -509,7 +509,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
       } } \
     } }");
 
-    EXPECT_TRUE(viewImpl->properties(updateJson->slice(), false).ok());
+    EXPECT_TRUE(viewImpl->properties(updateJson->slice(), true, false).ok());
   }
 
   // `catch` doesn't support cuncurrent checks
@@ -876,7 +876,7 @@ TEST_F(IResearchIndexTest, test_fields) {
       } } \
     } }");
 
-    EXPECT_TRUE(viewImpl->properties(updateJson->slice(), false).ok());
+    EXPECT_TRUE(viewImpl->properties(updateJson->slice(), true, false).ok());
   }
 
   // docs match from both collections

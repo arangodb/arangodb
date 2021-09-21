@@ -70,7 +70,7 @@ class Counter : public Metric {
   Counter(Counter const&) = delete;
   ~Counter();
   std::ostream& print (std::ostream&) const;
-  Counter& operator++();
+  Counter& operator++() noexcept;
   Counter& operator++(int);
   Counter& operator+=(uint64_t const&);
   Counter& operator=(uint64_t const&);
@@ -437,7 +437,7 @@ template<typename Scale> class Histogram : public Metric {
 
   ~Histogram() = default;
 
-  void track_extremes(value_type const& val) {
+  void track_extremes(value_type const& val) noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // the value extremes are not actually required and therefore only tracked in
     // maintainer mode so they can be used when debugging.
@@ -466,11 +466,11 @@ template<typename Scale> class Histogram : public Metric {
     return _scale.pos(t);
   }
 
-  void count(value_type t) {
+  void count(value_type t) noexcept {
     count(t, 1);
   }
 
-  void count(value_type t, uint64_t n) {
+  void count(value_type t, uint64_t n) noexcept {
     if (t < _scale.delims().front()) {
       _c[0] += n;
     } else if (t >= _scale.delims().back()) {

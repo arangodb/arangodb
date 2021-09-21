@@ -28,6 +28,7 @@
 #include <velocypack/StringRef.h>
 
 #include "Basics/Result.h"
+#include "IResearchLinkMock.h"
 #include "Indexes/IndexIterator.h"
 #include "Mocks/IResearchLinkMock.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
@@ -79,7 +80,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual bool dropIndex(arangodb::IndexId iid) override;
   virtual void figuresSpecific(bool details, arangodb::velocypack::Builder&) override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAllIterator(
-      arangodb::transaction::Methods* trx) const override;
+      arangodb::transaction::Methods* trx, arangodb::ReadOwnWrites readOwnWrites) const override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAnyIterator(
       arangodb::transaction::Methods* trx) const override;
   virtual std::unique_ptr<arangodb::ReplicationIterator> getReplicationIterator(
@@ -92,20 +93,28 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
 
   virtual arangodb::Result lookupKey(
       arangodb::transaction::Methods*, arangodb::velocypack::StringRef,
-      std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>&) const override;
+      std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>&,
+      arangodb::ReadOwnWrites) const override;
   virtual size_t memory() const override;
   virtual uint64_t numberDocuments(arangodb::transaction::Methods* trx) const override;
   virtual std::string const& path() const override;
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) override;
+
+  arangodb::IndexEstMap clusterIndexEstimates(bool allowUpdating,
+                                              arangodb::TransactionId tid) override;
+
   virtual arangodb::Result read(arangodb::transaction::Methods*,
                                 arangodb::velocypack::StringRef const& key,
-                                arangodb::IndexIterator::DocumentCallback const& cb) const override;
+                                arangodb::IndexIterator::DocumentCallback const& cb,
+                                arangodb::ReadOwnWrites) const override;
   virtual arangodb::Result read(arangodb::transaction::Methods* trx,
                                 arangodb::LocalDocumentId const& token,
-                                arangodb::IndexIterator::DocumentCallback const& cb) const override;
+                                arangodb::IndexIterator::DocumentCallback const& cb,
+                                arangodb::ReadOwnWrites) const override;
   virtual bool readDocument(arangodb::transaction::Methods* trx,
                             arangodb::LocalDocumentId const& token,
-                            arangodb::ManagedDocumentResult& result) const override;
+                            arangodb::ManagedDocumentResult& result,
+                            arangodb::ReadOwnWrites) const override;
   virtual arangodb::Result remove(arangodb::transaction::Methods& trx,
                                   arangodb::velocypack::Slice slice,
                                   arangodb::ManagedDocumentResult& previous,
@@ -183,7 +192,8 @@ class StorageEngineMock : public arangodb::StorageEngine {
   std::map<std::pair<TRI_voc_tick_t, arangodb::DataSourceId>, arangodb::velocypack::Builder> views;
   std::atomic<size_t> vocbaseCount;
 
-  explicit StorageEngineMock(arangodb::application_features::ApplicationServer& server);
+  explicit StorageEngineMock(arangodb::application_features::ApplicationServer& server,
+                             bool injectClusterIndexes = false);
   arangodb::HealthData healthCheck() override;
   virtual void addOptimizerRules(arangodb::aql::OptimizerRulesFeature& feature) override;
   virtual void addRestHandlers(arangodb::rest::RestHandlerFactory& handlerFactory) override;

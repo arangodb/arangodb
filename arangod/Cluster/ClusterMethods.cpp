@@ -62,6 +62,7 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -528,7 +529,7 @@ struct CreateOperationCtx {
     VPackSlice keySlice = value.get(StaticStrings::KeyString);
     if (keySlice.isNone()) {
       // The user did not specify a key, let's create one:
-      _key = collinfo.keyGenerator()->generate();
+      _key = collinfo.createKey(value);
     } else {
       userSpecifiedKey = true;
       if (keySlice.isString()) {
@@ -1237,7 +1238,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
-  if (TRI_vocbase_t::IsSystemName(cname)) {
+  if (NameValidator::isSystemName(cname)) {
     // system collection (e.g. _apps, _jobs, _graphs...
     // very likely this is an internal request that should not block other processing
     // in case we don't get a timely response
@@ -1320,7 +1321,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = true;
   
-  if (TRI_vocbase_t::IsSystemName(collname)) {
+  if (NameValidator::isSystemName(collname)) {
     // system collection (e.g. _apps, _jobs, _graphs...
     // very likely this is an internal request that should not block other processing
     // in case we don't get a timely response
@@ -3992,10 +3993,15 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       return result;
     }
 
-    auto releaseAgencyLock = scopeGuard([&]{
-      LOG_TOPIC("52416", DEBUG, Logger::BACKUP)
-          << "Releasing agency lock with scope guard! backupId: " << backupId;
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+    auto releaseAgencyLock = scopeGuard([&]() noexcept {
+      try {
+        LOG_TOPIC("52416", DEBUG, Logger::BACKUP)
+            << "Releasing agency lock with scope guard! backupId: " << backupId;
+        ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      } catch (std::exception const& e) {
+        LOG_TOPIC("a163b", ERR, Logger::BACKUP)
+            << "Failed to unlock hotbackup lock: " << e.what();
+      }
     });
 
     if (end < steady_clock::now()) {
@@ -4070,9 +4076,14 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       // dbserver -> jobId
       std::unordered_map<std::string, std::string> lockJobIds;
 
-      auto releaseLocks = scopeGuard([&]{
-        hotbackupCancelAsyncLocks(pool, lockJobIds, lockedServers);
-        unlockDBServerTransactions(pool, backupId, lockedServers);
+      auto releaseLocks = scopeGuard([&]() noexcept {
+        try {
+          hotbackupCancelAsyncLocks(pool, lockJobIds, lockedServers);
+          unlockDBServerTransactions(pool, backupId, lockedServers);
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("3449d", ERR, Logger::BACKUP)
+              << "Failed to unlock hot backup: " << ex.what();
+        }
       });
 
       // we have to reset the timeout, otherwise the code below will exit too soon

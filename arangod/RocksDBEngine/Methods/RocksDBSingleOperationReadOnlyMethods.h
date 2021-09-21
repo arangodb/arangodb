@@ -49,7 +49,7 @@ class RocksDBSingleOperationReadOnlyMethods final : public RocksDBReadOnlyBaseMe
   rocksdb::SequenceNumber GetSequenceNumber() const noexcept override;
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
-                      rocksdb::PinnableSlice* val) override;
+                      rocksdb::PinnableSlice* val, ReadOwnWrites) override;
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
                                                  ReadOptionsCallback) override;

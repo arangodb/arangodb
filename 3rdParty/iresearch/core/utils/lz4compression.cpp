@@ -120,14 +120,14 @@ compressor::ptr lz4::compressor(const options& opts) {
   const auto acceleration = ::acceleration(opts.hint);
 
   if (0 == acceleration) {
-    return compressor::ptr(compressor::ptr(), &LZ4_BASIC_COMPRESSOR);
+    return memory::to_managed<lz4compressor, false>(&LZ4_BASIC_COMPRESSOR);
   }
 
-  return memory::make_shared<lz4compressor>(acceleration);
+  return memory::to_managed(memory::make_unique<lz4compressor>(acceleration));
 }
 
 decompressor::ptr lz4::decompressor() {
-  return decompressor::ptr(decompressor::ptr(), &LZ4_BASIC_DECOMPRESSOR);
+  return memory::to_managed<lz4decompressor, false>(&LZ4_BASIC_DECOMPRESSOR);
 }
 
 void lz4::init() {

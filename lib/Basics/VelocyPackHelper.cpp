@@ -494,7 +494,7 @@ VPackBuilder VelocyPackHelper::velocyPackFromFile(std::string const& path) {
   size_t length;
   char* content = TRI_SlurpFile(path.c_str(), &length);
   if (content != nullptr) {
-    auto guard = scopeGuard([&content]() { TRI_Free(content); });
+    auto guard = scopeGuard([&content]() noexcept { TRI_Free(content); });
     // The Parser might throw;
     VPackBuilder builder;
     VPackParser parser(builder);

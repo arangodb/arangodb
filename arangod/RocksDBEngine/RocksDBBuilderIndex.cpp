@@ -585,7 +585,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
       _collection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
   rocksdb::Snapshot const* snap = rootDB->GetSnapshot();
-  auto scope = scopeGuard([&] {
+  auto scope = scopeGuard([&]() noexcept {
     if (snap) {
       rootDB->ReleaseSnapshot(snap);
     }

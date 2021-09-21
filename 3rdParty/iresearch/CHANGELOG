@@ -1,8 +1,10 @@
 master
 -------------------------
 
-v1.1 (2021-08-18)
+v1.1 (2021-08-25)
 -------------------------
+
+* Rework Compression API to return `std::unique_ptr` instead of `std::shared_ptr`.
 
 * Rework Analyzer API to return `std::unique_ptr` instead of `std::shared_ptr`.
 
@@ -28,7 +30,7 @@ v1.1 (2021-08-18)
 
 * Replace RapidJSON with Velocypack for analyzers and scorers serialization and deserialization
 
-* Add new `1_4` segment format utilizing new columnstore implementation.
+* Add new `1_4` segment format utilizing new columnstore and term dictionary index format.
 
 * Add new columnstore implementation based on sparse bitset format.
 

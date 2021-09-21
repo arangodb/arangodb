@@ -67,7 +67,7 @@ class EnumerateCollectionExecutorInfos {
                                    Collection const* collection, Variable const* outVariable,
                                    bool produceResult, Expression* filter,
                                    arangodb::aql::Projections projections,
-                                   bool random, bool count);
+                                   bool random, bool count, ReadOwnWrites readOwnWrites);
 
   EnumerateCollectionExecutorInfos() = delete;
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos&&) = default;
@@ -84,6 +84,7 @@ class EnumerateCollectionExecutorInfos {
   bool getCount() const noexcept;
   RegisterId getOutputRegisterId() const;
 
+  ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
  private:
   aql::QueryContext& _query;
   Collection const* _collection;
@@ -94,6 +95,7 @@ class EnumerateCollectionExecutorInfos {
   bool _produceResult;
   bool _random;
   bool _count;
+  ReadOwnWrites const _readOwnWrites;
 };
 
 /**

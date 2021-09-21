@@ -24,6 +24,7 @@
 #pragma once
 
 #include <iosfwd>
+#include <string_view>
 
 #include <velocypack/StringRef.h>
 
@@ -102,7 +103,8 @@ class Index {
     TRI_IDX_TYPE_TTL_INDEX,
     TRI_IDX_TYPE_PERSISTENT_INDEX,
     TRI_IDX_TYPE_IRESEARCH_LINK,
-    TRI_IDX_TYPE_NO_ACCESS_INDEX
+    TRI_IDX_TYPE_NO_ACCESS_INDEX,
+    TRI_IDX_TYPE_ZKD_INDEX
   };
   
   /// @brief: helper struct returned by index methods that determine the costs
@@ -142,7 +144,6 @@ class Index {
     static SortCosts defaultCosts(size_t itemsInIndex);
   };
 
- public:
   /// @brief return the index id
   inline IndexId id() const { return _iid; }
 
@@ -156,7 +157,7 @@ class Index {
 
   /// @brief set the name, if it is currently unset
   void name(std::string const&);
-
+  
   /// @brief return the index fields
   inline std::vector<std::vector<arangodb::basics::AttributeName>> const& fields() const {
     return _fields;
@@ -266,17 +267,14 @@ class Index {
   /// @brief return the name of an index type
   static char const* oldtypeName(IndexType);
 
-  /// @brief validate an index id
-  static bool validateId(char const*);
-
-  /// @brief validate an index name
-  static bool validateName(char const*);
-
   /// @brief validate an index handle (collection name + / + index id)
-  static bool validateHandle(char const*, size_t*);
+  static bool validateHandle(bool extendedNames, arangodb::velocypack::StringRef handle) noexcept;
 
   /// @brief validate an index handle (by name) (collection name + / + index name)
-  static bool validateHandleName(char const*, size_t*);
+  static bool validateHandleName(bool extendedNames, arangodb::velocypack::StringRef name) noexcept;
+  
+  /// @brief validate an index id (i.e. ^[0-9]+$)
+  static bool validateId(std::string_view id);
 
   /// @brief generate a new index id
   static IndexId generateId();
@@ -408,7 +406,8 @@ class Index {
   virtual std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
                                                               aql::AstNode const* node,
                                                               aql::Variable const* reference,
-                                                              IndexIteratorOptions const& opts);
+                                                              IndexIteratorOptions const& opts,
+                                                              ReadOwnWrites readOwnWrites);
 
   bool canUseConditionPart(arangodb::aql::AstNode const* access,
                            arangodb::aql::AstNode const* other,

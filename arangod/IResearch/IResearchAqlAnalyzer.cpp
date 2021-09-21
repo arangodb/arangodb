@@ -262,7 +262,7 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
     return _queryOptions;
   }
   
-  virtual arangodb::aql::QueryOptions& queryOptions() override {
+  virtual arangodb::aql::QueryOptions& queryOptions() noexcept override {
     return _queryOptions;
   }
 
@@ -556,9 +556,9 @@ void resetFromExpression(AqlAnalyzer* analyzer) {
 
   // put calculated value in _queryResults
   analyzer->_queryResults->destroyValue(0,0);
-  bool mustDestroy = false;
-  AqlValue& out = const_cast<AqlValue&>(analyzer->_queryResults->getValueReference(0,0));
-  out = e->execute(&ctx, mustDestroy);
+  bool mustDestroy = true;
+
+  analyzer->_queryResults->setValue(0,0, e->execute(&ctx, mustDestroy));
 
   analyzer->_engineResultRegister = 0;
 }

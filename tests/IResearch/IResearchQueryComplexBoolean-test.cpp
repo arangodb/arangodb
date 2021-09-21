@@ -32,25 +32,20 @@
 
 #include <velocypack/Iterator.h>
 
+#include "utils/string_utils.hpp"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
 
 class IResearchQueryComplexBooleanTest : public IResearchQueryTest {};
 
 }  // namespace
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-TEST_F(IResearchQueryComplexBooleanTest, test) {
+TEST_P(IResearchQueryComplexBooleanTest, test) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
@@ -136,14 +131,26 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     ASSERT_FALSE(!impl);
 
-    auto updateJson = VPackParser::fromJson(
-        "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, "
-        "\"nestListValues\": true, \"storeValues\":\"id\" },"
-        "\"testCollection1\": { \"includeAllFields\": true, \"analyzers\": [ "
-        "\"test_analyzer\", \"identity\" ], \"storeValues\":\"id\" }"
-        "}}");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    auto viewDefinitionTemplate = R"({ "links": {
+      "testCollection0": {
+        "includeAllFields": true,
+        "nestListValues": true,
+        "storeValues": "id",
+        "version": %u },
+      "testCollection1": {
+        "includeAllFields": true,
+        "analyzers": [ "test_analyzer", "identity" ],
+        "storeValues": "id",
+        "version": %u }
+    }})";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
+
+    auto updateJson = VPackParser::fromJson(viewDefinition);
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
@@ -353,3 +360,8 @@ TEST_F(IResearchQueryComplexBooleanTest, test) {
     EXPECT_EQ(i, expected.size());
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryComplexBooleanTest,
+  IResearchQueryComplexBooleanTest,
+  GetLinkVersions());

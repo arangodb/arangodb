@@ -36,25 +36,20 @@
 
 #include <velocypack/Iterator.h>
 
+#include "utils/string_utils.hpp"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
 
 class IResearchQueryJoinTest : public IResearchQueryTest {};
 
 }  // namespace
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-TEST_F(IResearchQueryJoinTest, Subquery) {
+TEST_P(IResearchQueryJoinTest, Subquery) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
 
@@ -79,35 +74,73 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
 
   // entities view
   {
-    auto json = VPackParser::fromJson(
-        "{ \"name\" : \"entities_view\", \"writebufferSizeMax\": 33554432, "
-        "\"consolidationPolicy\": { \"type\": \"bytes_accum\", \"threshold\": "
-        "0.10000000149011612 }, \"globallyUniqueId\": \"hB4A95C21732A/218\", "
-        "\"id\": \"218\", \"writebufferActive\": 0, "
-        "\"consolidationIntervalMsec\": 60000, \"cleanupIntervalStep\": 10, "
-        "\"links\": { \"entities\": { \"analyzers\": [ \"identity\" ], "
-        "\"fields\": {}, \"includeAllFields\": true, \"storeValues\": \"id\", "
-        "\"trackListPositions\": false } }, \"type\": \"arangosearch\", "
-        "\"writebufferIdle\": 64 }");
-    ASSERT_TRUE(
-        arangodb::LogicalView::create(entities_view, vocbase, json->slice()).ok());
+    auto viewDefinitionTemplate = R"({
+      "name" : "entities_view",
+      "writebufferSizeMax": 33554432,
+      "consolidationPolicy": {
+        "type": "bytes_accum",
+        "threshold": 0.10000000149011612
+      },
+      "globallyUniqueId": "hB4A95C21732A/218",
+      "id": "218",
+      "writebufferActive": 0,
+      "consolidationIntervalMsec": 60000,
+      "cleanupIntervalStep": 10,
+      "links": {
+        "entities": {
+          "analyzers": [ "identity" ],
+          "fields": {},
+          "includeAllFields": true,
+          "storeValues": "id",
+          "version": %u,
+          "trackListPositions": false }
+      },
+      "type": "arangosearch",
+      "writebufferIdle": 64
+    })";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()));
+
+    auto json = VPackParser::fromJson(viewDefinition);
+    ASSERT_TRUE(arangodb::LogicalView::create(
+      entities_view, vocbase, json->slice(), true).ok());
     ASSERT_NE(nullptr, entities_view);
   }
 
   // links view
   {
-    auto json = VPackParser::fromJson(
-        "{ \"name\" : \"links_view\", \"writebufferSizeMax\": 33554432, "
-        "\"consolidationPolicy\": { \"type\": \"bytes_accum\", \"threshold\": "
-        "0.10000000149011612 }, \"globallyUniqueId\": \"hB4A95C21732A/181\", "
-        "\"id\": \"181\", \"writebufferActive\": 0, "
-        "\"consolidationIntervalMsec\": 60000, \"cleanupIntervalStep\": 10, "
-        "\"links\": { \"links\": { \"analyzers\": [ \"identity\" ], "
-        "\"fields\": {}, \"includeAllFields\": true, \"storeValues\": \"id\", "
-        "\"trackListPositions\": false } }, \"type\": \"arangosearch\", "
-        "\"writebufferIdle\": 64 }");
-    ASSERT_TRUE(
-        arangodb::LogicalView::create(links_view, vocbase, json->slice()).ok());
+    auto viewDefinitionTemplate = R"({
+      "name" : "links_view",
+      "writebufferSizeMax": 33554432,
+      "consolidationPolicy": {
+        "type": "bytes_accum", "threshold": 0.10000000149011612
+      },
+      "globallyUniqueId": "hB4A95C21732A/181",
+      "id": "181",
+      "writebufferActive": 0,
+      "consolidationIntervalMsec": 60000,
+      "cleanupIntervalStep": 10,
+      "links": {
+        "links": {
+          "analyzers": [ "identity" ],
+          "fields": {},
+          "includeAllFields": true,
+          "storeValues": "id",
+          "version": %u,
+          "trackListPositions": false }
+      },
+      "type": "arangosearch",
+      "writebufferIdle": 64 })";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()));
+    auto json = VPackParser::fromJson(viewDefinition);
+
+    ASSERT_TRUE(arangodb::LogicalView::create(
+      links_view, vocbase, json->slice(), true).ok());
     ASSERT_NE(nullptr, links_view);
   }
 
@@ -230,7 +263,7 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
   }
 }
 
-TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
+TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
   static std::vector<std::string> const EMPTY;
 
   auto createJson = VPackParser::fromJson(
@@ -283,14 +316,27 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
 
   // add link to collection
   {
-    auto updateJson = VPackParser::fromJson(
-        "{ \"links\": {"
-        "\"collection_1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
-        "], \"includeAllFields\": true, \"trackListPositions\": true },"
-        "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
-        "], \"includeAllFields\": true }"
-        "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    auto viewDefinitionTemplate = R"({
+      "links": {
+        "collection_1": {
+          "analyzers": [ "test_analyzer", "identity" ],
+          "includeAllFields": true,
+          "version": %u,
+          "trackListPositions": true },
+        "collection_2": {
+          "analyzers": [ "test_analyzer", "identity" ],
+          "version": %u,
+          "includeAllFields": true }
+    }})";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
+
+    auto updateJson = VPackParser::fromJson(viewDefinition);
+
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -395,7 +441,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
   }
 }
 
-TEST_F(IResearchQueryJoinTest, test) {
+TEST_P(IResearchQueryJoinTest, test) {
   static std::vector<std::string> const EMPTY;
 
   auto createJson = VPackParser::fromJson(
@@ -441,14 +487,27 @@ TEST_F(IResearchQueryJoinTest, test) {
 
   // add link to collection
   {
-    auto updateJson = VPackParser::fromJson(
-        "{ \"links\": {"
-        "\"collection_1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
-        "], \"includeAllFields\": true, \"trackListPositions\": true },"
-        "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
-        "], \"includeAllFields\": true }"
-        "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    auto viewDefinitionTemplate =  R"({
+      "links": {
+        "collection_1": {
+          "analyzers": [ "test_analyzer", "identity" ],
+          "includeAllFields": true,
+          "version": %u,
+          "trackListPositions": true },
+        "collection_2": {
+          "analyzers": [ "test_analyzer", "identity" ],
+          "version": %u,
+          "includeAllFields": true }
+    }})";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
+
+    auto updateJson = VPackParser::fromJson(viewDefinition);
+
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -1770,3 +1829,8 @@ TEST_F(IResearchQueryJoinTest, test) {
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryJoinTest,
+  IResearchQueryJoinTest,
+  GetLinkVersions());

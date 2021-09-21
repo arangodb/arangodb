@@ -128,9 +128,10 @@
 
     resize: function () {
       // set menu sizes - responsive
-      var height = $(window).height() - $('.subMenuEntries').first().height();
-      $('#navigationBar').css('min-height', height);
-      $('#navigationBar').css('height', height);
+      const height = $(window).height() - $('.subMenuEntries').first().height();
+      const navBar = $('#navigationBar');
+      navBar.css('min-height', height);
+      navBar.css('height', height);
     },
 
     navigateBySelect: function () {

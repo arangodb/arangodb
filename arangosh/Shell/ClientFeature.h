@@ -82,9 +82,7 @@ class ClientFeature final : public HttpEndpointProvider {
       std::string const& definition, httpclient::SimpleHttpClientParams const&) const;
   std::vector<std::string> httpEndpoints() override;
 
-  void setDatabaseName(std::string const& databaseName) {
-    _databaseName = databaseName;
-  }
+  void setDatabaseName(std::string const& databaseName);
 
   void setRetries(size_t retries) { _retries = retries; }
 

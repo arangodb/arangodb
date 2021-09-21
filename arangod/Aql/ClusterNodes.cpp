@@ -263,8 +263,20 @@ DistributeNode::DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
 DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ScatterNode(plan, base),
       CollectionAccessingNode(plan, base),
-      _variable(Variable::varFromVPack(plan->getAst(), base, "variable")) {}
-  
+      _variable(Variable::varFromVPack(plan->getAst(), base, "variable")) {
+  auto sats = base.get("satelliteCollections");
+  if (sats.isArray()) {
+    auto& queryCols = plan->getAst()->query().collections();
+    _satellites.reserve(sats.length());
+
+    for (VPackSlice it : VPackArrayIterator(sats)) {
+      std::string v = arangodb::basics::VelocyPackHelper::getStringValue(it, "");
+      auto c = queryCols.add(v, AccessMode::Type::READ, aql::Collection::Hint::Collection);
+      addSatellite(c);
+    }
+  }
+}
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* DistributeNode::clone(ExecutionPlan* plan, bool withDependencies,
                                      bool withProperties) const {
@@ -272,6 +284,10 @@ ExecutionNode* DistributeNode::clone(ExecutionPlan* plan, bool withDependencies,
                                             collection(), _variable, _targetNodeId);
   c->copyClients(clients());
   CollectionAccessingNode::cloneInto(*c);
+  c->_satellites.reserve(_satellites.size());
+  for (auto& it : _satellites) {
+    c->_satellites.emplace_back(it);
+  }
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
@@ -294,8 +310,8 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
 
   auto inRegs = RegIdSet{regId};
   auto registerInfos = createRegisterInfos(inRegs, {});
-  auto infos = DistributeExecutorInfos(clients(), collection(), 
-                                       regId, getScatterType());
+  auto infos = DistributeExecutorInfos(clients(), collection(), regId,
+                                       getScatterType(), getSatellites());
 
   return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this,
                                                                   std::move(registerInfos),
@@ -311,6 +327,16 @@ void DistributeNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const
 
   builder.add(VPackValue("variable"));
   _variable->toVelocyPack(builder);
+
+  if (!_satellites.empty()) {
+    builder.add(VPackValue("satelliteCollections"));
+    {
+      VPackArrayBuilder guard(&builder);
+      for (auto const& v : _satellites) {
+        builder.add(VPackValue(v->name()));
+      }
+    }
+  }
 }
 
 void DistributeNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
@@ -327,6 +353,12 @@ CostEstimate DistributeNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
+}
+
+void DistributeNode::addSatellite(aql::Collection* satellite) {
+  // Only relevant for enterprise disjoint smart graphs
+  TRI_ASSERT(satellite->isSatellite());
+  _satellites.emplace_back(satellite);
 }
 
 /*static*/ Collection const* GatherNode::findCollection(GatherNode const& root) noexcept {

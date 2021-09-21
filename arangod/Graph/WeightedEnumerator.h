@@ -154,7 +154,7 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
   bool expandEdge(NextEdge edge);
 
   static velocypack::StringRef getToVertex(velocypack::Slice edge, velocypack::StringRef from);
+  bool validDisjointPath(size_t index, arangodb::velocypack::StringRef vertex) const;
 };
 }  // namespace graph
 }  // namespace arangodb
-

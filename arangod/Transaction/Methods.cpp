@@ -575,7 +575,7 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
 
   resultBuilder.openArray();
 
-  auto iterator = indexScan(collectionName, transaction::Methods::CursorType::ANY);
+  auto iterator = indexScan(collectionName, transaction::Methods::CursorType::ANY, ReadOwnWrites::no);
 
   iterator->nextDocument(
       [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
@@ -718,7 +718,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   return collection->getPhysical()->read(this, key, [&](LocalDocumentId const&, VPackSlice const& doc) {
     result.add(doc);
     return true;
-  });
+  }, ReadOwnWrites::no);
 }
 
 /// @brief return one document from a collection, fast path
@@ -744,7 +744,9 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
-  return collection->getPhysical()->read(this, key, cb);
+  // We never want to see our own writes here, otherwise we could observe documents
+  // which have been inserted by a currently running query.
+  return collection->getPhysical()->read(this, key, cb, ReadOwnWrites::no);
 }
 
 namespace {
@@ -841,7 +843,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
           resultBuilder.add(VPackSlice::nullSlice());
         }
         return true;
-      });
+      }, ReadOwnWrites::no);
 
       if (conflict) {
         res.reset(TRI_ERROR_ARANGO_CONFLICT);
@@ -1026,7 +1028,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       key = value.get(StaticStrings::KeyString);
       if (key.isString()) {
         std::pair<LocalDocumentId, RevisionId> lookupResult;
-        res = collection->getPhysical()->lookupKey(this, key.stringRef(), lookupResult);
+        // modifications always need to observe all changes in order to validate uniqueness constraints
+        res = collection->getPhysical()->lookupKey(this, key.stringRef(), lookupResult, ReadOwnWrites::yes);
         if (res.ok()) {
           TRI_ASSERT(lookupResult.first.isSet());
           TRI_ASSERT(lookupResult.second.isSet());
@@ -1651,7 +1654,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
 
   resultBuilder.openArray();
   
-  auto iterator = indexScan(collectionName, transaction::Methods::CursorType::ALL);
+  auto iterator = indexScan(collectionName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments(
       [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
@@ -1969,7 +1972,7 @@ OperationResult transaction::Methods::countLocal(std::string const& collectionNa
 /// calling this method
 std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
     IndexHandle const& idx, arangodb::aql::AstNode const* condition,
-    arangodb::aql::Variable const* var, IndexIteratorOptions const& opts) {
+    arangodb::aql::Variable const* var, IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -1987,14 +1990,14 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
 
   // Now create the Iterator
   TRI_ASSERT(!idx->inProgress());
-  return idx->iteratorForCondition(this, condition, var, opts);
+  return idx->iteratorForCondition(this, condition, var, opts, readOwnWrites);
 }
 
 /// @brief factory for IndexIterator objects
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
 std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const& collectionName,
-                                                               CursorType cursorType) {
+                                                               CursorType cursorType, ReadOwnWrites readOwnWrites) {
   // For now we assume indexId is the iid part of the index.
 
   if (ADB_UNLIKELY(_state->isCoordinator())) {
@@ -2024,7 +2027,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
       break;
     }
     case CursorType::ALL: {
-      iterator = logical->getAllIterator(this);
+      iterator = logical->getAllIterator(this, readOwnWrites);
       break;
     }
   }

@@ -211,7 +211,7 @@ bool visit(const std::function<bool(const string_ref&)>& visitor) {
 REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
 
 compressor::ptr compressor::identity() noexcept {
-  return { compressor::ptr{}, &IDENTITY_COMPRESSOR };
+  return memory::to_managed<compressor, false>(&IDENTITY_COMPRESSOR);
 }
 
 } // compression

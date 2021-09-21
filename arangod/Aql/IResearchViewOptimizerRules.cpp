@@ -24,6 +24,7 @@
 
 #include "IResearchViewOptimizerRules.h"
 
+#include "Aql/AqlFunctionFeature.h"
 #include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Condition.h"
@@ -75,6 +76,50 @@ inline IResearchViewStoredValues const& storedValues(arangodb::LogicalView const
 
   auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
   return viewImpl.storedValues();
+}
+
+/// @brief Moves all FCALLs in every AND node to the bottom of the AND node
+/// @param condition SEARCH condition node
+/// @param starts_with Function to push
+void pushFuncToBack(arangodb::aql::AstNode& condition, arangodb::aql::Function const* starts_with) {
+  auto numMembers = condition.numMembers();
+  for (size_t memberIdx = 0; memberIdx < numMembers; ++memberIdx) {
+    auto current = condition.getMemberUnchecked(memberIdx);
+    TRI_ASSERT(current);
+    auto const numAndMembers = current->numMembers();
+    if (current->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND &&
+        numAndMembers > 1) {
+      size_t movePoint = numAndMembers - 1;
+      do {
+        auto candidate = current->getMemberUnchecked(movePoint);
+        if (candidate->type != arangodb::aql::AstNodeType::NODE_TYPE_FCALL ||
+            static_cast<arangodb::aql::Function const*>(candidate->getData()) != starts_with) {
+          break;
+        }
+      } while ((--movePoint) != 0);
+      for (size_t andMemberIdx = 0; andMemberIdx < movePoint; ++andMemberIdx) {
+        auto andMember = current->getMemberUnchecked(andMemberIdx);
+        if (andMember->type == arangodb::aql::AstNodeType::NODE_TYPE_FCALL &&
+            static_cast<arangodb::aql::Function const*>(andMember->getData()) == starts_with) {
+          TEMPORARILY_UNLOCK_NODE(current);
+          auto tmp = current->getMemberUnchecked(movePoint);
+          current->changeMember(movePoint--, andMember);
+          current->changeMember(andMemberIdx, tmp);
+          while (movePoint > andMemberIdx &&
+                 current->getMemberUnchecked(movePoint)->type ==
+                     arangodb::aql::AstNodeType::NODE_TYPE_FCALL &&
+                 static_cast<arangodb::aql::Function const*>(
+                     current->getMemberUnchecked(movePoint)->getData()) == starts_with) {
+            --movePoint;
+          }
+        } else {
+          pushFuncToBack(*andMember, starts_with);
+        }
+      }
+    } else {
+      pushFuncToBack(*current, starts_with);
+    }
+  }
 }
 
 bool addView(arangodb::LogicalView const& view, arangodb::aql::QueryContext& query) {
@@ -132,6 +177,13 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
 
   // check filter condition if present
   if (searchCondition.root()) {
+    if (viewNode.filterOptimization() != arangodb::iresearch::FilterOptimization::NONE) {
+      // we could benefit from merging STARTS_WITH and LEVENSHTEIN_MATCH
+      auto& server = plan.getAst()->query().vocbase().server();
+      auto starts_with = server.getFeature<AqlFunctionFeature>().byName("STARTS_WITH");
+      TRI_ASSERT(starts_with);
+      pushFuncToBack(*searchCondition.root(), starts_with);
+    }
     auto filterCreated = FilterFactory::filter(
       nullptr,
       { &query.trxForOptimization(), nullptr, nullptr, nullptr, nullptr, &viewNode.outVariable() },
@@ -515,7 +567,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
                      std::unique_ptr<ExecutionPlan> plan,
                      OptimizerRule const& rule) {
   auto modified = false;
-  auto const addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() {
+  auto const addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() noexcept {
     opt->addPlan(std::move(plan), rule, modified);
   });
   // arangosearch view node supports late materialization
@@ -728,13 +780,13 @@ void handleViewsRule(Optimizer* opt,
       modified |= optimizeSort(viewNode, plan.get());
     }
 
-    if (!optimizeSearchCondition(viewNode, query, *plan)) {
-      continue;
-    }
-
     // find scorers that have to be evaluated by a view
     scorerReplacer.extract(viewNode.outVariable(), scorers);
     viewNode.scorers(std::move(scorers));
+
+    if (!optimizeSearchCondition(viewNode, query, *plan)) {
+      continue;
+    }
 
     modified = true;
   }

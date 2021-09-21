@@ -32,7 +32,10 @@
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Replication2/Version.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/Events.h"
+#include "Utilities/NameValidator.h"
+#include "VocBase/Methods/Databases.h"
 
 namespace arangodb {
 
@@ -52,9 +55,7 @@ void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
 }
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
-  Result res;
-
-  _name = name;
+  _name = methods::Databases::normalizeName(name);
   _id = id;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -104,7 +105,7 @@ Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options,
 
 Result CreateDatabaseInfo::load(std::string const& name, VPackSlice const& options,
                                 VPackSlice const& users) {
-  _name = name;
+  _name = methods::Databases::normalizeName(name);
 
   Result res = extractOptions(options, true /*getId*/, false /*getName*/);
   if (!res.ok()) {
@@ -125,7 +126,7 @@ Result CreateDatabaseInfo::load(std::string const& name, VPackSlice const& optio
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id,
                                 VPackSlice const& options, VPackSlice const& users) {
-  _name = name;
+  _name = methods::Databases::normalizeName(name);
   _id = id;
 
   Result res = extractOptions(options, false /*getId*/, false /*getUser*/);
@@ -263,7 +264,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
     if (!nameSlice.isString()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "no valid id given");
     }
-    _name = nameSlice.copyString();
+    _name = methods::Databases::normalizeName(nameSlice.copyString());
   }
   if (extractId) {
     auto idSlice = options.get(StaticStrings::DatabaseId);
@@ -287,22 +288,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
 }
 
 Result CreateDatabaseInfo::checkOptions() {
-  if (_id != 0) {
-    _validId = true;
-  } else {
-    _validId = false;
-  }
-
-  // we cannot use IsAllowedName for database name length validation alone, because
-  // IsAllowedName allows up to 256 characters. Database names are just up to 64
-  // chars long, as their names are also used as filesystem directories (for Foxx apps)
-  bool isSystem = _name == StaticStrings::SystemDatabase;
-
-  if (_name.empty() ||
-      !TRI_vocbase_t::IsAllowedName(isSystem, arangodb::velocypack::StringRef(_name)) ||
-      _name.size() > 64) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-  }
+  _validId = (_id != 0);
 
   if (_replicationVersion == replication::Version::TWO && !replication2::EnableReplication2) {
     LOG_TOPIC("8fdd7", ERR, Logger::REPLICATION2)
@@ -315,8 +301,17 @@ Result CreateDatabaseInfo::checkOptions() {
            "recreate the database with replication version 1 (the default), "
            "and then restore the data.";
   }
+  
+  bool isSystem = _name == StaticStrings::SystemDatabase;
+  bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
 
-  return Result();
+  Result res;
+
+  if (!DatabaseNameValidator::isAllowedName(isSystem, extendedNames, _name)) {
+    res.reset(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+  }
+
+  return res;
 }
 
 VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server, VPackSlice const& options) {

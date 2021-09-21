@@ -81,7 +81,7 @@ namespace arangodb::arangobench {
     }
 
     bool isDeprecated() const noexcept override {
-      return false;
+      return true;
     }
 
     uint32_t _randomValue;

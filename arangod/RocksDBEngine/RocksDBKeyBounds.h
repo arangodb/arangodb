@@ -177,6 +177,12 @@ class RocksDBKeyBounds {
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds FulltextIndexComplete(uint64_t, arangodb::velocypack::StringRef const&);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all index-entries belonging to a specified non-unique
+  /// index (hash, skiplist and permanent)
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds ZkdIndex(uint64_t indexId);
+
  public:
   RocksDBKeyBounds(RocksDBKeyBounds const& other);
   RocksDBKeyBounds(RocksDBKeyBounds&& other) noexcept;

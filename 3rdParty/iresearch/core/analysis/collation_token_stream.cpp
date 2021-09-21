@@ -233,7 +233,8 @@ struct collation_token_stream::state_t {
   byte_type term_buf[MAX_TOKEN_SIZE];
 
   state_t(const options_t& opts)
-    : icu_locale("C"), options(opts) {
+    : icu_locale("C"),
+      options(opts) {
     // NOTE: use of the default constructor for Locale() or
     //       use of Locale::createFromName(nullptr)
     //       causes a memory leak with Boost 1.58, as detected by valgrind
@@ -250,6 +251,10 @@ struct collation_token_stream::state_t {
                          normalize_vpack_config);
 }
 
+void collation_token_stream::state_deleter_t::operator()(state_t* p) const noexcept {
+  delete p;
+}
+
 /*static*/ analyzer::ptr collation_token_stream::make(
     const string_ref& locale) {
   return make_text(locale);
@@ -258,8 +263,8 @@ struct collation_token_stream::state_t {
 collation_token_stream::collation_token_stream(
     const options_t& options)
   : analyzer{irs::type<collation_token_stream>::get()},
-    state_(memory::make_unique<state_t>(options)),
-    term_eof_(true) {
+    state_{new state_t(options)},
+    term_eof_{true} {
 }
 
 bool collation_token_stream::reset(const string_ref& data) {

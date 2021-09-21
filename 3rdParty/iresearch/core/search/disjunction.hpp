@@ -1138,6 +1138,7 @@ class block_disjunction final : public doc_iterator, private score_ctx {
       }
 
       visit_and_purge([this, target, &doc](auto& it) mutable {
+        UNUSED(this);
         const auto value = it->seek(target);
 
         if (doc_limits::eof(value)) {

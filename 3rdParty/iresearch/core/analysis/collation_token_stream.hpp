@@ -62,6 +62,9 @@ class collation_token_stream final
 
  private:
   struct state_t;
+  struct state_deleter_t {
+    void operator()(state_t*) const noexcept;
+  };
 
   using attributes = std::tuple<
     increment,
@@ -70,7 +73,7 @@ class collation_token_stream final
     term_attribute>; // token value with evaluated quotes
 
   attributes attrs_;
-  std::shared_ptr<state_t> state_;
+  std::unique_ptr<state_t, state_deleter_t> state_;
   bool term_eof_;
 }; // collation_token_stream
 

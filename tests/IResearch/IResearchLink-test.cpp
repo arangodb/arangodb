@@ -215,6 +215,83 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == link->type());
     EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE.name() == link->typeName());
     EXPECT_FALSE(link->unique());
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    ASSERT_NE(nullptr, impl);
+    ASSERT_EQ("1_3simd", impl->format());
+
+    arangodb::iresearch::IResearchLinkMeta actualMeta;
+    arangodb::iresearch::IResearchLinkMeta expectedMeta;
+    auto builder = link->toVelocyPack(
+        arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
+    std::string error;
+
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_EQ(expectedMeta, actualMeta);
+    auto slice = builder->slice();
+    EXPECT_TRUE(slice.hasKey("view"));
+    EXPECT_TRUE(slice.get("view").isString());
+    EXPECT_TRUE(logicalView->guid() == slice.get("view").copyString());
+    EXPECT_TRUE(slice.hasKey("figures"));
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(1, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
+    EXPECT_TRUE((logicalCollection->dropIndex(link->id()) &&
+                 logicalCollection->getIndexes().empty()));
+  }
+
+  // valid link creation (explicit version)
+  {
+    auto& engine = *static_cast<StorageEngineMock*>(
+        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+    engine.views.clear();
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    auto linkJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "type": "arangosearch", "view": "42", "version":1 })");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testCollection\" }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testView\", \"id\": 42, \"type\": \"arangosearch\" }");
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_NE(nullptr, logicalCollection);
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_NE(nullptr, logicalView);
+
+    bool created;
+    auto link = logicalCollection->createIndex(linkJson->slice(), created);
+    ASSERT_TRUE(nullptr != link && created);
+    EXPECT_TRUE(link->canBeDropped());
+    EXPECT_EQ(logicalCollection.get(), &(link->collection()));
+    EXPECT_TRUE(link->fieldNames().empty());
+    EXPECT_TRUE(link->fields().empty());
+    EXPECT_FALSE(link->hasExpansion());
+    EXPECT_FALSE(link->hasSelectivityEstimate());
+    EXPECT_FALSE(link->implicitlyUnique());
+    EXPECT_FALSE( link->isSorted());
+    EXPECT_EQ(0, link->memory());
+    EXPECT_TRUE(link->sparse());
+    EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == link->type());
+    EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE.name() == link->typeName());
+    EXPECT_FALSE(link->unique());
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    ASSERT_NE(nullptr, impl);
+    ASSERT_EQ("1_4simd", impl->format());
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
     arangodb::iresearch::IResearchLinkMeta expectedMeta;

@@ -25,9 +25,10 @@
 #pragma once
 
 #include <memory>
-
 #include <utils/type_id.hpp>
+
 #include "Basics/Result.h"
+#include "IResearch/IResearchCommon.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
@@ -67,22 +68,22 @@ struct IResearchLinkHelper {
   ///        link instance
   //////////////////////////////////////////////////////////////////////////////
   static bool equal(
-      application_features::ApplicationServer& server,
-      velocypack::Slice const& lhs,
-      velocypack::Slice const& rhs,
-      irs::string_ref const& dbname);
+    application_features::ApplicationServer& server,
+    velocypack::Slice lhs,
+    velocypack::Slice rhs,
+    irs::string_ref const& dbname);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds link between specified collection and view with the given id
   //////////////////////////////////////////////////////////////////////////////
   static std::shared_ptr<IResearchLink> find(
-      LogicalCollection const& collection,
-      IndexId id);
+    LogicalCollection const& collection,
+    IndexId id);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds first link between specified collection and view
   //////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<IResearchLink> find( // find link
+  static std::shared_ptr<IResearchLink> find(
     LogicalCollection const& collection,
     LogicalView const& view);
 
@@ -93,12 +94,12 @@ struct IResearchLinkHelper {
   /// @note engine == nullptr then SEGFAULT in Methods constructor during insert
   /// @note true == inRecovery() then AnalyzerFeature will not allow persistence
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result normalize(
+  static Result normalize(
     velocypack::Builder& normalized,
     velocypack::Slice definition,
     bool isCreation,
     TRI_vocbase_t const& vocbase,
-    const uint32_t* version = nullptr,
+    LinkVersion defaultVersion,
     IResearchViewSort const* primarySort = nullptr,
     irs::type_info::type_id const* primarySortCompression = nullptr,
     IResearchViewStoredValues const* storedValues = nullptr,
@@ -117,7 +118,7 @@ struct IResearchLinkHelper {
   ///        * collection permissions
   ///        * valid link meta
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result validateLinks(
+  static Result validateLinks(
     TRI_vocbase_t& vocbase,
     velocypack::Slice links);
 
@@ -136,11 +137,13 @@ struct IResearchLinkHelper {
   /// @param view the view to associate created links with
   /// @param links the link modification definitions, null link == link removal
   /// @param stale links to remove if there is no creation definition in 'links'
+  /// @param linkVersion link version for creation if not set in a definition
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result updateLinks(
+  static Result updateLinks(
     std::unordered_set<DataSourceId>& modified,
     LogicalView& view,
     velocypack::Slice links,
+    LinkVersion defaultVersion,
     std::unordered_set<DataSourceId> const& stale = {});
 
  private:

@@ -2567,7 +2567,7 @@ function testCompleteGraphDfsUniqueEdgesPathD2(testGraph) {
   checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
-function testCompleteGraphDfsUniqueVerticesPathD3(testGraph) {
+function completeGraphDfsUniqueVerticesPathD3Helper(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "path"}
@@ -2639,6 +2639,19 @@ function testCompleteGraphDfsUniqueVerticesPathD3(testGraph) {
   const actualPaths = res.toArray();
 
   checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+}
+
+function testCompleteGraphDfsUniqueVerticesPathD3(testGraph) {
+  completeGraphDfsUniqueVerticesPathD3Helper(testGraph);
+}
+
+function testCompleteGraphDfsUniqueVerticesPathD3NotHasExtra(testGraph) {
+  internal.debugSetFailAt("RocksDBEdgeIndex::disableHasExtra");
+  try {
+    completeGraphDfsUniqueVerticesPathD3Helper(testGraph);
+  } finally {
+    internal.debugRemoveFailAt("RocksDBEdgeIndex::disableHasExtra");
+  }
 }
 
 function testCompleteGraphDfsUniqueVerticesUniqueEdgesPathD2(testGraph) {
@@ -5906,6 +5919,7 @@ const testsByGraph = {
     testCompleteGraphDfsUniqueVerticesPathD1,
     testCompleteGraphDfsUniqueVerticesPathD2,
     testCompleteGraphDfsUniqueVerticesPathD3,
+    testCompleteGraphDfsUniqueVerticesPathD3NotHasExtra,
     testCompleteGraphDfsUniqueEdgesPathD1,
     testCompleteGraphDfsUniqueEdgesPathD2,
     testCompleteGraphDfsUniqueVerticesUniqueEdgesPathD2,

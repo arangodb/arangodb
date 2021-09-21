@@ -42,8 +42,7 @@
 
 #endif
 
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 class ConditionVariable;
 
 /// @brief condition locker
@@ -52,10 +51,10 @@ class ConditionVariable;
 /// when destroyed. It is possible the wait for an event in which case the lock
 /// is released or to broadcast an event.
 class ConditionLocker {
-  ConditionLocker(ConditionLocker const&);
-  ConditionLocker& operator=(ConditionLocker const&);
-
  public:
+    ConditionLocker(ConditionLocker const&) = delete;
+    ConditionLocker& operator=(ConditionLocker const&) = delete;
+
 /// @brief locks the condition variable
 ///
 /// The constructor locks the condition variable, the destructor unlocks
@@ -67,7 +66,7 @@ class ConditionLocker {
 
 #else
 
-  explicit ConditionLocker(ConditionVariable* conditionVariable);
+  explicit ConditionLocker(ConditionVariable* conditionVariable) noexcept;
 
 #endif
 
@@ -90,16 +89,16 @@ class ConditionLocker {
   bool wait(std::chrono::microseconds);
 
   /// @brief broadcasts an event
-  void broadcast();
+  void broadcast() noexcept;
 
   /// @brief signals an event
-  void signal();
+  void signal() noexcept;
 
   /// @brief unlocks the variable (handle with care, no exception allowed)
-  void unlock();
+  void unlock() noexcept;
 
   /// @brief relock the variable after unlock
-  void lock();
+  void lock() noexcept;
 
  private:
   /// @brief the condition
@@ -123,6 +122,4 @@ class ConditionLocker {
 
 #endif
 };
-}  // namespace basics
-}  // namespace arangodb
-
+}  // namespace arangodb::basics

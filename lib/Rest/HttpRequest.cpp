@@ -24,6 +24,7 @@
 
 #include "HttpRequest.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/Utf8Helper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
@@ -41,6 +42,35 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+
+namespace {
+std::string url_decode(const char* begin, const char* end) {
+  std::string out;
+  out.reserve(static_cast<size_t>(end - begin));
+  for (const char* i = begin; i != end; ++i) {
+    std::string::value_type c = (*i);
+    if (c == '%') {
+      if (i + 2 < end) {
+        int h = StringUtils::hex2int(i[1], 256) << 4;
+        h += StringUtils::hex2int(i[2], 256);
+        if (h >= 256) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid encoding value in request URL");
+        }
+        out.push_back(static_cast<char>(h & 0xFF));
+        i += 2;
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid encoding value in request URL");
+      }
+    } else if (c == '+') {
+      out.push_back(' ');
+    } else {
+      out.push_back(c);
+    }
+  }
+  
+  return out;
+}
+} // namespace
 
 HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
                          uint64_t mid, bool allowMethodOverride)
@@ -201,7 +231,10 @@ void HttpRequest::parseHeader(char* start, size_t length) {
                 ++q;
               }
 
-              _databaseName = std::string(pathBegin, q - pathBegin);
+              _databaseName = ::url_decode(pathBegin, q);
+              if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+              }
 
               pathBegin = q;
             }
@@ -373,28 +406,6 @@ void HttpRequest::parseHeader(char* start, size_t length) {
   }
 }
 
-namespace {
-  std::string url_decode(const char* begin, const char* end) {
-    std::string out;
-    out.reserve(static_cast<size_t>(end - begin));
-    for (const char* i = begin; i != end; ++i) {
-      std::string::value_type c = (*i);
-      if (c == '%') {
-        if (i + 2 < end) {
-          int h = StringUtils::hex2int(i[1], 0) << 4;
-          h += StringUtils::hex2int(i[2], 0);
-          out.push_back(static_cast<char>(h & 0x7F));
-          i += 2;
-        }
-      } else if (c == '+') {
-        out.push_back(' ');
-      } else {
-        out.push_back(c);
-      }
-    }
-    return out;
-  }
-}
 
 void HttpRequest::parseUrl(const char* path, size_t length) {
   std::string tmp;
@@ -430,7 +441,10 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       }
 
       TRI_ASSERT(q >= start);
-      _databaseName.assign(start, q - start);
+      _databaseName = ::url_decode(start, q);
+      if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+      }
       _fullUrl.assign(q, end - q);
 
       start = q;

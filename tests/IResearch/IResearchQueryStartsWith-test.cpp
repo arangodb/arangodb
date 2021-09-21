@@ -33,23 +33,17 @@
 
 #include <velocypack/Iterator.h>
 
+#include "utils/string_utils.hpp"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
 
 class IResearchQueryStartsWithTest : public IResearchQueryTest {};
 
 }  // namespace
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-TEST_F(IResearchQueryStartsWithTest, test) {
+TEST_P(IResearchQueryStartsWithTest, test) {
   static std::vector<std::string> const EMPTY;
 
   auto createJson = arangodb::velocypack::Parser::fromJson(
@@ -85,12 +79,23 @@ TEST_F(IResearchQueryStartsWithTest, test) {
 
   // add link to collection
   {
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\" : {"
-        "\"collection_1\" : { \"includeAllFields\" : true },"
-        "\"collection_2\" : { \"includeAllFields\" : true }"
-        "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    auto viewDefinitionTemplate = R"({
+      "links": {
+        "collection_1": {
+          "includeAllFields": true,
+          "version": %u },
+        "collection_2": {
+          "version": %u,
+          "includeAllFields": true }
+    }})";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
+
+    auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -1380,3 +1385,8 @@ TEST_F(IResearchQueryStartsWithTest, test) {
     EXPECT_FALSE(resultIt.valid());
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryStartsWithTest,
+  IResearchQueryStartsWithTest,
+  GetLinkVersions());

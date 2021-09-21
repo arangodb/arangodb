@@ -44,22 +44,24 @@
 
 namespace {
 
-struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
+using namespace arangodb;
+
+struct DefaultIndexFactory : public IndexTypeFactory {
   std::string const _type;
 
-  explicit DefaultIndexFactory(arangodb::application_features::ApplicationServer& server,
+  explicit DefaultIndexFactory(application_features::ApplicationServer& server,
                                std::string const& type)
       : IndexTypeFactory(server), _type(type) {}
 
-  bool equal(arangodb::velocypack::Slice const& lhs,
-             arangodb::velocypack::Slice const& rhs,
+  bool equal(velocypack::Slice lhs,
+             velocypack::Slice rhs,
              std::string const& dbname) const override {
     auto& clusterEngine =
-        _server.getFeature<arangodb::EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
+        _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
     auto* engine = clusterEngine.actualEngine();
 
     if (!engine) {
-      THROW_ARANGO_EXCEPTION(arangodb::Result(
+      THROW_ARANGO_EXCEPTION(Result(
           TRI_ERROR_INTERNAL,
           "cannot find storage engine while normalizing index"));
     }
@@ -67,30 +69,30 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
     return engine->indexFactory().factory(_type).equal(lhs, rhs, dbname);
   }
 
-  std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
-                                               arangodb::velocypack::Slice const& definition,
-                                               arangodb::IndexId id,
-                                               bool /* isClusterConstructor */) const override {
+  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
+                                     velocypack::Slice definition,
+                                     IndexId id,
+                                     bool /* isClusterConstructor */) const override {
     auto& clusterEngine =
-        _server.getFeature<arangodb::EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
+        _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
     auto ct = clusterEngine.engineType();
 
-    return std::make_shared<arangodb::ClusterIndex>(id, collection, ct,
-                                                    arangodb::Index::type(_type),
-                                                    definition);
+    return std::make_shared<ClusterIndex>(id, collection, ct,
+                                          Index::type(_type),
+                                          definition);
   }
 
-  virtual arangodb::Result normalize(
-      arangodb::velocypack::Builder& normalized,
-      arangodb::velocypack::Slice definition,
+  virtual Result normalize(
+      velocypack::Builder& normalized,
+      velocypack::Slice definition,
       bool isCreation,
       TRI_vocbase_t const& vocbase) const override {
     auto& clusterEngine =
-        _server.getFeature<arangodb::EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
+        _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
     auto* engine = clusterEngine.actualEngine();
 
     if (!engine) {
-      return arangodb::Result(
+      return Result(
           TRI_ERROR_INTERNAL,
           "cannot find storage engine while normalizing index");
     }
@@ -101,50 +103,50 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
-  explicit EdgeIndexFactory(arangodb::application_features::ApplicationServer& server,
+  explicit EdgeIndexFactory(application_features::ApplicationServer& server,
                             std::string const& type)
       : DefaultIndexFactory(server, type) {}
 
-  std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
-                                               arangodb::velocypack::Slice const& definition,
-                                               arangodb::IndexId id,
-                                               bool isClusterConstructor) const override {
+  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
+                                     velocypack::Slice definition,
+                                     IndexId id,
+                                     bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this index type cannot be created directly
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create edge index");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "cannot create edge index");
     }
 
-    auto& clusterEngine =
-        _server.getFeature<arangodb::EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
+    auto& clusterEngine = _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
     auto ct = clusterEngine.engineType();
 
-    return std::make_shared<arangodb::ClusterIndex>(id, collection, ct,
-                                                    arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX,
-                                                    definition);
+    return std::make_shared<ClusterIndex>(id, collection, ct,
+                                          Index::TRI_IDX_TYPE_EDGE_INDEX,
+                                          definition);
   }
 };
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
-  explicit PrimaryIndexFactory(arangodb::application_features::ApplicationServer& server,
+  explicit PrimaryIndexFactory(application_features::ApplicationServer& server,
                                std::string const& type)
       : DefaultIndexFactory(server, type) {}
 
-  std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
-                                               arangodb::velocypack::Slice const& definition,
-                                               arangodb::IndexId id,
-                                               bool isClusterConstructor) const override {
+  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
+                                     velocypack::Slice definition,
+                                     IndexId /*id*/,
+                                     bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this index type cannot be created directly
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create primary index");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "cannot create primary index");
     }
 
-    auto& clusterEngine =
-        _server.getFeature<arangodb::EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
+    auto& clusterEngine = _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
     auto ct = clusterEngine.engineType();
 
-    return std::make_shared<arangodb::ClusterIndex>(arangodb::IndexId::primary(), collection,
-                                                    ct, arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX,
-                                                    definition);
+    return std::make_shared<ClusterIndex>(
+      IndexId::primary(), collection, ct,
+      Index::TRI_IDX_TYPE_PRIMARY_INDEX, definition);
   }
 };
 
@@ -152,8 +154,8 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
 namespace arangodb {
 
-ClusterIndexFactory::ClusterIndexFactory(application_features::ApplicationServer& server)
-    : IndexFactory(server) {
+void ClusterIndexFactory::linkIndexFactories(application_features::ApplicationServer& server,
+                                             IndexFactory& factory) {
   static const EdgeIndexFactory edgeIndexFactory(server, "edge");
   static const DefaultIndexFactory fulltextIndexFactory(server, "fulltext");
   static const DefaultIndexFactory geoIndexFactory(server, "geo");
@@ -164,23 +166,30 @@ ClusterIndexFactory::ClusterIndexFactory(application_features::ApplicationServer
   static const PrimaryIndexFactory primaryIndexFactory(server, "primary");
   static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist");
   static const DefaultIndexFactory ttlIndexFactory(server, "ttl");
+  static const DefaultIndexFactory zkdIndexFactory(server, "zkd");
 
-  emplace(edgeIndexFactory._type, edgeIndexFactory);
-  emplace(fulltextIndexFactory._type, fulltextIndexFactory);
-  emplace(geoIndexFactory._type, geoIndexFactory);
-  emplace(geo1IndexFactory._type, geo1IndexFactory);
-  emplace(geo2IndexFactory._type, geo2IndexFactory);
-  emplace(hashIndexFactory._type, hashIndexFactory);
-  emplace(persistentIndexFactory._type, persistentIndexFactory);
-  emplace(primaryIndexFactory._type, primaryIndexFactory);
-  emplace(skiplistIndexFactory._type, skiplistIndexFactory);
-  emplace(ttlIndexFactory._type, ttlIndexFactory);
+  factory.emplace(edgeIndexFactory._type, edgeIndexFactory);
+  factory.emplace(fulltextIndexFactory._type, fulltextIndexFactory);
+  factory.emplace(geoIndexFactory._type, geoIndexFactory);
+  factory.emplace(geo1IndexFactory._type, geo1IndexFactory);
+  factory.emplace(geo2IndexFactory._type, geo2IndexFactory);
+  factory.emplace(hashIndexFactory._type, hashIndexFactory);
+  factory.emplace(persistentIndexFactory._type, persistentIndexFactory);
+  factory.emplace(primaryIndexFactory._type, primaryIndexFactory);
+  factory.emplace(skiplistIndexFactory._type, skiplistIndexFactory);
+  factory.emplace(ttlIndexFactory._type, ttlIndexFactory);
+  factory.emplace(zkdIndexFactory._type, zkdIndexFactory);
+}
+
+ClusterIndexFactory::ClusterIndexFactory(application_features::ApplicationServer& server)
+    : IndexFactory(server) {
+  linkIndexFactories(server, *this);
 }
 
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
 /// "hash") used to display storage engine capabilities
 std::unordered_map<std::string, std::string> ClusterIndexFactory::indexAliases() const {
-  auto& ce = _server.getFeature<EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
+  auto& ce = _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
   auto* ae = ce.actualEngine();
   if (!ae) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -189,11 +198,12 @@ std::unordered_map<std::string, std::string> ClusterIndexFactory::indexAliases()
   return ae->indexFactory().indexAliases();
 }
 
-Result ClusterIndexFactory::enhanceIndexDefinition(
-    velocypack::Slice const definition,
-    velocypack::Builder& normalized,
-    bool isCreation,
-    TRI_vocbase_t const& vocbase) const {
+Result ClusterIndexFactory::enhanceIndexDefinition(  // normalize definition
+    velocypack::Slice const definition,              // source definition
+    velocypack::Builder& normalized,  // normalized definition (out-param)
+    bool isCreation,                  // definition for index creation
+    TRI_vocbase_t const& vocbase      // index vocbase
+) const {
   auto& ce = _server.getFeature<EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
 
   auto* ae = ce.actualEngine();
@@ -206,8 +216,8 @@ Result ClusterIndexFactory::enhanceIndexDefinition(
     definition, normalized, isCreation, vocbase);
 }
 
-void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
-                                            std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
+void ClusterIndexFactory::fillSystemIndexes(LogicalCollection& col,
+                                            std::vector<std::shared_ptr<Index>>& systemIndexes) const {
   // create primary index
   VPackBuilder input;
   input.openObject();
@@ -222,10 +232,10 @@ void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
   input.close();
 
   // get the storage engine type
-  auto& ce = _server.getFeature<EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
+  auto& ce = _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
   ClusterEngineType ct = ce.engineType();
 
-  systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
+  systemIndexes.emplace_back(std::make_shared<ClusterIndex>(
       IndexId::primary(), col, ct, Index::TRI_IDX_TYPE_PRIMARY_INDEX, input.slice()));
 
   // create edges indexes
@@ -249,7 +259,7 @@ void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
     input.add(StaticStrings::IndexUnique, VPackValue(false));
     input.add(StaticStrings::IndexSparse, VPackValue(false));
     input.close();
-    systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
+    systemIndexes.emplace_back(std::make_shared<ClusterIndex>(
         IndexId::edgeFrom(), col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
 
     // second edge index
@@ -267,15 +277,15 @@ void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
       input.add(StaticStrings::IndexUnique, VPackValue(false));
       input.add(StaticStrings::IndexSparse, VPackValue(false));
       input.close();
-      systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
+      systemIndexes.emplace_back(std::make_shared<ClusterIndex>(
           IndexId::edgeTo(), col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
     }
   }
 }
 
 void ClusterIndexFactory::prepareIndexes(
-    LogicalCollection& col, arangodb::velocypack::Slice const& indexesSlice,
-    std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
+    LogicalCollection& col, velocypack::Slice indexesSlice,
+    std::vector<std::shared_ptr<Index>>& indexes) const {
   TRI_ASSERT(indexesSlice.isArray());
 
   for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
@@ -294,7 +304,7 @@ void ClusterIndexFactory::prepareIndexes(
       TRI_ASSERT(idx != nullptr);
       indexes.emplace_back(std::move(idx));
     } catch (std::exception const& ex) {
-      LOG_TOPIC("7ed52", ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("7ed52", ERR, Logger::ENGINES)
           << "error creating index from definition '" << v.toString() << "': " << ex.what();
 
     }

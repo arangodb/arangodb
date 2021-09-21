@@ -85,22 +85,27 @@ struct text_token_stream::state_t {
     uint32_t length{};
   };
 
-  std::shared_ptr<icu::BreakIterator> break_iterator;
   icu::UnicodeString data;
   icu::Locale icu_locale;
-  std::shared_ptr<const icu::Normalizer2> normalizer;
   const options_t& options;
   const stopwords_t& stopwords;
-  std::shared_ptr<sb_stemmer> stemmer;
-  std::string tmp_buf; // used by processTerm(...)
-  std::shared_ptr<icu::Transliterator> transliterator;
-  ngram_state_t ngram;
   bstring term_buf;
+  std::string tmp_buf; // used by processTerm(...)
+  std::unique_ptr<icu::BreakIterator> break_iterator;
+  const icu::Normalizer2* normalizer; // reusable object owned by ICU
+  std::unique_ptr<sb_stemmer, void(*)(sb_stemmer*)> stemmer;
+  std::unique_ptr<icu::Transliterator> transliterator;
+  ngram_state_t ngram;
   bytes_ref term;
   uint32_t start{};
   uint32_t end{};
-  state_t(const options_t& opts, const stopwords_t& stopw) :
-    icu_locale("C"), options(opts), stopwords(stopw) {
+
+  state_t(const options_t& opts, const stopwords_t& stopw)
+    : icu_locale("C"),
+      options(opts),
+      stopwords(stopw),
+      normalizer{},
+      stemmer(nullptr, &sb_stemmer_delete) {
     // NOTE: use of the default constructor for Locale() or
     //       use of Locale::createFromName(nullptr)
     //       causes a memory leak with Boost 1.58, as detected by valgrind
@@ -126,27 +131,27 @@ struct text_token_stream::state_t {
 } // ROOT
 
 namespace {
+
 using namespace irs;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-struct cached_options_t: public irs::analysis::text_token_stream::options_t {
+struct cached_options_t: public analysis::text_token_stream::options_t {
   std::string key_;
-  irs::analysis::text_token_stream::stopwords_t stopwords_;
+  analysis::text_token_stream::stopwords_t stopwords_;
 
   cached_options_t(
-      irs::analysis::text_token_stream::options_t &&options,
-      irs::analysis::text_token_stream::stopwords_t&& stopwords)
-    : irs::analysis::text_token_stream::options_t(std::move(options)),
+      analysis::text_token_stream::options_t &&options,
+      analysis::text_token_stream::stopwords_t&& stopwords)
+    : analysis::text_token_stream::options_t(std::move(options)),
       stopwords_(std::move(stopwords)){
   }
 };
 
-
-static absl::node_hash_map<irs::hashed_string_ref, cached_options_t> cached_state_by_key;
-static std::mutex mutex;
-static auto icu_cleanup = irs::make_finally([]()noexcept->void{
+absl::node_hash_map<irs::hashed_string_ref, cached_options_t> cached_state_by_key;
+std::mutex mutex;
+auto icu_cleanup = irs::make_finally([]()noexcept->void{
   // this call will release/free all memory used by ICU (for all users)
   // very dangerous to call if ICU is still in use by some other code
   //u_cleanup();
@@ -299,10 +304,9 @@ irs::analysis::analyzer::ptr construct(
     const irs::string_ref& cache_key,
     irs::analysis::text_token_stream::options_t&& options,
     irs::analysis::text_token_stream::stopwords_t&& stopwords) {
-  static auto generator = [](
+  auto generator = [](
       const irs::hashed_string_ref& key,
-      cached_options_t& value
-  ) noexcept {
+      cached_options_t& value) noexcept {
     if (key.null()) {
       return key;
     }
@@ -312,6 +316,7 @@ irs::analysis::analyzer::ptr construct(
     // reuse hash but point ref at value
     return irs::hashed_string_ref(key.hash(), value.key_);
   };
+
   cached_options_t* options_ptr;
 
   {
@@ -371,9 +376,8 @@ irs::analysis::analyzer::ptr construct(
 }
 
 bool process_term(
-  irs::analysis::text_token_stream::state_t& state,
-  icu::UnicodeString const& data
-) {
+    irs::analysis::text_token_stream::state_t& state,
+    icu::UnicodeString const& data) {
   // ...........................................................................
   // normalize unicode
   // ...........................................................................
@@ -867,6 +871,10 @@ REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, make_text,
 namespace iresearch {
 namespace analysis {
 
+void text_token_stream::state_deleter_t::operator()(state_t* p) const noexcept {
+  delete p;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  static variables
 // -----------------------------------------------------------------------------
@@ -881,7 +889,7 @@ text_token_stream::text_token_stream(
     const options_t& options,
     const stopwords_t& stopwords)
   : analyzer{ irs::type<text_token_stream>::get() },
-    state_(memory::make_unique<state_t>(options, stopwords)) {
+    state_{new state_t{options, stopwords}} {
 }
 
 // -----------------------------------------------------------------------------
@@ -935,12 +943,10 @@ bool text_token_stream::reset(const string_ref& data) {
 
   if (!state_->normalizer) {
     // reusable object owned by ICU
-    state_->normalizer.reset(
-      icu::Normalizer2::getNFCInstance(err), [](const icu::Normalizer2*)->void{}
-    );
+    state_->normalizer = icu::Normalizer2::getNFCInstance(err);
 
     if (!U_SUCCESS(err) || !state_->normalizer) {
-      state_->normalizer.reset();
+      state_->normalizer = nullptr;
 
       return false;
     }
@@ -964,9 +970,8 @@ bool text_token_stream::reset(const string_ref& data) {
 
   if (!state_->break_iterator) {
     // reusable object owned by *this
-    state_->break_iterator.reset(icu::BreakIterator::createWordInstance(
-      state_->icu_locale, err
-    ));
+    state_->break_iterator.reset(
+      icu::BreakIterator::createWordInstance(state_->icu_locale, err));
 
     if (!U_SUCCESS(err) || !state_->break_iterator) {
       state_->break_iterator.reset();
@@ -981,10 +986,7 @@ bool text_token_stream::reset(const string_ref& data) {
     state_->stemmer.reset(
       sb_stemmer_new(
         std::string(irs::locale_utils::language(state_->options.locale)).c_str(),
-        nullptr // defaults to utf-8
-      ),
-      [](sb_stemmer* ptr)->void{ sb_stemmer_delete(ptr); }
-    );
+        nullptr)); // defaults to utf-8
   }
 
   // ...........................................................................

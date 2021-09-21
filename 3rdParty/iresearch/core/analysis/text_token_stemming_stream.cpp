@@ -212,8 +212,9 @@ namespace analysis {
 
 text_token_stemming_stream::text_token_stemming_stream(const std::locale& locale)
   : analyzer{irs::type<text_token_stemming_stream>::get()},
-    locale_(locale),
-    term_eof_(true) {
+    locale_{locale},
+    stemmer_{nullptr, &sb_stemmer_delete},
+    term_eof_{true} {
 }
 
 /*static*/ void text_token_stemming_stream::init() {
@@ -243,10 +244,8 @@ bool text_token_stemming_stream::reset(const string_ref& data) {
   if (!stemmer_) {
     stemmer_.reset(
       sb_stemmer_new(
-        std::string(locale_utils::language(locale_)).c_str(), nullptr // defaults to utf-8
-      ),
-      [](sb_stemmer* ptr)->void{ sb_stemmer_delete(ptr); }
-    );
+        std::string(locale_utils::language(locale_)).c_str(),
+        nullptr)); // defaults to utf-8
   }
 
   auto& term = std::get<term_attribute>(attrs_);

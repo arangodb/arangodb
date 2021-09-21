@@ -28,6 +28,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Basics/tryEmplaceHelper.h"
@@ -222,7 +223,7 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
   }
 
   // this->_proto->timer.cancel();
-  auto guard = scopeGuard([&] { _messages.erase(chunk.header.messageID()); });
+  auto guard = scopeGuard([&]() noexcept { _messages.erase(chunk.header.messageID()); });
   processMessage(std::move(msg.buffer), chunk.header.messageID());
   return true;
 }
@@ -239,7 +240,7 @@ static void DTraceVstCommTaskProcessMessage(size_t) {}
 template <SocketType T>
 std::string VstCommTask<T>::url(VstRequest const* req) const {
   if (req != nullptr) {
-    return std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
+    return std::string((req->databaseName().empty() ? "" : "/_db/" + StringUtils::urlEncode(req->databaseName()))) +
       (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
   }
   return "";

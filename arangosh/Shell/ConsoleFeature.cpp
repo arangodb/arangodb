@@ -316,7 +316,7 @@ std::string ConsoleFeature::readPassword(std::string const& message) {
 std::string ConsoleFeature::readPassword() {
   TRI_SetStdinVisibility(false);
 
-  TRI_DEFER(TRI_SetStdinVisibility(true));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
 
   std::string password;
 

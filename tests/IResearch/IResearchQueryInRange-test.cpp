@@ -34,6 +34,8 @@
 
 #include <velocypack/Iterator.h>
 
+#include "utils/string_utils.hpp"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
@@ -46,11 +48,7 @@ class IResearchQueryInRangeTest : public IResearchQueryTest {};
 
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-TEST_F(IResearchQueryInRangeTest, test) {
+TEST_P(IResearchQueryInRangeTest, test) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   std::shared_ptr<arangodb::LogicalCollection> collection0;
@@ -140,16 +138,29 @@ TEST_F(IResearchQueryInRangeTest, test) {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     ASSERT_FALSE(!impl);
 
-    auto updateJson = VPackParser::fromJson(
-        "{ \"links\": {"
-        "\"testCollection0\": { \"analyzers\": [ \"test_analyzer\", "
-        "\"identity\" ], \"includeAllFields\": true, \"trackListPositions\": "
-        "false, \"storeValues\":\"id\" },"
-        "\"testCollection1\": { \"analyzers\": [ \"test_analyzer\", "
-        "\"identity\" ], \"includeAllFields\": true, \"storeValues\":\"id\" }"
-        "}}");
+    auto viewDefinitionTemplate =  R"({
+      "links": {
+        "testCollection0": {
+          "analyzers": [ "test_analyzer", "identity" ],
+          "includeAllFields": true,
+          "trackListPositions": false,
+          "version": %u,
+          "storeValues": "id" },
+        "testCollection1" : {
+          "analyzers": [ "test_analyzer", "identity" ],
+          "includeAllFields": true,
+          "version": %u,
+          "storeValues":"id" }
+    }})";
 
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
+
+    auto updateJson = VPackParser::fromJson(viewDefinition);
+
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
@@ -883,3 +894,8 @@ TEST_F(IResearchQueryInRangeTest, test) {
     }
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryInRangeTest,
+  IResearchQueryInRangeTest,
+  GetLinkVersions());

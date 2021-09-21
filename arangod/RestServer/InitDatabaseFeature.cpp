@@ -149,7 +149,7 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::cout << message << ": " << std::flush;
 #ifdef _WIN32
   TRI_SetStdinVisibility(false);
-  TRI_DEFER(TRI_SetStdinVisibility(true));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
   std::getline(std::wcin, wpassword);
