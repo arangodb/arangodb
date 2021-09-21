@@ -398,8 +398,8 @@ class Methods {
                                         VPackSlice value, OperationOptions const& options);
 
   Future<OperationResult> insertCoordinator(std::string const& collectionName,
-                                            VPackSlice value,
-                                            OperationOptions const& options);
+                                            VPackSlice value, OperationOptions const& options,
+                                            MethodsApi api);
 
   Future<OperationResult> insertLocal(std::string const& collectionName,
                                       VPackSlice value, OperationOptions& options);
@@ -451,7 +451,6 @@ class Methods {
   ENTERPRISE_VIRT auto documentInternal(std::string const& cname, VPackSlice value,
                                         OperationOptions const& options, MethodsApi api)
       -> Future<OperationResult>;
-  // TODO set skipScheduler: true for network requests
   auto insertInternal(std::string const& collectionName, VPackSlice value,
                       OperationOptions const& options, MethodsApi api) -> Future<OperationResult>;
   // TODO set skipScheduler: true for network requests

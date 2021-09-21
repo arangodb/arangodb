@@ -1418,10 +1418,9 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& trx,
-                                                    LogicalCollection& coll,
-                                                    VPackSlice const slice,
-                                                    arangodb::OperationOptions const& options) {
+futures::Future<OperationResult> createDocumentOnCoordinator(
+    transaction::Methods const& trx, LogicalCollection& coll, VPackSlice const slice,
+    OperationOptions const& options, transaction::MethodsApi api) {
   const std::string collid = std::to_string(coll.id().id());
 
   // create vars used in this function
@@ -1447,8 +1446,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
   Future<Result> f = makeFuture(Result());
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged && opCtx.shardMap.size() > 1) {  // lazily begin transactions on leaders
-    f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap,
-                                      transaction::MethodsApi::Asynchronous);
+    f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
   }
 
   return std::move(f).thenValue([=, &trx, &coll, opCtx(std::move(opCtx))]
@@ -1463,6 +1461,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     reqOpts.database = trx.vocbase().name();
     reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
     reqOpts.retryNotFound = true;
+    reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
     reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
            .param(StaticStrings::ReturnNewString, (options.returnNew ? "true" : "false"))
            .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))

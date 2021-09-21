@@ -892,12 +892,13 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
 #ifndef USE_ENTERPRISE
 Future<OperationResult> transaction::Methods::insertCoordinator(std::string const& collectionName,
                                                                 VPackSlice value,
-                                                                OperationOptions const& options) {
+                                                                OperationOptions const& options,
+                                                                MethodsApi api) {
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
-  return arangodb::createDocumentOnCoordinator(*this, *colptr, value, options);
+  return arangodb::createDocumentOnCoordinator(*this, *colptr, value, options, api);
 }
 #endif
 
@@ -2597,7 +2598,7 @@ Future<OperationResult> Methods::insertInternal(std::string const& cname, VPackS
 
   auto f = Future<OperationResult>::makeEmpty();
   if (_state->isCoordinator()) {
-    f = insertCoordinator(cname, value, options);
+    f = insertCoordinator(cname, value, options, api);
   } else {
     OperationOptions optionsCopy = options;
     f = insertLocal(cname, value, optionsCopy);

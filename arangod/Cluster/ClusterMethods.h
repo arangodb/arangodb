@@ -137,8 +137,8 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature&, std::string const& dbn
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> createDocumentOnCoordinator(
-    transaction::Methods const& trx, LogicalCollection&, VPackSlice const slice,
-    OperationOptions const& options);
+    transaction::Methods const& trx, LogicalCollection& coll, VPackSlice slice,
+    OperationOptions const& options, transaction::MethodsApi api);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a document in a coordinator
