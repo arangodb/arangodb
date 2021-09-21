@@ -30,6 +30,7 @@
 
 #include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
+#include <Basics/application-exit.h>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -99,6 +100,7 @@ auto ::arangodb::replication2::replicated_log::assertQueueNotEmptyOrTryToClear(
             return {"follower", "Follower",
                     TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
+        FATAL_ERROR_ABORT();
       });
   auto result = TryToClearResult::NoProgress;
   try {
