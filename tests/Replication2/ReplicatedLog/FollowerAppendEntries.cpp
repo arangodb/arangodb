@@ -241,7 +241,7 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
   ASSERT_NE(logCore, nullptr);
   logCore.reset();
   // follower should now be resigned
-  ASSERT_THROW(follower->getStatus(), arangodb::basics::Exception); // TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED
+  ASSERT_THROW(std::ignore = follower->getStatus(), arangodb::basics::Exception); // TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED
 
   {
     AppendEntriesRequest request;
