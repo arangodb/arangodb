@@ -361,12 +361,11 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
   TransactionId trxId{0};
   auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
     if (trxId.isSet()) {
-      rcoll->meta().removeBlocker(trxId);
+      rcoll->removeRevisionTreeBlocker(trxId);
     }
   });
-  auto blockerSeq = _engine.db()->GetLatestSequenceNumber();
   trxId = TransactionId(transaction::Context::makeTransactionId());
-  rcoll->meta().placeBlocker(trxId, blockerSeq);
+  rocksdb::SequenceNumber blockerSeq = rcoll->placeRevisionTreeBlocker(trxId);
 
   arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
   VPackDumper dumper(&adapter, &cIter->vpackOptions);
@@ -439,12 +438,11 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
   TransactionId trxId{0};
   auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
     if (trxId.isSet()) {
-      rcoll->meta().removeBlocker(trxId);
+      rcoll->removeRevisionTreeBlocker(trxId);
     }
   });
-  auto blockerSeq = _engine.db()->GetLatestSequenceNumber();
   trxId = TransactionId(transaction::Context::makeTransactionId());
-  rcoll->meta().placeBlocker(trxId, blockerSeq);
+  rocksdb::SequenceNumber blockerSeq = rcoll->placeRevisionTreeBlocker(trxId);
 
   TRI_ASSERT(cIter->bounds.columnFamily() ==
              RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents));
@@ -523,12 +521,11 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   TransactionId trxId{0};
   auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
     if (trxId.isSet()) {
-      rcoll->meta().removeBlocker(trxId);
+      rcoll->removeRevisionTreeBlocker(trxId);
     }
   });
-  auto blockerSeq = _engine.db()->GetLatestSequenceNumber();
   trxId = TransactionId(transaction::Context::makeTransactionId());
-  rcoll->meta().placeBlocker(trxId, blockerSeq);
+  rocksdb::SequenceNumber blockerSeq = rcoll->placeRevisionTreeBlocker(trxId);
 
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);

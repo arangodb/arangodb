@@ -220,7 +220,7 @@ class PhysicalCollection {
 
   virtual Result rebuildRevisionTree();
 
-  virtual void placeRevisionTreeBlocker(TransactionId transactionId);
+  virtual uint64_t placeRevisionTreeBlocker(TransactionId transactionId);
   virtual void removeRevisionTreeBlocker(TransactionId transactionId);
 
   RevisionId newRevisionId() const;

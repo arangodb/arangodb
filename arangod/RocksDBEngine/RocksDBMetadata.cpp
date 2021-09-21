@@ -487,7 +487,6 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
       // and need to rebuild it
       engine.scheduleTreeRebuild(coll.vocbase().id(), coll.guid());
       seq = rcoll->revisionTreeApplied();
-//      throw;
     }
 
     appliedSeq = std::min(appliedSeq, seq);
