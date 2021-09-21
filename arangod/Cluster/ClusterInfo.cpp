@@ -2736,9 +2736,9 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
 }
 
 Result ClusterInfo::createCollectionsCoordinator(
-    std::string const& databaseName, std::vector<ClusterCollectionCreationInfo>& infos,
+    std::string const& databaseName, std::vector<ClusterCollectionCreationInfo>const& infos,
     double endTime, bool isNewDatabase,
-    std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
+    std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   using arangodb::velocypack::Slice;
 

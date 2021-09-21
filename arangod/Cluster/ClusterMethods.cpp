@@ -2591,7 +2591,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
         "Trying to create an empty list of collections on coordinator.");
   }
 
-  double const realTimeout = ClusterInfo::getTimeout(240.0);
+  double const realTimeout = ClusterInfo::getTimeout(240.0); // todo make a global constant
   double const endTime = TRI_microtime() + realTimeout;
 
   // We have at least one, take this collection's DB name
