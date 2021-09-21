@@ -66,7 +66,6 @@ class V8ClientConnection {
   explicit V8ClientConnection(application_features::ApplicationServer&, ClientFeature&);
   ~V8ClientConnection();
 
- public:
   void setInterrupted(bool interrupted);
   bool isConnected() const;
 
@@ -80,7 +79,7 @@ class V8ClientConnection {
   std::string protocol() const;
 
   std::string const& databaseName() const { return _databaseName; }
-  void setDatabaseName(std::string const& value) { _databaseName = value; }
+  void setDatabaseName(std::string const& value);
   void setForceJson(bool value) { _forceJson = value; };
   std::string username() const { return _builder.user(); }
   std::string password() const { return _builder.password(); }

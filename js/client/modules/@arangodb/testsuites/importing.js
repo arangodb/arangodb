@@ -170,6 +170,42 @@ const impTodos = [{
   convert: false,
   backslash: true
 }, {
+  id: 'csvtypesboolean',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesBoolean',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: false,
+  datatype: "value=boolean",
+}, {
+  id: 'csvtypesnumber',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesNumber',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: false,
+  datatype: "value=number",
+}, {
+  id: 'csvtypesstring',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesString',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: false,
+  datatype: "value=string",
+}, {
+  id: 'csvtypesprecedence',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesPrecedence',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
+  datatype: "value=string",
+}, {
   id: 'csvnoeol',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-noeol.csv')),
   coll: 'UnitTestsImportCsvNoEol',
@@ -249,6 +285,36 @@ const impTodos = [{
   type: 'json',
   create: 'true',
   database: 'UnitTestImportCreateDatabase',
+  createDatabase: 'true'
+}, {
+  id: 'importUnicode1',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'maçã',
+}, {
+  id: 'importUnicode2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: '😀',
+}, {
+  id: 'createUnicode1',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'ﻚﻠﺑ ﻞﻄﻴﻓ',
+  createDatabase: 'true'
+}, {
+  id: 'createUnicode2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'abc mötor !" \' & <>',
   createDatabase: 'true'
 }];
 

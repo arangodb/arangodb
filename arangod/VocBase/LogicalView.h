@@ -39,8 +39,9 @@
 namespace arangodb {
 namespace velocypack {
 
-class Slice;
 class Builder;
+class Slice;
+class StringRef;
 
 }  // namespace velocypack
 } // arangodb
@@ -202,7 +203,7 @@ class LogicalView : public LogicalDataSource {
   ///        including persistance of properties
   //////////////////////////////////////////////////////////////////////////////
   virtual Result renameImpl(std::string const& oldName) = 0;
-
+  
  private:
   // FIXME seems to be ugly
   friend struct ::TRI_vocbase_t;

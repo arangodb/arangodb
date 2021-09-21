@@ -83,9 +83,6 @@ class LogicalCollection : public LogicalDataSource {
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
 
-  /// @brief maximal collection name length
-  static constexpr size_t maxNameLength = 256;
-
   enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
 
   /*
@@ -107,9 +104,7 @@ class LogicalCollection : public LogicalDataSource {
     SatToSmartEdge = 16,
   };
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
-  //////////////////////////////////////////////////////////////////////////////
   static Category const& category() noexcept;
 
   /// @brief hard-coded minimum version number for collections

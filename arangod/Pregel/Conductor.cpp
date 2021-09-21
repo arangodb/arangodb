@@ -57,7 +57,9 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
-#define LOG_PREGEL(id, level) LOG_TOPIC(id, level, Logger::PREGEL) << "[job " << _executionNumber << "] " 
+#define LOG_PREGEL(logId, level)          \
+  LOG_TOPIC(logId, level, Logger::PREGEL) \
+  << "[job " << _executionNumber << "] " 
 
 const char* arangodb::pregel::ExecutionStateNames[8] = {
     "none",     "running",  "storing",    "done",
