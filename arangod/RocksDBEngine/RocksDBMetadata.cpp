@@ -470,95 +470,21 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     }
   }
 
-  // Step 4. store the revision tree, we potentially store the revision tree
-  // in RocksDB if there are pending changes to it or if there have actually
-  // been changes. Note that `serializeRevisionTree` below reserves the right
-  // to not persist a tree to avoid overly eager RocksDB writes.
-  if (rcoll->needToPersistRevisionTree(maxCommitSeq)) {
-    output.clear();
-     
-    rocksdb::SequenceNumber seq = maxCommitSeq;
-    try {
-      seq = rcoll->serializeRevisionTree(output, maxCommitSeq, force);
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("33691", WARN, Logger::ENGINES)
-          << context << ": caught exception during revision tree serialization: " << ex.what();
-      // TODO: if we get here, we need to mark the existing tree as broken
-      // and need to rebuild it
-      engine.scheduleTreeRebuild(coll.vocbase().id(), coll.guid());
-      seq = rcoll->revisionTreeApplied();
-    }
-
-    appliedSeq = std::min(appliedSeq, seq);
-
-    if (coll.useSyncByRevision()) {
-      if (!output.empty()) {
-        rocksutils::uint64ToPersistent(output, seq);
-
-        key.constructRevisionTreeValue(rcoll->objectId());
-        rocksdb::Slice value(output);
-
-        rocksdb::Status s = batch.Put(cf, key.string(), value);
-        if (!s.ok()) {
-          LOG_TOPIC("ff234", WARN, Logger::ENGINES)
-              << context << ": writing revision tree failed";
-          return res.reset(rocksutils::convertStatus(s));
-        } else {
-          LOG_TOPIC("92a08", TRACE, Logger::ENGINES)
-              << context << ": serialized revision tree for "
-              << "collection with objectId '" << rcoll->objectId() << "' "
-              << "through sequence number " << seq;
-        }
-      } else {
-        LOG_TOPIC("92b07", TRACE, Logger::ENGINES)
-            << context << ": skipping serialization of revision tree for "
-            << "collection with objectId '" << rcoll->objectId() << "'";
-      }
-    } else {
-      TRI_ASSERT(output.empty());
-      key.constructRevisionTreeValue(rcoll->objectId());
-      rocksdb::Status s = batch.Delete(cf, key.string());
-      if (s.ok()) {
-        LOG_TOPIC("92a17", TRACE, Logger::ENGINES)
-            << context << ": deleted revision tree for "
-            << "collection with objectId '" << rcoll->objectId() << "', as it "
-            << "is not configured to sync by revision";
-      } else if (!s.IsNotFound()) {
-        LOG_TOPIC("ff235", WARN, Logger::ENGINES)
-            << context << ": deleting revision tree failed";
-        return res.reset(rocksutils::convertStatus(s));
-      }
-    }
-  } else {
-    LOG_TOPIC("92ba9", TRACE, Logger::ENGINES)
-        << context << ": no need to serialize revision tree for "
-        << "collection with objectId '" << rcoll->objectId() << "'";
-  
-    TRI_IF_FAILURE("serializeMeta::delayCallToLastSerializedRevisionTree") {
-      if (!coll.system()) {
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-      }
-    }
-
-    // Find out up to which sequence the tree of this collection has been
-    // persisted to RocksDB. We need this to compute the minimum over all
-    // collections for the persisted `lastSync` value (in `appliedSeq`).
-    // Note that on recovery after a crash (or restart) all WAL entries
-    // lower than the persisted `lastSync` are ignored. Therefore it
-    // is imperative that there are no pending or actual changes for
-    // the revision tree in memory, which will end up in the WAL with a
-    // sequence number less than the computed `seq` number here!
-    rocksdb::SequenceNumber seq = rcoll->lastSerializedRevisionTree(maxCommitSeq);
-    appliedSeq = std::min(appliedSeq, seq);
-        
-    if (coll.useSyncByRevision()) {
-      // set the tree to sleep (note: hibernation requests may be ignored if there
-      // is not yet a need to hibernate)
-      rcoll->hibernateRevisionTree();
-    }
+  if (!coll.useSyncByRevision()) {
+    return Result{};
   }
 
-  return res;
+  // Step 4. Take care of revision tree, either serialize or persist
+  // it, or at least check if we can move forward the seq number when
+  // it was last serialized (in case there have been no writes to the
+  // collection for some time). In either case, the resulting sequence
+  // number is incorporated into the minimum calculation for lastSync
+  // (via `appliedSeq`), such that recovery only has to look at the WAL
+  // from this sequence number on to be able to recover the tree from
+  // its last persisted state.
+  return rcoll->takeCareOfRevisionTreePersistence(
+            coll, engine, batch, cf, maxCommitSeq, force, context,
+            output, appliedSeq);
 }
 
 /// @brief deserialize collection metadata, only called on startup

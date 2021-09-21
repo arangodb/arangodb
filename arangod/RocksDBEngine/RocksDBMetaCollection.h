@@ -82,13 +82,25 @@ class RocksDBMetaCollection : public PhysicalCollection {
   std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId) override;
   std::unique_ptr<containers::RevisionTree> computeRevisionTree(uint64_t batchId) override;
 
-  bool needToPersistRevisionTree(rocksdb::SequenceNumber maxCommitSeq) const;
-  rocksdb::SequenceNumber lastSerializedRevisionTree(rocksdb::SequenceNumber maxCommitSeq);
+  Result takeCareOfRevisionTreePersistence(
+      LogicalCollection& coll, RocksDBEngine& engine,
+      rocksdb::WriteBatch& batch, rocksdb::ColumnFamilyHandle* const cf,
+      rocksdb::SequenceNumber maxCommitSeq,
+      bool force, std::string const& context, std::string& output,
+      rocksdb::SequenceNumber& appliedSeq);
+
+ private:
+  bool needToPersistRevisionTree(
+      rocksdb::SequenceNumber maxCommitSeq,
+      std::unique_lock<std::mutex> const& lock) const;
+  rocksdb::SequenceNumber lastSerializedRevisionTree(
+      rocksdb::SequenceNumber maxCommitSeq,
+      std::unique_lock<std::mutex> const& lock);
   rocksdb::SequenceNumber serializeRevisionTree(std::string& output,
                                                 rocksdb::SequenceNumber commitSeq,
-                                                bool force);
-  rocksdb::SequenceNumber revisionTreeApplied() const noexcept;
-
+                                                bool force,
+                                                std::unique_lock<std::mutex> const& lock);
+ public:
   Result rebuildRevisionTree() override;
   void rebuildRevisionTree(std::unique_ptr<rocksdb::Iterator>& iter);
 
