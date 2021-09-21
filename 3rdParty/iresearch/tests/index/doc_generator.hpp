@@ -27,13 +27,13 @@
 #include "analysis/analyzer.hpp"
 #include "analysis/token_streams.hpp"
 #include "utils/iterator.hpp"
-#include "utils/utf8_path.hpp"
 #include "store/store_utils.hpp"
 #include "index/index_writer.hpp"
 
 #include <fstream>
 #include <atomic>
 #include <functional>
+#include <filesystem>
 
 namespace iresearch {
 
@@ -43,6 +43,8 @@ class token_stream;
 } // namespace iresearch {
 
 namespace tests {
+
+namespace fs = std::filesystem;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class ifield
@@ -360,7 +362,7 @@ class delim_doc_generator : public doc_generator_base {
   }; // doc_template
 
   delim_doc_generator(
-    const irs::utf8_path& file,
+    const fs::path& file,
     doc_template& doc,
     uint32_t delim = 0x0009);
 
@@ -384,7 +386,7 @@ class csv_doc_generator: public doc_generator_base {
     virtual void reset() {}
   }; // doc_template
 
-  csv_doc_generator(const irs::utf8_path& file, doc_template& doc);
+  csv_doc_generator(const fs::path& file, doc_template& doc);
   virtual const tests::document* next() override;
   virtual void reset() override;
   bool skip(); // skip a single document, return if anything was skiped, false == EOF
@@ -490,14 +492,12 @@ class json_doc_generator: public doc_generator_base {
   )> factory_f;
 
   json_doc_generator(
-    const irs::utf8_path& file,
-    const factory_f& factory
-  );
+    const fs::path& file,
+    const factory_f& factory);
 
   json_doc_generator(
     const char* data,
-    const factory_f& factory
-  );
+    const factory_f& factory);
 
   json_doc_generator(json_doc_generator&& rhs) noexcept;
 

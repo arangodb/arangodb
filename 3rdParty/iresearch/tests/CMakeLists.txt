@@ -105,6 +105,7 @@ set(IReSearch_tests_sources
   ./utils/bit_utils_tests.cpp
   ./utils/block_pool_test.cpp
   ./utils/locale_utils_tests.cpp
+  ./utils/icu_locale_utils_tests.cpp
   ./utils/levenshtein_utils_test.cpp
   ./utils/wildcard_utils_test.cpp
   ./utils/ref_counter_tests.cpp
@@ -119,7 +120,6 @@ set(IReSearch_tests_sources
   ./utils/thread_pool_test.cpp
   ./utils/type_utils_tests.cpp
   ./utils/utf8_utils_test.cpp
-  ./utils/utf8_path_tests.cpp
   ./utils/fst_builder_test.cpp
   ./utils/fst_utils_test.cpp
   ./utils/fst_string_weight_test.cpp

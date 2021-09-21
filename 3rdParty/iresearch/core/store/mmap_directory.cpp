@@ -20,9 +20,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "mmap_directory.hpp"
-#include "store_utils.hpp"
-#include "utils/utf8_path.hpp"
+#include "store/mmap_directory.hpp"
+#include "store/store_utils.hpp"
 #include "utils/mmap_utils.hpp"
 #include "utils/memory.hpp"
 
@@ -141,22 +140,22 @@ namespace iresearch {
 // --SECTION--                                     mmap_directory implementation
 // -----------------------------------------------------------------------------
 
-mmap_directory::mmap_directory(const std::string& path)
-  : fs_directory(path) {
+mmap_directory::mmap_directory(
+    fs::path path,
+    directory_attributes attrs /* = {} */)
+  : fs_directory{std::move(path), std::move(attrs)} {
 }
 
 index_input::ptr mmap_directory::open(
     const std::string& name,
     IOAdvice advice) const noexcept {
-  utf8_path path;
-
   try {
-    (path/=directory())/=name;
+    const auto path = directory() / name;
+
+    return mmap_index_input::open(path.c_str(), advice);
   } catch(...) {
     return nullptr;
   }
-
-  return mmap_index_input::open(path.c_str(), advice);
 }
 
 } // ROOT

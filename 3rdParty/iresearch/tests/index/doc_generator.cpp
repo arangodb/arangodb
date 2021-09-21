@@ -272,7 +272,7 @@ void particle::remove(const irs::string_ref& name) {
 // -----------------------------------------------------------------------------
 
 delim_doc_generator::delim_doc_generator(
-    const irs::utf8_path& file,
+    const fs::path& file,
     doc_template& doc,
     uint32_t delim /* = 0x0009 */)
   : ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
@@ -317,7 +317,7 @@ void delim_doc_generator::reset() {
 // -----------------------------------------------------------------------------
 
 csv_doc_generator::csv_doc_generator(
-    const irs::utf8_path& file,
+    const fs::path& file,
     doc_template& doc)
   : doc_(doc),
     ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
@@ -478,9 +478,9 @@ class parse_json_handler : irs::util::noncopyable {
 }; // parse_json_handler
 
 json_doc_generator::json_doc_generator(
-    const irs::utf8_path& file,
+    const fs::path& file,
     const json_doc_generator::factory_f& factory) {
-  std::ifstream input(irs::utf8_path(file).utf8().c_str(), std::ios::in | std::ios::binary);
+  std::ifstream input(fs::path(file).u8string().c_str(), std::ios::in | std::ios::binary);
   assert(input);
 
   rapidjson::IStreamWrapper stream(input);

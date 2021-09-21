@@ -32,7 +32,6 @@
 #include "store/data_input.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/crc.hpp"
-#include "utils/utf8_path.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/process_utils.hpp"
 #include "utils/network_utils.hpp"
@@ -1344,10 +1343,9 @@ INSTANTIATE_TEST_SUITE_P(
   directory_test,
   directory_test_case,
   ::testing::Values(
-    &tests::memory_directory,
-    &tests::fs_directory,
-    &tests::mmap_directory
-  ),
+    &tests::directory<&tests::memory_directory>,
+    &tests::directory<&tests::fs_directory>,
+    &tests::directory<&tests::mmap_directory>),
   tests::directory_test_case_base<>::to_string
 );
 
@@ -1363,28 +1361,25 @@ class fs_directory_test : public test_base {
 
   virtual void SetUp() override {
     test_base::SetUp();
-    path_ = test_case_dir();
-    path_ /= name_;
+    path_ = test_case_dir() / name_;
 
-    ASSERT_TRUE(path_.mkdir(false));
-    dir_ = std::make_shared<fs_directory>(path_.utf8());
+    fs::create_directory(path_);
+    dir_ = std::make_shared<fs_directory>(path_);
   }
 
   virtual void TearDown() override {
     dir_ = nullptr;
-    ASSERT_TRUE(path_.remove());
+    fs::remove_all(path_);
     test_base::TearDown();
   }
 
  protected:
-  static void check_files(const directory& dir, const utf8_path& path) {
+  static void check_files(const directory& dir, const fs::path& path) {
     const std::string file_name = "abcd";
 
     // create empty file
     {
-      auto file = path;
-
-      file /= file_name;
+      const auto file = path / file_name;
 
       std::ofstream f(file.native());
     }
@@ -1401,7 +1396,7 @@ class fs_directory_test : public test_base {
   }
 
   std::string name_;
-  utf8_path path_;
+  fs::path path_;
   std::shared_ptr<fs_directory> dir_;
 }; // fs_directory_test
 
@@ -1547,46 +1542,6 @@ TEST_F(fs_directory_test, orphaned_lock) {
   }
 }
 
-TEST_F(fs_directory_test, utf8_chars) {
-  std::wstring path_ucs2 = L"\u0442\u0435\u0441\u0442\u043E\u0432\u0430\u044F_\u0434\u0438\u0440\u0435\u043A\u0442\u043E\u0440\u0438\u044F";
-  irs::utf8_path path(path_ucs2);
-
-  name_ = path.utf8();
-  TearDown();
-
-  // create directory via iResearch functions
-  {
-    SetUp();
-    directory_test_case::smoke_store(*dir_);
-    // Read files from directory
-    check_files(*dir_, path_);
-  }
-}
-
-TEST_F(fs_directory_test, utf8_chars_native) {
-  std::wstring path_ucs2 = L"\u0442\u0435\u0441\u0442\u043E\u0432\u0430\u044F_\u0434\u0438\u0440\u0435\u043A\u0442\u043E\u0440\u0438\u044F";
-  irs::utf8_path path(path_ucs2);
-
-  name_ = path.utf8();
-  TearDown();
-
-  // create directory via native functions
-  {
-    #ifdef _WIN32
-      auto native_path = test_case_dir().native() + L'\\' + path.native();
-      ASSERT_EQ(0, _wmkdir(native_path.c_str()));
-    #else
-      auto native_path = test_case_dir().native() + '/' + path.utf8();
-      ASSERT_EQ(0, mkdir(native_path.c_str(), S_IRWXU | S_IRWXG | S_IRWXO));
-    #endif
-
-    SetUp();
-    directory_test_case::smoke_store(*dir_);
-    // Read files from directory
-    check_files(*dir_, native_path);
-  }
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 fs_directory_test
 // -----------------------------------------------------------------------------
@@ -1595,18 +1550,13 @@ TEST(memory_directory_test, construct_check_allocator) {
   // default ctor
   {
     irs::memory_directory dir;
-    ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-    ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+    ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
   }
 
   // specify pool size
   {
-    irs::memory_directory dir(42);
-    auto* alloc_attr = dir.attributes().get<irs::memory_allocator>();
-    ASSERT_NE(nullptr, alloc_attr);
-    ASSERT_NE(nullptr, *alloc_attr);
-    ASSERT_NE(alloc_attr->get(), &irs::memory_allocator::global()); // not a global allocator
-    ASSERT_EQ(alloc_attr->get(), &irs::directory_utils::get_allocator(dir));
+    irs::memory_directory dir{irs::directory_attributes{42}};
+    ASSERT_NE(&irs::memory_allocator::global(), &dir.attributes().allocator());
   }
 }
 

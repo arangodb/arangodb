@@ -21,16 +21,7 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "file_utils.hpp"
-#include "process_utils.hpp"
-#include "network_utils.hpp"
-
-#include "string.hpp"
-#include "error/error.hpp"
-#include "utils/locale_utils.hpp"
-#include "utils/log.hpp"
-#include "utils/memory.hpp"
 
 #if defined(__APPLE__)
   #include <sys/param.h> // for MAXPATHLEN
@@ -53,6 +44,16 @@
 #include <unistd.h>
 
 #endif // _WIN32
+
+
+#include "error/error.hpp"
+#include "utils/log.hpp"
+#include "utils/memory.hpp"
+#include "utils/process_utils.hpp"
+#include "utils/network_utils.hpp"
+#include "utils/string.hpp"
+
+namespace fs = std::filesystem;
 
 namespace {
 
@@ -87,7 +88,6 @@ inline int path_stats(file_stat_t& info, const file_path_t path) {
 
 namespace iresearch {
 namespace file_utils {
-
 
 void file_deleter::operator()(void* f) const noexcept {
 #if _WIN32
@@ -294,24 +294,16 @@ bool verify_lock_file(const file_path_t file) {
   // check hostname
   const size_t len = strlen(buf);
   if (!is_same_hostname(buf, len)) {
-    typedef std::remove_pointer<file_path_t>::type char_t;
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string path;
-
-    irs::locale_utils::append_external<char_t>(path, file, locale);
-    IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'", buf, path.c_str());
+    IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'",
+                 buf, fs::path{file}.c_str());
     return true; // locked
   }
 
   // check pid
   const char* pid = buf + len + 1;
   if (is_valid_pid(pid)) {
-    typedef std::remove_pointer<file_path_t>::type char_t;
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string path;
-
-    irs::locale_utils::append_external<char_t>(path, file, locale);
-    IR_FRMT_INFO("Index locked by another process, PID: '%s', file: '%s'", pid, path.c_str());
+    IR_FRMT_INFO("Index locked by another process, PID: '%s', file: '%s'",
+                 pid, fs::path{file}.c_str());
     return true; // locked
   }
 
@@ -341,12 +333,8 @@ lock_handle_t create_lock_file(const file_path_t file) {
   } while ((--try_count) > 0);
 
   if (INVALID_HANDLE_VALUE == fd) {
-    typedef std::remove_pointer<file_path_t>::type char_t;
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string path;
-
-    irs::locale_utils::append_external<char_t>(path, file, locale);
-    IR_FRMT_ERROR("Unable to create lock file: '%s', error: %d", path.c_str(), GetLastError());
+    IR_FRMT_ERROR("Unable to create lock file: '%s', error: %d",
+                  fs::path{file}.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -360,12 +348,8 @@ lock_handle_t create_lock_file(const file_path_t file) {
   }
 
   if (!file_utils::write(fd, buf, strlen(buf)+1)) { // include terminate 0
-    typedef std::remove_pointer<file_path_t>::type char_t;
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string path;
-
-    irs::locale_utils::append_external<char_t>(path, file, locale);
-    IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", path.c_str(), GetLastError());
+    IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d",
+                  fs::path{file}.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -376,12 +360,8 @@ lock_handle_t create_lock_file(const file_path_t file) {
   // write PID to lock file
   const size_t size = sprintf(buf, "%d", get_pid());
   if (!file_utils::write(fd, buf, size)) {
-    typedef std::remove_pointer<file_path_t>::type char_t;
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string path;
-
-    irs::locale_utils::append_external<char_t>(path, file, locale);
-    IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", path.c_str(), GetLastError());
+    IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d",
+                  fs::path{file}.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -391,12 +371,8 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
   // flush buffers
   if (::FlushFileBuffers(fd) <= 0) {
-    typedef std::remove_pointer<file_path_t>::type char_t;
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string path;
-
-    irs::locale_utils::append_external<char_t>(path, file, locale);
-    IR_FRMT_ERROR("Unable to flush lock file: '%s', error: %d ", path.c_str(), GetLastError());
+    IR_FRMT_ERROR("Unable to flush lock file: '%s', error: %d ",
+                  fs::path{file}.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -667,12 +643,8 @@ bool exists(bool& result, const file_path_t file) noexcept {
   result = 0 == path_stats(info, file);
 
   if (!result && ENOENT != errno) {
-    typedef std::remove_pointer<file_path_t>::type char_t;
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string path;
-
-    irs::locale_utils::append_external<char_t>(path, file, locale);
-    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
+    IR_FRMT_ERROR("Failed to get stat, error %d path: %s",
+                  errno, fs::path{file}.c_str());
   }
 
   return true;
@@ -691,12 +663,8 @@ bool exists_directory(bool& result, const file_path_t name) noexcept {
       result = (info.st_mode & S_IFDIR) > 0;
     #endif
   } else if (ENOENT != errno) {
-    typedef std::remove_pointer<file_path_t>::type char_t;
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string path;
-
-    irs::locale_utils::append_external<char_t>(path, name, locale);
-    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
+    IR_FRMT_ERROR("Failed to get stat, error %d path: %s",
+                  errno, fs::path{name}.c_str());
   }
 
   return true;
@@ -715,12 +683,8 @@ bool exists_file(bool& result, const file_path_t name) noexcept {
       result = (info.st_mode & S_IFREG) > 0;
     #endif
   } else if (ENOENT != errno) {
-    typedef std::remove_pointer<file_path_t>::type char_t;
-    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-    std::string path;
-
-    irs::locale_utils::append_external<char_t>(path, name, locale);
-    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
+    IR_FRMT_ERROR("Failed to get stat, error %d path: %s",
+                  errno, fs::path{name}.c_str());
   }
 
   return true;
@@ -887,7 +851,7 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
 
   if (!parts.dirname.empty()) {
     // need a null terminated string for use with ::mkdir()/::CreateDirectoryW()
-    std::basic_string<std::remove_pointer<file_path_t>::type> parent(parts.dirname);
+    fs::path::string_type parent(parts.dirname);
     if (!mkdir(parent.c_str(), false)) { // intermediate path parts can exist, this is ok anyway
       return false;
     }
@@ -905,13 +869,9 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
       if (0 == ::CreateDirectoryW(path, nullptr)) {
         if (::GetLastError() != ERROR_ALREADY_EXISTS || createNew) {
           // failed to create directory  or directory exist, but we are asked to perform creation
-          typedef std::remove_pointer<file_path_t>::type char_t;
-          auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true);  // utf8 internal and external
-          std::string utf8path;
 
-          irs::locale_utils::append_external<char_t>(utf8path, path, locale);
           IR_FRMT_ERROR("Failed to create path: '%s', error %d",
-                        utf8path.c_str(), GetLastError());
+                        fs::path{path}.c_str(), GetLastError());
           return false;
         }
       }
@@ -927,12 +887,9 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
     if (0 == ::CreateDirectoryW(dirname.c_str(), nullptr)) {
       if (::GetLastError() != ERROR_ALREADY_EXISTS || createNew) {
         // failed to create directory  or directory exist, but we are asked to perform creation
-        typedef std::remove_pointer<file_path_t>::type char_t;
-        auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-        std::string utf8path;
 
-        irs::locale_utils::append_external<char_t>(utf8path, path, locale);
-        IR_FRMT_ERROR("Failed to create path: '%s', error %d", utf8path.c_str(), GetLastError());
+        IR_FRMT_ERROR("Failed to create path: '%s', error %d",
+                      fs::path{path}.c_str(), GetLastError());
 
         return false;
       }
@@ -951,7 +908,6 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
 }
 
 bool move(const file_path_t src_path, const file_path_t dst_path) noexcept {
-  // FIXME TODO ensure both functions lead to the same result in all cases @see utf8_path_tests::rename() tests
   #ifdef _WIN32
     return 0 != ::MoveFileExW(src_path, dst_path, MOVEFILE_REPLACE_EXISTING|MOVEFILE_COPY_ALLOWED);
   #else
@@ -1022,9 +978,7 @@ path_parts_t path_parts(const file_path_t path) noexcept {
   }
 }
 
-bool read_cwd(
-    std::basic_string<std::remove_pointer<file_path_t>::type>& result
-) noexcept {
+bool read_cwd(std::basic_string<fs::path::value_type>& result) noexcept {
   try {
     #ifdef _WIN32
       auto size = GetCurrentDirectory(0, nullptr);
@@ -1103,10 +1057,19 @@ bool read_cwd(
   return false;
 }
 
+void ensure_absolute(fs::path& path) {
+  if (!path.is_absolute()) {
+    fs::path::string_type str;
+    read_cwd(str);
+
+    path = fs::path{str} / path;
+  }
+}
+
 bool remove(const file_path_t path) noexcept {
   try {
     // a reusable buffer for a full path used during recursive removal
-    std::basic_string<std::remove_pointer<file_path_t>::type> buf;
+    std::basic_string<fs::path::value_type> buf;
 
     // must remove each directory entry recursively (ignore result, check final ::remove() instead)
     visit_directory(
@@ -1139,16 +1102,13 @@ bool remove(const file_path_t path) noexcept {
                : ::DeleteFileW(path);
 
       if (!res) { // 0 == error
-        typedef std::remove_pointer<file_path_t>::type char_t;
-        auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-        std::string utf8path;
-
-        irs::locale_utils::append_external<char_t>(utf8path, path, locale);
         const auto system_error = GetLastError();
         if (ERROR_FILE_NOT_FOUND == system_error) { // file is just not here, so we are done actually
-          IR_FRMT_DEBUG("Failed to remove path: '%s', error %d", utf8path.c_str(), system_error);
+          IR_FRMT_DEBUG("Failed to remove path: '%s', error %d",
+                        fs::path{path}.c_str(), system_error);
         } else {
-          IR_FRMT_ERROR("Failed to remove path: '%s', error %d", utf8path.c_str(), system_error);
+          IR_FRMT_ERROR("Failed to remove path: '%s', error %d",
+                        fs::path{path}.c_str(), system_error);
         }
         return false;
       }
@@ -1168,17 +1128,14 @@ bool remove(const file_path_t path) noexcept {
              : ::DeleteFileW(fullpath.c_str());
 
     if (!res) { // 0 == error
-      typedef std::remove_pointer<file_path_t>::type char_t;
-      auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-      std::string utf8path;
-
-      irs::locale_utils::append_external<char_t>(utf8path, path, locale);
       const auto system_error = GetLastError();
       if (ERROR_FILE_NOT_FOUND == system_error) { // file is just not here, so we are done actually
-        IR_FRMT_DEBUG("Failed to remove path: '%s', error %d", utf8path.c_str(), system_error);
+        IR_FRMT_DEBUG("Failed to remove path: '%s', error %d",
+                      fs::path{path}.c_str(), system_error);
       }
       else {
-        IR_FRMT_ERROR("Failed to remove path: '%s', error %d", utf8path.c_str(), system_error);
+        IR_FRMT_ERROR("Failed to remove path: '%s', error %d",
+                      fs::path{path}.c_str(), system_error);
       }
 
       return false;
@@ -1231,8 +1188,7 @@ bool set_cwd(const file_path_t path) noexcept {
 bool visit_directory(
   const file_path_t name,
   const std::function<bool(const file_path_t name)>& visitor,
-  bool include_dot_dir /*= true*/
-) {
+  bool include_dot_dir /*= true*/) {
   #ifdef _WIN32
     std::wstring dirname(name);
 
