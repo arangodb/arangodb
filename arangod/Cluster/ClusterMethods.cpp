@@ -1703,7 +1703,8 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> truncateCollectionOnCoordinator(
-    transaction::Methods& trx, std::string const& collname, OperationOptions const& options) {
+    transaction::Methods& trx, std::string const& collname,
+    OperationOptions const& options, transaction::MethodsApi api) {
   Result res;
   // Set a few variables needed for our work:
   ClusterInfo& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
@@ -1722,8 +1723,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
 
   // lazily begin transactions on all leader shards
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    res = ::beginTransactionOnAllLeaders(trx, *shardIds, transaction::MethodsApi::Asynchronous)
-              .get();
+    res = ::beginTransactionOnAllLeaders(trx, *shardIds, api).get();
     if (res.fail()) {
       return futures::makeFuture(OperationResult(res, options));
     }
@@ -1733,6 +1733,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   reqOpts.database = trx.vocbase().name();
   reqOpts.timeout = network::Timeout(600.0);
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::Compact, (options.truncateCompact ? "true" : "false"));
 
   std::vector<Future<network::Response>> futures;

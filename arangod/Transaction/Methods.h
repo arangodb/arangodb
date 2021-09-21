@@ -434,7 +434,7 @@ class Methods {
   OperationResult anyLocal(std::string const& collectionName, OperationOptions const& options);
 
   Future<OperationResult> truncateCoordinator(std::string const& collectionName,
-                                              OperationOptions& options);
+                                              OperationOptions& options, MethodsApi api);
 
   Future<OperationResult> truncateLocal(std::string const& collectionName,
                                         OperationOptions& options);
@@ -463,7 +463,6 @@ class Methods {
   // TODO set skipScheduler: true for network requests
   auto removeInternal(std::string const& collectionName, VPackSlice value,
                       OperationOptions const& options, MethodsApi api) -> Future<OperationResult>;
-  // TODO set skipScheduler: true for network requests
   auto truncateInternal(std::string const& collectionName, OperationOptions const& options,
                         MethodsApi api) -> Future<OperationResult>;
   // is virtual for IgnoreNoAccessMethods

@@ -1676,8 +1676,9 @@ Future<OperationResult> transaction::Methods::truncateAsync(std::string const& c
 /// @brief remove all documents in a collection, coordinator
 #ifndef USE_ENTERPRISE
 Future<OperationResult> transaction::Methods::truncateCoordinator(std::string const& collectionName,
-                                                                  OperationOptions& options) {
-  return arangodb::truncateCollectionOnCoordinator(*this, collectionName, options);
+                                                                  OperationOptions& options,
+                                                                  MethodsApi api) {
+  return arangodb::truncateCollectionOnCoordinator(*this, collectionName, options, api);
 }
 #endif
 
@@ -2708,7 +2709,7 @@ Future<OperationResult> Methods::truncateInternal(std::string const& collectionN
   };
 
   if (_state->isCoordinator()) {
-    return truncateCoordinator(collectionName, optionsCopy).thenValue(cb);
+    return truncateCoordinator(collectionName, optionsCopy, api).thenValue(cb);
   }
   return truncateLocal(collectionName, optionsCopy).thenValue(cb);
 }
