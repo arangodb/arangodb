@@ -164,6 +164,10 @@ class ImportHelper {
   void setTranslations(std::unordered_map<std::string, std::string> const& translations) {
     _translations = translations;
   }
+  
+  void setDatatypes(std::unordered_map<std::string, std::string> const& datatypes) {
+    _datatypes = datatypes;
+  }
 
   void setRemoveAttributes(std::vector<std::string> const& attr) {
     for (std::string const& str : attr) {
@@ -343,6 +347,7 @@ class ImportHelper {
   std::vector<std::string> _columnNames;
 
   std::unordered_map<std::string, std::string> _translations;
+  std::unordered_map<std::string, std::string> _datatypes;
   std::unordered_set<std::string> _removeAttributes;
 
   bool _hasError;

@@ -26,6 +26,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -48,9 +49,9 @@ std::string ArangoClientHelper::rewriteLocation(void* data, std::string const& l
   std::string const& dbname = client->databaseName();
 
   if (location[0] == '/') {
-    return "/_db/" + dbname + location;
+    return "/_db/" + basics::StringUtils::urlEncode(dbname) + location;
   }
-  return "/_db/" + dbname + "/" + location;
+  return "/_db/" + basics::StringUtils::urlEncode(dbname) + "/" + location;
 }
 
 // extract an error message from a response

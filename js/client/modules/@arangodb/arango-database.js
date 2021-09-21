@@ -340,6 +340,10 @@ ArangoDatabase.prototype._collection = function (id) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._create = function (name, properties, type, options) {
+  try {
+    // try to NFC-normalize the database name
+    name = String(name).normalize("NFC");
+  } catch (err) {}
   let body = Object.assign(properties !== undefined ? properties : {}, {
     'name': name,
     'type': ArangoCollection.TYPE_DOCUMENT
@@ -999,13 +1003,13 @@ ArangoDatabase.prototype._parse = function (query) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._createDatabase = function (name, options, users) {
-  var data = {
-    name: name,
+  let data = {
+    name: String(name).normalize("NFC"),
     options: options || { },
     users: users || []
   };
 
-  var requestResult = this._connection.POST('/_api/database', data);
+  let requestResult = this._connection.POST('/_api/database', data);
 
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);
@@ -1021,7 +1025,7 @@ ArangoDatabase.prototype._createDatabase = function (name, options, users) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._dropDatabase = function (name) {
-  var requestResult = this._connection.DELETE('/_api/database/' + encodeURIComponent(name));
+  let requestResult = this._connection.DELETE('/_api/database/' + encodeURIComponent(String(name).normalize("NFC")));
 
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);
