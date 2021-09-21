@@ -1544,9 +1544,9 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
 /// @brief remove a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Methods& trx,
-                                                    LogicalCollection& coll, VPackSlice const slice,
-                                                    arangodb::OperationOptions const& options) {
+futures::Future<OperationResult> removeDocumentOnCoordinator(
+    transaction::Methods& trx, LogicalCollection& coll, VPackSlice const slice,
+    OperationOptions const& options, transaction::MethodsApi api) {
   // Set a few variables needed for our work:
 
   // First determine the collection ID from the name:
@@ -1577,6 +1577,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
   reqOpts.database = trx.vocbase().name();
   reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
          .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
          .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
@@ -1590,8 +1591,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
     // lazily begin transactions on leaders
     Future<Result> f = makeFuture(Result());
     if (isManaged && opCtx.shardMap.size() > 1) {
-      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap,
-                                        transaction::MethodsApi::Asynchronous);
+      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
     }
 
     return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))]
@@ -1654,7 +1654,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
   // lazily begin transactions on leaders
   Future<Result> f = makeFuture(Result());
   if (isManaged && shardIds->size() > 1) {
-    f = ::beginTransactionOnAllLeaders(trx, *shardIds, transaction::MethodsApi::Asynchronous);
+    f = ::beginTransactionOnAllLeaders(trx, *shardIds, api);
   }
 
   return std::move(f).thenValue([=, &trx](Result&& r) mutable -> Future<OperationResult> {

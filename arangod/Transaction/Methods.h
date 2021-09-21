@@ -416,8 +416,8 @@ class Methods {
                                       TRI_voc_document_operation_e operation);
 
   Future<OperationResult> removeCoordinator(std::string const& collectionName,
-                                            VPackSlice value,
-                                            OperationOptions const& options);
+                                            VPackSlice value, OperationOptions const& options,
+                                            transaction::MethodsApi api);
 
   Future<OperationResult> removeLocal(std::string const& collectionName,
                                       VPackSlice value,
@@ -458,7 +458,6 @@ class Methods {
                       OperationOptions const& options, MethodsApi api) -> Future<OperationResult>;
   auto replaceInternal(std::string const& collectionName, VPackSlice replaceValue,
                        OperationOptions const& options, MethodsApi api) -> Future<OperationResult>;
-  // TODO set skipScheduler: true for network requests
   auto removeInternal(std::string const& collectionName, VPackSlice value,
                       OperationOptions const& options, MethodsApi api) -> Future<OperationResult>;
   auto truncateInternal(std::string const& collectionName, OperationOptions const& options,

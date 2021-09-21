@@ -1432,12 +1432,13 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
 #ifndef USE_ENTERPRISE
 Future<OperationResult> transaction::Methods::removeCoordinator(std::string const& cname,
                                                                 VPackSlice value,
-                                                                OperationOptions const& options) {
+                                                                OperationOptions const& options,
+                                                                MethodsApi api) {
   auto colptr = resolver()->getCollectionStructCluster(cname);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
-  return arangodb::removeDocumentOnCoordinator(*this, *colptr, value, options);
+  return arangodb::removeDocumentOnCoordinator(*this, *colptr, value, options, api);
 }
 #endif
 
@@ -2687,7 +2688,7 @@ Future<OperationResult> Methods::removeInternal(std::string const& cname, VPackS
 
   auto f = Future<OperationResult>::makeEmpty();
   if (_state->isCoordinator()) {
-    f = removeCoordinator(cname, value, options);
+    f = removeCoordinator(cname, value, options, api);
   } else {
     OperationOptions optionsCopy = options;
     f = removeLocal(cname, value, optionsCopy);
