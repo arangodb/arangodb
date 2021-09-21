@@ -179,8 +179,7 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
     _numberOfShards =
         Helper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
     if (Helper::getStringRef(options.get(StaticStrings::ReplicationFactor),
-                             velocypack::StringRef("")) == StaticStrings::Satellite &&
-        arangodb::ServerState::instance()->isRunningInCluster()) {
+                             velocypack::StringRef("")) == StaticStrings::Satellite) {
       _isSatellite = true;
       setReplicationFactor(0);
     } else {
