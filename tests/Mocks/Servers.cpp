@@ -437,9 +437,9 @@ std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::
 
   {
     std::lock_guard g(_storeLock);
-    ++_commitIndex;
     res = std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>{
-      _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true,true}), _commitIndex};  // apply logs
+        _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true,true}), _commitIndex}; // apply logs
+    _commitIndex = res.second + 1;
   }
   {
     std::lock_guard g(_callbacksLock);
@@ -570,7 +570,7 @@ void MockClusterServer::agencyCreateDatabase(std::string const& name) {
   TemplateSpecializer ts(name);
   std::string st = ts.specialize(plan_dbs_string);
 
-  
+
   agencyTrx("/arango/Plan/Databases/" + name, st);
   st = ts.specialize(current_dbs_string);
   agencyTrx("/arango/Current/Databases/" + name, st);
