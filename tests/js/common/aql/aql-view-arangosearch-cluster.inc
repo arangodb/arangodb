@@ -220,6 +220,16 @@
                                 field1: {},
                                 field2: {},
                                 field3: {}}}}});
+        let wpsl = db._createView("WithLongPrimarySort", "arangosearch", 
+                               {primarySort: [{field: "field1", direction: "asc"}],
+                                storedValues: [["field2"], ["field3"]]});
+        wpsl.properties({links:{TestsCollectionWithLongFields: {
+                              storeValues: "id",
+                              analyzers: ["customAnalyzer"],
+                              fields: {
+                                field1: {},
+                                field2: {},
+                                field3: {}}}}});
       },
 
       tearDownAll : function () {
@@ -244,6 +254,7 @@
         db._dropView("WithPrimarySort");
         db._drop("TestsCollectionWithManyFields");
         db._dropView("WithStoredValues");
+        db._dropView("WithLongPrimarySort");
         db._drop("TestsCollectionWithLongFields");
         analyzers.remove("customAnalyzer", true);
       },
@@ -2482,6 +2493,16 @@
           analyzers.remove(queryAnalyzer, true);
         }
       },
+
+      testReadPrimarySortStoredValues : function() {
+        var result = db._query("FOR doc IN WithLongPrimarySort SEARCH doc.field3 > 0 OPTIONS { waitForSync : true } SORT doc.field1 ASC " +
+                              " RETURN {f1:doc.field1, f2: doc.field2, f3: doc.field3}").toArray();
+        assertEqual(1499, result.length);
+        for (let k = 0; k < 1499; ++k) {
+          assertEqual(longValue + (k + 1), result[k].f1);
+        }
+      },
+
       testReadStoredValues : function() {
         var result = db._query("FOR doc IN WithStoredValues SEARCH doc.field3 > 0 OPTIONS { waitForSync : true } SORT doc.field3 ASC " +
                              " RETURN {f1:doc.field1, f2: doc.field2, f3: doc.field3}").toArray();

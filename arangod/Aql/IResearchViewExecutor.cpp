@@ -803,7 +803,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
                  "executing a query, ignoring";
           return false;
         }
-
+        TRI_ASSERT(storedValuesReader->iterator());
         ::reset(_storedValuesReaders[index++], storedValuesReader->iterator());
       }
     }
@@ -876,7 +876,8 @@ void IResearchViewExecutor<copyStored, ordered, materializeType>::fillBuffer(IRe
 
   size_t const atMost = ctx.outputRow.numRowsLeft();
   if constexpr (copyStored) {
-    this->_indexReadBuffer.preAllocateStoredValuesBuffer(atMost);
+    this->_indexReadBuffer.preAllocateStoredValuesBuffer(
+      atMost * _infos.getOutNonMaterializedViewRegs().size());
   }
   size_t const count = this->_reader->size();
 
@@ -1351,6 +1352,10 @@ void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::fillBuffe
   TRI_ASSERT(this->_filter != nullptr);
 
   size_t const atMost = ctx.outputRow.numRowsLeft();
+  if constexpr (copyStored) {
+    this->_indexReadBuffer.preAllocateStoredValuesBuffer(
+      atMost * _infos.getOutNonMaterializedViewRegs().size());
+  }
 
   while (_heap_it.next()) {
     auto& segment = _segments[_heap_it.value()];
