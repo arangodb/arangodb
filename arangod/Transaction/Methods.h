@@ -389,9 +389,10 @@ class Methods {
                              RevisionId oldRid, ManagedDocumentResult const* oldDoc,
                              ManagedDocumentResult const* newDoc);
 
-  Future<OperationResult> documentCoordinator(std::string const& collectionName,
-                                              VPackSlice value,
-                                              OperationOptions const& options);
+  futures::Future<OperationResult> documentCoordinator(std::string const& collectionName,
+                                                       VPackSlice const value,
+                                                       OperationOptions const& options,
+                                                       MethodsApi api);
 
   Future<OperationResult> documentLocal(std::string const& collectionName,
                                         VPackSlice value, OperationOptions const& options);
@@ -447,7 +448,6 @@ class Methods {
   auto abortInternal(MethodsApi api) -> Future<Result>;
   auto finishInternal(Result const& res, MethodsApi api) -> Future<Result>;
   // is virtual for IgnoreNoAccessMethods
-  // TODO set skipScheduler: true for network requests
   ENTERPRISE_VIRT auto documentInternal(std::string const& cname, VPackSlice value,
                                         OperationOptions const& options, MethodsApi api)
       -> Future<OperationResult>;

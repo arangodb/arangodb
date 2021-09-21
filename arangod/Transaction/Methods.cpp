@@ -683,7 +683,9 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   }
 
   if (_state->isCoordinator()) {
-    OperationResult opRes = documentCoordinator(collectionName, value, options).get();
+    OperationResult opRes =
+        documentCoordinator(collectionName, value, options, MethodsApi::Synchronous)
+            .get();
     if (!opRes.fail()) {
       result.add(opRes.slice());
     }
@@ -772,7 +774,7 @@ Future<OperationResult> transaction::Methods::documentAsync(std::string const& c
 /// @brief read one or multiple documents in a collection, coordinator
 #ifndef USE_ENTERPRISE
 Future<OperationResult> transaction::Methods::documentCoordinator(
-    std::string const& collectionName, VPackSlice value, OperationOptions const& options) {
+    std::string const& collectionName, VPackSlice value, OperationOptions const& options, MethodsApi api) {
   if (!value.isArray()) {
     arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
     if (key.empty()) {
@@ -785,7 +787,7 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
-  return arangodb::getDocumentOnCoordinator(*this, *colptr, value, options);
+  return arangodb::getDocumentOnCoordinator(*this, *colptr, value, options, api);
 }
 #endif
 
@@ -2567,7 +2569,7 @@ Future<OperationResult> Methods::documentInternal(std::string const& cname, VPac
   }
 
   if (_state->isCoordinator()) {
-    return addTracking(documentCoordinator(cname, value, options),
+    return addTracking(documentCoordinator(cname, value, options, api),
                        [=](OperationResult&& opRes) {
                          events::ReadDocument(vocbase().name(), cname, value,
                                               opRes.options, opRes.errorNumber());

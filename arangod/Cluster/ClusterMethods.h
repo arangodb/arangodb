@@ -155,7 +155,8 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(transaction::Method
 
 futures::Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
                                                           LogicalCollection&, VPackSlice slice,
-                                                          OperationOptions const& options);
+                                                          OperationOptions const& options,
+                                                          transaction::MethodsApi api);
 
 /// @brief fetch edges from TraverserEngines
 ///        Contacts all TraverserEngines placed

@@ -1773,7 +1773,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
 
 Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
                                                  LogicalCollection& coll, VPackSlice slice,
-                                                 OperationOptions const& options) {
+                                                 OperationOptions const& options,
+                                                 transaction::MethodsApi api) {
   // Set a few variables needed for our work:
 
   const std::string collid = std::to_string(coll.id().id());
@@ -1813,6 +1814,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   network::RequestOptions reqOpts;
   reqOpts.database = trx.vocbase().name();
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
 
   fuerte::RestVerb restVerb;
@@ -1832,8 +1834,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
     Future<Result> f = makeFuture(Result());
     if (isManaged && opCtx.shardMap.size() > 1) {  // lazily begin the transaction
-      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap,
-                                        transaction::MethodsApi::Asynchronous);
+      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
     }
 
     return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))]
@@ -1911,8 +1912,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   // We contact all shards with the complete body and ignore NOT_FOUND
 
   if (isManaged) {  // lazily begin the transaction
-    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds, transaction::MethodsApi::Asynchronous)
-                     .get();
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds, api).get();
     if (res.fail()) {
       return makeFuture(OperationResult(res, options));
     }
