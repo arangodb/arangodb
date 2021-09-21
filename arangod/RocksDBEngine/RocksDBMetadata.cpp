@@ -255,6 +255,7 @@ bool RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
     it = _stagedAdjs.erase(it);
     didWork = true;
   }
+  std::lock_guard<std::mutex> guard(_bufferLock);
   _count._committedSeq = commitSeq;
   return didWork;
 }
@@ -263,11 +264,9 @@ bool RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
 void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
                                             RevisionId revId, int64_t adj) {
   TRI_ASSERT(seq != 0 && (adj || revId.isSet()));
-  if (seq <= _count._committedSeq) {
-    LOG_DEVEL << "SEQ: " << seq << ", COMMITED: " << _count._committedSeq;
-  }
-  TRI_ASSERT(seq > _count._committedSeq);
+  
   std::lock_guard<std::mutex> guard(_bufferLock);
+  TRI_ASSERT(seq > _count._committedSeq);
   _bufferedAdjs.try_emplace(seq, Adjustment{revId, adj});
   LOG_TOPIC("1587e", TRACE, Logger::ENGINES)
       << "[" << this << "] buffered adjustment (" << seq << ", " << adj << ", "

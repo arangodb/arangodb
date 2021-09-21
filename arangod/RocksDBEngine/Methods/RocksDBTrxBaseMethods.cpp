@@ -391,7 +391,6 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
 
   TRI_ASSERT(postCommitSeq <= _db->GetLatestSequenceNumber());
 
-  LOG_DEVEL << "NUMOPS: " << numOps << ", LASTWRITTEN: " << postCommitSeq << ", PREV: " << previousSeqNo;
   _state->commitCollections(_lastWrittenOperationTick);
   cleanupCollTrx.cancel();
 
