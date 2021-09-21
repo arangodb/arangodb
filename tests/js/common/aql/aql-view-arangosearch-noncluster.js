@@ -141,15 +141,6 @@ function iResearchAqlTestSuite () {
                                 field1: {},
                                 field2: {},
                                 field3: {}}}}});
-      let wsv = db._createView("WithStoredValues", "arangosearch", 
-                               {storedValues: [["field1"], ["field2"], ["field3"]]});
-      wsv.properties({links:{TestsCollectionWithLongFields: {
-                              storeValues: "id",
-                              analyzers: ["customAnalyzer"],
-                              fields: {
-                                field1: {},
-                                field2: {},
-                                field3: {}}}}});
     },
     tearDownAll : function () {
       db._drop("AnotherUnitTestsCollection");
