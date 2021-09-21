@@ -256,7 +256,6 @@ class IndexReadBuffer {
     }
   }
 
-  // std::vector<irs::bytes_ref>& getStoredValues() noexcept;
   void pushStoredValue(irs::bytes_ref value) {
     if constexpr (copyStored) {
       TRI_ASSERT(_ownedStoredData.size() < _ownedStoredData.capacity());

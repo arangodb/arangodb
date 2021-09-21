@@ -104,17 +104,6 @@ function iResearchAqlTestSuite () {
         longData.push({field1:longValue + k, field2:longValue, field3: k});
       }
       lfc.save(longData);
-      
-      
-      
-      db._drop("TestsCollectionWithLongFields");
-      let longData = [];
-      let lfc = db._create("TestsCollectionWithLongFields");
-      for (let k = 0; k < 1500; ++k) {
-        longData.push({field1:longValue + k, field2:longValue, field3: k});
-      }
-      lfc.save(longData);
-      
       try { analyzers.remove("customAnalyzer", true); } catch(err) {}
       analyzers.save("customAnalyzer", "text",  {"locale": "en.utf-8",
                                                  "case": "lower",

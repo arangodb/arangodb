@@ -82,7 +82,6 @@
         arrayCol.save({ c: 0, a: ['foo', 'bar', 'baz']});
         // this will allow to catch if accidentally "all" filter will be used
         arrayCol.save({ c: 1, a: ['afoo', 'abar', 'abaz']});
-
         db._dropView("UnitTestsView");
         v = db._createView("UnitTestsView", "arangosearch", {});
         meta = {
@@ -178,6 +177,13 @@
         mfc.save({field1:"1value1", field2:"2value1", field3: 2, field4: 11112, field5: 2, field6: 2});
         mfc.save({field1:"1value2", field2:"2value2", field3: 3, field4: 11113, field5: 3, field6: 3});
         mfc.save({field1:"1value3", field2:"2value3", field3: 4, field4: 11114, field5: 4, field6: 4});
+        db._drop("TestsCollectionWithLongFields");
+        let longData = [];
+        let lfc = db._create("TestsCollectionWithLongFields");
+        for (let k = 0; k < 1500; ++k) {
+          longData.push({field1:longValue + k, field2:longValue, field3: k});
+        }
+        lfc.save(longData);
         
         try { analyzers.remove("customAnalyzer", true); } catch(err) {}
         analyzers.save("customAnalyzer", "text",  {"locale": "en.utf-8",
@@ -205,6 +211,15 @@
                                   field5: {},
                                   field6: {},
                                   _key: {}}}}});
+        let wsv = db._createView("WithStoredValues", "arangosearch", 
+                               {storedValues: [["field1"], ["field2"], ["field3"]]});
+        wsv.properties({links:{TestsCollectionWithLongFields: {
+                              storeValues: "id",
+                              analyzers: ["customAnalyzer"],
+                              fields: {
+                                field1: {},
+                                field2: {},
+                                field3: {}}}}});
       },
 
       tearDownAll : function () {
