@@ -21,7 +21,7 @@
 /// Copyright holder is ArangoDB Inc, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
+/// @author Copyright 2021, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
