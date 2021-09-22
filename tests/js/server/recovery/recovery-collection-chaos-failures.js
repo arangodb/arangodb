@@ -28,17 +28,18 @@
 
 const fs = require('fs');
 const db = require('@arangodb').db;
+const _ = require('lodash');
 const internal = require('internal');
-const jsunity = require('jsunity');
 const time = internal.time;
+const jsunity = require('jsunity');
 
 const colName = 'UnitTestsRecovery';
 // number of collections
 const n = 5;
 // max number of restarts/iterations
 const maxIterations = 5;
-// runtime for each iteration
-const runTime = 20;
+// maximum runtime for each iteration
+const maxRunTime = 50;
   
 const stateFile = require("internal").env['state-file'];
 let iteration = 1;
@@ -61,7 +62,10 @@ function runSetup () {
     db._create("control");
   }
 
-  require("console").warn("summoning chaos...");
+  // test runtime is also dynamic
+  let runTime = 5 + Math.random() * (maxRunTime - 5);
+
+  require("console").warn("summoning chaos for " + runTime.toFixed(2) + " seconds...");
 
   let collectionCounts = {};
   for (let i = 0; i < n; ++i) {
@@ -72,8 +76,39 @@ function runSetup () {
     collectionCounts[c.name()] = c.count();
   }
 
+  const failurePoints = [
+    "TransactionChaos::randomSleep",
+    "applyUpdates::forceHibernation1",
+    "applyUpdates::forceHibernation2",
+    "RevisionTree::applyInserts",
+    "RevisionTree::applyRemoves",
+    "serializeMeta::delayCallToLastSerializedRevisionTree",
+    "needToPersistRevisionTree::checkBuffers",
+    "RocksDBMetaCollection::forceSerialization",
+    "RocksDBMetaCollection::serializeRevisionTree",
+    "TransactionChaos::blockerOnSync",
+  ];
+
+  // number of failure points currently set
+  let fpSet = 0;
   const end = time() + runTime;
   do {
+    let fp = Math.random();
+    if (fpSet > 0 && fp >= 0.95) {
+      // remove all failure points
+      internal.debugClearFailAt();
+      fpSet = 0;
+    } else if (fp >= 0.85 || fpSet === 0) {
+      // set failure points
+      _.shuffle(failurePoints);
+      internal.debugClearFailAt();
+      let fp = Math.floor(Math.random() * failurePoints.length);
+      for (let i = 0; i < fp; ++i) {
+        internal.debugSetFailAt(failurePoints[i]);
+      }
+      fpSet = fp;
+    }
+
     // pick a random collection
     const cn = Math.floor(Math.random() * n);
     const c = db._collection(colName + cn);
@@ -153,6 +188,13 @@ function recoverySuite () {
         assertEqual(c._revisionTreeSummary().count, c.count());
         assertTrue(c._revisionTreeVerification().equal);
       }
+
+      ["_queues", "_statistics", "_statistics15", "_statisticsRaw"].forEach((colName) => {
+        let c = db._collection(colName);
+        assertEqual(c.count(), c.toArray().length);
+        assertEqual(c._revisionTreeSummary().count, c.count());
+        assertTrue(c._revisionTreeVerification().equal);
+      });
     },
 
   };
