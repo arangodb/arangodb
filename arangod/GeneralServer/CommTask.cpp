@@ -376,7 +376,6 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                        VPackBuffer<uint8_t>());
     return;
   }
- 
   // forward to correct server if necessary
   bool forwarded;
   auto res = handler->forwardRequest(forwarded);
