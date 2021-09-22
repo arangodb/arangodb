@@ -21,12 +21,12 @@ devel
   previous versions.
   
 - `--log.escape-unicode-chars`: when its value is set to false, the unicode 
-character will be retained, and its actual value will be displayed. For 
-example, `犬` will be displayed as `犬`. When its value is set to true, the 
-character is escaped, and the hex code for the character is displayed. For 
-example, `犬` would be displayed as its hex code, `\u72AC`. 
-	The default value for this flag is `false` for compatibility with 
-previous versions.
+  character will be retained, and its actual value will be displayed. For 
+  example, `犬` will be displayed as `犬`. When its value is set to true, the 
+  character is escaped, and the hex code for the character is displayed. For 
+  example, `犬` would be displayed as its hex code, `\u72AC`. 
+  The default value for this flag is `false` for compatibility with 
+  previous versions.
 
 * Added REST API endpoint `/_admin/debug/failat/all` to retrieve the list
   of currently enabled failure points. This API is available only if 
