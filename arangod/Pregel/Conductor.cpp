@@ -57,7 +57,9 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
-#define LOG_PREGEL(id, level) LOG_TOPIC(id, level, Logger::PREGEL) << "[job " << _executionNumber << "] " 
+#define LOG_PREGEL(logId, level)          \
+  LOG_TOPIC(logId, level, Logger::PREGEL) \
+  << "[job " << _executionNumber << "] " 
 
 const char* arangodb::pregel::ExecutionStateNames[8] = {
     "none",     "running",  "storing",    "done",
@@ -390,7 +392,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, self = shared_from_this()] {
+  scheduler->queue(RequestLane::INTERNAL_LOW, [this, self = shared_from_this()] {
     MUTEX_LOCKER(guard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {
@@ -404,11 +406,6 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
           << "No further action taken after receiving all responses";
     }
   });
-  if (!queued) {
-    LOG_PREGEL("038db", ERR)
-        << "No thread available to queue response, canceling execution";
-    cancel();
-  }
   return VPackBuilder();
 }
 
@@ -508,17 +505,16 @@ void Conductor::startRecovery() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
   // let's wait for a final state in the cluster
-  bool queued = false;
-  std::tie(queued, _workHandle) = SchedulerFeature::SCHEDULER->queueDelay(
-      RequestLane::CLUSTER_AQL, std::chrono::seconds(2), [this, self = shared_from_this()](bool cancelled) {
+  _workHandle = SchedulerFeature::SCHEDULER->queueDelayed(
+      RequestLane::CLUSTER_AQL, std::chrono::seconds(2),
+      [this, self = shared_from_this()](bool cancelled) {
         if (cancelled || _state != ExecutionState::RECOVERING) {
           return;  // seems like we are canceled
         }
         std::vector<ServerID> goodServers;
         auto res = _feature.recoveryManager()->filterGoodServers(_dbServers, goodServers);
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_PREGEL("3d08b", ERR)
-              << "Recovery proceedings failed";
+          LOG_PREGEL("3d08b", ERR) << "Recovery proceedings failed";
           cancelNoLock();
           return;
         }
@@ -557,10 +553,6 @@ void Conductor::startRecovery() {
           LOG_PREGEL("fefc6", ERR) << "Compensation failed";
         }
       });
-  if (!queued) {
-    LOG_PREGEL("92a8d", ERR)
-        << "No thread available to queue recovery, may be in dirty state.";
-  }
 }
 
 // resolves into an ordered list of shards for each collection on each server
@@ -837,14 +829,9 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     auto* scheduler = SchedulerFeature::SCHEDULER;
     if (scheduler) {
       uint64_t exe = _executionNumber;
-      bool queued = scheduler->queue(RequestLane::CLUSTER_AQL, [this, exe, self = shared_from_this()] {
+      scheduler->queue(RequestLane::CLUSTER_AQL, [this, exe, self = shared_from_this()] {
         _feature.cleanupConductor(exe);
       });
-      if (!queued) {
-        LOG_PREGEL("038da", ERR)
-            << "No thread available to queue cleanup, canceling execution";
-        cancel();
-      }
     }
   }
 }
@@ -953,16 +940,12 @@ ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder c
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      bool queued =
-          scheduler->queue(RequestLane::INTERNAL_LOW, [this, path, message,
-                                                       self = shared_from_this()] {
-            TRI_vocbase_t& vocbase = _vocbaseGuard.database();
-            VPackBuilder response;
-            _feature.handleWorkerRequest(vocbase, path, message.slice(), response);
-          });
-      if (!queued) {
-        return TRI_ERROR_QUEUE_FULL;
-      }
+      scheduler->queue(RequestLane::INTERNAL_LOW, [this, path, message,
+                                                   self = shared_from_this()] {
+        TRI_vocbase_t& vocbase = _vocbaseGuard.database();
+        VPackBuilder response;
+        _feature.handleWorkerRequest(vocbase, path, message.slice(), response);
+      });
     }
     return TRI_ERROR_NO_ERROR;
   }

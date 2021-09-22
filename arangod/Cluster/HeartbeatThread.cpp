@@ -50,6 +50,7 @@
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -58,6 +59,7 @@
 #include "Transaction/ClusterUtils.h"
 #include "Utils/Events.h"
 #include "VocBase/vocbase.h"
+#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -493,19 +495,12 @@ void HeartbeatThread::runDBServer() {
         auto self = shared_from_this();
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         *getNewsRunning = 1;
-        bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
+        scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
           self->getNewsFromAgencyForDBServer();
           *getNewsRunning = 0;  // indicate completion to trigger a new schedule
         });
-        if (!queued && !isStopping()) {
-          LOG_TOPIC("aacce", WARN, Logger::HEARTBEAT)
-              << "Could not schedule getNewsFromAgency job in scheduler. Don't "
-                 "worry, this will be tried again later.";
-          *getNewsRunning = 0;
-        } else {
-          LOG_TOPIC("aaccf", DEBUG, Logger::HEARTBEAT)
-              << "Have scheduled getNewsFromAgency job.";
-        }
+        LOG_TOPIC("aaccf", DEBUG, Logger::HEARTBEAT)
+            << "Have scheduled getNewsFromAgency job.";
       }
 
       if (isStopping()) {
@@ -905,6 +900,10 @@ void HeartbeatThread::runSingleServer() {
         ServerState::instance()->setFoxxmaster(_myId);
         auto prv = ServerState::setServerMode(ServerState::Mode::DEFAULT);
         if (prv == ServerState::Mode::REDIRECT) {
+          auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
+          auto database = sysDbFeature.use();
+          server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
+            database.get(), "server/leader.js", nullptr);
           LOG_TOPIC("98325", INFO, Logger::HEARTBEAT)
               << "Successful leadership takeover: "
               << "All your base are belong to us";
@@ -1082,19 +1081,11 @@ void HeartbeatThread::runCoordinator() {
         auto self = shared_from_this();
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         *getNewsRunning = 1;
-        bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
+        scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
           self->getNewsFromAgencyForCoordinator();
           *getNewsRunning = 0;  // indicate completion to trigger a new schedule
         });
-        if (!queued) {
-          LOG_TOPIC("aacc2", WARN, Logger::HEARTBEAT)
-              << "Could not schedule getNewsFromAgency job in scheduler. Don't "
-                 "worry, this will be tried again later.";
-          *getNewsRunning = 0;
-        } else {
-          LOG_TOPIC("aacc3", DEBUG, Logger::HEARTBEAT)
-              << "Have scheduled getNewsFromAgency job.";
-        }
+        LOG_TOPIC("aacc3", DEBUG, Logger::HEARTBEAT) << "Have scheduled getNewsFromAgency job.";
       }
 
       CONDITION_LOCKER(locker, _condition);

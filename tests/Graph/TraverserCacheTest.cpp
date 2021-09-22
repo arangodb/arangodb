@@ -51,7 +51,7 @@ class TraverserCacheTest : public ::testing::Test {
   graph::GraphTestSetup s{};
   graph::MockGraphDatabase gdb;
   arangodb::aql::TraversalStats stats{};
-  std::unique_ptr<arangodb::aql::Query> query{nullptr};
+  std::shared_ptr<arangodb::aql::Query> query{nullptr};
   std::unique_ptr<RefactoredTraverserCache> traverserCache{nullptr};
   std::shared_ptr<transaction::Context> queryContext{nullptr};
   std::unique_ptr<arangodb::transaction::Methods> trx{nullptr};
