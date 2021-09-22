@@ -27,7 +27,7 @@
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "store/directory.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include "Indexes/Index.h"
 #include "IResearch/IResearchLinkMeta.h"
@@ -83,7 +83,7 @@ class AsyncLinkHandle {
 class IResearchLink {
  public:
   using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
-  using InitCallback = std::function<void(irs::directory&)>;
+  using InitCallback = std::function<irs::directory_attributes()>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a snapshot representation of the data-store
@@ -349,7 +349,7 @@ class IResearchLink {
     IResearchViewMeta _meta; // runtime meta for a data store (not persisted)
     irs::directory::ptr _directory;
     basics::ReadWriteLock _mutex; // for use with member '_meta'
-    irs::utf8_path _path;
+    std::filesystem::path _path;
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
     TRI_voc_tick_t _recoveryTick{ 0 }; // the tick at which data store was recovered
@@ -422,7 +422,7 @@ class IResearchLink {
   bool _createdInRecovery; // link was created based on recovery marker
 };  // IResearchLink
 
-irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                 iresearch::IResearchLink const& link);
 
 }  // namespace iresearch

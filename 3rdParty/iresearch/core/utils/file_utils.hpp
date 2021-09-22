@@ -86,8 +86,12 @@
 #endif
 #endif
 
+#ifndef __APPLE__
 using path_char_t = std::filesystem::path::value_type;
 #define file_path_t path_char_t*
+#else // path is only since MacOS 10.15 FIXME: Remove this ifdef once old Macs is dropped
+#define file_path_t char*
+#endif
 
 namespace iresearch {
 namespace file_utils {

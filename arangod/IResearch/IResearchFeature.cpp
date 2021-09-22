@@ -30,6 +30,7 @@
 #include "search/scorers.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/file_utils.hpp"
 
 #include "ApplicationServerHelper.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -448,7 +449,7 @@ bool upgradeSingleServerArangoSearchView0_1(
       return false;  // definition generation failure
     }
 
-    irs::utf8_path dataPath;
+    std::filesystem::path dataPath;
 
     auto& server = vocbase.server();
     if (!server.hasFeature<DatabasePathFeature>()) {
@@ -464,7 +465,7 @@ bool upgradeSingleServerArangoSearchView0_1(
     static const std::string subPath("databases");
     static const std::string dbPath("database-");
 
-    dataPath = irs::utf8_path(dbPathFeature.directory());
+    dataPath = std::filesystem::path(dbPathFeature.directory());
     dataPath /= subPath;
     dataPath /= dbPath;
     dataPath += std::to_string(vocbase.id());
@@ -505,7 +506,8 @@ bool upgradeSingleServerArangoSearchView0_1(
       bool exists;
 
       // remove any stale data-store
-      if (!dataPath.exists(exists) || (exists && !dataPath.remove())) {
+      if (!irs::file_utils::exists_directory(exists, dataPath.c_str()) ||
+           (exists && !irs::file_utils::remove(dataPath.c_str()))) {
         LOG_TOPIC("9ab42", WARN, arangodb::iresearch::TOPIC)
             << "failure to remove old data-store path while upgrading "
                "IResearchView from version 0 to version 1, view definition: "
