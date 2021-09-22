@@ -578,7 +578,7 @@ export type DispatchArgs = {
 };
 
 export type FormProps = {
-  formState: BaseFormState | AnalyzerTypeState | FormState;
+  formState: BaseFormState | FormState;
   dispatch: Dispatch<DispatchArgs>;
   disabled?: boolean;
 };
