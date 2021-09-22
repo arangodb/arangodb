@@ -1227,7 +1227,8 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged) {
-    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds, api).get();
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds, transaction::MethodsApi::Synchronous)
+                     .get();
     if (res.fail()) {
       return futures::makeFuture(OperationResult(res, options));
     }
@@ -1723,7 +1724,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
 
   // lazily begin transactions on all leader shards
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    res = ::beginTransactionOnAllLeaders(trx, *shardIds, api).get();
+    res = ::beginTransactionOnAllLeaders(trx, *shardIds, transaction::MethodsApi::Synchronous)
+              .get();
     if (res.fail()) {
       return futures::makeFuture(OperationResult(res, options));
     }
@@ -1913,7 +1915,8 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   // We contact all shards with the complete body and ignore NOT_FOUND
 
   if (isManaged) {  // lazily begin the transaction
-    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds, api).get();
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds, transaction::MethodsApi::Synchronous)
+                     .get();
     if (res.fail()) {
       return makeFuture(OperationResult(res, options));
     }
@@ -4368,7 +4371,7 @@ arangodb::Result getEngineStatsFromDBServers(ClusterFeature& feature,
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
 
   network::RequestOptions reqOpts;
-  reqOpts.skipScheduler = false; 
+  reqOpts.skipScheduler = true;
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());
 

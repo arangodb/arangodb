@@ -198,17 +198,17 @@ class Methods {
   Result begin();
 
   /// @deprecated use async variant
-  Result commit() { return commitAsync().get(); }
+  Result commit();
   /// @brief commit / finish the transaction
   Future<Result> commitAsync();
 
   /// @deprecated use async variant
-  Result abort() { return abortAsync().get(); }
+  Result abort();
   /// @brief abort the transaction
   Future<Result> abortAsync();
 
   /// @deprecated use async variant
-  Result finish(Result const& res) { return finishAsync(res).get(); }
+  Result finish(Result const& res);
 
   /// @brief finish a transaction (commit or abort), based on the previous state
   Future<Result> finishAsync(Result const& res);

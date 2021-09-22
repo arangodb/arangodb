@@ -103,7 +103,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     // until the first actual operation (should save one request)
     if (leaders.size() > 1) {
       res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders,
-                                                         transaction::MethodsApi::Asynchronous)
+                                                         transaction::MethodsApi::Synchronous)
                 .get();
       if (res.fail()) {  // something is wrong
         return res;

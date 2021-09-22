@@ -508,14 +508,26 @@ Result transaction::Methods::begin() {
   return Result();
 }
 
+Result Methods::commit() {
+  return commitInternal(MethodsApi::Synchronous).get();
+}
+
 /// @brief commit / finish the transaction
 Future<Result> transaction::Methods::commitAsync() {
   return commitInternal(MethodsApi::Asynchronous);
 }
 
+Result Methods::abort() {
+  return abortInternal(MethodsApi::Synchronous).get();
+}
+
 /// @brief abort the transaction
 Future<Result> transaction::Methods::abortAsync() {
   return abortInternal(MethodsApi::Asynchronous);
+}
+
+Result Methods::finish(Result const& res) {
+  return finishInternal(res, MethodsApi::Synchronous).get();
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state

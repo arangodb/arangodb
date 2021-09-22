@@ -354,9 +354,9 @@ bool IsServerIdLessThan::operator()(ServerID const& lhs, ServerID const& rhs) co
 }
 
 /// @brief begin a transaction on all leaders
-Future<Result> beginTransactionOnLeaders(TransactionState& state,
-                                         ClusterTrxMethods::SortedServersSet const& leaders,
-                                         transaction::MethodsApi api) {
+Future<Result> beginTransactionOnLeaders(TransactionState& state, ClusterTrxMethods::SortedServersSet const& leaders,
+    // everything in this function is done synchronously, so the `api` parameter is currently unused.
+    [[maybe_unused]] transaction::MethodsApi api) {
   TRI_ASSERT(state.isCoordinator());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
   Result res;
