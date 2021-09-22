@@ -66,8 +66,6 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
   }
 
   bool hasUserdefinedJwt() const;
-  /// secret used for signing & verification secrets
-  std::string jwtActiveSecret() const;
 #ifdef USE_ENTERPRISE
   /// verification only secrets
   std::pair<std::string, std::vector<std::string>> jwtSecrets() const;

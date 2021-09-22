@@ -496,24 +496,12 @@ bool LogicalCollection::usesRevisionsAsDocumentIds() const {
   return _usesRevisionsAsDocumentIds.load();
 }
 
-void LogicalCollection::setUsesRevisionsAsDocumentIds(bool usesRevisions) {
-  if (!_usesRevisionsAsDocumentIds.load() && usesRevisions && _version >= Version::v37) {
-    _usesRevisionsAsDocumentIds.store(true);
-  }
-}
-
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
 
 bool LogicalCollection::syncByRevision() const {
   return _syncByRevision.load();
-}
-
-void LogicalCollection::setSyncByRevision(bool usesRevisions) {
-  if (!_syncByRevision.load() && _usesRevisionsAsDocumentIds.load() && usesRevisions) {
-    _syncByRevision.store(true);
-  }
 }
 
 bool LogicalCollection::useSyncByRevision() const {
@@ -580,17 +568,12 @@ Result LogicalCollection::rename(std::string&& newName) {
   auto& databaseFeature = vocbase().server().getFeature<DatabaseFeature>();
 
   // Check for illegal states.
-  switch (_status) {
-    case TRI_VOC_COL_STATUS_CORRUPTED:
-      return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
-    case TRI_VOC_COL_STATUS_DELETED:
-      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-    default:
-      // Fall through intentional
-      break;
-  }
-
   if (_status != TRI_VOC_COL_STATUS_LOADED) {
+    if (_status == TRI_VOC_COL_STATUS_CORRUPTED) {
+      return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
+    } else if (_status == TRI_VOC_COL_STATUS_DELETED) {
+      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+    }
     // Unknown status
     return TRI_ERROR_INTERNAL;
   }
@@ -1177,14 +1160,6 @@ bool LogicalCollection::skipForAqlWrite(arangodb::velocypack::Slice document,
 }
 #endif
 
-// SECTION: Key Options
-VPackSlice LogicalCollection::keyOptions() const {
-  if (_keyOptions == nullptr) {
-    return arangodb::velocypack::Slice::nullSlice();
-  }
-  return VPackSlice(_keyOptions->data());
-}
-
 void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
   auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
   if (schema != nullptr) {
@@ -1251,8 +1226,6 @@ void LogicalCollection::decorateWithInternalValidators() {
   // Community validators go in here.
   decorateWithInternalEEValidators();
 }
-
-bool LogicalCollection::isShard() const noexcept { return planId() != id(); }
 
 bool LogicalCollection::isLocalSmartEdgeCollection() const noexcept {
   return (_internalValidatorTypes & InternalValidatorType::LocalSmartEdge) != 0;
