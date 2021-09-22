@@ -1,6 +1,10 @@
 devel
 -----
 
+* Make all synchronous calls to transaction Methods skip the scheduler queue
+  when processing the answer to avoid possible deadlocks during high load, and
+  also improve performance a little.
+
 * Added REST API endpoint `/_admin/debug/failat/all` to retrieve the list
   of currently enabled failure points. This API is available only if 
   failure testing is enabled, but not in production.
