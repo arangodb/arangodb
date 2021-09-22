@@ -28,13 +28,7 @@
 
 #include "Logger/Escaper.h"
 
-
-#include <string.h>
 #include <string>
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
 
 using namespace arangodb;
 
