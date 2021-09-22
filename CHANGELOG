@@ -1,4 +1,4 @@
-v3.7.15 (XXXX-XX-XX)
+v3.7.15 (2021-09-22)
 --------------------
 
 * Fixed a bug for array indexes on update of documents (BTS-548).
