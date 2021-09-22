@@ -58,6 +58,8 @@ class SupervisedScheduler final : public Scheduler {
   void trackBeginOngoingLowPriorityTask();
   void trackEndOngoingLowPriorityTask();
 
+  void trackQueueTimeViolation();
+
   /// @brief returns the last stored dequeue time [ms]
   uint64_t getLastLowPriorityDequeueTime() const noexcept override;
 
@@ -224,6 +226,7 @@ class SupervisedScheduler final : public Scheduler {
   Counter& _metricsThreadsStarted;
   Counter& _metricsThreadsStopped;
   Counter& _metricsQueueFull;
+  Counter& _metricsQueueTimeViolations;
   Gauge<uint64_t>& _ongoingLowPriorityGauge;
   
   /// @brief amount of time it took for the last low prio item to be dequeued

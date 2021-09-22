@@ -19,6 +19,10 @@ devel
   request and return HTTP 412 (precondition failed) with the new error code
   21004 (queue time violated).
 
+  There is also a new metric `arangodb_scheduler_queue_time_violations_total`
+  that is increased whenever a request is dropped because of the requested
+  queue time not satisfiable.
+
 * Added REST API endpoint `/_admin/debug/failat/all` to retrieve the list
   of currently enabled failure points. This API is available only if 
   failure testing is enabled, but not in production.

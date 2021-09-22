@@ -108,7 +108,9 @@ bool queueTimeViolated(GeneralRequest const& req) {
   bool found = false;
   std::string const& queueTimeValue = req.header(StaticStrings::XArangoQueueTimeSeconds, found);
   if (found) {
-    // yes, now parse the sent time value
+    // yes, now parse the sent time value. if the value sent by client cannot be
+    // parsed as a double, then it will be handled as if "0.0" was sent - i.e. no
+    // queuing time restriction
     double requestedQueueTime = StringUtils::doubleDecimal(queueTimeValue);
     if (requestedQueueTime > 0.0) {
       // value is > 0.0, so now check the last dequeue time that the scheduler reported
@@ -116,6 +118,14 @@ bool queueTimeViolated(GeneralRequest const& req) {
           SchedulerFeature::SCHEDULER->getLastLowPriorityDequeueTime()) / 1000.0;
 
       if (lastDequeueTime > requestedQueueTime) {
+        // the log topic should actually be REQUESTS here, but the default log level
+        // for the REQUESTS log topic is FATAL, so if we logged here in INFO level,
+        // it would effectively be suppressed. thus we are using the Scheduler's
+        // log topic here, which is somewhat related.
+        SchedulerFeature::SCHEDULER->trackQueueTimeViolation();
+        LOG_TOPIC("1bbcc", WARN, Logger::THREADS)
+            << "dropping incoming request because the client-specified maximum queue time requirement ("
+            << requestedQueueTime << "s) would be violated by current queue time (" << lastDequeueTime << "s)";
         return true;
       }
     }

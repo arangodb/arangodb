@@ -35,7 +35,21 @@ const errors = require('@arangodb').errors;
 function testSuite() {  
   const header = "x-arango-queue-time-seconds";
 
+  let jobs = [];
+
   return {
+    setUp: function() {
+      jobs = [];
+    },
+
+    tearDown: function() {
+      jobs.forEach((job) => {
+        // note: some of the async tasks here may already be gone when we try to clean up.
+        // that can be ignored.
+        arango.DELETE_RAW("/_api/job/" + job, '');
+      });
+    },
+
     testQueueTimeHeaderReturned : function() {
       let result = arango.GET_RAW("/_api/version");
       assertTrue(result.headers.hasOwnProperty(header));
@@ -44,8 +58,9 @@ function testSuite() {
     },
     
     testQueueTimeHeaderNonZero : function() {
-      for (let i = 0; i < 40; ++i) {
-        let result = arango.POST_RAW("/_admin/execute", 'require("internal").sleep(1);', { "x-arango-async": "true" });
+      for (let i = 0; i < 80; ++i) {
+        let result = arango.POST_RAW("/_admin/execute", 'require("internal").sleep(1);', { "x-arango-async": "store" });
+        jobs.push(result.headers['x-arango-async-id']);
         assertTrue(result.headers.hasOwnProperty(header));
         let value = result.headers[header];
         assertMatch(/^([0-9]*\.)?[0-9]+$/, value);
@@ -62,8 +77,9 @@ function testSuite() {
     },
     
     testRejectBecauseOfTooHighQueueTime : function() {
-      for (let i = 0; i < 40; ++i) {
-        let result = arango.POST_RAW("/_admin/execute", 'require("internal").sleep(1);', { "x-arango-async": "true" });
+      for (let i = 0; i < 80; ++i) {
+        let result = arango.POST_RAW("/_admin/execute", 'require("internal").sleep(1);', { "x-arango-async": "store" });
+        jobs.push(result.headers['x-arango-async-id']);
         assertTrue(result.headers.hasOwnProperty(header));
         let value = result.headers[header];
         assertMatch(/^([0-9]*\.)?[0-9]+$/, value);
@@ -81,8 +97,9 @@ function testSuite() {
     },
     
     testNotRejectedBecauseOfQueueTimeZero : function() {
-      for (let i = 0; i < 40; ++i) {
-        let result = arango.POST_RAW("/_admin/execute", 'require("internal").sleep(1);', { "x-arango-async": "true" });
+      for (let i = 0; i < 80; ++i) {
+        let result = arango.POST_RAW("/_admin/execute", 'require("internal").sleep(1);', { "x-arango-async": "store" });
+        jobs.push(result.headers['x-arango-async-id']);
         assertTrue(result.headers.hasOwnProperty(header));
         let value = result.headers[header];
         assertMatch(/^([0-9]*\.)?[0-9]+$/, value);
@@ -92,6 +109,13 @@ function testSuite() {
       
       let result = arango.GET("/_api/version", { "x-arango-queue-time-seconds": "0" });
       assertEqual("arango", result.server);
+    },
+    
+    testSendInvalidTimeValues : function() {
+      ["null", "-1", "-99.99", "", "0000", "1.1.1", "9999999999999999999999999999999999999", "quetzalcoatl"].forEach((broken) => {
+        let result = arango.GET("/_api/version", { "x-arango-queue-time-seconds": broken });
+        assertEqual("arango", result.server);
+      });
     },
 
   };

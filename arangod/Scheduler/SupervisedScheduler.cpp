@@ -183,6 +183,8 @@ DECLARE_GAUGE(
     "Total number of ongoing RestHandlers coming from the low prio queue");
 DECLARE_COUNTER(arangodb_scheduler_queue_full_failures_total,
                 "Tasks dropped and not added to internal queue");
+DECLARE_COUNTER(arangodb_scheduler_queue_time_violations_total,
+                "Tasks dropped because the client-requested queue time restriction would be violated");
 DECLARE_GAUGE(arangodb_scheduler_queue_length, uint64_t,
               "Server's internal queue length");
 DECLARE_COUNTER(arangodb_scheduler_threads_started_total,
@@ -238,6 +240,8 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           arangodb_scheduler_threads_stopped_total{})),
       _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_scheduler_queue_full_failures_total{})),
+      _metricsQueueTimeViolations(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_scheduler_queue_time_violations_total{})),
       _ongoingLowPriorityGauge(_server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_scheduler_ongoing_low_prio{})),
       _metricsLastLowPriorityDequeueTime(
@@ -979,6 +983,10 @@ void SupervisedScheduler::trackEndOngoingLowPriorityTask() {
   if (!_server.isStopping()) {
     --_ongoingLowPriorityGauge;
   }
+}
+
+void SupervisedScheduler::trackQueueTimeViolation() {
+  ++_metricsQueueTimeViolations;
 }
 
 /// @brief returns the last stored dequeue time [ms]
