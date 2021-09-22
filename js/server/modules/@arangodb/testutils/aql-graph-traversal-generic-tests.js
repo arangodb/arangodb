@@ -1284,6 +1284,133 @@ function testOpenDiamondDfsLabelVariableForwarding(testGraph) {
   }
 }
 
+function testOpenDiamondDfsLabelVariableForwardingIndexed(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+
+  const ruleList = [["-all"], ["+all"], ["-all", "+optimize-traversals"], ["+all", "-optimize-traversals"]];
+  for (const rules of ruleList) {
+    const query = `
+        LET label = NOOPT(100)
+        FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
+          GRAPH "${testGraph.name()}"
+          FILTER p.edges[0].${testGraph.indexedAttribute()} != label
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const expectedPathsAsTree =
+      new Node("A", [
+        new Node("C", [
+          new Node("D", [
+            new Node("E"),
+            new Node("F"),
+          ]),
+        ])
+      ]);
+    const res = db._query(query, {},  { optimizer: { rules } });
+    const actualPaths = res.toArray();
+
+    checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+  }
+}
+
+function testOpenDiamondDfsLabelVariableForwardingIndexedLowerBoundRange(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+
+  const ruleList = [["-all"], ["+all"], ["-all", "+optimize-traversals"], ["+all", "-optimize-traversals"]];
+  for (const rules of ruleList) {
+    const query = `
+        LET lower = NOOPT(0)
+        FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
+          GRAPH "${testGraph.name()}"
+          FILTER p.edges[*].${testGraph.indexedAttribute()} ALL >= lower
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const expectedPathsAsTree =
+      new Node("A", [
+        new Node("C", [
+          new Node("D", [
+            new Node("E"),
+            new Node("F"),
+          ]),
+        ]),
+        new Node("B", [
+          new Node("D", [
+            new Node("E"),
+            new Node("F"),
+          ]),
+        ])
+      ]);
+    const res = db._query(query, {},  { optimizer: { rules } });
+    const actualPaths = res.toArray();
+
+    checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+  }
+}
+
+
+function testOpenDiamondDfsLabelVariableForwardingIndexedUpperBoundRange(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+
+  const ruleList = [["-all"], ["+all"], ["-all", "+optimize-traversals"], ["+all", "-optimize-traversals"]];
+  for (const rules of ruleList) {
+    const query = `
+        LET upper = NOOPT(100)
+        FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
+          GRAPH "${testGraph.name()}"
+          FILTER p.edges[*].${testGraph.indexedAttribute()} ALL < upper
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const expectedPathsAsTree =
+      new Node("A", [
+        new Node("C", [
+          new Node("D", [
+            new Node("E"),
+            new Node("F"),
+          ]),
+        ])
+      ]);
+    const res = db._query(query, {},  { optimizer: { rules } });
+    const actualPaths = res.toArray();
+
+    checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+  }
+}
+
+
+function testOpenDiamondDfsLabelVariableForwardingIndexedBothSideRange(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+
+  const ruleList = [["-all"], ["+all"], ["-all", "+optimize-traversals"], ["+all", "-optimize-traversals"]];
+  for (const rules of ruleList) {
+    const query = `
+        LET lower = NOOPT(0)
+        LET upper = NOOPT(100)
+        FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
+          GRAPH "${testGraph.name()}"
+          FILTER p.edges[*].${testGraph.indexedAttribute()} ALL >= lower
+          FILTER p.edges[*].${testGraph.indexedAttribute()} ALL < upper
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const expectedPathsAsTree =
+      new Node("A", [
+        new Node("C", [
+          new Node("D", [
+            new Node("E"),
+            new Node("F"),
+          ]),
+        ])
+      ]);
+    const res = db._query(query, {},  { optimizer: { rules } });
+    const actualPaths = res.toArray();
+
+    checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+  }
+}
+
+
 function testOpenDiamondWeightedUniqueVerticesPathEnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
@@ -5841,6 +5968,10 @@ const testsByGraph = {
     testOpenDiamondDfsUniqueEdgesUniqueVerticesPath,
     testOpenDiamondDfsUniqueEdgesUniqueVerticesNone,
     testOpenDiamondDfsLabelVariableForwarding,
+    testOpenDiamondDfsLabelVariableForwardingIndexed,
+    testOpenDiamondDfsLabelVariableForwardingIndexedLowerBoundRange,
+    testOpenDiamondDfsLabelVariableForwardingIndexedUpperBoundRange,
+    testOpenDiamondDfsLabelVariableForwardingIndexedBothSideRange,
     testOpenDiamondBfsUniqueVerticesPath,
     testOpenDiamondBfsUniqueVerticesNone,
     testOpenDiamondBfsUniqueVerticesGlobal,
