@@ -52,12 +52,6 @@ RocksDBKeyBounds RocksDBKeyBounds::CollectionDocuments(uint64_t collectionObject
   return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::CollectionDocumentRange(uint64_t collectionObjectId,
-                                                           std::size_t min,
-                                                           std::size_t max) {
-  return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId, min, max);
-}
-
 RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::PrimaryIndexValue, indexId);
 }
@@ -123,18 +117,6 @@ RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, VPackSlice
 
 RocksDBKeyBounds RocksDBKeyBounds::DatabaseViews(TRI_voc_tick_t databaseId) {
   return RocksDBKeyBounds(RocksDBEntryType::View, databaseId);
-}
-
-RocksDBKeyBounds RocksDBKeyBounds::CounterValues() {
-  return RocksDBKeyBounds(RocksDBEntryType::CounterValue);
-}
-
-RocksDBKeyBounds RocksDBKeyBounds::IndexEstimateValues() {
-  return RocksDBKeyBounds(RocksDBEntryType::IndexEstimateValue);
-}
-
-RocksDBKeyBounds RocksDBKeyBounds::KeyGenerators() {
-  return RocksDBKeyBounds(RocksDBEntryType::KeyGeneratorValue);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t objectId,

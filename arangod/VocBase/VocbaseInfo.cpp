@@ -82,27 +82,6 @@ Result CreateDatabaseInfo::load(VPackSlice const& options, VPackSlice const& use
   return checkOptions();
 }
 
-Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options,
-                                VPackSlice const& users) {
-  _id = id;
-
-  Result res = extractOptions(options, false /*getId*/, true /*getUser*/);
-  if (!res.ok()) {
-    return res;
-  }
-
-  res = extractUsers(users);
-  if (!res.ok()) {
-    return res;
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _valid = true;
-#endif
-
-  return checkOptions();
-}
-
 Result CreateDatabaseInfo::load(std::string const& name, VPackSlice const& options,
                                 VPackSlice const& users) {
   _name = methods::Databases::normalizeName(name);
