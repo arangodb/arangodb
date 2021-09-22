@@ -640,7 +640,6 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
 #endif
     uint64_t stored = _numberDocuments.load();
     if (stored != countInTree && treeSeq != 0) {
-  LOG_DEVEL << "REBUILT TREE. COUNT IN TREE: " << countInTree << ", PREVIOUS: " << stored << ", SEQ: " << treeSeq;
       _numberDocuments.store(countInTree);
       _count._added = countInTree;
       _count._removed = 0;
