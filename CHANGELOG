@@ -1,9 +1,8 @@
 devel
 -----
 
-* Make all synchronous calls to transaction Methods skip the scheduler queue
-  when processing the answer to avoid possible deadlocks during high load, and
-  also improve performance a little.
+* Prevent some possible deadlocks under high load regarding transactions and
+  document operations, and also improve performance slightly.
 
 * Added REST API endpoint `/_admin/debug/failat/all` to retrieve the list
   of currently enabled failure points. This API is available only if 
