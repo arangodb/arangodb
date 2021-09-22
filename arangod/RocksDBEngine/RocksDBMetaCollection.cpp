@@ -983,7 +983,9 @@ uint64_t RocksDBMetaCollection::placeRevisionTreeBlocker(TransactionId transacti
     rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
     // Since we have the lock above, the revision tree cannot move beyond
     // this sequence number before we have actually placed the blocker.
-    if (preSeq >= _revisionTreeApplied && preSeq >= _revisionTreeSerializedSeq) {
+    if (preSeq >= _revisionTreeApplied &&
+        preSeq >= _revisionTreeSerializedSeq &&
+        preSeq >= _meta.countCommitted()) {
       _meta.placeBlocker(transactionId, preSeq);
       return preSeq;
     }
