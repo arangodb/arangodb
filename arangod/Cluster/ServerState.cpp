@@ -329,6 +329,14 @@ bool ServerState::readOnly() {
     _license_readonly.load(std::memory_order_acquire);
 }
 
+bool ServerState::readOnlyByAPI() {
+  return _serverstate_readonly.load(std::memory_order_acquire);
+}
+
+bool ServerState::readOnlyByLicense() {
+  return _license_readonly.load(std::memory_order_acquire);
+}
+
 /// @brief set server read-only
 bool ServerState::setReadOnly(ReadOnlyMode ro) {
   auto ret = readOnly();

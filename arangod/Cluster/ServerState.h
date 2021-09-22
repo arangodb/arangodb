@@ -123,6 +123,12 @@ class ServerState {
   /// @brief should not allow DDL operations / transactions
   static bool readOnly();
 
+  /// @brief should not allow DDL operations / transactions
+  static bool readOnlyByLicense();
+
+  /// @brief should not allow DDL operations / transactions
+  static bool readOnlyByAPI();
+
   /// @brief set server read-only
   static bool setReadOnly(ReadOnlyMode);
 
