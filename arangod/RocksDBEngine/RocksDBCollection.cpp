@@ -1395,13 +1395,6 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
   return res;
 }
 
-void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t diff) {
-  RocksDBEngine& engine =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  auto seq = engine.db()->GetLatestSequenceNumber();
-  meta().adjustNumberDocuments(seq, RevisionId::none(), diff);
-}
-
 bool RocksDBCollection::hasDocuments() {
   RocksDBEngine& engine =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
