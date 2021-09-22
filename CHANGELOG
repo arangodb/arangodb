@@ -10,7 +10,7 @@ devel
   `false` to suppress these headers in responses sent by arangod.
 
   In addition, client applications and drivers can optionally augment their
-  requests sent to arangod with the a header of the same name. If set, the 
+  requests sent to arangod with a header of the same name. If set, the 
   value of the header should contain the maximum queuing time (in seconds)
   that the client is willing to accept. If the header is set in an incoming
   request, arangod will compare the current dequeing time from its scheduler
