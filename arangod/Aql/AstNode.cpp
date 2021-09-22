@@ -1010,9 +1010,56 @@ AstNodeType AstNode::getNodeTypeFromVPack(arangodb::velocypack::Slice const& sli
   return static_cast<AstNodeType>(type);
 }
 
+bool AstNode::valueHasVelocyPackRepresentation() const {
+  switch (type) {
+    case NODE_TYPE_VALUE:
+      // All values are trivially representable as VPack
+      return true;
+    case NODE_TYPE_ARRAY: {
+      // Is representable as VPack if all it's members
+      // are representable as VPack
+      size_t const n = numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        auto member = getMemberUnchecked(i);
+        if (member != nullptr && !member->valueHasVelocyPackRepresentation()) {
+          return false;
+        }
+      }
+      return true;
+    }
+    case NODE_TYPE_OBJECT: {
+      // Is representable as VPack if all it's members
+      // are representable as VPack
+      size_t const n = numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        auto member = getMemberUnchecked(i);
+        if (member != nullptr) {
+          // Throws if we do not have member 0
+          auto value = member->getMember(0);
+          TRI_ASSERT(value != nullptr);
+          if (!value->valueHasVelocyPackRepresentation()) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+    case NODE_TYPE_ATTRIBUTE_ACCESS: {
+      // Is representable as VPack if it's first member is
+      // representable as VPack
+      auto value = getMember(0);
+      TRI_ASSERT(value != nullptr);
+      return value->valueHasVelocyPackRepresentation();
+    }
+    default: 
+      return false;
+  }
+}
+
 /// @brief build a VelocyPack representation of the node value
 ///        Can throw Out of Memory Error
 void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
+  TRI_ASSERT(valueHasVelocyPackRepresentation());
   if (type == NODE_TYPE_VALUE) {
     // dump value of "value" node
     switch (value.type) {
