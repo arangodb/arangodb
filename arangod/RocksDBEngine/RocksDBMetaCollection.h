@@ -103,6 +103,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
  public:
   Result rebuildRevisionTree() override;
   void rebuildRevisionTree(std::unique_ptr<rocksdb::Iterator>& iter);
+  // returns a pair with the number of documents and the tree's seq number.
+  std::pair<uint64_t, uint64_t> revisionTreeInfo() const;
 
   void revisionTreeSummary(VPackBuilder& builder, bool fromCollection);
   void revisionTreePendingUpdates(VPackBuilder& builder);

@@ -273,8 +273,8 @@ void RocksDBMetadata::adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber se
       _bufferedAdjs.try_emplace(seq, Adjustment{revId, adj + old->second.adjustment});
       _bufferedAdjs.erase(old);
     }
-    TRI_ASSERT(_bufferedAdjs.size() == 1);
   }
+  TRI_ASSERT(_bufferedAdjs.size() == 1);
   LOG_TOPIC("1587f", TRACE, Logger::ENGINES)
       << "[" << this << "] buffered adjustment (" << seq << ", " << adj << ", "
       << revId.id() << ") in recovery";
@@ -358,11 +358,10 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
           << context << ": writing counter for collection with objectId '"
           << rcoll->objectId() << "' failed: " << s.ToString();
       return res.reset(rocksutils::convertStatus(s));
-    } else {
-      LOG_TOPIC("1387a", TRACE, Logger::ENGINES)
-          << context << ": wrote counter '" << tmp.toJson()
-          << "' for collection with objectId '" << rcoll->objectId() << "'";
-    }
+    } 
+    LOG_TOPIC("1387a", TRACE, Logger::ENGINES)
+        << context << ": wrote counter '" << tmp.toJson()
+        << "' for collection with objectId '" << rcoll->objectId() << "'";
   } else {
     LOG_TOPIC("1e7f3", TRACE, Logger::ENGINES)
         << context << ": not writing counter for collection with "
@@ -486,6 +485,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         << "[" << this << "] no counter found for collection with objectId '"
         << rcoll->objectId() << "'";
   }
+ 
   // setting the cached version of the counts
   loadInitialNumberDocuments();
 
@@ -631,6 +631,21 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         << "no or invalid revision tree found for collection " << coll.name() 
         << ", rebuilding from collection data";
     rcoll->rebuildRevisionTree(it);
+    auto [countInTree, treeSeq] = rcoll->revisionTreeInfo();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    {
+      std::lock_guard<std::mutex> guard(_bufferLock);
+      TRI_ASSERT(_bufferedAdjs.empty());
+    }
+#endif
+    uint64_t stored = _numberDocuments.load();
+    if (stored != countInTree && treeSeq != 0) {
+  LOG_DEVEL << "REBUILT TREE. COUNT IN TREE: " << countInTree << ", PREVIOUS: " << stored << ", SEQ: " << treeSeq;
+      _numberDocuments.store(countInTree);
+      _count._added = countInTree;
+      _count._removed = 0;
+      _count._committedSeq = treeSeq; 
+    }
   } else {
     LOG_TOPIC("ecdbe", DEBUG, Logger::ENGINES)
         << "no revision tree found for collection " << coll.name()
@@ -674,7 +689,7 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
 
 /// @brief remove collection metadata
 /*static*/ Result RocksDBMetadata::deleteCollectionMeta(rocksdb::DB* db,
-                                                              uint64_t objectId) {
+                                                        uint64_t objectId) {
   rocksdb::ColumnFamilyHandle* const cf =
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
   rocksdb::WriteOptions wo;

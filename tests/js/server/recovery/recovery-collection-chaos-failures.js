@@ -37,9 +37,9 @@ const colName = 'UnitTestsRecovery';
 // number of collections
 const n = 5;
 // max number of restarts/iterations
-const maxIterations = 5;
+const maxIterations = 20;
 // maximum runtime for each iteration
-const maxRunTime = 50;
+const maxRunTime = 45;
   
 const stateFile = require("internal").env['state-file'];
 let iteration = 1;
@@ -180,18 +180,27 @@ function recoverySuite () {
       const counts = db.control.document("counts");
       assertNotNull(counts);
 
+      let toArray = (c) => {
+        return db._query("FOR doc IN @@cn RETURN 1", { "@cn": c.name() }).toArray().length;
+      };
+
       for (let i = 0; i < n; ++i) {
         let c = db._collection(colName + i);
-        assertEqual(c.count(), c.toArray().length);
-        assertTrue(counts.collectionCounts.hasOwnProperty(c.name()));
-        assertEqual(c.count(), counts.collectionCounts[c.name()]);
-        assertEqual(c._revisionTreeSummary().count, c.count());
-        assertTrue(c._revisionTreeVerification().equal);
+        let c1 = c.count();
+        let c2 = toArray(c);
+        let stored = counts.collectionCounts[c.name()];
+        let rev = c._revisionTreeSummary().count;
+        console.warn("collection " + c.name() + ": count: " + c1 + ", toArray: " + c2 + ", stored: " + stored + ", rev count: " + rev);
+        assertTrue(counts.collectionCounts.hasOwnProperty(c.name()), c.name());
+        assertEqual(c1, c2, c.name());
+        assertEqual(c1, stored, c.name());
+        assertEqual(rev, c1, c.name());
+        assertTrue(c._revisionTreeVerification().equal, c.name());
       }
 
       ["_queues", "_statistics", "_statistics15", "_statisticsRaw"].forEach((colName) => {
         let c = db._collection(colName);
-        assertEqual(c.count(), c.toArray().length);
+        assertEqual(c.count(), toArray(c));
         assertEqual(c._revisionTreeSummary().count, c.count());
         assertTrue(c._revisionTreeVerification().equal);
       });

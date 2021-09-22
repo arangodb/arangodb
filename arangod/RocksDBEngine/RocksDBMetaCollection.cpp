@@ -478,10 +478,41 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
     } catch (std::exception const& ex) {
       LOG_TOPIC("33691", WARN, Logger::ENGINES)
           << context << ": caught exception during revision tree serialization: " << ex.what();
-      // TODO: if we get here, we need to mark the existing tree as broken
-      // and need to rebuild it
+    
+      auto& engine =
+          _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+      auto* db = engine.db();
+      
+      rocksdb::ColumnFamilyHandle* const cf =
+          RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
+      rocksdb::WriteOptions wo;
+      
+      RocksDBKey key;
+      // remove revision tree from rocksdb
+      key.constructRevisionTreeValue(_objectId);
+      rocksdb::Status s = batch.Delete(cf, key.string());
+      
+      if (s.ok() || s.IsNotFound()) {
+        s = db->Write(wo, &batch);
+      }
+      batch.Clear();
+  
+      if (!s.ok() & !s.IsNotFound()) {
+        LOG_TOPIC("af3de", WARN, Logger::ENGINES)
+            << context << ": could not delete invalid revision tree: " << s.ToString();
+        // continue and schedule a tree rebuild
+      }
+      // if we crash now, we won't have a revision tree and can rebuild it from
+      // scratch on restart.
+
+      // you can take our trees, but you cannot take our souls!
+      // schedule a rebuild for the tree:
       engine.scheduleTreeRebuild(coll.vocbase().id(), coll.guid());
-      seq = _revisionTreeApplied;
+
+      // we need to rethrow the exception from here, and must not move the
+      // applied seq no forward!
+      throw;
+      // if the tree rebuild eventually completes, this will unblock the background thread.
     }
 
     guard.unlock();
@@ -771,43 +802,65 @@ void RocksDBMetaCollection::corruptRevisionTree(uint64_t count, uint64_t hash) {
 #endif
 
 Result RocksDBMetaCollection::rebuildRevisionTree() {
+  if (!_logicalCollection.useSyncByRevision()) {
+    return {};
+  }
+    
   return basics::catchToResult([this]() -> Result {
-    if (!_logicalCollection.useSyncByRevision()) {
-      return {};
-    }
-    
-    auto& engine = _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-    auto blockerSeq = engine.db()->GetLatestSequenceNumber();
-    {
-      // wait until all blockers for this collection up to the current sequence number have gone
-      while (_meta.hasBlockerUpTo(blockerSeq)) {
-        if (_logicalCollection.vocbase().server().isStopping()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-        }
-        std::this_thread::yield();
-      }
-    }
-    
     auto lockGuard = scopeGuard([this] { unlockWrite(); });
+    // get the exclusive lock on the collection, so that no new write transactions
+    // can start for this collection
     auto res = lockWrite(transaction::Options::defaultLockTimeout);
     if (res != TRI_ERROR_NO_ERROR) {
       lockGuard.cancel();
       THROW_ARANGO_EXCEPTION(res);
     }
-  
-    // place a blocker and add a guard to remove it at the end
-    TransactionId trxId{0};
-    auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
-      if (trxId.isSet()) {
-        _meta.removeBlocker(trxId);
+    
+    // we now have the exclusive lock on the collection!
+    
+    // utility function to remove buffered updates up to (including) seq.
+    // requires the buffer lock to be held!
+    auto removeBufferedUpdatesUpTo = [this](rocksdb::SequenceNumber seq) {
+      {
+        auto it = _revisionTruncateBuffer.begin(); 
+        while (it != _revisionTruncateBuffer.end() && *it <= seq) {
+          it = _revisionTruncateBuffer.erase(it);
+        }
       }
-    });
+      
+      {
+        auto it = _revisionInsertBuffers.begin(); 
+        while (it != _revisionInsertBuffers.end() && it->first <= seq) {
+          it = _revisionInsertBuffers.erase(it);
+        }
+      }
+      
+      {
+        auto it = _revisionRemovalBuffers.begin(); 
+        while (it != _revisionRemovalBuffers.end() && it->first <= seq) {
+          it = _revisionRemovalBuffers.erase(it);
+        }
+      }
+    };
+    
+    // place a blocker and add a guard to remove it at the end
+    TransactionId trxId = TransactionId(transaction::Context::makeTransactionId());
   
-    trxId = TransactionId(transaction::Context::makeTransactionId());
-    // it is safe to call _meta.placeBlocker without the _revisionTreeLock
-    // here, as we are holding the exclusive lock on the collection right now
-    _meta.placeBlocker(trxId, blockerSeq);
+    auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
+      removeRevisionTreeBlocker(trxId);
+    });
+    
+    // we now have a blocker in place that will prevent updates from being 
+    // applied
+    rocksdb::SequenceNumber blockerSeq = placeRevisionTreeBlocker(trxId);
 
+    {
+      // we may still have some buffered updates, so let's remove them
+      // remove all buffered updates
+      std::unique_lock<std::mutex> guard(_revisionTreeLock);
+      removeBufferedUpdatesUpTo(blockerSeq - 1);
+    }
+  
     // unlock the collection again
     lockGuard.fire();
 
@@ -821,7 +874,6 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     TRI_ASSERT(blockerSeq <= beginSeq);
 
     std::unique_lock<std::mutex> guard(_revisionTreeLock);
-    
     _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
     _revisionTreeApplied = beginSeq;
     _revisionTreeCreationSeq = beginSeq;
@@ -829,26 +881,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     _revisionTreeSerializedTime = std::chrono::steady_clock::time_point();
 
     // finally remove all pending updates up to including our own sequence number
-    {
-      auto it = _revisionTruncateBuffer.begin(); 
-      while (it != _revisionTruncateBuffer.end() && *it <= beginSeq) {
-        it = _revisionTruncateBuffer.erase(it);
-      }
-    }
-      
-    {
-      auto it = _revisionInsertBuffers.begin(); 
-      while (it != _revisionInsertBuffers.end() && it->first <= beginSeq) {
-        it = _revisionInsertBuffers.erase(it);
-      }
-    }
-      
-    {
-      auto it = _revisionRemovalBuffers.begin(); 
-      while (it != _revisionRemovalBuffers.end() && it->first <= beginSeq) {
-        it = _revisionRemovalBuffers.erase(it);
-      }
-    }
+    removeBufferedUpdatesUpTo(beginSeq);
 
     return {};
   });
@@ -904,6 +937,17 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
   _revisionTreeCreationSeq = seq;
   _revisionTreeSerializedSeq = 0;
   _revisionTreeSerializedTime = std::chrono::steady_clock::time_point();
+}
+
+// returns a pair with the number of documents and the tree's seq number.
+std::pair<uint64_t, uint64_t> RocksDBMetaCollection::revisionTreeInfo() const {
+  TRI_ASSERT(_logicalCollection.useSyncByRevision());
+    
+  std::unique_lock<std::mutex> guard(_revisionTreeLock);
+  if (_revisionTree != nullptr) {
+    return {_revisionTree->count(), _revisionTreeApplied};
+  }
+  return {0, 0};
 }
 
 void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder, bool fromCollection) {
@@ -1254,9 +1298,9 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq,
               << "unable to apply revision tree removals for " 
               << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name() 
               << ": " << ex.what();
-          // it is pretty bad if this fails, so we want to see it in our tests
-          // and not overlook it.
-          TRI_ASSERT(false);
+          // it is pretty bad if this fails in real life, but we would trigger this assertion 
+          // during failure testing as well, so we cannot enable it
+          // TRI_ASSERT(false);
           
           // if an exception escapes from here, the same remove will be retried next time.
           throw;
