@@ -45,12 +45,14 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/StringRef.h>
+#include <velocypack/Utf8Helper.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -142,7 +144,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info, bo
           DataSourceId{Helper::extractIdValue(info)}, ::readGloballyUniqueId(info),
           DataSourceId{Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId))},
           Helper::getStringValue(info, StaticStrings::DataSourceName, ""),
-          TRI_vocbase_t::IsSystemName(
+          NameValidator::isSystemName(
               Helper::getStringValue(info, StaticStrings::DataSourceName, "")) &&
               Helper::getBooleanValue(info, StaticStrings::DataSourceSystem, false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
@@ -179,7 +181,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info, bo
 
   TRI_ASSERT(info.isObject());
 
-  if (!TRI_vocbase_t::IsAllowedName(info)) {
+  bool extendedNames = vocbase.server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+  if (!CollectionNameValidator::isAllowedName(system(), extendedNames, name())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 

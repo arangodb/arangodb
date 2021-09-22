@@ -1963,7 +1963,7 @@ function BaseTestConfig () {
     testTailingWithTooHighSequenceNumber: function () {
       connectToLeader();
 
-      const dbPrefix = db._name() === '_system' ? '' : '/_db/' + db._name();
+      const dbPrefix = db._name() === '_system' ? '' : '/_db/' + encodeURIComponent(db._name());
 
       const {lastTick: snapshotTick, id: replicationContextId} = arango.POST(`${dbPrefix}/_api/replication/batch?syncerId=123`, {ttl: 120});
 
@@ -1994,7 +1994,7 @@ function BaseTestConfig () {
     testWalRetain: function () {
       connectToLeader();
 
-      const dbPrefix = db._name() === '_system' ? '' : '/_db/' + db._name();
+      const dbPrefix = db._name() === '_system' ? '' : '/_db/' + encodeURIComponent(db._name());
       const http = {
         GET: (route) => arango.GET(dbPrefix + route),
         POST: (route, body) => arango.POST(dbPrefix + route, body),
@@ -2126,12 +2126,8 @@ function ReplicationSuite () {
 // / @brief test suite on other DB
 // //////////////////////////////////////////////////////////////////////////////
 
-function ReplicationOtherDBSuite () {
-  const testDB = 'UnitTestDB';
+function ReplicationOtherDBSuiteBase (testDB) {
   let suite = {
-    // /////////////////////////////////////////////////////////////////////////////
-    //  @brief set up
-    // /////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       db._useDatabase('_system');
@@ -2163,10 +2159,6 @@ function ReplicationOtherDBSuite () {
       // Use it and setup replication
     },
 
-    // /////////////////////////////////////////////////////////////////////////////
-    //  @brief tear down
-    // /////////////////////////////////////////////////////////////////////////////
-
     tearDown: function () {
       // Just drop the databases
       connectToLeader();
@@ -2191,16 +2183,21 @@ function ReplicationOtherDBSuite () {
     }
   };
 
-  deriveTestSuite(BaseTestConfig(), suite, '_OtherRepl');
+  deriveTestSuite(BaseTestConfig(), suite, '_' + testDB);
 
   return suite;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes the test suite
-// //////////////////////////////////////////////////////////////////////////////
+function ReplicationOtherDBTraditionalNameSuite () {
+  return ReplicationOtherDBSuiteBase('UnitTestDB');
+}
+
+function ReplicationOtherDBExtendedNameSuite () {
+  return ReplicationOtherDBSuiteBase("Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨");
+}
 
 jsunity.run(ReplicationSuite);
-jsunity.run(ReplicationOtherDBSuite);
+jsunity.run(ReplicationOtherDBTraditionalNameSuite);
+jsunity.run(ReplicationOtherDBExtendedNameSuite);
 
 return jsunity.done();

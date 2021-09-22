@@ -1455,9 +1455,8 @@ function ReplicationSuite () {
 // / @brief test suite for other database
 // //////////////////////////////////////////////////////////////////////////////
 
-function ReplicationOtherDBSuite () {
+function ReplicationOtherDBSuiteBase (dbName) {
   'use strict';
-  const dbName = 'UnitTestDB';
 
   // Setup documents to be stored on the leader.
 
@@ -1579,153 +1578,158 @@ function ReplicationOtherDBSuite () {
       } catch (e) {
       }
     },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test dropping a database on follower while replication is ongoing
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testDropDatabaseOnFollowerDuringReplication: function () {
-      setupReplication();
-
-      // Section - Follower
-      connectToFollower();
-
-      // Now do the evil stuff: drop the database that is replicating right now.
-      db._useDatabase('_system');
-
-      // This shall not fail.
-      db._dropDatabase(dbName);
-
-      // Section - Leader
-      connectToLeader();
-
-      // Just write some more
-      db._useDatabase(dbName);
-      db._collection(cn).save(docs);
-      internal.wal.flush(true, true);
-      internal.wait(6, false);
-
-      db._useDatabase('_system');
-
-      // Section - Follower
-      connectToFollower();
-
-      // The DB should be gone and the server should be running.
-      let dbs = db._databases();
-      assertEqual(-1, dbs.indexOf(dbName));
-
-      // We can setup everything here without problems.
-      try {
-        db._createDatabase(dbName);
-      } catch (e) {
-        assertFalse(true, 'Could not recreate database on follower: ' + e);
-      }
-
-      db._useDatabase(dbName);
-
-      try {
-        db._create(cn);
-      } catch (e) {
-        assertFalse(true, 'Could not recreate collection on follower: ' + e);
-      }
-
-      // Collection should be empty
-      assertEqual(0, collectionCount(cn));
-
-      // now test if the replication is actually
-      // switched off
-
-      // Section - Leader
-      connectToLeader();
-      // Insert some documents
-      db._collection(cn).save(docs);
-      // Flush wal to trigger replication
-      internal.wal.flush(true, true);
-
-      const lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
-
-      // Section - Follower
-      connectToFollower();
-
-      // Give it some time to sync (eventually, should not do anything...)
-      let i = 30;
-      while (i-- > 0) {
-        let state = replication.applier.state();
-        if (!state.running) {
-          console.topic('replication=error', 'follower is not running');
-          break;
-        }
-        if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
-            compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
-          console.topic('replication=error', 'follower has caught up');
-          break;
-        }
-        internal.sleep(0.5);
-      }
-
-      // Now should still have empty collection
-      assertEqual(0, collectionCount(cn));
-    },
-
-    testDropDatabaseOnLeaderDuringReplication: function () {
-      setupReplication();
-
-      // Section - Leader
-      // Now do the evil stuff: drop the database that is replicating from right now.
-      connectToLeader();
-      db._useDatabase('_system');
-
-      // This shall not fail.
-      db._dropDatabase(dbName);
-
-      // The DB should be gone and the server should be running.
-      let dbs = db._databases();
-      assertEqual(-1, dbs.indexOf(dbName));
-      
-      const lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
-
-      // Section - Follower
-      connectToFollower();
-
-      // Give it some time to sync (eventually, should not do anything...)
-      let i = 30;
-      while (i-- > 0) {
-        let state = replication.applier.state();
-        if (!state.running) {
-          console.topic('replication=error', 'follower is not running');
-          break;
-        }
-        if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
-            compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
-          console.topic('replication=error', 'follower has caught up');
-          break;
-        }
-        internal.sleep(0.5);
-      }
-
-      i = 60;
-      while (i-- > 0) {
-        let state = replication.applier.state();
-        if (!state.running) {
-          // all good
-          return;
-        }
-        internal.sleep(0.5);
-      }
-
-      fail();
-    }
   };
-  deriveTestSuite(BaseTestConfig(), suite, '_ReplOther');
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief test dropping a database on follower while replication is ongoing
+  // //////////////////////////////////////////////////////////////////////////////
+  suite["testDropDatabaseOnFollowerDuringReplication_" + dbName] = function () {
+    setupReplication();
+
+    // Section - Follower
+    connectToFollower();
+
+    // Now do the evil stuff: drop the database that is replicating right now.
+    db._useDatabase('_system');
+
+    // This shall not fail.
+    db._dropDatabase(dbName);
+
+    // Section - Leader
+    connectToLeader();
+
+    // Just write some more
+    db._useDatabase(dbName);
+    db._collection(cn).save(docs);
+    internal.wal.flush(true, true);
+    internal.wait(6, false);
+
+    db._useDatabase('_system');
+
+    // Section - Follower
+    connectToFollower();
+
+    // The DB should be gone and the server should be running.
+    let dbs = db._databases();
+    assertEqual(-1, dbs.indexOf(dbName));
+
+    // We can setup everything here without problems.
+    try {
+      db._createDatabase(dbName);
+    } catch (e) {
+      assertFalse(true, 'Could not recreate database on follower: ' + e);
+    }
+
+    db._useDatabase(dbName);
+
+    try {
+      db._create(cn);
+    } catch (e) {
+      assertFalse(true, 'Could not recreate collection on follower: ' + e);
+    }
+
+    // Collection should be empty
+    assertEqual(0, collectionCount(cn));
+
+    // now test if the replication is actually
+    // switched off
+
+    // Section - Leader
+    connectToLeader();
+    // Insert some documents
+    db._collection(cn).save(docs);
+    // Flush wal to trigger replication
+    internal.wal.flush(true, true);
+
+    const lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
+
+    // Section - Follower
+    connectToFollower();
+
+    // Give it some time to sync (eventually, should not do anything...)
+    let i = 30;
+    while (i-- > 0) {
+      let state = replication.applier.state();
+      if (!state.running) {
+        console.topic('replication=error', 'follower is not running');
+        break;
+      }
+      if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
+          compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
+        console.topic('replication=error', 'follower has caught up');
+        break;
+      }
+      internal.sleep(0.5);
+    }
+
+    // Now should still have empty collection
+    assertEqual(0, collectionCount(cn));
+  };
+
+  suite["testDropDatabaseOnLeaderDuringReplication_" + dbName] = function () {
+    setupReplication();
+
+    // Section - Leader
+    // Now do the evil stuff: drop the database that is replicating from right now.
+    connectToLeader();
+    db._useDatabase('_system');
+
+    // This shall not fail.
+    db._dropDatabase(dbName);
+
+    // The DB should be gone and the server should be running.
+    let dbs = db._databases();
+    assertEqual(-1, dbs.indexOf(dbName));
+    
+    const lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
+
+    // Section - Follower
+    connectToFollower();
+
+    // Give it some time to sync (eventually, should not do anything...)
+    let i = 30;
+    while (i-- > 0) {
+      let state = replication.applier.state();
+      if (!state.running) {
+        console.topic('replication=error', 'follower is not running');
+        break;
+      }
+      if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
+          compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
+        console.topic('replication=error', 'follower has caught up');
+        break;
+      }
+      internal.sleep(0.5);
+    }
+
+    i = 60;
+    while (i-- > 0) {
+      let state = replication.applier.state();
+      if (!state.running) {
+        // all good
+        return;
+      }
+      internal.sleep(0.5);
+    }
+
+    fail();
+  };
+
+  deriveTestSuite(BaseTestConfig(), suite, '_' + dbName);
 
   return suite;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes the test suite
-// //////////////////////////////////////////////////////////////////////////////
+function ReplicationOtherDBTraditionalNameSuite () {
+  return ReplicationOtherDBSuiteBase('UnitTestDB');
+}
+
+function ReplicationOtherDBExtendedNameSuite () {
+  return ReplicationOtherDBSuiteBase('Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨');
+}
 
 jsunity.run(ReplicationSuite);
-jsunity.run(ReplicationOtherDBSuite);
+jsunity.run(ReplicationOtherDBTraditionalNameSuite);
+jsunity.run(ReplicationOtherDBExtendedNameSuite);
 
 return jsunity.done();
