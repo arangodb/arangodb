@@ -2,9 +2,9 @@ devel
 -----
 
 * The server now has two flags to control the escaping control and Unicode 
-characters in the log. The flag `--log.escape` is now deprecated and, instead, 
-the new flags `--log.escape-control-chars` and `--log.escape-unicode-chars` 
-should be used. 
+  characters in the log. The flag `--log.escape` is now deprecated and, instead, 
+  the new flags `--log.escape-control-chars` and `--log.escape-unicode-chars` 
+  should be used. 
 
 - `--log.escape-control-chars`: this flag applies to the control characters, 
   which have hex code below `\x20`, and also the character DEL, with hex code of 
