@@ -304,9 +304,10 @@ function aqlOptionsVerificationSuite () {
     },
 
     testUpsertWithIndexHint: function () {
-      db.Post.ensureIndex({type: 'persistent', fields: ['value', '1234'], name: 'index1'});
-      db.Post.ensureIndex({type: 'persistent', fields: ['value'], name: 'index2'});
-      db.Post.ensureIndex({type: 'persistent', fields: ['value', 5678], name: 'index3'});
+      print(db.cn.any());
+      db.cn.ensureIndex({type: 'persistent', fields: ['value', '1234'], name: 'index1'});
+      db.cn.ensureIndex({type: 'persistent', fields: ['value'], name: 'index2'});
+      db.cn.ensureIndex({type: 'persistent', fields: ['value', 5678], name: 'index3'});
       const prefix = "FOR doc IN " + cn + " UPSERT { testi: 1234 } INSERT { testi: 1234 } UPDATE { testi: OLD.testi + 1 } IN " + cn + " OPTIONS ";
       const queries = [
         [ prefix + "{ waitForSync: false }" ],
