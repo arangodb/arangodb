@@ -1,6 +1,9 @@
 devel
 -----
 
+* Hide help text fragment about VST connection strings in client tools that
+  do not support VST.
+
 * Added REST API endpoint `/_admin/debug/failat/all` to retrieve the list
   of currently enabled failure points. This API is available only if 
   failure testing is enabled, but not in production.
