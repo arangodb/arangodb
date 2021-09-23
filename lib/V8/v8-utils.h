@@ -115,7 +115,7 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate, v8::TryCatch*);
 
 void TRI_LogV8Exception(v8::Isolate* isolate,
                         v8::TryCatch*,
-                        bool logStacktraceError=false);
+                        bool logStacktraceError = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file into the current context
