@@ -424,25 +424,30 @@ function ahuacatlSkiplistOverlappingTestSuite() {
     testUpsertWithIndexHint: function () {
       const prefix = " UPSERT { a: 1234 } INSERT { a: 1234 } UPDATE {} IN " + cn + " OPTIONS ";
       const indexHints = [
-        {},
-        {indexHint: 'hash_a', forceIndexHint: true},
-        {indexHint: 'hash_a'},
-        {indexHint: 'hash_a_b', forceIndexHint: true},
-        {indexHint: 'hash_a_b'},
-        {indexHint: 'skip_a', forceIndexHint: true},
-        {indexHint: 'skip_a'},
-        {indexHint: 'skip_a_b', forceIndexHint: true},
-        {indexHint: 'skip_a_b'}
+        [{}, ["hash_a", "hash_a_b", "skip_a", "skip_a_b"]],
+        [{indexHint: 'foo'}, ["hash_a", "hash_a_b", "skip_a", "skip_a_b"]],
+        [{indexHint: ['hash_a'], forceIndexHint: true}, ['hash_a']],
+        [{indexHint: ['hash_a']}, ['hash_a']],
+        [{indexHint: ['hash_a_b'], forceIndexHint: true}, ['hash_a_b']],
+        [{indexHint: ['hash_a_b']}, ['hash_a_b']],
+        [{indexHint: ['skip_a'], forceIndexHint: true}, ['skip_a']],
+        [{indexHint: ['skip_a']}, ['skip_a']],
+        [{indexHint: ['skip_a_b'], forceIndexHint: true}, ['skip_a_b']],
+        [{indexHint: ['skip_a_b']}, ['skip_a_b']],
+        [{indexHint: ['foo', 'bar', 'hash_a'], forceIndexHint: true}, ['hash_a']],
+        [{indexHint: 'hash_a', forceIndexHint: true}, ['hash_a']],
+        [{indexHint: 'hash_a'}, ['hash_a']],
+        [{indexHint: 'hash_a_b', forceIndexHint: true}, ['hash_a_b']],
+        [{indexHint: 'hash_a_b'}, ['hash_a_b']],
+        [{indexHint: 'skip_a', forceIndexHint: true}, ['skip_a']],
+        [{indexHint: 'skip_a'}, ['skip_a']],
+        [{indexHint: 'skip_a_b', forceIndexHint: true}, ['skip_a_b']],
+        [{indexHint: 'skip_a_b'}, ['skip_a_b']],
       ];
       indexHints.forEach((indexHint, index) => {
-        let indexName = indexHint.indexHint || "";
-        let queryExplain = AQL_EXPLAIN(prefix + JSON.stringify(indexHint)).plan.nodes;
+        let queryExplain = AQL_EXPLAIN(prefix + JSON.stringify(indexHint[0])).plan.nodes;
         queryExplain.filter((node) => node.type === "IndexNode").forEach((node) => {
-          if (indexName === "") {
-            assertNotEqual(["hash_a", "hash_a_b", "skip_a", "skip_a_b"].indexOf(node.indexes[0].name), -1);
-          } else {
-            assertEqual(node.indexes[0].name, indexName);
-          }
+            assertNotEqual(indexHint[1].indexOf(node.indexes[0].name), -1);
         });
       });
     }
