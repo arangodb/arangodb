@@ -126,13 +126,20 @@ function selfHeal () {
     fs.makeDirectoryRecursive(dirname);
   }
 
-  const serviceCollection = utils.getStorage();
+  const serviceCollectionName = utils.getStorage().name();
   const bundleCollection = utils.getBundleStorage();
+  const bundleCollectionName = bundleCollection.name();
   // The selfHeal comment will be included in debug output if activated or in slow query logs, 
   // which helps us distinguish it from user-written queries.
-  const serviceDefinitions = db._query(aql`/*selfHeal*/ FOR doc IN ${serviceCollection}
+  if ((bundleCollectionName.length == 0) || (serviceCollectionName.length == 0)) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code,
+      errorMessage: 'failed to initialize the foxx management collections'
+    });
+  }
+  const serviceDefinitions = db._query(aql`/*selfHeal*/ FOR doc IN ${serviceCollectionName}
     FILTER LEFT(doc.mount, 2) != "/_"
-    LET bundleExists = DOCUMENT(${bundleCollection}, doc.checksum) != null
+    LET bundleExists = DOCUMENT(${bundleCollectionName}, doc.checksum) != null
     RETURN [doc.mount, doc.checksum, doc._rev, bundleExists]`).toArray();
 
   let modified = false;

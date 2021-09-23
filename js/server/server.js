@@ -28,11 +28,16 @@
 // / @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 // / @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
-
+function bla() {
+  throw Error("snatoheu");
+}
+function blub() {
+  bla()
+}
 (function () {
   let internal = require('internal');
   let ArangoError = require('@arangodb').ArangoError;
-
+  blub()
   // check if --server.rest-server is disabled
   // in this case we do not (and should not) initialize and start Foxx
   let options = internal.options();
@@ -41,6 +46,8 @@
     restServer = options["server.rest-server"];
   }
 
+  // make sure the cache is filled:
+  let col = internal.db._collections();
   // reload routing information
   if (restServer) {
     // the function name reloadRouting is misleading here, as it actually
