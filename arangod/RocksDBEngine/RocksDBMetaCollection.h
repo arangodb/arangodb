@@ -42,8 +42,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
  public:
   explicit RocksDBMetaCollection(LogicalCollection& collection,
                                  arangodb::velocypack::Slice const& info);
-  RocksDBMetaCollection(LogicalCollection& collection,
-                        PhysicalCollection const*);  // use in cluster only!!!!!
   virtual ~RocksDBMetaCollection() = default;
   
   std::string const& path() const override final;

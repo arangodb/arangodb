@@ -123,19 +123,19 @@ class ClientFeature final : public HttpEndpointProvider {
   uint64_t _sslProtocol;
 
   size_t _retries;
-  bool _authentication;
-  bool _askJwtSecret;
-
-  bool _allowJwtSecret;
-  bool _warn;
-  bool _warnConnect;
-  bool _haveServerPassword;
-  bool _forceJson;
 
 #if _WIN32
   uint16_t _codePage;
   uint16_t _originalCodePage;
 #endif
+
+  bool const _allowJwtSecret;
+  bool _authentication;
+  bool _askJwtSecret;
+  bool _warn;
+  bool _warnConnect;
+  bool _haveServerPassword;
+  bool _forceJson;
 };
 
 }  // namespace arangodb

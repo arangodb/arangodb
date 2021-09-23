@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,26 +17,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ManagedDocumentResult.h"
-#include "Transaction/Helpers.h"
+#pragma once
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
-using namespace arangodb;
-
-void ManagedDocumentResult::setManaged(uint8_t const* vpack) {
-  VPackSlice const slice(vpack);
-  _string.assign(slice.startAs<char>(), slice.byteSize());
-  _revisionId = transaction::helpers::extractRevFromDocument(slice);
-}
-
-void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder) const {
-  TRI_ASSERT(!empty());
-  TRI_ASSERT(!_string.empty());
-  builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(_string.data())));
+namespace arangodb::transaction {
+enum class MethodsApi {
+  Asynchronous,
+  Synchronous
+};
 }
