@@ -59,7 +59,7 @@ class JSLoader : public ScriptLoader {
                               v8::Handle<v8::Context>&,
                               std::string const& name,
                               velocypack::Builder* builder,
-                              bool logStacktraceError=false);
+                              bool logStacktraceError = false);
 };
 }  // namespace arangodb
 
