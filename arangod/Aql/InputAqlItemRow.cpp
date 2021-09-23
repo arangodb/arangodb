@@ -157,6 +157,11 @@ AqlValue InputAqlItemRow::stealValue(RegisterId registerId) {
   TRI_ASSERT(registerId.isConstRegister() || registerId < getNumRegisters());
   AqlValue const& a = block().getValueReference(_baseIndex, registerId);
   if (!a.isEmpty() && a.requiresDestruction()) {
+    if (registerId.isConstRegister()) {
+      // we cannot steal the value of a const register!
+      return a.clone();
+    }
+
     // Now no one is responsible for AqlValue a
     block().steal(a);
   }

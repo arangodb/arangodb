@@ -79,6 +79,7 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "VelocyPackHelper.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
@@ -775,25 +776,9 @@ AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
 // Auto-repair of dangling AnalyzersRevisions
 void queueGarbageCollection(std::mutex& mutex, Scheduler::WorkHandle& workItem,
                             std::function<void(bool)>& gcfunc) {
-  bool queued = false;
-  {
-    std::lock_guard<std::mutex> guard(mutex);
-    std::tie(queued, workItem) =
-        basics::function_utils::retryUntilTimeout<Scheduler::WorkHandle>(
-            [&gcfunc]() -> std::pair<bool, Scheduler::WorkHandle> {
-              auto off = std::chrono::seconds(5);
-              return SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW,
-                                                             off, gcfunc);
-            },
-            arangodb::iresearch::TOPIC,
-            "queue analyzers garbage collection");
-  }
-  if (!queued) {
-    LOG_TOPIC("f25ad", FATAL, arangodb::iresearch::TOPIC)
-        << "Failed to queue analyzers garbage collection, for 5 minutes, "
-           "exiting.";
-    FATAL_ERROR_EXIT();
-  }
+  std::lock_guard<std::mutex> guard(mutex);
+  workItem = SchedulerFeature::SCHEDULER->queueDelayed(
+    RequestLane::INTERNAL_LOW, std::chrono::seconds(5), gcfunc);
 }
 
 // first - input type,
@@ -1160,7 +1145,8 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
     VPackSlice const properties,
     AnalyzersRevision::Revision revision,
     Features features,
-    LinkVersion version) {
+    LinkVersion version,
+    bool extendedNames) {
   // check type available
   if (!irs::analysis::analyzers::exists(type, irs::type<irs::text_format::vpack>::get(), false)) {
     return {
@@ -1172,7 +1158,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
-  if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(split.second.c_str(), split.second.size()))) {
+  if (!AnalyzerNameValidator::isAllowedName(extendedNames, std::string_view(split.second.c_str(), split.second.size()))) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       "invalid characters in analyzer name '"s + std::string(split.second) + "'"
@@ -1234,7 +1220,8 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
-  if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(split.second.c_str(), split.second.size()))) {
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+  if (!AnalyzerNameValidator::isAllowedName(extendedNames, std::string_view(split.second.c_str(), split.second.size()))) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       std::string("invalid characters in analyzer name '") + std::string(split.second) + "'" };

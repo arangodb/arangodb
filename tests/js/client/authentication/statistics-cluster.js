@@ -65,7 +65,6 @@ function AuthSuite() {
       }
       
       db._createDatabase('UnitTestsDatabase');
-      //db._useDatabase('UnitTestsDatabase');
       
       users.save(user1, "foobar");
       users.save(user2, "foobar");

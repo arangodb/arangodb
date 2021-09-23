@@ -195,6 +195,8 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
                                                  : "option"));
           builder.add("hidden", VPackValue(option.hasFlag(arangodb::options::Flags::Hidden)));
           builder.add("type", VPackValue(option.parameter->name()));
+          builder.add("experimental",
+                      VPackValue(option.hasFlag(arangodb::options::Flags::Experimental)));
           builder.add("obsolete",
                       VPackValue(option.hasFlag(arangodb::options::Flags::Obsolete)));
           builder.add("enterpriseOnly",

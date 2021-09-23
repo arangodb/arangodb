@@ -3,13 +3,105 @@ devel
 
 * Fixed a bug for array indexes on update of documents. See BTS-548.
 
+* Prevent some possible deadlocks under high load regarding transactions and
+  document operations, and also improve performance slightly.
+
+* Hide help text fragment about VST connection strings in client tools that
+  do not support VST.
+
+* Added REST API endpoint `/_admin/debug/failat/all` to retrieve the list
+  of currently enabled failure points. This API is available only if 
+  failure testing is enabled, but not in production.
+
+* APM-60: optionally allow special characters and Unicode characters in
+  database names.
+
+  This feature allows toggling the naming convention for database names
+  from the previous strict mode, which only allowed selected ASCII characters
+  in database names, to an extended, more relaxed mode. The extended mode 
+  allows additional ASCII characters in database names as well as non-ASCII 
+  UTF-8 characters.
+  The extended mode can be enabled by setting the new startup option 
+  `--database.extended-names-databases` to true. It is turned off by default 
+  and requires an explicit opt-in, simply because some drivers and client
+  applications may not be ready for it yet. The arangod server, the 
+  ArangoDB web interface and the following bundled client tools are prepared 
+  and ready for using the extended database names:
+  - arangobench
+  - arangodump
+  - arangoexport
+  - arangoimport
+  - arangorestore
+  - arangosh
+  More tools and the drivers shipped by ArangoDB will be added to the list in
+  the future. 
+
+  Please note that the extended names for databases should not be turned on
+  during upgrades from previous versions, but only once the upgrade has been
+  completed successfully. In addition, the extended names should not be used
+  in environments that require extracting data into a previous version of
+  ArangoDB, or when database dumps may be restored into a previous version of
+  ArangoDB. This is because older versions may not be able to handle the
+  extended database names. Finally, it should not be turned on in environments
+  in which drivers are in use that haven't been prepared to work with the
+  extended naming convention.
+
+  Warning: turning on the `--database.extended-names-databases` option for a
+  deployment requires it to stay enabled permanently, i.e. it can be changed
+  from `false` to `true` but not back. When enabling it, it is also required
+  to do this consistently on all coordinators and DB servers.
+
+  The extended names for databases will be enabled by default in one of the
+  future releases of ArangoDB, once enough drivers and other client tools
+  have had the chance to adapt.
+
+  Naming conventions for collections, views, analyzers, and document keys
+  (`_key` values) are not affected by this feature and will remain as in
+  previous versions of ArangoDB.
+
+* Prevent stealing of values from AQL const value registers. This fixes an
+  issue for queries that produce constant results (known at query compile time)
+  when the queries are executed directly on a DB server in a cluster (which is
+  not supported, but may happen for troubleshooting).
+
+* Fixed BTS-562: reduce-extraction-to-projection optimization returns null for 
+  one attribute if nested attributes are named the same.
+
+* Add `--datatype` startup option to arangoimport, in order to hard-code the
+  datatype (null/boolean/number/string) for certain attributes in the CSV/TSV import.
+  For example, given the following input file:
+
+      key,price,weight,fk
+      123456,200,5,585852
+      864924,120,10,9998242
+      9949,70,11.5,499494
+      6939926,2130,5,96962612
+
+  When invoking arangoimport with the startup options
+
+      --datatype key=string 
+      --datatype price=number 
+      --datatype weight=number 
+      --datatype fk=string
+
+  it will turn the numeric-looking values in "key" into strings (so that they
+  can be used in the `_key` attribute), but treat the attributes "price" and
+  "weight" as numbers. The values in attribute "fk" finally will be treated as
+  strings again (potentially because they are used for linking to other "_key"
+  values).
+
+* Avoid the acquisition of a recursive read lock on server shutdown, which
+  could in theory lead to shutdown hangs at least if a concurrent thread is
+  trying to modify the list of collections (very unlikely and never observed
+  until now).
+
 * Fixed display of unicode characters in Windows console.
 
 * Fixed issue BTS-531 "Error happens during EXE package installation if
   non-ASCII characters are present in target path".
   
 * Fix active failover, so that the new host actually has working
-  foxx services. (BTS-558)
+  Foxx services. (BTS-558).
 
 * Fixed issue #14720: Bulk import ignores onDuplicate in 3.8.0.
   The "onDuplicate" attribute was ignored by the `/_api/import` REST API when

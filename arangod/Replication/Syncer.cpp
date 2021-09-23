@@ -27,6 +27,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
@@ -375,25 +376,15 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
-  try {
-    bool queued = SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), cb]() {
-      // whatever happens next, when we leave this here, we need to indicate
-      // that there is no more posted job.
-      // otherwise the calling thread may block forever waiting on the
-      // posted jobs to finish
-      auto guard = scopeGuard([self]() noexcept { self->jobDone(); });
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), cb]() {
+    // whatever happens next, when we leave this here, we need to indicate
+    // that there is no more posted job.
+    // otherwise the calling thread may block forever waiting on the
+    // posted jobs to finish
+    auto guard = scopeGuard([self]() noexcept { self->jobDone(); });
 
-      cb();
-    });
-
-    if (!queued) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
-    }
-  } catch (...) {
-    // will get here only if Scheduler::post threw
-    jobDone();
-    throw;
-  }
+    cb();
+  });
 }
 
 /// @brief notifies that a job was posted
@@ -507,9 +498,9 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
   }
   TRI_ASSERT(!s->_state.databaseName.empty());
   if (location[0] == '/') {
-    return "/_db/" + s->_state.databaseName + location;
+    return "/_db/" + basics::StringUtils::urlEncode(s->_state.databaseName) + location;
   }
-  return "/_db/" + s->_state.databaseName + "/" + location;
+  return "/_db/" + basics::StringUtils::urlEncode(s->_state.databaseName) + "/" + location;
 }
 
 void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }

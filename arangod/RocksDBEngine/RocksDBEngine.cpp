@@ -764,8 +764,7 @@ void RocksDBEngine::start() {
           LOG_TOPIC("d9df8", FATAL, arangodb::Logger::STARTUP)
               << "column family '" << it.name << "' is missing in database"
               << ". if you are upgrading from an earlier alpha or beta version "
-                 "of ArangoDB 3.2, "
-              << "it is required to restart with a new database directory and "
+                 "of ArangoDB, it is required to restart with a new database directory and "
                  "re-import data";
           FATAL_ERROR_EXIT();
         }
@@ -777,8 +776,7 @@ void RocksDBEngine::start() {
             << existingColumnFamilies.size() << "). "
             << "expecting at least " << minNumberOfColumnFamilies
             << ". if you are upgrading from an earlier alpha or beta version "
-               "of ArangoDB 3.2, "
-            << "it is required to restart with a new database directory and "
+               "of ArangoDB, it is required to restart with a new database directory and "
                "re-import data";
         FATAL_ERROR_EXIT();
       }
@@ -844,7 +842,7 @@ void RocksDBEngine::start() {
                  ->GetID() == 0);
 
   // will crash the process if version does not match
-  arangodb::rocksdbStartupVersionCheck(_db, dbExisted);
+  arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted);
 
   // only enable logger after RocksDB start
   if (logger != nullptr) {
@@ -889,10 +887,7 @@ void RocksDBEngine::start() {
         : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
-      if (bool queued =
-            _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func)); !queued) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
-      }
+      _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
     }
 
     Scheduler* _scheduler;
@@ -1456,7 +1451,7 @@ void RocksDBEngine::processCompactions() {
     LOG_TOPIC("6ea1b", TRACE, Logger::ENGINES) 
           << "scheduling compaction for execution";
     
-    bool queued = scheduler->queue(arangodb::RequestLane::CLIENT_SLOW, [this, bounds]() {
+    scheduler->queue(arangodb::RequestLane::CLIENT_SLOW, [this, bounds]() {
       if (server().isStopping()) {
         LOG_TOPIC("3d619", TRACE, Logger::ENGINES) 
               << "aborting pending compaction due to server shutdown";
@@ -1487,16 +1482,6 @@ void RocksDBEngine::processCompactions() {
       TRI_ASSERT(_runningCompactions > 0);
       --_runningCompactions;
     });
-
-    if (ADB_UNLIKELY(!queued)) {
-      // in the very unlikely case that queuing the operation in the scheduler has failed,
-      // we will simply put it back onto our own queue
-      WRITE_LOCKER(locker, _pendingCompactionsLock);
-
-      TRI_ASSERT(_runningCompactions > 0);
-      --_runningCompactions;
-      _pendingCompactions.push_front(std::move(bounds));
-    }
   }
 }
 

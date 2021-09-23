@@ -62,6 +62,7 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -136,7 +137,8 @@ T addFigures(VPackSlice const& v1, VPackSlice const& v2,
 template <typename ShardDocsMap>
 Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
                                              LogicalCollection const& coll,
-                                             ShardDocsMap const& shards) {
+                                             ShardDocsMap const& shards,
+                                             transaction::MethodsApi api) {
   TRI_ASSERT(state.isCoordinator());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
@@ -154,11 +156,12 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
       leaders.emplace(leader);
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(state, leaders);
+  return ClusterTrxMethods::beginTransactionOnLeaders(state, leaders, api);
 }
 
 // begin transaction on shard leaders
-Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap const& shards) {
+Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap const& shards,
+                                            transaction::MethodsApi api) {
   TRI_ASSERT(trx.state()->isCoordinator());
   TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
   ClusterTrxMethods::SortedServersSet leaders{};
@@ -168,7 +171,7 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap 
       leaders.emplace(srv);
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders);
+  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders, api);
 }
 
 /// @brief add the correct header for the shard
@@ -1205,7 +1208,8 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
 
 futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
                                                     std::string const& cname,
-                                                    OperationOptions const& options) {
+                                                    OperationOptions const& options,
+                                                    transaction::MethodsApi api) {
   std::vector<std::pair<std::string, uint64_t>> result;
 
   // Set a few variables needed for our work:
@@ -1223,7 +1227,8 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged) {
-    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds, transaction::MethodsApi::Synchronous)
+                     .get();
     if (res.fail()) {
       return futures::makeFuture(OperationResult(res, options));
     }
@@ -1232,8 +1237,9 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
-  if (TRI_vocbase_t::IsSystemName(cname)) {
+  if (NameValidator::isSystemName(cname)) {
     // system collection (e.g. _apps, _jobs, _graphs...
     // very likely this is an internal request that should not block other processing
     // in case we don't get a timely response
@@ -1316,7 +1322,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = true;
   
-  if (TRI_vocbase_t::IsSystemName(collname)) {
+  if (NameValidator::isSystemName(collname)) {
     // system collection (e.g. _apps, _jobs, _graphs...
     // very likely this is an internal request that should not block other processing
     // in case we don't get a timely response
@@ -1414,10 +1420,9 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& trx,
-                                                    LogicalCollection& coll,
-                                                    VPackSlice const slice,
-                                                    arangodb::OperationOptions const& options) {
+futures::Future<OperationResult> createDocumentOnCoordinator(
+    transaction::Methods const& trx, LogicalCollection& coll, VPackSlice const slice,
+    OperationOptions const& options, transaction::MethodsApi api) {
   const std::string collid = std::to_string(coll.id().id());
 
   // create vars used in this function
@@ -1443,7 +1448,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
   Future<Result> f = makeFuture(Result());
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged && opCtx.shardMap.size() > 1) {  // lazily begin transactions on leaders
-    f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
+    f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
   }
 
   return std::move(f).thenValue([=, &trx, &coll, opCtx(std::move(opCtx))]
@@ -1458,6 +1463,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     reqOpts.database = trx.vocbase().name();
     reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
     reqOpts.retryNotFound = true;
+    reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
     reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
            .param(StaticStrings::ReturnNewString, (options.returnNew ? "true" : "false"))
            .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
@@ -1540,9 +1546,9 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
 /// @brief remove a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Methods& trx,
-                                                    LogicalCollection& coll, VPackSlice const slice,
-                                                    arangodb::OperationOptions const& options) {
+futures::Future<OperationResult> removeDocumentOnCoordinator(
+    transaction::Methods& trx, LogicalCollection& coll, VPackSlice const slice,
+    OperationOptions const& options, transaction::MethodsApi api) {
   // Set a few variables needed for our work:
 
   // First determine the collection ID from the name:
@@ -1573,6 +1579,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
   reqOpts.database = trx.vocbase().name();
   reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
          .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
          .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
@@ -1586,7 +1593,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
     // lazily begin transactions on leaders
     Future<Result> f = makeFuture(Result());
     if (isManaged && opCtx.shardMap.size() > 1) {
-      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
+      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
     }
 
     return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))]
@@ -1649,7 +1656,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
   // lazily begin transactions on leaders
   Future<Result> f = makeFuture(Result());
   if (isManaged && shardIds->size() > 1) {
-    f = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    f = ::beginTransactionOnAllLeaders(trx, *shardIds, api);
   }
 
   return std::move(f).thenValue([=, &trx](Result&& r) mutable -> Future<OperationResult> {
@@ -1697,7 +1704,8 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> truncateCollectionOnCoordinator(
-    transaction::Methods& trx, std::string const& collname, OperationOptions const& options) {
+    transaction::Methods& trx, std::string const& collname,
+    OperationOptions const& options, transaction::MethodsApi api) {
   Result res;
   // Set a few variables needed for our work:
   ClusterInfo& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
@@ -1716,7 +1724,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
 
   // lazily begin transactions on all leader shards
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
+    res = ::beginTransactionOnAllLeaders(trx, *shardIds, transaction::MethodsApi::Synchronous)
+              .get();
     if (res.fail()) {
       return futures::makeFuture(OperationResult(res, options));
     }
@@ -1726,6 +1735,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   reqOpts.database = trx.vocbase().name();
   reqOpts.timeout = network::Timeout(600.0);
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::Compact, (options.truncateCompact ? "true" : "false"));
 
   std::vector<Future<network::Response>> futures;
@@ -1766,7 +1776,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
 
 Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
                                                  LogicalCollection& coll, VPackSlice slice,
-                                                 OperationOptions const& options) {
+                                                 OperationOptions const& options,
+                                                 transaction::MethodsApi api) {
   // Set a few variables needed for our work:
 
   const std::string collid = std::to_string(coll.id().id());
@@ -1806,6 +1817,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   network::RequestOptions reqOpts;
   reqOpts.database = trx.vocbase().name();
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
 
   fuerte::RestVerb restVerb;
@@ -1825,7 +1837,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
     Future<Result> f = makeFuture(Result());
     if (isManaged && opCtx.shardMap.size() > 1) {  // lazily begin the transaction
-      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
+      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
     }
 
     return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))]
@@ -1903,7 +1915,8 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   // We contact all shards with the complete body and ignore NOT_FOUND
 
   if (isManaged) {  // lazily begin the transaction
-    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds, transaction::MethodsApi::Synchronous)
+                     .get();
     if (res.fail()) {
       return makeFuture(OperationResult(res, options));
     }
@@ -2262,9 +2275,10 @@ void fetchVerticesFromEngines(
 /// @brief modify a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Future<OperationResult> modifyDocumentOnCoordinator(
-    transaction::Methods& trx, LogicalCollection& coll, VPackSlice const& slice,
-    arangodb::OperationOptions const& options, bool const isPatch) {
+futures::Future<OperationResult> modifyDocumentOnCoordinator(
+    transaction::Methods& trx, LogicalCollection& coll,
+    arangodb::velocypack::Slice const& slice, OperationOptions const& options,
+    bool isPatch, transaction::MethodsApi api) {
   // Set a few variables needed for our work:
 
   // First determine the collection ID from the name:
@@ -2326,6 +2340,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
   reqOpts.database = trx.vocbase().name();
   reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
          .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"))
          .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"))
@@ -2356,7 +2371,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 
     Future<Result> f = makeFuture(Result());
     if (isManaged && opCtx.shardMap.size() > 1) {  // lazily begin transactions on leaders
-      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
+      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
     }
 
     return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))](Result&& r) mutable -> Future<OperationResult> {
@@ -2428,7 +2443,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 
   Future<Result> f = makeFuture(Result());
   if (isManaged && shardIds->size() > 1) {  // lazily begin the transaction
-    f = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    f = ::beginTransactionOnAllLeaders(trx, *shardIds, api);
   }
 
   return std::move(f).thenValue([=, &trx](Result&&) mutable -> Future<OperationResult> {
@@ -4356,7 +4371,7 @@ arangodb::Result getEngineStatsFromDBServers(ClusterFeature& feature,
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
 
   network::RequestOptions reqOpts;
-  reqOpts.skipScheduler = false; 
+  reqOpts.skipScheduler = true;
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());
 
