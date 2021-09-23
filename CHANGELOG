@@ -23,6 +23,8 @@ devel
   that is increased whenever a request is dropped because of the requested
   queue time not satisfiable.
 
+* Fixed a bug for array indexes on update of documents. See BTS-548.
+
 * Prevent some possible deadlocks under high load regarding transactions and
   document operations, and also improve performance slightly.
 
