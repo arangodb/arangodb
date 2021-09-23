@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ManagedDocumentResult.h"
-#include "Aql/AqlValue.h"
 #include "Transaction/Helpers.h"
 
 #include <velocypack/Builder.h>
@@ -35,11 +34,6 @@ void ManagedDocumentResult::setManaged(uint8_t const* vpack) {
   VPackSlice const slice(vpack);
   _string.assign(slice.startAs<char>(), slice.byteSize());
   _revisionId = transaction::helpers::extractRevFromDocument(slice);
-}
-
-void ManagedDocumentResult::setRevisionId() noexcept {
-  TRI_ASSERT(!this->empty());
-  _revisionId = transaction::helpers::extractRevFromDocument(VPackSlice(this->vpack()));
 }
 
 void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder) const {
