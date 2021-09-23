@@ -280,6 +280,7 @@ function aqlOptionsVerificationSuite () {
     },
     
     testUpsert : function () {
+
       const prefix = "FOR doc IN " + cn + " UPSERT { testi: 1234 } INSERT { testi: 1234 } UPDATE { testi: OLD.testi + 1 } IN " + cn + " OPTIONS ";
       const queries = [
         [ prefix + "{ waitForSync: false }" ],
@@ -301,6 +302,30 @@ function aqlOptionsVerificationSuite () {
       
       checkQueries("UPSERT", queries);
     },
+
+    testUpsertWithIndexHint: function () {
+      db.Post.ensureIndex({type: 'persistent', fields: ['value', '1234'], name: 'index1'});
+      db.Post.ensureIndex({type: 'persistent', fields: ['value'], name: 'index2'});
+      db.Post.ensureIndex({type: 'persistent', fields: ['value', 5678], name: 'index3'});
+      const prefix = "FOR doc IN " + cn + " UPSERT { testi: 1234 } INSERT { testi: 1234 } UPDATE { testi: OLD.testi + 1 } IN " + cn + " OPTIONS ";
+      const queries = [
+        [ prefix + "{ waitForSync: false }" ],
+        [ prefix + "{ waitForSync: true }" ],
+        [ prefix + "{ waitForSync: +1 }" ],
+        [ prefix + "{ waitForSync: -1 }" ],
+        [ prefix + "{ indexHint: 'index1' }" ],
+        [ prefix + "{ indexHint: 'index1', exclusive: true }" ],
+        [ prefix + "{ indexHint: 'index1', waitForSync: true}" ],
+        [ prefix + "{ indexHint: 'index2' }" ],
+        [ prefix + "{ indexHint: 'index2', exclusive: true }" ],
+        [ prefix + "{ indexHint: 'index2', waitForSync: true}" ],
+        [ prefix + "{ indexHint: 'index3' }" ],
+        [ prefix + "{ indexHint: 'index3', exclusive: true }" ],
+        [ prefix + "{ indexHint: 'index3', waitForSync: true}" ]
+      ];
+
+      checkQueries("UPSERT", queries);
+    }
     
   };
 }
