@@ -252,6 +252,7 @@ class IndexReadBuffer {
 
   void preAllocateStoredValuesBuffer(size_t atMost) {
     if constexpr (copyStored) {
+      TRI_ASSERT(_ownedStoredData.empty());
       _ownedStoredData.reserve(atMost);
     }
   }
@@ -260,7 +261,7 @@ class IndexReadBuffer {
     if constexpr (copyStored) {
       TRI_ASSERT(_ownedStoredData.size() < _ownedStoredData.capacity());
       _ownedStoredData.emplace_back(value);
-      _storedValuesBuffer.emplace_back(_ownedStoredData.front());
+      _storedValuesBuffer.emplace_back(_ownedStoredData.back());
     } else {
       _storedValuesBuffer.push_back(value);
     }
