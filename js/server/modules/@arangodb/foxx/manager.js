@@ -131,7 +131,7 @@ function selfHeal () {
   const bundleCollectionName = bundleCollection.name();
   // The selfHeal comment will be included in debug output if activated or in slow query logs, 
   // which helps us distinguish it from user-written queries.
-  if ((bundleCollectionName.length == 0) || (serviceCollectionName.length == 0)) {
+  if ((bundleCollectionName.length === 0) || (serviceCollectionName.length === 0)) {
     throw new ArangoError({
       errorNum: errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code,
       errorMessage: 'failed to initialize the foxx management collections'
