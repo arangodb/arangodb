@@ -1,6 +1,8 @@
 devel
 -----
 
+* TEST
+
 * Prevent some possible deadlocks under high load regarding transactions and
   document operations, and also improve performance slightly.
 
