@@ -33,11 +33,11 @@ const db = internal.db;
 const jsunity = require("jsunity");
 const errors = internal.errors;
 
-function ahuacatlSkiplistOverlappingTestSuite () {
+function ahuacatlSkiplistOverlappingTestSuite() {
   const getIndexNames = function (query) {
-    return AQL_EXPLAIN(query, {}, { optimizer: { rules: [ "-all", "+use-indexes" ] } })
-              .plan.nodes.filter(node => (node.type === 'IndexNode'))
-              .map(node => node.indexes.map(index => index.name));
+    return AQL_EXPLAIN(query, {}, {optimizer: {rules: ["-all", "+use-indexes"]}})
+      .plan.nodes.filter(node => (node.type === 'IndexNode'))
+      .map(node => node.indexes.map(index => index.name));
   };
 
   const cn = 'UnitTestsIndexHints';
@@ -53,28 +53,28 @@ function ahuacatlSkiplistOverlappingTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUpAll : function () {
+    setUpAll: function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
-      
+
       collection.ensureIndex({type: 'hash', name: 'hash_a', fields: ['a']});
       collection.ensureIndex({type: 'hash', name: 'hash_a_b', fields: ['a', 'b']});
       collection.ensureIndex({type: 'hash', name: 'hash_b_a', fields: ['b', 'a']});
       collection.ensureIndex({type: 'skiplist', name: 'skip_a', fields: ['a']});
       collection.ensureIndex({type: 'skiplist', name: 'skip_a_b', fields: ['a', 'b']});
       collection.ensureIndex({type: 'skiplist', name: 'skip_b_a', fields: ['b', 'a']});
-      
+
       defaultEqualityIndex = 'hash_a';
       alternateEqualityIndex = 'skip_a';
       defaultSortingIndex = 'hash_a';
       alternateSortingIndex = 'skip_a_b';
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       internal.db._drop(cn);
     },
 
-    testFilterNoHint : function () {
+    testFilterNoHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {}
           FILTER doc.a == 1
@@ -85,9 +85,9 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0].length, 1);
       assertEqual(usedIndexes[0][0], defaultEqualityIndex);
     },
-    
-    testPrimary : function () {
-      [ 
+
+    testPrimary: function () {
+      [
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc._key == 'test' RETURN doc`,
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc._key == 'test' RETURN doc`,
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc._key == 'test' && doc.testi == 99 RETURN doc`,
@@ -101,9 +101,9 @@ function ahuacatlSkiplistOverlappingTestSuite () {
         assertEqual(usedIndexes[0][0], 'primary', query);
       });
     },
-    
-    testMultipleOrConditionsPrimary : function () {
-      [ 
+
+    testMultipleOrConditionsPrimary: function () {
+      [
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc._key == 'test' || doc.a == 'testi' RETURN doc`,
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc._key == 'test' || doc.a == 'testi' RETURN doc`,
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc.a == 'testi' || doc._key == 'test' RETURN doc`,
@@ -115,9 +115,9 @@ function ahuacatlSkiplistOverlappingTestSuite () {
         assertEqual(["hash_a", "primary"], usedIndexes[0].sort(), query);
       });
     },
-    
-    testMultipleOrConditionsOther : function () {
-      [ 
+
+    testMultipleOrConditionsOther: function () {
+      [
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc.a == 'test' || doc.b == 'testi' RETURN doc`,
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.a == 'test' || doc.b == 'testi' RETURN doc`,
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc.b == 'testi' || doc.a == 'test' RETURN doc`,
@@ -129,8 +129,8 @@ function ahuacatlSkiplistOverlappingTestSuite () {
         assertEqual(["hash_a", "hash_b_a"], usedIndexes[0].sort(), query);
       });
     },
-    
-    testMultipleOrConditionsSomeOfThemOnNonIndexedAttributes : function () {
+
+    testMultipleOrConditionsSomeOfThemOnNonIndexedAttributes: function () {
       [
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc._key == 'test' || doc.testi == 99 RETURN doc`,
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.testi == 99 || doc._key == 'test' RETURN doc`,
@@ -141,7 +141,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       });
     },
 
-    testFilterDefaultHint : function () {
+    testFilterDefaultHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: '${defaultEqualityIndex}'}
           FILTER doc.a == 1
@@ -153,7 +153,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], defaultEqualityIndex);
     },
 
-    testFilterDefaultHintForced : function () {
+    testFilterDefaultHintForced: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: '${defaultEqualityIndex}', forceIndexHint: true}
           FILTER doc.a == 1
@@ -165,7 +165,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], defaultEqualityIndex);
     },
 
-    testFilterNonexistentIndexHint : function () {
+    testFilterNonexistentIndexHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: 'foo'}
           FILTER doc.a == 1
@@ -177,7 +177,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], defaultEqualityIndex);
     },
 
-    testFilterNonexistentIndexHintForced : function () {
+    testFilterNonexistentIndexHintForced: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: 'foo', forceIndexHint: true}
           FILTER doc.a == 1
@@ -191,7 +191,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       }
     },
 
-    testFilterUnusableHint : function () {
+    testFilterUnusableHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: 'hash_b_a'}
           FILTER doc.a == 1
@@ -203,7 +203,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], defaultEqualityIndex);
     },
 
-    testFilterUnusableHintForced : function () {
+    testFilterUnusableHintForced: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: 'hash_b_a', forceIndexHint: true}
           FILTER doc.a == 1
@@ -216,8 +216,8 @@ function ahuacatlSkiplistOverlappingTestSuite () {
         assertEqual(errors.ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE.code, err.errorNum);
       }
     },
-    
-    testFilterTypeHint : function () {
+
+    testFilterTypeHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: '${alternateEqualityIndex}'}
           FILTER doc.a == 1
@@ -229,7 +229,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], alternateEqualityIndex);
     },
 
-    testFilterPartialCoverageHint : function () {
+    testFilterPartialCoverageHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: 'skip_a_b'}
           FILTER doc.a == 1
@@ -241,7 +241,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], 'skip_a_b');
     },
 
-    testFilterListFirstHint : function () {
+    testFilterListFirstHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: ['skip_a_b', '${alternateEqualityIndex}']}
           FILTER doc.a == 1
@@ -253,7 +253,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], `skip_a_b`);
     },
 
-    testFilterListLastHint : function () {
+    testFilterListLastHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: ['skip_b_a', '${alternateEqualityIndex}']}
           FILTER doc.a == 1
@@ -265,7 +265,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], alternateEqualityIndex);
     },
 
-    testFilterNestedMatchedHint : function () {
+    testFilterNestedMatchedHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: '${alternateEqualityIndex}'}
           FILTER doc.a == 1
@@ -281,7 +281,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[1][0], alternateEqualityIndex);
     },
 
-    testFilterNestedUnmatchedHint : function () {
+    testFilterNestedUnmatchedHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: '${alternateEqualityIndex}'}
           FILTER doc.a == 1
@@ -297,7 +297,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[1][0], 'skip_a_b');
     },
 
-    testSortNoHint : function () {
+    testSortNoHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {}
           SORT doc.a
@@ -309,7 +309,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], defaultSortingIndex);
     },
 
-    testSortDefaultHint : function () {
+    testSortDefaultHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: '${defaultSortingIndex}'}
           SORT doc.a
@@ -321,7 +321,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], defaultSortingIndex);
     },
 
-    testSortDefaultHintForced : function () {
+    testSortDefaultHintForced: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: '${defaultSortingIndex}', forceIndexHint: true}
           SORT doc.a
@@ -333,7 +333,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], defaultSortingIndex);
     },
 
-    testSortNonexistentIndexHint : function () {
+    testSortNonexistentIndexHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: 'foo'}
           SORT doc.a
@@ -345,7 +345,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], defaultSortingIndex);
     },
 
-    testSortNonexistentIndexHintForced : function () {
+    testSortNonexistentIndexHintForced: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: 'foo', forceIndexHint: true}
           SORT doc.a
@@ -359,7 +359,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       }
     },
 
-    testSortUnusableHint : function () {
+    testSortUnusableHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: 'skip_b_a'}
           SORT doc.a
@@ -371,7 +371,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], defaultSortingIndex);
     },
 
-    testSortUnusableHintForced : function () {
+    testSortUnusableHintForced: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: 'skip_b_a', forceIndexHint: true}
           SORT doc.a
@@ -384,8 +384,8 @@ function ahuacatlSkiplistOverlappingTestSuite () {
         assertEqual(errors.ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE.code, err.errorNum);
       }
     },
-    
-    testSortPartialCoverageHint : function () {
+
+    testSortPartialCoverageHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: '${alternateSortingIndex}'}
           SORT doc.a
@@ -397,7 +397,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], alternateSortingIndex);
     },
 
-    testSortListFirstHint : function () {
+    testSortListFirstHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: ['${alternateSortingIndex}', '${defaultSortingIndex}']}
           SORT doc.a
@@ -409,7 +409,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], alternateSortingIndex);
     },
 
-    testSortListLastHint : function () {
+    testSortListLastHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: ['skip_b_a', '${alternateSortingIndex}']}
           SORT doc.a
@@ -421,7 +421,57 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       assertEqual(usedIndexes[0][0], alternateSortingIndex);
     },
 
+    testUpsertWithIndexHint: function () {
+      internal.db[cn].ensureIndex({type: 'persistent', fields: ['value', '1234'], name: 'index1'});
+      internal.db[cn].ensureIndex({type: 'persistent', fields: ['value'], name: 'index2'});
+      internal.db[cn].ensureIndex({type: 'persistent', fields: ['value', '5678'], name: 'index3'});
+      const prefix = "FOR doc IN " + cn + " UPSERT { testi: 1234 } INSERT { testi: 1234 } UPDATE { testi: OLD.testi + 1 } IN " + cn + " OPTIONS ";
+      const queries = [
+        [{waitForSync: false}],
+        [{waitForSync: true}],
+        [{waitForSync: +1}],
+        [{waitForSync: -1}],
+        [{indexHint: 'index1'}],
+        [{indexHint: 'index1', exclusive: true}],
+        [{indexHint: 'index1', waitForSync: true}],
+        [{indexHint: 'index2'}],
+        [{indexHint: 'index2', exclusive: true}],
+        [{indexHint: 'index2', waitForSync: true}],
+        [{indexHint: 'index3'}],
+        [{indexHint: 'index3', exclusive: true}],
+        [{indexHint: 'index3', waitForSync: true}]
+      ];
+
+      try {
+        queries.forEach((query, index) => {
+          let indexName = "";
+          if (query[0].hasOwnProperty('indexHint')) {
+            indexName = query[0].indexHint;
+          }
+          let queryExplain = AQL_EXPLAIN(prefix + JSON.stringify(query[0])).plan.nodes;
+          queryExplain.forEach((node) => {
+            if (node.type == "EnumerateCollectionNode") {
+              if (indexName === "") {
+                assertFalse(node.indexHint.hasOwnProperty('hint'));
+              } else {
+                assertTrue(node.indexHint.hasOwnProperty('hint'));
+                assertEqual(node.indexHint.hint[0], indexName);
+              }
+              return;
+            }
+          });
+        });
+      } catch (error) {
+        print(error);
+      } finally {
+        db[cn].dropIndex("index1");
+        db[cn].dropIndex("index2");
+        db[cn].dropIndex("index3");
+      }
+      //  if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+    }
   };
+
 }
 
 jsunity.run(ahuacatlSkiplistOverlappingTestSuite);

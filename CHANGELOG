@@ -1,6 +1,12 @@
 devel
 -----
 
+* APM-121 allow the UPSERT query to have indexHint as an extra parameter for 
+  OPTIONS. It will be used as a hint by the inner FOR loop that is performed
+  as part of the UPSERT query, and would help in cases such as UPSERT not 
+  picking the best index automatically for lookup. 
+
+
 * Prevent some possible deadlocks under high load regarding transactions and
   document operations, and also improve performance slightly.
 
