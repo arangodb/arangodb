@@ -113,7 +113,7 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
     }
   }
 
-  static  std::function<void(irs::directory&)> InitCallback;
+  static  std::function<irs::directory_attributes()> InitCallback;
 };
 
 }  // namespace iresearch
