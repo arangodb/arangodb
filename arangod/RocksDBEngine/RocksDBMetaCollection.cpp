@@ -347,6 +347,7 @@ void RocksDBMetaCollection::setRevisionTree(std::unique_ptr<containers::Revision
   _revisionTreeCreationSeq = seq;
   _revisionTreeSerializedSeq = seq;
   _revisionTreeSerializedTime = std::chrono::steady_clock::time_point();
+  _revisionTreeCanBeSerialized = true;
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
@@ -497,22 +498,26 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
       }
       batch.Clear();
   
-      if (!s.ok() & !s.IsNotFound()) {
+      if (!s.ok() && !s.IsNotFound()) {
         LOG_TOPIC("af3de", WARN, Logger::ENGINES)
             << context << ": could not delete invalid revision tree: " << s.ToString();
         // continue and schedule a tree rebuild
       }
       // if we crash now, we won't have a revision tree and can rebuild it from
       // scratch on restart.
+      
+      // now also prevent this revision tree from being serialized...
+      _revisionTreeCanBeSerialized = false;
 
       // you can take our trees, but you cannot take our souls!
       // schedule a rebuild for the tree:
       engine.scheduleTreeRebuild(coll.vocbase().id(), coll.guid());
 
-      // we need to rethrow the exception from here, and must not move the
-      // applied seq no forward!
-      throw;
-      // if the tree rebuild eventually completes, this will unblock the background thread.
+      // we cannot move beyond the seq no that we have already serialized up to.
+      // this will effectively keep the background thread from making progress, 
+      // but the scheduled tree rebuild operation should unblock it eventually.
+      appliedSeq = std::min(appliedSeq, _revisionTreeSerializedSeq);
+      return {};
     }
 
     guard.unlock();
@@ -612,7 +617,8 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
   return false;
 }
 
-rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksdb::SequenceNumber seq, std::unique_lock<std::mutex> const& lock) {
+rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksdb::SequenceNumber seq, 
+                                                                          std::unique_lock<std::mutex> const& lock) {
 
   TRI_ASSERT(lock.owns_lock());
 
@@ -693,6 +699,10 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
   if (!_revisionTree && !haveBufferedOperations(lock)) {  // empty collection
     return commitSeq;
   }
+  if (!_revisionTreeCanBeSerialized) {
+    return commitSeq;
+  }
+
   applyUpdates(commitSeq, lock);  // always apply updates...
 
   // applyUpdates will make sure we will have a valid tree
@@ -879,6 +889,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     _revisionTreeCreationSeq = beginSeq;
     _revisionTreeSerializedSeq = 0;
     _revisionTreeSerializedTime = std::chrono::steady_clock::time_point();
+    _revisionTreeCanBeSerialized = true;
 
     // finally remove all pending updates up to including our own sequence number
     removeBufferedUpdatesUpTo(beginSeq);
@@ -937,6 +948,7 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
   _revisionTreeCreationSeq = seq;
   _revisionTreeSerializedSeq = 0;
   _revisionTreeSerializedTime = std::chrono::steady_clock::time_point();
+  _revisionTreeCanBeSerialized = true;
 }
 
 // returns a pair with the number of documents and the tree's seq number.
@@ -1514,6 +1526,7 @@ void RocksDBMetaCollection::ensureRevisionTree() {
     _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
     _revisionTreeCreationSeq = engine.db()->GetLatestSequenceNumber();
     _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
+    _revisionTreeCanBeSerialized = true;
 
     LOG_TOPIC("7630e", TRACE, Logger::ENGINES)
         << "created revision tree for " << _logicalCollection.name()

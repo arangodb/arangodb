@@ -145,5 +145,10 @@ void RocksDBBackgroundThread::run() {
     }
   }
 
-  _engine.settingsManager()->sync(true);  // final write on shutdown
+  try {
+    _engine.settingsManager()->sync(true);  // final write on shutdown
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("f3aa6", WARN, Logger::ENGINES)
+        << "caught exception during final RocksDB sync operation: " << ex.what();
+  }
 }
