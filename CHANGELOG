@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed a bug for array indexes on update of documents. See BTS-548.
+
 * Prevent some possible deadlocks under high load regarding transactions and
   document operations, and also improve performance slightly.
 
