@@ -82,9 +82,7 @@ class ClientFeature final : public HttpEndpointProvider {
       std::string const& definition, httpclient::SimpleHttpClientParams const&) const;
   std::vector<std::string> httpEndpoints() override;
 
-  void setDatabaseName(std::string const& databaseName) {
-    _databaseName = databaseName;
-  }
+  void setDatabaseName(std::string const& databaseName);
 
   void setRetries(size_t retries) { _retries = retries; }
 
@@ -125,19 +123,19 @@ class ClientFeature final : public HttpEndpointProvider {
   uint64_t _sslProtocol;
 
   size_t _retries;
-  bool _authentication;
-  bool _askJwtSecret;
-
-  bool _allowJwtSecret;
-  bool _warn;
-  bool _warnConnect;
-  bool _haveServerPassword;
-  bool _forceJson;
 
 #if _WIN32
   uint16_t _codePage;
   uint16_t _originalCodePage;
 #endif
+
+  bool const _allowJwtSecret;
+  bool _authentication;
+  bool _askJwtSecret;
+  bool _warn;
+  bool _warnConnect;
+  bool _haveServerPassword;
+  bool _forceJson;
 };
 
 }  // namespace arangodb

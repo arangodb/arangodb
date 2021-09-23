@@ -210,8 +210,6 @@ int TRI_closesocket(TRI_socket_t);
 
 int TRI_readsocket(TRI_socket_t, void* buffer, size_t numBytesToRead, int flags);
 
-int TRI_writesocket(TRI_socket_t, const void* buffer, size_t numBytesToWrite, int flags);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets non-blocking mode for a socket
 ////////////////////////////////////////////////////////////////////////////////
