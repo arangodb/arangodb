@@ -42,13 +42,21 @@ static std::size_t nextCapacity(T const& container, std::size_t initialCapacity)
     // reserve some initial space
     capacity = std::max(std::size_t(1), initialCapacity);
   } else {
-    // minimum is that we have room for at least one more element.
+    TRI_ASSERT(container.capacity() > 0);
+    // minimum requirement is that we have room for at least one more element.
     capacity = container.size() + 1;
     if (capacity > container.capacity()) {
-      // grow with a growth factor of 1.5
-      capacity = (container.size() * 3) / 2;
+      // inspired by facebook/folly (https://github.com/facebook/folly/blob/master/folly/memory/Malloc.h):
+      constexpr size_t jemallocMinInPlaceExpandable = 4096;
+      if (container.capacity() < jemallocMinInPlaceExpandable / sizeof(typename T::value_type)) {
+        capacity = container.capacity() * 2;
+      } else {
+        // grow with a growth factor of 1.5
+        capacity = (container.size() * 3 + 1) / 2;
+      }
     }
   }
+  TRI_ASSERT(capacity >= container.capacity());
   TRI_ASSERT(capacity > container.size());
   return capacity;
 }
