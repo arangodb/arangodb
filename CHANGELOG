@@ -6,6 +6,29 @@ devel
   as part of the UPSERT query, and would help in cases such as UPSERT not 
   picking the best index automatically for lookup. 
 
+* Add basic overload control to arangod. 
+  This change adds the `x-arango-queue-time-seconds` header to all responses
+  sent by arangod. This header contains the most recent request dequeing time 
+  (in seconds) as tracked by the scheduler. This value can be used by client
+  applications and drivers to detect server overload and react on it.
+  The new startup option `--http.return-queue-time-header` can be set to 
+  `false` to suppress these headers in responses sent by arangod.
+
+  In addition, client applications and drivers can optionally augment their
+  requests sent to arangod with a header of the same name. If set, the 
+  value of the header should contain the maximum queuing time (in seconds)
+  that the client is willing to accept. If the header is set in an incoming
+  request, arangod will compare the current dequeing time from its scheduler
+  with the maximum queue time value contained in the request. If the current
+  dequeing time exceeds the value set in the header, arangod will reject the
+  request and return HTTP 412 (precondition failed) with the new error code
+  21004 (queue time violated).
+
+  There is also a new metric `arangodb_scheduler_queue_time_violations_total`
+  that is increased whenever a request is dropped because of the requested
+  queue time not satisfiable.
+
+* Fixed a bug for array indexes on update of documents. See BTS-548.
 
 * Prevent some possible deadlocks under high load regarding transactions and
   document operations, and also improve performance slightly.
