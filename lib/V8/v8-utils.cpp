@@ -5217,7 +5217,7 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatc
 
 void TRI_LogV8Exception(v8::Isolate* isolate,
                         v8::TryCatch* tryCatch,
-                        bool logStracktraceInfo) {
+                        bool logStacktraceError) {
   v8::HandleScope handle_scope(isolate);
 
   TRI_Utf8ValueNFC exception(isolate, tryCatch->Exception());
@@ -5289,8 +5289,8 @@ void TRI_LogV8Exception(v8::Isolate* isolate,
     TRI_Utf8ValueNFC stacktrace(isolate, stacktraceV8);
 
     if (*stacktrace && stacktrace.length() > 0) {
-      if (logStracktraceInfo) {
-        LOG_TOPIC("cb0c0", INFO, arangodb::Logger::V8) << "!" <<
+      if (logStacktraceError) {
+        LOG_TOPIC("cb0c0", ERR, arangodb::Logger::V8) << "!" <<
           "stacktrace: " + std::string(*stacktrace) + "\n";
       } else {
         LOG_TOPIC("cb0bf", DEBUG, arangodb::Logger::V8) << "!" <<
@@ -5327,7 +5327,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
                                                   v8::Handle<v8::String> const name,
                                                   bool printResult,
                                                   bool logExceptions,
-                                                  bool logStracktraceInfo) {
+                                                  bool logStacktraceError) {
   v8::EscapableHandleScope scope(isolate);
 
   v8::ScriptOrigin scriptOrigin(name);
@@ -5365,7 +5365,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
       if (tryCatch.HasCaught()) {
         if (tryCatch.CanContinue()) {
           if (logExceptions) {
-            TRI_LogV8Exception(isolate, &tryCatch, logStracktraceInfo);
+            TRI_LogV8Exception(isolate, &tryCatch, logStacktraceError);
           }
         } else {
           TRI_GET_GLOBALS();

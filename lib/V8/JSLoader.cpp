@@ -55,7 +55,7 @@ JSLoader::JSLoader() {}
 JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate, v8::Handle<v8::Context>& context,
                                       std::string const& name,
                                       velocypack::Builder* builder,
-                                      bool logStracktraceInfo) {
+                                      bool logStacktraceError) {
   v8::HandleScope scope(isolate);
   v8::TryCatch tryCatch(isolate);
 
@@ -79,7 +79,7 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate, v8::Handle<v8::Conte
 
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      TRI_LogV8Exception(isolate, &tryCatch, logStracktraceInfo);
+      TRI_LogV8Exception(isolate, &tryCatch, logStacktraceError);
     } else {
       TRI_GET_GLOBALS();
       v8g->_canceled = true;

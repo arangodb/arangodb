@@ -115,7 +115,7 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate, v8::TryCatch*);
 
 void TRI_LogV8Exception(v8::Isolate* isolate,
                         v8::TryCatch*,
-                        bool logStracktraceInfo=false);
+                        bool logStacktraceError=false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file into the current context
@@ -139,7 +139,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
                                                   v8::Handle<v8::String> const name,
                                                   bool printResult,
                                                   bool logExceptions=true,
-                                                  bool logStracktraceInfo=false);
+                                                  bool logStacktraceError=false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on error number only
