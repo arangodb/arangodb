@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed potential issues with revision trees and document counters getting
+  out of sync with the underlying collection data.
+
 * Prevent some possible deadlocks under high load regarding transactions and
   document operations, and also improve performance slightly.
 

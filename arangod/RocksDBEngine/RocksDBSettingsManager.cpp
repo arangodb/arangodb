@@ -160,6 +160,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto const maxSeqNr = _db->GetLatestSequenceNumber();
   auto minSeqNr = maxSeqNr;
+  TRI_ASSERT(minSeqNr > 0);
 
   rocksdb::TransactionOptions opts;
   opts.lock_timeout = 50;  // do not wait for locking keys
@@ -235,8 +236,11 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   auto const lastSync = _lastSync.load();
   if (minSeqNr < lastSync) {
-    LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
-    "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
+    if (minSeqNr != 0) {
+      LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
+        "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
+      TRI_ASSERT(false);
+    }
     return Result(); // do not move backwards in time
   }
   TRI_ASSERT(lastSync <= minSeqNr);
