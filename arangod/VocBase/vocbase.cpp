@@ -60,6 +60,7 @@
 #include "Basics/error.h"
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
+#include "Containers/Helpers.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
@@ -565,27 +566,23 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
 
 /// @brief creates a new collection, worker function
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWorker(VPackSlice parameters) {
-  std::string name =
+  std::string const name =
       arangodb::basics::VelocyPackHelper::getStringValue(parameters, StaticStrings::DataSourceName, "");
   TRI_ASSERT(!name.empty());
 
-  std::string const& dbName = _info.getName();
-
   // Try to create a new collection. This is not registered yet
-
   auto collection =
       std::make_shared<arangodb::LogicalCollection>(*this, parameters, false);
 
   RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
   // reserve room for the new collection
-  _collections.reserve(_collections.size() + 1);
-  _deadCollections.reserve(_deadCollections.size() + 1);
+  arangodb::containers::Helpers::reserveSpace(_collections, 8);
+  arangodb::containers::Helpers::reserveSpace(_deadCollections, 8);
 
   auto it = _dataSourceByName.find(name);
 
   if (it != _dataSourceByName.end()) {
-    events::CreateCollection(dbName, name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
 
@@ -598,8 +595,6 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
 
     // Let's try to persist it.
     collection->persistPhysicalCollection();
-
-    events::CreateCollection(dbName, name, TRI_ERROR_NO_ERROR);
 
     return collection;
   } catch (...) {
@@ -1058,6 +1053,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(std::string con
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
     arangodb::velocypack::Slice parameters) {
   // check that the name does not contain any strange characters
+  std::string const& dbName = _info.getName();
 
   std::string name;
   bool valid = parameters.isObject();
@@ -1070,7 +1066,6 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
   }
 
   if (!valid) {
-    std::string const& dbName = _info.getName();
     events::CreateCollection(dbName, name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -1086,19 +1081,27 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
   merge = velocypack::Collection::merge(parameters, merge.slice(), true, false);
   parameters = merge.slice();
 
-  READ_LOCKER(readLocker, _inventoryLock);
+  try {
+    READ_LOCKER(readLocker, _inventoryLock);
+    auto collection = createCollectionWorker(parameters);
+    readLocker.unlock();
 
-  // note: cid may be modified by this function call
-  auto collection = createCollectionWorker(parameters);
+    TRI_ASSERT(collection != nullptr);
+    events::CreateCollection(dbName, name, TRI_ERROR_NO_ERROR);
 
-  if (collection != nullptr) {
     auto& df = server().getFeature<DatabaseFeature>();
     if (df.versionTracker() != nullptr) {
       df.versionTracker()->track("create collection");
     }
-  }
 
-  return collection;
+    return collection;
+  } catch (basics::Exception const& ex) {
+    events::CreateCollection(dbName, name, ex.code());
+    throw;
+  } catch (std::exception const&) {
+    events::CreateCollection(dbName, name, TRI_ERROR_INTERNAL);
+    throw;
+  }
 }
 
 /// @brief drops a collection
@@ -1262,7 +1265,7 @@ arangodb::Result TRI_vocbase_t::renameCollection(DataSourceId cid, std::string c
   }
 
   if (collection->system()) {
-    return TRI_set_errno(TRI_ERROR_FORBIDDEN);
+    return TRI_ERROR_FORBIDDEN;
   }
 
   // lock collection because we are going to copy its current name
@@ -1329,7 +1332,8 @@ arangodb::Result TRI_vocbase_t::renameCollection(DataSourceId cid, std::string c
   auto res = itr1->second->rename(std::string(newName));
 
   if (!res.ok()) {
-    return res.errorNumber();  // rename failed
+    // rename failed
+    return res;
   }
 
   auto& engine = server().getFeature<EngineSelectorFeature>().engine();
@@ -1337,7 +1341,8 @@ arangodb::Result TRI_vocbase_t::renameCollection(DataSourceId cid, std::string c
   res = engine.renameCollection(*this, *collection, oldName);  // tell the engine
 
   if (!res.ok()) {
-    return res.errorNumber();  // rename failed
+    // rename failed
+    return res;
   }
 
   // The collection is renamed. Now swap cache entries.
@@ -1752,24 +1757,12 @@ std::vector<std::shared_ptr<arangodb::LogicalCollection>> TRI_vocbase_t::collect
   return collections;
 }
 
-bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor, bool lockWrite /*= false*/
-) {
+bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor) {
   TRI_ASSERT(visitor);
-
-  if (!lockWrite) {
-    RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
-
-    for (auto& entry : _dataSourceById) {
-      if (entry.second && !visitor(*(entry.second))) {
-        return false;
-      }
-    }
-
-    return true;
-  }
+  
+  std::vector<std::shared_ptr<arangodb::LogicalDataSource>> dataSources;
 
   RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
-  std::vector<std::shared_ptr<arangodb::LogicalDataSource>> dataSources;
 
   dataSources.reserve(_dataSourceById.size());
 
