@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, AQL_EXPLAIN */
+/*global fail, assertEqual, assertNotEqual, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Ahuacatl, skiplist index queries
@@ -422,53 +422,29 @@ function ahuacatlSkiplistOverlappingTestSuite() {
     },
 
     testUpsertWithIndexHint: function () {
-      internal.db[cn].ensureIndex({type: 'persistent', fields: ['value', '1234'], name: 'index1'});
-      internal.db[cn].ensureIndex({type: 'persistent', fields: ['value'], name: 'index2'});
-      internal.db[cn].ensureIndex({type: 'persistent', fields: ['value', '5678'], name: 'index3'});
-      const prefix = "FOR doc IN " + cn + " UPSERT { testi: 1234 } INSERT { testi: 1234 } UPDATE { testi: OLD.testi + 1 } IN " + cn + " OPTIONS ";
-      const queries = [
-        [{waitForSync: false}],
-        [{waitForSync: true}],
-        [{waitForSync: +1}],
-        [{waitForSync: -1}],
-        [{indexHint: 'index1'}],
-        [{indexHint: 'index1', exclusive: true}],
-        [{indexHint: 'index1', waitForSync: true}],
-        [{indexHint: 'index2'}],
-        [{indexHint: 'index2', exclusive: true}],
-        [{indexHint: 'index2', waitForSync: true}],
-        [{indexHint: 'index3'}],
-        [{indexHint: 'index3', exclusive: true}],
-        [{indexHint: 'index3', waitForSync: true}]
+      const prefix = " UPSERT { a: 1234 } INSERT { a: 1234 } UPDATE {} IN " + cn + " OPTIONS ";
+      const indexHints = [
+        {},
+        {indexHint: 'hash_a', forceIndexHint: true},
+        {indexHint: 'hash_a'},
+        {indexHint: 'hash_a_b', forceIndexHint: true},
+        {indexHint: 'hash_a_b'},
+        {indexHint: 'skip_a', forceIndexHint: true},
+        {indexHint: 'skip_a'},
+        {indexHint: 'skip_a_b', forceIndexHint: true},
+        {indexHint: 'skip_a_b'}
       ];
-
-      try {
-        queries.forEach((query, index) => {
-          let indexName = "";
-          if (query[0].hasOwnProperty('indexHint')) {
-            indexName = query[0].indexHint;
+      indexHints.forEach((indexHint, index) => {
+        let indexName = indexHint.indexHint || "";
+        let queryExplain = AQL_EXPLAIN(prefix + JSON.stringify(indexHint)).plan.nodes;
+        queryExplain.filter((node) => node.type === "IndexNode").forEach((node) => {
+          if (indexName === "") {
+            assertNotEqual(["hash_a", "hash_a_b", "skip_a", "skip_a_b"].indexOf(node.indexes[0].name), -1);
+          } else {
+            assertEqual(node.indexes[0].name, indexName);
           }
-          let queryExplain = AQL_EXPLAIN(prefix + JSON.stringify(query[0])).plan.nodes;
-          queryExplain.forEach((node) => {
-            if (node.type == "EnumerateCollectionNode") {
-              if (indexName === "") {
-                assertFalse(node.indexHint.hasOwnProperty('hint'));
-              } else {
-                assertTrue(node.indexHint.hasOwnProperty('hint'));
-                assertEqual(node.indexHint.hint[0], indexName);
-              }
-              return;
-            }
-          });
         });
-      } catch (error) {
-        print(error);
-      } finally {
-        db[cn].dropIndex("index1");
-        db[cn].dropIndex("index2");
-        db[cn].dropIndex("index3");
-      }
-      //  if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+      });
     }
   };
 
