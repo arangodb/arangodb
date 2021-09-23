@@ -1827,9 +1827,15 @@ constexpr auto TRI_ERROR_AGENCY_MALFORMED_TRANSACTION                           
 constexpr auto TRI_ERROR_SUPERVISION_GENERAL_FAILURE                             = ErrorCode{20501};
 
 /// 21003: ERROR_QUEUE_FULL
-/// "named queue is full"
-/// Will be returned if a queue with this name is full.
+/// "queue is full"
+/// Will be returned if the scheduler queue is full.
 constexpr auto TRI_ERROR_QUEUE_FULL                                              = ErrorCode{21003};
+
+/// 21004: ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED
+/// "queue time violated"
+/// Will be returned if a request with a queue time requirement is set and it
+/// cannot be fulfilled.
+constexpr auto TRI_ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED                         = ErrorCode{21004};
 
 /// 6002: ERROR_ACTION_OPERATION_UNABORTABLE
 /// "this maintenance action cannot be stopped"
@@ -1840,11 +1846,6 @@ constexpr auto TRI_ERROR_ACTION_OPERATION_UNABORTABLE                           
 /// "maintenance action still processing"
 /// This maintenance action is still processing
 constexpr auto TRI_ERROR_ACTION_UNFINISHED                                       = ErrorCode{6003};
-
-/// 6004: ERROR_NO_SUCH_ACTION
-/// "no such maintenance action"
-/// No such maintenance action exists
-constexpr auto TRI_ERROR_NO_SUCH_ACTION                                          = ErrorCode{6004};
 
 /// 7001: ERROR_HOT_BACKUP_INTERNAL
 /// "internal hot backup error"

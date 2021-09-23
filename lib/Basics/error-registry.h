@@ -694,13 +694,13 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 363> ErrorMessage
     {TRI_ERROR_SUPERVISION_GENERAL_FAILURE,  // 20501
       "general supervision failure"},
     {TRI_ERROR_QUEUE_FULL,  // 21003
-      "named queue is full"},
+      "queue is full"},
+    {TRI_ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED,  // 21004
+      "queue time violated"},
     {TRI_ERROR_ACTION_OPERATION_UNABORTABLE,  // 6002
       "this maintenance action cannot be stopped"},
     {TRI_ERROR_ACTION_UNFINISHED,  // 6003
       "maintenance action still processing"},
-    {TRI_ERROR_NO_SUCH_ACTION,  // 6004
-      "no such maintenance action"},
     {TRI_ERROR_HOT_BACKUP_INTERNAL,  // 7001
       "internal hot backup error"},
     {TRI_ERROR_HOT_RESTORE_INTERNAL,  // 7002
