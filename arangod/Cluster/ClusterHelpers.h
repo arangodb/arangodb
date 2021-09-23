@@ -39,6 +39,8 @@ class ClusterHelpers {
   static bool compareServerLists(arangodb::velocypack::Slice plan,
                                  arangodb::velocypack::Slice current);
 
+  // @brief Returns true if both vectors are not empty, the first elements are equal
+  //  and the vectors are eqal as multisets (the same number of the same elements)
   // values are passed by value intentionally, as they will be sorted inside the
   // function
   static bool compareServerLists(std::vector<std::string>, std::vector<std::string>);

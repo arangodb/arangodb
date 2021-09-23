@@ -677,11 +677,9 @@ class ClusterInfo final {
       std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
 
   /// @brief this method does an atomic check of the preconditions for the
-  /// collections to be created, using the currently loaded plan. it populates
-  /// the plan version used for the checks
+  /// collections to be created, using the currently loaded plan.
   Result checkCollectionPreconditions(std::string const& databaseName,
-                                      std::vector<ClusterCollectionCreationInfo> const& infos,
-                                      uint64_t& planVersion);
+                                      std::vector<ClusterCollectionCreationInfo> const& infos);
 
   /// @brief create multiple collections in coordinator
   ///        If any one of these collections fails, all creations will be
@@ -689,7 +687,7 @@ class ClusterInfo final {
   /// Note that in contrast to most other methods here, this method does not
   /// get a timeout parameter, but an endTime parameter!!!
   Result createCollectionsCoordinator(std::string const& databaseName,
-                                      std::vector<ClusterCollectionCreationInfo>const & ,
+                                      std::vector<ClusterCollectionCreationInfo>& infos,
                                       double endTime, bool isNewDatabase,
                                       std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike);
 

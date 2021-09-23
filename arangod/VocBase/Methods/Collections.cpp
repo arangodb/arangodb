@@ -265,7 +265,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
   for (auto const& info : infos) {
     TRI_ASSERT(builder.isOpenArray());
 
-    if (ServerState::instance()->isCoordinator()) {
+    if (ServerState::instance()->isCoordinator() || isSingleServerSmartGraph) {
       Result res = ShardingInfo::validateShardsAndReplicationFactor(info.properties, vocbase.server(), enforceReplicationFactor);
       if (res.fail()) {
         return res;
@@ -390,7 +390,8 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
     VPackBuilder merged =
         VPackCollection::merge(info.properties, helper.slice(), false, true);
 
-    bool haveShardingFeature = (ServerState::instance()->isCoordinator() || isSingleServerSmartGraph) &&
+    bool haveShardingFeature = (ServerState::instance()->isCoordinator()// || isSingleServerSmartGraph todo check if needed
+                                )&&
                                vocbase.server().hasFeature<ShardingFeature>();
     if (haveShardingFeature && !info.properties.get(StaticStrings::ShardingStrategy).isString()) {
       // NOTE: We need to do this in a second merge as the feature call requires the
