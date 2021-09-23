@@ -5215,7 +5215,9 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatc
 /// @brief prints an exception and stacktrace
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
+void TRI_LogV8Exception(v8::Isolate* isolate,
+                        v8::TryCatch* tryCatch,
+                        bool logStracktraceInfo) {
   v8::HandleScope handle_scope(isolate);
 
   TRI_Utf8ValueNFC exception(isolate, tryCatch->Exception());
@@ -5287,8 +5289,13 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
     TRI_Utf8ValueNFC stacktrace(isolate, stacktraceV8);
 
     if (*stacktrace && stacktrace.length() > 0) {
-      LOG_TOPIC("cb0bf", DEBUG, arangodb::Logger::V8) << "!" <<
-        "stacktrace: " + std::string(*stacktrace) + "\n";
+      if (logStracktraceInfo) {
+        LOG_TOPIC("cb0c0", INFO, arangodb::Logger::V8) << "!" <<
+          "stacktrace: " + std::string(*stacktrace) + "\n";
+      } else {
+        LOG_TOPIC("cb0bf", DEBUG, arangodb::Logger::V8) << "!" <<
+          "stacktrace: " + std::string(*stacktrace) + "\n";
+      }
     }
 
   }
@@ -5318,7 +5325,9 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
                                                   v8::Handle<v8::Context> context,
                                                   v8::Handle<v8::String> const source,
                                                   v8::Handle<v8::String> const name,
-                                                  bool printResult) {
+                                                  bool printResult,
+                                                  bool logExceptions,
+                                                  bool logStracktraceInfo) {
   v8::EscapableHandleScope scope(isolate);
 
   v8::ScriptOrigin scriptOrigin(name);
@@ -5355,7 +5364,9 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
 
       if (tryCatch.HasCaught()) {
         if (tryCatch.CanContinue()) {
-          TRI_LogV8Exception(isolate, &tryCatch);
+          if (logExceptions) {
+            TRI_LogV8Exception(isolate, &tryCatch, logStracktraceInfo);
+          }
         } else {
           TRI_GET_GLOBALS();
           v8g->_canceled = true;
