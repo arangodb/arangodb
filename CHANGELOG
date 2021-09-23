@@ -1,6 +1,9 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed potential issues with revision trees and document counters getting
+  out of sync with the underlying collection data.
+
 * Fixed a bug for array indexes on update of documents (BTS-548).
 
 * Fixed BTS-562: reduce-extraction-to-projection optimization returns null for

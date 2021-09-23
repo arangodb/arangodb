@@ -37,7 +37,7 @@ const colName = 'UnitTestsRecovery';
 // number of collections
 const n = 5;
 // max number of restarts/iterations
-const maxIterations = 20;
+const maxIterations = 30;
 // maximum runtime for each iteration
 const maxRunTime = 45;
   
