@@ -421,6 +421,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
   collections.reserve(infoSlice.length());
   try {
     if (ServerState::instance()->isCoordinator()) {
+      // Here we do have a cluster setup. In that case, we will create many collections in one go (batch-wise).
       collections =
           ClusterMethods::createCollectionOnCoordinator(vocbase, infoSlice, false,
                                                         createWaitsForSyncReplication,
@@ -434,6 +435,9 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
         return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
       }
     } else {
+      TRI_ASSERT(ServerState::instance()->isSingleServer());
+      // Here we do have a single server setup. In that case, we're not batching collection creating.
+      // Therefore, we need to iterate over the infoSlice and create each collection one by one.
       for (auto slice : VPackArrayIterator(infoSlice)) {
         // Single server does not yet have a multi collection implementation
         auto col = vocbase.createCollection(slice);
