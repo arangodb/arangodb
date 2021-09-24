@@ -28,7 +28,9 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
+#include "Basics/files.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -61,19 +63,17 @@ ClientFeature::ClientFeature(application_features::ApplicationServer& server,
       _maxPacketSize(1024 * 1024 * 1024),
       _sslProtocol(TLS_V12),
       _retries(DEFAULT_RETRIES),
+#if _WIN32
+      _codePage(65001),  // default to UTF8
+      _originalCodePage(UINT16_MAX),
+#endif
+      _allowJwtSecret(allowJwtSecret),
       _authentication(true),
       _askJwtSecret(false),
-      _allowJwtSecret(allowJwtSecret),
       _warn(false),
       _warnConnect(true),
       _haveServerPassword(false),
-      _forceJson(false)
-#if _WIN32
-      ,
-      _codePage(65001),  // default to UTF8
-      _originalCodePage(UINT16_MAX)
-#endif
-{
+      _forceJson(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter<CommunicationFeaturePhase>();
@@ -94,11 +94,26 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--server.username", "username to use when connecting",
                      new StringParameter(&_username));
 
+  bool isArangosh = false;
+  { 
+    std::string basename = TRI_Basename(options->progname());
+    isArangosh = basename == "arangosh" || basename == "arangosh.exe";
+  }
+
+  char const* endpointHelp;
+  if (isArangosh) {
+    endpointHelp = "endpoint to connect to. Use 'none' to start without a server. "
+                   "Use http+ssl:// or vst+ssl:// as schema to connect to an SSL-secured "
+                   "server endpoint, otherwise http+tcp://, vst+tcp:// or unix://";
+  } else {
+    endpointHelp = "endpoint to connect to. Use 'none' to start without a server. "
+                   "Use http+ssl:// as schema to connect to an SSL-secured "
+                   "server endpoint, otherwise http+tcp:// or unix://";
+  }
+
   options->addOption(
       "--server.endpoint",
-      "endpoint to connect to. Use 'none' to start without a server. "
-      "Use http+ssl:// or vst+ssl:// as schema to connect to an SSL-secured "
-      "server endpoint, otherwise http+tcp://, vst+tcp:// or unix://",
+      endpointHelp,
       new StringParameter(&_endpoint));
 
   options->addOption("--server.password",
@@ -107,11 +122,14 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "for a password",
                      new StringParameter(&_password));
 
-  options->addOption("--server.force-json",
-                     "force to not use VelocyPack for easier debugging",
-                     new BooleanParameter(&_forceJson),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-    .setIntroducedIn(30600);
+  if (isArangosh) {
+    // this option is only available in arangosh
+    options->addOption("--server.force-json",
+                       "force to not use VelocyPack for easier debugging",
+                       new BooleanParameter(&_forceJson),
+                       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30600);
+  }
 
   if (_allowJwtSecret) {
     // currently the option is only present for arangosh, but none
@@ -307,6 +325,8 @@ void ClientFeature::loadJwtSecretFile() {
 }
 
 void ClientFeature::prepare() {
+  _databaseName = normalizeUtf8ToNFC(_databaseName);
+
   if (!isEnabled()) {
     return;
   }
@@ -392,6 +412,10 @@ void ClientFeature::stop() {
     SetConsoleOutputCP(_originalCodePage);
   }
 #endif
+}
+  
+void ClientFeature::setDatabaseName(std::string const& databaseName) {
+  _databaseName = normalizeUtf8ToNFC(databaseName);
 }
 
 std::string ClientFeature::buildConnectedMessage(
