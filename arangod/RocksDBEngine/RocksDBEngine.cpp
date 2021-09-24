@@ -1460,7 +1460,7 @@ void RocksDBEngine::processTreeRebuilds() {
     if (ADB_UNLIKELY(!queued)) {
       // in the very unlikely case that queuing the operation in the scheduler has failed,
       // we will simply mark it again as "to-do"
-      WRITE_LOCKER(locker, _rebuildCollectionsLock);
+      MUTEX_LOCKER(locker, _rebuildCollectionsLock);
 
       TRI_ASSERT(_runningRebuilds > 0);
       --_runningRebuilds;
