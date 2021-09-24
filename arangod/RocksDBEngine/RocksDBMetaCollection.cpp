@@ -459,8 +459,6 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
           _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
       auto* db = engine.db();
       
-      rocksdb::ColumnFamilyHandle* const cf =
-          RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
       rocksdb::WriteOptions wo;
       
       RocksDBKey key;
@@ -470,14 +468,14 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
       
       if (s.ok() || s.IsNotFound()) {
         s = db->Write(wo, &batch);
-      }
-      batch.Clear();
-  
-      if (!s.ok() && !s.IsNotFound()) {
+      } else {
         LOG_TOPIC("af3de", WARN, Logger::ENGINES)
             << context << ": could not delete invalid revision tree: " << s.ToString();
         // continue and schedule a tree rebuild
       }
+
+      batch.Clear();
+
       // if we crash now, we won't have a revision tree and can rebuild it from
       // scratch on restart.
       
@@ -684,7 +682,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
   TRI_ASSERT(_revisionTree != nullptr);
   TRI_ASSERT(_revisionTree->depth() == revisionTreeDepth);
 
-  bool neverDone = _revisionTreeSerializedSeq == _revisionTreeCreationSeq;
+  bool neverDone = _revisionTreeSerializedSeq <= _revisionTreeCreationSeq;
   bool coinFlip = RandomGenerator::interval(static_cast<uint32_t>(5)) == 0;
   bool beenTooLong = 30 < std::chrono::duration_cast<std::chrono::seconds>(
                               std::chrono::steady_clock::now() - _revisionTreeSerializedTime)
