@@ -32,7 +32,7 @@ namespace tests {
 namespace auth_info_test {
 
 namespace {
-//static char const* FailureOnLoadDB = "UserManager::performDBLookup";
+static char const* FailureOnLoadDB = "UserManager::performDBLookup";
 }
 
 class UserManagerClusterTest : public ::testing::Test {
