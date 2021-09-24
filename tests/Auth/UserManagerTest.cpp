@@ -66,7 +66,7 @@ class UserManagerTest : public ::testing::Test {
 
   ~UserManagerTest() {
     state->setServerMode(ServerState::Mode::DEFAULT);
-    state->setReadOnly(ServerState::API_TRUE);
+    state->setReadOnly(ServerState::API_FALSE);
   }
 };
 
