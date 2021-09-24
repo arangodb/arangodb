@@ -4,6 +4,8 @@ v3.8.2 (XXXX-XX-XX)
 * Prevent some possible deadlocks under high load regarding transactions and
   document operations, and also improve performance slightly.
 
+* Fixed a bug for array indexes on update of documents (BTS-548).
+
 * Fixed BTS-562: reduce-extraction-to-projection optimization returns null for
   one attribute if nested attributes are named the same.
 
@@ -17,8 +19,8 @@ v3.8.2 (XXXX-XX-XX)
   trying to modify the list of collections (very unlikely and never observed
   until now).
 
-* Fix active failover, so that the new host actually has working
-  foxx services. (BTS-558)
+* Fix active failover, so that the new host actually has working foxx services
+  (BTS-558).
 
 * Fixed issue #14720: Bulk import ignores onDuplicate in 3.8.0.
   The "onDuplicate" attribute was ignored by the `/_api/import` REST API when
