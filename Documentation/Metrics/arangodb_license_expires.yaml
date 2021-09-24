@@ -1,4 +1,4 @@
-name: arangodb_license_expires_days
+name: arangodb_license_expires
 introducedIn: "3.9.1"
 help: |
   This instance's license expiry in days.
