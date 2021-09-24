@@ -77,7 +77,7 @@ MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprec
 
 class fs_lock : public index_lock {
  public:
-  fs_lock(const fs::path& dir, const std::string& file)
+  fs_lock(const irs::utf8_path& dir, const std::string& file)
     : dir_{dir}, file_{file} {
   }
 
@@ -150,7 +150,7 @@ class fs_lock : public index_lock {
   }
 
  private:
-  fs::path dir_;
+  irs::utf8_path dir_;
   std::string file_;
   file_utils::lock_handle_t handle_;
 }; // fs_lock
@@ -172,10 +172,10 @@ class fs_index_output : public buffered_index_output {
     if (nullptr == handle) {
 #ifdef _WIN32
       IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
-                    GetLastError(), fs::path{name}.c_str());
+                    GetLastError(), irs::utf8_path{name}.c_str());
 #else
       IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
-                    errno, fs::path{name}.c_str());
+                    errno, irs::utf8_path{name}.c_str());
 #endif
 
       return nullptr;
@@ -269,10 +269,10 @@ class fs_index_input : public buffered_index_input {
     if (nullptr == handle->handle) {
 #ifdef _WIN32
       IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s",
-                    GetLastError(), fs::path{name}.c_str());
+                    GetLastError(), irs::utf8_path{name}.c_str());
 #else
       IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s",
-                    errno, fs::path{name}.c_str());
+                    errno, irs::utf8_path{name}.c_str());
 #endif
 
       return nullptr;
@@ -287,7 +287,7 @@ class fs_index_input : public buffered_index_input {
       #endif
 
       IR_FRMT_ERROR("Failed to get stat for input file, error: %d, path: %s",
-                    error, fs::path{name}.c_str());
+                    error, irs::utf8_path{name}.c_str());
 
       return nullptr;
     }
@@ -483,7 +483,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(const file_handle
 // -----------------------------------------------------------------------------
 
 fs_directory::fs_directory(
-    fs::path dir,
+    irs::utf8_path dir,
     directory_attributes attrs,
     size_t fd_pool_size)
   : attrs_{std::move(attrs)},
@@ -493,7 +493,7 @@ fs_directory::fs_directory(
 
 index_output::ptr fs_directory::create(const std::string& name) noexcept {
   try {
-    const fs::path path = dir_ / name;
+    const irs::utf8_path path = dir_ / name;
 
     auto out = fs_index_output::open(path.c_str());
 
@@ -508,7 +508,7 @@ index_output::ptr fs_directory::create(const std::string& name) noexcept {
   return nullptr;
 }
 
-const fs::path& fs_directory::directory() const noexcept {
+const irs::utf8_path& fs_directory::directory() const noexcept {
   return dir_;
 }
 
@@ -584,7 +584,7 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
   }
 
 #ifdef _WIN32
-  fs::path path;
+  irs::utf8_path path;
   auto dir_visitor = [&path, &visitor](const file_path_t name) {
     path = name;
 

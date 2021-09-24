@@ -780,7 +780,7 @@ TEST_P(format_10_test_case, postings_seek) {
     std::vector<irs::doc_id_t> docs;
     {
       std::string buf;
-      std::ifstream in(resource("postings.txt"));
+      std::ifstream in(resource("postings.txt").c_str());
       char* pend;
       while (std::getline(in, buf)) {
         docs.push_back(strtol(buf.c_str(), &pend, 10));

@@ -22,10 +22,8 @@
 
 #include "log.hpp"
 #include "utils/file_utils.hpp"
-
+#include "utils/utf8_path.hpp"
 #include "so_utils.hpp"
-
-#include <filesystem>
 
 #if defined(_MSC_VER) // Microsoft compiler
   #define NOMINMAX
@@ -89,15 +87,13 @@ namespace {
 
 namespace iresearch {
 
-namespace fs = std::filesystem;
-
 void* load_library(const char* soname, int mode /* = 2 */) {
   if (!soname) {
     return nullptr;
   }
 
-  fs::path name{soname};
-  name.append(FILENAME_EXTENSION);
+  irs::utf8_path name{soname};
+  name += FILENAME_EXTENSION;
 
 #if defined(_MSC_VER) // Microsoft compiler
   UNUSED(mode);
@@ -137,7 +133,7 @@ void load_libraries(
     const std::string& path,
     const std::string& prefix,
     const std::string& suffix) {
-  fs::path plugin_path{path};
+  irs::utf8_path plugin_path{path};
   bool result;
 
   if (!file_utils::exists_directory(result, plugin_path.c_str()) || !result) {
@@ -167,7 +163,7 @@ void load_libraries(
       return true; // skip non-library extensions
     }
 
-    auto stem = fs::path{fs::path::string_type(path_parts.stem)}.u8string();
+    auto stem = irs::utf8_path{irs::utf8_path::string_type(path_parts.stem)}.u8string();
 
     if (stem.size() < prefix.size() + suffix.size() ||
         strncmp(stem.c_str(), prefix.c_str(), prefix.size()) != 0 ||

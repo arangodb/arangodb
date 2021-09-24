@@ -3772,7 +3772,7 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     resource /= irs::string_ref("simple_sequential.json");
 
     auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
@@ -4756,7 +4756,7 @@ TEST_P(IResearchQueryPhraseTest, test) {
     resource /= irs::string_ref("simple_sequential.json");
 
     auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 

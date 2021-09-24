@@ -21,8 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <filesystem>
-
 #if defined(_MSC_VER)
   #pragma warning(disable: 4101)
   #pragma warning(disable: 4267)
@@ -66,6 +64,7 @@
 #include "utils/bitset.hpp"
 #include "utils/runtime_utils.hpp"
 #include "utils/mmap_utils.hpp"
+#include "utils/utf8_path.hpp"
 #include <unicode/udata.h>
 
 #ifdef _MSC_VER
@@ -105,13 +104,13 @@ const std::string IRES_ICU_DATA("icu-data");
 
 const std::string test_env::test_results("test_detail.xml");
 
-fs::path test_env::exec_path_;
-fs::path test_env::exec_dir_;
-fs::path test_env::exec_file_;
-fs::path test_env::out_dir_;
-fs::path test_env::resource_dir_;
-fs::path test_env::res_dir_;
-fs::path test_env::res_path_;
+irs::utf8_path test_env::exec_path_;
+irs::utf8_path test_env::exec_dir_;
+irs::utf8_path test_env::exec_file_;
+irs::utf8_path test_env::out_dir_;
+irs::utf8_path test_env::resource_dir_;
+irs::utf8_path test_env::res_dir_;
+irs::utf8_path test_env::res_path_;
 std::string test_env::test_name_;
 int test_env::argc_;
 char** test_env::argv_;
@@ -121,7 +120,7 @@ uint32_t test_env::iteration() {
   return iteration_tracker::iteration;
 }
 
-fs::path test_env::resource( const std::string& name ) {
+irs::utf8_path test_env::resource( const std::string& name ) {
   return resource_dir_ / name;
 }
 
@@ -132,7 +131,7 @@ bool test_env::prepare(const cmdline::parser& parser) {
 
   if (parser.exist(IRES_ICU_DATA)) {
     // icu initialize for data file
-    fs::path icu_data_file_path{parser.get<std::string>(IRES_ICU_DATA)};
+    irs::utf8_path icu_data_file_path{parser.get<std::string>(IRES_ICU_DATA)};
     IR_FRMT_INFO("Loading custom ICU data file: " IR_FILEPATH_SPECIFIER, icu_data_file_path.c_str());
     bool data_exists{ false };
     if (irs::file_utils::exists(data_exists, icu_data_file_path.c_str()) && data_exists) {
@@ -176,13 +175,13 @@ bool test_env::prepare(const cmdline::parser& parser) {
 }
 
 void test_env::make_directories() {
-  fs::path exec_path(argv_[0]);
+  irs::utf8_path exec_path(argv_[0]);
   auto path_parts = irs::file_utils::path_parts(exec_path.c_str());
 
   exec_path_ = exec_path;
-  exec_file_ = fs::path{std::basic_string_view<fs::path::value_type>(path_parts.basename)};
-  exec_dir_ = fs::path{std::basic_string_view<fs::path::value_type>(path_parts.dirname)};
-  test_name_ = fs::path{std::basic_string_view<fs::path::value_type>(path_parts.stem)}.u8string();
+  exec_file_ = irs::utf8_path{std::basic_string_view<irs::utf8_path::value_type>(path_parts.basename)};
+  exec_dir_ = irs::utf8_path{std::basic_string_view<irs::utf8_path::value_type>(path_parts.dirname)};
+  test_name_ = irs::utf8_path{std::basic_string_view<irs::utf8_path::value_type>(path_parts.stem)}.u8string();
 
   if (out_dir_.native().empty()) {
     out_dir_ = exec_dir_;
@@ -204,7 +203,7 @@ void test_env::make_directories() {
       char buf[21]{};
 
       strftime(buf, sizeof buf, "_%Y_%m_%d_%H_%M_%S", &tinfo);
-      res_dir_ += fs::path{std::string_view{buf, sizeof buf - 1}};
+      res_dir_ += std::string_view{buf, sizeof buf - 1};
     } else {
       res_dir_ += "_unknown";
     }
@@ -247,7 +246,7 @@ void test_env::parse_command_line(cmdline::parser& cmd) {
   cmd.add(IRES_LOG_STACK, 0, "always log stack trace", false, false);
   cmd.add(IRES_OUTPUT, 0, "generate an XML report");
   cmd.add(IRES_OUTPUT_PATH, 0, "output directory", false, out_dir_.u8string());
-  cmd.add(IRES_RESOURCE_DIR, 0, "resource directory", false, fs::path(IResearch_test_resource_dir).u8string());
+  cmd.add(IRES_RESOURCE_DIR, 0, "resource directory", false, irs::utf8_path(IResearch_test_resource_dir).u8string());
   cmd.add(IRES_ICU_DATA, 0, "custom icu data file", false, std::string());
   cmd.parse(argc_, argv_);
 
@@ -256,8 +255,8 @@ void test_env::parse_command_line(cmdline::parser& cmd) {
     return;
   }
 
-  resource_dir_ = fs::path{cmd.get<std::string>(IRES_RESOURCE_DIR)};
-  out_dir_ = fs::path{cmd.get<std::string>(IRES_OUTPUT_PATH)};
+  resource_dir_ = irs::utf8_path{cmd.get<std::string>(IRES_RESOURCE_DIR)};
+  out_dir_ = irs::utf8_path{cmd.get<std::string>(IRES_OUTPUT_PATH)};
 }
 
 int test_env::initialize(int argc, char* argv[]) {

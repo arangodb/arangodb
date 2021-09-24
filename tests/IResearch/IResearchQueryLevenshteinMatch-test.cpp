@@ -94,7 +94,7 @@ TEST_P(IResearchQueryLevenhsteinMatchTest, test) {
     resource /= irs::string_ref("levenshtein_sequential.json");
 
     auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 

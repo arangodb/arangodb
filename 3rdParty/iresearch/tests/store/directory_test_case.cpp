@@ -35,6 +35,7 @@
 #include "utils/directory_utils.hpp"
 #include "utils/process_utils.hpp"
 #include "utils/network_utils.hpp"
+#include "utils/file_utils.hpp"
 
 #include <cstdio>
 #include <vector>
@@ -1363,18 +1364,18 @@ class fs_directory_test : public test_base {
     test_base::SetUp();
     path_ = test_case_dir() / name_;
 
-    fs::create_directory(path_);
+    irs::file_utils::mkdir(path_.c_str(), false);
     dir_ = std::make_shared<fs_directory>(path_);
   }
 
   virtual void TearDown() override {
     dir_ = nullptr;
-    fs::remove_all(path_);
+    irs::file_utils::remove(path_.c_str());
     test_base::TearDown();
   }
 
  protected:
-  static void check_files(const directory& dir, const fs::path& path) {
+  static void check_files(const directory& dir, const irs::utf8_path& path) {
     const std::string file_name = "abcd";
 
     // create empty file
@@ -1396,7 +1397,7 @@ class fs_directory_test : public test_base {
   }
 
   std::string name_;
-  fs::path path_;
+  irs::utf8_path path_;
   std::shared_ptr<fs_directory> dir_;
 }; // fs_directory_test
 

@@ -141,7 +141,7 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 mmap_directory::mmap_directory(
-    fs::path path,
+    irs::utf8_path path,
     directory_attributes attrs /* = {} */)
   : fs_directory{std::move(path), std::move(attrs)} {
 }

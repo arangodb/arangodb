@@ -47,6 +47,7 @@
 #include "utils/runtime_utils.hpp"
 #include "utils/thread_utils.hpp"
 #include "utils/utf8_utils.hpp"
+#include "utils/utf8_path.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/vpack_utils.hpp"
 
@@ -71,8 +72,6 @@
 #if defined(_MSC_VER)
   #pragma warning(default: 4229)
 #endif
-
-namespace fs = std::filesystem;
 
 namespace iresearch {
 namespace analysis {
@@ -172,7 +171,7 @@ bool get_stopwords(
     const std::locale& locale,
     const string_ref& path = string_ref::NIL) {
   auto language = locale_utils::language(locale);
-  fs::path stopword_path;
+  utf8_path stopword_path;
 
   auto* custom_stopword_path = !path.null()
     ? path.c_str()
@@ -182,7 +181,7 @@ bool get_stopwords(
     stopword_path.assign(custom_stopword_path);
     file_utils::ensure_absolute(stopword_path);
   } else {
-    fs::path::string_type cwd;
+    utf8_path::string_type cwd;
     file_utils::read_cwd(cwd);
 
     // use CWD if the environment variable STOPWORD_PATH_ENV_VARIABLE is undefined

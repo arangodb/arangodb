@@ -26,6 +26,7 @@
 #include "store/fs_directory.hpp"
 #include "store/mmap_directory.hpp"
 #include "store/memory_directory.hpp"
+#include "utils/file_utils.hpp"
 
 namespace tests {
 
@@ -44,12 +45,12 @@ std::shared_ptr<irs::directory> fs_directory(
     auto dir = test->test_dir();
 
     dir /= "index";
-    std::filesystem::create_directory(dir);
+    irs::file_utils::mkdir(dir.c_str(), false);
 
     impl = std::shared_ptr<irs::fs_directory>(
       new irs::fs_directory(dir, std::move(attrs)),
       [dir](irs::fs_directory* p) {
-        std::filesystem::remove_all(dir);
+        irs::file_utils::remove(dir.c_str());
         delete p;
     });
   }
@@ -66,12 +67,12 @@ std::shared_ptr<irs::directory> mmap_directory(
     auto dir = test->test_dir();
 
     dir /= "index";
-    std::filesystem::create_directory(dir);
+    irs::file_utils::mkdir(dir.c_str(), false);
 
     impl = std::shared_ptr<irs::mmap_directory>(
       new irs::mmap_directory(dir, std::move(attrs)),
       [dir](irs::mmap_directory* p) {
-        std::filesystem::remove_all(dir);
+        irs::file_utils::remove(dir.c_str());
         delete p;
     });
   }

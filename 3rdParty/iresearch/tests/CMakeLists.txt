@@ -120,6 +120,7 @@ set(IReSearch_tests_sources
   ./utils/thread_pool_test.cpp
   ./utils/type_utils_tests.cpp
   ./utils/utf8_utils_test.cpp
+  ./utils/utf8_path_tests.cpp
   ./utils/fst_builder_test.cpp
   ./utils/fst_utils_test.cpp
   ./utils/fst_string_weight_test.cpp

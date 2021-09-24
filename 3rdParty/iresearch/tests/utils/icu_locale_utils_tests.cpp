@@ -449,9 +449,9 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
     Unicode unicode = Unicode::UTF8;
     ASSERT_TRUE(locale_to_vpack(icu_locale, &builder, &unicode));
 
-    auto expected_config = VPackParser::fromJson(R"({"language":"uk","encoding":"utf-8"})")->slice();
+    auto expected_config = VPackParser::fromJson(R"({"language":"uk","encoding":"utf-8"})");
     auto actual_config = builder.slice();
-    ASSERT_EQ(expected_config.toString(), actual_config.toString());
+    ASSERT_EQ(expected_config->toString(), actual_config.toString());
   }
 
   {
@@ -460,9 +460,9 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
     Unicode unicode = Unicode::UTF8;
     ASSERT_TRUE(locale_to_vpack(icu_locale, &builder, &unicode));
 
-    auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","encoding":"utf-8"})")->slice();
+    auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","encoding":"utf-8"})");
     auto actual_config = builder.slice();
-    ASSERT_EQ(expected_config.toString(), actual_config.toString());
+    ASSERT_EQ(expected_config->toString(), actual_config.toString());
   }
 
   {
@@ -471,9 +471,9 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
     Unicode unicode = Unicode::UTF8;
     ASSERT_TRUE(locale_to_vpack(icu_locale, &builder, &unicode));
 
-    auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","variant":"PHONEBOOK","encoding":"utf-8"})")->slice();
+    auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","variant":"PHONEBOOK","encoding":"utf-8"})");
     auto actual_config = builder.slice();
-    ASSERT_EQ(expected_config.toString(), actual_config.toString());
+    ASSERT_EQ(expected_config->toString(), actual_config.toString());
   }
 
   {
@@ -482,9 +482,9 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
     Unicode unicode = Unicode::UTF8;
     ASSERT_TRUE(locale_to_vpack(icu_locale, &builder, &unicode));
 
-    auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","variant":"PHONEBOOK","encoding":"utf-8"})")->slice();
+    auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","variant":"PHONEBOOK","encoding":"utf-8"})");
     auto actual_config = builder.slice();
-    ASSERT_EQ(expected_config.toString(), actual_config.toString());
+    ASSERT_EQ(expected_config->toString(), actual_config.toString());
   }
 
   {
@@ -493,9 +493,9 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
     Unicode unicode = Unicode::UTF8;
     ASSERT_TRUE(locale_to_vpack(icu_locale, &builder, &unicode));
 
-    auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","encoding":"utf-8"})")->slice();
+    auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","encoding":"utf-8"})");
     auto actual_config = builder.slice();
-    ASSERT_EQ(expected_config.toString(), actual_config.toString());
+    ASSERT_EQ(expected_config->toString(), actual_config.toString());
   }
 
   {
@@ -504,9 +504,9 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
     Unicode unicode = Unicode::UTF8;
     ASSERT_TRUE(locale_to_vpack(icu_locale, &builder, &unicode));
 
-    auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","variant":"PINYAN","encoding":"utf-8"})")->slice();
+    auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","variant":"PINYAN","encoding":"utf-8"})");
     auto actual_config = builder.slice();
-    ASSERT_EQ(expected_config.toString(), actual_config.toString());
+    ASSERT_EQ(expected_config->toString(), actual_config.toString());
   }
 
   {
@@ -515,8 +515,8 @@ TEST(icu_locale_utils_test_suite, test_locale_to_vpack) {
     Unicode unicode = Unicode::UTF8;
     ASSERT_TRUE(locale_to_vpack(icu_locale, &builder, &unicode));
 
-    auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","variant":"PINYAN_PHONEBOOK","encoding":"utf-8"})")->slice();
+    auto expected_config = VPackParser::fromJson(R"({"language":"de","country":"DE","variant":"PINYAN_PHONEBOOK","encoding":"utf-8"})");
     auto actual_config = builder.slice();
-    ASSERT_EQ(expected_config.toString(), actual_config.toString());
+    ASSERT_EQ(expected_config->toString(), actual_config.toString());
   }
 }

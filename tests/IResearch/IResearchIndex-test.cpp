@@ -527,7 +527,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
         resource /= irs::string_ref(arangodb::tests::testResourceDir);
         resource /= irs::string_ref("simple_sequential.json");
         builder =
-            arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+            arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       } catch (...) {
         return;  // velocyPackFromFile(...) may throw exception
       }
@@ -567,7 +567,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
         resource /= irs::string_ref(arangodb::tests::testResourceDir);
         resource /= irs::string_ref("simple_sequential.json");
         builder =
-            arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+            arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       } catch (...) {
         return;  // velocyPackFromFile(...) may throw exception
       }

@@ -1604,7 +1604,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
     char buf[65536];
   } field;
 
-  std::fstream stream(resource("simple_two_column.csv"));
+  std::fstream stream(resource("simple_two_column.csv").c_str());
   ASSERT_FALSE(!stream);
 
   irs::field_id id;

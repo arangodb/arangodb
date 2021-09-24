@@ -33,7 +33,7 @@ namespace iresearch {
 class IRESEARCH_API mmap_directory : public fs_directory {
  public:
   explicit mmap_directory(
-    fs::path dir,
+    utf8_path dir,
     directory_attributes attrs = directory_attributes{});
 
   virtual index_input::ptr open(

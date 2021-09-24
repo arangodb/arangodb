@@ -25,14 +25,13 @@
 #define IRESEARCH_TESTS_SHARED_H
 
 #include <memory>
-#include <filesystem>
 #include <cstdio>
 
 #include <gtest/gtest.h>
 
 #include "shared.hpp"
+#include "utils/utf8_path.hpp"
 
-namespace fs = std::filesystem;
 
 namespace cmdline {
 class parser;
@@ -43,14 +42,14 @@ class test_env {
   static const std::string test_results;
 
   static int initialize( int argc, char* argv[] );
-  static const fs::path& exec_path() { return exec_path_; }
-  static const fs::path& exec_dir() { return exec_dir_; }
-  static const fs::path& exec_file() { return exec_file_; }
-  static const fs::path& resource_dir() { return resource_dir_; }
-  static const fs::path& test_results_dir() { return res_dir_; }
+  static const irs::utf8_path& exec_path() { return exec_path_; }
+  static const irs::utf8_path& exec_dir() { return exec_dir_; }
+  static const irs::utf8_path& exec_file() { return exec_file_; }
+  static const irs::utf8_path& resource_dir() { return resource_dir_; }
+  static const irs::utf8_path& test_results_dir() { return res_dir_; }
 
   // returns path to resource with the specified name
-  static fs::path resource(const std::string& name);
+  static irs::utf8_path resource(const std::string& name);
 
   static uint32_t iteration();
 
@@ -63,30 +62,30 @@ class test_env {
   static char** argv_;
   static std::string argv_ires_output_; // argv_ for ires_output
   static std::string test_name_; // name of the current test //
-  static fs::path exec_path_; // path where executable resides
-  static fs::path exec_dir_; // directory where executable resides
-  static fs::path exec_file_; // executable file name
-  static fs::path out_dir_; // output directory, default: exec_dir_
+  static irs::utf8_path exec_path_; // path where executable resides
+  static irs::utf8_path exec_dir_; // directory where executable resides
+  static irs::utf8_path exec_file_; // executable file name
+  static irs::utf8_path out_dir_; // output directory, default: exec_dir_
 
   //TODO: set path from CMAKE!!!
-  static fs::path resource_dir_; // resource directory
+  static irs::utf8_path resource_dir_; // resource directory
 
-  static fs::path res_dir_; // output_dir_/test_name_YYYY_mm_dd_HH_mm_ss_XXXXXX
-  static fs::path res_path_; // res_dir_/test_detail.xml
+  static irs::utf8_path res_dir_; // output_dir_/test_name_YYYY_mm_dd_HH_mm_ss_XXXXXX
+  static irs::utf8_path res_path_; // res_dir_/test_detail.xml
 };
 
 class test_base : public test_env, public ::testing::Test {
  public:
-  const fs::path& test_dir() const { return test_dir_; }
-  const fs::path& test_case_dir() const { return test_case_dir_; }
+  const irs::utf8_path& test_dir() const { return test_dir_; }
+  const irs::utf8_path& test_case_dir() const { return test_case_dir_; }
 
  protected:
   test_base() = default;
   virtual void SetUp() override;
 
  private:
-  fs::path test_dir_; // res_dir_/<test-name>
-  fs::path test_case_dir_; // test_dir/<test-case-name>
+  irs::utf8_path test_dir_; // res_dir_/<test-name>
+  irs::utf8_path test_case_dir_; // test_dir/<test-case-name>
   bool artifacts_;
 }; // test_info
 
