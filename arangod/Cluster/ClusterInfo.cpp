@@ -3004,7 +3004,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     READ_LOCKER(readLocker, _planProt.lock);
     planVersion = _planVersion;
     if (!isNewDatabase) {
-      Result res = checkCollectionPreconditions(databaseName, infos, planVersion);
+      Result res = checkCollectionPreconditions(databaseName, infos);
       if (res.fail()) {
         LOG_TOPIC("98762", DEBUG, Logger::CLUSTER)
             << "Failed createCollectionsCoordinator for " << infos.size()

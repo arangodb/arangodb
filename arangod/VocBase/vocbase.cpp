@@ -91,7 +91,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/Methods/trashHelper.h"
+#include "VocBase/Methods/CollectionValidator.h"
 
 #include <thread>
 
@@ -1058,7 +1058,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
     arangodb::velocypack::Slice parameters) {
   // check that the name does not contain any strange characters
 
-  Result res = verifyCollectionName(parameters);
+  Result res = CollectionValidator::verifyCollectionName(parameters, _info);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
