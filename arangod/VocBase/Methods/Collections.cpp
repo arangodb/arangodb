@@ -77,6 +77,132 @@ using namespace arangodb::methods;
 
 using Helper = arangodb::basics::VelocyPackHelper;
 
+namespace {
+bool isLocalCollection(CollectionCreationInfo const & info) {
+     return (!ServerState::instance()->isCoordinator() &&
+       Helper::stringUInt64(info.properties.get(StaticStrings::DataSourcePlanId)) == 0);
+
+}
+
+bool isSystemName(CollectionCreationInfo const & info) {
+  return NameValidator::isSystemName(info.name);
+}
+
+Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
+                std::vector<CollectionCreationInfo> const& infos,
+                bool isSingleServerSmartGraph, bool enforceReplicationFactor) {
+  for (auto const& info : infos) {
+    // If the PlanId is not set, we either are on a single server, or this is
+    // a local collection in a cluster; which means, it is neither a user-facing
+    // collection (as seen on a Coordinator), nor a shard (on a DBServer).
+
+    // validate the information of the collection to be created
+    CollectionValidator collectionValidator(info, ServerState::instance(), vocbase,
+                                            isSingleServerSmartGraph, enforceReplicationFactor,
+                                            isLocalCollection(info), isSystemName(info));
+    Result res = collectionValidator.validateCreationInfo();
+    if (res.fail()) {
+      events::CreateCollection(vocbase.name(), info.name, res.errorNumber());
+      return res;
+    }
+  }
+  return {TRI_ERROR_NO_ERROR};
+}
+
+// Returns a builder that combines the information from \p infos and cluster related information.
+VPackBuilder getBuilder(TRI_vocbase_t const& vocbase,
+                  std::vector<CollectionCreationInfo> const& infos,
+                  bool isSingleServerSmartGraph, bool enforceReplicationFactor) {
+  VPackBuilder builder;
+
+  VPackBuilder helper;
+  builder.openArray();
+
+  for (auto const& info : infos) {
+    TRI_ASSERT(builder.isOpenArray());
+
+
+    TRI_ASSERT(info.properties.isObject());
+
+    if (!isLocalCollection(info) || isSingleServerSmartGraph) {
+      auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
+      if (replicationFactorSlice.isNone()) {
+        auto factor = vocbase.replicationFactor();
+        if (factor > 0 && isSystemName(info)) {
+          auto& cl = vocbase.server().getFeature<ClusterFeature>();
+          factor = std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
+        }
+        helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
+      };
+
+      if (!isSystemName(info)) {
+        // system-collections will be sharded normally. only user collections
+        // will get the forced sharding
+        if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
+            vocbase.isOneShard()) {
+          auto const isSatellite =
+              Helper::getStringRef(info.properties, StaticStrings::ReplicationFactor,
+                                   velocypack::StringRef{""}) == StaticStrings::Satellite;
+          // force one shard, and force distributeShardsLike to be "_graphs"
+          helper.add(StaticStrings::NumberOfShards, VPackValue(1));
+          if (!isSatellite) {
+            // SatelliteCollections must not be sharded like a
+            // non-SatelliteCollection.
+            helper.add(StaticStrings::DistributeShardsLike,
+                       VPackValue(vocbase.shardingPrototypeName()));
+          }
+        }
+      }
+
+      auto writeConcernSlice = info.properties.get(StaticStrings::WriteConcern);
+      if (writeConcernSlice.isNone()) {  // "minReplicationFactor" deprecated in 3.6
+        writeConcernSlice = info.properties.get(StaticStrings::MinReplicationFactor);
+      }
+
+      if (writeConcernSlice.isNone()) {
+        helper.add(StaticStrings::MinReplicationFactor,
+                   VPackValue(vocbase.writeConcern()));
+        helper.add(StaticStrings::WriteConcern, VPackValue(vocbase.writeConcern()));
+      }
+    } else {  // single server
+      helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice());  // delete empty string from info slice
+      helper.add(StaticStrings::ReplicationFactor, VPackSlice::nullSlice());
+      helper.add(StaticStrings::MinReplicationFactor, VPackSlice::nullSlice());  // deprecated
+      helper.add(StaticStrings::WriteConcern, VPackSlice::nullSlice());
+    }
+
+    helper.close();
+
+    VPackBuilder merged =
+        VPackCollection::merge(info.properties, helper.slice(), false, true);
+
+    bool haveShardingFeature =
+        (ServerState::instance()->isCoordinator()  // || isSingleServerSmartGraph todo check if needed
+         ) &&
+        vocbase.server().hasFeature<ShardingFeature>();
+    if (haveShardingFeature &&
+        !info.properties.get(StaticStrings::ShardingStrategy).isString()) {
+      // NOTE: We need to do this in a second merge as the feature call requires the
+      // DataSourceType to be set in the JSON, which has just been done by the call above.
+      helper.clear();
+      helper.openObject();
+      helper.add(StaticStrings::ShardingStrategy,
+                 VPackValue(vocbase.server().getFeature<ShardingFeature>().getDefaultShardingStrategyForNewCollection(
+                     merged.slice())));
+      helper.close();
+      merged = VPackCollection::merge(merged.slice(), helper.slice(), false, true);
+    }
+
+    builder.add(merged.slice());
+  }
+
+  TRI_ASSERT(builder.isOpenArray());
+  builder.close();
+
+  return builder;
+}
+} // namespace
+
 Collections::Context::Context(std::shared_ptr<LogicalCollection> coll)
     : _coll(std::move(coll)), _trx(nullptr), _responsibleForTrx(true) {}
 
@@ -248,114 +374,6 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
   return res;
 }
 
-Result _getBuilder(TRI_vocbase_t const& vocbase,
-                         std::vector<CollectionCreationInfo> const& infos,
-                         bool isSingleServerSmartGraph, bool enforceReplicationFactor, VPackBuilder & builder) {
-  VPackBuilder helper;
-  builder.openArray();
-
-  for (auto const& info : infos) {
-    TRI_ASSERT(builder.isOpenArray());
-
-    // If the PlanId is not set, we either are on a single server, or this is
-    // a local collection in a cluster; which means, it is neither a user-facing
-    // collection (as seen on a Coordinator), nor a shard (on a DBServer).
-    bool const isLocalCollection =
-        (!ServerState::instance()->isCoordinator() &&
-         Helper::stringUInt64(info.properties.get(StaticStrings::DataSourcePlanId)) == 0);
-
-    bool const isSystemName = NameValidator::isSystemName(info.name);
-
-    // validate the information of the collection to be created
-    CollectionValidator collectionValidator(info, ServerState::instance(), vocbase,
-                                            isSingleServerSmartGraph, enforceReplicationFactor,
-                                            isLocalCollection, isSystemName);
-    Result res = collectionValidator.validateCreationInfo();
-    if (res.fail()) {
-      events::CreateCollection(vocbase.name(), info.name, res.errorNumber());
-      return res;
-    }
-
-    TRI_ASSERT(info.properties.isObject());
-
-    if (!isLocalCollection || isSingleServerSmartGraph) {
-      auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
-      if (replicationFactorSlice.isNone()) {
-        auto factor = vocbase.replicationFactor();
-        if (factor > 0 && isSystemName) {
-          auto& cl = vocbase.server().getFeature<ClusterFeature>();
-          factor = std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
-        }
-        helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
-      };
-
-      if (!isSystemName) {
-        // system-collections will be sharded normally. only user collections
-        // will get the forced sharding
-        if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-            vocbase.isOneShard()) {
-          auto const isSatellite =
-              Helper::getStringRef(info.properties, StaticStrings::ReplicationFactor,
-                                   velocypack::StringRef{""}) == StaticStrings::Satellite;
-          // force one shard, and force distributeShardsLike to be "_graphs"
-          helper.add(StaticStrings::NumberOfShards, VPackValue(1));
-          if (!isSatellite) {
-            // SatelliteCollections must not be sharded like a
-            // non-SatelliteCollection.
-            helper.add(StaticStrings::DistributeShardsLike,
-                       VPackValue(vocbase.shardingPrototypeName()));
-          }
-        }
-      }
-
-      auto writeConcernSlice = info.properties.get(StaticStrings::WriteConcern);
-      if (writeConcernSlice.isNone()) {  // "minReplicationFactor" deprecated in 3.6
-        writeConcernSlice = info.properties.get(StaticStrings::MinReplicationFactor);
-      }
-
-      if (writeConcernSlice.isNone()) {
-        helper.add(StaticStrings::MinReplicationFactor,
-                   VPackValue(vocbase.writeConcern()));
-        helper.add(StaticStrings::WriteConcern, VPackValue(vocbase.writeConcern()));
-      }
-    } else {  // single server
-      helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice());  // delete empty string from info slice
-      helper.add(StaticStrings::ReplicationFactor, VPackSlice::nullSlice());
-      helper.add(StaticStrings::MinReplicationFactor, VPackSlice::nullSlice());  // deprecated
-      helper.add(StaticStrings::WriteConcern, VPackSlice::nullSlice());
-    }
-
-    helper.close();
-
-    VPackBuilder merged =
-        VPackCollection::merge(info.properties, helper.slice(), false, true);
-
-    bool haveShardingFeature =
-        (ServerState::instance()->isCoordinator()  // || isSingleServerSmartGraph todo check if needed
-         ) &&
-        vocbase.server().hasFeature<ShardingFeature>();
-    if (haveShardingFeature &&
-        !info.properties.get(StaticStrings::ShardingStrategy).isString()) {
-      // NOTE: We need to do this in a second merge as the feature call requires the
-      // DataSourceType to be set in the JSON, which has just been done by the call above.
-      helper.clear();
-      helper.openObject();
-      helper.add(StaticStrings::ShardingStrategy,
-                 VPackValue(vocbase.server().getFeature<ShardingFeature>().getDefaultShardingStrategyForNewCollection(
-                     merged.slice())));
-      helper.close();
-      merged = VPackCollection::merge(merged.slice(), helper.slice(), false, true);
-    }
-
-    builder.add(merged.slice());
-  }
-
-  TRI_ASSERT(builder.isOpenArray());
-  builder.close();
-
-  return {TRI_ERROR_NO_ERROR};
-}
-
 Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& options,
                            std::vector<CollectionCreationInfo> const& infos,
                            bool createWaitsForSyncReplication,
@@ -376,11 +394,17 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
 
   TRI_ASSERT(!vocbase.isDangling());
 
-  VPackBuilder builder;
-  Result res = _getBuilder(vocbase, infos, isSingleServerSmartGraph, enforceReplicationFactor, builder);
-  if (res.fail()) {
-    return res;
+  {  // validate information from every element of infos
+    Result res = validateAllCollectionsInfo(vocbase, infos, isSingleServerSmartGraph,
+                                            enforceReplicationFactor);
+    if (res.fail()) {
+      return res;
+    }
   }
+
+  // construct a builder that contains information from all elements of infos and cluster related information
+  VPackBuilder builder = getBuilder(vocbase, infos, isSingleServerSmartGraph,
+                     enforceReplicationFactor);
 
   VPackSlice const infoSlice = builder.slice();
 
@@ -414,6 +438,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
+
 
       for (auto& col : collections) {
         TRI_ASSERT(col != nullptr);
