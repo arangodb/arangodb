@@ -32,7 +32,19 @@
 
 namespace {
 static std::string const emptyString;
+
+inline int hex2int(char ch, int errorCode) {
+  if ('0' <= ch && ch <= '9') {
+    return ch - '0';
+  } else if ('A' <= ch && ch <= 'F') {
+    return ch - 'A' + 10;
+  } else if ('a' <= ch && ch <= 'f') {
+    return ch - 'a' + 10;
+  }
+
+  return errorCode;
 }
+} // namespace
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -98,7 +110,29 @@ void RequestHeader::parseArangoPath(std::string const& p) {
       ++q;
     }
     FUERTE_ASSERT(q >= pathBegin);
-    this->database = std::string(pathBegin, q - pathBegin);
+    this->database.clear();
+    char const* p = pathBegin;
+    while (p != q) {
+      std::string::value_type c = (*p);
+      if (c == '%') {
+        if (p + 2 < q) {
+          int h = ::hex2int(p[1], 256) << 4;
+          h += ::hex2int(p[2], 256);
+          if (h >= 256) {
+            throw std::invalid_argument("invalid encoding value in request URL");
+          }
+          this->database.push_back(static_cast<char>(h & 0xFF));
+          p += 2;
+        } else {
+          throw std::invalid_argument("invalid encoding value in request URL");
+        }
+      } else if (c == '+') {
+        this->database.push_back(' ');
+      } else {
+        this->database.push_back(c);
+      }
+      ++p;
+    }
     if (*q == '\0') {
       this->path = "/";
     } else {

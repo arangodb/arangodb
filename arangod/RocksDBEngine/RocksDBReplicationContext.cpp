@@ -49,6 +49,7 @@
 #include "Transaction/Helpers.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -252,7 +253,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
 
   auto nameFilter = [&](LogicalCollection const* collection) {
     std::string const& cname = collection->name();
-    if (!includeSystem && TRI_vocbase_t::IsSystemName(cname)) {
+    if (!includeSystem && NameValidator::isSystemName(cname)) {
       // exclude all system collections
       return false;
     }

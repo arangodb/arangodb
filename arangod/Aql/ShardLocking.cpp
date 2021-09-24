@@ -35,6 +35,7 @@
 #include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/LogMacros.h"
+#include "Utilities/NameValidator.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -216,7 +217,7 @@ void ShardLocking::updateLocking(Collection const* col,
     // What if we have an empty shard list here?
     if (shards->empty()) {
       auto const& name = col->name();
-      if (!TRI_vocbase_t::IsSystemName(name)) {
+      if (!NameValidator::isSystemName(name)) {
         LOG_TOPIC("0997e", WARN, arangodb::Logger::AQL)
             << "Accessing collection: " << name
             << " does not translate to any shard. Aborting query.";

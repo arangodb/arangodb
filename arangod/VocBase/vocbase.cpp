@@ -35,6 +35,7 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
+#include <velocypack/Utf8Helper.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
@@ -59,6 +60,7 @@
 #include "Basics/error.h"
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
+#include "Containers/Helpers.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
@@ -87,6 +89,7 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/VersionTracker.h"
+#include "Utilities/NameValidator.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
@@ -1057,10 +1060,21 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(std::string con
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
     arangodb::velocypack::Slice parameters) {
   // check that the name does not contain any strange characters
+  std::string const& dbName = _info.getName();
 
-  Result res = CollectionValidator::verifyCollectionName(parameters, _info);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
+  std::string name;
+  bool valid = parameters.isObject();
+  if (valid) {
+    name = VelocyPackHelper::getStringValue(parameters,
+                                            StaticStrings::DataSourceName, "");
+    bool isSystem = VelocyPackHelper::getBooleanValue(parameters, StaticStrings::DataSourceSystem, false);
+    bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+    valid = CollectionNameValidator::isAllowedName(isSystem, extendedNames, name);
+  }
+
+  if (!valid) {
+    events::CreateCollection(dbName, name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
   // augment creation parameters

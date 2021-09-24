@@ -24,6 +24,8 @@
 
 #include "RestAnalyzerHandler.h"
 
+#include <string_view>
+
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
@@ -33,8 +35,9 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-
+#include "Utilities/NameValidator.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -91,8 +94,10 @@ void RestAnalyzerHandler::createAnalyzer( // create
       return;
   }
 
-  if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(splittedAnalyzerName.second.c_str(),
-                                                                 splittedAnalyzerName.second.size()))) {
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+  if (!AnalyzerNameValidator::isAllowedName(extendedNames,
+                                            std::string_view(splittedAnalyzerName.second.c_str(),
+                                                             splittedAnalyzerName.second.size()))) {
     generateError(arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       "invalid characters in analyzer name '" + static_cast<std::string>(splittedAnalyzerName.second) + "'"
@@ -376,7 +381,9 @@ void RestAnalyzerHandler::removeAnalyzer(
   auto splittedAnalyzerName = IResearchAnalyzerFeature::splitAnalyzerName(requestedName);
   auto name = splittedAnalyzerName.second;
 
-  if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(name.c_str(), name.size()))) {
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+  if (!AnalyzerNameValidator::isAllowedName(extendedNames,
+                                            std::string_view(name.c_str(), name.size()))) {
     generateError(arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("Invalid characters in analyzer name '").append(name)

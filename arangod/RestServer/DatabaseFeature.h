@@ -140,6 +140,18 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool forceSyncProperties() const { return _forceSyncProperties; }
   void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
+  
+  /// @brief whether or not extended names for databases can be used
+  bool extendedNamesForDatabases() const { return _extendedNamesForDatabases; }
+  /// @brief will be called only during startup when reading stored value from storage engine
+  void extendedNamesForDatabases(bool value) { _extendedNamesForDatabases = value; }
+
+  /// @brief currently always false, until feature is implemented
+  bool extendedNamesForCollections() const { return false; }
+  /// @brief currently always false, until feature is implemented
+  bool extendedNamesForViews() const { return false; }
+  /// @brief currently always false, until feature is implemented
+  bool extendedNamesForAnalyzers() const { return false; }
 
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
@@ -152,7 +164,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   };
 
   static TRI_vocbase_t& getCalculationVocbase();
-  
 
  private:
   static void initCalculationVocbase(application_features::ApplicationServer& server);
@@ -184,6 +195,12 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
+  bool _isInitiallyEmpty;
+  bool _checkVersion;
+  bool _upgrade;
+
+  /// @brief whether or not the allow extended database names
+  bool _extendedNamesForDatabases;
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 
@@ -192,10 +209,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   // arangodb::basics::DataProtector<64>
   mutable arangodb::basics::DataProtector _databasesProtector;
   mutable arangodb::Mutex _databasesMutex;
-
-  bool _isInitiallyEmpty;
-  bool _checkVersion;
-  bool _upgrade;
 
   std::atomic<bool> _started;
 

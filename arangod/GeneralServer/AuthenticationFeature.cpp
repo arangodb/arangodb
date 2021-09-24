@@ -251,12 +251,6 @@ bool AuthenticationFeature::hasUserdefinedJwt() const {
   return !_jwtSecretProgramOption.empty();
 }
 
-/// secret used for signing & verification of secrets
-std::string AuthenticationFeature::jwtActiveSecret() const {
-  std::lock_guard<std::mutex> guard(_jwtSecretsLock);
-  return _jwtSecretProgramOption;
-}
-
 #ifdef USE_ENTERPRISE
 /// verification only secrets
 std::pair<std::string, std::vector<std::string>> AuthenticationFeature::jwtSecrets() const {
