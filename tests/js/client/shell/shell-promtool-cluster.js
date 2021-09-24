@@ -118,12 +118,10 @@ function validateMetrics(metrics) {
     // build command string. this will be unsafe if input/output
     // contain quotation marks and such. but as these parameters are
     // under our control this is very unlikely
-    let command =p romtoolPath + ' check metrics < "' + input + '" > "' + output + '" 2>&1';
+    let command = promtoolPath + ' check metrics < "' + input + '" > "' + output + '" 2>&1';
     // pipe contents of temp file into promtool
     let actualRc = internal.executeExternalAndWait('sh', ['-c', command]);
     assertTrue(actualRc.hasOwnProperty('exit'));
-    print(command);
-    print(actualRc);
     assertEqual(0, actualRc.exit);
 
     let promtoolResult = fs.readFileSync(output).toString();
