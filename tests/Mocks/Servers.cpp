@@ -437,9 +437,9 @@ std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::
 
   {
     std::lock_guard g(_storeLock);
+    ++_commitIndex;
     res = std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>{
-        _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true,true}), _commitIndex}; // apply logs
-    _commitIndex = res.second + 1;
+      _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true,true}), _commitIndex}; // apply logs
   }
   {
     std::lock_guard g(_callbacksLock);
