@@ -362,8 +362,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
   arangodb::velocypack::Builder testData;
   {
     irs::utf8_path resource;
-    resource /= irs::string_ref(arangodb::tests::testResourceDir);
-    resource /= irs::string_ref("simple_sequential.json");
+    resource /= std::string_view(arangodb::tests::testResourceDir);
+    resource /= std::string_view("simple_sequential.json");
     testData = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
   }
   auto testDataRoot = testData.slice();

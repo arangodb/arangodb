@@ -128,8 +128,8 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
     // insert into collections
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(arangodb::tests::testResourceDir);
-      resource /= irs::string_ref("simple_sequential.json");
+      resource /= std::string_view(arangodb::tests::testResourceDir);
+      resource /= std::string_view("simple_sequential.json");
 
       auto builder =
           arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
@@ -780,8 +780,8 @@ TEST_P(IResearchQueryOptionsTest, WaitForSync) {
     // insert into collections
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(arangodb::tests::testResourceDir);
-      resource /= irs::string_ref("simple_sequential.json");
+      resource /= std::string_view(arangodb::tests::testResourceDir);
+      resource /= std::string_view("simple_sequential.json");
 
       auto builder =
           arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());

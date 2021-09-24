@@ -90,8 +90,8 @@ TEST_P(IResearchQueryLevenhsteinMatchTest, test) {
   // insert some data
   {
     irs::utf8_path resource;
-    resource /= irs::string_ref(arangodb::tests::testResourceDir);
-    resource /= irs::string_ref("levenshtein_sequential.json");
+    resource /= std::string_view(arangodb::tests::testResourceDir);
+    resource /= std::string_view("levenshtein_sequential.json");
 
     auto builder =
         arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
