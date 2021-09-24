@@ -30,6 +30,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -42,6 +43,7 @@
 #include "Sharding/ShardingInfo.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
+#include "Utilities/NameValidator.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -63,6 +65,10 @@
 using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
+
+std::string Databases::normalizeName(std::string const& name) {
+  return normalizeUtf8ToNFC(name);
+}
 
 std::vector<std::string> Databases::list(application_features::ApplicationServer& server,
                                          std::string const& user) {
@@ -116,7 +122,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected type for 'id' attribute");
       }
-      result.add(StaticStrings::DataSourceSystem, VPackValue(TRI_vocbase_t::IsSystemName(name)));
+      result.add(StaticStrings::DataSourceSystem, VPackValue(NameValidator::isSystemName(name)));
       result.add("path", VPackValue("none"));
     }
   } else {
@@ -175,7 +181,9 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  if (!TRI_vocbase_t::IsAllowedName(/*_isSystemDB*/ false, arangodb::velocypack::StringRef(info.getName()))) {
+  bool extendedNames = info.server().getFeature<DatabaseFeature>().extendedNamesForDatabases(); 
+
+  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, info.getName())) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
@@ -310,6 +318,13 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
     return res;
   }
 
+  if (createInfo.getName() != dbName) {
+    // check if name after normalization will change
+    res.reset(TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+    events::CreateDatabase(dbName, res, exec);
+    return res;
+  }
+
   if (createInfo.replicationVersion() == replication::Version::TWO &&
       !replication2::EnableReplication2) {
     using namespace std::string_view_literals;
@@ -346,13 +361,11 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
       LOG_TOPIC("1964a", ERR, Logger::FIXME)
           << "Could not create database: " << res.errorMessage();
     }
-    events::CreateDatabase(dbName, res, exec);
-    return res;
   }
 
   events::CreateDatabase(dbName, res, exec);
 
-  return Result();
+  return res;
 }
 
 namespace {

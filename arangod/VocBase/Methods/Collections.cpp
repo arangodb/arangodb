@@ -54,6 +54,7 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
@@ -302,7 +303,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
         (!ServerState::instance()->isCoordinator() &&
          Helper::stringUInt64(info.properties.get(StaticStrings::DataSourcePlanId)) == 0);
 
-    bool const isSystemName = TRI_vocbase_t::IsSystemName(info.name);
+    bool const isSystemName = NameValidator::isSystemName(info.name);
 
     // All collections on a single server should be local collections.
     // A Coordinator should never have local collections.
@@ -743,21 +744,18 @@ Result Collections::rename(LogicalCollection& collection,
   }
 
   if (!doOverride) {
-    auto isSystem = TRI_vocbase_t::IsSystemName(collection.name());
+    bool const isSystem = NameValidator::isSystemName(collection.name());
 
-    if (isSystem && !TRI_vocbase_t::IsSystemName(newName)) {
+    if (isSystem != NameValidator::isSystemName(newName)) {
       // a system collection shall not be renamed to a non-system collection
-      // name
+      // name or vice versa
       return arangodb::Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
                               "a system collection shall not be renamed to a "
-                              "non-system collection name");
-    } else if (!isSystem && TRI_vocbase_t::IsSystemName(newName)) {
-      return arangodb::Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
-                              "a non-system collection shall not be renamed to "
-                              "a system collection name");
+                              "non-system collection name or vice versa");
     }
 
-    if (!TRI_vocbase_t::IsAllowedName(isSystem, arangodb::velocypack::StringRef(newName))) {
+    bool extendedNames = collection.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections(); 
+    if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames, newName)) {
       return TRI_ERROR_ARANGO_ILLEGAL_NAME;
     }
   }
@@ -880,7 +878,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return futures::makeFuture(res);
   }
 
-  auto poster = [](std::function<void()> fn) -> bool {
+  auto poster = [](std::function<void()> fn) -> void {
     return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
   };
 

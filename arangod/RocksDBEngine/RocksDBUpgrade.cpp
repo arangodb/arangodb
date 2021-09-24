@@ -23,10 +23,13 @@
 
 #include "RocksDBUpgrade.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -49,14 +52,17 @@
 
 using namespace arangodb;
 
-void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db, bool dbExisted) {
+void arangodb::rocksdbStartupVersionCheck(application_features::ApplicationServer& server,
+                                          rocksdb::TransactionDB* db, bool dbExisted) {
   static_assert(std::is_same<char, std::underlying_type<RocksDBEndianness>::type>::value,
                 "RocksDBEndianness has wrong type");
 
   // try to find version, using the version key
   char const version = rocksDBFormatVersion();
-  RocksDBKey versionKey, endianKey;
+  RocksDBKey versionKey;
   versionKey.constructSettingsValue(RocksDBSettingsType::Version);
+
+  RocksDBKey endianKey;
   endianKey.constructSettingsValue(RocksDBSettingsType::Endianness);
 
   // default endianess for existing DBs
@@ -106,7 +112,6 @@ void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db, bool dbExi
         FATAL_ERROR_EXIT();
       }
     }
-
   } else {
     // new DBs are always created with Big endian data-format
     endianess = RocksDBEndianness::Big;
@@ -141,5 +146,54 @@ void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db, bool dbExi
     }
 
     TRI_ASSERT(s.ok());
+  }
+   
+
+  // fetch stored value of option `--database.extended-names-databases`
+  RocksDBKey extendedNamesKey;
+  extendedNamesKey.constructSettingsValue(RocksDBSettingsType::ExtendedDatabaseNames);
+   
+  if (dbExisted) {
+    rocksdb::PinnableSlice existingDatabaseNamesValue;
+    rocksdb::Status s = db->Get(rocksdb::ReadOptions(),
+                                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                                extendedNamesKey.string(), &existingDatabaseNamesValue);
+  
+    if (s.ok() && existingDatabaseNamesValue.size() == 1) {
+      if (existingDatabaseNamesValue[0] == '1') {
+        if (!server.getFeature<DatabaseFeature>().extendedNamesForDatabases() &&
+            server.options()->processingResult().touched("database.extended-names-databases")) {
+          // user is trying to switch back from extended names to traditional names.
+          // this is unsupported
+          LOG_TOPIC("1d4f6", FATAL, Logger::ENGINES)
+              << "It is unsupported to change the value of the startup option `--database.extended-names-databases`"
+              << " back to `false` after it was set to `true` before. "
+              << "Please remove the setting `--database.extended-names-databases false` from the startup options.";
+          FATAL_ERROR_EXIT();
+        }
+      }
+      // set flag for our local instance
+      server.getFeature<DatabaseFeature>().extendedNamesForDatabases(existingDatabaseNamesValue[0] == '1');
+    } else if (!s.IsNotFound()) {
+      // arbitrary error. we need to abort
+      LOG_TOPIC("f3a71", FATAL, Logger::ENGINES)
+          << "Error reading extended database names key info from storage engine";
+      FATAL_ERROR_EXIT();
+    }
+  } 
+
+  // once we have the extended names flag enabled, we must store it forever
+  if (server.getFeature<DatabaseFeature>().extendedNamesForDatabases()) {
+    // now permanently store value
+    char value = '1';
+    rocksdb::Status s = db->Put(rocksdb::WriteOptions(),
+                                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                                extendedNamesKey.string(), rocksdb::Slice(&value, sizeof(char)));
+    if (!s.ok()) {
+      LOG_TOPIC("d61a8", FATAL, Logger::ENGINES) 
+          << "Error storing extended database names key info in storage engine: "
+          << rocksutils::convertStatus(s).errorMessage();
+      FATAL_ERROR_EXIT();
+    }
   }
 }

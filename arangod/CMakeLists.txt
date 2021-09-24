@@ -1143,6 +1143,7 @@ endif()
 
 add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
+  ../cmake/activeCodePage.manifest
   ${ProductVersionFiles}
 )
 

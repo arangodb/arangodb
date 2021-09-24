@@ -217,7 +217,6 @@
 
 #define TRI_CLOSE_SOCKET TRI_closesocket
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
-#define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
 // user and group types
 
@@ -372,7 +371,6 @@
 
 #define TRI_CLOSE_SOCKET TRI_closesocket
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
-#define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
 // user and group types
 
@@ -536,7 +534,6 @@
 
 #define TRI_CLOSE_SOCKET TRI_closesocket
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
-#define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
 // user and group types
 
@@ -772,7 +769,6 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 #define TRI_CLOSE_SOCKET TRI_closesocket
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
-#define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
 // user and group types
 
