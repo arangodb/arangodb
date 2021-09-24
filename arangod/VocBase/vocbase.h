@@ -367,6 +367,8 @@ struct TRI_vocbase_t {
   typedef std::function<bool(arangodb::LogicalDataSource& dataSource)> dataSourceVisitor;
   bool visitDataSources(dataSourceVisitor const& visitor);
 
+  std::shared_ptr<arangodb::LogicalCollection> persistCollection(std::shared_ptr<arangodb::LogicalCollection>& collection);
+
  private:
   /// @brief callback for collection dropping
   static bool dropCollectionCallback(arangodb::LogicalCollection& collection);

@@ -65,6 +65,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/VocBase/Methods/CollectionValidatorEE.h"
+#endif
+
 #include <unordered_set>
 
 using namespace arangodb;
@@ -436,7 +440,25 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
         return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
       }
     } else if (isSingleServerSmartGraph) {
+#ifdef USE_ENTERPRISE
       // todo: add comment to describe that section && implement
+      TRI_ASSERT(ServerState::instance()->isSingleServer());
+      TRI_ASSERT(infoSlice.isArray());
+
+      auto res =
+          enterprise::CollectionValidatorEE::createLogicalCollections(infoSlice, collections,
+                                                                      vocbase);
+      if (res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+
+      for (auto& col : collections) {
+        TRI_ASSERT(col != nullptr);
+        vocbase.persistCollection(col);
+      }
+#else
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+#endif
     } else {
       TRI_ASSERT(ServerState::instance()->isSingleServer());
       // Here we do have a single server setup. In that case, we're not batching collection creating.
@@ -761,7 +783,7 @@ Result Collections::rename(LogicalCollection& collection,
                               "non-system collection name or vice versa");
     }
 
-    bool extendedNames = collection.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections(); 
+    bool extendedNames = collection.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections();
     if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames, newName)) {
       return TRI_ERROR_ARANGO_ILLEGAL_NAME;
     }
@@ -839,9 +861,9 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
 
-  LOG_TOPIC_IF("1bf4d", WARN, Logger::ENGINES, 
-               res.fail() && 
-               res.isNot(TRI_ERROR_FORBIDDEN) && 
+  LOG_TOPIC_IF("1bf4d", WARN, Logger::ENGINES,
+               res.fail() &&
+               res.isNot(TRI_ERROR_FORBIDDEN) &&
                res.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
                res.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))
     << "error while dropping collection: '" << collName
