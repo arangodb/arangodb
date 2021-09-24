@@ -26,13 +26,13 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
+#include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/fasthash.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -52,10 +52,10 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
-#include "Utilities/NameValidator.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
@@ -65,6 +65,10 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/VocBase/Methods/CollectionValidatorEE.h"
+#endif
 
 #include <unordered_set>
 
@@ -258,8 +262,7 @@ Result _getBuilder(TRI_vocbase_t const& vocbase,
     // collection (as seen on a Coordinator), nor a shard (on a DBServer).
     bool const isLocalCollection =
         (!ServerState::instance()->isCoordinator() &&
-         basics::VelocyPackHelper::stringUInt64(
-             info.properties.get(StaticStrings::DataSourcePlanId)) == 0);
+         Helper::stringUInt64(info.properties.get(StaticStrings::DataSourcePlanId)) == 0);
 
     bool const isSystemName = NameValidator::isSystemName(info.name);
 
@@ -400,7 +403,25 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
         return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
       }
     } else if (isSingleServerSmartGraph) {
+#ifdef USE_ENTERPRISE
       // todo: add comment to describe that section && implement
+      TRI_ASSERT(ServerState::instance()->isSingleServer());
+      TRI_ASSERT(infoSlice.isArray());
+
+      auto res =
+          enterprise::CollectionValidatorEE::createLogicalCollections(infoSlice, collections,
+                                                                      vocbase);
+      if (res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+
+      for (auto& col : collections) {
+        TRI_ASSERT(col != nullptr);
+        vocbase.persistCollection(col);
+      }
+#else
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+#endif
     } else {
       TRI_ASSERT(ServerState::instance()->isSingleServer());
       // Here we do have a single server setup. In that case, we're not batching collection creating.
