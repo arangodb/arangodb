@@ -57,7 +57,7 @@ exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc, allTestP
   // just a convenience wrapper for the regular tests
   testFns['license'] = ['license-api'];
 
-  // turn off ldap tests by default.
+  // turn off license tests by default.
   opts['skipLicense'] = true;
 
   // only enable them in Enterprise Edition
