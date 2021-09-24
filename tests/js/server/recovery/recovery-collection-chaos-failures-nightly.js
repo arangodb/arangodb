@@ -76,6 +76,8 @@ function runSetup () {
     collectionCounts[c.name()] = c.count();
   }
 
+  require("console").warn("Collection counts from control:", JSON.stringify(collectionCounts));
+
   const failurePoints = [
     "TransactionChaos::randomSleep",
     "applyUpdates::forceHibernation1",
@@ -155,6 +157,8 @@ function runSetup () {
  
   db.control.insert({ _key: "counts", collectionCounts }, { waitForSync: true, overwriteMode: "replace" });
 
+  require("console").warn("Collection counts written to control:", JSON.stringify(collectionCounts));
+
   internal.debugTerminate('crashing server');
 }
 
@@ -190,12 +194,16 @@ function recoverySuite () {
         let c2 = toArray(c);
         let stored = counts.collectionCounts[c.name()];
         let rev = c._revisionTreeSummary().count;
+        let ver = c._revisionTreeVerification();
         console.warn("collection " + c.name() + ": count: " + c1 + ", toArray: " + c2 + ", stored: " + stored + ", rev count: " + rev);
+        if (!ver.equal) {
+          console.warn("collection " + c.name() + JSON.stringify(ver));
+        }
         assertTrue(counts.collectionCounts.hasOwnProperty(c.name()), c.name());
         assertEqual(c1, c2, c.name());
         assertEqual(c1, stored, c.name());
         assertEqual(rev, c1, c.name());
-        assertTrue(c._revisionTreeVerification().equal, c.name());
+        assertTrue(ver.equal, c.name());
       }
 
       ["_queues", "_statistics", "_statistics15", "_statisticsRaw"].forEach((colName) => {

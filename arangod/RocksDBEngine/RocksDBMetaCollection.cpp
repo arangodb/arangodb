@@ -514,12 +514,18 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
       // we cannot move beyond the seq no that we have already serialized up to.
       // this will effectively keep the background thread from making progress, 
       // but the scheduled tree rebuild operation should unblock it eventually.
+      LOG_DEVEL << "appliedSeq " << appliedSeq << " minimum with " 
+        << _revisionTreeSerializedSeq
+        << " by collection " << _logicalCollection.name();
       appliedSeq = std::min(appliedSeq, _revisionTreeSerializedSeq);
       return {};
     }
 
     guard.unlock();
 
+    LOG_DEVEL << "x appliedSeq " << appliedSeq << " minimum with " 
+      << _revisionTreeSerializedSeq
+      << " by collection " << _logicalCollection.name();
     appliedSeq = std::min(appliedSeq, seq);
 
     if (!scratch.empty()) {
@@ -536,6 +542,10 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
         return Result(rocksutils::convertStatus(s));
       } else {
         LOG_TOPIC("92a08", TRACE, Logger::ENGINES)
+            << context << ": serialized revision tree for "
+            << "collection with objectId '" << objectId() << "' "
+            << "through sequence number " << seq;
+        LOG_DEVEL
             << context << ": serialized revision tree for "
             << "collection with objectId '" << objectId() << "' "
             << "through sequence number " << seq;
@@ -565,6 +575,9 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
     // the revision tree in memory, which will end up in the WAL with a
     // sequence number less than the computed `seq` number here!
     rocksdb::SequenceNumber seq = lastSerializedRevisionTree(maxCommitSeq, guard);
+    LOG_DEVEL << "y appliedSeq " << appliedSeq << " minimum with " 
+      << _revisionTreeSerializedSeq
+      << " by collection " << _logicalCollection.name();
     appliedSeq = std::min(appliedSeq, seq);
 
     // set the tree to sleep (note: hibernation requests may be ignored if there
@@ -679,6 +692,9 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
     // or they have already been applied to the tree, in which case
     // _revisionTreeApplied would be larger than `seq`. q.e.d.
     LOG_TOPIC("32d45", TRACE, Logger::ENGINES)
+        << "adjusting sequence number for " << _logicalCollection.name() 
+        << " from " << _revisionTreeSerializedSeq << " to " << seq;
+    LOG_DEVEL
         << "adjusting sequence number for " << _logicalCollection.name() 
         << " from " << _revisionTreeSerializedSeq << " to " << seq;
     

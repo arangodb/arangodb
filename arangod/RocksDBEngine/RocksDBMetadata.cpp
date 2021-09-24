@@ -310,7 +310,11 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   auto& engine = coll.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   std::string const context = coll.vocbase().name() + "/" + coll.name();
 
+  LOG_DEVEL << "z appliedSeq " << appliedSeq << " starts " 
+    << " for collection " << coll.name();
   rocksdb::SequenceNumber const maxCommitSeq = committableSeq(appliedSeq);
+  LOG_DEVEL << "z maxCommitSeq " << maxCommitSeq << " starts " 
+    << " for collection " << coll.name();
   TRI_ASSERT(maxCommitSeq <= appliedSeq);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
