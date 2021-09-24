@@ -13,15 +13,13 @@ If the collection does not exist, it will be created.
 The name of the graph.
 
 @RESTBODYPARAM{options,object,optional,post_api_vertex_create_opts}
-a JSON object to define options for creating vertex collections.
-It can contain the following attributes:
+A JSON object to set options for creating vertex collections.
 
-@RESTSTRUCT{satellites,post_api_vertex_create_opts,array,optional,}
-Only has effect in Enterprise Edition. The graph needs to be created either
-as SmartGraph or as a Smart Disjoint Graph. The collection names that are
-going to be created as SatelliteCollections. Each array entry must be set
-as String and must be a valid collection name. The collection type cannot
-be modified later.
+@RESTSTRUCT{satellites,post_api_vertex_create_opts,array,optional,string}
+An array of collection names that will be used to create SatelliteCollections
+for a Hybrid (Disjoint) SmartGraph (Enterprise Edition only). Each array element
+must be a string and a valid collection name. The collection type cannot be
+modified later.
 
 @RESTRETURNCODES
 
