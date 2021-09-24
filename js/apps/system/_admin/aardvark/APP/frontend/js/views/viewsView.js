@@ -322,17 +322,18 @@
           {
             noLabel: true // Dummy object. Entry will only be created if this is set as a String.
           },
-          ['Fields (one per line)', 'Compression'],
+          ['Fields', 'Compression'],
           [[
-            window.modalView.createBlobEntry(
+            window.modalView.createSelect2Entry(
               _.uniqueId('field-'),
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              'width: 170px !important;'
+              null,
+              null,
+              null,
+              null,
+              true,
+              false,
+              false,
+              null
             ),
             window.modalView.createSelectEntry(
               _.uniqueId('compression-'),
@@ -422,13 +423,38 @@
 
       window.modalView.show('modalTable.ejs', 'Create New View', buttons, tableContent, advanced,
         undefined, this.events);
+
+      // select2 workaround
+      $('.select2-search-field input').on('focusout', function (e) {
+        if ($('.select2-drop').is(':visible')) {
+          if (!$('#select2-search-field input').is(':focus')) {
+            window.setTimeout(function () {
+              $(e.currentTarget).parent().parent().parent().select2('close');
+            }, 200);
+          }
+        }
+      });
     },
 
     addRow: function (e) {
       e.stopPropagation();
 
       const row = $(e.currentTarget).closest('table').find('tbody').children().last();
-      const newRow = row.clone(true);
+      let foundSelect2 = false;
+      if (row.find('.select2-container').length > 0) {
+        foundSelect2 = true;
+      }
+
+      let newRow;
+      if (!foundSelect2) {
+        newRow = row.clone(true);
+      } else {
+        newRow = row.clone(false);
+
+        let firstCell = newRow.find('td:first-child');
+        firstCell.html('<div></div>');
+      }
+
       const idParts = newRow.attr('id').split('-');
 
       idParts[idParts.length - 1] = parseInt(idParts[idParts.length - 1]) + 1;

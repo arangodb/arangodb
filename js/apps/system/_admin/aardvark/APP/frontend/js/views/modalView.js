@@ -419,29 +419,49 @@
       var completeTableContent = tableContent || [];
       if (advancedContent && advancedContent.content) {
         completeTableContent = completeTableContent.concat(advancedContent.content);
+      } else if (Array.isArray(advancedContent)) {
+        _.each(advancedContent, function(arrEntry){
+          if (arrEntry.content) {
+            completeTableContent = completeTableContent.concat(arrEntry.content);
+          }
+        });
       }
+
+      let handleSelect2Row = function (row) {
+        console.log("Handling: ");
+        console.log(row);
+        // handle select2
+        var options = {
+          tags: row.tags || [],
+          showSearchBox: false,
+          minimumResultsForSearch: -1,
+          width: row.width || '336px'
+        };
+
+        if (row.maxEntrySize) {
+          options.maximumSelectionSize = row.maxEntrySize;
+        }
+
+        $('#' + row.id).select2(options);
+      };
 
       _.each(completeTableContent, function (row) {
         self.modalBindValidation(row);
         if (row.type === self.tables.SELECT2) {
-          // handle select2
-
-          var options = {
-            tags: row.tags || [],
-            showSearchBox: false,
-            minimumResultsForSearch: -1,
-            width: '336px'
-          };
-
-          if (row.maxEntrySize) {
-            options.maximumSelectionSize = row.maxEntrySize;
-          }
-
-          $('#' + row.id).select2(options);
+          handleSelect2Row(row);
         }
 
         if (row.type === self.tables.TABLE) {
-          row.rows.forEach(row => _.each(row, self.modalBindValidation, self));
+          row.rows.forEach(row => {
+            _.each(row, self.modalBindValidation, self);
+
+            _.each(row, function(innerRow) {
+              if (innerRow.type === self.tables.SELECT2) {
+                innerRow.width = "resolve";
+                handleSelect2Row(innerRow);
+              }
+            });
+          });
         }
       });
 
