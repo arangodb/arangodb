@@ -266,20 +266,28 @@ ArangoDatabase.prototype._getLicense = function (options) {
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult.result;
+  return requestResult;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief return license information
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._setLicense = function (options, data) {
+ArangoDatabase.prototype._setLicense = function (data, options) {
   let url = "/_admin/license?";
   if (options && options.force) {
     url += "force=true";
   }
-  var requestResult = this._connection.PUT(url, {});
+  if (typeof data !== 'string') {
+    throw new ArangoError({
+      error: true,
+      code: internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code,
+      errorNum: internal.errors.ERROR_LICENSE_INVALID.code,
+      errorMessage: "License body must be a string. It is " + (typeof data)
+    });
+  }
 
+  var requestResult = this._connection.PUT(url, data);
   arangosh.checkRequestResult(requestResult);
 
   return requestResult.result;
@@ -293,7 +301,7 @@ ArangoDatabase.prototype._compact = function (options) {
   let url = "/_admin/compact?";
   if (options && options.changeLevel) {
     url += "changeLevel=true&";
-  } 
+  }
   if (options && options.bottomMost) {
     url += "bottomMost=true";
   }
@@ -386,7 +394,7 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     options = type;
     type = undefined;
   }
-  
+
   let urlAddons = [];
   if (typeof options === "object" && options !== null) {
     if (options.hasOwnProperty('waitForSyncReplication')) {
