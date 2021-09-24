@@ -983,3 +983,483 @@ authRouter.get('/graph/:name', function (req, res) {
 .description(dd`
   This function returns vertices and edges for a specific graph.
 `);
+
+authRouter.get('/g6graph/:name', function (req, res) {
+  var name = req.pathParams.name;
+  var gm;
+  if (isEnterprise) {
+    gm = require('@arangodb/smart-graph');
+  } else {
+    gm = require('@arangodb/general-graph');
+  }
+  var colors = {
+    default: [
+      '#68BDF6',
+      '#6DCE9E',
+      '#FF756E',
+      '#DE9BF9',
+      '#FB95AF',
+      '#FFD86E',
+      '#A5ABB6'
+    ],
+    jans: ['rgba(166, 109, 161, 1)', 'rgba(64, 74, 83, 1)', 'rgba(90, 147, 189, 1)', 'rgba(153,63,0,1)', 'rgba(76,0,92,1)', 'rgba(25,25,25,1)', 'rgba(0,92,49,1)', 'rgba(43,206,72,1)', 'rgba(255,204,153,1)', 'rgba(128,128,128,1)', 'rgba(148,255,181,1)', 'rgba(143,124,0,1)', 'rgba(157,204,0,1)', 'rgba(194,0,136,1)', 'rgba(0,51,128,1)', 'rgba(255,164,5,1)', 'rgba(255,168,187,1)', 'rgba(66,102,0,1)', 'rgba(255,0,16,1)', 'rgba(94,241,242,1)', 'rgba(0,153,143,1)', 'rgba(224,255,102,1)', 'rgba(116,10,255,1)', 'rgba(153,0,0,1)', 'rgba(255,255,128,1)', 'rgba(255,255,0,1)', 'rgba(255,80,5,1)'],
+    highContrast: [
+      '#EACD3F',
+      '#6F308A',
+      '#DA6927',
+      '#98CDE5',
+      '#B81F34',
+      '#C0BC82',
+      '#7F7E80',
+      '#61A547',
+      '#60A446',
+      '#D285B0',
+      '#4477B3',
+      '#DD8465',
+      '#473896',
+      '#E0A02F',
+      '#8F2689',
+      '#E7E655',
+      '#7C1514',
+      '#93AD3C',
+      '#6D3312',
+      '#D02C26',
+      '#2A3415'
+    ]
+  };
+
+  var graph;
+  try {
+    graph = gm._graph(name);
+  } catch (e) {
+    res.throw('bad request', e.errorMessage);
+  }
+
+  var verticesCollections = graph._vertexCollections();
+  if (!verticesCollections || verticesCollections.length === 0) {
+    res.throw('bad request', 'no vertex collections found for graph');
+  }
+
+  var vertexCollections = [];
+
+  _.each(graph._vertexCollections(), function (vertex) {
+    vertexCollections.push({
+      name: vertex.name(),
+      id: vertex._id
+    });
+  });
+
+  var config;
+
+  try {
+    config = req.queryParams;
+  } catch (e) {
+    res.throw('bad request', e.message, {cause: e});
+  }
+
+  var getPseudoRandomStartVertex = function () {
+    for (var i = 0; i < graph._vertexCollections().length; i++) {
+      var vertexCollection = graph._vertexCollections()[i];
+      let maxDoc = db[vertexCollection.name()].count();
+
+      if (maxDoc === 0) {
+        continue;
+      }
+
+      if (maxDoc > 1000) {
+        maxDoc = 1000;
+      }
+
+      let randDoc = Math.floor(Math.random() * maxDoc);
+
+      let potentialVertex = db._query(
+        'FOR vertex IN @@vertexCollection LIMIT @skipN, 1 RETURN vertex',
+        {
+          '@vertexCollection': vertexCollection.name(),
+          'skipN': randDoc
+        }
+      ).toArray()[0];
+
+      if (potentialVertex) {
+        return potentialVertex;
+      }
+    }
+
+    return null;
+  };
+
+  var multipleIds;
+  var startVertex; // will be "randomly" chosen if no start vertex is specified
+
+  if (config.nodeStart) {
+    if (config.nodeStart.indexOf(' ') > -1) {
+      multipleIds = config.nodeStart.split(' ');
+    } else {
+      try {
+        startVertex = db._document(config.nodeStart);
+      } catch (e) {
+        res.throw('bad request', e.message, {cause: e});
+      }
+      if (!startVertex) {
+        startVertex = getPseudoRandomStartVertex();
+      }
+    }
+  } else {
+    startVertex = getPseudoRandomStartVertex();
+  }
+
+  var limit = 0;
+  if (config.limit !== undefined) {
+    if (config.limit.length > 0 && config.limit !== '0') {
+      limit = parseInt(config.limit);
+    }
+  }
+
+  var toReturn;
+  if (startVertex === null) {
+    toReturn = {
+      empty: true,
+      msg: 'Your graph is empty. We did not find a document in any available vertex collection.',
+      settings: {
+        vertexCollections: vertexCollections
+      }
+    };
+    if (isEnterprise) {
+      if (graph.__isSmart) {
+        toReturn.settings.isSmart = graph.__isSmart;
+        toReturn.settings.smartGraphAttribute = graph.__smartGraphAttribute;
+      }
+    }
+  } else {
+    var aqlQuery;
+    var aqlQueries = [];
+
+    let depth = parseInt(config.depth);
+
+    if (config.query) {
+      aqlQuery = config.query;
+    } else {
+      if (multipleIds) {
+        /* TODO: uncomment after #75 fix
+          aqlQuery =
+            'FOR x IN ' + JSON.stringify(multipleIds) + ' ' +
+            'FOR v, e, p IN 1..' + (depth || '2') + ' ANY x GRAPH "' + name + '"';
+        */
+        _.each(multipleIds, function (nodeid) {
+          aqlQuery =
+            'FOR v, e, p IN 1..' + (depth || '2') + ' ANY ' + JSON.stringify(nodeid) + ' GRAPH ' + JSON.stringify(name);
+          if (limit !== 0) {
+            aqlQuery += ' LIMIT ' + limit;
+          }
+          aqlQuery += ' RETURN p';
+          aqlQueries.push(aqlQuery);
+        });
+      } else {
+        aqlQuery =
+          'FOR v, e, p IN 1..' + (depth || '2') + ' ANY ' + JSON.stringify(startVertex._id) + ' GRAPH ' + JSON.stringify(name);
+        if (limit !== 0) {
+          aqlQuery += ' LIMIT ' + limit;
+        }
+        aqlQuery += ' RETURN p';
+      }
+    }
+
+    var getAttributeByKey = function (o, s) {
+      s = s.replace(/\[(\w+)\]/g, '.$1');
+      s = s.replace(/^\./, '');
+      var a = s.split('.');
+      for (var i = 0, n = a.length; i < n; ++i) {
+        var k = a[i];
+        if (k in o) {
+          o = o[k];
+        } else {
+          return;
+        }
+      }
+      return o;
+    };
+
+    var cursor;
+    // get all nodes and edges, even if they are not connected
+    // atm there is no server side function, so we need to get all docs
+    // and edges of all related collections until the given limit is reached.
+    if (config.mode === 'all') {
+      var insertedEdges = 0;
+      var insertedNodes = 0;
+      var tmpEdges, tmpNodes;
+      cursor = {
+        json: [{
+          vertices: [],
+          edges: []
+        }]
+      };
+
+      // get all nodes
+      _.each(graph._vertexCollections(), function (node) {
+        if (insertedNodes < limit || limit === 0) {
+          tmpNodes = node.all().limit(limit).toArray();
+          _.each(tmpNodes, function (n) {
+            cursor.json[0].vertices.push(n);
+          });
+          insertedNodes += tmpNodes.length;
+        }
+      });
+      // get all edges
+      _.each(graph._edgeCollections(), function (edge) {
+        if (insertedEdges < limit || limit === 0) {
+          tmpEdges = edge.all().limit(limit).toArray();
+          _.each(tmpEdges, function (e) {
+            cursor.json[0].edges.push(e);
+          });
+          insertedEdges += tmpEdges.length;
+        }
+      });
+    } else {
+      // get all nodes and edges which are connected to the given start node
+      try {
+        if (aqlQueries.length === 0) {
+          cursor = AQL_EXECUTE(aqlQuery);
+        } else {
+          var x;
+          cursor = AQL_EXECUTE(aqlQueries[0]);
+          for (var k = 1; k < aqlQueries.length; k++) {
+            x = AQL_EXECUTE(aqlQueries[k]);
+            _.each(x.json, function (val) {
+              cursor.json.push(val);
+            });
+          }
+        }
+      } catch (e) {
+        const error = new ArangoError({errorNum: e.errorNum, errorMessage: e.errorMessage});
+        res.throw(actions.arangoErrorToHttpCode(e.errorNum), error);
+      }
+    }
+
+    var nodesObj = {};
+    var nodesArr = [];
+    var nodeNames = {};
+    var edgesObj = {};
+    var edgesArr = [];
+    var nodeEdgesCount = {};
+    var handledEdges = {};
+
+    var tmpObjEdges = {};
+    var tmpObjNodes = {};
+
+    _.each(cursor.json, function (obj) {
+      var edgeLabel = '';
+      var edgeObj;
+      _.each(obj.edges, function (edge) {
+        if (edge._to && edge._from) {
+          if (config.edgeLabel && config.edgeLabel.length > 0) {
+            // configure edge labels
+
+            if (config.edgeLabel.indexOf('.') > -1) {
+              edgeLabel = getAttributeByKey(edge, config.edgeLabel);
+              if (nodeLabel === undefined || nodeLabel === '') {
+                edgeLabel = edgeLabel._id;
+              }
+            } else {
+              edgeLabel = edge[config.edgeLabel];
+            }
+
+            if (typeof edgeLabel !== 'string') {
+              edgeLabel = JSON.stringify(edgeLabel);
+            }
+            if (config.edgeLabelByCollection === 'true') {
+              edgeLabel += ' - ' + edge._id.split('/')[0];
+            }
+          } else {
+            if (config.edgeLabelByCollection === 'true') {
+              edgeLabel = edge._id.split('/')[0];
+            }
+          }
+
+          if (config.nodeSizeByEdges === 'true') {
+            if (handledEdges[edge._id] === undefined) {
+              handledEdges[edge._id] = true;
+
+              if (nodeEdgesCount[edge._from] === undefined) {
+                nodeEdgesCount[edge._from] = 1;
+              } else {
+                nodeEdgesCount[edge._from] += 1;
+              }
+
+              if (nodeEdgesCount[edge._to] === undefined) {
+                nodeEdgesCount[edge._to] = 1;
+              } else {
+                nodeEdgesCount[edge._to] += 1;
+              }
+            }
+          }
+
+          /*
+          edgeObj = {
+            id: edge._id,
+            source: edge._from,
+            label: edgeLabel,
+            color: config.edgeColor || '#cccccc',
+            target: edge._to
+          };
+          */
+          edgeObj = {
+            id: edge._id,
+            source: edge._from,
+            label: edgeLabel,
+            color: config.edgeColor || '#cccccc',
+            target: edge._to
+          };
+
+          if (config.edgeEditable === 'true') {
+            edgeObj.size = 1;
+          } else {
+            edgeObj.size = 1;
+          }
+
+          if (config.edgeColorByCollection === 'true') {
+            var coll = edge._id.split('/')[0];
+            if (tmpObjEdges.hasOwnProperty(coll)) {
+              edgeObj.color = tmpObjEdges[coll];
+            } else {
+              tmpObjEdges[coll] = colors.jans[Object.keys(tmpObjEdges).length];
+              edgeObj.color = tmpObjEdges[coll];
+            }
+          } else if (config.edgeColorAttribute !== '') {
+            var attr = edge[config.edgeColorAttribute];
+            if (attr) {
+              if (tmpObjEdges.hasOwnProperty(attr)) {
+                edgeObj.color = tmpObjEdges[attr];
+              } else {
+                tmpObjEdges[attr] = colors.jans[Object.keys(tmpObjEdges).length];
+                edgeObj.color = tmpObjEdges[attr];
+              }
+            }
+          }
+        }
+        edgeObj.sortColor = edgeObj.color;
+        edgesObj[edge._id] = edgeObj;
+      });
+
+      var nodeLabel;
+      var nodeSize;
+      var nodeObj;
+      _.each(obj.vertices, function (node) {
+        if (node !== null) {
+          nodeNames[node._id] = true;
+
+          if (config.nodeLabel) {
+            if (config.nodeLabel.indexOf('.') > -1) {
+              nodeLabel = getAttributeByKey(node, config.nodeLabel);
+              if (nodeLabel === undefined || nodeLabel === '') {
+                nodeLabel = node._id;
+              }
+            } else {
+              nodeLabel = node[config.nodeLabel];
+            }
+          } else {
+            nodeLabel = node._key;
+          }
+
+          if (config.nodeLabelByCollection === 'true') {
+            nodeLabel += ' - ' + node._id.split('/')[0];
+          }
+          if (typeof nodeLabel === 'number') {
+            nodeLabel = JSON.stringify(nodeLabel);
+          }
+          if (config.nodeSize && config.nodeSizeByEdges === 'false') {
+            nodeSize = node[config.nodeSize];
+          }
+
+          /*
+          nodeObj = {
+            id: node._id,
+            label: nodeLabel,
+            size: nodeSize || 3,
+            color: config.nodeColor || '#2ecc71',
+            sortColor: undefined,
+            x: Math.random(),
+            y: Math.random()
+          };
+          */
+          nodeObj = {
+            id: node._id,
+            label: nodeLabel,
+            style: {
+              label: {
+                value: nodeLabel
+              }
+            }
+          };
+
+          if (config.nodeColorByCollection === 'true') {
+            var coll = node._id.split('/')[0];
+            if (tmpObjNodes.hasOwnProperty(coll)) {
+              nodeObj.color = tmpObjNodes[coll];
+            } else {
+              tmpObjNodes[coll] = colors.jans[Object.keys(tmpObjNodes).length];
+              nodeObj.color = tmpObjNodes[coll];
+            }
+          } else if (config.nodeColorAttribute !== '') {
+            var attr = node[config.nodeColorAttribute];
+            if (attr) {
+              if (tmpObjNodes.hasOwnProperty(attr)) {
+                nodeObj.color = tmpObjNodes[attr];
+              } else {
+                tmpObjNodes[attr] = colors.jans[Object.keys(tmpObjNodes).length];
+                nodeObj.color = tmpObjNodes[attr];
+              }
+            }
+          }
+
+          nodeObj.sortColor = nodeObj.color;
+          nodesObj[node._id] = nodeObj;
+        }
+      });
+    });
+
+    _.each(nodesObj, function (node) {
+      if (config.nodeSizeByEdges === 'true') {
+        // + 10 visual adjustment sigma
+        node.size = nodeEdgesCount[node.id] + 10;
+
+        // if a node without edges is found, use def. size 10
+        if (Number.isNaN(node.size)) {
+          node.size = 10;
+        }
+      }
+      nodesArr.push(node);
+    });
+
+    var nodeNamesArr = [];
+    _.each(nodeNames, function (found, key) {
+      nodeNamesArr.push(key);
+    });
+
+    // array format for sigma.js
+    _.each(edgesObj, function (edge) {
+      if (nodeNamesArr.indexOf(edge.source) > -1 && nodeNamesArr.indexOf(edge.target) > -1) {
+        edgesArr.push(edge);
+      }
+    });
+    toReturn = {
+      nodes: nodesArr,
+      edges: edgesArr,
+      settings: {
+        vertexCollections: vertexCollections,
+        startVertex: startVertex
+      }
+    };
+    if (isEnterprise) {
+      if (graph.__isSmart) {
+        toReturn.settings.isSmart = graph.__isSmart;
+        toReturn.settings.smartGraphAttribute = graph.__smartGraphAttribute;
+      }
+    }
+  }
+
+  res.json(toReturn);
+})
+.summary('Return vertices and edges of a graph.')
+.description(dd`
+  This function returns vertices and edges for a specific graph.
+`);
