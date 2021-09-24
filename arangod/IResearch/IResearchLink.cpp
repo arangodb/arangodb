@@ -1996,9 +1996,9 @@ IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {
 ///        <DatabasePath>/<IResearchLink::type()>-<link id>
 ///        similar to the data path calculation for collections
 ////////////////////////////////////////////////////////////////////////////////
-std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                 IResearchLink const& link) {
-  std::filesystem::path dataPath(dbPathFeature.directory());
+  irs::utf8_path dataPath(dbPathFeature.directory());
   static const std::string subPath("databases");
   static const std::string dbPath("database-");
 

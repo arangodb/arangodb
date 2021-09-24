@@ -449,7 +449,7 @@ bool upgradeSingleServerArangoSearchView0_1(
       return false;  // definition generation failure
     }
 
-    std::filesystem::path dataPath;
+    irs::utf8_path dataPath;
 
     auto& server = vocbase.server();
     if (!server.hasFeature<DatabasePathFeature>()) {
@@ -465,7 +465,7 @@ bool upgradeSingleServerArangoSearchView0_1(
     static const std::string subPath("databases");
     static const std::string dbPath("database-");
 
-    dataPath = std::filesystem::path(dbPathFeature.directory());
+    dataPath = irs::utf8_path(dbPathFeature.directory());
     dataPath /= subPath;
     dataPath /= dbPath;
     dataPath += std::to_string(vocbase.id());
