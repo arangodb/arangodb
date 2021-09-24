@@ -51,6 +51,9 @@ const setup = require(base);
   setup.createJobs();
   setup.createFoxx();
   setup.createAnalyzers();
+  setup.createEmptySmartGraph();
+  setup.createSmartGraphWithoutData();
+  setup.createSmartGraphSingleServer();
 })();
 
 return {

@@ -33,6 +33,7 @@ const analyzers = require("@arangodb/analyzers");
 const db = require("@arangodb").db;
 const isCluster = require('internal').isCluster();
 const isEnterprise = require("internal").isEnterprise();
+const sgm = require("@arangodb/smart-graph");
 
 function cleanup() {
   'use strict';
@@ -402,6 +403,29 @@ function createAnalyzers() {
 
 /**
  * @brief Only if enterprise mode:
+ *        Creates an empty SmartGraph sharded by `value`, with no edge relations.
+ */
+function createEmptySmartGraph() {
+  if (!isEnterprise) {
+    return;
+  }
+  db._useDatabase("UnitTestsDumpSrc");
+
+  const smartGraphName = "UnitTestsDumpEmptySmartGraph";
+
+  if (sgm._exists(smartGraphName)) {
+    sgm._drop(smartGraphName, true);
+  }
+
+  sgm._create(smartGraphName, [], [], {
+    numberOfShards: 5,
+    replicationFactor: 1,
+    smartGraphAttribute: "value"
+  });
+}
+
+/**
+ * @brief Only if enterprise mode:
  *        Creates a SmartGraph sharded by `value`
  *        That has 100 vertices (value 0 -> 99)
  *        That has 100 orphans (value 0 -> 99)
@@ -419,14 +443,13 @@ function createSmartGraph() {
   const edges = "UnitTestDumpSmartEdges";
   const vertices = "UnitTestDumpSmartVertices";
   const orphans = "UnitTestDumpSmartOrphans";
-  const gm = require("@arangodb/smart-graph");
-  if (gm._exists(smartGraphName)) {
-    gm._drop(smartGraphName, true);
+  if (sgm._exists(smartGraphName)) {
+    sgm._drop(smartGraphName, true);
   }
   db._drop(edges);
   db._drop(vertices);
 
-  gm._create(smartGraphName, [gm._relation(edges, vertices, vertices)],
+  sgm._create(smartGraphName, [sgm._relation(edges, vertices, vertices)],
     [orphans], {numberOfShards: 5, smartGraphAttribute: "value"});
 
   let vDocs = [];
@@ -442,7 +465,67 @@ function createSmartGraph() {
   }
   db[edges].save(eDocs);
   db[orphans].save(vDocs);
-};
+}
+
+function createSmartGraphSingleServer() {
+  if (!isEnterprise) {
+    return;
+  }
+  db._useDatabase("UnitTestsDumpSrc");
+
+  const smartGraphName = "UnitTestDumpSmartGraphSingleServer";
+  const edges = "UnitTestDumpSmartEdgesSingleServer";
+  const vertices = "UnitTestDumpSmartVerticesSingleServer";
+  const orphans = "UnitTestDumpSmartOrphansSingleServer";
+  if (sgm._exists(smartGraphName)) {
+    sgm._drop(smartGraphName, true);
+  }
+  db._drop(edges);
+  db._drop(vertices);
+  db._drop(orphans);
+
+  sgm._create(smartGraphName, [sgm._relation(edges, vertices, vertices)],
+    [orphans], {numberOfShards: 5, smartGraphAttribute: "value"});
+
+  let vDocs = [];
+  for (let i = 0; i < 100; ++i) {
+    vDocs.push({value: String(i)});
+  }
+  let saved = db[vertices].save(vDocs).map(v => v._id);
+  let eDocs = [];
+  for (let i = 0; i < 100; ++i) {
+    eDocs.push({_from: saved[(i+1) % 100], _to: saved[i], value: String(i)});
+    eDocs.push({_from: saved[i], _to: saved[i], value: String(i)});
+    eDocs.push({_from: saved[i], _to: saved[(i+1) % 100], value: String(i)});
+  }
+  db[edges].save(eDocs);
+  db[orphans].save(vDocs);
+}
+
+/**
+ * @brief Only if enterprise mode:
+ *        Creates a SmartGraph sharded by `value`, and a single edge relation.
+ */
+function createSmartGraphWithoutData() {
+  if (!isEnterprise) {
+    return;
+  }
+  db._useDatabase("UnitTestsDumpSrc");
+
+  const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
+  const edges = "UnitTestDumpSmartEdgesWithoutData";
+  const vertices = "UnitTestDumpSmartVerticesWithoutData";
+  const orphans = "UnitTestDumpSmartOrphansWithoutData";
+  if (sgm._exists(smartGraphName)) {
+    sgm._drop(smartGraphName, true);
+  }
+  db._drop(edges);
+  db._drop(vertices);
+  db._drop(orphans);
+
+  sgm._create(smartGraphName, [sgm._relation(edges, vertices, vertices)],
+    [orphans], {numberOfShards: 5, smartGraphAttribute: "value"});
+}
 
 /**
  * @brief Only if enterprise mode:
@@ -620,7 +703,10 @@ function createSmartGraphRegressionTest() {
   db._update(saved[0], { cheesyness: "bread" });  
 }
 
+exports.createEmptySmartGraph = createEmptySmartGraph;
+exports.createSmartGraphWithoutData = createSmartGraphWithoutData;
 exports.createSmartGraph = createSmartGraph;
+exports.createSmartGraphSingleServer = createSmartGraphSingleServer;
 exports.createSmartArangoSearch = createSmartArangoSearch;
 exports.createSatelliteCollections = createSatelliteCollections;
 exports.createSatelliteGraphs = createSatelliteGraphs;
