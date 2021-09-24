@@ -459,7 +459,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/ManagedDocumentResult.cpp
   VocBase/Methods/AqlUserFunctions.cpp
   VocBase/Methods/Collections.cpp
-        VocBase/Methods/CollectionValidator.cpp
+  VocBase/Methods/CollectionValidator.cpp
   VocBase/Methods/Databases.cpp
   VocBase/Methods/Indexes.cpp
   VocBase/Methods/Queries.cpp
