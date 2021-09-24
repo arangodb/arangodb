@@ -68,6 +68,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
@@ -1145,7 +1146,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
 
       // force one shard, and force distributeShardsLike to be "_graphs"
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
-      if (!_vocbase.IsSystemName(name) && !isSatellite) {
+      if (!NameValidator::isSystemName(name) && !isSatellite) {
         // system-collections will be sharded normally. only user collections
         // will get the forced sharding. SatelliteCollections must not be
         // sharded like a non-satellite collection.
@@ -3287,7 +3288,7 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   VPackBuilder patch;
   patch.openObject();
   patch.add(StaticStrings::Version, VPackSlice::nullSlice());
-  patch.add(StaticStrings::DataSourceSystem, VPackValue(TRI_vocbase_t::IsSystemName(name)));
+  patch.add(StaticStrings::DataSourceSystem, VPackValue(NameValidator::isSystemName(name)));
   if (!uuid.empty()) {
     bool valid = false;
     NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);

@@ -168,6 +168,7 @@ class DumpFeature final : public application_features::ApplicationFeature {
 
   Result storeDumpJson(VPackSlice body, std::string const& dbName) const;
   Result storeViews(velocypack::Slice const&) const;
+
 };
 
 }  // namespace arangodb

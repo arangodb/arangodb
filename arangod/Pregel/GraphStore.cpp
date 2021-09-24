@@ -61,7 +61,9 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-#define LOG_PREGEL(id, level) LOG_TOPIC(id, level, Logger::PREGEL) << "[job " << _executionNumber << "] " 
+#define LOG_PREGEL(logId, level)          \
+  LOG_TOPIC(logId, level, Logger::PREGEL) \
+  << "[job " << _executionNumber << "] " 
 
 namespace {
 static constexpr size_t minStringChunkSize = 16 * 1024 * sizeof(char);
@@ -302,7 +304,7 @@ std::unique_ptr<TypedBuffer<M>> createBuffer(WorkerConfig const& config, size_t 
 template <typename V, typename E>
 void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
                                     std::vector<ShardID> const& edgeShards) {
-  LOG_PREGEL("24837", DEBUG)
+  LOG_PREGEL("24838", DEBUG)
     << "Loading from vertex shard " << vertexShard << ", edge shards: " << edgeShards;
 
   transaction::Options trxOpts;

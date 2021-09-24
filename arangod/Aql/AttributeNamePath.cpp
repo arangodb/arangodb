@@ -133,9 +133,10 @@ AttributeNamePath& AttributeNamePath::shortenTo(size_t length) {
   size_t numEqual = 0;
   size_t commonLength = std::min(lhs.size(), rhs.size());
   for (size_t i = 0; i < commonLength; ++i) {
-    if (lhs[i] == rhs[i]) {
-      ++numEqual;
+    if (lhs[i] != rhs[i]) {
+      break;
     }
+    ++numEqual;
   }
   return numEqual;
 }

@@ -39,7 +39,9 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/StringRef.h>
+#include <velocypack/Value.h>
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -149,14 +151,43 @@ void TRI_AddFailurePointDebugging(char const* value) {
 
 /// @brief remove a failure point
 void TRI_RemoveFailurePointDebugging(char const* value) {
-  WRITE_LOCKER(writeLocker, ::failurePointsLock);
-  ::failurePoints.erase(std::string(value));
+  size_t numRemoved = 0;
+  {
+    WRITE_LOCKER(writeLocker, ::failurePointsLock);
+    numRemoved = ::failurePoints.erase(std::string(value));
+  }
+
+  if (numRemoved > 0) {
+    LOG_TOPIC("5aacb", INFO, arangodb::Logger::FIXME)
+        << "cleared failure point " << value;
+  }
 }
 
 /// @brief clear all failure points
 void TRI_ClearFailurePointsDebugging() noexcept {
-  WRITE_LOCKER(writeLocker, ::failurePointsLock);
-  ::failurePoints.clear();
+  size_t numExisting = 0;
+  {
+    WRITE_LOCKER(writeLocker, ::failurePointsLock);
+    numExisting = ::failurePoints.size();
+    ::failurePoints.clear();
+  }
+    
+  if (numExisting > 0) {
+    LOG_TOPIC("ea4e7", INFO, arangodb::Logger::FIXME)
+        << "cleared " << numExisting << " failure point(s)";
+  }
+}
+
+/// @brief return all currently set failure points
+void TRI_GetFailurePointsDebugging(arangodb::velocypack::Builder& builder) {
+  builder.openArray();
+  {
+    READ_LOCKER(readLocker, ::failurePointsLock);
+    for (auto const& it : ::failurePoints) {
+      builder.add(arangodb::velocypack::Value(it));
+    }
+  }
+  builder.close();
 }
 #endif
 

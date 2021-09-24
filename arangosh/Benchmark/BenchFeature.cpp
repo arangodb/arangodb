@@ -39,7 +39,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
@@ -86,7 +88,6 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
       _createDatabase(false),
       _delay(false),
       _progress(true),
-      _verbose(false),
       _quiet(false),
       _waitForSync(false),
       _runs(1),
@@ -222,11 +223,9 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "If --custom-query is specified as well, it has higher priority.",
                      new StringParameter(&_customQueryFile)).setIntroducedIn(30800);
                      
-  options->addOption("--verbose",
-                     "print out replies if the HTTP header indicates DB errors",
-                     new BooleanParameter(&_verbose));
-
   options->addOption("--quiet", "suppress status messages", new BooleanParameter(&_quiet));
+  
+  options->addObsoleteOption("--verbose", "print out replies if the HTTP header indicates DB errors", false);
 }
 
 void BenchFeature::status(std::string const& value) {
@@ -255,14 +254,21 @@ void BenchFeature::start() {
 
   if (_createDatabase) {
     auto connectDB = client.databaseName();
-    client.setDatabaseName("_system");
+    client.setDatabaseName(StaticStrings::SystemDatabase);
     auto createDbClient = client.createHttpClient();
     createDbClient->params().setUserNamePassword("/", client.username(), client.password());
-    auto createStr = std::string("{\"name\":\"") + connectDB + "\"}";
+    VPackBuilder b;
+    b.openObject();
+    b.add("name", VPackValue(normalizeUtf8ToNFC(connectDB)));
+    b.close();
+      
+    std::unordered_map<std::string, std::string> headers;
+    headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeVPack);
+
     auto result = createDbClient->request(rest::RequestType::POST,
                                           "/_api/database",
-                                          createStr.c_str(),
-                                          createStr.length());
+                                          b.slice().startAs<char>(), b.slice().byteSize(),
+                                          headers);
 
     if (!result || result->wasHttpError()) {
       std::string msg;
@@ -324,13 +330,13 @@ void BenchFeature::start() {
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
   builder->add("histogram", VPackValue(VPackValueType::Object));
-  std::vector<BenchmarkThread*> threads;
-  std::stringstream pp;
+  std::vector<std::unique_ptr<BenchmarkThread>> threads;
   bool ok = true;
   std::vector<BenchRunResult> results;
+  std::stringstream pp;
   pp << "Interval/Percentile:";
   for (auto percentile : _percentiles) {
-    pp << std::fixed << std::right << std::setw(14) << std::setprecision(2) << percentile << "%";
+    pp << std::fixed << std::right << std::setw(12) << std::setprecision(2) << percentile << "%";
   }
   pp << std::endl;
 
@@ -349,19 +355,19 @@ void BenchFeature::start() {
     _started = 0;
 
     for (uint64_t i = 0; i < _concurrency; ++i) {
-      BenchmarkThread* thread =
-          new BenchmarkThread(server(), benchmark.get(), &startCondition,
-                              &BenchFeature::updateStartCounter, static_cast<int>(i),
-                              _batchSize, &operationsCounter,
-                              client, _keepAlive, _async, _verbose,
-                              _histogramIntervalSize, _histogramNumIntervals);
+      auto thread = std::make_unique<BenchmarkThread>(
+          server(), benchmark.get(), &startCondition,
+          &BenchFeature::updateStartCounter, static_cast<int>(i),
+          _batchSize, &operationsCounter,
+          client, _keepAlive, _async, 
+          _histogramIntervalSize, _histogramNumIntervals);
       thread->setOffset(i * realStep);
       thread->start();
-      threads.push_back(thread);
+      threads.push_back(std::move(thread));
     }
 
     // give all threads a chance to start so they will not miss the broadcast
-    while (getStartCounter() < (int)_concurrency) {
+    while (getStartCounter() < static_cast<int>(_concurrency)) {
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
@@ -433,22 +439,21 @@ void BenchFeature::start() {
       builder->add(std::to_string(i), VPackValue(VPackValueType::Object));
       size_t j = 0;
 
-      pp << " " << std::left << std::setfill('0') << std::fixed << std::setw(10)
+      pp << " " << std::left << std::setfill('0') << std::fixed << std::setw(8)
          << std::setprecision(6) << (threads[i]->_histogramIntervalSize * 1000)
-         << std::setw(0) << "ms       ";
+         << std::setw(0) << "ms         ";
 
       builder->add("IntervalSize", VPackValue(threads[i]->_histogramIntervalSize));
 
       for (auto time : res) {
         builder->add(std::to_string(_percentiles[j]), VPackValue(time));
-        pp << "   " << std::left << std::setfill('0') << std::fixed << std::setw(10)
-           << std::setprecision(4) << (time * 1000) << std::setw(0) << "ms";
+        pp << "   " << std::left << std::setfill('0') << std::fixed << std::setw(8)
+           << std::setprecision(6) << (time * 1000) << std::setw(0) << "ms";
         j++;
       }
 
       builder->close();
       pp << std::endl;
-      delete threads[i];
     }
     threads.clear();
   }
@@ -545,9 +550,9 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
   builder.close();
 
   std::cout <<
-    "Min Request time: " << (stats.min * 1000) << "ms" << std::endl <<
-    "Avg Request time: " << (stats.avg() * 1000) << "ms" << std::endl <<
-    "Max Request time: " << (stats.max * 1000) << "ms" << std::endl << std::endl;
+    "Min request time: " << std::setprecision(6) << (stats.min * 1000) << "ms" << std::endl <<
+    "Avg request time: " << std::setprecision(6) << (stats.avg() * 1000) << "ms" << std::endl <<
+    "Max request time: " << std::setprecision(6) << (stats.max * 1000) << "ms" << std::endl << std::endl;
 
   std::cout << histogram;
 
