@@ -550,7 +550,7 @@ class RocksDBEngine final : public StorageEngine {
   HealthData _healthData;
   
   /// @brief lock for _rebuildCollections
-  arangodb::basics::ReadWriteLock _rebuildCollectionsLock;
+  arangodb::Mutex _rebuildCollectionsLock;
   /// @brief map of database/collection-guids for which we need to repair trees
   std::map<std::pair<TRI_voc_tick_t, std::string>, bool> _rebuildCollections;
   /// @brief number of currently running tree rebuild jobs jobs

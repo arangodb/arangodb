@@ -1374,7 +1374,7 @@ TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
 }
   
 void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database, std::string const& collection) {
-  WRITE_LOCKER(locker, _rebuildCollectionsLock);
+  MUTEX_LOCKER(locker, _rebuildCollectionsLock);
   _rebuildCollections.emplace(std::make_pair(database, collection), /*started*/ false);
 }
 
@@ -1395,7 +1395,7 @@ void RocksDBEngine::processTreeRebuilds() {
     std::pair<TRI_voc_tick_t, std::string> candidate{};
 
     {
-      WRITE_LOCKER(locker, _rebuildCollectionsLock);
+      MUTEX_LOCKER(locker, _rebuildCollectionsLock);
       if (_rebuildCollections.empty() || 
           _runningRebuilds >= maxParallelRebuilds) {
         // nothing to do, or too much to do
@@ -1435,7 +1435,7 @@ void RocksDBEngine::processTreeRebuilds() {
           }
 
           // tree rebuilding finished. now remove from the list to-be-rebuilt candidates
-          WRITE_LOCKER(locker, _rebuildCollectionsLock);
+          MUTEX_LOCKER(locker, _rebuildCollectionsLock);
           _rebuildCollections.erase(candidate);
 
         } catch (std::exception const& ex) {
@@ -1452,7 +1452,7 @@ void RocksDBEngine::processTreeRebuilds() {
       }
       
       // always count down _runningRebuilds!
-      WRITE_LOCKER(locker, _rebuildCollectionsLock);
+      MUTEX_LOCKER(locker, _rebuildCollectionsLock);
       TRI_ASSERT(_runningRebuilds > 0);
       --_runningRebuilds;
     });
