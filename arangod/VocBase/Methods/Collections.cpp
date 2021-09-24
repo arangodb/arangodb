@@ -435,6 +435,8 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
         }
         return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
       }
+    } else if (isSingleServerSmartGraph) {
+      // todo: add comment to describe that section && implement
     } else {
       TRI_ASSERT(ServerState::instance()->isSingleServer());
       // Here we do have a single server setup. In that case, we're not batching collection creating.
