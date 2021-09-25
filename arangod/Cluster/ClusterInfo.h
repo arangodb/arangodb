@@ -689,7 +689,7 @@ class ClusterInfo final {
   /// Note that in contrast to most other methods here, this method does not
   /// get a timeout parameter, but an endTime parameter!!!
   Result createCollectionsCoordinator(std::string const& databaseName,
-                                      std::vector<ClusterCollectionCreationInfo>const & ,
+                                      std::vector<ClusterCollectionCreationInfo>& ,
                                       double endTime, bool isNewDatabase,
                                       std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike);
 
