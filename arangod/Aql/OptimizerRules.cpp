@@ -1344,8 +1344,11 @@ void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
 void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
                                                std::unique_ptr<ExecutionPlan> plan,
                                                OptimizerRule const& rule) {
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  using short_alloc_t = ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type;
+  auto arena = short_alloc_t::arena_type();
+  auto nodes = containers::SmallVector<ExecutionNode*>(arena);
+  // NOLINTNEXTLINE(bugprone-sizeof-expression)
+  nodes.reserve(short_alloc_t::size / sizeof(short_alloc_t::value_type));
   plan->findNodesOfType(nodes, EN::COLLECT, true);
 
   bool modified = false;
@@ -1408,7 +1411,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
       }  // end - inspection of nodes below the found collect node - while valid planNode
 
       if (doOptimize) {
-        auto keepVariables = std::unordered_set<Variable const*>{};
+        auto keepVariables = containers::HashSet<Variable const*>();
         // we are allowed to do the optimization
         auto current = n->getFirstDependency();
         while (current != nullptr) {
