@@ -1592,7 +1592,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
 
     dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
 
-    std::thread consolidation_thread([&writer, &dir]() {
+    std::thread consolidation_thread([&writer]() {
       const irs::index_utils::consolidate_count consolidate_all;
       ASSERT_THROW(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)), irs::io_error); // consolidate
     });
@@ -1720,7 +1720,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
 
     dir.intermediate_commits_lock.lock(); // acquire directory lock, and block consolidation
 
-    std::thread consolidation_thread([&writer, &dir]() {
+    std::thread consolidation_thread([&writer]() {
       const irs::index_utils::consolidate_count consolidate_all;
       ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all))); // consolidate
     });

@@ -33,16 +33,53 @@
 
 using namespace std::chrono_literals;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
+namespace {
+
+using namespace irs;
+
+directory_cleaner::removal_acceptor_t remove_except_current_segments(
+    const directory& dir, const format& codec) {
+  const auto acceptor = [](
+      const std::string& filename,
+      const absl::flat_hash_set<std::string>& retain) {
+    return !retain.contains(filename);
+  };
+
+  index_meta meta;
+  auto reader = codec.get_index_meta_reader();
+
+  std::string segment_file;
+  const bool index_exists = reader->last_segments_file(dir, segment_file);
+
+  if (!index_exists) {
+    // can't find segments file
+    return [](const std::string&)->bool { return true; };
+  }
+
+  reader->read(dir, meta, segment_file);
+
+  absl::flat_hash_set<std::string> retain;
+  retain.reserve(meta.size());
+
+  meta.visit_files([&retain] (std::string& file) {
+    retain.emplace(std::move(file));
+    return true;
+  });
+
+  retain.emplace(std::move(segment_file));
+
+  return std::bind(acceptor, std::placeholders::_1, std::move(retain));
+}
+
+
+}
 
 TEST(directory_cleaner_tests, test_directory_cleaner) {
   irs::memory_directory dir;
 
   // add a dummy files
   {
-    iresearch::index_output::ptr tmp;
+    irs::index_output::ptr tmp;
     tmp = dir.create("dummy.file.1");
     ASSERT_FALSE(!tmp);
     tmp = dir.create("dummy.file.2");
@@ -51,26 +88,25 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
 
   // test clean before initializing directory
   {
-    ASSERT_EQ(0, iresearch::directory_cleaner::clean(dir));
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
   }
-
-  // start tracking refs
-  auto& refs = iresearch::directory_cleaner::init(dir);
 
   // add a more dummy files
   {
-    iresearch::index_output::ptr tmp;
+    irs::index_output::ptr tmp;
     tmp = dir.create("dummy.file.3");
     ASSERT_FALSE(!tmp);
     tmp = dir.create("dummy.file.4");
     ASSERT_FALSE(!tmp);
   }
 
+  auto& refs = dir.attributes().refs();
+
   // add tracked files
   auto ref1 = refs.add("tracked.file.1");
   auto ref2 = refs.add("tracked.file.2");
   {
-    iresearch::index_output::ptr tmp;
+    irs::index_output::ptr tmp;
     tmp = dir.create("tracked.file.1");
     ASSERT_FALSE(!tmp);
     tmp = dir.create("tracked.file.2");
@@ -116,7 +152,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
       files.emplace_back(std::move(name));
       return true;
     };
-    ASSERT_EQ(0, iresearch::directory_cleaner::clean(dir));
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
     ASSERT_TRUE(dir.visit(list_files));
 
     for (auto& file: files) {
@@ -149,7 +185,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
       return true;
     };
     ref2.reset();
-    ASSERT_EQ(0, iresearch::directory_cleaner::clean(dir, acceptor));
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir, acceptor));
     ASSERT_TRUE(dir.visit(list_files));
 
     for (auto& file: files) {
@@ -173,7 +209,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
       files.emplace_back(std::move(name));
       return true;
     };
-    ASSERT_EQ(1, iresearch::directory_cleaner::clean(dir));
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir));
     ASSERT_TRUE(dir.visit(list_files));
 
     for (auto& file: files) {
@@ -206,7 +242,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
       return true;
     };
     ref1.reset();
-    ASSERT_EQ(1, iresearch::directory_cleaner::clean(dir, acceptor));
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir, acceptor));
     ASSERT_TRUE(dir.visit(list_files));
 
     for (auto& file: files) {
@@ -217,22 +253,19 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
   }
 
   // test empty references removed too
-  ASSERT_TRUE(refs.empty());
+  ASSERT_TRUE(refs.refs().empty());
 }
 
 TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   tests::json_doc_generator gen(
     test_base::resource("simple_sequential.json"),
-    &tests::generic_json_field_factory 
-  );
+    &tests::generic_json_field_factory);
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
-  auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+  auto query_doc1 = irs::iql::query_builder().build("name==A", std::locale::classic());
   irs::memory_directory dir;
   auto codec_ptr = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec_ptr);
-
-  iresearch::directory_cleaner::init(dir);
 
   // writer commit tracks files that are in active segments
   {
@@ -240,8 +273,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
 
     std::vector<std::string> files;
@@ -257,11 +289,10 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     writer->documents().remove(std::move(query_doc1.filter));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
-    iresearch::directory_cleaner::clean(dir, iresearch::directory_utils::remove_except_current_segments(dir, *codec_ptr));
+    iresearch::directory_cleaner::clean(dir, remove_except_current_segments(dir, *codec_ptr));
     files.clear();
     ASSERT_TRUE(dir.visit(list_files));
     ASSERT_FALSE(files.empty());
@@ -301,7 +332,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
       return true;
     };
     std::unordered_set<std::string> current_files(file_set);
-    iresearch::directory_cleaner::clean(dir, iresearch::directory_utils::remove_except_current_segments(dir, *codec_ptr));
+    iresearch::directory_cleaner::clean(dir, remove_except_current_segments(dir, *codec_ptr));
     ASSERT_TRUE(dir.visit(list_files));
     ASSERT_FALSE(files.empty());
 
@@ -313,6 +344,25 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     ASSERT_TRUE(current_files.empty());
   }
 
+  // remember files used for first/single segment
+  {
+    std::string segments_file;
+
+    irs::index_meta index_meta;
+    auto meta_reader = codec_ptr->get_index_meta_reader();
+    const auto index_exists = meta_reader->last_segments_file(dir, segments_file);
+
+    ASSERT_TRUE(index_exists);
+    meta_reader->read(dir, index_meta, segments_file);
+
+    file_set.insert(segments_file);
+
+    index_meta.visit_files([&file_set] (std::string& file) {
+      file_set.emplace(std::move(file));
+      return true;
+    });
+  }
+
   // active reader refs keeps files referenced by reader
   {
     std::vector<std::string> files;
@@ -321,8 +371,8 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
       return true;
     };
     std::unordered_set<std::string> current_files(file_set);
-    auto reader = iresearch::directory_reader::open(dir, codec_ptr);
-    iresearch::directory_cleaner::clean(dir);
+    auto reader = irs::directory_reader::open(dir, codec_ptr);
+    irs::directory_cleaner::clean(dir);
     ASSERT_TRUE(dir.visit(list_files));
     ASSERT_FALSE(files.empty());
 
@@ -341,7 +391,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
       files.emplace_back(std::move(name));
       return true;
     };
-    iresearch::directory_cleaner::clean(dir);
+    irs::directory_cleaner::clean(dir);
     ASSERT_TRUE(dir.visit(list_files));
     ASSERT_TRUE(files.empty()); // current segment should have been removed too
   }

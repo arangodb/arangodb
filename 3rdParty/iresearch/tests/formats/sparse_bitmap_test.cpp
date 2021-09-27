@@ -1097,8 +1097,8 @@ INSTANTIATE_TEST_SUITE_P(
   sparse_bitmap_test,
   sparse_bitmap_test_case,
   ::testing::Values(
-    &tests::memory_directory,
-    &tests::fs_directory,
-    &tests::mmap_directory),
+    &tests::directory<&tests::memory_directory>,
+    &tests::directory<&tests::fs_directory>,
+    &tests::directory<&tests::mmap_directory>),
   sparse_bitmap_test_case::to_string
 );
