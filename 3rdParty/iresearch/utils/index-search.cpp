@@ -35,6 +35,7 @@
 
 #include <fstream>
 #include <random>
+#include <regex>
 #include <thread>
 
 #if defined(_MSC_VER)
@@ -65,21 +66,6 @@
 #include "utils/levenshtein_default_pdp.hpp"
 
 #include "index-search.hpp"
-
-// std::regex support only starting from GCC 4.9
-#if !defined(__GNUC__) || (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ > 8))
-  #include <regex>
-#else
-  #include "boost/regex.hpp"
-
-  namespace std {
-    typedef ::boost::regex regex;
-    typedef ::boost::match_results<string::const_iterator> smatch;
-
-    template <typename... Args>
-    bool regex_match(Args&&... args) { return ::boost::regex_match(std::forward<Args>(args)...); }
-  } // std
-#endif
 
 namespace {
 

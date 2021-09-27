@@ -24,6 +24,7 @@
 #define IRESEARCH_THREAD_UTILS_H
 
 #include <mutex>
+#include <shared_mutex>
 
 #include "shared.hpp"
 
@@ -53,6 +54,16 @@ template<typename Mutex>
 template<typename Mutex, typename Mode>
 [[nodiscard]] inline std::lock_guard<Mutex> make_lock_guard(Mutex& mtx, Mode mode) {
   return std::lock_guard<Mutex>(mtx, mode);
+}
+
+template<typename Mutex>
+[[nodiscard]] inline std::shared_lock<Mutex> make_shared_lock(Mutex& mtx) {
+  return std::shared_lock<Mutex>(mtx);
+}
+
+template<typename Mutex, typename Mode>
+[[nodiscard]] inline std::shared_lock<Mutex> make_shared_lock(Mutex& mtx, Mode mode) {
+  return std::shared_lock<Mutex>(mtx, mode);
 }
 
 //////////////////////////////////////////////////////////////////////////////

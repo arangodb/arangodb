@@ -29,12 +29,15 @@
 #include <functional>
 #include <fcntl.h> // open/_wopen
 
+#include "shared.hpp"
+#include "string.hpp"
+#include "utils/utf8_path.hpp"
+
 #ifdef _WIN32  
   #include <tchar.h>
   #include <io.h> // _close
   #define file_blksize_t uint32_t // DWORD (same as GetDriveGeometry(...) DISK_GEOMETRY::BytesPerSector)
   #define file_path_delimiter L'\\'
-  #define file_path_t wchar_t*
   #define file_stat_t struct _stat64
   #define mode_t unsigned short
 
@@ -58,7 +61,6 @@
   #include <sys/types.h> // for blksize_t
   #define file_blksize_t blksize_t
   #define file_path_delimiter '/'
-  #define file_path_t char*
   #define file_stat_t struct stat    
 
   #define file_stat stat
@@ -84,8 +86,8 @@
 #endif
 #endif
 
-#include "shared.hpp"
-#include "string.hpp"
+using path_char_t = irs::utf8_path::value_type;
+#define file_path_t path_char_t*
 
 namespace iresearch {
 namespace file_utils {
@@ -153,20 +155,19 @@ int fseek(void* fd, long pos, int origin);
 int ferror(void*);
 long ftell(void* fd);
 
-
 struct path_parts_t {
-  typedef irs::basic_string_ref<std::remove_pointer<file_path_t>::type> ref_t;
+  using ref_t = irs::basic_string_ref<path_char_t>;
   ref_t basename;  // path component after the last path delimiter (ref_t::NIL if not present)
   ref_t dirname;   // path component before the last path delimiter (ref_t::NIL if not present)
   ref_t extension; // basename extension (ref_t::NIL if not present)
   ref_t stem;      // basename without extension (ref_t::NIL if not present)
 };
 
-IRESEARCH_API path_parts_t path_parts(const file_path_t path) noexcept;
+path_parts_t path_parts(const file_path_t path) noexcept;
 
-IRESEARCH_API bool read_cwd(
-  std::basic_string<std::remove_pointer<file_path_t>::type>& result
-) noexcept;
+bool read_cwd(std::basic_string<path_char_t>& result) noexcept;
+
+void ensure_absolute(utf8_path& path);
 
 bool remove(const file_path_t path) noexcept;
 
@@ -179,8 +180,7 @@ bool set_cwd(const file_path_t path) noexcept;
 bool visit_directory(
   const file_path_t name,
   const std::function<bool(const file_path_t name)>& visitor,
-  bool include_dot_dir = true
-);
+  bool include_dot_dir = true);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              misc

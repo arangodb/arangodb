@@ -168,15 +168,16 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
   uint64_t objectId = basics::VelocyPackHelper::stringUInt64(definition, arangodb::StaticStrings::ObjectId);
   auto link = std::make_shared<IResearchRocksDBLink>(id, collection, objectId);
 
-  auto const res = link->init(definition, [this](irs::directory& dir) {
+  auto const res = link->init(definition, [this]() -> irs::directory_attributes {
     auto& selector = _server.getFeature<EngineSelectorFeature>();
     TRI_ASSERT(selector.isRocksDB());
     auto& engine = selector.engine<RocksDBEngine>();
     auto* encryption = engine.encryptionProvider();
     if (encryption) {
-      dir.attributes().emplace<RocksDBEncryptionProvider>(*encryption,
-                                                          engine.rocksDBOptions());
+      return irs::directory_attributes{0, std::make_unique<RocksDBEncryptionProvider>(*encryption,
+                                                          engine.rocksDBOptions())};
     }
+    return irs::directory_attributes{};
   });
 
   if (!res.ok()) {

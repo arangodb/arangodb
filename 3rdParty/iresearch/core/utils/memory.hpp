@@ -593,7 +593,7 @@ typename std::enable_if<
 // --SECTION--                                                            maker
 // ----------------------------------------------------------------------------
 
-template<typename Class, bool = is_shared_ptr<typename Class::ptr>::value>
+template<typename Class, bool = is_shared_ptr_v<typename Class::ptr>>
 struct maker {
   template<typename... Args>
   static typename Class::ptr make(Args&&... args) {
@@ -664,11 +664,6 @@ static ptr make(Args&&... args) { \
   typedef irs::memory::maker<type> maker_t; \
   return maker_t::template make(std::forward<Args>(args)...); \
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief declaration of a factory method
-//////////////////////////////////////////////////////////////////////////////
-#define DECLARE_FACTORY(...) static ptr make(__VA_ARGS__)
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation of a factory method, instantiation on heap
