@@ -97,8 +97,8 @@ Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
     // collection (as seen on a Coordinator), nor a shard (on a DBServer).
 
     // validate the information of the collection to be created
-    CollectionValidator collectionValidator(info, ServerState::instance(), vocbase,
-                                            isSingleServerSmartGraph, enforceReplicationFactor,
+    CollectionValidator collectionValidator(info, vocbase, isSingleServerSmartGraph,
+                                            enforceReplicationFactor,
                                             isLocalCollection(info), isSystemName(info));
     Result res = collectionValidator.validateCreationInfo();
     if (res.fail()) {
