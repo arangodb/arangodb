@@ -61,7 +61,7 @@ function runSetup () {
   if (db._collection("control") === null) {
     db._create("control");
   }
-
+  
   // test runtime is also dynamic
   let runTime = 5 + Math.random() * (maxRunTime - 5);
 
@@ -75,6 +75,8 @@ function runSetup () {
     }
     collectionCounts[c.name()] = c.count();
   }
+  
+  db.control.insert({ _key: "working", collectionCounts }, { overwriteMode: "replace" });
 
   require("console").warn("Collection counts from control:", JSON.stringify(collectionCounts));
 
@@ -91,71 +93,81 @@ function runSetup () {
     "TransactionChaos::blockerOnSync",
   ];
 
-  // number of failure points currently set
-  let fpSet = 0;
-  const end = time() + runTime;
-  do {
-    let fp = Math.random();
-    if (fpSet > 0 && fp >= 0.95) {
-      // remove all failure points
-      internal.debugClearFailAt();
-      fpSet = 0;
-    } else if (fp >= 0.85 || fpSet === 0) {
-      // set failure points
-      _.shuffle(failurePoints);
-      internal.debugClearFailAt();
-      let fp = Math.floor(Math.random() * failurePoints.length);
-      for (let i = 0; i < fp; ++i) {
-        internal.debugSetFailAt(failurePoints[i]);
+  try {
+    // number of failure points currently set
+    let fpSet = 0;
+    const end = time() + runTime;
+    do {
+      let fp = Math.random();
+      if (fpSet > 0 && fp >= 0.95) {
+        // remove all failure points
+        console.warn("clearing all failure points");
+        internal.debugClearFailAt();
+        fpSet = 0;
+      } else if (fp >= 0.85 || fpSet === 0) {
+        // set failure points
+        _.shuffle(failurePoints);
+        console.warn("clearing all failure points");
+        internal.debugClearFailAt();
+        let fp = Math.floor(Math.random() * failurePoints.length);
+        for (let i = 0; i < fp; ++i) {
+          internal.debugSetFailAt(failurePoints[i]);
+        }
+        fpSet = fp;
       }
-      fpSet = fp;
-    }
 
-    // pick a random collection
-    const cn = Math.floor(Math.random() * n);
-    const c = db._collection(colName + cn);
+      // pick a random collection
+      const cn = Math.floor(Math.random() * n);
+      const c = db._collection(colName + cn);
 
-    const opType = Math.random();
-    let numOps = Math.floor(1000 * Math.random());
-    if (opType >= 0.75) {
-      // multi-document insert
-      let docs = [];
-      for (let i = 0; i < numOps; ++i) {
-        docs.push({ value: i, valueString: String(i), type: "multi" });
-      }
-      c.insert(docs);
-      collectionCounts[c.name()] += numOps;
-    } else if (opType >= 0.5) {
-      // single doc inserts
-      for (let i = 0; i < numOps; ++i) {
-        c.insert({ value: i, valueString: String(i), type: "individual" });
-      }
-      collectionCounts[c.name()] += numOps;
-    } else if (opType >= 0.3) {
-      // single operation insert
-      c.insert({ value: 666, valueString: "666", type: "single" });
-      collectionCounts[c.name()] += 1;
-    } else if (opType >= 0.05) {
-      // remove
-      numOps /= 2;
-      let keys = db._query("FOR doc IN " + c.name() + " LIMIT @numOps RETURN doc._key", { numOps }).toArray();
-      if (opType >= 0.15) {
-        // multi-document remove
-        c.remove(keys);
+      const opType = Math.random();
+      let numOps = Math.floor(1000 * Math.random());
+      if (opType >= 0.75) {
+        // multi-document insert
+        let docs = [];
+        for (let i = 0; i < numOps; ++i) {
+          docs.push({ value: i, valueString: String(i), type: "multi" });
+        }
+        c.insert(docs);
+        collectionCounts[c.name()] += numOps;
+      } else if (opType >= 0.5) {
+        // single doc inserts
+        for (let i = 0; i < numOps; ++i) {
+          c.insert({ value: i, valueString: String(i), type: "individual" });
+        }
+        collectionCounts[c.name()] += numOps;
+      } else if (opType >= 0.3) {
+        // single operation insert
+        c.insert({ value: 666, valueString: "666", type: "single" });
+        collectionCounts[c.name()] += 1;
+      } else if (opType >= 0.05) {
+        // remove
+        numOps /= 2;
+        let keys = db._query("FOR doc IN " + c.name() + " LIMIT @numOps RETURN doc._key", { numOps }).toArray();
+        if (opType >= 0.15) {
+          // multi-document remove
+          c.remove(keys);
+        } else {
+          keys.forEach((key) => {
+            c.remove(key);
+          });
+        }
+        collectionCounts[c.name()] -= keys.length;
       } else {
-        keys.forEach((key) => {
-          c.remove(key);
-        });
+        // truncate
+        c.truncate();
+        collectionCounts[c.name()] = 0;
       }
-      collectionCounts[c.name()] -= keys.length;
-    } else {
-      // truncate
-      c.truncate();
-      collectionCounts[c.name()] = 0;
-    }
-  } while (time() < end);
- 
-  db.control.insert({ _key: "counts", collectionCounts }, { waitForSync: true, overwriteMode: "replace" });
+    } while (time() < end);
+   
+    console.warn("storing collection counts at exit:", collectionCounts);
+    db.control.insert({ _key: "counts", collectionCounts }, { overwriteMode: "replace" });
+    db.control.remove("working", { waitForSync: true });
+  } catch (err) {
+    console.warn(String(err), String(err.stack));
+    console.warn(collectionCounts);
+    throw err;
+  }
 
   require("console").warn("Collection counts written to control:", JSON.stringify(collectionCounts));
 
