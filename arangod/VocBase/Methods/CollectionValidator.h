@@ -33,11 +33,10 @@ using namespace arangodb;
 
 class CollectionValidator {
  public:
-  CollectionValidator(CollectionCreationInfo const& info, ServerState* const serverState,
-                      TRI_vocbase_t const& vocbase, bool isSingleServerSmartGraph,
-                      bool enforceReplicationFactor, bool isLocalCollection, bool isSystemName)
+  CollectionValidator(CollectionCreationInfo const& info, TRI_vocbase_t const& vocbase,
+                      bool isSingleServerSmartGraph, bool enforceReplicationFactor,
+                      bool isLocalCollection, bool isSystemName)
       : _info(info),
-        _serverState(serverState),
         _vocbase(vocbase),
         _isSingleServerSmartGraph(isSingleServerSmartGraph),
         _enforceReplicationFactor(enforceReplicationFactor),
@@ -48,7 +47,6 @@ class CollectionValidator {
 
  private:
   CollectionCreationInfo const& _info;
-  ServerState* _serverState;
   TRI_vocbase_t const& _vocbase;
   bool _isSingleServerSmartGraph;
   bool _enforceReplicationFactor;

@@ -922,7 +922,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
       continue;
     }
 
-    if (_options.clusterMode && isIgnoredHiddenEnterpriseCollection(_options, name)) {
+    if (isIgnoredHiddenEnterpriseCollection(_options, name)) {
       continue;
     }
     
