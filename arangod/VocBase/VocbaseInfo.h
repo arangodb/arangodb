@@ -73,9 +73,6 @@ class CreateDatabaseInfo {
   CreateDatabaseInfo(application_features::ApplicationServer&, ExecContext const&);
   Result load(std::string const& name, uint64_t id);
 
-  Result load(uint64_t id, VPackSlice const& options,
-              VPackSlice const& users = VPackSlice::emptyArraySlice());
-
   Result load(std::string const& name, VPackSlice const& options,
               VPackSlice const& users = VPackSlice::emptyArraySlice());
 

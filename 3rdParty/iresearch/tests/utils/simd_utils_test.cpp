@@ -22,6 +22,8 @@
 
 #include "tests_shared.hpp"
 
+#include <cstring>
+
 #include "utils/misc.hpp"
 #include "utils/std.hpp"
 #include "utils/simd_utils.hpp"

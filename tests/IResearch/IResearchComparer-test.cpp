@@ -36,10 +36,10 @@ TEST(IResearchComparerTest, test_comparer_single_entry) {
   arangodb::tests::init(true);
 
   irs::utf8_path resource;
-  resource /= irs::string_ref(arangodb::tests::testResourceDir);
-  resource /= irs::string_ref("simple_sequential.json");
+  resource /= std::string_view(arangodb::tests::testResourceDir);
+  resource /= std::string_view("simple_sequential.json");
 
-  auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+  auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
   auto docsSlice = builder.slice();
   ASSERT_TRUE(docsSlice.isArray());
   ASSERT_NE(0, docsSlice.length());
@@ -81,10 +81,10 @@ TEST(IResearchComparerTest, test_comparer_multiple_entries) {
   arangodb::tests::init(true);
 
   irs::utf8_path resource;
-  resource /= irs::string_ref(arangodb::tests::testResourceDir);
-  resource /= irs::string_ref("simple_sequential.json");
+  resource /= std::string_view(arangodb::tests::testResourceDir);
+  resource /= std::string_view("simple_sequential.json");
 
-  auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+  auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
   auto docsSlice = builder.slice();
   ASSERT_TRUE(docsSlice.isArray());
   ASSERT_NE(0, docsSlice.length());
