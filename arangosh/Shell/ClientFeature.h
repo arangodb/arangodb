@@ -48,7 +48,7 @@ class ClientFeature final : public HttpEndpointProvider {
   constexpr static double const LONG_TIMEOUT = 86400.0;
 
   ClientFeature(application_features::ApplicationServer& server, bool allowJwtSecret,
-                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
+                size_t maxNumEndpoints, double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
                 double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -59,8 +59,12 @@ class ClientFeature final : public HttpEndpointProvider {
 
   std::string const& databaseName() const { return _databaseName; }
   bool authentication() const { return _authentication; }
+  /*
   std::string const& endpoint() const { return _endpoint; }
   void setEndpoint(std::string const& value) { _endpoint = value; }
+  */
+  std::string const& endpoint() const { return _endpoints[0]; }
+  void setEndpoint(std::string const& value) { _endpoints[0] = value; }
   std::string const& username() const { return _username; }
   void setUsername(std::string const& value) { _username = value; }
   std::string const& password() const { return _password; }
@@ -73,10 +77,9 @@ class ClientFeature final : public HttpEndpointProvider {
   uint64_t sslProtocol() const { return _sslProtocol; }
   bool forceJson() const { return _forceJson; }
   void setForceJson(bool value) { _forceJson = value; }
-  
-  std::unique_ptr<httpclient::GeneralClientConnection> createConnection();
+
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(std::string const& definition);
-  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient() const;
+  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(int threadNumber = 0) const;
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(std::string const& definition) const;
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
       std::string const& definition, httpclient::SimpleHttpClientParams const&) const;
@@ -94,14 +97,11 @@ class ClientFeature final : public HttpEndpointProvider {
 
   bool getWarnConnect() { return _warnConnect; }
 
-  static std::string buildConnectedMessage(
-    std::string const& endpointSpecification,
-    std::string const& version,
-    std::string const& role,
-    std::string const& mode,
-    std::string const& databaseName,
-    std::string const& user
-  );
+  static std::string buildConnectedMessage(std::string const& endpointSpecification,
+                                           std::string const& version,
+                                           std::string const& role, std::string const& mode,
+                                           std::string const& databaseName,
+                                           std::string const& user);
 
   static int runMain(int argc, char* argv[],
                      std::function<int(int argc, char* argv[])> const& mainFunc);
@@ -112,7 +112,9 @@ class ClientFeature final : public HttpEndpointProvider {
   void loadJwtSecretFile();
 
   std::string _databaseName;
-  std::string _endpoint;
+  // std::string _endpoint;
+  std::vector<std::string> _endpoints;
+  size_t _maxNumEndpoints;
   std::string _username;
   std::string _password;
   std::string _jwtSecret;
@@ -139,4 +141,3 @@ class ClientFeature final : public HttpEndpointProvider {
 };
 
 }  // namespace arangodb
-
