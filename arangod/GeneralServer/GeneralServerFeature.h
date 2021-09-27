@@ -45,13 +45,14 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   void stop() override final;
   void unprepare() override final;
 
-  double keepAliveTimeout() const;
-  bool proxyCheck() const;
+  double keepAliveTimeout() const noexcept;
+  bool proxyCheck() const noexcept ;
+  bool returnQueueTimeHeader() const noexcept;
   std::vector<std::string> trustedProxies() const;
-  bool allowMethodOverride() const;
+  bool allowMethodOverride() const noexcept;
   std::vector<std::string> const& accessControlAllowOrigins() const;
   Result reloadTLS();
-  bool permanentRootRedirect() const;
+  bool permanentRootRedirect() const noexcept;
   std::string redirectRootTo() const;
   std::string const& supportInfoApiPolicy() const noexcept;
 
@@ -87,6 +88,7 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   double _keepAliveTimeout = 300.0;
   bool _allowMethodOverride;
   bool _proxyCheck;
+  bool _returnQueueTimeHeader;
   bool _permanentRootRedirect;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
