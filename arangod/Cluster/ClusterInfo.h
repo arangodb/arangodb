@@ -424,7 +424,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   void cleanup();
-  
+
   /// @brief cancel all pending wait-for-syncer operations
   void drainSyncers();
 
@@ -601,18 +601,18 @@ class ClusterInfo final {
   QueryAnalyzerRevisions getQueryAnalyzersRevision(
       DatabaseID const& databaseID);
 
-  /// @brief return shard statistics for the specified database, 
+  /// @brief return shard statistics for the specified database,
   /// optionally restricted to anything on the specified server
   Result getShardStatisticsForDatabase(DatabaseID const& dbName,
                                        std::string const& restrictServer,
                                        arangodb::velocypack::Builder& builder) const;
-  
+
   /// @brief return shard statistics for all databases, totals,
   /// optionally restricted to anything on the specified server
   Result getShardStatisticsGlobal(std::string const& restrictServer,
                                   arangodb::velocypack::Builder& builder) const;
-  
-  /// @brief return shard statistics, separate for each database, 
+
+  /// @brief return shard statistics, separate for each database,
   /// optionally restricted to anything on the specified server
   Result getShardStatisticsGlobalDetailed(std::string const& restrictServer,
                                           arangodb::velocypack::Builder& builder) const;
@@ -663,7 +663,7 @@ class ClusterInfo final {
       std::string const& name,     // database name
       double timeout               // request timeout
   );
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -677,11 +677,9 @@ class ClusterInfo final {
       std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
 
   /// @brief this method does an atomic check of the preconditions for the
-  /// collections to be created, using the currently loaded plan. it populates
-  /// the plan version used for the checks
+  /// collections to be created, using the currently loaded plan.
   Result checkCollectionPreconditions(std::string const& databaseName,
-                                      std::vector<ClusterCollectionCreationInfo> const& infos,
-                                      uint64_t& planVersion);
+                                      std::vector<ClusterCollectionCreationInfo> const& infos);
 
   /// @brief create multiple collections in coordinator
   ///        If any one of these collections fails, all creations will be
@@ -885,7 +883,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   ServerID getCoordinatorByShortID(ServerShortID const& shortId);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate current coordinators
   //////////////////////////////////////////////////////////////////////////////
@@ -918,14 +916,14 @@ class ClusterInfo final {
   void setServers(std::unordered_map<ServerID, std::string> servers);
 
   void setServerAliases(std::unordered_map<ServerID, std::string> aliases);
-  
+
   void setServerAdvertisedEndpoints(std::unordered_map<ServerID, std::string> advertisedEndpoints);
-  
+
   void setServerTimestamps(std::unordered_map<ServerID, std::string> timestamps);
 #endif
-  
+
   bool serverExists(ServerID const& serverId) const noexcept;
-  
+
   bool serverAliasExists(std::string const& alias) const noexcept;
 
   std::unordered_map<ServerID, std::string> getServers();
@@ -996,9 +994,9 @@ class ClusterInfo final {
  private:
   /// @brief worker function for dropIndexCoordinator
   Result dropIndexCoordinatorInner(
-      std::string const& databaseName, 
+      std::string const& databaseName,
       std::string const& collectionID,
-      IndexId iid,                   
+      IndexId iid,
       double endTime);
 
   /// @brief helper function to build a new LogicalCollection object from the velocypack
@@ -1106,7 +1104,7 @@ class ClusterInfo final {
 
   cluster::RebootTracker _rebootTracker;
 
-  /// @brief error code sent to all remaining promises of the syncers at shutdown. 
+  /// @brief error code sent to all remaining promises of the syncers at shutdown.
   /// normally this is TRI_ERROR_SHUTTING_DOWN, but it can be overridden during testing
   ErrorCode const _syncerShutdownCode;
 

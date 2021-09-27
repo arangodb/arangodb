@@ -321,13 +321,21 @@ class ClusterMethods {
   ClusterMethods() = delete;
   ~ClusterMethods() = delete;
 
-  // @brief Create many new collections on coordinator from a Array of VPack
-  // parameter Note that this returns a vector of newly allocated objects
+  /// @brief Create many new collections on coordinator from a Array of VPack
+  /// parameter Note that this returns a vector of newly allocated objects
+  /// @param vocbase the actual database
+  /// @param parametersOfCollections array of parameters of collections to be created
+  /// @param ignoreDistributeShardsLikeErrors
+  /// @param waitForSyncReplication
+  /// @param enforceReplicationFactor
+  /// @param isNewDatabase
+  /// @param colToDistributeShardsLike
+
   static std::vector<std::shared_ptr<LogicalCollection>> createCollectionOnCoordinator(
-      TRI_vocbase_t& vocbase, arangodb::velocypack::Slice parameters,
+      TRI_vocbase_t& vocbase, arangodb::velocypack::Slice parametersOfCollections,
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
       bool enforceReplicationFactor, bool isNewDatabase,
-      std::shared_ptr<LogicalCollection> const& colPtr);
+      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Enterprise Relevant code to filter out hidden collections
