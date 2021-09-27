@@ -81,6 +81,7 @@ function runSetup () {
   require("console").warn("Collection counts from control:", JSON.stringify(collectionCounts));
 
   const failurePoints = [
+    "rebuildRevisionTree::sleep",
     "TransactionChaos::randomSleep",
     "applyUpdates::forceHibernation1",
     "applyUpdates::forceHibernation2",

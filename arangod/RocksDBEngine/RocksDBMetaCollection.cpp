@@ -860,10 +860,18 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
       removeRevisionTreeBlocker(trxId);
     });
+      
+    TRI_IF_FAILURE("rebuildRevisionTree::sleep") {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    }
     
     // we now have a blocker in place that will prevent updates from being 
     // applied
     rocksdb::SequenceNumber blockerSeq = placeRevisionTreeBlocker(trxId);
+    
+    TRI_IF_FAILURE("rebuildRevisionTree::sleep") {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    }
 
     {
       // we may still have some buffered updates, so let's remove them
@@ -874,6 +882,10 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
   
     // unlock the collection again
     lockGuard.fire();
+    
+    TRI_IF_FAILURE("rebuildRevisionTree::sleep") {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    }
 
     auto result = revisionTreeFromCollection(false);
     if (result.fail()) {
@@ -883,6 +895,10 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     auto&& [newTree, beginSeq] = result.get();
 
     TRI_ASSERT(blockerSeq <= beginSeq);
+    
+    TRI_IF_FAILURE("rebuildRevisionTree::sleep") {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    }
 
     std::unique_lock<std::mutex> guard(_revisionTreeLock);
     _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
@@ -1131,7 +1147,7 @@ Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
 
   Result res = basics::catchVoidToResult([&]() -> void {
     std::unique_lock<std::mutex> guard(_revisionTreeLock);
-    if (_revisionTreeApplied > seq) {
+    if (_revisionTreeApplied >= seq) {
       return;
     }
     _revisionTruncateBuffer.emplace(seq);
@@ -1162,6 +1178,10 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq,
   ensureRevisionTree();
   TRI_ASSERT(_revisionTree != nullptr);
   TRI_ASSERT(_revisionTree->depth() == revisionTreeDepth);
+    
+  if (!_revisionTreeCanBeSerialized) {
+    return;
+  }
   
   Result res = basics::catchVoidToResult([&]() -> void {
     // bump sequence number upwards
