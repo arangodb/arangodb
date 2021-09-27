@@ -188,7 +188,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
     {
       VPackArrayBuilder array(builder, PIPELINE_PARAM_NAME.data());
       {
-        for (const auto analyzer : options) {
+        for (const auto& analyzer : options) {
           VPackObjectBuilder analyzers_obj(builder);
           {
             builder->add(TYPE_PARAM_NAME, VPackValue(analyzer.first));

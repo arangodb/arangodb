@@ -39,151 +39,153 @@
 #include "utils/runtime_utils.hpp"
 
 namespace tests {
-  class test_sort: public irs::sort {
-   public:
-    DECLARE_FACTORY();
 
-    class prepared : public sort::prepared {
-     public:
-      prepared() { }
-      virtual void collect(
+class test_sort: public irs::sort {
+ public:
+  static ptr make();
+
+  class prepared : public sort::prepared {
+   public:
+    prepared() { }
+    virtual void collect(
+      irs::byte_type*,
+      const irs::index_reader&,
+      const irs::sort::field_collector*,
+      const irs::sort::term_collector*) const override {
+      // do not need to collect stats
+    }
+    virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+      return nullptr; // do not need to collect stats
+    }
+    virtual irs::score_function prepare_scorer(
+        const irs::sub_reader&,
+        const irs::term_reader&,
+        const irs::byte_type*,
         irs::byte_type*,
-        const irs::index_reader&,
-        const irs::sort::field_collector*,
-        const irs::sort::term_collector*) const override {
-        // do not need to collect stats
-      }
-      virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
-        return nullptr; // do not need to collect stats
-      }
-      virtual irs::score_function prepare_scorer(
-          const irs::sub_reader&,
-          const irs::term_reader&,
-          const irs::byte_type*,
-          irs::byte_type*,
-          const irs::attribute_provider&,
-          irs::boost_t) const override {
-        return { nullptr, nullptr };
-      }
-      virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
-        return nullptr; // do not need to collect stats
-      }
-      virtual irs::IndexFeatures features() const override {
-        return irs::IndexFeatures::NONE;
-      }
-      virtual bool less(const irs::byte_type*, const irs::byte_type*) const override {
-        throw std::bad_function_call();
-      }
-      std::pair<size_t, size_t> score_size() const override {
-        return std::make_pair(size_t(0), size_t(0));
-      }
-      std::pair<size_t, size_t> stats_size() const override {
-        return std::make_pair(size_t(0), size_t(0));
-      }
-    };
-
-    test_sort():sort(irs::type<test_sort>::get()) {}
-    virtual sort::prepared::ptr prepare() const { return std::make_unique<test_sort::prepared>(); }
-  };
-
-  DEFINE_FACTORY_DEFAULT(test_sort)
-
-  class IqlQueryBuilderTestSuite: public ::testing::Test {
-    virtual void SetUp() {
-      // Code here will be called immediately after the constructor (right before each test).
-      // use the following code to enble parser debug outut
-      //::irs::iql::debug(parser, [true|false]);
-
-      // ensure stopwords are loaded/cached for the 'en' locale used for text analysis below
-      {
-        // same env variable name as irs::analysis::text_token_stream::STOPWORD_PATH_ENV_VARIABLE
-        const auto text_stopword_path_var = "IRESEARCH_TEXT_STOPWORD_PATH";
-        const char* czOldStopwordPath = irs::getenv(text_stopword_path_var);
-        std::string sOldStopwordPath = czOldStopwordPath == nullptr ? "" : czOldStopwordPath;
-
-        irs::setenv(text_stopword_path_var, IResearch_test_resource_dir, true);
-
-        auto locale = irs::locale_utils::locale("en");
-        const std::string tmp_str;
-
-        irs::analysis::analyzers::get("text", irs::type<irs::text_format::text>::get(), "en"); // stream needed only to load stopwords
-
-        if (czOldStopwordPath) {
-          irs::setenv(text_stopword_path_var, sOldStopwordPath.c_str(), true);
-        }
-      }
+        const irs::attribute_provider&,
+        irs::boost_t) const override {
+      return { nullptr, nullptr };
     }
-
-    virtual void TearDown() {
-      // Code here will be called immediately after each test (right before the destructor).
+    virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+      return nullptr; // do not need to collect stats
+    }
+    virtual irs::IndexFeatures features() const override {
+      return irs::IndexFeatures::NONE;
+    }
+    virtual bool less(const irs::byte_type*, const irs::byte_type*) const override {
+      throw std::bad_function_call();
+    }
+    std::pair<size_t, size_t> score_size() const override {
+      return std::make_pair(size_t(0), size_t(0));
+    }
+    std::pair<size_t, size_t> stats_size() const override {
+      return std::make_pair(size_t(0), size_t(0));
     }
   };
 
-  class analyzed_string_field: public templates::string_field {
-   public:
-    analyzed_string_field(const std::string& name, const irs::string_ref& value)
-      : templates::string_field(name, value),
-        token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::text>::get(), "en")) {
-      if (!token_stream_) {
-        throw std::runtime_error("Failed to get 'text' analyzer for args: en");
+  test_sort():sort(irs::type<test_sort>::get()) {}
+  virtual sort::prepared::ptr prepare() const { return std::make_unique<test_sort::prepared>(); }
+};
+
+DEFINE_FACTORY_DEFAULT(test_sort)
+
+class IqlQueryBuilderTestSuite: public ::testing::Test {
+  virtual void SetUp() {
+    // Code here will be called immediately after the constructor (right before each test).
+    // use the following code to enble parser debug outut
+    //::irs::iql::debug(parser, [true|false]);
+
+    // ensure stopwords are loaded/cached for the 'en' locale used for text analysis below
+    {
+      // same env variable name as irs::analysis::text_token_stream::STOPWORD_PATH_ENV_VARIABLE
+      const auto text_stopword_path_var = "IRESEARCH_TEXT_STOPWORD_PATH";
+      const char* czOldStopwordPath = irs::getenv(text_stopword_path_var);
+      std::string sOldStopwordPath = czOldStopwordPath == nullptr ? "" : czOldStopwordPath;
+
+      irs::setenv(text_stopword_path_var, IResearch_test_resource_dir, true);
+
+      auto locale = irs::locale_utils::locale("en");
+      const std::string tmp_str;
+
+      irs::analysis::analyzers::get("text", irs::type<irs::text_format::text>::get(), "en"); // stream needed only to load stopwords
+
+      if (czOldStopwordPath) {
+        irs::setenv(text_stopword_path_var, sOldStopwordPath.c_str(), true);
       }
     }
-    virtual irs::token_stream& get_tokens() const override {
-      const irs::string_ref& value = this->value();
-      token_stream_->reset(value);
-      return *token_stream_;
-    }
-      
-   private:
-    static std::unordered_set<std::string> ignore_set_; // there are no stopwords for the 'c' locale in tests
-    irs::analysis::analyzer::ptr token_stream_;
-  };
-
-  std::unordered_set<std::string> analyzed_string_field::ignore_set_;
-
-  irs::directory_reader load_json(
-    irs::directory& dir,
-    const std::string json_resource,
-    bool analyze_text = false
-  ) {
-    static auto analyzed_field_factory = [](
-        tests::document& doc,
-        const std::string& name,
-        const tests::json_doc_generator::json_value& value) {
-      if (value.is_string()) {
-        doc.insert(std::make_shared<analyzed_string_field>(name, value.str));
-      } else if (value.is_null()) {
-        doc.insert(std::make_shared<analyzed_string_field>(name, "null"));
-      } else if (value.is_bool() && value.b) {
-        doc.insert(std::make_shared<analyzed_string_field>(name, "true"));
-      } else if (value.is_bool() && !value.b) {
-        doc.insert(std::make_shared<analyzed_string_field>(name, "false"));
-      } else if (value.is_number()) {
-        const auto str = std::to_string(value.as_number<uint64_t>());
-        doc.insert(std::make_shared<analyzed_string_field>(name, str));
-      }
-    };
-
-    auto codec_ptr = irs::formats::get("1_0");
-
-    auto writer =
-      irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
-    json_doc_generator generator(
-      test_base::resource(json_resource), 
-      analyze_text ? analyzed_field_factory
-                   : &tests::generic_json_field_factory);
-    const document* doc;
-
-    while ((doc = generator.next()) != nullptr) {
-      insert(*writer,
-        doc->indexed.begin(), doc->indexed.end(),
-        doc->stored.begin(), doc->stored.end());
-    }
-
-    writer->commit();
-
-    return irs::directory_reader::open(dir, codec_ptr);
   }
+
+  virtual void TearDown() {
+    // Code here will be called immediately after each test (right before the destructor).
+  }
+};
+
+class analyzed_string_field: public templates::string_field {
+ public:
+  analyzed_string_field(const std::string& name, const irs::string_ref& value)
+    : templates::string_field(name, value),
+      token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::text>::get(), "en")) {
+    if (!token_stream_) {
+      throw std::runtime_error("Failed to get 'text' analyzer for args: en");
+    }
+  }
+  virtual irs::token_stream& get_tokens() const override {
+    const irs::string_ref& value = this->value();
+    token_stream_->reset(value);
+    return *token_stream_;
+  }
+
+ private:
+  static std::unordered_set<std::string> ignore_set_; // there are no stopwords for the 'c' locale in tests
+  irs::analysis::analyzer::ptr token_stream_;
+};
+
+std::unordered_set<std::string> analyzed_string_field::ignore_set_;
+
+irs::directory_reader load_json(
+  irs::directory& dir,
+  const std::string json_resource,
+  bool analyze_text = false
+) {
+  static auto analyzed_field_factory = [](
+      tests::document& doc,
+      const std::string& name,
+      const tests::json_doc_generator::json_value& value) {
+    if (value.is_string()) {
+      doc.insert(std::make_shared<analyzed_string_field>(name, value.str));
+    } else if (value.is_null()) {
+      doc.insert(std::make_shared<analyzed_string_field>(name, "null"));
+    } else if (value.is_bool() && value.b) {
+      doc.insert(std::make_shared<analyzed_string_field>(name, "true"));
+    } else if (value.is_bool() && !value.b) {
+      doc.insert(std::make_shared<analyzed_string_field>(name, "false"));
+    } else if (value.is_number()) {
+      const auto str = std::to_string(value.as_number<uint64_t>());
+      doc.insert(std::make_shared<analyzed_string_field>(name, str));
+    }
+  };
+
+  auto codec_ptr = irs::formats::get("1_0");
+
+  auto writer =
+    irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
+  json_doc_generator generator(
+    test_base::resource(json_resource),
+    analyze_text ? analyzed_field_factory
+                 : &tests::generic_json_field_factory);
+  const document* doc;
+
+  while ((doc = generator.next()) != nullptr) {
+    insert(*writer,
+      doc->indexed.begin(), doc->indexed.end(),
+      doc->stored.begin(), doc->stored.end());
+  }
+
+  writer->commit();
+
+  return irs::directory_reader::open(dir, codec_ptr);
+}
+
 }
 
 using namespace tests;

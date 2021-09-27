@@ -62,7 +62,7 @@ TEST(crc_test, check) {
 
   char buf[65536];
 
-  std::fstream stream(test_base::resource("simple_two_column.csv"));
+  std::fstream stream(test_base::resource("simple_two_column.csv").c_str());
   ASSERT_FALSE(!stream);
 
   while (stream) {
