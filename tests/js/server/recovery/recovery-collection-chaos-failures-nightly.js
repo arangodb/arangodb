@@ -79,6 +79,7 @@ function runSetup () {
   db.control.insert({ _key: "working", collectionCounts }, { overwriteMode: "replace" });
 
   const failurePoints = [
+    "rebuildRevisionTree::sleep",
     "TransactionChaos::randomSleep",
     "applyUpdates::forceHibernation1",
     "applyUpdates::forceHibernation2",
