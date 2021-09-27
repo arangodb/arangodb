@@ -200,7 +200,8 @@ class IRESEARCH_API_TEMPLATE bucket_allocator: private util::noncopyable { // no
   // number of pools
   static const size_t SIZE = Size;
 
-  typedef typename unbounded_object_pool<BucketFactory>::ptr value_type;
+  using pool_type = unbounded_object_pool<BucketFactory>;
+  using value_type = typename pool_type::ptr;
 
   explicit bucket_allocator(size_t pool_size)
     : pools_(pool_size) {
@@ -218,7 +219,7 @@ class IRESEARCH_API_TEMPLATE bucket_allocator: private util::noncopyable { // no
   }
 
  private:
-  array<unbounded_object_pool<BucketFactory>, Size> pools_;
+  array<pool_type, Size> pools_;
 }; // bucket_allocator
 
 // default stateless allocator

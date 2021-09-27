@@ -233,6 +233,9 @@ class Scheduler {
 
   virtual void toVelocyPack(velocypack::Builder&) const = 0;
   virtual QueueStatistics queueStatistics() const = 0;
+  
+  /// @brief returns the last stored dequeue time [ms]
+  virtual uint64_t getLastLowPriorityDequeueTime() const noexcept = 0;
 
   /// @brief approximate fill grade of the scheduler's queue (in %)
   virtual double approximateQueueFillGrade() const = 0;
