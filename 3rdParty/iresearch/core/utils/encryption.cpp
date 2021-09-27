@@ -40,8 +40,7 @@ bool encrypt(
     index_output& out,
     encryption* enc,
     bstring& header,
-    encryption::stream::ptr& cipher
-) {
+    encryption::stream::ptr& cipher) {
   header.resize(enc ? enc->header_length() : 0);
 
   if (header.empty()) {
@@ -90,8 +89,7 @@ bool decrypt(
     const std::string& filename,
     index_input& in,
     encryption* enc,
-    encryption::stream::ptr& cipher
-) {
+    encryption::stream::ptr& cipher) {
   auto header = irs::read_string<bstring>(in);
 
   if (header.empty()) {

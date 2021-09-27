@@ -24,6 +24,14 @@
 #ifndef IRESEARCH_UTF8_PATH_H
 #define IRESEARCH_UTF8_PATH_H
 
+#ifndef __APPLE__
+#include <filesystem>
+namespace iresearch {
+using utf8_path = std::filesystem::path;
+utf8_path current_path();
+}
+#else
+
 #include "string.hpp"
 
 #include <functional>
@@ -40,53 +48,38 @@ class IRESEARCH_API utf8_path {
 
   typedef std::function<bool(const native_char_t* name)> directory_visitor;
   typedef std::basic_string<native_char_t> native_str_t;
+  typedef std::basic_string<native_char_t> string_type; // to simplify move to std::filesystem::path
+  typedef native_char_t value_type; // to simplify move to std::filesystem::path
 
-  utf8_path(bool current_working_path = false);
+  utf8_path() = default;
   utf8_path(const char* utf8_path);
   utf8_path(const std::string& utf8_path);
   utf8_path(const irs::string_ref& utf8_path);
-  utf8_path(const wchar_t* utf8_path);
-  utf8_path(const irs::basic_string_ref<wchar_t>& ucs2_path);
-  utf8_path(const std::wstring& ucs2_path);
   utf8_path& operator+=(const char* utf8_name);
   utf8_path& operator+=(const std::string& utf8_name);
   utf8_path& operator+=(const irs::string_ref& utf8_name);
-  utf8_path& operator+=(const wchar_t* ucs2_name);
-  utf8_path& operator+=(const irs::basic_string_ref<wchar_t>& ucs2_name);
-  utf8_path& operator+=(const std::wstring& ucs2_name);
   utf8_path& operator/=(const char* utf8_name);
   utf8_path& operator/=(const std::string& utf8_name);
   utf8_path& operator/=(const irs::string_ref& utf8_name);
-  utf8_path& operator/=(const wchar_t* ucs2_name);
-  utf8_path& operator/=(const irs::basic_string_ref<wchar_t>& ucs2_name);
-  utf8_path& operator/=(const std::wstring& ucs2_name);
 
-  bool absolute(bool& result) const noexcept;
-  bool chdir() const noexcept;
-  bool exists(bool& result) const noexcept;
-  bool exists_directory(bool& result) const noexcept;
-  bool exists_file(bool& result) const noexcept;
-  bool file_size(uint64_t& result) const noexcept;
-  /// @brief creates path 
-  /// @param createNew requires at least last segment of path to be actually created or error will be detected
-  bool mkdir(bool createNew  = true) const noexcept;
-  bool mtime(time_t& result) const noexcept;
-  bool remove() const noexcept;
-  bool rename(const utf8_path& destination) const noexcept;
-  bool visit_directory(
-    const directory_visitor& visitor,
-    bool include_dot_dir = true
-  );
+  bool is_absolute(bool& result) const noexcept;
+
+  // std::filesystem::path compliant version
+  bool is_absolute() const noexcept {
+    bool result;
+    return is_absolute(result) && result;
+  }
 
   const native_char_t* c_str() const noexcept;
   const native_str_t& native() const noexcept;
-  std::string utf8() const;
+  std::string u8string() const;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief IFF absolute(): same as utf8()
-  ///        IFF !absolute(): same as utf8_path(true) /= utf8()
-  //////////////////////////////////////////////////////////////////////////////
-  std::string utf8_absolute() const;
+  template<typename T>
+  utf8_path& assign(T&& source) {
+    path_.clear();
+    (*this) += source;
+    return *this;
+  }
 
   void clear();
 
@@ -96,6 +89,11 @@ class IRESEARCH_API utf8_path {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
-}
+// need this operator to be closer to std::filesystem::path
+utf8_path operator/( const utf8_path& lhs, const utf8_path& rhs );
 
+utf8_path current_path();
+
+}
+#endif
 #endif

@@ -102,32 +102,42 @@ std::string system_encoding() {
 /// @brief a thread-safe pool of ICU converters for a given encoding
 ///        may hold nullptr on ICU converter instantiation failure
 ////////////////////////////////////////////////////////////////////////////////
-class converter_pool: private irs::util::noncopyable {
+class converter_pool : private irs::util::noncopyable {
  public:
   using ptr = std::shared_ptr<UConverter>;
 
   converter_pool(std::string&& encoding)
-    : encoding_(std::move(encoding)), pool_(POOL_SIZE) {}
+    : encoding_(std::move(encoding)),
+      pool_(POOL_SIZE) {
+  }
+
   ptr get() { return pool_.emplace(encoding_).release(); }
+
   const std::string& encoding() const noexcept { return encoding_; }
 
  private:
-  struct builder {
-    using ptr = std::shared_ptr<UConverter>;
+  struct converter_factory {
+    struct ucnv_deleter {
+      void operator()(UConverter* p) const noexcept {
+        ucnv_close(p);
+      }
+    };
+
+    using ptr = std::unique_ptr<UConverter, ucnv_deleter>;
 
     static ptr make(const std::string& encoding) {
       UErrorCode status = U_ZERO_ERROR;
-      ptr value(
-        ucnv_open(encoding.c_str(), &status),
-        [](UConverter* ptr)->void{ ucnv_close(ptr); }
-      );
 
-      return U_SUCCESS(status) ? std::move(value) : nullptr;
+      ptr value{ucnv_open(encoding.c_str(), &status)};
+
+      return U_SUCCESS(status)
+        ? std::move(value)
+        : nullptr;
     }
   };
 
   std::string encoding_;
-  irs::unbounded_object_pool_volatile<builder> pool_;
+  irs::unbounded_object_pool_volatile<converter_factory> pool_;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,15 +145,9 @@ class converter_pool: private irs::util::noncopyable {
 /// @@return a converter for the specified encoding
 ////////////////////////////////////////////////////////////////////////////////
 converter_pool& get_converter(const irs::string_ref& encoding) {
-  static auto generator = [](
-      const irs::hashed_string_ref& key,
-      const converter_pool& pool
-  ) noexcept->irs::hashed_string_ref {
-    // reuse hash but point ref at value in pool
-    return irs::hashed_string_ref(key.hash(), pool.encoding());
-  };
   static std::mutex mutex;
   static absl::node_hash_map<irs::hashed_string_ref, converter_pool> encodings;
+
   auto key = encoding;
   std::string tmp;
 
@@ -155,14 +159,20 @@ converter_pool& get_converter(const irs::string_ref& encoding) {
     tmp = static_cast<std::string>(key);
   }
 
+  auto generator = [](
+      const irs::hashed_string_ref& key,
+      const converter_pool& pool) noexcept->irs::hashed_string_ref {
+    // reuse hash but point ref at value in pool
+    return irs::hashed_string_ref(key.hash(), pool.encoding());
+  };
+
   auto lock = irs::make_lock_guard(mutex);
 
   return irs::map_utils::try_emplace_update_key(
     encodings,
     generator,
     irs::make_hashed_ref(key, std::hash<irs::string_ref>()),
-    std::move(tmp)
-  ).first->second;
+    std::move(tmp)).first->second;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3726,6 +3736,16 @@ const irs::string_ref& language(std::locale const& locale) {
   }
 
   return std::use_facet<locale_info_facet>(*loc).language();
+}
+
+const irs::string_ref& variant(std::locale const& locale) {
+  auto* loc = &locale;
+
+  if (!std::has_facet<locale_info_facet>(*loc)) {
+    loc = &get_locale(loc->name());
+  }
+
+  return std::use_facet<locale_info_facet>(*loc).variant();
 }
 
 bool is_utf8(std::locale const& locale) {

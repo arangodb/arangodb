@@ -59,7 +59,7 @@ struct IRESEARCH_API by_ngram_similarity_options {
 class IRESEARCH_API by_ngram_similarity
     : public filter_base<by_ngram_similarity_options> {
  public:
-  DECLARE_FACTORY();
+  static ptr make();
 
   // returns set of features required for filter
   static constexpr IndexFeatures required() noexcept {
