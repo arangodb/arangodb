@@ -1402,6 +1402,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
               return std::make_unique<EmptyIndexIterator>(&_collection, trx);
           }
 
+          TRI_ASSERT(value->valueHasVelocyPackRepresentation());
           value->toVelocyPackValue(searchValues);
         }
       }

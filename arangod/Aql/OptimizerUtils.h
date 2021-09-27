@@ -23,9 +23,12 @@
 
 #pragma once
 
+#include "Aql/types.h"
+
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <unordered_map>
 
 namespace arangodb {
 class Index;
@@ -38,9 +41,18 @@ struct Collection;
 class IndexHint;
 class SortCondition;
 struct Variable;
+struct VarInfo;
+struct NonConstExpression;
+struct RegisterId;
 
 /// code that used to be in transaction::Methods
 namespace utils {
+
+struct NonConstExpressionContainer {
+  std::vector<std::unique_ptr<NonConstExpression>> _expressions;
+  std::unordered_map<VariableId, RegisterId> _varToRegisterMapping; 
+  bool _hasV8Expression = false;
+};
 
 /// @brief Gets the best fitting index for an AQL condition.
 /// note: the caller must have read-locked the underlying collection when
@@ -70,6 +82,10 @@ bool getIndexForSortCondition(
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     aql::IndexHint const& hint, std::vector<std::shared_ptr<Index>>& usedIndexes,
     size_t& coveredAttributes);
+
+NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
+    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo, bool evaluateFCalls,
+    bool sorted, AstNode const* condition, Variable const* indexVariable);
 
 } // namespace utils
 } // namespace aql

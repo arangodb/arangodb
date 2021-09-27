@@ -144,9 +144,9 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
-  void initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
-                      std::vector<RegisterId>& inRegs,
-                      std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions) const;
+  std::vector<std::unique_ptr<NonConstExpression>> initializeOnce(
+      bool& hasV8Expression, std::vector<Variable const*>& inVars,
+      std::vector<RegisterId>& inRegs) const;
 
   bool isProduceResult() const {
     return (isVarUsedLater(_outVariable) || _filter != nullptr) && !doCount();
