@@ -857,17 +857,16 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   std::string const collName = coll.name();
   Result res;
 
-  // If we are a coordinator in a cluster, we have to behave differently:
-  auto const role = ServerState::instance()->getRole();
-  if (ServerState::isCoordinator(role)) {
+// If we are a coordinator in a cluster, we have to behave differently:
 #ifdef USE_ENTERPRISE
-    res = DropColCoordinatorEnterprise(&coll, allowDropSystem);
+  res = DropColEnterprise(&coll, allowDropSystem, timeout);
 #else
+  if (ServerState::isCoordinator(role)) {
     res = DropVocbaseColCoordinator(&coll, allowDropSystem);
-#endif
   } else {
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
+#endif
 
   LOG_TOPIC_IF("1bf4d", WARN, Logger::ENGINES,
                res.fail() && res.isNot(TRI_ERROR_FORBIDDEN) &&
