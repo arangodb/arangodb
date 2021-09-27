@@ -67,7 +67,7 @@ bool accessesSearchVariableViaReference(AstNode const* current, Variable const* 
 };
 
 bool isTargetVariable(AstNode const* node,
-                      ::arangodb::containers::SmallVector<Variable const*>& searchVariables,
+                      ::arangodb::containers::SmallVector<Variable const*> const& searchVariables,
                       bool& isSafeForOptimization) {
   TRI_ASSERT(!searchVariables.empty());
 
@@ -145,13 +145,15 @@ bool isTargetVariable(AstNode const* node,
 }  // namespace
 
 std::unordered_set<std::string> arangodb::aql::ast::getReferencedAttributesForKeep(
-    const AstNode* node, ::arangodb::containers::SmallVector<const Variable*, 64> searchVariables,
-    bool& isSafeForOptimization) {
+    AstNode const* const node, Variable const* const searchVariable, bool& isSafeForOptimization) {
   std::unordered_set<std::string> result;
   isSafeForOptimization = true;
+  auto arena = containers::SmallVector<Variable const*>::allocator_type::arena_type{};
+  auto const searchVariables = containers::SmallVector<Variable const*>(
+      std::initializer_list<Variable const*>{searchVariable}, arena);
 
   std::function<bool(AstNode const*)> visitor = [&isSafeForOptimization, &result,
-                                                 &searchVariables](AstNode const* node) {
+                                                 &searchVariable, &searchVariables](AstNode const* node) {
     if (!isSafeForOptimization) {
       return false;
     }
@@ -166,8 +168,8 @@ std::unordered_set<std::string> arangodb::aql::ast::getReferencedAttributesForKe
         return false;
       }
     } else if (node->type == NODE_TYPE_REFERENCE) {
-      Variable const* v = static_cast<Variable const*>(node->getData());
-      if (v->id == searchVariables.front()->id) {
+      auto const v = static_cast<Variable const*>(node->getData());
+      if (v->id == searchVariable->id) {
         isSafeForOptimization = false;  // the expression references the searched variable
         return false;
       }
@@ -189,8 +191,8 @@ std::unordered_set<std::string> arangodb::aql::ast::getReferencedAttributesForKe
     } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
       auto sub = node->getMemberUnchecked(0);
       if (sub->type == NODE_TYPE_REFERENCE) {
-        Variable const* v = static_cast<Variable const*>(sub->getData());
-        if (v->id == searchVariables.back()->id) {
+        auto const v = static_cast<Variable const*>(sub->getData());
+        if (v->id == searchVariable->id) {
           isSafeForOptimization = false;
           return false;
         }

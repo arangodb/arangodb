@@ -1368,11 +1368,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
       // e.g. COLLECT something INTO g
       // we will now check how many parts of "g" are used later
 
-      std::unordered_set<std::string> keepAttributes;
-
-      ::arangodb::containers::SmallVector<Variable const*>::allocator_type::arena_type a;
-      ::arangodb::containers::SmallVector<Variable const*> searchVariables{a};
-      searchVariables.push_back(outVariable);
+      auto keepAttributes = containers::HashSet<std::string>();
 
       bool doOptimize = true;
       auto planNode = collectNode->getFirstParent();
@@ -1380,10 +1376,10 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
         if (planNode->getType() == EN::CALCULATION) {
           auto cc = ExecutionNode::castTo<CalculationNode const*>(planNode);
           Expression const* exp = cc->expression();
-          if (exp->node() != nullptr && !searchVariables.empty()) {
+          if (exp->node() != nullptr) {
             bool isSafeForOptimization;
             auto usedThere =
-                ast::getReferencedAttributesForKeep(exp->node(), searchVariables,
+                ast::getReferencedAttributesForKeep(exp->node(), outVariable,
                                                     isSafeForOptimization);
             if (isSafeForOptimization) {
               for (auto const& it : usedThere) {
@@ -1397,8 +1393,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
           }  // end - expression exists
         } else {
           auto here = planNode->getVariableIdsUsedHere();
-          TRI_ASSERT(!searchVariables.empty());
-          if (here.find(searchVariables.back()->id) != here.end()) {
+          if (here.find(outVariable->id) != here.end()) {
             // the outVariable of the last collect should not be used by any following node directly
             doOptimize = false;
             break;

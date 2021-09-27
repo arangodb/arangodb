@@ -36,7 +36,8 @@ namespace ast {
 
 /// @brief determines the to-be-kept attribute of an INTO expression
 std::unordered_set<std::string> getReferencedAttributesForKeep(
-    AstNode const* node, ::arangodb::containers::SmallVector<Variable const*> searchVariables,
+    AstNode const* node,
+                                                               const Variable* searchVariable,
     bool& isSafeForOptimization);
 
 }  // namespace ast
