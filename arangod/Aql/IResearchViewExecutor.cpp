@@ -879,7 +879,7 @@ void IResearchViewExecutor<copyStored, ordered, materializeType>::fillBuffer(IRe
   this->_indexReadBuffer.reset();
   if constexpr (copyStored) {
     this->_indexReadBuffer.preAllocateStoredValuesBuffer(
-      atMost * _infos.getOutNonMaterializedViewRegs().size());
+      atMost * this->_infos.getOutNonMaterializedViewRegs().size());
   }
   size_t const count = this->_reader->size();
 
@@ -1358,7 +1358,7 @@ void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::fillBuffe
   this->_indexReadBuffer.reset();
   if constexpr (copyStored) {
     this->_indexReadBuffer.preAllocateStoredValuesBuffer(
-      atMost * _infos.getOutNonMaterializedViewRegs().size());
+      atMost * this->_infos.getOutNonMaterializedViewRegs().size());
   }
 
   while (_heap_it.next()) {
