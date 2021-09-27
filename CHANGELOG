@@ -1,7 +1,10 @@
 devel
 -----
 
-* Added enterprise licensing error codes and metrics support.
+* Added enterprise licensing support including (only for Enterprise version):
+    - additional API endpoint `_admin/license(GET/PUT)?force=true <text>`
+    - arangosh functions: `setLicense(<text>)`, `getLicense()`
+    - new error codes and metrics support
 
 * Update iresearch library to the upstream. Fixed TSan/ASan detected issues.
 
