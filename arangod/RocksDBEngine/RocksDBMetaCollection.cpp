@@ -868,8 +868,8 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     {
       // we may still have some buffered updates, so let's remove them
       // remove all buffered updates
-//      std::unique_lock<std::mutex> guard(_revisionTreeLock);
-//      removeBufferedUpdatesUpTo(blockerSeq - 1);
+      std::unique_lock<std::mutex> guard(_revisionTreeLock);
+      removeBufferedUpdatesUpTo(blockerSeq - 1);
     }
   
     // unlock the collection again
