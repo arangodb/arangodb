@@ -673,7 +673,10 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     return commitSeq;
   }
   if (!_revisionTreeCanBeSerialized) {
-    return commitSeq;
+    // previously, a revision tree was found to be bad and is now being repaired, 
+    // in the meantime we return the number when it was last persisted to avoid 
+    // lastSync jumping down again later
+    return _revisionTreeSerializedSeq;
   }
 
   applyUpdates(commitSeq, lock);  // always apply updates...
@@ -840,8 +843,8 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     {
       // we may still have some buffered updates, so let's remove them
       // remove all buffered updates
-      std::unique_lock<std::mutex> guard(_revisionTreeLock);
-      removeBufferedUpdatesUpTo(blockerSeq - 1);
+//      std::unique_lock<std::mutex> guard(_revisionTreeLock);
+//      removeBufferedUpdatesUpTo(blockerSeq - 1);
     }
   
     // unlock the collection again
