@@ -169,13 +169,6 @@
   #define GCC_ONLY(...)
 #endif
 
-// hool for Valgrind-only code
-#if defined(IRESEARCH_VALGRIND)
-  #define VALGRIND_ONLY(...) __VA_ARGS__
-#else
-  #define VALGRIND_ONLY(...)
-#endif
-
 // check if sizeof(float_t) == sizeof(double_t)
 #if defined(FLT_EVAL_METHOD) && ((FLT_EVAL_METHOD == 1) || (FLT_EVAL_METHOD == 2))
   static_assert(sizeof(float_t) == sizeof(double_t), "sizeof(float_t) != sizeof(double_t)");

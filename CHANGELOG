@@ -1,8 +1,11 @@
 devel
 -----
 
-
 * Added enterprise licensing error codes and metrics support.
+
+* Update iresearch library to the upstream. Fixed TSan/ASan detected issues.
+
+* Added new ArangoSearch analyzer type 'collation'.
 
 * Add basic overload control to arangod. 
   This change adds the `x-arango-queue-time-seconds` header to all responses

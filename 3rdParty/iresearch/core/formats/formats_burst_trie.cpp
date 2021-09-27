@@ -1308,7 +1308,7 @@ void field_writer::prepare(const irs::flush_state& state) {
 
   std::string filename;
   bstring enc_header;
-  auto* enc = get_encryption(state.dir->attributes());
+  auto* enc = state.dir->attributes().encryption();
 
   // prepare term dictionary
   prepare_output(filename, terms_out_, state,
@@ -1353,7 +1353,7 @@ void field_writer::prepare(const irs::flush_state& state) {
   pw_->prepare(*terms_out_, state);
 
   // reset allocator from a directory
-  auto& allocator = directory_utils::get_allocator(*state.dir);
+  auto& allocator = state.dir->attributes().allocator();
   suffix_.reset(allocator);
   stats_.reset(allocator);
 }
@@ -2722,7 +2722,7 @@ class single_term_iterator final : public seek_term_iterator {
       : nullptr;
   }
 
-  virtual const bytes_ref& value() const {
+  virtual const bytes_ref& value() const override {
     return value_;
   }
 
@@ -3475,7 +3475,7 @@ void field_reader::prepare(
     index_in->seek(ptr);
   }
 
-  auto* enc = get_encryption(dir.attributes());
+  auto* enc = dir.attributes().encryption();
   encryption::stream::ptr index_in_cipher;
 
   if (term_index_version > burst_trie::Version::MIN) {

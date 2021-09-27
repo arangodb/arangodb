@@ -39,7 +39,7 @@ TEST_P(format_13_test_case, read_zero_block_encryption) {
   tests::document const* doc1 = gen.next();
 
   // replace encryption
-  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+  ASSERT_NE(nullptr, dir().attributes().encryption());
 
   // write segment with format13
   {
@@ -56,8 +56,8 @@ TEST_P(format_13_test_case, read_zero_block_encryption) {
   }
 
   // replace encryption
-  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
-  dir().attributes().emplace<tests::rot13_encryption>(6);
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(6) };
 
   // can't open encrypted index without encryption
   ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
@@ -71,8 +71,9 @@ TEST_P(format_13_test_case, write_zero_block_encryption) {
   tests::document const* doc1 = gen.next();
 
   // replace encryption
-  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
-  dir().attributes().emplace<tests::rot13_encryption>(0);
+  ASSERT_NE(nullptr, dir().attributes().encryption());
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(0) };
 
   // write segment with format13
   auto codec = irs::formats::get("1_3", "1_0");
@@ -113,7 +114,7 @@ TEST_P(format_13_test_case, fields_read_write_wrong_encryption) {
 
   auto codec = irs::formats::get("1_3", "1_0");
   ASSERT_NE(nullptr, codec);
-  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+  ASSERT_NE(nullptr, dir().attributes().encryption());
 
   // write fields
   {
@@ -145,19 +146,19 @@ TEST_P(format_13_test_case, fields_read_write_wrong_encryption) {
   ASSERT_NE(nullptr, reader);
 
   // can't open encrypted index without encryption
-  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
+  dir().attributes() = irs::directory_attributes{ 0, nullptr };
   ASSERT_THROW(reader->prepare(dir(), meta, docs_mask), irs::index_error);
 
   // can't open encrypted index with wrong encryption
-  dir().attributes().emplace<tests::rot13_encryption>(6);
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(6)};
   ASSERT_THROW(reader->prepare(dir(), meta, docs_mask), irs::index_error);
 }
 
 TEST_P(format_13_test_case, column_meta_read_write_wrong_encryption) {
   auto codec = irs::formats::get("1_3", "1_0");
   ASSERT_NE(nullptr, codec);
-
-  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+  ASSERT_NE(nullptr, dir().attributes().encryption());
 
   irs::segment_meta meta;
   meta.name = "_1";
@@ -182,11 +183,12 @@ TEST_P(format_13_test_case, column_meta_read_write_wrong_encryption) {
   ASSERT_NE(nullptr, reader);
 
   // can't open encrypted index without encryption
-  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
+  dir().attributes() = irs::directory_attributes{ 0, nullptr };
   ASSERT_THROW(reader->prepare(dir(), meta, count, max_id), irs::index_error);
 
   // can't open encrypted index with wrong encryption
-  dir().attributes().emplace<tests::rot13_encryption>(6);
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(6) };
   ASSERT_THROW(reader->prepare(dir(), meta, count, max_id), irs::index_error);
 }
 
@@ -197,7 +199,7 @@ TEST_P(format_13_test_case, open_ecnrypted_with_wrong_encryption) {
 
   tests::document const* doc1 = gen.next();
 
-  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+  ASSERT_NE(nullptr, dir().attributes().encryption());
 
   // write segment with format10
   {
@@ -215,8 +217,8 @@ TEST_P(format_13_test_case, open_ecnrypted_with_wrong_encryption) {
   }
 
   // can't open encrypted index with wrong encryption
-  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
-  dir().attributes().emplace<tests::rot13_encryption>(6);
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(6) };
   ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
 }
 
@@ -227,7 +229,7 @@ TEST_P(format_13_test_case, open_ecnrypted_with_non_encrypted) {
 
   tests::document const* doc1 = gen.next();
 
-  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+  ASSERT_NE(nullptr, dir().attributes().encryption());
 
   // write segment with format11
   {
@@ -244,7 +246,7 @@ TEST_P(format_13_test_case, open_ecnrypted_with_non_encrypted) {
   }
 
   // remove encryption
-  dir().attributes().remove<tests::rot13_encryption>();
+  dir().attributes() = irs::directory_attributes{ 0, nullptr };
 
   // can't open encrypted index without encryption
   ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
@@ -257,7 +259,7 @@ TEST_P(format_13_test_case, open_non_ecnrypted_with_encrypted) {
 
   tests::document const* doc1 = gen.next();
 
-  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
+  dir().attributes() = irs::directory_attributes{ 0, nullptr };
 
   // write segment with format13
   {
@@ -274,7 +276,8 @@ TEST_P(format_13_test_case, open_non_ecnrypted_with_encrypted) {
   }
 
   // add cipher
-  dir().attributes().emplace<tests::rot13_encryption>(7);
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(7) };
 
   // check index
   auto index = irs::directory_reader::open(dir());
@@ -467,9 +470,9 @@ INSTANTIATE_TEST_SUITE_P(
   format_13_test,
   format_13_test_case,
   ::testing::Values(
-    &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-    &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-    &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
+    &tests::rot13_directory<&tests::memory_directory, 16>,
+    &tests::rot13_directory<&tests::fs_directory, 16>,
+    &tests::rot13_directory<&tests::mmap_directory, 16>
   ),
   tests::directory_test_case_base<>::to_string
 );
@@ -485,16 +488,14 @@ INSTANTIATE_TEST_SUITE_P(
   format_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::memory_directory, 7>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 7>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 7>
-    ),
-    ::testing::Values(tests::format_info{"1_3", "1_0"})
-  ),
-  tests::to_string
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::fs_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>,
+      &tests::rot13_directory<&tests::memory_directory, 7>,
+      &tests::rot13_directory<&tests::fs_directory, 7>,
+      &tests::rot13_directory<&tests::mmap_directory, 7>),
+    ::testing::Values(tests::format_info{"1_3", "1_0"})),
+  format_test_case::to_string
 );
 
 

@@ -368,11 +368,11 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
     // insert into collections
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(arangodb::tests::testResourceDir);
-      resource /= irs::string_ref("simple_sequential.json");
+      resource /= std::string_view(arangodb::tests::testResourceDir);
+      resource /= std::string_view("simple_sequential.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
@@ -395,11 +395,11 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
 
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(arangodb::tests::testResourceDir);
-      resource /= irs::string_ref("simple_sequential_order.json");
+      resource /= std::string_view(arangodb::tests::testResourceDir);
+      resource /= std::string_view("simple_sequential_order.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
@@ -540,11 +540,11 @@ TEST_P(IResearchQueryJoinTest, test) {
     // insert into collections
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(arangodb::tests::testResourceDir);
-      resource /= irs::string_ref("simple_sequential.json");
+      resource /= std::string_view(arangodb::tests::testResourceDir);
+      resource /= std::string_view("simple_sequential.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
@@ -565,11 +565,11 @@ TEST_P(IResearchQueryJoinTest, test) {
     // insert into collection_3
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(arangodb::tests::testResourceDir);
-      resource /= irs::string_ref("simple_sequential_order.json");
+      resource /= std::string_view(arangodb::tests::testResourceDir);
+      resource /= std::string_view("simple_sequential_order.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 

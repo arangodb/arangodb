@@ -32,6 +32,7 @@
 #include "shared.hpp"
 #include "utils/utf8_path.hpp"
 
+
 namespace cmdline {
 class parser;
 } // cmdline
@@ -48,7 +49,7 @@ class test_env {
   static const irs::utf8_path& test_results_dir() { return res_dir_; }
 
   // returns path to resource with the specified name
-  static std::string resource( const std::string& name );
+  static irs::utf8_path resource(const std::string& name);
 
   static uint32_t iteration();
 

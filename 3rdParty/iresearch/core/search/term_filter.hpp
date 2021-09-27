@@ -55,7 +55,7 @@ struct IRESEARCH_API by_term_options {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_term : public filter_base<by_term_options> {
  public:
-  DECLARE_FACTORY();
+  static ptr make();
 
   static prepared::ptr prepare(
     const index_reader& rdr,
