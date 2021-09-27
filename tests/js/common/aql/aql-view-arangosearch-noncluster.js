@@ -2659,8 +2659,13 @@ function iResearchAqlTestSuite () {
       var result = db._query("FOR doc IN WithLongPrimarySort SEARCH doc.field3 > 0 OPTIONS { waitForSync : true } SORT doc.field1 ASC " +
                              " RETURN {f1:doc.field1, f2: doc.field2, f3: doc.field3}").toArray();
       assertEqual(1499, result.length);
+      let expected = [];
+      for (let k = 1; k < 1500; ++k) {
+        expected.push(longValue + k);
+      }
+      expected.sort();
       for (let k = 0; k < 1499; ++k) {
-        assertEqual(longValue + (k + 1), result[k].f1);
+        assertEqual(expected[k], result[k].f1);
       }
     },
 

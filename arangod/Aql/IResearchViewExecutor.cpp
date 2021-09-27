@@ -875,6 +875,8 @@ void IResearchViewExecutor<copyStored, ordered, materializeType>::fillBuffer(IRe
   TRI_ASSERT(this->_filter != nullptr);
 
   size_t const atMost = ctx.outputRow.numRowsLeft();
+  TRI_ASSERT(this->_indexReadBuffer.empty());
+  this->_indexReadBuffer.reset();
   if constexpr (copyStored) {
     this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost * _infos.getOutNonMaterializedViewRegs().size());
@@ -1352,6 +1354,8 @@ void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::fillBuffe
   TRI_ASSERT(this->_filter != nullptr);
 
   size_t const atMost = ctx.outputRow.numRowsLeft();
+  TRI_ASSERT(this->_indexReadBuffer.empty());
+  this->_indexReadBuffer.reset();
   if constexpr (copyStored) {
     this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost * _infos.getOutNonMaterializedViewRegs().size());
