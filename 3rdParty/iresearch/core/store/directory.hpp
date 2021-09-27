@@ -23,18 +23,17 @@
 #ifndef IRESEARCH_DIRECTORY_H
 #define IRESEARCH_DIRECTORY_H
 
-#include "data_input.hpp"
-#include "data_output.hpp"
+#include <ctime>
+
+#include "store/data_input.hpp"
+#include "store/data_output.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 
-#include <ctime>
-#include <vector>
-
 namespace iresearch {
 
-class attribute_store;
+class directory_attributes;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct index_lock
@@ -222,14 +221,14 @@ struct IRESEARCH_API directory : private util::noncopyable {
   virtual bool visit(const visitor_f& visitor) const = 0;
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @returns mutable directory attributes
+  /// @returns directory attributes
   ////////////////////////////////////////////////////////////////////////////
-  virtual irs::attribute_store& attributes() noexcept = 0;
+  virtual directory_attributes& attributes() noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @returns immutable directory attributes
+  /// @returns directory attributes
   ////////////////////////////////////////////////////////////////////////////
-  const irs::attribute_store& attributes() const noexcept {
+  const directory_attributes& attributes() const noexcept {
     return const_cast<directory*>(this)->attributes();
   }
 }; // directory

@@ -79,6 +79,6 @@ void IResearchLinkMock::toVelocyPack(
   builder.close();
 }
 
-std::function<void(irs::directory&)> IResearchLinkMock::InitCallback;
+std::function<irs::directory_attributes()> IResearchLinkMock::InitCallback;
 }  // namespace iresearch
 }  // namespace arangodb
