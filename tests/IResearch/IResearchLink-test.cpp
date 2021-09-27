@@ -802,7 +802,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
     (std::string("database-") + std::to_string(vocbase.id()))) /=
     std::string("arangosearch-42"))
-    .utf8();
+    .u8string();
   auto linkJson = arangodb::velocypack::Parser::fromJson(
     "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
     "\"includeAllFields\": true }");
@@ -826,7 +826,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
       ((((irs::utf8_path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
-       (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42")).utf8();
+       (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42")).u8string();
   irs::fs_directory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -863,7 +863,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
     (std::string("database-") + std::to_string(vocbase.id()))) /=
     std::string("arangosearch-42"))
-    .utf8();
+    .u8string();
   auto linkJson = arangodb::velocypack::Parser::fromJson(
     R"({ "id": 42, "type": "arangosearch", "view": "42", "includeAllFields": true, "version":1 })");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -886,7 +886,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
       ((((irs::utf8_path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
-       (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42")).utf8();
+       (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42")).u8string();
   irs::fs_directory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -923,7 +923,7 @@ TEST_F(IResearchLinkTest, test_write) {
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
                            (std::string("database-") + std::to_string(vocbase.id()))) /=
                           std::string("arangosearch-42"))
-                             .utf8();
+                             .u8string();
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
       "\"includeAllFields\": true }");
@@ -948,7 +948,7 @@ TEST_F(IResearchLinkTest, test_write) {
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
-          .utf8();
+          .u8string();
   irs::fs_directory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -1014,7 +1014,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
     (std::string("database-") + std::to_string(vocbase.id()))) /=
     std::string("arangosearch-42"))
-    .utf8();
+    .u8string();
   auto linkJson = arangodb::velocypack::Parser::fromJson(
     "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
     "\"includeAllFields\": true,\
@@ -1051,7 +1051,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
-          .utf8();
+          .u8string();
   irs::fs_directory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -1106,7 +1106,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
     (std::string("database-") + std::to_string(vocbase.id()))) /=
     std::string("arangosearch-42"))
-    .utf8();
+    .u8string();
   auto linkJson = arangodb::velocypack::Parser::fromJson(
     "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
     "\"includeAllFields\": true,\
@@ -1144,7 +1144,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
-          .utf8();
+          .u8string();
   irs::fs_directory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -1203,7 +1203,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
     (std::string("database-") + std::to_string(vocbase.id()))) /=
     std::string("arangosearch-42"))
-    .utf8();
+    .u8string();
   auto linkJson = arangodb::velocypack::Parser::fromJson(
     "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
     "\"includeAllFields\": true,\
@@ -1244,7 +1244,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
-          .utf8();
+          .u8string();
   irs::fs_directory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -1299,7 +1299,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
     (std::string("database-") + std::to_string(vocbase.id()))) /=
     std::string("arangosearch-42"))
-    .utf8();
+    .u8string();
   auto linkJson = arangodb::velocypack::Parser::fromJson(
     "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
     "\"includeAllFields\": true,\
@@ -1342,7 +1342,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
-          .utf8();
+          .u8string();
   irs::fs_directory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -1394,8 +1394,8 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
 }
 
 TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_with_sort_encrypted) {
-  auto linkCallbackRemover = arangodb::iresearch::IResearchLinkMock::setCallbakForScope([](irs::directory& dir) {
-    dir.attributes().emplace<iresearch::mock::test_encryption>(enc_block_size);
+  auto linkCallbackRemover = arangodb::iresearch::IResearchLinkMock::setCallbakForScope([]() {
+      return irs::directory_attributes{0, std::make_unique<iresearch::mock::test_encryption>(enc_block_size)};
     });
   static std::vector<std::string> const EMPTY;
   auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\", \"abc2\":\"aaa\", \"sort\":\"ps\" }");
@@ -1404,7 +1404,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
   std::string dataPath = ((((irs::utf8_path() /= testFilesystemPath) /= std::string("databases")) /=
     (std::string("database-") + std::to_string(vocbase.id()))) /=
     std::string("arangosearch-42"))
-    .utf8();
+    .u8string();
   auto linkJson = arangodb::velocypack::Parser::fromJson(
     "{ \"id\": 42, \"type\": \"arangosearch\", \"view\": \"42\", "
     "\"includeAllFields\": true,\
@@ -1448,9 +1448,11 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
-          .utf8();
-  irs::fs_directory directory(dataPath);
-  directory.attributes().emplace<iresearch::mock::test_encryption>(enc_block_size);
+          .u8string();
+  irs::fs_directory directory(dataPath,
+                              irs::directory_attributes(0,
+                                std::make_unique<iresearch::mock::test_encryption>(enc_block_size)));
+
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
