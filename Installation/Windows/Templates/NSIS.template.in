@@ -226,6 +226,9 @@ Function check_previous_install
   StrCpy $UpgradeInstall "0"
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\SERVER" OldFound
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\ENGINE" OldFound
+  ${if} $IS_DEFAULT_INSTALLDIR == "0"
+    IfFileExists "$DATADIR\ENGINE" OldFound
+  ${EndIf}
   DetailPrint "This is a fresh install."
   return
 OldFound:
@@ -650,8 +653,6 @@ FunctionEnd
 
 Function InstallOptionsPage2
    IfSilent 0 continueUI
-   ; this would be called inside the UI code:
-   Call stop_old_service
    Return
 continueUI:
 
@@ -888,6 +889,12 @@ FunctionEnd
 ;Installer Sections
 
 Section "-Core installation"
+   IfSilent 0 continueBaseInstall
+     ${If} $UpgradeInstall == "1"
+       ; this would be called inside the UI code:
+       Call stop_old_service
+     ${EndIf}
+continueBaseInstall:
   ;Use the entire tree produced by the INSTALL target.  Keep the
   ;list of directories here in sync with the RMDir commands below.
   SetOutPath "$INSTDIR"
