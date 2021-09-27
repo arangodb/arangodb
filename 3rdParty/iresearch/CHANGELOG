@@ -1,8 +1,17 @@
 master
 -------------------------
 
+* Fix threading related issues
+
+* Add "object" locale parsing for the `collation_token_stream` to support definig locale variant
+  and keywords
+
 v1.1 (2021-08-25)
 -------------------------
+
+* Get rid of `utf8_path` in favor of `std::filesystem::path`.
+
+* Fix sporadic "error while reading compact" failures.
 
 * Rework Compression API to return `std::unique_ptr` instead of `std::shared_ptr`.
 

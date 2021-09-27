@@ -29,10 +29,8 @@
 class columnstore2_test_case : public virtual tests::directory_test_case_base<bool> {
  public:
   static std::string to_string(
-      const testing::TestParamInfo<std::tuple<tests::dir_factory_f, bool>>& info) {
-    tests::dir_factory_f factory;
-    bool consolidation;
-    std::tie(factory, consolidation) = info.param;
+      const testing::TestParamInfo<std::tuple<tests::dir_param_f, bool>>& info) {
+    auto [factory, consolidation] = info.param;
 
     if (consolidation) {
       return (*factory)(nullptr).second + "___consolidation";
@@ -75,7 +73,7 @@ TEST_P(columnstore2_test_case, empty_columnstore) {
 TEST_P(columnstore2_test_case, empty_column) {
   constexpr irs::doc_id_t MAX = 1;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
+  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -152,7 +150,7 @@ TEST_P(columnstore2_test_case, empty_column) {
 TEST_P(columnstore2_test_case, sparse_mask_column) {
   constexpr irs::doc_id_t MAX = 1000000;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
+  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -280,7 +278,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
 TEST_P(columnstore2_test_case, sparse_column) {
   constexpr irs::doc_id_t MAX = 1000000;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
+  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -429,7 +427,7 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
   static constexpr auto BLOCK_SIZE = irs::sparse_bitmap_writer::BLOCK_SIZE;
   static constexpr auto GAP_BEGIN = ((MAX / BLOCK_SIZE) - 4) * BLOCK_SIZE;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
+  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -591,7 +589,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
   static constexpr auto BLOCK_SIZE = irs::sparse_bitmap_writer::BLOCK_SIZE;
   static constexpr auto TAIL_BEGIN = (MAX / BLOCK_SIZE) * BLOCK_SIZE;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
+  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -750,7 +748,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
   static constexpr irs::doc_id_t MAX = 500000;
   static constexpr auto TAIL_BEGIN = MAX - 1; // last value has different length
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
+  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -908,7 +906,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
 TEST_P(columnstore2_test_case, dense_mask_column) {
   constexpr irs::doc_id_t MAX = 1000000;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
+  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -1046,7 +1044,7 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
 TEST_P(columnstore2_test_case, dense_column) {
   constexpr irs::doc_id_t MAX = 1000000;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
+  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -1191,7 +1189,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
   constexpr irs::doc_id_t MIN = 500000;
   constexpr irs::doc_id_t MAX = 1000000;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
+  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -1346,7 +1344,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
 TEST_P(columnstore2_test_case, dense_fixed_length_column) {
   constexpr irs::doc_id_t MAX = 1000000;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(irs::get_encryption(dir().attributes()));
+  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = MAX;
@@ -1497,12 +1495,12 @@ INSTANTIATE_TEST_SUITE_P(
   columnstore2_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory,
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>),
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>,
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::fs_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
     ::testing::Values(false, true)),
   &columnstore2_test_case::to_string
 );

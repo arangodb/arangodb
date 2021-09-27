@@ -24,10 +24,13 @@
 #ifndef IRESEARCH_TESTS_PARAM_H
 #define IRESEARCH_TESTS_PARAM_H
 
+#include <memory>
+
+#include "tests_shared.hpp"
 #include "store/directory.hpp"
 #include "store/directory_attributes.hpp"
 #include "utils/ctr_encryption.hpp"
-#include <memory>
+#include "utils/type_id.hpp"
 
 class test_base;
 
@@ -95,32 +98,73 @@ class rot13_encryption final : public irs::ctr_encryption {
 // --SECTION--                                               directory factories
 // -----------------------------------------------------------------------------
 
-typedef std::pair<std::shared_ptr<irs::directory>, std::string>(*dir_factory_f)(const test_base*);
-std::pair<std::shared_ptr<irs::directory>, std::string> memory_directory(const test_base*);
-std::pair<std::shared_ptr<irs::directory>, std::string> fs_directory(const test_base* test);
-std::pair<std::shared_ptr<irs::directory>, std::string> mmap_directory(const test_base* test);
+std::shared_ptr<irs::directory> memory_directory(
+  const test_base*, irs::directory_attributes attrs);
+std::shared_ptr<irs::directory> fs_directory(
+  const test_base*, irs::directory_attributes attrs);
+std::shared_ptr<irs::directory> mmap_directory(
+  const test_base*, irs::directory_attributes attrs);
 
-template<dir_factory_f DirectoryGenerator, size_t BlockSize>
-std::pair<std::shared_ptr<irs::directory>, std::string> rot13_cipher_directory(const test_base* ctx) {
-  auto info = DirectoryGenerator(ctx);
+using dir_generator_f = std::shared_ptr<irs::directory>(*)(
+  const test_base*, irs::directory_attributes);
 
-  if (info.first) {
-    info.first->attributes().emplace<rot13_encryption>(BlockSize);
+template<dir_generator_f DirectoryGenerator>
+struct stringify;
+
+template<>
+struct stringify<&memory_directory> {
+  static std::string type() {
+    return "memory";
   }
+};
 
-  return std::make_pair(info.first, info.second + "_cipher_rot13_" + std::to_string(BlockSize));
+template<>
+struct stringify<&fs_directory> {
+  static std::string type() {
+    return "fs";
+  }
+};
+
+template<>
+struct stringify<&mmap_directory> {
+  static std::string type() {
+    return "mmap";
+  }
+};
+
+template<dir_generator_f DirectoryGenerator>
+std::pair<std::shared_ptr<irs::directory>, std::string> directory(
+    const test_base* ctx) {
+  auto dir = DirectoryGenerator(ctx, irs::directory_attributes{});
+
+  return std::make_pair(dir, stringify<DirectoryGenerator>::type());
+}
+
+template<dir_generator_f DirectoryGenerator, size_t BlockSize>
+std::pair<std::shared_ptr<irs::directory>, std::string> rot13_directory(
+    const test_base* ctx) {
+  auto dir = DirectoryGenerator(
+    ctx,
+    irs::directory_attributes{0, std::make_unique<rot13_encryption>(BlockSize)});
+
+  return std::make_pair(
+    dir,
+    stringify<DirectoryGenerator>::type() + "_cipher_rot13_" + std::to_string(BlockSize));
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          directory_test_case_base
 // -----------------------------------------------------------------------------
 
+using dir_param_f = std::pair<std::shared_ptr<irs::directory>, std::string>(*)(
+  const test_base*);
+
 template<typename... Args>
 class directory_test_case_base
-   : public virtual test_param_base<std::tuple<tests::dir_factory_f, Args...>> {
+   : public virtual test_param_base<std::tuple<tests::dir_param_f, Args...>> {
  public:
   static std::string to_string(
-      const testing::TestParamInfo<std::tuple<tests::dir_factory_f, Args...>>& info) {
+      const testing::TestParamInfo<std::tuple<tests::dir_param_f, Args...>>& info) {
     auto& p = info.param;
     return (*std::get<0>(p))(nullptr).second;
   }
@@ -128,7 +172,7 @@ class directory_test_case_base
   virtual void SetUp() override {
     test_base::SetUp();
 
-    auto& p = test_param_base<std::tuple<tests::dir_factory_f, Args...>>::GetParam();
+    auto& p = test_param_base<std::tuple<tests::dir_param_f, Args...>>::GetParam();
 
     auto* factory = std::get<0>(p);
     ASSERT_NE(nullptr, factory);
