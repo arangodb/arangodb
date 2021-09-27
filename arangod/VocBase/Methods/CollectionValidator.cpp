@@ -11,7 +11,7 @@ using namespace arangodb;
 
 Result CollectionValidator::validateCreationInfo() {
   // check whether the name of the collection is valid
-  if (CollectionNameValidator::isAllowedName(false, false, _vocbase.name())) { // todo check second false
+  if (CollectionNameValidator::isAllowedName(false, false, _vocbase.name())) {  // todo check second false
     events::CreateCollection(_vocbase.name(), _info.name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
@@ -19,18 +19,21 @@ Result CollectionValidator::validateCreationInfo() {
   // check the collection type in \p _info
   if (_info.collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
       _info.collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-    events::CreateCollection(_vocbase.name(), _info.name, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    events::CreateCollection(_vocbase.name(), _info.name,
+                             TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID};
   }
 
   // validate shards factor and replication factor
   if (ServerState::instance()->isCoordinator() || _isSingleServerSmartGraph) {
-    Result res = ShardingInfo::validateShardsAndReplicationFactor(_info.properties, _vocbase.server(), _enforceReplicationFactor);
+    Result res =
+        ShardingInfo::validateShardsAndReplicationFactor(_info.properties,
+                                                         _vocbase.server(),
+                                                         _enforceReplicationFactor);
     if (res.fail()) {
       return res;
     }
   }
-
 
   // All collections on a single server should be local collections.
   // A Coordinator should never have local collections.
@@ -61,8 +64,7 @@ Result CollectionValidator::validateCreationInfo() {
     VPackSlice s = _info.properties.get(StaticStrings::IsSmart);
     auto replicationFactorSlice = _info.properties.get(StaticStrings::ReplicationFactor);
     if (s.isBoolean() && s.getBoolean() &&
-        ((replicationFactorSlice.isNumber() &&
-          replicationFactorSlice.getNumber<int>() == 0) ||
+        ((replicationFactorSlice.isNumber() && replicationFactorSlice.getNumber<int>() == 0) ||
          (replicationFactorSlice.isString() &&
           replicationFactorSlice.stringRef() == StaticStrings::Satellite))) {
       return {TRI_ERROR_BAD_PARAMETER,
@@ -70,10 +72,6 @@ Result CollectionValidator::validateCreationInfo() {
               "replicationFactor"};
     }
   }
-
-
-
-
 
   return {TRI_ERROR_NO_ERROR};
 }
