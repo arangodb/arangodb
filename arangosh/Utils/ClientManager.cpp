@@ -85,12 +85,12 @@ ClientManager::~ClientManager() = default;
 
 Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>& httpClient,
                                          bool force, bool logServerVersion,
-                                         bool logDatabaseNotFound, bool quiet) {
+                                         bool logDatabaseNotFound, bool quiet, size_t threadNumber) {
   TRI_ASSERT(_server.hasFeature<HttpEndpointProvider>());
   ClientFeature& client = _server.getFeature<HttpEndpointProvider, ClientFeature>();
 
   try {
-    httpClient = client.createHttpClient();
+    httpClient = client.createHttpClient(threadNumber);
   } catch (...) {
     LOG_TOPIC("2b5fd", FATAL, _topic) << "cannot create server connection, giving up!";
     return {TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT};

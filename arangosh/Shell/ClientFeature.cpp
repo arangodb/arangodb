@@ -203,7 +203,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (_endpoints.size() > _maxNumEndpoints) {
-    LOG_TOPIC("6e305", FATAL, arangodb::Logger::SSL)
+    LOG_TOPIC("6e305", FATAL, arangodb::Logger::FIXME)
         << "Maximum number of endpoints exceeded";
     FATAL_ERROR_EXIT();
   }
@@ -271,18 +271,23 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  if (!_endpoints.empty() && (_endpoints[0] != "none") &&
-      (_endpoints[0] != Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP))) {
-    std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(_endpoints[0]));
-    if (endpoint != nullptr && endpoint->isBroadcastBind()) {
-      LOG_TOPIC("701fb", FATAL, arangodb::Logger::FIXME)
-          << "invalid value for --server.endpoint ('"
-          << _endpoints[0] << "') - 0.0.0.0 and :: are only allowed for servers binding - not for clients connecting."
-          << " Choose an IP address of your machine instead."
-          << " See https://en.wikipedia.org/wiki/0.0.0.0 for more details.";
-      FATAL_ERROR_EXIT();
-    }
+  if (!_endpoints.empty()) {
+    std::for_each(_endpoints.begin(), _endpoints.end(),  [] (auto const& endpoint) {
+      if (!endpoint.empty() && (endpoint != "none") &&
+          (endpoint != Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP))) {
+        std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
+        if (ep != nullptr && ep->isBroadcastBind()) {
+          LOG_TOPIC("701fb", FATAL, arangodb::Logger::FIXME)
+              << "invalid value for --server.endpoint ('"
+              << endpoint << "') - 0.0.0.0 and :: are only allowed for servers binding - not for clients connecting."
+              << " Choose an IP address of your machine instead."
+              << " See https://en.wikipedia.org/wiki/0.0.0.0 for more details.";
+          FATAL_ERROR_EXIT();
+        }
+      }
+    });
   }
+
   SimpleHttpClientParams::setDefaultMaxPacketSize(_maxPacketSize);
 }
 

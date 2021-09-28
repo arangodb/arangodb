@@ -98,7 +98,7 @@ class ClientTaskQueue {
    * @param  numWorkers The number of workers to spawn
    * @return            `true` if successful
    */
-  bool spawnWorkers(ClientManager& manager, uint32_t const& numWorkers) noexcept;
+  bool spawnWorkers(ClientManager& manager, uint32_t const& numWorkers, size_t threadNumber) noexcept;
 
   /**
    * @brief Determines if the job queue is currently empty
@@ -186,6 +186,7 @@ class ClientTaskQueue {
     ClientTaskQueue<JobData>& _queue;
     std::unique_ptr<httpclient::SimpleHttpClient> _client;
     std::atomic<bool> _idle;
+    std
   };
 
  private:
@@ -228,7 +229,7 @@ inline bool ClientTaskQueue<JobData>::spawnWorkers(ClientManager& manager,
   try {
     MUTEX_LOCKER(lock, _workersLock);
     for (; spawned < numWorkers; spawned++) {
-      auto client = manager.getConnectedClient(false, false, true);
+      auto client = manager.getConnectedClient(false, false, true, spawned);
       auto worker = std::make_unique<Worker>(_server, *this, std::move(client));
       _workers.emplace_back(std::move(worker));
       _workers.back()->start();

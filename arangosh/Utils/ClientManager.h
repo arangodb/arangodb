@@ -66,7 +66,7 @@ class ClientManager {
    */
   Result getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>& httpClient,
                             bool force, bool logServerVersion,
-                            bool logDatabaseNotFound, bool quiet);
+                            bool logDatabaseNotFound, bool quiet, size_t threadNumber);
 
   /**
    * @brief Initializes a client, connects to server, and verifies version

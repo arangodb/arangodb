@@ -251,7 +251,7 @@ void BenchFeature::updateStartCounter() { ++_started; }
 int BenchFeature::getStartCounter() { return _started; }
 
 void BenchFeature::start() {
-  sort(_percentiles.begin(), _percentiles.end());
+  std::sort(_percentiles.begin(), _percentiles.end());
 
   if (!_jsonReportFile.empty() && FileUtils::exists(_jsonReportFile)) {
     LOG_TOPIC("ee2a4", FATAL, arangodb::Logger::BENCH)

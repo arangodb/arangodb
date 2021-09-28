@@ -299,7 +299,7 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
   // checks which will fail if the database doesn't exist
   std::unique_ptr<SimpleHttpClient> httpClient;
   try {
-    httpClient = client.createHttpClient();
+    httpClient = client.createHttpClient(0); // thread number zero
     httpClient->params().setLocationRewriter(static_cast<void*>(&client),
                                              arangodb::ClientManager::rewriteLocation);
     httpClient->params().setUserNamePassword("/", client.username(), client.password());
