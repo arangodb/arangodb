@@ -57,6 +57,13 @@ class ServerState {
     STATE_SHUTDOWN        // used by all roles
   };
 
+  enum ReadOnlyMode {
+    API_TRUE,             // Set from outside via API
+    API_FALSE,
+    LICENSE_TRUE,         // Set from license feature
+    LICENSE_FALSE
+  };
+
   enum class Mode : uint8_t {
     DEFAULT = 0,
     /// reject all requests
@@ -116,8 +123,14 @@ class ServerState {
   /// @brief should not allow DDL operations / transactions
   static bool readOnly();
 
+  /// @brief should not allow DDL operations / transactions
+  static bool readOnlyByLicense();
+
+  /// @brief should not allow DDL operations / transactions
+  static bool readOnlyByAPI();
+
   /// @brief set server read-only
-  static bool setReadOnly(bool ro);
+  static bool setReadOnly(ReadOnlyMode);
 
  public:
   /// @brief sets the initialized flag
