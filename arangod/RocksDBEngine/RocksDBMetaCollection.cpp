@@ -434,11 +434,9 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::computeRevision
 Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
     LogicalCollection& coll, RocksDBEngine& engine,
     rocksdb::WriteBatch& batch, rocksdb::ColumnFamilyHandle* const cf,
-    rocksdb::SequenceNumber originalMaxCommitSeq,
+    rocksdb::SequenceNumber maxCommitSeq,
     bool force, std::string const& context, std::string& scratch,
     rocksdb::SequenceNumber& appliedSeq) {
-
-  rocksdb::SequenceNumber maxCommitSeq = originalMaxCommitSeq;
 
   TRI_ASSERT(coll.useSyncByRevision());
 
@@ -450,12 +448,13 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
   maxCommitSeq = _meta.committableSeq(maxCommitSeq);
   if (needToPersistRevisionTree(maxCommitSeq, guard)) {
     rocksdb::SequenceNumber seq = maxCommitSeq;
+// TODO: decide on this!
+    if (seq < _revisionTreeApplied) {
+      seq = _revisionTreeApplied;
+    }
     scratch.clear();
+
     try {
-//      if (_revisionTreeApplied > seq) {
-//        LOG_TOPIC("12345", INFO, Logger::ENGINES) << "BUMPING SEQ NO FROM " << seq << " TO " << _revisionTreeApplied << " FOR COLLECTION " << _logicalCollection.name();
-//        seq = _revisionTreeApplied;
-//      }
       seq = serializeRevisionTree(scratch, seq, force, guard);
     } catch (std::exception const& ex) {
       LOG_TOPIC("33691", WARN, Logger::ENGINES)
@@ -473,7 +472,6 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
       rocksdb::Status s = batch.Delete(cf, key.string());
       
       if (s.ok() || s.IsNotFound()) {
-        LOG_DEVEL << "deleting revision tree for " << _logicalCollection.name();
         s = db->Write(wo, &batch);
       } 
       if (!s.ok()) {
@@ -518,10 +516,6 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
             << context << ": writing revision tree failed";
         return Result(rocksutils::convertStatus(s));
       } else {
-        LOG_TOPIC("92a08", INFO, Logger::ENGINES)
-            << context << ": serialized revision tree for "
-            << "collection " << _logicalCollection.name() 
-            << " through sequence number " << seq << ", maxCommit: " << maxCommitSeq << ", orig: " << originalMaxCommitSeq;
         LOG_TOPIC("92a08", TRACE, Logger::ENGINES)
             << context << ": serialized revision tree for "
             << "collection with objectId '" << objectId() << "' "
@@ -824,11 +818,9 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     // utility function to remove buffered updates up to (including) seq.
     // requires the buffer lock to be held!
     auto removeBufferedUpdatesUpTo = [this](rocksdb::SequenceNumber seq) {
-  LOG_TOPIC("12345", INFO, Logger::ENGINES) << "removing buffers up to including " << seq << " for " << _logicalCollection.name();
       {
         auto it = _revisionTruncateBuffer.begin(); 
         while (it != _revisionTruncateBuffer.end() && *it <= seq) {
-  LOG_TOPIC("12345", INFO, Logger::ENGINES) << "removing truncate at " << *it << " <= " << seq << " for " << _logicalCollection.name();
           it = _revisionTruncateBuffer.erase(it);
         }
       }
@@ -868,10 +860,11 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     }
 
     {
-      // we may still have some buffered updates, so let's remove them
-      // remove all buffered updates
+      // we may still have some buffered updates, so let's remove them.
       std::unique_lock<std::mutex> guard(_revisionTreeLock);
       removeBufferedUpdatesUpTo(blockerSeq - 1);
+
+      _revisionTreeApplied = blockerSeq - 1;
     }
   
     // unlock the collection again
@@ -898,15 +891,22 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
 
     while (true) {
       std::unique_lock<std::mutex> guard(_revisionTreeLock);
+      
+      if (_revisionTreeApplied < beginSeq) {
+        _revisionTreeApplied = beginSeq;
+      }
 
       if (_meta.hasBlockerUpTo(beginSeq - 1)) {
         guard.unlock();
-        LOG_TOPIC("12345", INFO, Logger::ENGINES) << "hihi, waiting for blockers for collection " << _logicalCollection.name();
+
+        if (_logicalCollection.vocbase().server().isStopping()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+        }
+
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
         continue;
       }
 
-      LOG_TOPIC("12345", INFO, Logger::ENGINES) << "making available new revision tree for " << _logicalCollection.name() << " with seq " << beginSeq;
       TRI_ASSERT(_revisionTreeApplied <= beginSeq);
       TRI_ASSERT(_revisionTreeSerializedSeq <= beginSeq);
 
@@ -921,7 +921,6 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       removeBufferedUpdatesUpTo(beginSeq);
       return {};
     }
-    // LOL MSVC
   });
 }
 
@@ -1097,7 +1096,6 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
 
   if (_revisionTreeApplied >= seq) {
-  LOG_TOPIC("12345", INFO, Logger::ENGINES) << "rejecting " << inserts.size() << " inserts/" << removals.size() << " removals for " << _logicalCollection.name() << " with seq " << seq;
     LOG_TOPIC("1fe4d", TRACE, Logger::ENGINES)
         << "rejecting change with too low sequence number " << seq << " for collection " << _logicalCollection.name();
 
@@ -1109,8 +1107,6 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
     return;
   }
   
-  LOG_TOPIC("12345", INFO, Logger::ENGINES) << "buffering " << inserts.size() << " inserts/" << removals.size() << " removals for " << _logicalCollection.name() << " with seq " << seq;
-        
   TRI_IF_FAILURE("TransactionChaos::randomSleep") {
     std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
   }
@@ -1161,10 +1157,8 @@ Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
   Result res = basics::catchVoidToResult([&]() -> void {
     std::unique_lock<std::mutex> guard(_revisionTreeLock);
     if (_revisionTreeApplied >= seq) {
-  LOG_TOPIC("12345", INFO, Logger::ENGINES) << "rejecting truncate for " << _logicalCollection.name() << " with seq " << seq;
       return;
     }
-  LOG_TOPIC("12345", INFO, Logger::ENGINES) << "buffering truncate for " << _logicalCollection.name() << " with seq " << seq;
     _revisionTruncateBuffer.emplace(seq);
   });
   return res;
@@ -1233,7 +1227,6 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq,
         TRI_ASSERT(ignoreSeq != 0);
         foundTruncate = true;
         it = _revisionTruncateBuffer.erase(it);
-  LOG_TOPIC("12345", INFO, Logger::ENGINES) << "applyUpdates removing outdated truncate for collection " << _logicalCollection.name() << " with seq " << *it << " <= " << commitSeq;
       }
 
       if (foundTruncate) {

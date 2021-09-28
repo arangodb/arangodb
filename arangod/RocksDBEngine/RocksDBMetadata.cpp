@@ -83,7 +83,8 @@ void RocksDBMetadata::DocCount::toVelocyPack(VPackBuilder& b) const {
 }
 
 RocksDBMetadata::RocksDBMetadata()
-    : _count(0, 0, 0, RevisionId::none()),
+    : _maxBlockersSequenceNumber(0),
+      _count(0, 0, 0, RevisionId::none()),
       _numberDocuments(0),
       _revisionId(RevisionId::none()) {}
 
@@ -99,22 +100,28 @@ RocksDBMetadata::RocksDBMetadata()
  * @param  seq   The sequence number immediately prior to call
  */
 rocksdb::SequenceNumber RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
-  WRITE_LOCKER(locker, _blockerLock);
+  {
+    WRITE_LOCKER(locker, _blockerLock);
 
-  TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
-  TRI_ASSERT(_blockersBySeq.end() == _blockersBySeq.find(std::make_pair(seq, trxId)));
+    seq = std::max(seq, _maxBlockersSequenceNumber);
 
-  auto insert = _blockers.try_emplace(trxId, seq);
-  if (!insert.second) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate sequence number in placeBlocker");
-  }
-  try {
-    if (!_blockersBySeq.emplace(seq, trxId).second) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate sequence number for crosslist in placeBlocker");
+    TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
+    TRI_ASSERT(_blockersBySeq.end() == _blockersBySeq.find(std::make_pair(seq, trxId)));
+
+    auto insert = _blockers.try_emplace(trxId, seq);
+    if (!insert.second) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate sequence number in placeBlocker");
     }
-  } catch (...) {
-    _blockers.erase(trxId);
-    throw;
+    try {
+      if (!_blockersBySeq.emplace(seq, trxId).second) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate sequence number for crosslist in placeBlocker");
+      }
+    } catch (...) {
+      _blockers.erase(trxId);
+      throw;
+    }
+
+    _maxBlockersSequenceNumber = seq;
   }
 
   LOG_TOPIC("1587a", TRACE, Logger::ENGINES)
@@ -155,6 +162,9 @@ Result RocksDBMetadata::updateBlocker(TransactionId trxId, rocksdb::SequenceNumb
     if (!crosslist.second) {
       return res.reset(TRI_ERROR_INTERNAL);
     }
+    
+    _maxBlockersSequenceNumber = std::max(seq, _maxBlockersSequenceNumber);
+
     LOG_TOPIC("1587c", TRACE, Logger::ENGINES)
         << "[" << this << "] updated blocker (" << trxId.id() << ", " << seq << ")";
     return res;
@@ -334,7 +344,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   TRI_ASSERT(appliedSeq > 0);
     
   TRI_ASSERT(batch.Count() == 0);
-
+  
   Result res;
   if (coll.deleted()) {
     return res;
@@ -370,6 +380,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   RocksDBKey key;
   rocksdb::ColumnFamilyHandle* const cf =
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
+  
   RocksDBCollection* const rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
 
   // Step 1. store the document count
@@ -621,7 +632,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         rocksdb::SequenceNumber useSeq = std::max(globalSeq, seq);
         rcoll->setRevisionTree(std::move(tree), useSeq);
 
-        LOG_TOPIC("92cab", INFO, Logger::ENGINES)
+        LOG_TOPIC("92cab", TRACE, Logger::ENGINES)
             << "[" << this << "] recovered revision tree for "
             << "collection with objectId '" << rcoll->objectId() << "', "
             << "valid through " << useSeq << ", seq: " << seq << ", globalSeq: " << globalSeq;
@@ -672,7 +683,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       _count._committedSeq = treeSeq; 
     }
   } else {
-    LOG_TOPIC("ecdbe", INFO, Logger::ENGINES)
+    LOG_TOPIC("ecdbe", DEBUG, Logger::ENGINES)
         << "no revision tree found for collection " << coll.name()
         << ", but collection appears empty";
     rcoll->rebuildRevisionTree(it);
@@ -806,10 +817,6 @@ rocksdb::SequenceNumber RocksDBBlockerGuard::placeBlocker(TransactionId trxId) {
   TRI_ASSERT(!_trxId.isSet());
   
   auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
-//  auto& engine = _collection->vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-//  rocksdb::SequenceNumber blockerSeq = engine.db()->GetLatestSequenceNumber();
-//  // placeBlocker() may increase the blockerSeq
-//  blockerSeq = rcoll->meta().placeBlocker(trxId, blockerSeq);
   rocksdb::SequenceNumber blockerSeq = rcoll->placeRevisionTreeBlocker(trxId);
 
   // only set _trxId if placing the blocker succeeded
