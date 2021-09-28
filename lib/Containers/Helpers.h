@@ -48,7 +48,7 @@ static std::size_t nextCapacity(T const& container, std::size_t initialCapacity)
     if (capacity > container.capacity()) {
       // inspired by facebook/folly (https://github.com/facebook/folly/blob/master/folly/memory/Malloc.h):
       constexpr size_t jemallocMinInPlaceExpandable = 4096;
-      if (container.capacity() < jemallocMinInPlaceExpandable / sizeof(typename T::value_type)) {
+      if (container.capacity() < jemallocMinInPlaceExpandable / std::max(sizeof(typename T::value_type), alignof(typename T::value_type))) {
         capacity = container.capacity() * 2;
       } else {
         // grow with a growth factor of 1.5
