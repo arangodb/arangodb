@@ -2,8 +2,11 @@ v3.8.2 (XXXX-XX-XX)
 -------------------
 
 * Fix issue #14807: Fix crash during optimization of certain AQL queries during
-  the remove-collect-variables optimizer rule, when a COLLECT node without output
-  variables (this includes RETURN DISTINCT) occured in the plan.
+  the remove-collect-variables optimizer rule, when a COLLECT node without
+  output variables (this includes RETURN DISTINCT) occured in the plan.
+
+* Prevent some possible deadlocks under high load regarding transactions and
+  document operations, and also improve performance slightly.
 
 * Fixed a bug for array indexes on update of documents (BTS-548).
 
