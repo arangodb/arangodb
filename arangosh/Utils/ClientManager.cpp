@@ -147,11 +147,11 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
 }
 
 std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
-    bool force, bool logServerVersion, bool logDatabaseNotFound) {
+    bool force, bool logServerVersion, bool logDatabaseNotFound, size_t threadNumber) {
   std::unique_ptr<httpclient::SimpleHttpClient> httpClient;
 
   Result result = getConnectedClient(httpClient, force, logServerVersion,
-                                     logDatabaseNotFound, false);
+                                     logDatabaseNotFound, false, threadNumber);
   if (result.fail() && !(force && result.is(TRI_ERROR_INCOMPATIBLE_VERSION))) {
     FATAL_ERROR_EXIT();
   }

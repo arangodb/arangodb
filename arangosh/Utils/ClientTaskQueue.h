@@ -98,7 +98,7 @@ class ClientTaskQueue {
    * @param  numWorkers The number of workers to spawn
    * @return            `true` if successful
    */
-  bool spawnWorkers(ClientManager& manager, uint32_t const& numWorkers, size_t threadNumber) noexcept;
+  bool spawnWorkers(ClientManager& manager, uint32_t const& numWorkers) noexcept;
 
   /**
    * @brief Determines if the job queue is currently empty
@@ -186,7 +186,6 @@ class ClientTaskQueue {
     ClientTaskQueue<JobData>& _queue;
     std::unique_ptr<httpclient::SimpleHttpClient> _client;
     std::atomic<bool> _idle;
-    std
   };
 
  private:
