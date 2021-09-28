@@ -18,7 +18,7 @@ struct elsa<ErrorCode> {
 #include <cinttypes>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 355> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 363> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -729,5 +729,21 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 355> ErrorMessage
       "analyzers in plan could not be modified"},
     {TRI_ERROR_AIR_EXECUTION_ERROR,  // 8001
       "error during AIR execution"},
+    {TRI_ERROR_LICENSE_EXPIRED_OR_INVALID,  // 9001
+      "license has expired or is invalid"},
+    {TRI_ERROR_LICENSE_SIGNATURE_VERIFICATION,  // 9002
+      "license verification failed"},
+    {TRI_ERROR_LICENSE_NON_MATCHING_ID,  // 9003
+      "non-matching license id"},
+    {TRI_ERROR_LICENSE_FEATURE_NOT_ENABLED,  // 9004
+      "feature is not enabled by the license"},
+    {TRI_ERROR_LICENSE_RESOURCE_EXHAUSTED,  // 9005
+      "the resource is exhausted"},
+    {TRI_ERROR_LICENSE_INVALID,  // 9006
+      "invalid license"},
+    {TRI_ERROR_LICENSE_CONFLICT,  // 9007
+      "conflicting license"},
+    {TRI_ERROR_LICENSE_VALIDATION_FAILED,  // 9008
+      "failed to validate license signature"},
 };
 }

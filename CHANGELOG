@@ -1,9 +1,23 @@
 devel
 -----
 
+<<<<<<< HEAD
+* Added enterprise licensing error codes and metrics support.
+=======
+* Added enterprise licensing support including (only for Enterprise version):
+    - additional API endpoint `_admin/license(GET/PUT)?force=true <text>`
+    - arangosh functions: `setLicense(<text>)`, `getLicense()`
+    - new error codes and metrics support
+>>>>>>> 32cfbe6ff959c4696f9576690bf9b8e84dba4e37
+
+* Fix issue #14807: Fix crash during optimization of certain AQL queries during
+  the remove-collect-variables optimizer rule, when a COLLECT node without output
+  variables (this includes RETURN DISTINCT) occured in the plan.
+
 * Update iresearch library to the upstream. Fixed TSan/ASan detected issues.
 
-* Added new ArangoSearch analyzer type 'collation'
+* Added new ArangoSearch analyzer type 'collation'.
+
 
 * Add basic overload control to arangod. 
   This change adds the `x-arango-queue-time-seconds` header to all responses
