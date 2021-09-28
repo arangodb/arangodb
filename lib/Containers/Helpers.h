@@ -56,7 +56,6 @@ static std::size_t nextCapacity(T const& container, std::size_t initialCapacity)
       }
     }
   }
-  TRI_ASSERT(capacity >= container.capacity());
   TRI_ASSERT(capacity > container.size());
   return capacity;
 }
