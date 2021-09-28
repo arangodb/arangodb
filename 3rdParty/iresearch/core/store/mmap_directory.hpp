@@ -32,12 +32,13 @@ namespace iresearch {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API mmap_directory : public fs_directory {
  public:
-  explicit mmap_directory(const std::string& dir);
+  explicit mmap_directory(
+    utf8_path dir,
+    directory_attributes attrs = directory_attributes{});
 
   virtual index_input::ptr open(
     const std::string& name,
-    IOAdvice advice
-  ) const noexcept override final;
+    IOAdvice advice) const noexcept override final;
 }; // mmap_directory
 
 } // ROOT
