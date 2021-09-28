@@ -9,7 +9,8 @@ import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { DispatchArgs, FormState, State } from "./constants";
 import CopyFromInput from "./forms/inputs/CopyFromInput";
 import { Cell, Grid } from "../../components/pure-css/grid";
-import { getForm, getPath, validateAndFix } from "./helpers";
+import { getForm, validateAndFix } from "./helpers";
+import { getPath } from "../../utils/helpers";
 
 declare var arangoHelper: { [key: string]: any };
 
@@ -32,35 +33,54 @@ const initialState: State = {
 };
 
 const reducer = (state: State, action: DispatchArgs): State => {
-  const newState = cloneDeep(state);
+  let newState = state;
 
   switch (action.type) {
     case 'lockJsonForm':
-      newState.lockJsonForm = true;
+      newState = {
+        ...state,
+        lockJsonForm: true
+      };
       break;
 
     case 'unlockJsonForm':
-      newState.lockJsonForm = false;
+      newState = {
+        ...state,
+        lockJsonForm: false
+      };
       break;
 
     case 'show':
-      newState.show = true;
+      newState = {
+        ...state,
+        show: true
+      };
       break;
 
     case 'showJsonForm':
-      newState.showJsonForm = true;
+      newState = {
+        ...state,
+        showJsonForm: true
+      };
       break;
 
     case 'hideJsonForm':
-      newState.showJsonForm = false;
+      newState = {
+        ...state,
+        showJsonForm: false
+      };
       break;
 
     case 'regenRenderKey':
-      newState.renderKey = uniqueId('force_re-render_');
+      newState = {
+        ...state,
+        renderKey: uniqueId('force_re-render_')
+      };
       break;
 
     case 'setField':
       if (action.field && action.field.value !== undefined) {
+        newState = cloneDeep(state);
         const path = getPath(action.basePath, action.field.path);
 
         set(newState.formCache, path, action.field.value);
@@ -79,6 +99,7 @@ const reducer = (state: State, action: DispatchArgs): State => {
 
     case 'unsetField':
       if (action.field) {
+        newState = cloneDeep(state);
         const path = getPath(action.basePath, action.field.path);
 
         unset(newState.formState, path);
@@ -88,13 +109,15 @@ const reducer = (state: State, action: DispatchArgs): State => {
 
     case 'setFormState':
       if (action.formState) {
+        newState = cloneDeep(state);
         newState.formState = action.formState;
         merge(newState.formCache, newState.formState);
       }
       break;
 
     case 'reset':
-      return initialState;
+      newState = initialState;
+      break;
   }
 
   return newState;
@@ -111,7 +134,7 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
 
   const handleAdd = async () => {
     try {
-      const result = await getApiRouteForCurrentDB().post('/analyzer/', formState);
+      const result = await getApiRouteForCurrentDB().post('/analyzer', formState);
 
       if (result.body.error) {
         arangoHelper.arangoError('Failure', `Got unexpected server response: ${result.body.errorMessage}`);

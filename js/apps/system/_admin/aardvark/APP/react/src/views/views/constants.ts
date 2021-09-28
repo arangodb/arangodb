@@ -67,6 +67,7 @@ export type FormState = BaseFormState & ViewProperties;
 export const linksSchema = {
   $id: 'https://arangodb.com/schemas/views/linkProperties.json',
   $recursiveAnchor: true,
+  type: 'object',
   properties: {
     analyzers: {
       type: 'array',
@@ -243,7 +244,8 @@ export const formSchema: JSONSchemaType<FormState> = {
               maximum: 1,
               default: 0.1
             }
-          }
+          },
+          additionalProperties: false
         },
         {
           properties: {
@@ -279,32 +281,21 @@ export const formSchema: JSONSchemaType<FormState> = {
               minimum: 0,
               default: 2097152
             }
-          }
+          },
+          additionalProperties: false
         }
       ],
-      additionalProperties: false,
+      default: {
+        type: 'tier',
+        segmentsMin: 1,
+        segmentsMax: 10,
+        segmentsBytesMax: 5368709120,
+        segmentsBytesFloor: 2097152
+      },
       required: ['type']
     }
   },
   required: ['name', 'type'],
-  default: {
-    name: '',
-    type: 'arangosearch',
-    primarySortCompression: 'lz4',
-    cleanupIntervalStep: 2,
-    commitIntervalMsec: 1000,
-    consolidationIntervalMsec: 1000,
-    writebufferIdle: 64,
-    writebufferActive: 0,
-    writebufferSizeMax: 33554432,
-    consolidationPolicy: {
-      type: 'tier',
-      segmentsMin: 1,
-      segmentsMax: 10,
-      segmentsBytesMax: 5368709120,
-      segmentsBytesFloor: 2097152
-    }
-  },
   additionalProperties: false
 };
 

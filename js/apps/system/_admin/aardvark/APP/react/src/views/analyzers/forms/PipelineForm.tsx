@@ -1,11 +1,12 @@
 import React from "react";
 import { DispatchArgs, FormProps, PipelineStates, typeNameMap } from "../constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
-import { getForm, getPath } from "../helpers";
+import { getForm } from "../helpers";
 import { omit } from "lodash";
 import TypeInput from "./inputs/TypeInput";
 import styled from 'styled-components';
 import { Int } from "../../../utils/constants";
+import { getPath } from "../../../utils/helpers";
 
 const StyledButton = styled.button`
   &&& {

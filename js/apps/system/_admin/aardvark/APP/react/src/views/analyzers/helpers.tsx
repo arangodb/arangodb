@@ -11,7 +11,7 @@ import GeoJsonForm from "./forms/GeoJsonForm";
 import GeoPointForm from "./forms/GeoPointForm";
 import React, { Dispatch } from "react";
 import PipelineForm from "./forms/PipelineForm";
-import { compact, parseInt } from "lodash";
+import { parseInt } from "lodash";
 import StopwordsForm from "./forms/StopwordsForm";
 import CollationForm from "./forms/CollationForm";
 import SegmentationForm from "./forms/SegmentationForm";
@@ -24,9 +24,8 @@ const ajv = new Ajv({
   $data: true
 });
 ajvErrors(ajv);
-export const validateAndFix = ajv.compile(formSchema);
 
-export const getPath = (basePath: string | undefined, path: string | undefined) => compact([basePath, path]).join('.');
+export const validateAndFix = ajv.compile(formSchema);
 
 export const getForm = ({ formState, dispatch, disabled = true }: FormProps) => {
   const typeName = (formState as AnalyzerTypeState).type;

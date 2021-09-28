@@ -1,14 +1,13 @@
 /* global $ */
 
 import { isEqual, map, sortBy } from 'lodash';
-import minimatch from 'minimatch';
 import React, { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { ArangoTable, ArangoTD, ArangoTH } from '../../components/arango/table';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '../../components/modal/Modal';
 import { Cell, Grid } from '../../components/pure-css/grid';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
-import { getChangeHandler, usePermissions } from '../../utils/helpers';
+import { facetedFilter, getChangeHandler, usePermissions } from '../../utils/helpers';
 import Actions from './Actions';
 import AddAnalyzer from './AddAnalyzer';
 import { typeNameMap } from './constants';
@@ -70,6 +69,8 @@ const toggleHeaderDropdown = () => {
   $('#analyzersDropdown2').slideToggle(200);
 };
 
+const facets = ['db', 'name', 'type'];
+
 const AnalyzersReactView = () => {
   const { data } = useSWR('/analyzer', (path) => getApiRouteForCurrentDB().get(path));
   const { data: permData } = usePermissions();
@@ -96,31 +97,7 @@ const AnalyzersReactView = () => {
   };
 
   useEffect(() => {
-    let tempFilteredAnalyzers = analyzers;
-
-    if (filterExpr) {
-      try {
-        const filters = filterExpr.trim().split(/\s+/);
-
-        for (const filter of filters) {
-          const splitIndex = filter.indexOf(':');
-          const field = filter.slice(0, splitIndex);
-          const pattern = filter.slice(splitIndex + 1);
-
-          tempFilteredAnalyzers = tempFilteredAnalyzers.filter(
-            analyzer => minimatch(analyzer[field].toLowerCase(), `*${pattern.toLowerCase()}*`));
-        }
-      } catch (e) {
-        tempFilteredAnalyzers = tempFilteredAnalyzers.filter(analyzer => {
-          const normalizedPattern = `*${filterExpr.toLowerCase()}*`;
-
-          return ['db', 'name', 'type'].some(
-            field => minimatch(analyzer[field].toLowerCase(), normalizedPattern));
-        });
-      }
-    }
-
-    processAndSetFilteredAnalyzers(tempFilteredAnalyzers);
+    processAndSetFilteredAnalyzers(facetedFilter(filterExpr, analyzers, facets));
   }, [analyzers, filterExpr, processAndSetFilteredAnalyzers]);
 
   if (data && permData) {

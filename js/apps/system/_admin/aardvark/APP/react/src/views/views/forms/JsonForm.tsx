@@ -1,16 +1,16 @@
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import React, { useState } from 'react';
-import Ajv from 'ajv';
-import { FormProps, formSchema, FormState, State } from "../constants";
+import Ajv2019 from "ajv/dist/2019";
+import { FormProps, formSchema, FormState, linksSchema, State } from "../constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 
-const ajv = new Ajv({
+const ajv = new Ajv2019({
   allErrors: true,
   verbose: true,
   discriminator: true,
   $data: true
 });
-const validate = ajv.compile(formSchema);
+const validate = ajv.addSchema(linksSchema).compile(formSchema);
 
 type JsonFormProps = Pick<FormProps, 'formState' | 'dispatch'> & Pick<State, 'renderKey'>;
 
