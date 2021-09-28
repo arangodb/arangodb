@@ -33,7 +33,7 @@ const chaos = require(base);
 function main(argv) {
   return chaos.main(argv, {
     withFailurePoints: true,
-    numberOfCollections: 1,
+    numberOfCollections: 5,
     maxIterations: 30,
     maxRunTime: 45,
   });
