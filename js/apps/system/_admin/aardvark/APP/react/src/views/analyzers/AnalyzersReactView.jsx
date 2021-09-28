@@ -1,6 +1,6 @@
 /* global $ */
 
-import { isEqual, sortBy, map } from 'lodash';
+import { isEqual, map, sortBy } from 'lodash';
 import minimatch from 'minimatch';
 import React, { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
@@ -29,7 +29,7 @@ const FilterHelpModal = () => {
         fontSize: '18px'
       }}/>
     </a>
-    <Modal show={show} setShow={setShow}>
+    <Modal show={show} setShow={setShow} cid={'modal-content-filter-help'}>
       <ModalHeader title={'Filter Help'}/>
       <ModalBody>
         <dl>
@@ -134,7 +134,7 @@ const AnalyzersReactView = () => {
     return <>
       <div className="headerBar">
         <div className="search-field">
-          <input type={'text'} id={'searchInput'} className={'search-input'} value={filterExpr}
+          <input type={'text'} id={'filterInput'} className={'search-input'} value={filterExpr}
                  onChange={getChangeHandler(setFilterExpr)} placeholder={'Filter...'}/>
           <i id="searchSubmit" className="fa fa-search"/>
         </div>
@@ -190,13 +190,13 @@ const AnalyzersReactView = () => {
               <tbody>
               {
                 filteredAnalyzers.length
-                  ? filteredAnalyzers.map(analyzer => (
+                  ? filteredAnalyzers.map((analyzer, idx) => (
                     <tr key={analyzer.name}>
                       <ArangoTD seq={0}>{analyzer.db}</ArangoTD>
                       <ArangoTD seq={1}>{analyzer.name}</ArangoTD>
                       <ArangoTD seq={2}>{typeNameMap[analyzer.type]}</ArangoTD>
                       <ArangoTD seq={3}>
-                        <Actions analyzer={analyzer} permission={permission}/>
+                        <Actions analyzer={analyzer} permission={permission} modalCidSuffix={idx}/>
                       </ArangoTD>
                     </tr>
                   ))
