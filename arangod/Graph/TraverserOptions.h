@@ -225,6 +225,10 @@ struct TraverserOptions : public graph::BaseOptions {
                           arangodb::velocypack::StringRef origin) const
       -> arangodb::velocypack::StringRef;
 
+  void initializeIndexConditions(
+    aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Variable const* indexVariable) override;
+
  private:
   void readProduceInfo(VPackSlice obj);
 };

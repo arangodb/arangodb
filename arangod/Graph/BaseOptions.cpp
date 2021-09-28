@@ -163,6 +163,18 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   return 1000.0;
 }
 
+void BaseOptions::LookupInfo::initializeNonConstExpressions(
+    aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Variable const* indexVariable) {
+  auto nonConstParts =
+      aql::utils::extractNonConstPartsOfIndexCondition(ast, varInfo, false, false,
+                                                       indexCondition, indexVariable);
+  for (auto const& p : nonConstParts._expressions) {
+    LOG_DEVEL << "Found non empty part";
+    p->expression->node()->dump(0);
+  }
+}
+
 std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(
     arangodb::aql::QueryContext& query, VPackSlice const& definition) {
   VPackSlice type = definition.get("type");
@@ -421,6 +433,14 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression, VPac
     cache()->increaseFilterCounter();
   }
   return result;
+}
+
+void BaseOptions::initializeIndexConditions(
+    aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Variable const* indexVariable) {
+  for (auto& it : _baseLookupInfos) {
+    it.initializeNonConstExpressions(ast, varInfo, indexVariable);
+  }
 }
 
 double BaseOptions::costForLookupInfoList(std::vector<BaseOptions::LookupInfo> const& list,

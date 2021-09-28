@@ -40,6 +40,7 @@ struct AstNode;
 class ExecutionPlan;
 class Expression;
 class QueryContext;
+struct VarInfo;
 
 }  // namespace aql
 
@@ -90,6 +91,10 @@ struct BaseOptions {
 
     LookupInfo(arangodb::aql::QueryContext&, arangodb::velocypack::Slice const&,
                arangodb::velocypack::Slice const&);
+
+    void initializeNonConstExpressions(aql::Ast* ast,
+                                       std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+                                       aql::Variable const* indexVariable);
 
     /// @brief Build a velocypack containing all relevant information
     ///        for DBServer traverser engines.
@@ -196,6 +201,10 @@ struct BaseOptions {
   arangodb::aql::FixedVarExpressionContext& getExpressionCtx();
 
   arangodb::aql::FixedVarExpressionContext const& getExpressionCtx() const;
+
+  virtual void initializeIndexConditions(
+    aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Variable const* indexVariable);
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
