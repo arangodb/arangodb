@@ -160,6 +160,7 @@ class Logger {
   static LogTopic AUTHENTICATION;
   static LogTopic AUTHORIZATION;
   static LogTopic BACKUP;
+  static LogTopic BENCH;
   static LogTopic CACHE;
   static LogTopic CLUSTER;
   static LogTopic CLUSTERCOMM;
@@ -175,6 +176,7 @@ class Logger {
   static LogTopic GRAPHS;
   static LogTopic HEARTBEAT;
   static LogTopic HTTPCLIENT;
+  static LogTopic LICENSE;
   static LogTopic MAINTENANCE;
   static LogTopic MEMORY;
   static LogTopic MMAP;
@@ -182,6 +184,7 @@ class Logger {
   static LogTopic PREGEL;
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
+  static LogTopic REPLICATION2;
   static LogTopic REQUESTS;
   static LogTopic RESTORE;
   static LogTopic ROCKSDB;

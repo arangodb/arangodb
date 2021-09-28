@@ -22,6 +22,7 @@
 
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
+#include "index/norm.hpp"
 #include "search/ngram_similarity_filter.hpp"
 #include "search/tfidf.hpp"
 #include "search/bm25.hpp"
@@ -65,11 +66,9 @@ TEST(ngram_similarity_base_test, ctor) {
   ASSERT_EQ(irs::no_boost(), q.boost());
   ASSERT_EQ("", q.field());
 
-
-  auto& features = irs::by_ngram_similarity::features();
-  ASSERT_EQ(2, features.size());
-  ASSERT_TRUE(features.check<irs::frequency>());
-  ASSERT_TRUE(features.check<irs::position>());
+  static_assert(
+    (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) ==
+    irs::by_ngram_similarity::required());
 }
 
 TEST(ngram_similarity_base_test, boost) {
@@ -1021,10 +1020,14 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   {
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::normalized_string_json_field_factory);
-    add_segment(gen);
+
+    add_segment(gen, irs::OM_CREATE, opts);
   }
 
   auto rdr = open_reader();
@@ -1039,10 +1042,14 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
   {
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::normalized_string_json_field_factory);
-    add_segment(gen);
+
+    add_segment(gen, irs::OM_CREATE, opts);
   }
 
   auto rdr = open_reader();
@@ -1058,10 +1065,14 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
   {
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::normalized_string_json_field_factory);
-    add_segment(gen);
+
+    add_segment(gen, irs::OM_CREATE, opts);
   }
 
   auto rdr = open_reader();
@@ -1077,10 +1088,14 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
   {
+    irs::index_writer::init_options opts;
+    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
       &tests::normalized_string_json_field_factory);
-    add_segment(gen);
+
+    add_segment(gen, irs::OM_CREATE, opts);
   }
 
   auto rdr = open_reader();
@@ -1178,16 +1193,18 @@ TEST_P(ngram_similarity_filter_test_case, seek) {
 
 #endif
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   ngram_similarity_test,
   ngram_similarity_filter_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory),
-    ::testing::Values(tests::format_info{"1_0"},
-                      tests::format_info{"1_3", "1_0"})),
-    tests::to_string);
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(
+      tests::format_info{"1_0"},
+      tests::format_info{"1_3", "1_0"})),
+  ngram_similarity_filter_test_case::to_string
+);
 
 } // tests

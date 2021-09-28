@@ -57,35 +57,35 @@ PathStoreTracer<PathStoreImpl>::~PathStoreTracer() {
 template <class PathStoreImpl>
 void PathStoreTracer<PathStoreImpl>::reset() {
   double start = TRI_microtime();
-  TRI_DEFER(_stats["reset"].addTiming(TRI_microtime() - start));
+  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["reset"].addTiming(TRI_microtime() - start); });
   return _impl.reset();
 }
 
 template <class PathStoreImpl>
 size_t PathStoreTracer<PathStoreImpl>::append(Step step) {
   double start = TRI_microtime();
-  TRI_DEFER(_stats["append"].addTiming(TRI_microtime() - start));
+  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["append"].addTiming(TRI_microtime() - start); });
   return _impl.append(step);
 }
 
 template <class PathStoreImpl>
 typename PathStoreImpl::Step PathStoreTracer<PathStoreImpl>::getStep(size_t position) const {
   double start = TRI_microtime();
-  TRI_DEFER(_stats["getStep"].addTiming(TRI_microtime() - start));
+  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["getStep"].addTiming(TRI_microtime() - start); });
   return _impl.getStep(position);
 }
 
 template <class PathStoreImpl>
 typename PathStoreImpl::Step& PathStoreTracer<PathStoreImpl>::getStepReference(size_t position) {
   double start = TRI_microtime();
-  TRI_DEFER(_stats["getStepReference"].addTiming(TRI_microtime() - start));
+  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["getStepReference"].addTiming(TRI_microtime() - start); });
   return _impl.getStepReference(position);
 }
 
 template <class PathStoreImpl>
 size_t PathStoreTracer<PathStoreImpl>::size() const {
   double start = TRI_microtime();
-  TRI_DEFER(_stats["size"].addTiming(TRI_microtime() - start));
+  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["size"].addTiming(TRI_microtime() - start); });
   return _impl.size();
 }
 
@@ -94,7 +94,7 @@ template <class PathResultType>
 auto PathStoreTracer<PathStoreImpl>::buildPath(Step const& vertex, PathResultType& path) const
     -> void {
   double start = TRI_microtime();
-  TRI_DEFER(_stats["buildPath"].addTiming(TRI_microtime() - start));
+  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["buildPath"].addTiming(TRI_microtime() - start); });
   _impl.buildPath(vertex, path);
 }
 
@@ -104,7 +104,7 @@ auto PathStoreTracer<PathStoreImpl>::reverseBuildPath(Step const& vertex,
                                                       PathResult<ProviderType, Step>& path) const
     -> void {
   double start = TRI_microtime();
-  TRI_DEFER(_stats["reverseBuildPath"].addTiming(TRI_microtime() - start));
+  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["reverseBuildPath"].addTiming(TRI_microtime() - start); });
   _impl.reverseBuildPath(vertex, path);
 }
 
@@ -112,7 +112,7 @@ template <class PathStoreImpl>
 auto PathStoreTracer<PathStoreImpl>::visitReversePath(
     const Step& step, const std::function<bool(const Step&)>& visitor) const -> bool {
   double start = TRI_microtime();
-  TRI_DEFER(_stats["visitReversePath"].addTiming(TRI_microtime() - start));
+  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["visitReversePath"].addTiming(TRI_microtime() - start); });
   return _impl.visitReversePath(step, visitor);
 }
 
@@ -121,7 +121,7 @@ auto PathStoreTracer<PathStoreImpl>::modifyReversePath(Step& step,
                                                        const std::function<bool(Step&)>& visitor)
     -> bool {
   double start = TRI_microtime();
-  TRI_DEFER(_stats["modifyReversePath"].addTiming(TRI_microtime() - start));
+  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["modifyReversePath"].addTiming(TRI_microtime() - start); });
   return _impl.modifyReversePath(step, visitor);
 }
 

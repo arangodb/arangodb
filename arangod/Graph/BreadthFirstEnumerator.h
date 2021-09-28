@@ -71,9 +71,9 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
     explicit NextStep(size_t sourceIdx) : sourceIdx(sourceIdx) {}
   };
 
-  /// @brief schreier vector to store the visited vertices. 
-  /// note: for memory usage tracking, it is require to call growStorage() before
-  /// inserting into the schreier vector.
+  /// @brief schreier vector to store the visited vertices.
+  /// note: for memory usage tracking, it is require to call growStorage()
+  /// before inserting into the schreier vector.
   std::vector<PathStep> _schreier;
 
   /// @brief Next free index in schreier vector.
@@ -104,12 +104,12 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
                          arangodb::traverser::TraverserOptions* opts);
 
   ~BreadthFirstEnumerator();
-  
+
   void setStartVertex(arangodb::velocypack::StringRef startVertex) override;
 
   /// @brief Get the next Path element from the traversal.
   bool next() override;
-  
+
   aql::AqlValue lastVertexToAqlValue() override;
 
   aql::AqlValue lastEdgeToAqlValue() override;
@@ -152,14 +152,17 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
 
   aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result, size_t index);
 
-  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index, bool fromPrune);
+  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result,
+                                       size_t index, bool fromPrune);
 
   bool shouldPrune();
 
   void growStorage();
-  
+
   constexpr size_t pathStepSize() const noexcept;
+
+  bool validDisjointPath(size_t nextVertexIndex,
+                         arangodb::velocypack::StringRef const& vertex) const;
 };
 }  // namespace graph
 }  // namespace arangodb
-

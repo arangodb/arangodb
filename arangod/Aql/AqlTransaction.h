@@ -52,9 +52,6 @@ class AqlTransaction : public transaction::Methods {
            std::unordered_set<std::string> inaccessibleCollections =
                std::unordered_set<std::string>());
 
-  /// @brief end the transaction
-  ~AqlTransaction() override = default;
-  
   AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
                  transaction::Options const& options);
 
@@ -62,7 +59,7 @@ class AqlTransaction : public transaction::Methods {
   AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
                  aql::Collections const& collections,
                  transaction::Options const& options);
-
+  
  protected:
   /// @brief add a collection to the transaction
   Result processCollection(aql::Collection&);

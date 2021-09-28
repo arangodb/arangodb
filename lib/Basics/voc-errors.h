@@ -692,6 +692,60 @@ constexpr auto TRI_ERROR_REPLICATION_WRONG_CHECKSUM                             
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr auto TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = ErrorCode{1417};
 
+/// 1418: ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND
+/// "replicated log % PRIu64 " not found""
+/// Will be raised when a specific replicated log is not found
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND                    = ErrorCode{1418};
+
+/// 1419: ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER
+/// "not the log leader"
+/// Will be raised when a participant of a replicated log is ordered to do
+/// something only the leader can do
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER               = ErrorCode{1419};
+
+/// 1420: ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER
+/// "not a log follower"
+/// Will be raised when a participant of a replicated log is ordered to do
+/// something only a follower can do
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER               = ErrorCode{1420};
+
+/// 1421: ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED
+/// "follower rejected append entries request"
+/// Will be raised when a follower of a replicated log rejects an append
+/// entries request
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED      = ErrorCode{1421};
+
+/// 1422: ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED
+/// "a resigned leader instance rejected a request"
+/// Will be raised when a leader instance of a replicated log rejects a request
+/// because it just resigned. This can also happen if the term changes (due to
+/// a configuration change), even if the leader stays the same.
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED              = ErrorCode{1422};
+
+/// 1423: ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED
+/// "a resigned follower instance rejected a request"
+/// Will be raised when a follower instance of a replicated log rejects a
+/// request because it just resigned. This can also happen if the term changes
+/// (due to a configuration change), even if the server stays a follower.
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED            = ErrorCode{1423};
+
+/// 1424: ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE
+/// "the replicated log of the participant is gone"
+/// Will be raised when a participant instance of a replicated log is no longer
+/// available.
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE             = ErrorCode{1424};
+
+/// 1425: ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM
+/// "an invalid term was given"
+/// Will be raised when a participant tries to change its term but found a
+/// invalid new term.
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM                 = ErrorCode{1425};
+
+/// 1446: ERROR_CLUSTER_NOT_FOLLOWER
+/// "not a follower"
+/// Will be raised when an operation is sent to a non-following server.
+constexpr auto TRI_ERROR_CLUSTER_NOT_FOLLOWER                                    = ErrorCode{1446};
+
 /// 1447: ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED
 /// "follower transaction intermediate commit already performed"
 /// Will be raised when a follower transaction has already performed an
@@ -1773,9 +1827,15 @@ constexpr auto TRI_ERROR_AGENCY_MALFORMED_TRANSACTION                           
 constexpr auto TRI_ERROR_SUPERVISION_GENERAL_FAILURE                             = ErrorCode{20501};
 
 /// 21003: ERROR_QUEUE_FULL
-/// "named queue is full"
-/// Will be returned if a queue with this name is full.
+/// "queue is full"
+/// Will be returned if the scheduler queue is full.
 constexpr auto TRI_ERROR_QUEUE_FULL                                              = ErrorCode{21003};
+
+/// 21004: ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED
+/// "queue time violated"
+/// Will be returned if a request with a queue time requirement is set and it
+/// cannot be fulfilled.
+constexpr auto TRI_ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED                         = ErrorCode{21004};
 
 /// 6002: ERROR_ACTION_OPERATION_UNABORTABLE
 /// "this maintenance action cannot be stopped"
@@ -1786,11 +1846,6 @@ constexpr auto TRI_ERROR_ACTION_OPERATION_UNABORTABLE                           
 /// "maintenance action still processing"
 /// This maintenance action is still processing
 constexpr auto TRI_ERROR_ACTION_UNFINISHED                                       = ErrorCode{6003};
-
-/// 6004: ERROR_NO_SUCH_ACTION
-/// "no such maintenance action"
-/// No such maintenance action exists
-constexpr auto TRI_ERROR_NO_SUCH_ACTION                                          = ErrorCode{6004};
 
 /// 7001: ERROR_HOT_BACKUP_INTERNAL
 /// "internal hot backup error"
@@ -1862,4 +1917,44 @@ constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN             
 /// "error during AIR execution"
 /// During the execution of an AIR program an error occurred
 constexpr auto TRI_ERROR_AIR_EXECUTION_ERROR                                     = ErrorCode{8001};
+
+/// 9001: ERROR_LICENSE_EXPIRED_OR_INVALID
+/// "license has expired or is invalid"
+/// The license has expired or is invalid.
+constexpr auto TRI_ERROR_LICENSE_EXPIRED_OR_INVALID                              = ErrorCode{9001};
+
+/// 9002: ERROR_LICENSE_SIGNATURE_VERIFICATION
+/// "license verification failed"
+/// Verification of license failed.
+constexpr auto TRI_ERROR_LICENSE_SIGNATURE_VERIFICATION                          = ErrorCode{9002};
+
+/// 9003: ERROR_LICENSE_NON_MATCHING_ID
+/// "non-matching license id"
+/// The ID of the license does not match the ID of this instance.
+constexpr auto TRI_ERROR_LICENSE_NON_MATCHING_ID                                 = ErrorCode{9003};
+
+/// 9004: ERROR_LICENSE_FEATURE_NOT_ENABLED
+/// "feature is not enabled by the license"
+/// The installed license does not cover this feature.
+constexpr auto TRI_ERROR_LICENSE_FEATURE_NOT_ENABLED                             = ErrorCode{9004};
+
+/// 9005: ERROR_LICENSE_RESOURCE_EXHAUSTED
+/// "the resource is exhausted"
+/// The installed license does not cover a higher number of this resource.
+constexpr auto TRI_ERROR_LICENSE_RESOURCE_EXHAUSTED                              = ErrorCode{9005};
+
+/// 9006: ERROR_LICENSE_INVALID
+/// "invalid license"
+/// The license does not hold features of an ArangoDB license.
+constexpr auto TRI_ERROR_LICENSE_INVALID                                         = ErrorCode{9006};
+
+/// 9007: ERROR_LICENSE_CONFLICT
+/// "conflicting license"
+/// The license has one or more inferior features.
+constexpr auto TRI_ERROR_LICENSE_CONFLICT                                        = ErrorCode{9007};
+
+/// 9008: ERROR_LICENSE_VALIDATION_FAILED
+/// "failed to validate license signature"
+/// Could not verify the license's signature.
+constexpr auto TRI_ERROR_LICENSE_VALIDATION_FAILED                               = ErrorCode{9008};
 

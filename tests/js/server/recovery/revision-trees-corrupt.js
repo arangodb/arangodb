@@ -69,6 +69,7 @@ function runSetup () {
   }
 
   // intentionally corrupt the trees
+  require("console").warn("intentionally corrupting revision trees");
   db[colName1]._revisionTreeCorrupt(23, 42);
   db[colName2]._revisionTreeCorrupt(42, 69);
 

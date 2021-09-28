@@ -81,7 +81,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   /// @brief Drop an index with the given iid.
   bool dropIndex(IndexId iid) override;
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 
   std::unique_ptr<ReplicationIterator> getReplicationIterator(ReplicationIterator::Ordering,
@@ -98,20 +98,20 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   /// @brief returns the LocalDocumentId and the revision id for the document with the 
   /// specified key.
   Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
-                   std::pair<LocalDocumentId, RevisionId>& result) const override;
+                   std::pair<LocalDocumentId, RevisionId>& result, ReadOwnWrites readOwnWrites) const override;
 
   bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
-                      RevisionId& revisionId) const;
+                      RevisionId& revisionId, ReadOwnWrites) const;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-              IndexIterator::DocumentCallback const& cb) const override;
+              IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites) const override;
   
   /// @brief lookup with callback, not thread-safe on same transaction::Context
   Result read(transaction::Methods* trx, LocalDocumentId const& token,
-              IndexIterator::DocumentCallback const& cb) const override;
+              IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites) const override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result) const override;
+                    ManagedDocumentResult& result, ReadOwnWrites readOwnWrites) const override;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& resultMdr, OperationOptions& options) override;
@@ -137,10 +137,15 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void adjustNumberDocuments(transaction::Methods&, int64_t) override;
 
  private:
-  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                RevisionId expectedRev, ManagedDocumentResult& previous,
-                OperationOptions& options);
+  [[nodiscard]] Result remove(transaction::Methods& trx, LocalDocumentId documentId,
+                              RevisionId expectedRev, ManagedDocumentResult& previous,
+                              OperationOptions& options);
 
+  [[nodiscard]] Result performUpdateOrReplace(transaction::Methods* trx,
+                                              velocypack::Slice newSlice,
+                                              ManagedDocumentResult& resultMdr, OperationOptions& options,
+                                              ManagedDocumentResult& previousMdr, bool isUpdate);
+                                 
   /// @brief return engine-specific figures
   void figuresSpecific(bool details, velocypack::Builder&) override;
 
@@ -183,9 +188,11 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                        LocalDocumentId const& documentId,
                                        rocksdb::PinnableSlice& ps,
                                        bool readCache,
-                                       bool fillCache) const;
+                                       bool fillCache,
+                                       ReadOwnWrites readOwnWrites) const;
   Result lookupDocumentVPack(transaction::Methods*, LocalDocumentId const& documentId,
-                             IndexIterator::DocumentCallback const& cb, bool withCache) const;
+                             IndexIterator::DocumentCallback const& cb, bool withCache,
+                             ReadOwnWrites readOwnWrites) const;
 
   /// @brief create hash-cache
   void createCache() const;

@@ -601,7 +601,17 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(0, actual.length);
      
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "CalculationNode", "SortNode", "RemoteNode", "GatherNode", "LimitNode", "FilterNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CalculationNode",
+	                "RemoteNode", "GatherNode", "LimitNode", "FilterNode", "ReturnNode" ], explain(query));
+    },
+    testLimitFullCollectionSort3_DoubleCalculation : function () {
+      var query = "FOR c IN " + cn + " SORT c.value LIMIT 0, 10 FILTER c.value >= 20 && c.value < 30 RETURN c.value2";
+
+      var actual = getQueryResults(query);
+      assertEqual(0, actual.length);
+     
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CalculationNode",
+	                "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "FilterNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

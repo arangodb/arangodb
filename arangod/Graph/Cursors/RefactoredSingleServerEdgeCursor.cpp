@@ -137,7 +137,7 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
   } else {
     // rearming not supported - we need to throw away the index iterator
     // and create a new one
-    _cursor = trx->indexScanForCondition(_idxHandle, node, tmpVar, defaultIndexIteratorOptions);
+    _cursor = trx->indexScanForCondition(_idxHandle, node, tmpVar, ::defaultIndexIteratorOptions, ReadOwnWrites::no);
   }
 }
 
@@ -245,34 +245,35 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(SingleServerProvider<Step>&
     } else {
       cursor.all([&](LocalDocumentId const& token) {
         return collection->getPhysical()
-            ->read(_trx, token,
-                   [&](LocalDocumentId const&, VPackSlice edgeDoc) {
-                     stats.addScannedIndex(1);
+            ->read(
+                _trx, token,
+                [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+                  stats.addScannedIndex(1);
 #ifdef USE_ENTERPRISE
-                     if (_trx->skipInaccessible()) {
-                       // TODO: we only need to check one of these
-                       VPackSlice from =
-                           transaction::helpers::extractFromFromDocument(edgeDoc);
-                       VPackSlice to =
-                           transaction::helpers::extractToFromDocument(edgeDoc);
-                       if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
-                         return false;
-                       }
-                     }
+                  if (_trx->skipInaccessible()) {
+                    // TODO: we only need to check one of these
+                    VPackSlice from =
+                        transaction::helpers::extractFromFromDocument(edgeDoc);
+                    VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
+                    if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+                      return false;
+                    }
+                  }
 #endif
-                     // eval depth-based expression first if available
-                     EdgeDocumentToken edgeToken(cid, token);
+                  // eval depth-based expression first if available
+                  EdgeDocumentToken edgeToken(cid, token);
 
-                     // evaluate expression if available
-                     if (expression != nullptr &&
-                         !evaluateEdgeExpressionHelper(expression, edgeToken, edgeDoc)) {
-                       stats.incrFiltered();
-                       return false;
-                     }
+                  // evaluate expression if available
+                  if (expression != nullptr &&
+                      !evaluateEdgeExpressionHelper(expression, edgeToken, edgeDoc)) {
+                    stats.incrFiltered();
+                    return false;
+                  }
 
-                     callback(std::move(edgeToken), edgeDoc, cursorID);
-                     return true;
-                   })
+                  callback(std::move(edgeToken), edgeDoc, cursorID);
+                  return true;
+                },
+                ReadOwnWrites::no)
             .ok();
       });
     }
@@ -290,7 +291,16 @@ bool RefactoredSingleServerEdgeCursor<Step>::evaluateEdgeExpression(arangodb::aq
 
   aql::AqlValue edgeVal(aql::AqlValueHintDocumentNoCopy(value.begin()));
   _expressionCtx.setVariableValue(_tmpVar, edgeVal);
-  TRI_DEFER(_expressionCtx.clearVariableValue(_tmpVar));
+  ScopeGuard defer([&]() noexcept {
+    try {
+      _expressionCtx.clearVariableValue(_tmpVar);
+    } catch (...) {
+      // This method could in theory throw, if the
+      // _tmpVar is not in the list. However this is
+      // guaranteed by this code. If it would throw
+      // with not found, nothing bad has happened
+    }
+  });
 
   bool mustDestroy = false;
   aql::AqlValue res = expression->execute(&_expressionCtx, mustDestroy);

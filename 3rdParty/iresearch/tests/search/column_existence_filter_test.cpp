@@ -49,7 +49,8 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
         bool write(data_output&) const { return true; }
         irs::string_ref name() const { return name_; }
-        const irs::flags& features() const { return irs::flags::empty_instance(); }
+        irs::IndexFeatures index_features() const noexcept { return irs::IndexFeatures::NONE; }
+        irs::features_t features() const { return {}; }
         irs::token_stream& get_tokens() const {
           // nothing to index
           stream_.next();
@@ -63,7 +64,9 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       tests::json_doc_generator gen(
         resource("simple_sequential.json"),
-        [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+        [](tests::document& doc,
+           const std::string& name,
+           const tests::json_doc_generator::json_value& /*data*/) {
           doc.insert(std::make_shared<mask_field>(name));
       });
       add_segment(gen);
@@ -1053,18 +1056,16 @@ TEST(by_column_existence, equal) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   column_existence_filter_test,
   column_existence_filter_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values("1_0")
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values("1_0")),
+  column_existence_filter_test_case::to_string
 );
 
 }

@@ -172,6 +172,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_TMPFILE 0
 #define TRI_NOATIME 0
 
 #define TRI_CHDIR ::chdir
@@ -216,12 +217,19 @@
 
 #define TRI_CLOSE_SOCKET TRI_closesocket
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
-#define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
 // user and group types
 
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
+
+// noexcept
+
+#if defined(__clang__) && __clang_major__ == 11 && __clang_minor__ == 0
+#define ARANGODB_NOEXCEPT_ASSIGN_OP /* noexcept */
+#else
+#define ARANGODB_NOEXCEPT_ASSIGN_OP noexcept
+#endif
 
 #endif
 
@@ -318,6 +326,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_TMPFILE O_TMPFILE
 #define TRI_NOATIME 0
 
 #define TRI_CHDIR ::chdir
@@ -362,12 +371,15 @@
 
 #define TRI_CLOSE_SOCKET TRI_closesocket
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
-#define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
 // user and group types
 
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
+
+// noexcept
+
+#define ARANGODB_NOEXCEPT_ASSIGN_OP noexcept
 
 #endif
 
@@ -477,6 +489,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_TMPFILE O_TMPFILE
 #define TRI_NOATIME O_NOATIME
 
 #define TRI_CHDIR ::chdir
@@ -521,13 +534,16 @@
 
 #define TRI_CLOSE_SOCKET TRI_closesocket
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
-#define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
 // user and group types
 
 #include <sys/types.h>
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
+
+// noexcept
+
+#define ARANGODB_NOEXCEPT_ASSIGN_OP noexcept
 
 #endif
 
@@ -685,6 +701,7 @@ typedef unsigned char bool;
 #define S_IWUSR _S_IWRITE
 
 #define TRI_O_CLOEXEC 0
+#define TRI_O_TMPFILE 0
 #define TRI_NOATIME 0
 
 #define O_RDONLY _O_RDONLY
@@ -752,7 +769,6 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 #define TRI_CLOSE_SOCKET TRI_closesocket
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
-#define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
 // user and group types
 
@@ -762,6 +778,10 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 #define TRI_uid_t void*
 #define TRI_gid_t void*
+
+// noexcept
+
+#define ARANGODB_NOEXCEPT_ASSIGN_OP noexcept
 
 #endif
 

@@ -56,8 +56,7 @@ class EdgeDefinition {
 
  public:
   EdgeDefinition(std::string edgeCollection_, std::set<std::string>&& from_,
-                 std::set<std::string>&& to_,
-                 EdgeDefinitionType type = EdgeDefinitionType::DEFAULT)
+                 std::set<std::string>&& to_) 
       : _edgeCollection(std::move(edgeCollection_)),
         _from(std::move(from_)),
         _to(std::move(to_)),
@@ -92,8 +91,6 @@ class EdgeDefinition {
   bool isToVertexCollectionUsed(std::string const& collectionName) const;
 
   bool renameCollection(std::string const& oldName, std::string const& newName);
-
-  auto getType() const -> EdgeDefinitionType;
 
   /* @brief
    * Set type of the EdgeDefinition. Only allowed to be called once and only if
@@ -185,7 +182,7 @@ class Graph {
   std::set<std::string> const& orphanCollections() const;
 
   /// @brief get the cids of all satelliteCollections
-  std::set<std::string> const& satelliteCollections() const;
+  std::unordered_set<std::string> const& satelliteCollections() const;
 
   /// @brief get the cids of all edgeCollections
   std::set<std::string> const& edgeCollections() const;
@@ -281,6 +278,8 @@ class Graph {
   /// @brief Add an orphan vertex collection to this graphs definition
   Result addOrphanCollection(std::string&&);
 
+  virtual auto addSatellites(VPackSlice const& satellites) -> Result;
+
   std::ostream& operator<<(std::ostream& ostream);
 
  private:
@@ -321,8 +320,8 @@ class Graph {
   /// @brief the names of all orphanCollections
   std::set<std::string> _orphanColls;
 
-  /// @brief the names of all orphanCollections
-  std::set<std::string> _satelliteColls;
+  /// @brief the names of all satelliteCollections
+  std::unordered_set<std::string> _satelliteColls;
 
   /// @brief the names of all edgeCollections
   std::set<std::string> _edgeColls;

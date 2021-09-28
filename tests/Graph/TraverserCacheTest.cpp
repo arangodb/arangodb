@@ -51,7 +51,7 @@ class TraverserCacheTest : public ::testing::Test {
   graph::GraphTestSetup s{};
   graph::MockGraphDatabase gdb;
   arangodb::aql::TraversalStats stats{};
-  std::unique_ptr<arangodb::aql::Query> query{nullptr};
+  std::shared_ptr<arangodb::aql::Query> query{nullptr};
   std::unique_ptr<RefactoredTraverserCache> traverserCache{nullptr};
   std::shared_ptr<transaction::Context> queryContext{nullptr};
   std::unique_ptr<arangodb::transaction::Methods> trx{nullptr};
@@ -287,7 +287,7 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
                                  EXPECT_TRUE(edgeDocument.get("_key").isString());
                                  EXPECT_EQ(edgeKey, edgeDocument.get("_key").copyString());
                                  return true;
-                               });
+                               }, arangodb::ReadOwnWrites::no);
   ASSERT_TRUE(called);
   ASSERT_TRUE(result.ok());
   ASSERT_NE(fetchedDocumentId, 0);

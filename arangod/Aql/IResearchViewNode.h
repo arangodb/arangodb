@@ -29,6 +29,7 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
+#include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
 #include "IResearch/IResearchViewStoredValues.h"
@@ -90,6 +91,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
     /// @brief skipAll method for view
     CountApproximate countApproximate{CountApproximate::Exact};
+
+    /// @brief iresearch filters optimization level
+    FilterOptimization filterOptimization {FilterOptimization::MAX};
   };  // Options
 
   IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
@@ -150,6 +154,15 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief return the scorers to pass to the view
   std::vector<Scorer> const& scorers() const noexcept { return _scorers; }
+
+  // we could merge if it is allowed in general and there are no scores - as changing
+  // filters will affect score and we will lose backward compatibility
+  FilterOptimization filterOptimization() const noexcept {
+    if (!_scorers.empty()) {
+      return FilterOptimization::NONE;
+    }
+    return _options.filterOptimization;
+  }
 
   /// @brief set the scorers to pass to the view
   void scorers(std::vector<Scorer>&& scorers) noexcept {

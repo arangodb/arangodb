@@ -1,7 +1,7 @@
 name: rocksdb_free_inodes
 introducedIn: "3.8.0"
 help: |
-  Number of free inodes on the volume used by RocksDB
+  Number of free inodes on the volume used by RocksDB.
 unit: number
 type: gauge
 category: RocksDB

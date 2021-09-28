@@ -87,7 +87,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
         "\"identity\" ], \"includeAllFields\": true, \"trackListPositions\": "
         "true, \"storeValues\":\"id\" }"
         "}}");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
@@ -212,7 +212,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
         "\"identity\" ], \"includeAllFields\": true, \"trackListPositions\": "
         "true, \"storeValues\":\"id\" }"
         "}}");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
@@ -369,7 +369,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
         "\"identity\" ], \"includeAllFields\": true, \"trackListPositions\": "
         "true, \"storeValues\":\"id\" }"
         "}}");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);

@@ -2,7 +2,8 @@ name: arangodb_replication_failed_connects_total
 renamedFrom: arangodb_replication_failed_connects
 introducedIn: "3.8.0"
 help: |
-  Number of failed connection attempts and response errors during initial asynchronous replication.
+  Number of failed connection attempts and response errors during initial
+  asynchronous replication.
 unit: number
 type: counter
 category: Replication

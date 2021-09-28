@@ -189,8 +189,8 @@ class GraphNode : public ExecutionNode {
   void injectVertexCollection(aql::Collection& other);
 
   std::vector<aql::Collection const*> collections() const;
-  void setCollectionToShard(std::unordered_map<std::string, std::vector<std::string>> const& map) {
-    _collectionToShard = map;
+  void resetCollectionToShard() {
+    _collectionToShard.clear();
   }
   void addCollectionToShard(std::string const& coll, std::string const& shard) {
     // NOTE: Do not replace this by emplace or insert.
@@ -200,8 +200,22 @@ class GraphNode : public ExecutionNode {
 
   graph::Graph const* graph() const noexcept;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // Internal helpers used in tests to modify enterprise detections.
+  // These should not be used in production, as their detection
+  // is implemented in constructors.
+  void setIsSmart(bool target) {
+    _isSmart = target;
+  }
+
+  void setIsDisjoint(bool target) {
+    _isDisjoint = target;
+  }
+#endif
  protected:  
   void doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const override;
+
+  void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone, bool withProperties) const;
 
  private:
   void addEdgeCollection(aql::Collections const& collections,
@@ -268,7 +282,7 @@ class GraphNode : public ExecutionNode {
   std::unordered_map<ServerID, aql::EngineId> _engines;
 
   /// @brief list of shards involved, required for one-shard-databases
-  std::unordered_map<std::string, std::vector<std::string>> _collectionToShard;
+  std::unordered_map<std::string, std::string> _collectionToShard;
 };
 
 }  // namespace aql

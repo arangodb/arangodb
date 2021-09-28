@@ -171,50 +171,43 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     traversalProfile = static_cast<TraversalProfileLevel>(value.getNumber<uint16_t>());
   }
 
-  value = slice.get("allPlans");
-  if (value.isBool()) {
+  if (value = slice.get("allPlans"); value.isBool()) {
     allPlans = value.getBool();
   }
-  value = slice.get("verbosePlans");
-  if (value.isBool()) {
+  if (value = slice.get("verbosePlans"); value.isBool()) {
     verbosePlans = value.getBool();
   }
-  value = slice.get("stream");
-  if (value.isBool()) {
+  if (value = slice.get("stream"); value.isBool()) {
     stream = value.getBool();
   }
-  value = slice.get("silent");
-  if (value.isBool()) {
+  if (value = slice.get("silent"); value.isBool()) {
     silent = value.getBool();
   }
-  value = slice.get("failOnWarning");
-  if (value.isBool()) {
+  if (value = slice.get("failOnWarning"); value.isBool()) {
     failOnWarning = value.getBool();
   }
-  value = slice.get("cache");
-  if (value.isBool()) {
+  if (value = slice.get("cache"); value.isBool()) {
     cache = value.getBool();
   }
-  value = slice.get("fullCount");
-  if (value.isBool()) {
+  if (value = slice.get("fullCount"); value.isBool()) {
     fullCount = value.getBool();
   }
-  value = slice.get("count");
-  if (value.isBool()) {
+  if (value = slice.get("count"); value.isBool()) {
     count = value.getBool();
   }
-  value = slice.get("verboseErrors");
-  if (value.isBool()) {
+  if (value = slice.get("verboseErrors"); value.isBool()) {
     verboseErrors = value.getBool();
   }
-  value = slice.get("explainRegisters");
-  if (value.isBool()) {
-    explainRegisters =
-        value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
+  if (value = slice.get("explainRegisters"); value.isBool()) {
+    explainRegisters = value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
   }
-
+  
   // note: skipAudit is intentionally not read here.
   // the end user cannot override this setting
+  
+  if (value = slice.get("forceOneShardAttributeValue"); value.isString()) {
+    forceOneShardAttributeValue = value.copyString();
+  }
 
   VPackSlice optimizer = slice.get("optimizer");
   if (optimizer.isObject()) {
@@ -280,6 +273,10 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("count", VPackValue(count));
   builder.add("verboseErrors", VPackValue(verboseErrors));
 
+  if (!forceOneShardAttributeValue.empty()) {
+    builder.add("forceOneShardAttributeValue", VPackValue(forceOneShardAttributeValue));
+  }
+  
   // note: skipAudit is intentionally not serialized here.
   // the end user cannot override this setting anyway.
 

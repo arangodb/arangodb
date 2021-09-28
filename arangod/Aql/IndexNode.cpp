@@ -454,8 +454,8 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                          _outVariable, isProduceResult(), this->_filter.get(),
                          this->projections(),
                          std::move(nonConstExpressions), std::move(inVars),
-                         std::move(inRegs), hasV8Expression, doCount(), _condition->root(),
-                         this->getIndexes(), _plan->getAst(), this->options(),
+                         std::move(inRegs), hasV8Expression, doCount(), canReadOwnWrites(),
+                         _condition->root(), this->getIndexes(), _plan->getAst(), this->options(),
                          _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(&engine, this,

@@ -1,7 +1,7 @@
 name: rocksdb_cache_allocated
 introducedIn: "3.6.1"
 help: |
-  Global current allocation of ArangoDB cache
+  Global current allocation of ArangoDB cache.
 unit: bytes
 type: gauge
 category: RocksDB

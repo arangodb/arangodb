@@ -63,14 +63,6 @@ struct equal_size_type<unsigned long, 8> { typedef uint64_t type; };
 namespace iresearch {
 namespace numeric_utils {
 
-constexpr bool is_big_endian() noexcept {
-#ifdef IRESEARCH_BIG_ENDIAN
- return true;
-#else
- return false;
-#endif
-}
-
 IRESEARCH_API const bytes_ref& mini64();
 IRESEARCH_API const bytes_ref& maxi64();
 

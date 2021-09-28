@@ -83,6 +83,7 @@ class AsyncLinkHandle {
 class IResearchLink {
  public:
   using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
+  using InitCallback = std::function<irs::directory_attributes()>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a snapshot representation of the data-store
@@ -257,14 +258,18 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const;
 
-  typedef std::function<void(irs::directory&)> InitCallback;
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
   Result init(velocypack::Slice const& definition,
               InitCallback const& initCallback = {});
-              
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @return arangosearch internal format identifier
+  ////////////////////////////////////////////////////////////////////////////////
+  std::string_view format() const noexcept;
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get stored values
   ////////////////////////////////////////////////////////////////////////////////
@@ -384,7 +389,9 @@ class IResearchLink {
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
   Result initDataStore(
-    InitCallback const& initCallback, bool sorted,
+    InitCallback const& initCallback,
+    uint32_t version,
+    bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
     irs::type_info::type_id primarySortCompression);
 

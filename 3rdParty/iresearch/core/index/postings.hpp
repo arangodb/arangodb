@@ -74,7 +74,7 @@ struct posting {
   doc_id_t size{ 1 }; // length of postings
 };
 
-class IRESEARCH_API postings: util::noncopyable {
+class IRESEARCH_API postings : util::noncopyable {
  public:
   using writer_t = byte_block_pool::inserter;
 

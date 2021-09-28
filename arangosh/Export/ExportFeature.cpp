@@ -558,7 +558,10 @@ void ExportFeature::writeBatch(ManagedDirectory::File & fd, VPackArrayIterator i
 
 void ExportFeature::writeToFile(ManagedDirectory::File & fd, std::string const& line) {
   fd.write(line.c_str(), line.size());
-  THROW_ARANGO_EXCEPTION_IF_FAIL(fd.status());
+  auto res = fd.status();
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(std::move(res));
+  }
 }
 
 std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClient,

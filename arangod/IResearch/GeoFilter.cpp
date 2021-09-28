@@ -209,7 +209,7 @@ irs::doc_iterator::ptr make_iterator(
 /// @brief cached per reader state
 //////////////////////////////////////////////////////////////////////////////
 struct GeoState {
-  using TermState = irs::seek_term_iterator::seek_cookie::ptr;
+  using TermState = irs::seek_cookie::ptr;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief corresponding stored field
@@ -224,7 +224,7 @@ struct GeoState {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief geo term states
   //////////////////////////////////////////////////////////////////////////////
-  std::vector<irs::seek_term_iterator::seek_cookie::ptr> states;
+  std::vector<irs::seek_cookie::ptr> states;
 }; // GeoState
 
 using GeoStates = irs::states_cache<GeoState>;
@@ -259,26 +259,15 @@ class GeoQuery final : public irs::filter::prepared {
       return irs::doc_iterator::empty();
     }
 
-    // get terms iterator
-    TRI_ASSERT(state->reader);
-    auto terms = state->reader->iterator();
-
-    if (IRS_UNLIKELY(!terms)) {
-      return irs::doc_iterator::empty();
-    }
+    auto field = state->reader;
+    TRI_ASSERT(field);
 
     typename Disjunction::doc_iterators_t itrs;
     itrs.reserve(state->states.size());
 
-    const auto& features = irs::flags::empty_instance();
-
     for (auto& entry : state->states) {
       assert(entry);
-      if (!terms->seek(irs::bytes_ref::NIL, *entry)) {
-        return irs::doc_iterator::empty(); // internal error
-      }
-
-      auto docs = terms->postings(features);
+      auto docs = field->postings(*entry, irs::IndexFeatures::NONE);
 
       itrs.emplace_back(std::move(docs));
 
@@ -367,7 +356,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
       continue;
     }
 
-    auto terms = reader->iterator();
+    auto terms = reader->iterator(irs::SeekMode::NORMAL);
 
     if (IRS_UNLIKELY(!terms)) {
       continue;

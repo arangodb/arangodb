@@ -13,6 +13,10 @@ specifies the type of the key generator. The currently
 available generators are *traditional*, *autoincrement*, *uuid*
 and *padded*.
 
+@RESTSTRUCT{cacheEnabled,collection_info,boolean,required,}
+Whether the in-memory hash cache for documents is enabled for this
+collection.
+
 @RESTSTRUCT{allowUserKeys,key_generator_type,boolean,required,}
 if set to *true*, then it is allowed to supply
 own key values in the *_key* attribute of a document. If set to

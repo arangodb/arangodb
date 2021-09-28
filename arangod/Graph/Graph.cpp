@@ -116,7 +116,6 @@ Graph::Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefault
   TRI_ASSERT(!_rev.empty());
 
   if (slice.hasKey(StaticStrings::GraphEdgeDefinitions)) {
-    // TODO Feature HybridSmartGraphs: Check why we're landing here and not in SmartGraphEE - Cleanup!
     if (slice.isObject()) {
       if (slice.hasKey(StaticStrings::GraphSatellites) &&
           slice.get(StaticStrings::GraphSatellites).isArray()) {
@@ -159,7 +158,6 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
   TRI_ASSERT(_rev.empty());
 
   if (info.hasKey(StaticStrings::GraphEdgeDefinitions)) {
-    // TODO Feature HybridSmartGraphs: Check why we're landing here and not in SmartGraphEE - Cleanup!
     if (options.isObject()) {
       if (options.hasKey(StaticStrings::GraphSatellites) &&
           options.get(StaticStrings::GraphSatellites).isArray()) {
@@ -225,7 +223,10 @@ void Graph::insertOrphanCollections(VPackSlice const arr) {
         "'orphanCollections' are not an array in the graph definition");
   }
   for (auto const& c : VPackArrayIterator(arr)) {
-    THROW_ARANGO_EXCEPTION_IF_FAIL(validateOrphanCollection(c));
+    auto res = validateOrphanCollection(c);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(std::move(res));
+    }
     addOrphanCollection(c.copyString());
   }
 }
@@ -238,7 +239,7 @@ std::set<std::string> const& Graph::orphanCollections() const {
   return _orphanColls;
 }
 
-std::set<std::string> const& Graph::satelliteCollections() const {
+std::unordered_set<std::string> const& Graph::satelliteCollections() const {
   return _satelliteColls;
 }
 
@@ -806,4 +807,9 @@ std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefini
 
   TRI_ASSERT(hasEdgeCollection(collectionName));
   return {it->second};
+}
+
+auto Graph::addSatellites(VPackSlice const&) -> Result {
+  // Enterprise only
+  return TRI_ERROR_NO_ERROR;
 }

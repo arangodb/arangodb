@@ -147,18 +147,22 @@ Result RocksDBTrxBaseMethods::addOperation(DataSourceId cid, RevisionId revision
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
-                                       rocksdb::Slice const& key,
-                                       rocksdb::PinnableSlice* val) {
+                                           rocksdb::Slice const& key,
+                                           rocksdb::PinnableSlice* val,
+                                           ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(cf != nullptr);
-  TRI_ASSERT(_rocksTransaction);
   rocksdb::ReadOptions const& ro = _readOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
-  return _rocksTransaction->Get(ro, cf, key, val);
+  if (readOwnWrites == ReadOwnWrites::yes) {
+    return _rocksTransaction->Get(ro, cf, key, val);
+  } else {
+    return _db->Get(ro, cf, key, val);
+  }
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
-                                                rocksdb::Slice const& key,
-                                                rocksdb::PinnableSlice* val) {
+                                                    rocksdb::Slice const& key,
+                                                    rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   rocksdb::ReadOptions const& ro = _readOptions;
@@ -167,30 +171,31 @@ rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(rocksdb::ColumnFamilyHandle*
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
-                                       RocksDBKey const& key,
-                                       rocksdb::Slice const& val, bool assume_tracked) {
+                                           RocksDBKey const& key,
+                                           rocksdb::Slice const& val,
+                                           bool assume_tracked) {
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   return _rocksTransaction->Put(cf, key.string(), val, assume_tracked);
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
-                                                RocksDBKey const& key,
-                                                rocksdb::Slice const& val) {
+                                                    RocksDBKey const& key,
+                                                    rocksdb::Slice const& val) {
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   return _rocksTransaction->PutUntracked(cf, key.string(), val);
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
-                                          RocksDBKey const& key) {
+                                              RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   return _rocksTransaction->Delete(cf, key.string());
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
-                                                RocksDBKey const& key) {
+                                                    RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   return _rocksTransaction->SingleDelete(cf, key.string());
@@ -346,7 +351,14 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   }
 
   // if we fail during commit, make sure we remove blockers, etc.
-  auto cleanupCollTrx = scopeGuard([this]() { _state->cleanupCollections(); });
+  auto cleanupCollTrx = scopeGuard([this]() noexcept {
+    try {
+      _state->cleanupCollections();
+    } catch (std::exception const& e) {
+      LOG_TOPIC("62772", ERR, Logger::ENGINES)
+          << "failed to cleanup collections: " << e.what();
+    }
+  });
 
   // total number of sequence ID consuming records
   uint64_t numOps = _rocksTransaction->GetNumPuts() +

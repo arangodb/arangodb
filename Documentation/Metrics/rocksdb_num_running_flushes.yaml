@@ -1,7 +1,7 @@
 name: rocksdb_num_running_flushes
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-num-running-flushes"
+  Number of running RocksDB flushes.
 unit: number
 type: gauge
 category: RocksDB

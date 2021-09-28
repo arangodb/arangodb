@@ -57,6 +57,10 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
+#define LOG_PREGEL(logId, level)          \
+  LOG_TOPIC(logId, level, Logger::PREGEL) \
+  << "[job " << _executionNumber << "] " 
+
 const char* arangodb::pregel::ExecutionStateNames[8] = {
     "none",     "running",  "storing",    "done",
     "canceled", "in error", "recovering", "fatal error"};
@@ -102,27 +106,30 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
                                    "Algorithm not found");
   }
   _masterContext.reset(_algorithm->masterContext(config));
-  _aggregators.reset(new AggregatorHandler(_algorithm.get()));
+  _aggregators = std::make_unique<AggregatorHandler>(_algorithm.get());
 
   _maxSuperstep = VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);
   // configure the async mode as off by default
   VPackSlice async = _userParams.slice().get("async");
   _asyncMode = _algorithm->supportsAsyncMode() && async.isBool() && async.getBoolean();
-  if (_asyncMode) {
-    LOG_TOPIC("1b1c2", DEBUG, Logger::PREGEL) << "Running in async mode";
-  }
   _useMemoryMaps = VelocyPackHelper::getBooleanValue(_userParams.slice(), Utils::useMemoryMapsKey,
                                                      _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
   _storeResults = !storeSlice.isBool() || storeSlice.getBool();
-  if (!_storeResults) {
-    LOG_TOPIC("f3817", DEBUG, Logger::PREGEL) << "Will keep results in-memory";
-  }
   
   // time-to-live for finished/failed Pregel jobs before garbage collection.
   // default timeout is 10 minutes for each conductor
   uint64_t ttl = 600;
   _ttl = std::chrono::seconds(VelocyPackHelper::getNumericValue(config, "ttl", ttl));
+
+  LOG_PREGEL("00f5f", INFO)
+      << "Starting " << _algorithm->name() 
+      << " in database '" << vocbase.name()
+      << "', ttl: " << _ttl.count() << "s"
+      << ", async: " << (_asyncMode ? "yes" : "no")
+      << ", memory mapping: " << (_useMemoryMaps ? "yes" : "no")
+      << ", store: " << (_storeResults ? "yes" : "no")
+      << ", config: " << _userParams.slice().toJson();
 }
 
 Conductor::~Conductor() {
@@ -145,12 +152,12 @@ void Conductor::start() {
   _globalSuperstep = 0;
   updateState(ExecutionState::RUNNING);
 
-  LOG_TOPIC("3a255", DEBUG, Logger::PREGEL)
+  LOG_PREGEL("3a255", DEBUG)
       << "Telling workers to load the data";
   auto res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::CANCELED);
-    LOG_TOPIC("30171", ERR, Logger::PREGEL)
+    LOG_PREGEL("30171", ERR)
         << "Not all DBServers started the execution";
   }
 }
@@ -195,7 +202,7 @@ bool Conductor::_startGlobalStep() {
 
     if (res != TRI_ERROR_NO_ERROR) {
       updateState(ExecutionState::IN_ERROR);
-      LOG_TOPIC("04189", ERR, Logger::PREGEL)
+      LOG_PREGEL("04189", ERR)
           << "Seems there is at least one worker out of order";
       // the recovery mechanisms should take care of this
       return false;
@@ -215,7 +222,7 @@ bool Conductor::_startGlobalStep() {
     _masterContext->postGlobalSuperstepMessage(messagesFromWorkers.slice());
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
-      LOG_TOPIC("0aa8e", DEBUG, Logger::PREGEL)
+      LOG_PREGEL("0aa8e", DEBUG)
           << "Master context ended execution";
     }
     if (proceed) {
@@ -247,7 +254,7 @@ bool Conductor::_startGlobalStep() {
     } else {  // just stop the timer
       updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR : ExecutionState::DONE);
       _endTimeSecs = TRI_microtime();
-      LOG_TOPIC("9e82c", INFO, Logger::PREGEL)
+      LOG_PREGEL("9e82c", INFO)
           << "Done, execution took: " << totalRuntimeSecs() << " s";
     }
     return false;
@@ -282,7 +289,7 @@ bool Conductor::_startGlobalStep() {
 
   b.close();
 
-  LOG_TOPIC("d98de", DEBUG, Logger::PREGEL) << b.toString();
+  LOG_PREGEL("d98de", DEBUG) << b.slice().toJson();
 
   _stepStartTimeSecs = TRI_microtime();
 
@@ -290,11 +297,11 @@ bool Conductor::_startGlobalStep() {
   auto res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::IN_ERROR);
-    LOG_TOPIC("f34bb", ERR, Logger::PREGEL)
+    LOG_PREGEL("f34bb", ERR)
         << "Conductor could not start GSS " << _globalSuperstep;
     // the recovery mechanisms should take care od this
   } else {
-    LOG_TOPIC("411a5", DEBUG, Logger::PREGEL) << "Conductor started new gss " << _globalSuperstep;
+    LOG_PREGEL("411a5", DEBUG) << "Conductor started new gss " << _globalSuperstep;
   }
   return res == TRI_ERROR_NO_ERROR;
 }
@@ -304,7 +311,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_state != ExecutionState::RUNNING) {
-    LOG_TOPIC("10f48", WARN, Logger::PREGEL)
+    LOG_PREGEL("10f48", WARN)
         << "We are not in a state where we expect a response";
     return;
   }
@@ -315,7 +322,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
     return;
   }
 
-  LOG_TOPIC("76631", INFO, Logger::PREGEL)
+  LOG_PREGEL("76631", INFO)
       << "Running Pregel " << _algorithm->name() << " with "
       << _totalVerticesCount << " vertices, " << _totalEdgesCount << " edges";
   if (_masterContext) {
@@ -340,7 +347,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   uint64_t gss = data.get(Utils::globalSuperstepKey).getUInt();
   if (gss != _globalSuperstep ||
       !(_state == ExecutionState::RUNNING || _state == ExecutionState::CANCELED)) {
-    LOG_TOPIC("dc904", WARN, Logger::PREGEL)
+    LOG_PREGEL("dc904", WARN)
         << "Conductor did received a callback from the wrong superstep";
     return VPackBuilder();
   }
@@ -375,7 +382,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     return response;
   }
 
-  LOG_TOPIC("39385", DEBUG, Logger::PREGEL)
+  LOG_PREGEL("39385", DEBUG)
       << "Finished gss " << _globalSuperstep << " in "
       << (TRI_microtime() - _stepStartTimeSecs) << "s";
   //_statistics.debugOutput();
@@ -385,25 +392,20 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, self = shared_from_this()] {
+  scheduler->queue(RequestLane::INTERNAL_LOW, [this, self = shared_from_this()] {
     MUTEX_LOCKER(guard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {
       _startGlobalStep();  // trigger next superstep
     } else if (_state == ExecutionState::CANCELED) {
-      LOG_TOPIC("dd721", WARN, Logger::PREGEL)
+      LOG_PREGEL("dd721", WARN)
           << "Execution was canceled, results will be discarded.";
       _finalizeWorkers();  // tells workers to store / discard results
     } else {  // this prop shouldn't occur unless we are recovering or in error
-      LOG_TOPIC("923db", WARN, Logger::PREGEL)
+      LOG_PREGEL("923db", WARN)
           << "No further action taken after receiving all responses";
     }
   });
-  if (!queued) {
-    LOG_TOPIC("038db", ERR, Logger::PREGEL)
-        << "No thread available to queue response, canceling execution";
-    cancel();
-  }
   return VPackBuilder();
 }
 
@@ -411,7 +413,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_state != ExecutionState::RECOVERING) {
-    LOG_TOPIC("23d8b", WARN, Logger::PREGEL)
+    LOG_PREGEL("23d8b", WARN)
         << "We are not in a state where we expect a recovery response";
     return;
   }
@@ -445,7 +447,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
     res = _sendToAllDBServers(Utils::continueRecoveryPath, b);
 
   } else {
-    LOG_TOPIC("6ecf2", INFO, Logger::PREGEL)
+    LOG_PREGEL("6ecf2", INFO)
         << "Recovery finished. Proceeding normally";
 
     // build the message, works for all cases
@@ -462,7 +464,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
   }
   if (res != TRI_ERROR_NO_ERROR) {
     cancelNoLock();
-    LOG_TOPIC("7f97e", INFO, Logger::PREGEL) << "Recovery failed";
+    LOG_PREGEL("7f97e", INFO) << "Recovery failed";
   }
 }
 
@@ -478,7 +480,7 @@ void Conductor::cancelNoLock() {
       [this]() -> bool { return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); },
       Logger::PREGEL, "cancel worker execution");
   if (!ok) {
-    LOG_TOPIC("f8b3c", ERR, Logger::PREGEL)
+    LOG_PREGEL("f8b3c", ERR)
         << "Failed to cancel worker execution for five minutes, giving up.";
   }
   _workHandle.reset();
@@ -489,7 +491,7 @@ void Conductor::startRecovery() {
   if (_state != ExecutionState::RUNNING && _state != ExecutionState::IN_ERROR) {
     return;  // maybe we are already in recovery mode
   } else if (_algorithm->supportsCompensation() == false) {
-    LOG_TOPIC("12e0e", ERR, Logger::PREGEL)
+    LOG_PREGEL("12e0e", ERR)
         << "Algorithm does not support recovery";
     cancelNoLock();
     return;
@@ -503,17 +505,16 @@ void Conductor::startRecovery() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
   // let's wait for a final state in the cluster
-  bool queued = false;
-  std::tie(queued, _workHandle) = SchedulerFeature::SCHEDULER->queueDelay(
-      RequestLane::CLUSTER_AQL, std::chrono::seconds(2), [this, self = shared_from_this()](bool cancelled) {
+  _workHandle = SchedulerFeature::SCHEDULER->queueDelayed(
+      RequestLane::CLUSTER_AQL, std::chrono::seconds(2),
+      [this, self = shared_from_this()](bool cancelled) {
         if (cancelled || _state != ExecutionState::RECOVERING) {
           return;  // seems like we are canceled
         }
         std::vector<ServerID> goodServers;
         auto res = _feature.recoveryManager()->filterGoodServers(_dbServers, goodServers);
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC("3d08b", ERR, Logger::PREGEL)
-              << "Recovery proceedings failed";
+          LOG_PREGEL("3d08b", ERR) << "Recovery proceedings failed";
           cancelNoLock();
           return;
         }
@@ -549,13 +550,9 @@ void Conductor::startRecovery() {
         res = _initializeWorkers(Utils::startRecoveryPath, additionalKeys.slice());
         if (res != TRI_ERROR_NO_ERROR) {
           cancelNoLock();
-          LOG_TOPIC("fefc6", ERR, Logger::PREGEL) << "Compensation failed";
+          LOG_PREGEL("fefc6", ERR) << "Compensation failed";
         }
       });
-  if (!queued) {
-    LOG_TOPIC("92a8d", ERR, Logger::PREGEL)
-        << "No thread available to queue recovery, may be in dirty state.";
-  }
 }
 
 // resolves into an ordered list of shards for each collection on each server
@@ -730,19 +727,19 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix, VPackSlice ad
                                                   fuerte::RestVerb::Post, path,
                                                   std::move(buffer), reqOpts));
 
-      LOG_TOPIC("6ae66", DEBUG, Logger::PREGEL) << "Initializing Server " << server;
+      LOG_PREGEL("6ae66", DEBUG) << "Initializing Server " << server;
     }
   }
 
   size_t nrGood = 0;
   futures::collectAll(responses)
-      .thenValue([&nrGood](auto const& results) {
+      .thenValue([&nrGood, this](auto const& results) {
         for (auto const& tryRes : results) {
           network::Response const& r = tryRes.get();  // throws exceptions upwards
           if (r.ok() && r.statusCode() < 400) {
             nrGood++;
           } else {
-            LOG_TOPIC("6ae67", ERR, Logger::PREGEL)
+            LOG_PREGEL("6ae67", ERR)
                 << "received error from worker: '"
                 << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error)) << "'";
           }
@@ -768,7 +765,7 @@ ErrorCode Conductor::_finalizeWorkers() {
     mngr->stopMonitoring(this);
   }
 
-  LOG_TOPIC("fc187", DEBUG, Logger::PREGEL) << "Finalizing workers";
+  LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -819,27 +816,22 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     _storeTimeSecs = TRI_microtime() - _finalizationStartTimeSecs;
   }
 
-  LOG_TOPIC("063b5", INFO, Logger::PREGEL) << "Done. We did " << _globalSuperstep << " rounds";
-  LOG_TOPIC("3cfa8", INFO, Logger::PREGEL)
-      << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
-  LOG_TOPIC("d43cb", INFO, Logger::PREGEL) << "Computation time: " << compTime << "s";
-  LOG_TOPIC_IF("74e05", INFO, Logger::PREGEL, didStore) << "Storage time: " << _storeTimeSecs << "s";
-  LOG_TOPIC("06f03", INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
-  LOG_TOPIC("03f2e", DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
+  LOG_PREGEL("063b5", INFO) 
+      << "Done. We did " << _globalSuperstep << " rounds"
+      << ". Startup time: " << _computationStartTimeSecs - _startTimeSecs << "s"
+      << ", computation time: " << compTime << "s"
+      << (didStore ? (", storage time: " + std::to_string(_storeTimeSecs) + "s") : "")
+      << ", overall: " << totalRuntimeSecs() << "s"
+      << ", stats: " << debugOut.slice().toJson();
 
   // always try to cleanup
   if (_state == ExecutionState::CANCELED) {
     auto* scheduler = SchedulerFeature::SCHEDULER;
     if (scheduler) {
       uint64_t exe = _executionNumber;
-      bool queued = scheduler->queue(RequestLane::CLUSTER_AQL, [this, exe, self = shared_from_this()] {
+      scheduler->queue(RequestLane::CLUSTER_AQL, [this, exe, self = shared_from_this()] {
         _feature.cleanupConductor(exe);
       });
-      if (!queued) {
-        LOG_TOPIC("038da", ERR, Logger::PREGEL)
-            << "No thread available to queue cleanup, canceling execution";
-        cancel();
-      }
     }
   }
 }
@@ -948,22 +940,18 @@ ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder c
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      bool queued =
-          scheduler->queue(RequestLane::INTERNAL_LOW, [this, path, message,
-                                                       self = shared_from_this()] {
-            TRI_vocbase_t& vocbase = _vocbaseGuard.database();
-            VPackBuilder response;
-            _feature.handleWorkerRequest(vocbase, path, message.slice(), response);
-          });
-      if (!queued) {
-        return TRI_ERROR_QUEUE_FULL;
-      }
+      scheduler->queue(RequestLane::INTERNAL_LOW, [this, path, message,
+                                                   self = shared_from_this()] {
+        TRI_vocbase_t& vocbase = _vocbaseGuard.database();
+        VPackBuilder response;
+        _feature.handleWorkerRequest(vocbase, path, message.slice(), response);
+      });
     }
     return TRI_ERROR_NO_ERROR;
   }
 
   if (_dbServers.empty()) {
-    LOG_TOPIC("a14fa", WARN, Logger::PREGEL) << "No servers registered";
+    LOG_PREGEL("a14fa", WARN) << "No servers registered";
     return TRI_ERROR_FAILED;
   }
 
@@ -1011,7 +999,7 @@ void Conductor::_ensureUniqueResponse(VPackSlice body) {
   // check if this the only time we received this
   ServerID sender = body.get(Utils::senderKey).copyString();
   if (_respondedServers.find(sender) != _respondedServers.end()) {
-    LOG_TOPIC("c38b8", ERR, Logger::PREGEL) << "Received response already from " << sender;
+    LOG_PREGEL("c38b8", ERR) << "Received response already from " << sender;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);
   }
   _respondedServers.insert(sender);

@@ -39,8 +39,8 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
   RocksDBBatchedWithIndexMethods(rocksdb::TransactionDB* db,
                                  rocksdb::WriteBatchWithIndex*);
 
-  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
-                      rocksdb::PinnableSlice* val) override;
+  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
+                      rocksdb::Slice const&, rocksdb::PinnableSlice*, ReadOwnWrites) override;
   rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
                                rocksdb::Slice const&,
                                rocksdb::PinnableSlice*) override;

@@ -42,8 +42,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
  public:
   explicit RocksDBMetaCollection(LogicalCollection& collection,
                                  arangodb::velocypack::Slice const& info);
-  RocksDBMetaCollection(LogicalCollection& collection,
-                        PhysicalCollection const*);  // use in cluster only!!!!!
   virtual ~RocksDBMetaCollection() = default;
   
   std::string const& path() const override final;
@@ -61,7 +59,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   uint64_t numberDocuments(transaction::Methods* trx) const override final;
 
   ErrorCode lockWrite(double timeout = 0.0);
-  void unlockWrite();
+  void unlockWrite() noexcept;
   ErrorCode lockRead(double timeout = 0.0);
   void unlockRead();
   

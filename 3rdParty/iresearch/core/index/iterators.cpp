@@ -71,7 +71,7 @@ struct empty_term_iterator : irs::term_iterator {
   virtual const irs::bytes_ref& value() const noexcept override final {
     return irs::bytes_ref::NIL;
   }
-  virtual irs::doc_iterator::ptr postings(const irs::flags&) const noexcept override final {
+  virtual irs::doc_iterator::ptr postings(irs::IndexFeatures) const noexcept override final {
     return irs::doc_iterator::empty();
   }
   virtual void read() noexcept override final { }
@@ -91,7 +91,7 @@ struct empty_seek_term_iterator final : irs::seek_term_iterator {
   virtual const irs::bytes_ref& value() const noexcept override final {
     return irs::bytes_ref::NIL;
   }
-  virtual irs::doc_iterator::ptr postings(const irs::flags&) const noexcept override final {
+  virtual irs::doc_iterator::ptr postings(irs::IndexFeatures) const noexcept override final {
     return irs::doc_iterator::empty();
   }
   virtual void read() noexcept override final { }
@@ -105,10 +105,10 @@ struct empty_seek_term_iterator final : irs::seek_term_iterator {
   virtual bool seek(const irs::bytes_ref&) noexcept override {
     return false;
   }
-  virtual bool seek(const irs::bytes_ref&, const seek_cookie&) noexcept override {
+  virtual bool seek(const irs::bytes_ref&, const irs::seek_cookie&) noexcept override {
     return false;
   }
-  virtual seek_cookie::ptr cookie() const noexcept override {
+  virtual irs::seek_cookie::ptr cookie() const noexcept override {
     return nullptr;
   }
 }; // empty_seek_term_iterator

@@ -47,8 +47,6 @@ const fs = require('fs');
 const _ = require('lodash');
 
 const ERROR_USER_NOT_FOUND = errors.ERROR_USER_NOT_FOUND.code;
-const API_DOCS = require(module.context.fileName('api-docs.json'));
-API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
 
 const router = createRouter();
 module.exports = router;
@@ -98,6 +96,7 @@ router.get('/config.js', function (req, res) {
       defaultReplicationFactor: internal.defaultReplicationFactor,
       maxNumberOfShards: internal.maxNumberOfShards,
       forceOneShard: internal.forceOneShard,
+      sessionTimeout: internal.sessionTimeout,
       showMaintenanceStatus: true
     })}`
   );
@@ -127,6 +126,8 @@ authRouter.use((req, res, next) => {
 
 router.get('/api/*', module.context.apiDocumentation({
   swaggerJson (req, res) {
+    const API_DOCS = require(module.context.fileName('api-docs.json'));
+    API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
     res.json(API_DOCS);
   }
 }))
@@ -294,7 +295,8 @@ authRouter.get('/query/download/:user', function (req, res) {
     res.throw('not found');
   }
 
-  res.attachment(`queries-${db._name()}-${user.user}.json`);
+  const namePart = `${db._name()}-${user.user}`.replace(/[^-_a-z0-9]/gi, "_");
+  res.attachment(`queries-${namePart}.json`);
   res.json(user.extra.queries || []);
 })
 .pathParam('user', joi.string().required(), 'Username. Ignored if authentication is enabled.')
@@ -314,7 +316,8 @@ authRouter.get('/query/result/download/:query', function (req, res) {
   }
 
   const result = db._query(query.query, query.bindVars).toArray();
-  res.attachment(`results-${db._name()}.json`);
+  const namePart = `${db._name()}`.replace(/[^-_a-z0-9]/gi, "_");
+  res.attachment(`results-${namePart}.json`);
   res.json(result);
 })
 .pathParam('query', joi.string().required(), 'Base64 encoded query.')

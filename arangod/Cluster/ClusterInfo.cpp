@@ -46,6 +46,7 @@
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
+#include "Cluster/ClusterTypes.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/RebootTracker.h"
@@ -53,6 +54,9 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
@@ -458,7 +462,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
     }
     _uniqid._backgroundJobIsRunning = true;
     std::thread([this] {
-      auto guardRunning = scopeGuard([this] {
+      auto guardRunning = scopeGuard([this]() noexcept {
         MUTEX_LOCKER(mutexLocker, _idLock);
         _uniqid._backgroundJobIsRunning = false;
       });
@@ -779,6 +783,16 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   return std::make_shared<LogicalCollection>(vocbase, data, true);
 }
 
+struct ClusterInfo::NewStuffByDatabase {
+  using ReplicatedLogsMap =
+      std::unordered_map<replication2::LogId, std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
+  ReplicatedLogsMap replicatedLogs;
+  using CollectionGroupMap =
+      std::unordered_map<replication2::agency::CollectionGroupId,
+                         std::shared_ptr<replication2::agency::CollectionGroup const>>;
+  CollectionGroupMap collectionGroups;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about our plan
 /// Usually one does not have to call this directly.
@@ -830,7 +844,7 @@ void ClusterInfo::loadPlan() {
   }
 
   // ensure we'll eventually reset plan loader
-  auto resetLoader = scopeGuard([this, start]() {
+  auto resetLoader = scopeGuard([this, start]() noexcept {
     _planLoader = std::thread::id();
     _newPlannedViews.clear();
 
@@ -885,6 +899,7 @@ void ClusterInfo::loadPlan() {
   decltype(_shardServers) newShardServers;
   decltype(_shardToName) newShardToName;
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
+  decltype(_newStuffByDatabase) newStuffByDatabase;
 
   bool swapDatabases = false;
   bool swapCollections = false;
@@ -900,6 +915,7 @@ void ClusterInfo::loadPlan() {
     newShardServers = _shardServers;
     newShardToName = _shardToName;
     newDbAnalyzersRevision = _dbAnalyzersRevision;
+    newStuffByDatabase = _newStuffByDatabase;
     auto ende = std::chrono::steady_clock::now();
     LOG_TOPIC("feee1", TRACE, Logger::CLUSTER)
         << "Time for copy operation in loadPlan: "
@@ -956,6 +972,7 @@ void ClusterInfo::loadPlan() {
         }
       }
       newDatabases.erase(name);
+      newStuffByDatabase.erase(name);
       newPlan.erase(name);
       continue;
     }
@@ -1386,6 +1403,49 @@ void ClusterInfo::loadPlan() {
     newCollections.insert_or_assign(std::move(databaseName), std::move(databaseCollections));
   }
 
+  // And now for replicated logs
+  for (auto const& [databaseName, query] : changeSet.dbs) {
+    if (databaseName.empty()) {
+      continue;
+    }
+
+    auto stuff = std::make_shared<NewStuffByDatabase>();
+    {
+      auto replicatedLogsPaths = cluster::paths::aliases::plan()
+          ->replicatedLogs()
+          ->database(databaseName)
+          ->vec();
+
+      auto logsSlice = query->slice()[0].get(replicatedLogsPaths);
+      if (!logsSlice.isNone()) {
+        NewStuffByDatabase::ReplicatedLogsMap newLogs;
+        for (auto const& [idString, logSlice] : VPackObjectIterator(logsSlice)) {
+          auto spec = std::make_shared<replication2::agency::LogPlanSpecification>(
+              replication2::agency::from_velocypack, logSlice);
+          newLogs.emplace(spec->id, spec);
+        }
+        stuff->replicatedLogs = std::move(newLogs);
+      }
+    }
+
+    {
+      auto collectionGroupsPath =
+          std::initializer_list<std::string_view>{AgencyCommHelper::path(),
+                                                  "Plan", "CollectionGroups", databaseName};
+      auto groupsSlice = query->slice()[0].get(collectionGroupsPath);
+      if (!groupsSlice.isNone()) {
+        NewStuffByDatabase::CollectionGroupMap groups;
+        for (auto const& [idString, groupSlice] : VPackObjectIterator(groupsSlice)) {
+          auto spec = std::make_shared<replication2::agency::CollectionGroup>(groupSlice);
+          groups.emplace(spec->id, spec);
+        }
+        stuff->collectionGroups = std::move(groups);
+      }
+    }
+
+    newStuffByDatabase[databaseName] = std::move(stuff);
+  }
+
   if (isCoordinator) {
     auto systemDB = _server.getFeature<arangodb::SystemDatabaseFeature>().use();
     if (systemDB && systemDB->shardingPrototype() == ShardingPrototype::Undefined) {
@@ -1435,6 +1495,8 @@ void ClusterInfo::loadPlan() {
   if (swapAnalyzers) {
     _dbAnalyzersRevision.swap(newDbAnalyzersRevision);
   }
+
+  _newStuffByDatabase.swap(newStuffByDatabase);
 
   if (planValid) {
     _planProt.isValid = true;
@@ -2250,9 +2312,14 @@ Result ClusterInfo::waitForDatabaseInCurrent(
   if (r.fail()) {
     return r;
   }
-  auto cbGuard = scopeGuard(
-    [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
-
+  auto cbGuard = scopeGuard([&]() noexcept {
+    try {
+      _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("e952f", ERR, Logger::CLUSTER)
+          << "Failed to unregister agency callback: " << ex.what();
+    }
+  });
 
   // TODO: Should this never timeout?
   AgencyComm ac(_server);
@@ -2524,8 +2591,13 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     return r;
   }
 
-  auto cbGuard = scopeGuard([this, &agencyCallback]() -> void {
-                              _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+  auto cbGuard = scopeGuard([this, &agencyCallback]() noexcept {
+    try {
+      _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("1ec9b", ERR, Logger::CLUSTER)
+          << "Failed to unregister agency callback: " << ex.what();
+    }
   });
 
   // Transact to agency
@@ -2692,22 +2764,27 @@ Result ClusterInfo::createCollectionsCoordinator(
   AgencyComm ac(_server);
   std::vector<std::shared_ptr<AgencyCallback>> agencyCallbacks;
 
-  auto cbGuard = scopeGuard([&] {
-    // We have a subtle race here, that we try to cover against:
-    // We register a callback in the agency.
-    // For some reason this scopeguard is executed (e.g. error case)
-    // While we are in this cleanup, and before a callback is removed from the
-    // agency. The callback is triggered by another thread. We have the
-    // following guarantees: a) cacheMutex|Owner are valid and locked by cleanup
-    // b) isCleaned is valid and now set to true
-    // c) the closure is owned by the callback
-    // d) info might be deleted, so we cannot use it.
-    // e) If the callback is ongoing during cleanup, the callback will
-    //    hold the Mutex and delay the cleanup.
-    RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
-    *isCleaned = true;
-    for (auto& cb : agencyCallbacks) {
-      _agencyCallbackRegistry->unregisterCallback(cb);
+  auto cbGuard = scopeGuard([&]() noexcept {
+    try {
+      // We have a subtle race here, that we try to cover against:
+      // We register a callback in the agency.
+      // For some reason this scopeguard is executed (e.g. error case)
+      // While we are in this cleanup, and before a callback is removed from the
+      // agency. The callback is triggered by another thread. We have the
+      // following guarantees: a) cacheMutex|Owner are valid and locked by cleanup
+      // b) isCleaned is valid and now set to true
+      // c) the closure is owned by the callback
+      // d) info might be deleted, so we cannot use it.
+      // e) If the callback is ongoing during cleanup, the callback will
+      //    hold the Mutex and delay the cleanup.
+      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
+      *isCleaned = true;
+      for (auto& cb : agencyCallbacks) {
+        _agencyCallbackRegistry->unregisterCallback(cb);
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("cc911", ERR, Logger::CLUSTER)
+          << "Failed to unregister agency callback: " << ex.what();
     }
   });
 
@@ -2931,60 +3008,68 @@ Result ClusterInfo::createCollectionsCoordinator(
     }
   }
 
-  auto deleteCollectionGuard = scopeGuard([&infos, &databaseName, this, &ac]() {
-    using namespace arangodb::cluster::paths;
-    using namespace arangodb::cluster::paths::aliases;
-    // We need to check isBuilding as a precondition.
-    // If the transaction removing the isBuilding flag results in a timeout, the
-    // state of the collection is unknown; if it was actually removed, we must
-    // not drop the collection, but we must otherwise.
+  auto deleteCollectionGuard = scopeGuard([&infos, &databaseName, this, &ac]() noexcept {
+    try {
+      using namespace arangodb::cluster::paths;
+      using namespace arangodb::cluster::paths::aliases;
+      // We need to check isBuilding as a precondition.
+      // If the transaction removing the isBuilding flag results in a timeout,
+      // the state of the collection is unknown; if it was actually removed, we
+      // must not drop the collection, but we must otherwise.
 
-    auto precs = std::vector<AgencyPrecondition>{};
-    auto opers = std::vector<AgencyOperation>{};
+      auto precs = std::vector<AgencyPrecondition>{};
+      auto opers = std::vector<AgencyOperation>{};
 
-    // Note that we trust here that either all isBuilding flags are removed in
-    // a single transaction, or none is.
+      // Note that we trust here that either all isBuilding flags are removed in
+      // a single transaction, or none is.
 
-    for (auto const& info : infos) {
-      using namespace std::string_literals;
-      auto const collectionPlanPath = "Plan/Collections/"s + databaseName + "/" + info.collectionID;
-      precs.emplace_back(collectionPlanPath + "/" + StaticStrings::AttrIsBuilding,
-          AgencyPrecondition::Type::EMPTY, false);
-      opers.emplace_back(collectionPlanPath, AgencySimpleOperationType::DELETE_OP);
-    }
-    opers.emplace_back("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
-    auto trx = AgencyWriteTransaction{opers, precs};
+      for (auto const& info : infos) {
+        using namespace std::string_literals;
+        auto const collectionPlanPath =
+            "Plan/Collections/"s + databaseName + "/" + info.collectionID;
+        precs.emplace_back(collectionPlanPath + "/" + StaticStrings::AttrIsBuilding,
+                           AgencyPrecondition::Type::EMPTY, false);
+        opers.emplace_back(collectionPlanPath, AgencySimpleOperationType::DELETE_OP);
+      }
+      opers.emplace_back("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
+      auto trx = AgencyWriteTransaction{opers, precs};
 
-    using namespace std::chrono;
-    using namespace std::chrono_literals;
-    auto const begin = steady_clock::now();
-    // After a shutdown, the supervision will clean the collections either due
-    // to the coordinator going into FAIL, or due to it changing its rebootId.
-    // Otherwise we must under no circumstance give up here, because noone else
-    // will clean this up.
-    while (!_server.isStopping()) {
-      auto res = ac.sendTransactionWithFailover(trx);
-      // If the collections were removed (res.ok()), we may abort. If we run
-      // into precondition failed, the collections were successfully created, so
-      // we're fine too.
-      if (res.successful()) {
-        if (VPackSlice resultsSlice = res.slice().get("results"); resultsSlice.length() > 0) {
-          [[maybe_unused]] Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+      using namespace std::chrono;
+      using namespace std::chrono_literals;
+      auto const begin = steady_clock::now();
+      // After a shutdown, the supervision will clean the collections either due
+      // to the coordinator going into FAIL, or due to it changing its rebootId.
+      // Otherwise we must under no circumstance give up here, because noone
+      // else will clean this up.
+      while (!_server.isStopping()) {
+        auto res = ac.sendTransactionWithFailover(trx);
+        // If the collections were removed (res.ok()), we may abort. If we run
+        // into precondition failed, the collections were successfully created,
+        // so we're fine too.
+        if (res.successful()) {
+          if (VPackSlice resultsSlice = res.slice().get("results");
+              resultsSlice.length() > 0) {
+            [[maybe_unused]] Result r =
+                waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+          }
+          return;
+        } else if (res.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
+          return;
         }
-        return;
-      } else if (res.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
-        return;
+
+        // exponential backoff, just to be safe,
+        auto const durationSinceStart = steady_clock::now() - begin;
+        auto constexpr maxWaitTime = 2min;
+        auto const waitTime =
+            std::min<std::common_type_t<decltype(durationSinceStart), decltype(maxWaitTime)>>(
+                durationSinceStart, maxWaitTime);
+        std::this_thread::sleep_for(waitTime);
       }
 
-      // exponential backoff, just to be safe,
-      auto const durationSinceStart = steady_clock::now() - begin;
-      auto constexpr maxWaitTime = 2min;
-      auto const waitTime =
-          std::min<std::common_type_t<decltype(durationSinceStart), decltype(maxWaitTime)>>(
-              durationSinceStart, maxWaitTime);
-      std::this_thread::sleep_for(waitTime);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("57486", ERR, Logger::CLUSTER)
+          << "Failed to delete collection during rollback: " << ex.what();
     }
-
   });
 
   // now try to update the plan in the agency, using the current plan version as
@@ -3307,9 +3392,13 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     return r;
   }
 
-  auto cbGuard = scopeGuard(
-    [this, &agencyCallback]() -> void {
+  auto cbGuard = scopeGuard([this, &agencyCallback]() noexcept {
+    try {
       _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("be7da", ERR, Logger::CLUSTER)
+          << "Failed to unregister agency callback: " << ex.what();
+    }
   });
 
   size_t numberOfShards = 0;
@@ -3490,8 +3579,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
 Result ClusterInfo::createViewCoordinator(  // create view
     std::string const& databaseName,        // database name
     std::string const& viewID,
-    velocypack::Slice json  // view definition
-) {
+    velocypack::Slice json) {
   // TRI_ASSERT(ServerState::instance()->isCoordinator());
   // FIXME TODO is this check required?
   auto const typeSlice = json.get(arangodb::StaticStrings::DataSourceType);
@@ -4247,8 +4335,14 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
     return r;
   }
 
-  auto cbGuard = scopeGuard(
-    [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
+  auto cbGuard = scopeGuard([&]() noexcept {
+    try {
+      _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("7702e", ERR, Logger::CLUSTER)
+          << "Failed to unregister agency callback: " << ex.what();
+    }
+  });
 
   std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planIndexesKey = planCollKey + "/indexes";
@@ -4274,7 +4368,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   // This object watches whether the collection is still present in Plan
   // It assumes that the collection *is* present and only changes state
   // if the collection disappears
-  CollectionWatcher collectionWatcher(_agencyCallbackRegistry, collection);
+  auto collectionWatcher = std::make_shared<CollectionWatcher>(_agencyCallbackRegistry, collection);
 
   if (!result.successful()) {
     if (result.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
@@ -4375,7 +4469,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
           }
         }
 
-        if (!collectionWatcher.isPresent()) {
+        if (!collectionWatcher->isPresent()) {
           return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
                         "Collection " + collectionID +
                             " has gone from database " + databaseName +
@@ -4462,7 +4556,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         // when we wanted to roll back the index creation.
       }
 
-      if (!collectionWatcher.isPresent()) {
+      if (!collectionWatcher->isPresent()) {
         return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                       "collection " + collectionID +
                           "appears to have been dropped from database " +
@@ -4647,8 +4741,14 @@ Result ClusterInfo::dropIndexCoordinatorInner(
     return r;
   }
 
-  auto cbGuard = scopeGuard(
-    [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
+  auto cbGuard = scopeGuard([&]() noexcept {
+    try {
+      _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("ac2bf", ERR, Logger::CLUSTER)
+          << "Failed to unregister agency callback: " << ex.what();
+    }
+  });
 
   AgencyOperation planErase(planIndexesKey, AgencyValueOperationType::ERASE, indexToRemove);
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
@@ -5597,6 +5697,24 @@ CollectionID ClusterInfo::getCollectionNameForShard(ShardID const& shardId) {
   return StaticStrings::Empty;
 }
 
+auto ClusterInfo::getReplicatedLogLeader(DatabaseID const& database, replication2::LogId id) const
+-> std::optional<ServerID> {
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  if (auto it = _newStuffByDatabase.find(database); it != std::end(_newStuffByDatabase)) {
+    if (auto it2 = it->second->replicatedLogs.find(id);
+        it2 != std::end(it->second->replicatedLogs)) {
+      if (auto const& term = it2->second->currentTerm) {
+        if (auto const& leader = term->leader) {
+          return leader->serverId;
+        }
+      }
+    }
+  }
+
+  return std::nullopt;
+}
+
 arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
   AgencyCommResult dump = _agency.dump();
 
@@ -6084,9 +6202,10 @@ CollectionWatcher::CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegis
 
   _agencyCallback = std::make_shared<AgencyCallback>(
       collection.vocbase().server(), where,
-      [this](VPackSlice const& result) {
-        if (result.isNone()) {
-          _present.store(false);
+      [self = weak_from_this()](VPackSlice const& result) {
+        auto watcher = self.lock();
+        if (result.isNone() && watcher) {
+          watcher->_present.store(false);
         }
         return true;
       },
@@ -6392,13 +6511,7 @@ void ClusterInfo::triggerWaiting(
     }
     auto pp = std::make_shared<futures::Promise<Result>>(std::move(pit->second));
     if (scheduler && !_server.isStopping()) {
-      bool queued = scheduler->queue(
-        RequestLane::CLUSTER_INTERNAL, [pp] { pp->setValue(Result()); });
-      if (!queued) {
-        LOG_TOPIC("4637c", WARN, Logger::AGENCY) <<
-          "Failed to schedule logsForTrigger running in main thread";
-        pp->setValue(Result());
-      }
+      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [pp] { pp->setValue(Result()); });
     } else {
       pp->setValue(Result(_syncerShutdownCode));
     }

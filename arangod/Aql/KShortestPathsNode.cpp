@@ -344,18 +344,16 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
       // be changed in the future) create BaseProviderOptions
 
-      // TODO FIXME START - only tmp workaround - we'll provide an empty depth based index info (also add an alias for large type)
       std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> usedIndexes{};
       usedIndexes.first = buildUsedIndexes();
 
       std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> reversedUsedIndexes{};
       reversedUsedIndexes.first = buildReverseUsedIndexes();
-      // TODO FIXME END
 
-      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), usedIndexes,
+      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), std::move(usedIndexes),
                                                  opts->getExpressionCtx(),
                                                  opts->collectionToShard());
-      BaseProviderOptions backwardProviderOptions(opts->tmpVar(), reversedUsedIndexes,
+      BaseProviderOptions backwardProviderOptions(opts->tmpVar(), std::move(reversedUsedIndexes),
                                                   opts->getExpressionCtx(),
                                                   opts->collectionToShard());
 
@@ -365,9 +363,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
             KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>;
 
         auto kPathUnique = std::make_unique<KPathRefactored>(
-            SingleServerProvider<SingleServerProviderStep>{opts->query(), forwardProviderOptions,
+            SingleServerProvider<SingleServerProviderStep>{opts->query(), std::move(forwardProviderOptions),
                                                            opts->query().resourceMonitor()},
-            SingleServerProvider<SingleServerProviderStep>{opts->query(), backwardProviderOptions,
+            SingleServerProvider<SingleServerProviderStep>{opts->query(), std::move(backwardProviderOptions),
                                                            opts->query().resourceMonitor()},
             std::move(enumeratorOptions), std::move(validatorOptions),
             opts->query().resourceMonitor());
@@ -384,9 +382,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
             TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>;
         auto kPathUnique = std::make_unique<TracedKPathRefactored>(
             ProviderTracer<SingleServerProvider<SingleServerProviderStep>>{
-                opts->query(), forwardProviderOptions, opts->query().resourceMonitor()},
+                opts->query(), std::move(forwardProviderOptions), opts->query().resourceMonitor()},
             ProviderTracer<SingleServerProvider<SingleServerProviderStep>>{
-                opts->query(), backwardProviderOptions, opts->query().resourceMonitor()},
+                opts->query(), std::move(backwardProviderOptions), opts->query().resourceMonitor()},
             std::move(enumeratorOptions), std::move(validatorOptions),
             opts->query().resourceMonitor());
 
@@ -470,6 +468,7 @@ ExecutionNode* KShortestPathsNode::clone(ExecutionPlan* plan, bool withDependenc
 void KShortestPathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan,
                                                    KShortestPathsNode& c,
                                                    bool withProperties) const {
+  graphCloneHelper(plan, c, withProperties);
   if (usesPathOutVariable()) {
     auto pathOutVariable = _pathOutVariable;
     if (withProperties) {

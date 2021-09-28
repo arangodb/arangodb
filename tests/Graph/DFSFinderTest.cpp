@@ -64,7 +64,7 @@ class DFSFinderTest : public ::testing::TestWithParam<MockGraphProvider::LooseEn
   bool activateLogging{false};
   MockGraph mockGraph;
   mocks::MockAqlServer _server{true};
-  std::unique_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
+  std::shared_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor resourceMonitor{global};
 
@@ -276,7 +276,6 @@ TEST_P(DFSFinderTest, no_path_exists) {
     // Try again to make sure we stay at non-existing
     auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
   {
@@ -312,7 +311,6 @@ TEST_P(DFSFinderTest, path_depth_0) {
     // Try again to make sure we stay at non-existing
     auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
   {
@@ -348,7 +346,6 @@ TEST_P(DFSFinderTest, path_depth_1) {
     // Try again to make sure we stay at non-existing
     auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
 
@@ -381,11 +378,9 @@ TEST_P(DFSFinderTest, path_depth_2) {
   }
 
   {
-    result.clear();
     // Try again to make sure we stay at non-existing
     auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
   {
@@ -417,11 +412,9 @@ TEST_P(DFSFinderTest, path_depth_3) {
   }
 
   {
-    result.clear();
     // Try again to make sure we stay at non-existing
     auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
 
@@ -473,11 +466,9 @@ TEST_P(DFSFinderTest, path_diamond) {
   }
 
   {
-    result.clear();
     // Try again to make sure we stay at non-existing
     auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
   {
@@ -542,11 +533,9 @@ TEST_P(DFSFinderTest, path_depth_1_to_2) {
   }
 
   {
-    result.clear();
     // Try again to make sure we stay at non-existing
     auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
 }
@@ -601,11 +590,9 @@ TEST_P(DFSFinderTest, path_depth_1_to_2_skip) {
   }
 
   {
-    result.clear();
     // Try again to make sure we stay at non-existing
     auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
 }
@@ -645,10 +632,8 @@ TEST_P(DFSFinderTest, path_loop) {
   }
 
   {
-    result.clear();
     auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
 }
@@ -710,11 +695,9 @@ TEST_P(DFSFinderTest, triangle_loop) {
   }
 
   {
-    result.clear();
     // Try again to make sure we stay at non-existing
     auto hasPath = finder.getNextPath();
     EXPECT_FALSE(hasPath);
-    EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
 }

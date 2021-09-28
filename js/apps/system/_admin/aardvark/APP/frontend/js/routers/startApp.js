@@ -28,7 +28,7 @@
       window.App.handleResize();
     });
 
-    // create only this one global event listener
+    // create only the following global event listeners
     $(document).click(function (e) {
       e.stopPropagation();
 
@@ -41,14 +41,21 @@
           $('.subBarDropdown').hide();
         }
       }
+      
+      // also note that the web UI was actively used
+      arangoHelper.noteActivity();
     });
 
     $('body').on('keyup', function (e) {
+      // hide modal dialogs when pressing ESC
       if (e.keyCode === 27) {
         if (window.modalView) {
           window.modalView.hide();
         }
       }
+      
+      // also note that the web UI was actively used
+      arangoHelper.noteActivity();
     });
   }
 }());

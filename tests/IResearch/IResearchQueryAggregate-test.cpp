@@ -32,6 +32,8 @@
 
 #include <velocypack/Iterator.h>
 
+#include "utils/string_utils.hpp"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
@@ -52,7 +54,7 @@ class IResearchQueryAggregateTest : public IResearchQueryTest {};
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(IResearchQueryAggregateTest, test) {
+TEST_P(IResearchQueryAggregateTest, test) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
@@ -103,11 +105,11 @@ TEST_F(IResearchQueryAggregateTest, test) {
     ASSERT_NE(nullptr, collection);
 
     irs::utf8_path resource;
-    resource /= irs::string_ref(arangodb::tests::testResourceDir);
-    resource /= irs::string_ref("simple_sequential.json");
+    resource /= std::string_view(arangodb::tests::testResourceDir);
+    resource /= std::string_view("simple_sequential.json");
 
     auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
@@ -138,13 +140,24 @@ TEST_F(IResearchQueryAggregateTest, test) {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     ASSERT_FALSE(!impl);
 
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, "
-        "\"trackListPositions\": true },"
-        "\"testCollection1\": { \"includeAllFields\": true }"
-        "}}");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+
+    auto* viewDefinitionTemplate = R"({ "links": {
+        "testCollection0": {
+          "includeAllFields": true,
+          "trackListPositions": true,
+          "version": %d },
+        "testCollection1": {
+          "includeAllFields": true,
+          "version": %d } } })";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
+
+    auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
+
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
     impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
@@ -172,7 +185,6 @@ TEST_F(IResearchQueryAggregateTest, test) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-
     arangodb::velocypack::ArrayIterator itr(slice);
     ASSERT_EQ(expected.size(), itr.size());
 
@@ -297,3 +309,8 @@ TEST_F(IResearchQueryAggregateTest, test) {
     EXPECT_FALSE(itr.valid());
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryAggregateTest,
+  IResearchQueryAggregateTest,
+  GetLinkVersions());

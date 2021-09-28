@@ -211,7 +211,7 @@ class Manager final {
   }
 
   // remove the block
-  void releaseTransactions() {
+  void releaseTransactions() noexcept {
     std::unique_lock<std::mutex> guard(_mutex);
     if (_writeLockHeld) {
       LOG_TOPIC("eeddd", TRACE, Logger::TRANSACTIONS)

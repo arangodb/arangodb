@@ -265,7 +265,7 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
   }
   parser._dataAdd = this;
 
-  auto guard = scopeGuard([&parser]() {
+  auto guard = scopeGuard([&parser]() noexcept {
     TRI_DestroyCsvParser(&parser);
   });
   
@@ -657,9 +657,10 @@ void ImportHelper::ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field, si
 void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
                             size_t column, bool escaped) {
   if (_rowsRead < _rowsToSkip) {
+    // still some rows left to skip over
     return;
   }
-  // we read the first line if we get here
+  // we are reading the first line if we get here
   if (row == _rowsToSkip && !_headersSeen) {
     std::string name = std::string(field, fieldLength);
     if (fieldLength > 0) {  // translate field
@@ -671,11 +672,14 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     }
     _columnNames.push_back(std::move(name));
   }
+
   // skip removable attributes
   if (!_removeAttributes.empty() && column < _columnNames.size() &&
       _removeAttributes.find(_columnNames[column]) != _removeAttributes.end()) {
     return;
   }
+
+  // we will write out this attribute!
 
   if (column > 0) {
     _lineBuffer.appendChar(',');
@@ -685,12 +689,45 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
       memcmp(field, "_key", 4) == 0) {
     _keyColumn = column;
   }
+  
+  // check if a datatype was forced for this attribute
+  auto itTypes = _datatypes.end();
+  if (!_datatypes.empty() && column < _columnNames.size()) {
+    itTypes = _datatypes.find(_columnNames[column]);
+  }
 
   if ((row == _rowsToSkip && !_headersSeen) ||
-      escaped ||
+      (escaped && itTypes == _datatypes.end()) ||
       _keyColumn == static_cast<decltype(_keyColumn)>(column)) {
-    // head line or escaped value
+    // headline or escaped value
     _lineBuffer.appendJsonEncoded(field, fieldLength);
+    return;
+  }
+
+  // check if a datatype was forced for this attribute
+  if (itTypes != _datatypes.end()) {
+    std::string const& datatype = (*itTypes).second;
+    if (datatype == "number") {
+      if (::isInteger(field, fieldLength) || ::isDecimal(field, fieldLength)) {
+        _lineBuffer.appendText(field, fieldLength);
+      } else {
+        _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("0"));
+      }
+    } else if (datatype == "boolean") {
+      if ((fieldLength == 5 && memcmp(field, "false", 5) == 0) ||
+          (fieldLength == 4 && memcmp(field, "null", 4) == 0) ||
+          (fieldLength == 1 && *field == '0')) {
+        _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("false"));
+      } else {
+        _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("true"));
+      }
+    } else if (datatype == "null") {
+      _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
+    } else {
+      // string
+      TRI_ASSERT(datatype == "string");
+      _lineBuffer.appendJsonEncoded(field, fieldLength);
+    }
     return;
   }
 
@@ -700,29 +737,13 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     return;
   }
 
-  // check for literals null, false and true
-  if (fieldLength == 4 && (memcmp(field, "true", 4) == 0 || memcmp(field, "null", 4) == 0)) {
-    if (_convert) {
-      _lineBuffer.appendText(field, fieldLength);
-    } else {
-      _lineBuffer.appendChar('"');
-      _lineBuffer.appendText(field, fieldLength);
-      _lineBuffer.appendChar('"');
-    }
-    return;
-  } else if (fieldLength == 5 && memcmp(field, "false", 5) == 0) {
-    if (_convert) {
-      _lineBuffer.appendText(field, fieldLength);
-    } else {
-      _lineBuffer.appendChar('"');
-      _lineBuffer.appendText(field, fieldLength);
-      _lineBuffer.appendChar('"');
-    }
-    return;
-  }
-
+  // automatic detection of datatype based on value (--convert)
   if (_convert) {
-    if (::isInteger(field, fieldLength)) {
+    // check for literals null, false and true
+    if ((fieldLength == 4 && (memcmp(field, "true", 4) == 0 || memcmp(field, "null", 4) == 0)) ||
+        (fieldLength == 5 && memcmp(field, "false", 5) == 0)) {
+      _lineBuffer.appendText(field, fieldLength);
+    } else if (::isInteger(field, fieldLength)) {
       // integer value
       // conversion might fail with out-of-range error
       try {

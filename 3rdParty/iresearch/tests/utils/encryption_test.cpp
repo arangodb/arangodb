@@ -222,7 +222,7 @@ TEST(ctr_encryption_test, create_header_stream) {
 // --SECTION--                                              encryption_test_case
 // -----------------------------------------------------------------------------
 
-class encryption_test_case : public tests::directory_test_case_base {
+class encryption_test_case : public tests::directory_test_case_base<> {
  protected:
   void assert_ecnrypted_streams(size_t block_size, size_t header_length, size_t buf_size) {
     std::vector<std::string> const data{
@@ -248,8 +248,11 @@ class encryption_test_case : public tests::directory_test_case_base {
     };
     const size_t magic = 0x43219876;
 
-    ASSERT_FALSE(dir().attributes().contains<irs::encryption>());
-    auto& enc = dir().attributes().emplace<tests::rot13_encryption>(block_size, header_length);
+    ASSERT_EQ(nullptr, dir().attributes().encryption());
+    dir().attributes() = irs::directory_attributes{
+      0, std::make_unique<tests::rot13_encryption>(block_size, header_length) };
+    auto* enc = dir().attributes().encryption();
+    ASSERT_NE(nullptr, enc);
 
     uint64_t fp_magic = 0;
     uint64_t encrypted_length = 0;
@@ -275,7 +278,6 @@ class encryption_test_case : public tests::directory_test_case_base {
       ASSERT_EQ(std::max(buf_size,size_t(1))*cipher->block_size(), encryptor.buffer_size());
       ASSERT_EQ(0, encryptor.file_pointer());
 
-      size_t step = 321;
       for (auto& str : data) {
         irs::write_string(encryptor, str);
         irs::write_string(*raw_out, str);
@@ -401,16 +403,26 @@ class encryption_test_case : public tests::directory_test_case_base {
       ASSERT_NE(nullptr, in);
       ASSERT_EQ(in->file_pointer(), header_length + irs::bytes_io<uint64_t>::vsize(header.size()) + fp);
     }
-
-    ASSERT_TRUE(dir().attributes().remove<irs::encryption>());
   }
 };
 
-TEST_P(encryption_test_case, encrypted_io) {
+TEST_P(encryption_test_case, encrypted_io_0) {
   assert_ecnrypted_streams(13, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 0);
+}
+
+TEST_P(encryption_test_case, encrypted_io_1) {
   assert_ecnrypted_streams(13, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 1);
+}
+
+TEST_P(encryption_test_case, encrypted_io_2) {
   assert_ecnrypted_streams(7, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 5);
+}
+
+TEST_P(encryption_test_case, encrypted_io_3) {
   assert_ecnrypted_streams(16, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 64);
+}
+
+TEST_P(encryption_test_case, encrypted_io_4) {
   assert_ecnrypted_streams(2048, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 1);
 }
 
@@ -546,15 +558,14 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   encryption_test,
   encryption_test_case,
   ::testing::Values(
-    &tests::memory_directory,
-    &tests::fs_directory,
-    &tests::mmap_directory
-  ),
-  tests::directory_test_case_base::to_string
+    &tests::directory<&tests::memory_directory>,
+    &tests::directory<&tests::fs_directory>,
+    &tests::directory<&tests::mmap_directory>),
+  tests::directory_test_case_base<>::to_string
 );
 
 }

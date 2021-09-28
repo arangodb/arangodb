@@ -236,7 +236,7 @@ class KShortestPathsExecutorTest
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
 
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
   ShortestPathOptions options;
 
   RegisterInfos registerInfos;

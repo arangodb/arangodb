@@ -35,6 +35,7 @@
 
 #include <fstream>
 #include <random>
+#include <regex>
 #include <thread>
 
 #if defined(_MSC_VER)
@@ -65,21 +66,6 @@
 #include "utils/levenshtein_default_pdp.hpp"
 
 #include "index-search.hpp"
-
-// std::regex support only starting from GCC 4.9
-#if !defined(__GNUC__) || (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ > 8))
-  #include <regex>
-#else
-  #include "boost/regex.hpp"
-
-  namespace std {
-    typedef ::boost::regex regex;
-    typedef ::boost::match_results<string::const_iterator> smatch;
-
-    template <typename... Args>
-    bool regex_match(Args&&... args) { return ::boost::regex_match(std::forward<Args>(args)...); }
-  } // std
-#endif
 
 namespace {
 
@@ -521,9 +507,24 @@ int search(
   struct task_provider_t {
     typedef irs::concurrent_stack<size_t> freelist_t;
 
+    struct node_type : freelist_t::node_type {
+      node_type() = default;
+      node_type(const node_type& rhs) noexcept {
+        *this = rhs;
+      }
+
+      node_type& operator=(const node_type& rhs) noexcept {
+        if (this != &rhs) {
+          value = rhs.value;
+          next.store(rhs.next.load());
+        }
+        return *this;
+      }
+    };
+
     std::mt19937 randomizer;
     std::vector<task_t> tasks;
-    std::vector<freelist_t::node_type> task_ids;
+    std::vector<node_type> task_ids;
     freelist_t task_list;
 
     void reset(std::vector<task_t>&& lines, size_t repeat, bool shuffle) {

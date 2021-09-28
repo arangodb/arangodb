@@ -28,64 +28,61 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/files.h"
 #include "Basics/StringBuffer.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct CustomQueryTest : public Benchmark<CustomQueryTest> {
-  static std::string name() { return "custom-query"; }
+  struct CustomQueryTest : public Benchmark<CustomQueryTest> {
+    static std::string name() { return "custom-query"; }
 
-  CustomQueryTest(BenchFeature& arangobench)
+    CustomQueryTest(BenchFeature& arangobench)
       : Benchmark<CustomQueryTest>(arangobench) {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    _query = _arangobench.customQuery();
-    if (_query.empty()) {
-      auto file = _arangobench.customQueryFile();
-      size_t length;
-      auto* p = TRI_SlurpFile(file.c_str(), &length);
-      if (p != nullptr) {
-        auto guard = scopeGuard([&p]() { TRI_Free(p); });
-        _query = std::string(p, length);
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      _query = _arangobench.customQuery();
+      if (_query.empty()) {
+        auto file = _arangobench.customQueryFile();
+        size_t length;
+        auto* p = TRI_SlurpFile(file.c_str(), &length);
+        if (p != nullptr) {
+          auto guard = scopeGuard([&p]() noexcept { TRI_Free(p); });
+          _query = std::string(p, length);
+        }
       }
+
+      if (_query.empty()) {
+        LOG_TOPIC("79cce", FATAL, arangodb::Logger::BENCH)
+          << "custom benchmark requires --custom-query or --custom-query-file to "
+          "be specified";
+        return false;
+      }
+      return true;
     }
 
-    if (_query.empty()) {
-      LOG_TOPIC("79cce", FATAL, arangodb::Logger::FIXME)
-          << "custom benchmark requires --custom-query or --custom-query-file to "
-             "be specified";
+    void tearDown() override {}
+
+    void buildRequest(int threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.url = "/_api/cursor";
+      requestData.type = rest::RequestType::POST;
+      using namespace arangodb::velocypack;
+      requestData.payload.openObject();
+      requestData.payload.add("query", Value(_query));
+      requestData.payload.close();
+    }
+
+    char const* getDescription() const noexcept override {
+      return "executes a custom AQL query, that can be specified either via the --custom-query option or be read from a file specified via the --custom-query-file option. The query will be executed as many times as the value of --requests. The --complexity parameter is not used.";
+    }
+
+    bool isDeprecated() const noexcept override {
       return false;
     }
-    
-    basics::StringBuffer buff;
-    buff.appendText("{\"query\":");
-    buff.appendJsonEncoded(_query.c_str(), _query.size());
-    buff.appendChar('}');
-    _query = buff.toString();
-    
-    return true;
-  }
 
-  void tearDown() override {}
-
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return std::string("/_api/cursor");
-  }
-
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
-  }
-
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    *mustFree = false;
-    *length = _query.size();
-    return _query.c_str();
-  }
-
- private:
-  std::string _query;
-};
+   private:
+    std::string _query;
+  };
 
 }  // namespace arangodb::arangobench

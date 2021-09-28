@@ -1,7 +1,7 @@
 name: arangodb_connection_pool_lease_time_hist
 introducedIn: "3.8.0"
 help: |
-  Time to lease a connection from the connection pool
+  Time to lease a connection from the connection pool.
 unit: ms
 type: histogram
 category: Connectivity

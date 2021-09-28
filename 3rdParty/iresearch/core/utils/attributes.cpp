@@ -35,8 +35,6 @@ class attribute_register
 };
 
 
-static const irs::flags EMPTY_INSTANCE;
-
 }
 
 namespace iresearch {
@@ -61,32 +59,6 @@ namespace iresearch {
   }
 
   return {}; // invalid type id
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                             flags 
-// -----------------------------------------------------------------------------
-
-const flags& flags::empty_instance() noexcept {
-  return EMPTY_INSTANCE;
-}
-
-flags::flags(std::initializer_list<type_info> flags) {
-  std::for_each( 
-    flags.begin(), flags.end(), 
-    [this](const type_info& type) {
-      add(type.id());
-  } );
-}
-
-flags& flags::operator=(std::initializer_list<type_info> flags) {
-  map_.clear();
-  std::for_each( 
-    flags.begin(), flags.end(), 
-    [this](const type_info& type) {
-      add(type.id());
-  });
-  return *this;
 }
 
 // -----------------------------------------------------------------------------

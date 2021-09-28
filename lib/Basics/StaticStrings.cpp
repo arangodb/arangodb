@@ -43,6 +43,8 @@ std::string const StaticStrings::IndexGt("gt");
 std::string const StaticStrings::AttachmentString("_attachment");
 std::string const StaticStrings::IdString("_id");
 std::string const StaticStrings::KeyString("_key");
+std::string const StaticStrings::PrefixOfKeyString("_key:");
+std::string const StaticStrings::PostfixOfKeyString(":_key");
 std::string const StaticStrings::RevString("_rev");
 std::string const StaticStrings::FromString("_from");
 std::string const StaticStrings::ToString("_to");
@@ -217,6 +219,7 @@ std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
+std::string const StaticStrings::XArangoQueueTimeSeconds("x-arango-queue-time-seconds");
 
 // mime types
 std::string const StaticStrings::MimeTypeDump(
@@ -260,6 +263,8 @@ std::string const StaticStrings::InternalValidatorTypes(
 std::string const StaticStrings::Version("version");
 std::string const StaticStrings::WriteConcern("writeConcern");
 std::string const StaticStrings::ShardingSingle("single");
+std::string const StaticStrings::ReplicationVersion("replicationVersion");
+std::string const StaticStrings::ReplicatedLogs("replicatedLogs");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
@@ -339,6 +344,21 @@ std::string const StaticStrings::RevisionTreeRanges("ranges");
 std::string const StaticStrings::RevisionTreeResume("resume");
 std::string const StaticStrings::RevisionTreeVersion("version");
 std::string const StaticStrings::FollowingTermId("followingTermId");
+
+// Replication 2.0
+std::string const StaticStrings::Config("config");
+std::string const StaticStrings::CurrentTerm("currentTerm");
+std::string const StaticStrings::Follower("follower");
+std::string const StaticStrings::Id("id");
+std::string const StaticStrings::Index("index");
+std::string const StaticStrings::Leader("leader");
+std::string const StaticStrings::LocalStatus("localStatus");
+std::string const StaticStrings::Participants("participants");
+std::string const StaticStrings::ServerId("serverId");
+std::string const StaticStrings::Spearhead("spearhead");
+std::string const StaticStrings::TargetConfig("targetConfig");
+std::string const StaticStrings::Term("term");
+std::string const StaticStrings::CommitIndex("commitIndex");
 
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");

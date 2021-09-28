@@ -25,6 +25,8 @@
 #include "ClientManager.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Logger/Logger.h"
@@ -56,9 +58,11 @@ arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* res
     std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
     VPackSlice const body = parsedBody->slice();
 
-    auto serverCode = VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
-    std::string const& serverMessage =
-        VelocyPackHelper::getStringValue(body, "errorMessage", "");
+    auto serverCode =
+        VelocyPackHelper::getNumericValue<int>(body, arangodb::StaticStrings::ErrorNum, 0);
+    auto serverMessage =
+        VelocyPackHelper::getStringValue(body, arangodb::StaticStrings::ErrorMessage,
+                                         "");
 
     if (serverCode > 0) {
       code = ErrorCode{serverCode};
@@ -168,9 +172,9 @@ std::string ClientManager::rewriteLocation(void* data, std::string const& locati
   // prefix with `/_db/${dbname}/`
   if (location[0] == '/') {
     // already have leading "/", leave it off
-    return "/_db/" + dbname + location;
+    return "/_db/" + basics::StringUtils::urlEncode(dbname) + location;
   }
-  return "/_db/" + dbname + "/" + location;
+  return "/_db/" + basics::StringUtils::urlEncode(dbname) + "/" + location;
 }
 
 std::pair<Result, std::string> ClientManager::getArangoIsCluster(httpclient::SimpleHttpClient& client) {

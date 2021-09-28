@@ -85,23 +85,6 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                             _logicalCollection.id());
 }
 
-RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
-                                             PhysicalCollection const* physical)
-    : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
-      _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId.load()),
-      _revisionTreeApplied(0),
-      _revisionTreeCreationSeq(0),
-      _revisionTreeSerializedSeq(0),
-      _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  collection.vocbase()
-      .server()
-      .getFeature<EngineSelectorFeature>()
-      .engine<RocksDBEngine>()
-      .addCollectionMapping(_objectId.load(), _logicalCollection.vocbase().id(),
-                            _logicalCollection.id());
-}
-
 std::string const& RocksDBMetaCollection::path() const {
   return StaticStrings::Empty;  // we do not have any path
 }
@@ -139,7 +122,7 @@ ErrorCode RocksDBMetaCollection::lockWrite(double timeout) {
 }
 
 /// @brief write unlocks a collection
-void RocksDBMetaCollection::unlockWrite() { _exclusiveLock.unlockWrite(); }
+void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlockWrite(); }
 
 /// @brief read locks a collection, with a timeout
 ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
@@ -173,7 +156,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   if (!vocbase.use()) {  // someone dropped the database
     return _meta.numberDocuments();
   }
-  auto useGuard = scopeGuard([&] {
+  auto useGuard = scopeGuard([&]() noexcept {
     // cppcheck-suppress knownConditionTrueFalse
     if (snapshot) {
       db->ReleaseSnapshot(snapshot);
@@ -190,7 +173,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   {
     // fetch number docs and snapshot under exclusive lock
     // this should enable us to correct the count later
-    auto lockGuard = scopeGuard([this] { unlockWrite(); });
+    auto lockGuard = scopeGuard([this]() noexcept { unlockWrite(); });
     auto res = lockWrite(transaction::Options::defaultLockTimeout);
     if (res != TRI_ERROR_NO_ERROR) {
       lockGuard.cancel();
@@ -409,7 +392,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
   if (!ctx) {
     return nullptr;
   }
-  auto guard = scopeGuard([manager, ctx]() -> void { manager->release(ctx); });
+  auto guard = scopeGuard([manager, ctx]() noexcept -> void { manager->release(ctx); });
   rocksdb::SequenceNumber trxSeq = ctx->snapshotTick();
   TRI_ASSERT(trxSeq != 0);
 
@@ -1369,7 +1352,7 @@ std::uint64_t RocksDBMetaCollection::RevisionTreeAccessor::compressedSize() cons
     return _compressed.size();
   }
   std::string output;
-  _tree->serializeBinary(output, true);
+  _tree->serializeBinary(output, arangodb::containers::MerkleTreeBase::BinaryFormat::Optimal);
   return output.size();
 }
 
@@ -1432,7 +1415,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
   double start = TRI_microtime();
   
   _compressed.clear();
-  _tree->serializeBinary(_compressed, true);
+  _tree->serializeBinary(_compressed, arangodb::containers::MerkleTreeBase::BinaryFormat::Optimal);
 
   TRI_ASSERT(!_compressed.empty());
  
@@ -1461,7 +1444,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
 void RocksDBMetaCollection::RevisionTreeAccessor::serializeBinary(std::string& output) const {
   if (_tree != nullptr) {
     // compress tree into output
-    _tree->serializeBinary(output, true);
+    _tree->serializeBinary(output, arangodb::containers::MerkleTreeBase::BinaryFormat::Optimal);
   } else {
     // append our already compressed state
     output.append(_compressed);

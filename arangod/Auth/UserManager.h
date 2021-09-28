@@ -184,4 +184,3 @@ class UserManager {
 };
 }  // namespace auth
 }  // namespace arangodb
-

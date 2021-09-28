@@ -41,15 +41,6 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-// TODO: remove
-/*namespace arangodb {
-namespace graph {
-auto operator<<(std::ostream& out, typename SingleServerProvider::Step const&
-step) -> std::ostream& { out << step._vertex.getID(); return out;
-}
-}  // namespace graph
-}  // namespace arangodb*/
-
 template <class Step>
 void SingleServerProvider<Step>::addEdgeToBuilder(typename Step::Edge const& edge,
                                                   arangodb::velocypack::Builder& builder) {
@@ -83,7 +74,8 @@ SingleServerProvider<Step>::SingleServerProvider(arangodb::aql::QueryContext& qu
       _cache(_trx.get(), &queryContext, resourceMonitor, _stats,
              _opts.collectionToShardMap()),
       _stats{} {
-  // activateCache(false); // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need to do benchmarks if affordable)
+  // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need to do benchmarks if affordable)
+  // activateCache(false);
   _cursor = buildCursor(opts.expressionContext());
 }
 

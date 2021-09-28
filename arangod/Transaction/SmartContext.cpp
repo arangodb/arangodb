@@ -57,15 +57,6 @@ arangodb::velocypack::CustomTypeHandler* transaction::SmartContext::orderCustomT
   return _customTypeHandler.get();
 }
 
-/// @brief return the resolver
-CollectionNameResolver const& transaction::SmartContext::resolver() {
-  if (_resolver == nullptr) {
-    createResolver();
-  }
-  TRI_ASSERT(_resolver != nullptr);
-  return *_resolver;
-}
-
 TransactionId transaction::SmartContext::generateId() const {
   return _globalId;
 }
@@ -127,8 +118,8 @@ void ManagedContext::unregisterTransaction() noexcept {
 std::shared_ptr<transaction::Context> ManagedContext::clone() const {
   // cloned transactions may never be responsible for commits
   auto clone = std::make_shared<transaction::ManagedContext>(_globalId, _state,
-                                                             /*responsibleForCommit*/ false, /*cloned*/ true);
-  clone->_state = _state;
+                                                             /*responsibleForCommit*/false, /*cloned*/true);
+  TRI_ASSERT(clone->_state == _state);
   return clone;
 }
   

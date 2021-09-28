@@ -181,6 +181,11 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
 }
 
 bool MoveShard::start(bool&) {
+
+  if (considerCancellation()) {
+    return false;
+  }
+
   // If anything throws here, the run() method catches it and finishes
   // the job.
 
@@ -476,6 +481,13 @@ bool MoveShard::start(bool&) {
 }
 
 JOB_STATUS MoveShard::status() {
+
+  if (_status == PENDING || _status == TODO) {
+    if (considerCancellation()) {
+      return FAILED;
+    }
+  }
+
   if (_status != PENDING) {
     return _status;
   }
@@ -493,19 +505,6 @@ JOB_STATUS MoveShard::status() {
 }
 
 JOB_STATUS MoveShard::pendingLeader() {
-
-  auto considerTimeout = [&]() -> bool {
-    // Not yet all in sync, consider timeout:
-    std::string timeCreatedString =
-        _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated").value();
-    Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
-    Supervision::TimePoint now(std::chrono::system_clock::now());
-    if (now - timeCreated > std::chrono::duration<double>(43200.0)) {  // 12h
-      abort("MoveShard timed out in pending leader");
-      return true;
-    }
-    return false;
-  };
 
   // Find the other shards in the same distributeShardsLike group:
   std::vector<Job::shard_t> shardsLikeMe =
@@ -555,12 +554,9 @@ JOB_STATUS MoveShard::pendingLeader() {
                      }
                    });
 
-    // Consider timeout:
+    // Consider cancellation:
     if (done < shardsLikeMe.size()) {
-      if (considerTimeout()) {
-        return FAILED;
-      }
-      return PENDING;  // do not act
+      return considerCancellation() ? FAILED : PENDING;
     }
 
     // We need to ask the old leader to retire:
@@ -622,12 +618,9 @@ JOB_STATUS MoveShard::pendingLeader() {
                      }
                    });
 
-    // Consider timeout:
+    // Consider cancellation:
     if (done < shardsLikeMe.size()) {
-      if (considerTimeout()) {
-        return FAILED;
-      }
-      return PENDING;  // do not act!
+      return considerCancellation() ? FAILED : PENDING;
     }
 
     // We need to switch leaders:
@@ -751,12 +744,9 @@ JOB_STATUS MoveShard::pendingLeader() {
                      }
                    });
 
-    // Consider timeout:
+    // Consider cancellation
     if (done < shardsLikeMe.size()) {
-      if (considerTimeout()) {
-        return FAILED;
-      }
-      return PENDING;  // do not act!
+      return considerCancellation() ? FAILED : PENDING;
     }
 
     // We need to end the job, Plan remains unchanged:
@@ -840,6 +830,7 @@ JOB_STATUS MoveShard::pendingLeader() {
 }
 
 JOB_STATUS MoveShard::pendingFollower() {
+
   // Check if any of the servers in the Plan are FAILED, if so,
   // we abort:
   std::string planPath =
@@ -867,16 +858,7 @@ JOB_STATUS MoveShard::pendingFollower() {
                  });
 
   if (done < shardsLikeMe.size()) {
-    // Not yet all in sync, consider timeout:
-    std::string timeCreatedString =
-        _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated").value();
-    Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
-    Supervision::TimePoint now(std::chrono::system_clock::now());
-    if (now - timeCreated > std::chrono::duration<double>(10000.0)) {
-      abort("MoveShard timed out in pending follower");
-      return FAILED;
-    }
-    return PENDING;
+    return considerCancellation() ? FAILED : PENDING;
   }
 
   // All in sync, so move on and remove the fromServer, for all shards,
@@ -980,7 +962,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       }
     }
 
-    if (finish("", "", true, "job aborted (1): " + reason, todoPrec)) {
+    if (finish("", "", false, "job aborted (1): " + reason, todoPrec)) {
       return result;
     }
     _status = PENDING;

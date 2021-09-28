@@ -43,8 +43,6 @@ class TraversalStats;
 
 namespace graph {
 
-// TODO Temporary, just Make everything compile
-// IMPORTANT - DO NOT TEMPLATE THIS CLASS
 class PathResultInterface {
  public:
   PathResultInterface() {}
@@ -53,7 +51,6 @@ class PathResultInterface {
   virtual auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
 };
 
-// IMPORTANT - DO NOT TEMPLATE THIS CLASS
 class TraversalEnumerator {
  public:
   using VertexRef = arangodb::velocypack::HashedStringRef;

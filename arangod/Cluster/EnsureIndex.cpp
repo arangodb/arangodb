@@ -109,10 +109,10 @@ bool EnsureIndex::first() {
       return false;
     }
 
-    auto const props = properties();
     {
       VPackObjectBuilder b(&body);
       body.add(COLLECTION, VPackValue(shard));
+      auto const props = properties();
       body.add(VPackObjectIterator(props));
     }
 

@@ -401,7 +401,7 @@ function authenticationLdapTwoLdap(options) {
   }
 
   print(CYAN + 'Client LDAP Failover with two ldap servers...' + RESET);
-  let testCases = [fs.join(testPaths.dualldap, "auth-dualldap.js")];
+  let testCases = testPaths.dualldap.map(x => fs.join(x, "auth-dualldap.js"));
 
   print('Performing #6 Test: Failover - Scenario 1: two active LDAP servers');
   print(opts.dualldap.conf);
@@ -431,7 +431,7 @@ function authenticationLdapFirstLdap(options) {
   });
 
   print(CYAN + 'Client LDAP Failover with first active and second unreachable...' + RESET);
-  let testCases = [fs.join(testPaths.dualldap, "auth-firstldap.js")];
+  let testCases = testPaths.dualldap.map(x => fs.join(x, "auth-firstldap.js"));
 
   print('Performing #7 Test: Failover - Scenario 2: first LDAP server active, second LDAP inactive');
   print(conf);
@@ -461,7 +461,7 @@ function authenticationLdapSecondLdap(options) {
   });
 
   print(CYAN + 'Client LDAP Failover with second active and first unreachable...' + RESET);
-  let testCases = [fs.join(testPaths.dualldap, "auth-secondldap.js")];
+  let testCases = testPaths.dualldap.map(x => fs.join(x, "auth-secondldap.js"));
 
   print('Performing #8 Test: Failover - Scenario 3: first LDAP server inactive, second LDAP server active');
   print(conf);

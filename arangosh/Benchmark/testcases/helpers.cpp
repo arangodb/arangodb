@@ -78,7 +78,7 @@ bool CreateCollection(arangodb::httpclient::SimpleHttpClient* client,
     if (statusCode == 200 || statusCode == 201 || statusCode == 202) {
       failed = false;
     } else {
-      LOG_TOPIC("567b3", WARN, Logger::FIXME)
+      LOG_TOPIC("567b3", WARN, Logger::BENCH)
           << "error when creating collection: " << result->getHttpReturnMessage()
           << " for payload '" << payload << "': " << result->getBody();
     }
@@ -108,7 +108,7 @@ bool CreateIndex(arangodb::httpclient::SimpleHttpClient* client, std::string con
     if (result->getHttpReturnCode() == 200 || result->getHttpReturnCode() == 201) {
       failed = false;
     } else {
-      LOG_TOPIC("1dcba", WARN, Logger::FIXME)
+      LOG_TOPIC("1dcba", WARN, Logger::BENCH)
           << "error when creating index: " << result->getHttpReturnMessage()
           << " for payload '" << payload << "': " << result->getBody();
     }

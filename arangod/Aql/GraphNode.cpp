@@ -469,12 +469,14 @@ void GraphNode::setGraphInfoAndCopyColls(std::vector<Collection*> const& edgeCol
                                          std::vector<Collection*> const& vertexColls) {
   _graphInfo.openArray();
   for (auto& it : edgeColls) {
+    TRI_ASSERT(it != nullptr);
     _edgeColls.emplace_back(it);
     _graphInfo.add(VPackValue(it->name()));
   }
   _graphInfo.close();
 
   for (auto& it : vertexColls) {
+    TRI_ASSERT(it != nullptr);
     addVertexCollection(*it);
   }
 }
@@ -552,6 +554,7 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& e : _edgeColls) {
+      TRI_ASSERT(e != nullptr);
       auto const& shard = collectionToShardName(e->name());
       // if the mapped shard for a collection is empty, it means that
       // we have an edge collection that is only relevant on some of the
@@ -566,6 +569,7 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& v : _vertexColls) {
+      TRI_ASSERT(v != nullptr);
       // if the mapped shard for a collection is empty, it means that
       // we have a vertex collection that is only relevant on some of the
       // target servers
@@ -620,6 +624,11 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   _options->toVelocyPackIndexes(nodes);
 }
 
+void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone, bool) const {
+  clone._isSmart = _isSmart;
+  clone._isDisjoint = _isDisjoint;
+}
+
 CostEstimate GraphNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
   size_t incoming = estimate.estimatedNrItems;
@@ -632,6 +641,7 @@ CostEstimate GraphNode::estimateCost() const {
     double baseCost = 1;
     size_t baseNumItems = 0;
     for (auto& e : _edgeColls) {
+      TRI_ASSERT(e != nullptr);
       auto count = e->count(_options->trx(), transaction::CountType::TryCache);
       // Assume an estimate if 10% hit rate
       baseCost *= count / 10;
@@ -688,6 +698,18 @@ void GraphNode::getConditionVariables(std::vector<Variable const*>& res) const {
 Collection const* GraphNode::collection() const {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   TRI_ASSERT(!_edgeColls.empty());
+  for (auto const* c : _edgeColls) {
+    // We are required to valuate non-satellites above
+    // satellites, as the collection is used as the protoype
+    // for this graphs sharding.
+    // The Satellite collection does not have sharding.
+    TRI_ASSERT(c != nullptr);
+    if (!c->isSatellite()) {
+      return c;
+    }
+  }
+  // We have not found any non-satellite Collection
+  // just return the first satellite then.
   TRI_ASSERT(_edgeColls.front() != nullptr);
   return _edgeColls.front();
 }
@@ -795,9 +817,11 @@ std::vector<aql::Collection const*> GraphNode::collections() const {
   set.reserve(_edgeColls.size() + _vertexColls.size());
 
   for (auto const& collPointer : _edgeColls) {
+    TRI_ASSERT(collPointer != nullptr);
     set.emplace(collPointer);
   }
   for (auto const& collPointer : _vertexColls) {
+    TRI_ASSERT(collPointer != nullptr);
     set.emplace(collPointer);
   }
 

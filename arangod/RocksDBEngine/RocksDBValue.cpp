@@ -27,6 +27,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
 #include "Transaction/Helpers.h"
@@ -39,7 +40,11 @@ RocksDBValue RocksDBValue::Database(VPackSlice const& data) {
 }
 
 RocksDBValue RocksDBValue::Collection(VPackSlice const& data) {
-  return RocksDBValue(RocksDBEntryType::Collection, data);
+    return RocksDBValue(RocksDBEntryType::Collection, data);
+}
+
+RocksDBValue RocksDBValue::ReplicatedLog(VPackSlice const& data) {
+    return RocksDBValue(RocksDBEntryType::ReplicatedLog, data);
 }
 
 RocksDBValue RocksDBValue::PrimaryIndexValue(LocalDocumentId const& docId, RevisionId rev) {
@@ -52,6 +57,15 @@ RocksDBValue RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef const&
 
 RocksDBValue RocksDBValue::VPackIndexValue() {
   return RocksDBValue(RocksDBEntryType::VPackIndexValue);
+}
+
+
+RocksDBValue RocksDBValue::ZkdIndexValue() {
+  return RocksDBValue(RocksDBEntryType::ZkdIndexValue);
+}
+
+RocksDBValue RocksDBValue::UniqueZkdIndexValue(LocalDocumentId const& docId) {
+  return RocksDBValue(RocksDBEntryType::UniqueZkdIndexValue, docId, RevisionId::none());
 }
 
 RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId const& docId) {
@@ -74,6 +88,11 @@ RocksDBValue RocksDBValue::S2Value(S2Point const& p) { return RocksDBValue(p); }
 
 RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
   return RocksDBValue(type);
+}
+
+
+RocksDBValue RocksDBValue::LogEntry(replication2::PersistingLogEntry const& entry) {
+  return RocksDBValue(RocksDBEntryType::LogEntry, entry);
 }
 
 LocalDocumentId RocksDBValue::documentId(RocksDBValue const& value) {
@@ -130,15 +149,24 @@ VPackSlice RocksDBValue::data(std::string const& s) {
   return data(s.data(), s.size());
 }
 
-uint64_t RocksDBValue::keyValue(rocksdb::Slice const& slice) {
-  return keyValue(slice.data(), slice.size());
-}
-
 S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
   TRI_ASSERT(s.size() == sizeof(double) * 3);
   return S2Point(intToDouble(uint64FromPersistent(s.data())),
                  intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t))),
                  intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t) * 2)));
+}
+
+replication2::LogTerm RocksDBValue::logTerm(const rocksdb::Slice& slice) {
+  TRI_ASSERT(slice.size() >= sizeof(uint64_t));
+  return replication2::LogTerm(uint64FromPersistent(slice.data()));
+}
+
+replication2::LogPayload RocksDBValue::logPayload(const rocksdb::Slice& slice) {
+  TRI_ASSERT(slice.size() >= sizeof(uint64_t));
+  auto data = slice.ToStringView();
+  data.remove_prefix(sizeof(uint64_t));
+  return replication2::LogPayload::createFromSlice(
+      VPackSlice(reinterpret_cast<uint8_t const*>(data.data())));
 }
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
@@ -147,6 +175,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, 
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::UniqueVPackIndexValue:
+    case RocksDBEntryType::UniqueZkdIndexValue:
     case RocksDBEntryType::PrimaryIndexValue: {
       if (!revision) {
         _buffer.reserve(sizeof(uint64_t));
@@ -169,6 +198,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
   switch (_type) {
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
+    case RocksDBEntryType::ReplicatedLog:
     case RocksDBEntryType::View:
     case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::ReplicationApplierConfig: {
@@ -201,6 +231,14 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, arangodb::velocypack::StringRe
   }
 }
 
+RocksDBValue::RocksDBValue(RocksDBEntryType type, replication2::PersistingLogEntry const& entry) {
+  TRI_ASSERT(type == RocksDBEntryType::LogEntry);
+  VPackBuilder builder;
+  entry.toVelocyPack(builder, replication2::PersistingLogEntry::omitLogIndex);
+  _buffer.reserve(builder.size());
+  _buffer.append(reinterpret_cast<const char*>(builder.data()), builder.size());
+}
+
 RocksDBValue::RocksDBValue(S2Point const& p)
     : _type(RocksDBEntryType::GeoIndexValue), _buffer() {
   _buffer.reserve(sizeof(uint64_t) * 3);
@@ -224,19 +262,4 @@ VPackSlice RocksDBValue::data(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
   return VPackSlice(reinterpret_cast<uint8_t const*>(data));
-}
-
-uint64_t RocksDBValue::keyValue(char const* data, size_t size) {
-  TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(size >= sizeof(char));
-  VPackSlice key = transaction::helpers::extractKeyFromDocument(VPackSlice(reinterpret_cast<uint8_t const*>(data)));
-  if (key.isString()) {
-    VPackValueLength l;
-    char const* p = key.getStringUnchecked(l);
-    if (l > 0 && *p >= '0' && *p <= '9') {
-      return NumberUtils::atoi_zero<uint64_t>(p, p + l);
-    }
-  }
-
-  return 0;
 }

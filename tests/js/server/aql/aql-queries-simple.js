@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE */
+/*global assertEqual, assertTrue, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, simple queries
@@ -1406,6 +1406,36 @@ function ahuacatlQuerySimpleTestSuite () {
       }
       assertQueryError(errors.ERROR_QUERY_TOO_MUCH_NESTING.code, q);
     },
+
+    testIsNullConversion : function() {
+      let q = `RETURN IS_NULL(42)`; 
+      let nodes = AQL_EXPLAIN(q).plan.nodes.filter((n) => n.type === 'CalculationNode');
+      assertEqual(1, nodes.length);
+      let expr = nodes[0].expression;
+      assertEqual("value", expr.type);
+      assertFalse(expr.value);
+      
+      q = `RETURN IS_NULL(null)`; 
+      nodes = AQL_EXPLAIN(q).plan.nodes.filter((n) => n.type === 'CalculationNode');
+      assertEqual(1, nodes.length);
+      expr = nodes[0].expression;
+      assertEqual("value", expr.type);
+      assertTrue(expr.value);
+      
+      q = `RETURN IS_NULL(@value)`; 
+      nodes = AQL_EXPLAIN(q, {value: 42}).plan.nodes.filter((n) => n.type === 'CalculationNode');
+      assertEqual(1, nodes.length);
+      expr = nodes[0].expression;
+      assertEqual("value", expr.type);
+      assertFalse(expr.value);
+      
+      nodes = AQL_EXPLAIN(q, {value: null}).plan.nodes.filter((n) => n.type === 'CalculationNode');
+      assertEqual(1, nodes.length);
+      expr = nodes[0].expression;
+      assertEqual("value", expr.type);
+      assertTrue(expr.value);
+    },
+
   };
 }
 
