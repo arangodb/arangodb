@@ -123,6 +123,45 @@ rocksdb::SequenceNumber RocksDBMetadata::placeBlocker(TransactionId trxId, rocks
 }
 
 /**
+ * @brief Update a blocker to allow proper commit/serialize semantics
+ *
+ * Should be called after initializing an internal trx.
+ *
+ * @param  trxId The identifier for the active transaction (should match input
+ *               to earlier `placeBlocker` call)
+ * @param  seq   The sequence number from the internal snapshot
+ * @return       May return error if we fail to allocate and place blocker
+ */
+Result RocksDBMetadata::updateBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
+  return basics::catchToResult([&]() -> Result {
+    Result res;
+    WRITE_LOCKER(locker, _blockerLock);
+
+    auto previous = _blockers.find(trxId);
+    if (_blockers.end() == previous ||
+        _blockersBySeq.end() ==
+            _blockersBySeq.find(std::make_pair(previous->second, trxId))) {
+      res.reset(TRI_ERROR_INTERNAL);
+    }
+
+    auto removed = _blockersBySeq.erase(std::make_pair(previous->second, trxId));
+    if (!removed) {
+      return res.reset(TRI_ERROR_INTERNAL);
+    }
+
+    TRI_ASSERT(seq >= _blockers[trxId]);
+    _blockers[trxId] = seq;
+    auto crosslist = _blockersBySeq.emplace(seq, trxId);
+    if (!crosslist.second) {
+      return res.reset(TRI_ERROR_INTERNAL);
+    }
+    LOG_TOPIC("1587c", TRACE, Logger::ENGINES)
+        << "[" << this << "] updated blocker (" << trxId.id() << ", " << seq << ")";
+    return res;
+  });
+}
+
+/**
  * @brief Removes an existing transaction blocker
  *
  * Should be called after transaction abort/rollback, or after buffering any
@@ -582,10 +621,10 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         rocksdb::SequenceNumber useSeq = std::max(globalSeq, seq);
         rcoll->setRevisionTree(std::move(tree), useSeq);
 
-        LOG_TOPIC("92cab", TRACE, Logger::ENGINES)
+        LOG_TOPIC("92cab", INFO, Logger::ENGINES)
             << "[" << this << "] recovered revision tree for "
             << "collection with objectId '" << rcoll->objectId() << "', "
-            << "valid through " << useSeq;
+            << "valid through " << useSeq << ", seq: " << seq << ", globalSeq: " << globalSeq;
 
         return {};
       }
@@ -633,9 +672,10 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       _count._committedSeq = treeSeq; 
     }
   } else {
-    LOG_TOPIC("ecdbe", DEBUG, Logger::ENGINES)
+    LOG_TOPIC("ecdbe", INFO, Logger::ENGINES)
         << "no revision tree found for collection " << coll.name()
         << ", but collection appears empty";
+    rcoll->rebuildRevisionTree(it);
   }
 
   return {};
