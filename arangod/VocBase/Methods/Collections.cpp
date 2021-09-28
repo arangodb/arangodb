@@ -113,6 +113,7 @@ Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
 VPackBuilder getBuilder(TRI_vocbase_t const& vocbase,
                   std::vector<CollectionCreationInfo> const& infos,
                   bool isSingleServerSmartGraph, bool enforceReplicationFactor) {
+  StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
   VPackBuilder helper;
 
@@ -126,6 +127,11 @@ VPackBuilder getBuilder(TRI_vocbase_t const& vocbase,
     helper.openObject();
     helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
+
+    // generate a rocksdb collection object id in case it does not exist
+    if (isSingleServerSmartGraph) {
+      engine.addParametersForNewCollection(helper, info.properties);
+    }
 
     bool addUseRevs = ServerState::instance()->isSingleServerOrCoordinator();
     bool useRevs =
