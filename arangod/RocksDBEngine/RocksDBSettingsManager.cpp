@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -240,8 +241,12 @@ Result RocksDBSettingsManager::sync(bool force) {
   if (!didWork) {
     LOG_TOPIC("1039e", TRACE, Logger::ENGINES)
         << "no collection data to serialize, updating lastSync to " << minSeqNr;
-    _lastSync.store(minSeqNr);
+//    _lastSync.store(minSeqNr);
     return Result();  // nothing was written
+  }
+  
+  TRI_IF_FAILURE("TransactionChaos::randomSleep") {
+    std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
   }
 
   _tmpBuilder.clear();
