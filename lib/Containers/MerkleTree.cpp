@@ -1013,6 +1013,8 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(
     node.count -= count;
   }
   node.hash ^= value;
+    
+  TRI_ASSERT(node.count > 0 || node.hash == 0);
 
   return true;
 }

@@ -83,7 +83,8 @@ void RocksDBMetadata::DocCount::toVelocyPack(VPackBuilder& b) const {
 }
 
 RocksDBMetadata::RocksDBMetadata()
-    : _count(0, 0, 0, RevisionId::none()),
+    : _maxBlockersSequenceNumber(0),
+      _count(0, 0, 0, RevisionId::none()),
       _numberDocuments(0),
       _revisionId(RevisionId::none()) {}
 
@@ -103,6 +104,8 @@ Result RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumbe
   return basics::catchToResult([&]() -> Result {
     Result res;
     WRITE_LOCKER(locker, _blockerLock);
+
+    seq = std::max(seq, _maxBlockersSequenceNumber);
 
     TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
     TRI_ASSERT(_blockersBySeq.end() == _blockersBySeq.find(std::make_pair(seq, trxId)));
@@ -124,6 +127,7 @@ Result RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumbe
       throw;
     }
 
+    _maxBlockersSequenceNumber = seq;
     return res;
   });
 }
@@ -161,6 +165,9 @@ Result RocksDBMetadata::updateBlocker(TransactionId trxId, rocksdb::SequenceNumb
     if (!crosslist.second) {
       return res.reset(TRI_ERROR_INTERNAL);
     }
+    
+    _maxBlockersSequenceNumber = std::max(seq, _maxBlockersSequenceNumber);
+
     LOG_TOPIC("1587c", TRACE, Logger::ENGINES)
         << "[" << this << "] updated blocker (" << trxId.id() << ", " << seq << ")";
     return res;
@@ -340,6 +347,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   TRI_ASSERT(appliedSeq > 0);
     
   TRI_ASSERT(batch.Count() == 0);
+  
+  RocksDBCollection* const rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
 
   Result res;
   if (coll.deleted()) {
@@ -358,9 +367,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   TransactionId trxId = TransactionId::none();
   
   TRI_IF_FAILURE("TransactionChaos::blockerOnSync") {
-    auto blockerSeq = engine.db()->GetLatestSequenceNumber();
     trxId = TransactionId(transaction::Context::makeTransactionId());
-    placeBlocker(trxId, blockerSeq);
+    rcoll->placeRevisionTreeBlocker(trxId);
   }
   auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
     if (trxId.isSet()) {
@@ -383,7 +391,6 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   RocksDBKey key;
   rocksdb::ColumnFamilyHandle* const cf =
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
-  RocksDBCollection* const rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
 
   // Step 1. store the document count
   tmp.clear();
@@ -634,7 +641,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         rocksdb::SequenceNumber useSeq = std::max(globalSeq, seq);
         rcoll->setRevisionTree(std::move(tree), useSeq);
 
-        LOG_TOPIC("92cab", INFO, Logger::ENGINES)
+        LOG_TOPIC("92cab", TRACE, Logger::ENGINES)
             << "[" << this << "] recovered revision tree for "
             << "collection with objectId '" << rcoll->objectId() << "', "
             << "valid through " << useSeq << ", seq: " << seq << ", globalSeq: " << globalSeq;
@@ -685,7 +692,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       _count._committedSeq = treeSeq; 
     }
   } else {
-    LOG_TOPIC("ecdbe", INFO, Logger::ENGINES)
+    LOG_TOPIC("ecdbe", DEBUG, Logger::ENGINES)
         << "no revision tree found for collection " << coll.name()
         << ", but collection appears empty";
     rcoll->rebuildRevisionTree(it);

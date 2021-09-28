@@ -164,6 +164,7 @@ struct RocksDBMetadata final {
   // TODO we should probably use flat_map or abseils Swiss Tables
   std::map<TransactionId, rocksdb::SequenceNumber> _blockers;
   std::set<std::pair<rocksdb::SequenceNumber, TransactionId>> _blockersBySeq;
+  rocksdb::SequenceNumber _maxBlockersSequenceNumber;
 
   DocCount _count;  /// @brief document count struct
 
