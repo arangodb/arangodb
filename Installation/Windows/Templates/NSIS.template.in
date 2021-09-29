@@ -1,15 +1,12 @@
 ; CPack install script designed for a nmake build
 !addplugindir  '@CPACK_PLUGIN_PATH@/NSIS_Simple_Service_Plugin_1.30'
-!addplugindir  '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS/Ansi'
 !addplugindir  '@CPACK_PLUGIN_PATH@/AccessControl/Plugins'
-!addincludedir '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS'
 !addincludedir '@CPACK_PLUGIN_PATH@/'
 !include "exitcodes.nsh"
 
 ;--------------------------------
 ; Include LogicLib for more readable code
   !include "LogicLib.nsh"
-  !include "UAC.nsh"
   !include "nsDialogs.nsh"
   !include "WinMessages.nsh"
   !include "MUI2.nsh"
@@ -1247,11 +1244,7 @@ Done:
 
   DeleteRegKey /ifempty SHCTX "Software\@CPACK_PACKAGE_VENDOR@\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@"
   ; Delete flag which controls if ArangoDB is started as service or not
-  ${If} ${UAC_IsInnerInstance}
-     DeleteRegKey HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@"
-  ${Else}
-     DeleteRegKey HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@"
-  ${EndIf}
+  DeleteRegKey HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@"
   DeleteRegKey HKLM "${TRI_UNINSTALL_REG_PATH}"
 
   ${If} $ADD_TO_PATH == 1
