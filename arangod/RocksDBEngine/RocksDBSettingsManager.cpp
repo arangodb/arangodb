@@ -193,7 +193,9 @@ Result RocksDBSettingsManager::sync(bool force) {
     } catch (...) {
       // will fail if collection does not exist
     }
-    if (!coll) {
+    // Collections which are marked as isAStub are not allowed to have physicalCollections.
+    // Therefore, we cannot continue serializing in that case.
+    if (!coll || coll->isAStub()) {
       continue;
     }
     auto sg2 = arangodb::scopeGuard([&]() noexcept { vocbase->releaseCollection(coll.get()); });
