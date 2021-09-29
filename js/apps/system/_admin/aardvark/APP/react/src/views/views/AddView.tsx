@@ -9,7 +9,9 @@ import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/mod
 import { Cell, Grid } from "../../components/pure-css/grid";
 import CopyFromInput from "./forms/inputs/CopyFromInput";
 import JsonForm from "./forms/JsonForm";
-import MainForm from "./forms/MainForm";
+import BaseForm from "./forms/BaseForm";
+import LinkPropertiesForm from "./forms/LinkPropertiesForm";
+import ViewPropertiesForm from "./forms/ViewPropertiesForm";
 
 declare var arangoHelper: { [key: string]: any };
 
@@ -175,11 +177,35 @@ const AddView = ({ views }: AddViewProps) => {
         </Grid>
       </ModalHeader>
       <ModalBody maximize={true} show={state.show}>
-        {
-          state.showJsonForm
-            ? <JsonForm formState={formState} dispatch={dispatch} renderKey={state.renderKey}/>
-            : <MainForm formState={formState} dispatch={dispatch}/>
-        }
+        <Grid>
+          {
+            state.showJsonForm
+              ? <Cell size={'1'}>
+                <JsonForm formState={formState} dispatch={dispatch} renderKey={state.renderKey}/>
+              </Cell>
+              : <>
+                <Cell size={'1'}>
+                  <fieldset>
+                    <legend style={{ fontSize: '12pt' }}>Basic</legend>
+                    <BaseForm formState={formState} dispatch={dispatch}/>
+                  </fieldset>
+                </Cell>
+                <Cell size={'1'}>
+                  <fieldset>
+                    <legend style={{ fontSize: '12pt' }}>Link Properties</legend>
+                    {/* <LinkPropertiesForm formState={formState} dispatch={dispatch}/>*/}
+                    <LinkPropertiesForm/>
+                  </fieldset>
+                </Cell>
+                <Cell size={'1'}>
+                  <fieldset>
+                    <legend style={{ fontSize: '12pt' }}>View Properties</legend>
+                    <ViewPropertiesForm formState={formState} dispatch={dispatch}/>
+                  </fieldset>
+                </Cell>
+              </>
+          }
+        </Grid>
       </ModalBody>
       <ModalFooter>
         <button className="button-close" onClick={() => dispatch({ type: 'reset' })}>Close</button>

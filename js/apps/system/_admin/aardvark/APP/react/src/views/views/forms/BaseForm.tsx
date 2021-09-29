@@ -3,7 +3,7 @@ import { FormProps } from "../constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Textbox from "../../../components/pure-css/form/Textbox";
 
-const MainForm = ({ formState, dispatch, disabled }: FormProps) => {
+const BaseForm = ({ formState, dispatch, disabled }: FormProps) => {
   const updateName = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -25,4 +25,4 @@ const MainForm = ({ formState, dispatch, disabled }: FormProps) => {
   </Grid>;
 };
 
-export default MainForm;
+export default BaseForm;
