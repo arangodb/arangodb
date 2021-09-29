@@ -28,13 +28,7 @@
 
 #include "Logger/Escaper.h"
 
-
-#include <string.h>
 #include <string>
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
 
 using namespace arangodb;
 
@@ -80,7 +74,7 @@ TEST_F(EscaperTest, test_suppress_control_retain_unicode) {
   Escaper<ControlCharsSuppressor, UnicodeCharsRetainer> escaper;
   verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, asciiVisibleChars.size()*4, escaper);
   verifyExpectedValues(bigString, bigString, bigString.size()*4, escaper);
-verifyExpectedValues(controlChars, "                                ",
+  verifyExpectedValues(controlChars, "                                ",
                        controlChars.size()*4, escaper);
   verifyExpectedValues("€", "€", 12, escaper);
   verifyExpectedValues(" €  ", " €  ", 24, escaper);
