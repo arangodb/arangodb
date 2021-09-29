@@ -243,6 +243,7 @@ Function stop_old_service
      SimpleSC::RemoveService  '${TRI_SVC_NAME}'
      Pop $0 ; returns an errorcode (<>0) otherwise success (0)
      IntCmp $0 0 Done_stop_old
+     IntCmp $0 1060 Done_stop_old ; service not there, we don't care.
      Push $0
      SimpleSC::GetErrorMessage
      Pop $0
