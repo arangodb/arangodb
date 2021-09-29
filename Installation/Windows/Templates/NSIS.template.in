@@ -226,9 +226,9 @@ Function check_previous_install
   StrCpy $UpgradeInstall "0"
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\SERVER" OldFound
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\ENGINE" OldFound
-  ${if} $IS_DEFAULT_INSTALLDIR == "0"
+  IfSilent 0 continueNoDirectMatch
     IfFileExists "$DATADIR\ENGINE" OldFound
-  ${EndIf}
+continueNoDirectMatch:
   DetailPrint "This is a fresh install."
   return
 OldFound:
@@ -241,7 +241,14 @@ Function stop_old_service
      SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
      Call WaitForServiceDown
      SimpleSC::RemoveService  '${TRI_SVC_NAME}'
-  ${EndIf}
+     Pop $0 ; returns an errorcode (<>0) otherwise success (0)
+     IntCmp $0 0 Done_stop_old
+     Push $0
+     SimpleSC::GetErrorMessage
+     Pop $0
+     DetailPrint 'Stopping ArangoDB fails - Reason: $0'
+     MessageBox MB_OK 'Stopping ArangoDB fails - Reason: $0'^M  ${EndIf}
+Done_stop_old:
 FunctionEnd
 
 
@@ -734,7 +741,7 @@ Function UpgradeExisting
   push ${ARANGO_EXIT_ALREADY_RUNNING}
   pop $0
 retryDetectUpgradeNeeded:
-  ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false --log.foreground-tty false --database.check-version" $0
+  ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false --log.foreground-tty false --database.check-version $DATADIR" $0
   DetailPrint "done Checking whether an existing database needs upgrade: $0"
   ${If} $0 == ${ARANGO_EXIT_ALREADY_RUNNING}
   ${OrIf} $0 == ${ARANGO_EXIT_COULD_NOT_LOCK}
@@ -762,7 +769,7 @@ retryDetectUpgradeNeeded:
     ${EndIf}
     DetailPrint "Attempting to run database upgrade: "
     ; Now actually do the upgrade
-    ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false  --log.level error --database.auto-upgrade true" $0
+    ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false  --log.level error --database.auto-upgrade true $DATADIR" $0
     DetailPrint "Done running database upgrade: $0"
     ${If} $0 != 0
       !insertmacro printExitCode $0 "the Upgrade failed, please do a manual upgrade" ""
@@ -889,11 +896,12 @@ FunctionEnd
 ;Installer Sections
 
 Section "-Core installation"
-   IfSilent 0 continueBaseInstall
-     ${If} $UpgradeInstall == "1"
-       ; this would be called inside the UI code:
-       Call stop_old_service
-     ${EndIf}
+  IfSilent 0 continueBaseInstall
+    ; this would be called inside the UI code:
+    Call check_previous_install
+    ${If} $UpgradeInstall == "1"
+      Call stop_old_service
+    ${EndIf}
 continueBaseInstall:
   ;Use the entire tree produced by the INSTALL target.  Keep the
   ;list of directories here in sync with the RMDir commands below.
@@ -978,9 +986,6 @@ continueBaseInstall:
   ${If} $LOGDIR != ""
     CreateDirectory $LOGDIR
   ${EndIf}
-
-  ; non-interactive install only hits us here?
-  Call check_previous_install
 
   CreateDirectory $APPDIR
   Call assignFileRights
@@ -1264,6 +1269,7 @@ SectionEnd
 ; "Program Files" for AllUsers, "My Documents" for JustMe...
 
 var CMDINSTDIR
+var CMDUPGRADE
 
 Function .onInit
   ; are we allowed to install admin in first place?
@@ -1301,7 +1307,17 @@ Function .onInit
   ${EndIf}
 noInstDir:
 
-   # we only want to manipulate APPDIR here if /APPDIR is really set!
+  # $AUTOMATIC_UPDATE would be set later in the UI code (if)
+  StrCpy $AUTOMATIC_UPDATE "0"
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/UPGRADE="        $CMDUPGRADE
+  IfErrors noUpgrade 0
+  IfSilent 0 noUpgrade
+  StrCpy $AUTOMATIC_UPDATE "$CMDUPGRADE"
+noUpgrade:
+
+  # we only want to manipulate APPDIR here if /APPDIR is really set!
   ${GetParameters} $R0
   ClearErrors
   ${GetOptions} $R0 "/APPDIR="        $CMDINSTDIR
