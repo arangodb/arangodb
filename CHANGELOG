@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix issue #14819: Query: AQL: missing variable # for node #... location
+  RestCursorHandler.cpp.
+
 * Added enterprise licensing support including (only for Enterprise version):
     - additional API endpoint `_admin/license(GET/PUT)?force=true <text>`
     - arangosh functions: `setLicense(<text>)`, `getLicense()`
