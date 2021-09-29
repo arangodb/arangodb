@@ -526,6 +526,11 @@ exports.checkParameter = function(usage, descs, vars) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.enterpriseLicenseVisibility = function() {
+
+  // This is only a best effort to inform the customer of any upcoming / existing
+  // enterprise license issues. If the counterpart does not expose the license
+  // API (non-enterprise and <= 3.9), nothing is displayed.
+
   var license;
   try {
     license = arango.GET("_admin/license");
