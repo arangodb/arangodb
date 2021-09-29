@@ -1008,8 +1008,8 @@ std::unique_ptr<TransactionCollection> RocksDBEngine::createTransactionCollectio
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
-  if (!info.hasKey("objectId")) {
-    builder.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
+  if (!info.hasKey(StaticStrings::ObjectId)) {
+    builder.add(StaticStrings::ObjectId, VPackValue(std::to_string(TRI_NewTickServer())));
   }
   if (!info.get(StaticStrings::CacheEnabled).isBool()) {
     builder.add(StaticStrings::CacheEnabled, VPackValue(false));
