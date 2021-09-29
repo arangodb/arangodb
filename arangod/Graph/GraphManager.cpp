@@ -444,9 +444,9 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
 
 Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph>)> const& callback) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
-  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
-                                            arangodb::aql::QueryString{queryStr},
-                                            nullptr);
+  auto query =
+      arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
+                                   arangodb::aql::QueryString{queryStr}, nullptr);
   query->queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query->executeSync();
 
@@ -638,10 +638,10 @@ Result GraphManager::ensureCollections(
   const bool sssg = false;
 #endif
 
-
-  Result finalResult = methods::Collections::create(ctx()->vocbase(), opOptions,
-                                                    collectionsToCreate.get(), waitForSync,
-                                                    true, false, nullptr, created, sssg);
+  Result finalResult =
+      methods::Collections::create(ctx()->vocbase(), opOptions,
+                                   collectionsToCreate.get(), waitForSync, true,
+                                   false, nullptr, created, sssg);
 #ifdef USE_ENTERPRISE
   if (finalResult.ok()) {
     guard.cancel();
@@ -713,7 +713,8 @@ Result GraphManager::readGraphKeys(velocypack::Builder& builder) const {
 
 Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
                                       std::string const& queryStr) const {
-  auto query = arangodb::aql::Query::create(ctx(), arangodb::aql::QueryString(queryStr), nullptr);
+  auto query =
+      arangodb::aql::Query::create(ctx(), arangodb::aql::QueryString(queryStr), nullptr);
   query->queryOptions().skipAudit = true;
 
   LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)
@@ -1092,7 +1093,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
   try {
     TRI_ASSERT(input.isObject());
     // TODO: check if it is executed or accessible by a database server
-    //if (ServerState::instance()->isCoordinator())
+    // if (ServerState::instance()->isCoordinator())
     {
       VPackSlice s = input.get(StaticStrings::IsSmart);
       if (s.isBoolean() && s.getBoolean()) {
