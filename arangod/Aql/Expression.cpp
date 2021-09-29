@@ -1704,10 +1704,20 @@ bool Expression::willUseV8() {
   return (_type == SIMPLE && _node->willUseV8());
 }
 
-std::unique_ptr<Expression> Expression::clone(Ast* ast) {
+std::unique_ptr<Expression> Expression::clone(Ast* ast, bool deepCopy) {
   // We do not need to copy the _ast, since it is managed by the
   // query object and the memory management of the ASTs
-  return std::make_unique<Expression>(ast != nullptr ? ast : _ast, _node);
+  if (ast == nullptr) {
+    ast = _ast;
+  }
+  TRI_ASSERT(ast != nullptr);
+
+  AstNode* source = _node;
+  TRI_ASSERT(source != nullptr);
+  if (deepCopy) {
+    source = source->clone(ast);
+  }
+  return std::make_unique<Expression>(ast, source);
 }
 
 void Expression::toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const {
