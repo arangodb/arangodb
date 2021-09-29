@@ -22,6 +22,7 @@
 
 #include "TestHelper.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
@@ -36,17 +37,19 @@ using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::test;
 
 struct FollowerAppendEntriesTest : ReplicatedLogTest {
-  auto makeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId) -> std::shared_ptr<LogFollower> {
+  auto makeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId) -> std::shared_ptr<ReplicatedLog> {
     auto core = makeLogCore(LogId{3});
     auto log = std::make_shared<ReplicatedLog>(std::move(core), _logMetricsMock, defaultLogger());
-    return log->becomeFollower(std::move(id), term, std::move(leaderId));
+    log->becomeFollower(std::move(id), term, std::move(leaderId));
+    return log;
   }
 
   MessageId nextMessageId{0};
 };
 
 TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
-  auto follower = makeFollower("follower", LogTerm{5}, "leader");
+  auto log = makeFollower("follower", LogTerm{5}, "leader");
+  auto follower = log->getFollower();
 
   {
     AppendEntriesRequest request;
@@ -89,7 +92,8 @@ TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
 }
 
 TEST_F(FollowerAppendEntriesTest, wrong_term) {
-  auto follower = makeFollower("follower", LogTerm{5}, "leader");
+  auto log = makeFollower("follower", LogTerm{5}, "leader");
+  auto follower = log->getFollower();
 
   {
     AppendEntriesRequest request;
@@ -113,7 +117,8 @@ TEST_F(FollowerAppendEntriesTest, wrong_term) {
 }
 
 TEST_F(FollowerAppendEntriesTest, missing_prev_log_index) {
-  auto follower = makeFollower("follower", LogTerm{5}, "leader");
+  auto log = makeFollower("follower", LogTerm{5}, "leader");
+  auto follower = log->getFollower();
 
   {
     AppendEntriesRequest request;
@@ -137,7 +142,8 @@ TEST_F(FollowerAppendEntriesTest, missing_prev_log_index) {
 }
 
 TEST_F(FollowerAppendEntriesTest, missmatch_prev_log_term) {
-  auto follower = makeFollower("follower", LogTerm{5}, "leader");
+  auto log = makeFollower("follower", LogTerm{5}, "leader");
+  auto follower = log->getFollower();
 
   {
     // First add a valid entry
@@ -181,7 +187,8 @@ TEST_F(FollowerAppendEntriesTest, missmatch_prev_log_term) {
 }
 
 TEST_F(FollowerAppendEntriesTest, wrong_leader_name) {
-  auto follower = makeFollower("follower", LogTerm{5}, "leader");
+  auto log = makeFollower("follower", LogTerm{5}, "leader");
+  auto follower = log->getFollower();
 
   {
     AppendEntriesRequest request;
@@ -206,7 +213,8 @@ TEST_F(FollowerAppendEntriesTest, wrong_leader_name) {
 }
 
 TEST_F(FollowerAppendEntriesTest, resigned_follower) {
-  auto follower = makeFollower("follower", LogTerm{5}, "leader");
+  auto log = makeFollower("follower", LogTerm{5}, "leader");
+  auto follower = log->getFollower();
 
   {
     // First add a valid entry
@@ -226,7 +234,14 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
       ASSERT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
     }
   }
-  std::ignore = std::move(*follower).resign();
+
+  // drop() resigns the follower, and removes it as the participant from log.
+  auto logCore = log->drop();
+  // we should have gotten the actual logcore, and do now destroy it
+  ASSERT_NE(logCore, nullptr);
+  logCore.reset();
+  // follower should now be resigned
+  ASSERT_THROW(std::ignore = follower->getStatus(), arangodb::basics::Exception); // TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED
 
   {
     AppendEntriesRequest request;
@@ -250,7 +265,8 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
 }
 
 TEST_F(FollowerAppendEntriesTest, outdated_message_id) {
-  auto follower = makeFollower("follower", LogTerm{5}, "leader");
+  auto log = makeFollower("follower", LogTerm{5}, "leader");
+  auto follower = log->getFollower();
 
   {
     // First add a valid entry
@@ -293,7 +309,8 @@ TEST_F(FollowerAppendEntriesTest, outdated_message_id) {
 }
 
 TEST_F(FollowerAppendEntriesTest, rewrite_log) {
-  auto follower = makeFollower("follower", LogTerm{5}, "leader");
+  auto log = makeFollower("follower", LogTerm{5}, "leader");
+  auto follower = log->getFollower();
 
   {
     AppendEntriesRequest request;
