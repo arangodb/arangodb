@@ -1,6 +1,11 @@
 devel
 -----
 
+* APM-121: allow the UPSERT query to have indexHint as an extra parameter for 
+  OPTIONS. It will be used as a hint by the inner FOR loop that is performed
+  as part of the UPSERT query, and would help in cases such as UPSERT not 
+  picking the best index automatically for lookup. 
+
 * Fix issue #14819: Query: AQL: missing variable # for node #... location
   RestCursorHandler.cpp.
 
@@ -16,7 +21,6 @@ devel
 * Update iresearch library to the upstream. Fixed TSan/ASan detected issues.
 
 * Added new ArangoSearch analyzer type 'collation'.
-
 
 * Add basic overload control to arangod. 
   This change adds the `x-arango-queue-time-seconds` header to all responses
