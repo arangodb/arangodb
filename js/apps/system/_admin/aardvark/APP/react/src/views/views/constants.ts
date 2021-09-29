@@ -10,7 +10,7 @@ type StoredValue = {
   compression: Compression;
 };
 
-type PrimarySortOrder = {
+type PrimarySort = {
   field: string;
   direction: Direction;
 };
@@ -31,7 +31,7 @@ type TierConsolidationPolicy = {
 type ConsolidationPolicy = BytesAccumConsolidationPolicy | TierConsolidationPolicy;
 
 type ViewProperties = {
-  primarySort?: PrimarySortOrder[];
+  primarySort?: PrimarySort[];
   primarySortCompression?: Compression;
   storedValues?: StoredValue[];
   cleanupIntervalStep?: number;
@@ -319,7 +319,7 @@ export type DispatchArgs = {
 };
 
 export type FormProps = {
-  formState: BaseFormState | FormState;
+  formState: FormState;
   dispatch: Dispatch<DispatchArgs>;
   disabled?: boolean;
 };
