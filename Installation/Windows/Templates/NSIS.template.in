@@ -247,7 +247,8 @@ Function stop_old_service
      SimpleSC::GetErrorMessage
      Pop $0
      DetailPrint 'Stopping ArangoDB fails - Reason: $0'
-     MessageBox MB_OK 'Stopping ArangoDB fails - Reason: $0'^M  ${EndIf}
+     MessageBox MB_OK 'Stopping ArangoDB fails - Reason: $0'
+  ${EndIf}
 Done_stop_old:
 FunctionEnd
 
