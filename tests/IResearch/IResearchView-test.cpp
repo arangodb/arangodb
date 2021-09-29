@@ -1526,7 +1526,7 @@ TEST_F(IResearchViewTest, test_consolidate) {
 
 TEST_F(IResearchViewTest, test_drop) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-  std::string dataPath = ((((irs::utf8_path()/=testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-123")).utf8();
+  std::string dataPath = ((((irs::utf8_path()/=testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-123")).u8string();
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"id\": 123, \
     \"name\": \"testView\", \
@@ -1555,7 +1555,7 @@ TEST_F(IResearchViewTest, test_drop) {
 
 TEST_F(IResearchViewTest, test_drop_with_link) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-  std::string dataPath = ((((irs::utf8_path()/=testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-123")).utf8();
+  std::string dataPath = ((((irs::utf8_path()/=testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-123")).u8string();
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"id\": 123, \
     \"name\": \"testView\", \
@@ -1592,7 +1592,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
         std::to_string(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *view)
                            ->id()
                            .id())))
-          .utf8();
+          .u8string();
   EXPECT_TRUE((true == TRI_IsDirectory(dataPath.c_str())));
 
   {
@@ -3426,7 +3426,7 @@ TEST_F(IResearchViewTest, test_open) {
   // default data path
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-    std::string dataPath = ((((irs::utf8_path()/=testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-123")).utf8();
+    std::string dataPath = ((((irs::utf8_path()/=testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=std::string("arangosearch-123")).u8string();
     auto json = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
 
     EXPECT_TRUE((false == TRI_IsDirectory(dataPath.c_str())));
