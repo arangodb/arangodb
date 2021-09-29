@@ -66,7 +66,7 @@ class UserManagerTest : public ::testing::Test {
 
   ~UserManagerTest() {
     state->setServerMode(ServerState::Mode::DEFAULT);
-    state->setReadOnly(false);
+    state->setReadOnly(ServerState::API_FALSE);
   }
 };
 
@@ -94,7 +94,7 @@ TEST_F(UserManagerTest, setting_serverstate_to_readonly_will_make_all_users_effe
   testUser.grantDatabase("*", auth::Level::RW);
   userEntryMap.emplace("test", testUser);
 
-  state->setReadOnly(true);
+  state->setReadOnly(ServerState::API_TRUE);
 
   um.setAuthInfo(userEntryMap);
   auth::Level authLevel = um.databaseAuthLevel("test", "test");
@@ -107,7 +107,7 @@ TEST_F(UserManagerTest, in_readonly_mode_the_configured_access_level_will_still_
   testUser.grantDatabase("*", auth::Level::RW);
   userEntryMap.emplace("test", testUser);
 
-  state->setReadOnly(true);
+  state->setReadOnly(ServerState::API_TRUE);
 
   um.setAuthInfo(userEntryMap);
   auth::Level authLevel = um.databaseAuthLevel("test", "test", /*configured*/ true);
@@ -121,7 +121,7 @@ TEST_F(UserManagerTest, setting_serverstate_to_readonly_will_make_all_users_effe
   testUser.grantCollection("test", "test", auth::Level::RW);
   userEntryMap.emplace("test", testUser);
 
-  state->setReadOnly(true);
+  state->setReadOnly(ServerState::API_TRUE);
 
   um.setAuthInfo(userEntryMap);
   auth::Level authLevel = um.collectionAuthLevel("test", "test", "test");
@@ -135,7 +135,7 @@ TEST_F(UserManagerTest, in_readonly_mode_the_configured_access_level_will_still_
   testUser.grantCollection("test", "test", auth::Level::RW);
   userEntryMap.emplace("test", testUser);
 
-  state->setReadOnly(true);
+  state->setReadOnly(ServerState::API_TRUE);
 
   um.setAuthInfo(userEntryMap);
   auth::Level authLevel =

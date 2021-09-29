@@ -85,23 +85,6 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                             _logicalCollection.id());
 }
 
-RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
-                                             PhysicalCollection const* physical)
-    : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
-      _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId.load()),
-      _revisionTreeApplied(0),
-      _revisionTreeCreationSeq(0),
-      _revisionTreeSerializedSeq(0),
-      _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  collection.vocbase()
-      .server()
-      .getFeature<EngineSelectorFeature>()
-      .engine<RocksDBEngine>()
-      .addCollectionMapping(_objectId.load(), _logicalCollection.vocbase().id(),
-                            _logicalCollection.id());
-}
-
 std::string const& RocksDBMetaCollection::path() const {
   return StaticStrings::Empty;  // we do not have any path
 }

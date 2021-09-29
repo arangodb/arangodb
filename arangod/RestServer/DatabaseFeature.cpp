@@ -814,7 +814,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string const& name, bool removeApps
         return true;  // try next DataSource
       };
 
-      vocbase->visitDataSources(visitor, true);  // acquire a write lock to avoid potential deadlocks
+      vocbase->visitDataSources(visitor);  // acquires a write lock to avoid potential deadlocks
 
       if (TRI_ERROR_NO_ERROR != res) {
         return res;

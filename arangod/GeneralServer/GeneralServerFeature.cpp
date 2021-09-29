@@ -110,6 +110,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestHandler/RestHotBackupHandler.h"
+#include "Enterprise/RestHandler/RestLicenseHandler.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 
@@ -139,6 +140,7 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
       _proxyCheck(true),
+      _returnQueueTimeHeader(true),
       _permanentRootRedirect(true),
       _redirectRootTo("/_admin/aardvark/index.html"),
       _supportInfoApiPolicy("hardened"),
@@ -219,6 +221,11 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                     "if true, use a permanent redirect. If false, use a temporary",
                     new BooleanParameter(&_permanentRootRedirect))
                     .setIntroducedIn(30712);
+  
+  options->addOption("--http.return-queue-time-header",
+                    "if true, return the 'x-arango-queue-time-seconds' response header",
+                    new BooleanParameter(&_returnQueueTimeHeader))
+                    .setIntroducedIn(30900);
 
   options->addOption("--frontend.proxy-request-check",
                      "enable proxy request checking",
@@ -282,9 +289,8 @@ void GeneralServerFeature::prepare() {
 }
 
 void GeneralServerFeature::start() {
-  _jobManager.reset(new AsyncJobManager);
-
-  _handlerFactory.reset(new RestHandlerFactory());
+  _jobManager = std::make_unique<AsyncJobManager>();
+  _handlerFactory = std::make_unique<RestHandlerFactory>();
 
   defineHandlers();
   buildServers();
@@ -321,17 +327,19 @@ void GeneralServerFeature::unprepare() {
   _jobManager.reset();
 }
 
-double GeneralServerFeature::keepAliveTimeout() const {
+double GeneralServerFeature::keepAliveTimeout() const noexcept {
   return _keepAliveTimeout;
 }
 
-bool GeneralServerFeature::proxyCheck() const { return _proxyCheck; }
+bool GeneralServerFeature::proxyCheck() const noexcept { return _proxyCheck; }
+
+bool GeneralServerFeature::returnQueueTimeHeader() const noexcept { return _returnQueueTimeHeader; }
 
 std::vector<std::string> GeneralServerFeature::trustedProxies() const {
   return _trustedProxies;
 }
 
-bool GeneralServerFeature::allowMethodOverride() const {
+bool GeneralServerFeature::allowMethodOverride() const noexcept {
   return _allowMethodOverride;
 }
 
@@ -350,7 +358,7 @@ Result GeneralServerFeature::reloadTLS() {  // reload TLS data from disk
   return res;
 }
 
-bool GeneralServerFeature::permanentRootRedirect() const {
+bool GeneralServerFeature::permanentRootRedirect() const noexcept {
   return _permanentRootRedirect;
 }
 
@@ -653,8 +661,10 @@ void GeneralServerFeature::defineHandlers() {
 #ifdef USE_ENTERPRISE
   if (backup.isAPIEnabled()) {
     _handlerFactory->addPrefixHandler("/_admin/backup",
-                                    RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
+                                      RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
   }
+  _handlerFactory->addPrefixHandler("/_admin/license",
+                                    RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
 #endif
 
 

@@ -116,7 +116,6 @@ class IRESEARCH_API read_write_mutex final {
    std::atomic<size_t> concurrent_count_;
    size_t exclusive_count_;
    std::atomic<std::thread::id> exclusive_owner_;
-   VALGRIND_ONLY(std::mutex exclusive_owner_mutex_;)
    size_t exclusive_owner_recursion_count_;
    std::mutex mutex_;
    std::condition_variable reader_cond_;
@@ -161,6 +160,7 @@ class IRESEARCH_API thread_pool {
   struct shared_state {
     std::mutex lock;
     std::condition_variable cond;
+    std::atomic<State> state{ State::RUN };
   };
 
   struct task {
@@ -192,7 +192,6 @@ class IRESEARCH_API thread_pool {
   size_t max_threads_;
   std::priority_queue<task> queue_;
   std::basic_string<native_char_t> worker_name_;
-  std::atomic<State> state_{ State::RUN };
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // thread_pool
 

@@ -2,31 +2,84 @@ devel
 -----
 
 * The server now has two flags to control the escaping control and Unicode 
-characters in the log. The flag `--log.escape` is now deprecated and, instead, 
-the new flags `--log.escape-control-chars` and `--log.escape-unicode-chars` 
-should be used. 
+  characters in the log. The flag `--log.escape` is now deprecated and, instead, 
+  the new flags `--log.escape-control-chars` and `--log.escape-unicode-chars` 
+  should be used. 
 
-- `--log.escape-control-chars`: this flag applies to the control characters, 
-which have hex code below `\x20`, and also the character DEL, with hex code of 
-`\x7f`. When its value is set to false, the control character will be retained,
- and its actual value will be displayed when it is a visible character, or a 
-space ` ` character will be displayed if it is not a visible character. The 
-same will happen to `DEL` character (code `\xF7`), even though it is not a 
-control character, because it is not visible. For example, control characer 
-`\n` is visible, so a `\n` will be displayed in the log, and control character 
-`BEL` is not visible, so a space ` ` would be displayed. When its value is 
-set to true, the hex code for the character is displayed, for example, `BEL` 
-character would be displayed as its hex code, `\x07`.
-	The default value for this flag is `true` for compatibility with 
-previous versions.
+  - `--log.escape-control-chars`: this flag applies to the control characters, 
+    which have hex code below `\x20`, and also the character DEL, with hex code 
+    of `\x7f`. When its value is set to false, the control character will be 
+    retained, and its actual value will be displayed when it is a visible 
+    character, or a space ` ` character will be displayed if it is not a 
+    visible character. The same will happen to `DEL` character (code `\xF7`), 
+    even though it is not a control character, because it is not visible. For 
+    example, control characer `\n` is visible, so a `\n` will be displayed in 
+    the log, and control character `BEL` is not visible, so a space ` ` would 
+    be displayed. When its value is set to true, the hex code for the character
+    is displayed, for example, `BEL` character would be displayed as its hex 
+    code, `\x07`.
+      The default value for this flag is `true` for compatibility with 
+    previous versions.
 
-- `--log.escape-unicode-chars`: when its value is set to false, the unicode 
-character will be retained, and its actual value will be displayed. For 
-example, `犬` will be displayed as `犬`. When its value is set to true, the 
-character is escaped, and the hex code for the character is displayed. For 
-example, `犬` would be displayed as its hex code, `\u72AC`. 
-	The default value for this flag is `false` for compatibility with 
-previous versions.
+  - `--log.escape-unicode-chars`: when its value is set to false, the unicode 
+    character will be retained, and its actual value will be displayed. For 
+    example, `犬` will be displayed as `犬`. When its value is set to true, 
+    the character is escaped, and the hex code for the character is displayed. 
+    For example, `犬` would be displayed as its hex code, `\u72AC`. 
+      The default value for this flag is `false` for compatibility with 
+    previous versions.
+
+* APM-121: allow the UPSERT query to have indexHint as an extra parameter for 
+  OPTIONS. It will be used as a hint by the inner FOR loop that is performed
+  as part of the UPSERT query, and would help in cases such as UPSERT not 
+  picking the best index automatically for lookup. 
+
+* Fix issue #14819: Query: AQL: missing variable # for node #... location
+  RestCursorHandler.cpp.
+
+* Added enterprise licensing support including (only for Enterprise version):
+    - additional API endpoint `_admin/license(GET/PUT)?force=true <text>`
+    - arangosh functions: `setLicense(<text>)`, `getLicense()`
+    - new error codes and metrics support
+
+* Fix issue #14807: Fix crash during optimization of certain AQL queries during
+  the remove-collect-variables optimizer rule, when a COLLECT node without output
+  variables (this includes RETURN DISTINCT) occured in the plan.
+
+* Update iresearch library to the upstream. Fixed TSan/ASan detected issues.
+
+* Added new ArangoSearch analyzer type 'collation'.
+
+* Add basic overload control to arangod. 
+  This change adds the `x-arango-queue-time-seconds` header to all responses
+  sent by arangod. This header contains the most recent request dequeing time 
+  (in seconds) as tracked by the scheduler. This value can be used by client
+  applications and drivers to detect server overload and react on it.
+  The new startup option `--http.return-queue-time-header` can be set to 
+  `false` to suppress these headers in responses sent by arangod.
+
+  In addition, client applications and drivers can optionally augment their
+  requests sent to arangod with a header of the same name. If set, the 
+  value of the header should contain the maximum queuing time (in seconds)
+  that the client is willing to accept. If the header is set in an incoming
+  request, arangod will compare the current dequeing time from its scheduler
+  with the maximum queue time value contained in the request. If the current
+  dequeing time exceeds the value set in the header, arangod will reject the
+  request and return HTTP 412 (precondition failed) with the new error code
+  21004 (queue time violated).
+
+  There is also a new metric `arangodb_scheduler_queue_time_violations_total`
+  that is increased whenever a request is dropped because of the requested
+  queue time not satisfiable.
+
+* Fixed a bug for array indexes on update of documents. See BTS-548.
+
+* Prevent some possible deadlocks under high load regarding transactions and
+  document operations, and also improve performance slightly.
+
+* Hide help text fragment about VST connection strings in client tools that
+  do not support VST.
+>>>>>>> 398faae5b93ec3944d17dfd8920cc2334d0e21d3
 
 * Added REST API endpoint `/_admin/debug/failat/all` to retrieve the list
   of currently enabled failure points. This API is available only if 
