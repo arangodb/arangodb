@@ -98,6 +98,8 @@ void RocksDBBackgroundThread::run() {
 
       if (!force) {
         try {
+          // this only schedules tree rebuilds, but the actual rebuilds are performed
+          // by async tasks in the scheduler.
           _engine.processTreeRebuilds();
         } catch (std::exception const& ex) {
           LOG_TOPIC("eea93", WARN, Logger::ENGINES) 
@@ -131,6 +133,12 @@ void RocksDBBackgroundThread::run() {
         _engine.determinePrunableWalFiles(minTick);
         // and then prune them when they expired
         _engine.pruneWalFiles();
+      } else {
+        // WAL file pruning not (yet) enabled. this will be the case the 
+        // first few minutes after the instance startup.
+        // only keep track of which WAL files exist and what the lower
+        // bound sequence number is
+        _engine.determineWalFilesInitial();
       }
         
       if (!isStopping()) {

@@ -53,6 +53,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <chrono>
+
 using namespace arangodb;
 
 namespace {
@@ -473,8 +475,12 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
   maxCommitSeq = _meta.committableSeq(maxCommitSeq);
   if (needToPersistRevisionTree(maxCommitSeq, guard)) {
     rocksdb::SequenceNumber seq = maxCommitSeq;
-// TODO: decide on this!
+
     if (seq < _revisionTreeApplied) {
+      // this is a special case when we have an applied sequence number
+      // which is higher than what we have blockers for. this can only
+      // happen during tree rebuilding. in this case we have to bump the
+      // seq number forward, because we cannot generate a tree from the past.
       seq = _revisionTreeApplied;
     }
     scratch.clear();
@@ -899,6 +905,9 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
 
+    // now rebuild the tree from the collection data, using a
+    // snapshot that will be acquired inside `revisionTreeFromCollection`.
+    // note that the snapshot may have a sequence number > blockerSeq!
     auto result = revisionTreeFromCollection(false);
     if (result.fail()) {
       return result.result(); 
@@ -908,24 +917,47 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
 
     TRI_ASSERT(blockerSeq <= beginSeq);
 
+    // update our blocker to the sequence number from the snapshot 
     _meta.updateBlocker(trxId, beginSeq);
     
     TRI_IF_FAILURE("rebuildRevisionTree::sleep") {
       std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
 
+    // we need to set a timeout for this operation, because if it does not complete within 
+    // reasonable bounds, we need to relinquish the thread that is kept busy waiting here.
+    auto const endTime = std::chrono::steady_clock::now() + std::chrono::minutes(2);
+
+    // wait until all blockers before the snapshot have been removed
     while (true) {
       std::unique_lock<std::mutex> guard(_revisionTreeLock);
       
       if (_revisionTreeApplied < beginSeq) {
         _revisionTreeApplied = beginSeq;
       }
+        
+      TRI_IF_FAILURE("rebuildRevisionTree::sleep") {
+        if (RandomGenerator::interval(uint32_t(2000)) > 1750) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_DEBUG, "intentional error during testing");
+        }
+      }
 
       if (_meta.hasBlockerUpTo(beginSeq - 1)) {
         guard.unlock();
 
         if (_logicalCollection.vocbase().server().isStopping()) {
+          // react on server shutdown
           THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+        }
+    
+        if (std::chrono::steady_clock::now() > endTime) {
+          // timeout reached. abort and later try again
+          std::string msg("unable to establish new revision tree for collection '");
+          msg.append(_logicalCollection.name());
+          msg.append("' in time");
+
+          LOG_TOPIC("d7560", WARN, Logger::ENGINES) << msg;
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(msg));
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -935,6 +967,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       TRI_ASSERT(_revisionTreeApplied <= beginSeq);
       TRI_ASSERT(_revisionTreeSerializedSeq <= beginSeq);
 
+      // establish the new tree
       _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
       _revisionTreeApplied = beginSeq;
       _revisionTreeCreationSeq = beginSeq;
@@ -1315,7 +1348,7 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq,
         TRI_IF_FAILURE("RevisionTree::applyInserts") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        
+          
         TRI_ASSERT(insertIt->first > _revisionTreeApplied);
 
         // apply inserts, without holding the lock

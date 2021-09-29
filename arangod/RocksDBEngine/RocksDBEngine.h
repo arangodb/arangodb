@@ -304,6 +304,15 @@ class RocksDBEngine final : public StorageEngine {
   CollectionPair mapObjectToCollection(uint64_t) const;
   IndexTriple mapObjectToIndex(uint64_t) const;
 
+  /// @brief determine how many archived WAL files are available. this is called
+  /// during the first few minutes after the instance start, when we don't want
+  /// to prune any WAL files yet.
+  /// this also updates the metrics for the number of available WAL files.
+  void determineWalFilesInitial();
+
+  /// @brief determine which archived WAL files are prunable. as a side-effect,
+  /// this updates the metrics for the number of available and prunable WAL
+  /// files.
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
 
@@ -563,8 +572,10 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief number of currently running compaction jobs
   size_t _runningCompactions;
   
+  Gauge<uint64_t>& _metricsWalSequenceLowerBound;
   Gauge<uint64_t>& _metricsArchivedWalFiles;
   Gauge<uint64_t>& _metricsPrunableWalFiles;
+  Gauge<uint64_t>& _metricsWalPruningActive;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

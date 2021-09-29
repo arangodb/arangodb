@@ -120,8 +120,10 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+DECLARE_GAUGE(rocksdb_wal_sequence_lower_bound, uint64_t, "RocksDB WAL sequence number until which background thread has caught up");
 DECLARE_GAUGE(rocksdb_archived_wal_files, uint64_t, "Number of archived RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_prunable_wal_files, uint64_t, "Number of prunable RocksDB WAL files");
+DECLARE_GAUGE(rocksdb_wal_pruning_active, uint64_t, "Whether or not RocksDB WAL file pruning is active");
 
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
@@ -211,10 +213,14 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _dbExisted(false),
       _runningRebuilds(0),
       _runningCompactions(0),
+      _metricsWalSequenceLowerBound(server.getFeature<arangodb::MetricsFeature>().add(
+          rocksdb_wal_sequence_lower_bound{})),
       _metricsArchivedWalFiles(server.getFeature<arangodb::MetricsFeature>().add(
           rocksdb_archived_wal_files{})),
       _metricsPrunableWalFiles(server.getFeature<arangodb::MetricsFeature>().add(
-          rocksdb_prunable_wal_files{})) {
+          rocksdb_prunable_wal_files{})),
+      _metricsWalPruningActive(server.getFeature<arangodb::MetricsFeature>().add(
+          rocksdb_wal_pruning_active{})) {
 
   server.addFeature<RocksDBOptionFeature>();
 
@@ -1428,13 +1434,29 @@ void RocksDBEngine::processTreeRebuilds() {
             if (collection != nullptr && !collection->deleted()) {
               LOG_TOPIC("b96bc", INFO, Logger::ENGINES)
                   << "starting background rebuild of revision tree for collection " << collection->name();
-              static_cast<RocksDBCollection*>(collection->getPhysical())->rebuildRevisionTree();
-              LOG_TOPIC("2f997", INFO, Logger::ENGINES)
-                  << "successfully rebuilt revision tree for collection " << collection->name();
+              Result res = static_cast<RocksDBCollection*>(collection->getPhysical())->rebuildRevisionTree();
+              if (res.ok()) {
+                LOG_TOPIC("2f997", INFO, Logger::ENGINES)
+                    << "successfully rebuilt revision tree for collection " << collection->name();
+              } else {
+                LOG_TOPIC("a1fc2", WARN, Logger::ENGINES)
+                    << "failure during revision tree rebuilding for collection " << collection->name() 
+                    << ": " << res.errorMessage();
+                {
+                 // mark as to-be-done again
+                  MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+                  auto it = _rebuildCollections.find(candidate);
+                  if (it != _rebuildCollections.end()) {
+                    (*it).second = false;
+                  }
+                }
+                // rethrow exception
+                THROW_ARANGO_EXCEPTION(res);
+              }
             }
           }
 
-          // tree rebuilding finished. now remove from the list to-be-rebuilt candidates
+          // tree rebuilding finished successfully. now remove from the list to-be-rebuilt candidates
           MUTEX_LOCKER(locker, _rebuildCollectionsLock);
           _rebuildCollections.erase(candidate);
 
@@ -2044,6 +2066,32 @@ std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& RocksDBEngine::recove
   return _recoveryHelpers;
 }
 
+void RocksDBEngine::determineWalFilesInitial() {
+  WRITE_LOCKER(lock, _walFileLock);
+  // Retrieve the sorted list of all wal files with earliest file first
+  rocksdb::VectorLogPtr files;
+  auto status = _db->GetSortedWalFiles(files);
+  if (!status.ok()) {
+    LOG_TOPIC("078ee", WARN, Logger::ENGINES)
+        << "could not get WAL files: " << status.ToString();
+    return;
+  }
+
+  size_t archivedFiles = 0;
+  for (size_t current = 0; current < files.size(); current++) {
+    auto const& f = files[current].get();
+
+    if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
+      // we are only interested in files of the archive
+      continue;
+    }
+
+    ++archivedFiles;
+  }
+  _metricsWalSequenceLowerBound.operator=(_settingsManager->earliestSeqNeeded());
+  _metricsArchivedWalFiles.operator=(archivedFiles);
+}
+
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
   WRITE_LOCKER(lock, _walFileLock);
   TRI_voc_tick_t minTickToKeep =
@@ -2161,8 +2209,10 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     }
   }
   
+  _metricsWalSequenceLowerBound.operator=(_settingsManager->earliestSeqNeeded());
   _metricsArchivedWalFiles.operator=(archivedFiles);
   _metricsPrunableWalFiles.operator=(_prunableWalFiles.size());
+  _metricsWalPruningActive.operator=(1);
 }
 
 RocksDBFilePurgePreventer RocksDBEngine::disallowPurging() noexcept {
