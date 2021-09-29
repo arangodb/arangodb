@@ -1,7 +1,7 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
-* Fix issue #14819: Query: AQL: missing variable # for node #... location 
+* Fix issue #14819: Query: AQL: missing variable # for node #... location
   RestCursorHandler.cpp.
 
 * Fix issue #14807: Fix crash during optimization of certain AQL queries during
