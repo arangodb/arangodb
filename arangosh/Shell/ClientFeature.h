@@ -112,7 +112,6 @@ class ClientFeature final : public HttpEndpointProvider {
   void loadJwtSecretFile();
 
   std::string _databaseName;
-  // std::string _endpoint;
   std::vector<std::string> _endpoints;
   size_t _maxNumEndpoints;
   std::string _username;
