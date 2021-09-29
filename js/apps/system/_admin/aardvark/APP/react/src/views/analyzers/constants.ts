@@ -1,7 +1,6 @@
 import { JSONSchemaType } from 'ajv';
 import { Dispatch } from 'react';
 import _, { merge, partial } from 'lodash';
-import { Int } from "../../utils/constants";
 
 export const typeNameMap = {
   identity: 'Identity',
@@ -57,8 +56,8 @@ type NormState = {
 };
 
 export type NGramBase = {
-  max?: Int;
-  min?: Int;
+  max?: number;
+  min?: number;
   preserveOriginal?: boolean;
 };
 
@@ -90,8 +89,8 @@ export type AqlState = {
     queryString: string;
     collapsePositions?: boolean;
     keepNull?: boolean;
-    batchSize?: Int;
-    memoryLimit?: Int;
+    batchSize?: number;
+    memoryLimit?: number;
     returnType?: 'string' | 'number' | 'bool';
   };
 };
@@ -137,9 +136,9 @@ export type PipelineStates = {
 };
 
 export type GeoOptions = {
-  maxCells?: Int;
-  minLevel?: Int;
-  maxLevel?: Int;
+  maxCells?: number;
+  minLevel?: number;
+  maxLevel?: number;
 };
 
 export type GeoJsonState = {

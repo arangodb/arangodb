@@ -5,8 +5,8 @@ import { getForm } from "../helpers";
 import { omit } from "lodash";
 import TypeInput from "./inputs/TypeInput";
 import styled from 'styled-components';
-import { Int } from "../../../utils/constants";
 import { getPath } from "../../../utils/helpers";
+import { ArangoTable, ArangoTD } from "../../../components/arango/table";
 
 const StyledButton = styled.button`
   &&& {
@@ -23,7 +23,7 @@ const restrictedTypeNameMap = omit(typeNameMap, 'geojson', 'geopoint', 'pipeline
 const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
   const items = (formState as PipelineStates).properties.pipeline;
 
-  const removeItem = (index: Int) => {
+  const removeItem = (index: number) => {
     const tempItems = items.slice();
 
     tempItems.splice(index, 1);
@@ -36,11 +36,11 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const getRemover = (index: Int) => () => {
+  const getRemover = (index: number) => () => {
     removeItem(index);
   };
 
-  const moveUp = (index: Int) => {
+  const moveUp = (index: number) => {
     const tempItems = items.slice();
     const item = tempItems[index];
     const prevItem = tempItems[index - 1];
@@ -55,7 +55,7 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const moveDown = (index: Int) => {
+  const moveDown = (index: number) => {
     const tempItems = items.slice();
     const item = tempItems[index];
     const nextItem = tempItems[index + 1];
@@ -70,7 +70,7 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const getShifter = (direction: 'up' | 'down', index: Int) => {
+  const getShifter = (direction: 'up' | 'down', index: number) => {
     switch (direction) {
       case 'up':
         return () => {
@@ -100,7 +100,7 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const getWrappedDispatch = (index: Int) => (action: DispatchArgs) => {
+  const getWrappedDispatch = (index: number) => (action: DispatchArgs) => {
     action.basePath = getPath(`properties.pipeline[${index}]`, action.basePath);
     dispatch(action);
   };
@@ -116,7 +116,7 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
         </Cell>
     }
     <Cell size={'1'}>
-      <table className={'arango-table'} style={{
+      <ArangoTable style={{
         marginTop: 5,
         marginBottom: 5
       }}>
@@ -124,12 +124,11 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
         {
           items.map((item, idx) => {
             const isLast = idx === items.length - 1;
-            const index = idx as Int;
-            const itemDispatch = getWrappedDispatch(index);
+            const itemDispatch = getWrappedDispatch(idx);
 
             return <tr key={idx} style={{ borderBottom: '1px  solid #DDD' }}>
-              <td className={'arango-table-td table-cell0'} valign={'middle'}>{idx + 1}.</td>
-              <td className={`arango-table-td table-cell1`}>
+              <ArangoTD seq={0} valign={'middle'}>{idx + 1}.</ArangoTD>
+              <ArangoTD seq={1}>
                 <Grid>
                   <Cell size={'3-4'}>
                     <TypeInput formState={item} dispatch={itemDispatch} inline={true} key={idx}
@@ -139,14 +138,14 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
                     disabled
                       ? null
                       : <Cell size={'1-4'}>
-                        <StyledButton className={'button-danger'} onClick={getRemover(index)}>
+                        <StyledButton className={'button-danger'} onClick={getRemover(idx)}>
                           <StyledIcon className={'fa fa-trash-o'}/>
                         </StyledButton>&nbsp;
-                        <StyledButton className={'button-warning'} onClick={getShifter('up', index)}
-                                      disabled={index === 0}>
+                        <StyledButton className={'button-warning'} onClick={getShifter('up', idx)}
+                                      disabled={idx === 0}>
                           <StyledIcon className={'fa fa-arrow-up'}/>
                         </StyledButton>&nbsp;
-                        <StyledButton className={'button-warning'} onClick={getShifter('down', index)}
+                        <StyledButton className={'button-warning'} onClick={getShifter('down', idx)}
                                       disabled={isLast}>
                           <StyledIcon className={'fa fa-arrow-down'}/>
                         </StyledButton>
@@ -162,12 +161,12 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
                     }
                   </Cell>
                 </Grid>
-              </td>
+              </ArangoTD>
             </tr>;
           })
         }
         </tbody>
-      </table>
+      </ArangoTable>
     </Cell>
     {
       disabled || items.length === 0
