@@ -4,6 +4,14 @@ devel
 * Fixed potential issues with revision trees and document counters getting
   out of sync with the underlying collection data.
 
+* APM-121: allow the UPSERT query to have indexHint as an extra parameter for 
+  OPTIONS. It will be used as a hint by the inner FOR loop that is performed
+  as part of the UPSERT query, and would help in cases such as UPSERT not 
+  picking the best index automatically for lookup. 
+
+* Fix issue #14819: Query: AQL: missing variable # for node #... location
+  RestCursorHandler.cpp.
+
 * Added enterprise licensing support including (only for Enterprise version):
     - additional API endpoint `_admin/license(GET/PUT)?force=true <text>`
     - arangosh functions: `setLicense(<text>)`, `getLicense()`
