@@ -1953,7 +1953,7 @@ void RestoreFeature::start() {
           false, false, true);
 
       result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                                 false, !_options.createDatabase, false,0);
+                                                 false, !_options.createDatabase, false, 0);
 
       if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
         LOG_TOPIC("3e715", FATAL, Logger::RESTORE)
