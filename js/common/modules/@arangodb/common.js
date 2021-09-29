@@ -533,32 +533,31 @@ exports.enterpriseLicenseVisibility = function() {
     return;
   }
 
-  if (license.hasOwnProperty("features")) {
-    if (license.features.hasOwnProperty("expires")) {
-      let now = new Date();
-      let expires = new Date(1000 * license.features.expires);
-      switch (license.status) {
-      case "expiring":
-        console.warn("Your license is expiring soon on " + expires + ".");
-        console.warn("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license.");
-        return;
-      case "expired":
-        console.error("Your server's license has expired.");
-        console.error("Its operation will be restricted to read-only mode on " + expires + "!");
-        console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.");
-        return;
-      case "read-only":
-        console.error("Your server's license expired on " + expires + ".");
-        console.error("Its operation has been restricted to read-only mode!");
-        console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.");
-        return;
-      case "good":
-      default:
-        return;
-      }
+  if (license.hasOwnProperty("status") &&
+      license.hasOwnProperty("features") &&
+      license.features.hasOwnProperty("expires")) {
 
-      console.error(expires);
+    let expires = new Date(1000 * license.features.expires);
+    switch (license.status) {
+    case "expiring":
+      console.warn("Your license is expiring soon on " + expires + ".");
+      console.warn("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license.");
+      return;
+    case "expired":
+      console.error("Your server's license has expired.");
+      console.error("Its operation will be restricted to read-only mode on " + expires + "!");
+      console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.");
+      return;
+    case "read-only":
+      console.error("Your server's license expired on " + expires + ".");
+      console.error("Its operation has been restricted to read-only mode!");
+      console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.");
+      return;
+    case "good":
+    default:
+      return;
     }
+
   }
 
 };
