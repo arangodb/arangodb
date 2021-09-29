@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fix issue #14819: Query: AQL: missing variable # for node #... location 
+* Fix issue #14819: Query: AQL: missing variable # for node #... location
   RestCursorHandler.cpp.
 
 * Added enterprise licensing support including (only for Enterprise version):
