@@ -4,6 +4,9 @@ v3.8.2 (XXXX-XX-XX)
 * Fixed potential issues with revision trees and document counters getting
   out of sync with the underlying collection data.
 
+* Fix issue #14819: Query: AQL: missing variable # for node #... location
+  RestCursorHandler.cpp.
+
 * Fix issue #14807: Fix crash during optimization of certain AQL queries during
   the remove-collect-variables optimizer rule, when a COLLECT node without
   output variables (this includes RETURN DISTINCT) occured in the plan.
