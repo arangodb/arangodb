@@ -1973,7 +1973,7 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan, bool withDependencies
   }
 
   auto c = std::make_unique<CalculationNode>(plan, _id,
-                                             _expression->clone(plan->getAst()),
+                                             _expression->clone(plan->getAst(), true),
                                              outVariable);
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
