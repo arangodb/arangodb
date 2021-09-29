@@ -61,7 +61,7 @@ class BenchmarkThread : public arangodb::Thread {
  public:
   BenchmarkThread(application_features::ApplicationServer& server,
                   BenchmarkOperation* operation, basics::ConditionVariable* condition,
-                  void (*callback)(), int threadNumber, uint64_t const batchSize,
+                  void (*callback)(), size_t threadNumber, uint64_t const batchSize,
                   BenchmarkCounter<uint64_t>* operationsCounter,
                   ClientFeature& client, bool keepAlive, bool async,
                   double histogramIntervalSize, uint64_t histogramNumIntervals)
@@ -410,7 +410,7 @@ class BenchmarkThread : public arangodb::Thread {
   void (*_callback)();
 
   /// @brief our thread number
-  int _threadNumber;
+  size_t _threadNumber;
 
   /// @brief batch size
   uint64_t const _batchSize;

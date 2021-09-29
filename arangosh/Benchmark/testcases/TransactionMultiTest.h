@@ -50,7 +50,7 @@ namespace arangodb::arangobench {
 
     void tearDown() override {}
 
-    void buildRequest(int threadNumber, size_t threadCounter,
+    void buildRequest(size_t threadNumber, size_t threadCounter,
                       size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
       requestData.url = "/_api/transaction";
       requestData.type = rest::RequestType::POST;

@@ -79,7 +79,7 @@ class ClientFeature final : public HttpEndpointProvider {
   void setForceJson(bool value) { _forceJson = value; }
 
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(std::string const& definition);
-  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(int threadNumber = 0) const;
+  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(size_t threadNumber = 0) const;
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(std::string const& definition) const;
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
       std::string const& definition, httpclient::SimpleHttpClientParams const&) const;

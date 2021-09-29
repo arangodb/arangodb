@@ -363,7 +363,7 @@ void ClientFeature::prepare() {
   }
 }
 
-std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(int threadNumber) const {
+std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(size_t threadNumber) const {
   return createHttpClient(_endpoints[threadNumber % _endpoints.size()]);
 }
 
@@ -389,13 +389,13 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
 }
 
 std::vector<std::string> ClientFeature::httpEndpoints() {
-  std::string http = Endpoint::uriForm(_endpoints[0]);
-
-  if (http.empty()) {
-    return {};
-  }
-
-  return {http};
+  std::vector<std::string> httpEndpoints;
+  std::for_each(_endpoints.begin(), _endpoints.end(), [&httpEndpoints] (std::string const& endpoint) {
+    if (std::string http = Endpoint::uriForm(endpoint); !http.empty()) {
+      httpEndpoints.emplace_back(std::move(http));
+    }
+  });
+  return httpEndpoints;
 }
 
 void ClientFeature::start() {
