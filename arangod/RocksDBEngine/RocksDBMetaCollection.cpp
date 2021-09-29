@@ -628,7 +628,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
   //     than beginSeq.
   //  4. Call `bufferUpdates` on the `RocksDBMetaCollection and submit all
   //     revisions which have been inserted or removed, which in turns
-  //     queues these operations in _revisionInsertBuffers and
+  //     queues these operations in `_revisionInsertBuffers` and
   //     `_revisionRemoveBuffers` for the revision tree, filed under
   //     the sequence number `postCommitSeq`.
   //  5. Remove the blockers for the transaction.
@@ -650,7 +650,8 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
       _revisionTreeCanBeSerialized &&
       !_meta.hasBlockerUpTo(seq)) {
 
-    // If we get here, we can advance `_revisionTreeSerializedSeq` to `seq`,
+    // If we get here, we can advance `_revisionTreeSerializedSeq` 
+    // and `_revisionTreeApplied` to `seq`,
     // although we have not actually persisted the tree at `seq`.
     // All we have to ensure that no transaction has or will ever again
     // produce a change with a sequence number larger than
@@ -663,12 +664,16 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
     // `beginSeq` number in Step 2 above. So either, we still see the blocker,
     // or the corresponding operations have already been added to the buffers,
     // or they have already been applied to the tree, in which case
-    // _revisionTreeApplied would be larger than `seq`. q.e.d.
+    // `_revisionTreeApplied` would be larger than `seq`. q.e.d.
     LOG_TOPIC("32d45", TRACE, Logger::ENGINES)
         << "adjusting sequence number for " << _logicalCollection.name() 
         << " from " << _revisionTreeSerializedSeq << " to " << seq;
     
     _revisionTreeSerializedSeq = seq;
+    _revisionTreeApplied = seq;
+    // This allows to uphold the invariants that
+    // _revisionTreeCreationSeq <= _revisionTreeSerializedSeq and
+    // _revisionTreeSerializedSeq <= _revisionTreeApplied.
   }
   
   return _revisionTreeSerializedSeq;
@@ -972,7 +977,7 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
   _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
   _revisionTreeApplied = seq;
   _revisionTreeCreationSeq = seq;
-  _revisionTreeSerializedSeq = 0;
+  _revisionTreeSerializedSeq = seq;
   _revisionTreeSerializedTime = std::chrono::steady_clock::time_point();
   _revisionTreeCanBeSerialized = true;
 }

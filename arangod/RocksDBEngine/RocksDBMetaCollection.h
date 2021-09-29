@@ -238,6 +238,25 @@ class RocksDBMetaCollection : public PhysicalCollection {
     bool _compressible;
   };
 
+  // The following rules/definitions apply:
+  //  a. A tree which is persisted under sequence number `S` reflects the
+  //     state of the collection once all changes in the WAL up to and
+  //     including sequence number `S` have been applied but no more.
+  //  b. A transaction counts as applied, if the sequence number of its
+  //     commit marker has been applied to the tree. The other operations
+  //     have a smaller sequence number in the WAL.
+  //
+  // We must maintain the following invariants under all circumstances:
+  //  1. `_revisionTreeCreationSeq` <= `_revisionTreeSerializedSeq`
+  //  2. `_revisionTreeSerializedSeq` <= `_revisionTreeApplied`
+  //  3. `_revisionTreeApplied` <= all blockers (in _meta) at all times
+  //  4. There are no buffered changes with a sequence number less than
+  //     or equal to `_revisionTreeApplied`.
+  // If you change anything around the members below, or the blockers
+  // in the `_meta` subobject, **please** make sure that these invariants
+  // are maintained. If not, we are entering a world of pain! We have
+  // been there and do not want to go back!
+
   /// @revision tree management for replication
   mutable std::mutex _revisionTreeLock;
   std::unique_ptr<RevisionTreeAccessor> _revisionTree;
