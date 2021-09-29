@@ -36,6 +36,7 @@
 #include "Agency/TimeString.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ResultT.h"
@@ -268,6 +269,7 @@ std::string const RestAdminClusterHandler::ResignLeadership =
     "resignLeadership";
 std::string const RestAdminClusterHandler::MoveShard = "moveShard";
 std::string const RestAdminClusterHandler::QueryJobStatus = "queryAgencyJob";
+std::string const RestAdminClusterHandler::CancelJob = "cancelAgencyJob";
 std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
 std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
 
@@ -307,6 +309,8 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleResignLeadership();
     } else if (command == MoveShard) {
       return handleMoveShard();
+    } else if (command == CancelJob) {
+      return handleCancelJob();
     } else if (command == QueryJobStatus) {
       return handleQueryJobStatus();
     } else if (command == RemoveServer) {
@@ -804,6 +808,153 @@ RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
           }));
 }
 
+RestStatus RestAdminClusterHandler::handleCancelJob() {
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  bool parseSuccess;
+  VPackSlice body = parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return RestStatus::DONE;
+  }
+
+  std::string jobId;
+  if (body.isObject() && body.hasKey("id") && body.get("id").isString()) {
+    jobId = body.get("id").copyString();
+  } else {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "object with key `id`");
+    return RestStatus::DONE;
+  }
+
+  auto targetPath = arangodb::cluster::paths::root()->arango()->target();
+  std::vector<std::string> paths = {
+      targetPath->pending()->job(jobId)->str(),
+      targetPath->failed()->job(jobId)->str(),
+      targetPath->finished()->job(jobId)->str(),
+      targetPath->toDo()->job(jobId)->str(),
+  };
+
+  try {
+    auto& agencyCache = server().getFeature<ClusterFeature>().agencyCache();
+    auto [acb, idx] = agencyCache.read(paths);
+    auto res = acb->slice();
+
+    auto paths = std::vector{
+      targetPath->pending()->job(jobId)->vec(),
+      targetPath->failed()->job(jobId)->vec(),
+      targetPath->finished()->job(jobId)->vec(),
+      targetPath->toDo()->job(jobId)->vec(),
+    };
+
+    for (auto const& path : paths) {
+      VPackSlice job = res.at(0).get(path);
+
+      if (job.isObject()) {
+        LOG_TOPIC("eb139", INFO, Logger::SUPERVISION)
+          << "Attempting to abort supervision job " << job.toJson();
+        auto type = job.get("type").stringView();
+         // only moveshard and cleanoutserver may be aborted
+        if (type != "moveShard" && type != "cleanOutServer") {
+          generateError(Result{400, "Only MoveShard and CleanOutServer jobs can be aborted"});
+          return RestStatus::DONE;
+        } else if (path[2] != "Pending" && path[2] != "ToDo") {
+          generateError(Result{400, path[2] + " jobs can no longer be cancelled."});
+          return RestStatus::DONE;
+        }
+
+        // This tranaction aims at killing a job that is todo or pending.
+        // A todo job could be pending in the meantime however a pending
+        // job can never be todo again. Response ist evaluated in 412 result
+        // below.
+        auto sendTransaction = [&] {
+          VPackBuffer<uint8_t> trxBody;
+          { VPackBuilder builder(trxBody);
+            { VPackArrayBuilder trxs(&builder);
+              if (path[2] == "ToDo") {
+                VPackArrayBuilder trx(&builder);
+                { VPackObjectBuilder op(&builder);
+                  builder.add("arango/Target/ToDo/" + jobId + "/abort", VPackValue(true)); }
+                { VPackObjectBuilder pre(&builder);
+                  builder.add(VPackValue("arango/Target/ToDo/" + jobId));
+                  { VPackObjectBuilder val(&builder);
+                    builder.add("oldEmpty", VPackValue(false)); }}
+              }
+              VPackArrayBuilder trx(&builder);
+              { VPackObjectBuilder op(&builder);
+                builder.add("arango/Target/Pending/" + jobId + "/abort", VPackValue(true)); }
+              { VPackObjectBuilder pre(&builder);
+                builder.add(VPackValue("arango/Target/Pending/" + jobId));
+                { VPackObjectBuilder val(&builder);
+                  builder.add("oldEmpty", VPackValue(false)); }}
+            }
+          }
+          return AsyncAgencyComm().sendWriteTransaction(60s, std::move(trxBody));
+        };
+
+        return waitForFuture(
+          sendTransaction()
+          .thenValue([=](AsyncAgencyCommResult&& wr) {
+            if (!wr.ok()) {
+              // Only if no longer pending or todo.
+              if (wr.statusCode() == 412) {
+                auto results = wr.slice().get("results");
+                if (results[0].getNumber<uint64_t>() == 0 &&
+                    results[1].getNumber<uint64_t>() == 0) {
+                  generateError(
+                    Result{TRI_ERROR_HTTP_PRECONDITION_FAILED, "Job is no longer pending or to do"});
+                  return;
+                }
+              } else {
+                generateError(wr.asResult());
+                return;
+              }
+            }
+
+            VPackBuffer<uint8_t> payload;
+            {
+              VPackBuilder builder(payload);
+              VPackObjectBuilder ob(&builder);
+              builder.add("job", VPackValue(jobId));
+              builder.add("status", VPackValue("aborted"));
+              builder.add("error", VPackValue(false));
+            }
+            resetResponse(rest::ResponseCode::OK);
+            response()->setPayload(std::move(payload));
+          })
+          .thenError<VPackException>([this](VPackException const& e) {
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+          })
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
+      }
+    }
+
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+  }
+
+  return RestStatus::DONE;
+}
+
 RestStatus RestAdminClusterHandler::handleSingleServerJob(std::string const& job) {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
@@ -1150,7 +1301,7 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActive) {
   auto sendTransaction = [&] {
     if (wantToActive) {
       constexpr int timeout = 3600; // 1 hour
-      return AsyncAgencyComm().setValue(60s, maintenancePath, 
+      return AsyncAgencyComm().setValue(60s, maintenancePath,
           VPackValue(timepointToString(
               std::chrono::system_clock::now() + std::chrono::seconds(timeout))), 3600);
     } else {
@@ -1420,12 +1571,12 @@ RestStatus RestAdminClusterHandler::handleNumberOfServers() {
                   "only allowed on coordinators");
     return RestStatus::DONE;
   }
- 
+
   // GET requests are allowed for everyone, unless --server.harden is used.
   // in this case admin privileges are required.
   // PUT requests always require admin privileges
   ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
-  bool const needsAdminPrivileges = 
+  bool const needsAdminPrivileges =
       (request()->requestType() != rest::RequestType::GET || security.isRestApiHardened());
 
   if (needsAdminPrivileges &&

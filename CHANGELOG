@@ -1,12 +1,94 @@
-v3.7.14.1 (2021-08-07)
-----------------------
+v3.7.16 (XXXX-XX-XX)
+--------------------
 
 * Fixed LDAP global options. This need to use the first active provider, not the
   first provider (ES-881).
 
+* Fix issue #14807: Fix crash during optimization of certain AQL queries during
+  the remove-collect-variables optimizer rule, when a COLLECT node without
+  output variables (this includes RETURN DISTINCT) occured in the plan.
+
+
+v3.7.15 (2021-09-22)
+--------------------
+
+* Fixed a bug for array indexes on update of documents (BTS-548).
+
+* Fix active failover, so that the new host actually has working foxx services 
+  (BTS-558).
+
+* Updated OpenSSL to 1.1.1l and OpenLDAP to 2.4.59.
+
+* (EE only) Bug-fix: If you created a ArangoSearch view on Satellite-Collections
+  only and then join with a collection only having a single shard the
+  cluster-one-shard-rule was falsely applied and could lead to empty view
+  results. The Rule will now detect the situation properly, and not trigger.
+
+* (EE only) If you have a query using only satellite collections, now the
+  cluster-one-shard-rule can be applied to improve query performance.
+
+* No runtime limits for shard move and server cleanout jobs, instead possibility
+  to cancel them.
+
+* Updated ArangoDB Starter to 0.15.2.
+
+* Make statistics available in metrics API even if `--server.statistics` is set
+  to `false`. This allows clients to fetch some process statistics metrics from
+  instances that have statistics aggregation and storage turned off.
+
+* Updated arangosync to 1.8.0.
+
+* Added protocol specific metrics: histogram about request body size, total
+  number of HTTP/2 connections and total number of VST connections.
+
+* Fix a potential multi-threading issue in index creation on coordinators, when
+  an agency callback was triggered at the same time the method
+  `ensureIndexCoordinatorInner` was left.
+
+* When creating Pregel memory-mapped files, create them with O_TMPFILE attribute
+  on Linux so that files are guaranteed to vanish even if a process dies.
+
+* Preselect "create index in background" option when creating indexes in the web
+  UI. The "create index in background" option can be less intrusive because it
+  allows other write operations on the collection to proceed.
+
+* Do not block a scheduler thread on the coordinator while an index is being
+  created. Instead, start a background thread for the actual index fill-up work.
+  The original thread can then be relinquished until the index is completely
+  filled or index creation has failed.
+  The default index creation timeout on coordinators has also been extended from
+  1 hour to 4 days, but it is still configurable via the startup parameter
+  `--cluster.index-create-timeout` in case this is necessary.
+
+* Fixed: getResponsibleShard call on disjoint Smart Graphs if you asked for the
+  responsible shard on a disjoint edge collection where the _from and _to differ
+  (invalid), the server would respond with "DATASOURCE_NOT_FOUND". This is now
+  fixed to "BAD_PARAMETER" to emphasize that the collection is fine but the
+  input is invalid.
+
+* Fixed: _api/transaction/begin called on edge collections of disjoint
+  SmartGraphs falsely returned CollectionNotFound errors.
+
+* Bug-Fix: In more complex queries there was a code-path where a (Disjoint-)
+  Smart graph access was not properly optimized.
+
+* Fixed an assertion failure in unit tests for fuerte. There was a discrepancy
+  between the code and the associated TLA+ model for fuerte.
+
+* Improve log messages for Pregel runs by giving them more context.
+
+* Append physical compaction of log collection to every Raft log compaction.
+  Restrict agent RocksDB block cache and write buffer sizes (BTS-542).
+
+* Fixed issue #14592: IS_NULL(@x) isn't recognized as a constant expression.
+
+* Fix response when isBuilding could not be removed from newly created
+  collection, when agency precondition fails. This can happen, when own rebootId
+  increment has triggered plan entry to be removed (BTS-370).
+
 
 v3.7.14 (2021-08-07)
---------------------
+-------------------
 
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented cases
   and numerically unstable behaviour. In particular, the case of the

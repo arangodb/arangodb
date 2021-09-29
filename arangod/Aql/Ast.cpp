@@ -3300,8 +3300,9 @@ AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
     auto args = node->getMember(0);
     if (args->numMembers() == 1) {
       // replace IS_NULL(x) function call with `x == null`
-      return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
-                                      args->getMemberUnchecked(0), createNodeValueNull());
+      return this->optimizeBinaryOperatorRelational(trx, aqlFunctionsInternalCache, 
+                                                    createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                                             args->getMemberUnchecked(0), createNodeValueNull()));
     }
 #if 0
   } else if (func->name == "LIKE") {

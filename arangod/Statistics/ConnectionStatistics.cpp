@@ -72,11 +72,6 @@ ConnectionStatistics::Item ConnectionStatistics::acquire() {
 }
 
 void ConnectionStatistics::getSnapshot(Snapshot& snapshot) {
-  if (!StatisticsFeature::enabled()) {
-    // all the below objects may be deleted if we don't have statistics enabled
-    return;
-  }
-
   snapshot.httpConnections = statistics::HttpConnections;
   snapshot.totalRequests = statistics::TotalRequests;
   snapshot.totalRequestsSuperuser = statistics::TotalRequestsSuperuser;

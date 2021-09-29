@@ -141,7 +141,7 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
   network::Headers headers;
   headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid));
   auto body = std::make_shared<std::string>(builder.slice().toJson());
-  return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
+  return network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Post,
                               "/_api/transaction/begin", std::move(buffer),
                               reqOpts, std::move(headers));
 }
@@ -225,7 +225,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   std::vector<Future<network::Response>> requests;
   requests.reserve(state->knownServers().size());
   for (std::string const& server : state->knownServers()) {
-    requests.emplace_back(network::sendRequest(pool, "server:" + server, verb, path,
+    requests.emplace_back(network::sendRequestRetry(pool, "server:" + server, verb, path,
                                                VPackBuffer<uint8_t>(), reqOpts));
   }
 

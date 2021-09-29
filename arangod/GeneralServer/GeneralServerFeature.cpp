@@ -130,7 +130,30 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
       _proxyCheck(true),
       _permanentRootRedirect(true),
       _redirectRootTo("/_admin/aardvark/index.html"),
-      _numIoThreads(0) {
+      _numIoThreads(0),
+      _requestBodySizeHttp1(
+          server.getFeature<MetricsFeature>().histogram(
+              "arangodb_request_body_size_http1",
+              log_scale_t<uint64_t>(2, 64, 65536, 10),
+              "Body size of HTTP/1.1 requests")),
+      _requestBodySizeHttp2(
+          server.getFeature<MetricsFeature>().histogram(
+              "arangodb_request_body_size_http2",
+              log_scale_t<uint64_t>(2, 64, 65536, 10),
+              "Body size of HTTP/2 requests")),
+      _requestBodySizeVst(
+          server.getFeature<MetricsFeature>().histogram(
+              "arangodb_request_body_size_vst",
+              log_scale_t<uint64_t>(2, 64, 65536, 10),
+              "Body size of VST requests")),
+      _http2Connections(
+          server.getFeature<MetricsFeature>().counter(
+              "arangodb_http2_connections_total", 0,
+              "Total number of HTTP/2 connections")),
+      _vstConnections(
+          server.getFeature<MetricsFeature>().counter(
+              "arangodb_vst_connections_total", 0,
+              "Total number of VST connections")) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 

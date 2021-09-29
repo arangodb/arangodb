@@ -299,7 +299,7 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
                               term_t term, uint64_t millis, std::string const& clientId,
                               bool leading, bool reconfiguration) {
   _logLock.assertLockedByCurrentThread();
-
+  
   // verbose logging for all agency operations
   // there are two different log levels in use here for the AGENCYSTORE topic
   // - DEBUG: will log writes only on the leader
@@ -314,7 +314,7 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
         << "leader: false, client: " << clientId << ", index: " << idx << ", term: " << term
         << ", data: " << slice.toJson();
   }
-
+  
   auto byteSize = slice.byteSize();
   auto buf = std::make_shared<Buffer<uint8_t>>();
   buf->append((char const*)slice.begin(), byteSize);
@@ -347,7 +347,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
       FATAL_ERROR_EXIT();
     }
   }
-
+  
   try {
     _log_size += l.entry->byteSize();
     _log.emplace_back(std::forward<log_t>(l));  // log to RAM or die
@@ -1345,6 +1345,9 @@ bool State::compactPersisted(index_t cind, index_t keep) {
                         i_str.str() + "\" REMOVE l IN log");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
+
+  LOG_TOPIC("a8123", DEBUG, Logger::AGENCY) << "Removing log entries with keys lower than " << i_str.str();
+
   arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
                               aql::QueryString(aql), bindVars, nullptr);
 
@@ -1352,6 +1355,20 @@ bool State::compactPersisted(index_t cind, index_t keep) {
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
+  }
+
+  LOG_TOPIC("a8132", DEBUG, Logger::AGENCY) << "Compacting log collection";
+  try {
+    auto col = _vocbase->lookupCollection("log");
+    if (col == nullptr) {
+      LOG_TOPIC("d131f", FATAL, Logger::AGENCY) << "Failed to find log collection in agency.";
+      FATAL_ERROR_EXIT();
+    } else {
+      col->compact();
+    }
+  } catch (const std::exception& e) {
+    LOG_TOPIC("d13f1", WARN, Logger::AGENCY)
+      << "Failed to compact agent's physical log collection:" << e.what();
   }
 
   return true;

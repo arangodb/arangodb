@@ -878,9 +878,9 @@ constexpr int TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER                         
 constexpr int TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION                = 1489;
 
 /// 1490: ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
-/// "a shard follower refuses to perform an operation that is not a replication"
-/// Will be raised if a non-replication operation is refused by a shard
-/// follower.
+/// "a shard follower refuses to perform an operation"
+/// Will be raised if a replication operation is refused by a shard follower
+/// because it is coming from the wrong leader.
 constexpr int TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION                = 1490;
 
 /// 1491: ERROR_CLUSTER_SHARD_LEADER_RESIGNED

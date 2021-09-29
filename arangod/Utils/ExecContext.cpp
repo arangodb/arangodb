@@ -93,7 +93,7 @@ std::unique_ptr<ExecContext> ExecContext::create(std::string const& user, std::s
   auto* ptr = new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl, dbLvl, isAdminUser);
   return std::unique_ptr<ExecContext>(ptr);
 }
-
+  
 bool ExecContext::canUseDatabase(std::string const& db, auth::Level requested) const {
   if (isInternal() || _database == db) {
     // should be RW for superuser, RO for read-only

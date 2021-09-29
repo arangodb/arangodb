@@ -27,6 +27,7 @@
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "RestServer/Metrics.h"
 
 namespace arangodb {
 class RestServerThread;
@@ -110,6 +111,27 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
  
   bool proxyCheck() const { return _proxyCheck; }
   std::vector<std::string> trustedProxies() const { return _trustedProxies; }
+  
+  void countHttp1Request(uint64_t bodySize) {
+    _requestBodySizeHttp1.count(bodySize);
+  }
+
+  void countHttp2Request(uint64_t bodySize) {
+    _requestBodySizeHttp2.count(bodySize);
+  }
+
+  void countVstRequest(uint64_t bodySize) {
+    _requestBodySizeVst.count(bodySize);
+  }
+
+  void countHttp2Connection() {
+    _http2Connections.count();
+  }
+
+  void countVstConnection() {
+    _vstConnections.count();
+  }
+
 
  private:
   Result reloadTLSInternal() {  // reload TLS data from disk
@@ -138,6 +160,13 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
   uint64_t _numIoThreads;
+
+  // Some metrics about
+  Histogram<log_scale_t<uint64_t>>& _requestBodySizeHttp1;
+  Histogram<log_scale_t<uint64_t>>& _requestBodySizeHttp2;
+  Histogram<log_scale_t<uint64_t>>& _requestBodySizeVst;
+  Counter& _http2Connections;
+  Counter& _vstConnections;
 };
 
 }  // namespace arangodb

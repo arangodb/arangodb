@@ -59,6 +59,8 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
+#define LOG_PREGEL(id, level) LOG_TOPIC(id, level, Logger::PREGEL) << "[job " << _executionNumber << "] " 
+
 namespace {
 static constexpr size_t minStringChunkSize = 16 * 1024 * sizeof(char);
 static constexpr size_t maxStringChunkSize = 32 * 1024 * 1024 * sizeof(char);
@@ -85,8 +87,9 @@ size_t stringChunkSize(size_t /*numberOfChunks*/, uint64_t numVerticesLeft, bool
 } // namespace
 
 template <typename V, typename E>
-GraphStore<V, E>::GraphStore(TRI_vocbase_t& vb, GraphFormat<V, E>* graphFormat)
+GraphStore<V, E>::GraphStore(TRI_vocbase_t& vb, uint64_t executionNumber, GraphFormat<V, E>* graphFormat)
     : _vocbaseGuard(vb),
+      _executionNumber(executionNumber),
       _graphFormat(graphFormat),
       _config(nullptr),
       _vertexIdRangeStart(0),
@@ -104,7 +107,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   _config = config;
   TRI_ASSERT(_runningThreads == 0);
 
-  LOG_TOPIC("27f1e", DEBUG, Logger::PREGEL)
+  LOG_PREGEL("27f1e", DEBUG)
       << "Using up to " << _config->parallelism()
       << " threads to load data. memory-mapping is turned "
       << (config->useMemoryMaps() ? "on" : "off");
@@ -168,7 +171,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         auto task =
             std::make_shared<basics::LambdaTask>(queue, [this, vertexShard, edges]() -> Result {
               if (_vocbaseGuard.database().server().isStopping()) {
-                LOG_TOPIC("4355b", WARN, Logger::PREGEL)
+                LOG_PREGEL("4355b", WARN)
                     << "Aborting graph loading";
                 return {TRI_ERROR_SHUTTING_DOWN};
               }
@@ -176,27 +179,27 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
                 loadVertices(vertexShard, edges);
                 return Result();
               } catch (basics::Exception const& ex) {
-                LOG_TOPIC("8682a", WARN, Logger::PREGEL)
+                LOG_PREGEL("8682a", WARN)
                     << "caught exception while loading pregel graph: " << ex.what();
                 return Result(ex.code(), ex.what());
               } catch (std::exception const& ex) {
-                LOG_TOPIC("c87c9", WARN, Logger::PREGEL)
+                LOG_PREGEL("c87c9", WARN)
                     << "caught exception while loading pregel graph: " << ex.what();
                 return Result(TRI_ERROR_INTERNAL, ex.what());
               } catch (...) {
-                LOG_TOPIC("c7240", WARN, Logger::PREGEL)
+                LOG_PREGEL("c7240", WARN)
                     << "caught unknown exception while loading pregel graph";
                 return Result(TRI_ERROR_INTERNAL, "unknown exception while loading pregel graph");
               }
             });
         queue->enqueue(task);
       } catch (basics::Exception const& ex) {
-        LOG_TOPIC("3f283", WARN, Logger::PREGEL)
+        LOG_PREGEL("3f283", WARN)
             << "unhandled exception while "
             << "loading pregel graph: " << ex.what();
       } catch (...) {
-        LOG_TOPIC("3f282", WARN, Logger::PREGEL) << "unhandled exception while "
-        << "loading pregel graph";
+        LOG_PREGEL("3f282", WARN) << "unhandled exception while "
+            << "loading pregel graph";
       }
     }
   }
@@ -293,20 +296,23 @@ void moveAppend(std::vector<X>& src, std::vector<X>& dst) {
 template<typename M>
 std::unique_ptr<TypedBuffer<M>> createBuffer(WorkerConfig const& config, size_t cap) {
   if (config.useMemoryMaps()) {
-    auto ptr = std::make_unique<MappedFileBuffer<M>>(cap);
+    // prefix used for logging in TypedBuffer.h
+    std::string logPrefix = "[job " + std::to_string(config.executionNumber()) + "] ";
+
+    auto ptr = std::make_unique<MappedFileBuffer<M>>(cap, logPrefix);
     ptr->sequentialAccess();
     return ptr;
-  } else {
-    return std::make_unique<VectorTypedBuffer<M>>(cap);
   }
+
+  return std::make_unique<VectorTypedBuffer<M>>(cap);
 }
 }
 
 template <typename V, typename E>
 void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
                                     std::vector<ShardID> const& edgeShards) {
-  LOG_TOPIC("24837", DEBUG, Logger::PREGEL)
-    << "Pregel worker: loading from vertex shard " << vertexShard << ", edge shards: " << edgeShards;
+  LOG_PREGEL("24837", DEBUG)
+    << "Loading from vertex shard " << vertexShard << ", edge shards: " << edgeShards;
   
   transaction::Options trxOpts;
   trxOpts.waitForSync = false;
@@ -329,7 +335,7 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   uint64_t const vertexIdRangeStart = determineVertexIdRangeStart(numVertices);
   uint64_t vertexIdRange = vertexIdRangeStart;
   
-  LOG_TOPIC("7c31f", DEBUG, Logger::PREGEL) << "Shard '" << vertexShard << "' has "
+  LOG_PREGEL("7c31f", DEBUG) << "Shard '" << vertexShard << "' has "
     << numVertices << " vertices. id range: [" 
     << vertexIdRangeStart << ", " << (vertexIdRangeStart + numVertices) << ")";
   
@@ -395,11 +401,13 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   };
   
   _localVertexCount += numVertices;
+
+  double lastLogStamp = TRI_microtime();
  
   constexpr uint64_t batchSize = 10000;
   while (cursor->nextDocument(cb, batchSize)) {
     if (_vocbaseGuard.database().server().isStopping()) {
-      LOG_TOPIC("4355a", WARN, Logger::PREGEL) << "Aborting graph loading";
+      LOG_PREGEL("4355a", WARN) << "Aborting graph loading";
       break;
     }
     
@@ -408,8 +416,15 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
     } else {
       numVertices -= batchSize;
     }
-    LOG_TOPIC("b9ed9", DEBUG, Logger::PREGEL) << "Shard '" << vertexShard << "', "
-      << numVertices << " remaining vertices";
+
+    // log only every 10 seconds
+    double now = TRI_microtime();
+    if (now - lastLogStamp >= 10.0) {
+      lastLogStamp = now;
+      LOG_PREGEL("b9ed9", DEBUG) 
+          << "Shard '" << vertexShard << "', "
+          << numVertices << " left to load";
+    }
     segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
   }
 
@@ -422,7 +437,7 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   ::moveAppend(edges, _edges);
   ::moveAppend(eKeys, _edgeKeys);
 
-  LOG_TOPIC("6d389", DEBUG, Logger::PREGEL)
+  LOG_PREGEL("6d389", DEBUG)
     << "Pregel worker: done loading from vertex shard " << vertexShard;
 }
 
@@ -478,7 +493,7 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
       int res = Utils::resolveShard(ci, _config, collectionName,
                                     StaticStrings::KeyString, key, responsibleShard);
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC("b80ba", ERR, Logger::PREGEL)
+        LOG_PREGEL("b80ba", ERR)
           << "Could not resolve target shard of edge '" << key 
           << "', collection: " << collectionName
           << ": " << TRI_errno_string(res);
@@ -492,8 +507,8 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
     }
 
     if (edge->_targetShard == InvalidPregelShard) {
-      LOG_TOPIC("1f413", ERR, Logger::PREGEL)
-      << "Could not resolve target shard of edge";
+      LOG_PREGEL("1f413", ERR)
+        << "Could not resolve target shard of edge";
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
     }
     return TRI_ERROR_NO_ERROR;
@@ -549,7 +564,8 @@ uint64_t GraphStore<V, E>::determineVertexIdRangeStart(uint64_t numVertices) {
 /// Should not dead-lock unless we have to wait really long for other threads
 template <typename V, typename E>
 void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
-                                     RangeIterator<Vertex<V, E>>& it) {
+                                     RangeIterator<Vertex<V, E>>& it,
+                                     size_t threadNumber) {
   // transaction on one shard
   OperationOptions options;
   options.silent = true;
@@ -562,7 +578,8 @@ void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
   Result res;
   
   VPackBuilder builder;
-  size_t numDocs = 0;
+  uint64_t numDocs = 0;
+  double lastLogStamp = TRI_microtime();
 
   auto commitTransaction = [&]() {
     if (trx) {
@@ -585,7 +602,7 @@ void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
         THROW_ARANGO_EXCEPTION(opRes.result);
       }
       if (opRes.is(TRI_ERROR_ARANGO_CONFLICT)) {
-        LOG_TOPIC("4e632", WARN, Logger::PREGEL) << "conflict while storing " << builder.toJson();
+        LOG_PREGEL("4e632", WARN) << "conflict while storing " << builder.toJson();
       }
 
       res = trx->finish(res);
@@ -594,11 +611,19 @@ void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
       }
     
       if (_vocbaseGuard.database().server().isStopping()) {
-        LOG_TOPIC("73ec2", WARN, Logger::PREGEL) << "Storing data was canceled prematurely";
+        LOG_PREGEL("73ec2", WARN) << "Storing data was canceled prematurely";
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
       
       numDocs = 0;
+
+      // log only every 10 seconds
+      double now = TRI_microtime();
+      if (now - lastLogStamp >= 10.0) {
+        lastLogStamp = now;
+        LOG_PREGEL("24837", DEBUG)
+            << "Worker thread " << threadNumber << ", " << it.size() << " vertices left to store";
+      }
     }
 
     builder.clear();
@@ -661,8 +686,9 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
 
   _runningThreads.store(numThreads, std::memory_order_relaxed);
   size_t const numT = numThreads;
-  LOG_TOPIC("f3fd9", DEBUG, Logger::PREGEL) << "Storing vertex data using " <<
-    numT << " threads";
+  LOG_PREGEL("f3fd9", DEBUG) 
+      << "Storing vertex data (" << numSegments << " vertices) using " 
+      << numT << " threads";
   
   for (size_t i = 0; i < numT; ++i) {
     bool queued = SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [=] {
@@ -672,18 +698,18 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
       
       try {
         RangeIterator<Vertex<V, E>> it = vertexIterator(startI, endI);
-        storeVertices(_config->globalShardIDs(), it);
+        storeVertices(_config->globalShardIDs(), it, i);
         // TODO can't just write edges with SmartGraphs
       } catch (std::exception const& e) {
-        LOG_TOPIC("e22c8", ERR, Logger::PREGEL) << "Storing vertex data failed: " << e.what();
+        LOG_PREGEL("e22c8", ERR) << "Storing vertex data failed: " << e.what();
       } catch (...) {
-        LOG_TOPIC("51b87", ERR, Logger::PREGEL) << "Storing vertex data failed";
+        LOG_PREGEL("51b87", ERR) << "Storing vertex data failed";
       }
 
       uint32_t numRunning = _runningThreads.fetch_sub(1, std::memory_order_relaxed);
       TRI_ASSERT(numRunning > 0);
       if (numRunning - 1 == 0) {
-        LOG_TOPIC("b5a21", DEBUG, Logger::PREGEL)
+        LOG_PREGEL("b5a21", DEBUG)
             << "Storing data took " << (TRI_microtime() - now) << "s";
         cb();
       }

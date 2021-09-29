@@ -551,16 +551,6 @@ void Index::toVelocyPack(VPackBuilder& builder,
 
 /// @brief create a VelocyPack representation of the index figures
 /// base functionality (called from derived classes)
-std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures() const {
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject(/*unindexed*/ true);
-  toVelocyPackFigures(*builder);
-  builder->close();
-  return builder;
-}
-
-/// @brief create a VelocyPack representation of the index figures
-/// base functionality (called from derived classes)
 void Index::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("memory", VPackValue(memory()));

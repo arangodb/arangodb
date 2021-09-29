@@ -106,7 +106,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
     bool lock();
     void unlock();
     bool isLocked() const { return _locked; }
-  private:
+   private:
     RocksDBCollection* const _collection;
     bool _locked;
   };

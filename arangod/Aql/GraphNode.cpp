@@ -618,6 +618,11 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   _options->toVelocyPackIndexes(nodes);
 }
 
+void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone, bool) const {
+  clone._isSmart = _isSmart;
+  clone._isDisjoint = _isDisjoint;
+}
+
 CostEstimate GraphNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
   size_t incoming = estimate.estimatedNrItems;

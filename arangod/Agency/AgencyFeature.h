@@ -47,6 +47,8 @@ class AgencyFeature : public application_features::ApplicationFeature {
   void stop() override final;
   void unprepare() override final;
 
+  bool activated() const noexcept { return _activated; }
+  
  private:
   bool _activated;
   uint64_t _size;  // agency size (default: 5)

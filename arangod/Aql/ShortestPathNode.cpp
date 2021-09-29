@@ -330,6 +330,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencie
 
 void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPathNode& c,
                                                bool withProperties) const {
+  graphCloneHelper(plan, c, withProperties);
   if (isVertexOutVariableUsedLater()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {

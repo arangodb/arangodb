@@ -51,6 +51,9 @@ void PropertyUpdateCollection(std::string const& db, std::string const& collecti
 void TruncateCollection(std::string const& db, std::string const& name, int result);
 void CreateDatabase(std::string const& name, int result);
 void DropDatabase(std::string const& name, int result);
+// index creation start
+void CreateIndex(std::string const& db, std::string const& col, VPackSlice const&);
+// index creation result
 void CreateIndex(std::string const& db, std::string const& col, VPackSlice const&, int result);
 void DropIndex(std::string const& db, std::string const& col,
                std::string const& idx, int result);

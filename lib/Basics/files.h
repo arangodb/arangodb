@@ -185,7 +185,7 @@ int TRI_UnlinkFile(char const* filename);
 /// @brief reads into a buffer from a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReadPointer(int fd, void* buffer, size_t length);
+TRI_read_return_t TRI_ReadPointer(int fd, char* buffer, size_t length);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes buffer to a file
@@ -393,10 +393,6 @@ std::string TRI_LocateInstallDirectory(char const* argv0, const char* binaryPath
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TRI_LocateConfigDirectory(char const* binaryPath);
-
-/// @brief creates a new datafile
-/// returns the file descriptor or -1 if the file cannot be created
-int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether path is full qualified or relative

@@ -167,7 +167,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_INSUFFICIENT_DBSERVERS, "the number of current dbservers is lower than the requested replicationFactor");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER, "a follower could not be dropped in agency");
   REG_ERROR(ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, "a shard leader refuses to perform a replication operation");
-  REG_ERROR(ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, "a shard follower refuses to perform an operation that is not a replication");
+  REG_ERROR(ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, "a shard follower refuses to perform an operation");
   REG_ERROR(ERROR_CLUSTER_SHARD_LEADER_RESIGNED, "a (former) shard leader refuses to perform an operation, because it has resigned in the meantime");
   REG_ERROR(ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, "some agency operation failed");
   REG_ERROR(ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, "leadership challenge is ongoing");

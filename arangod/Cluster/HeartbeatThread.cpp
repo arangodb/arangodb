@@ -50,6 +50,7 @@
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -57,6 +58,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
 #include "VocBase/vocbase.h"
+#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -908,6 +910,10 @@ void HeartbeatThread::runSingleServer() {
         ServerState::instance()->setFoxxmaster(_myId);
         auto prv = ServerState::setServerMode(ServerState::Mode::DEFAULT);
         if (prv == ServerState::Mode::REDIRECT) {
+          auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
+          auto database = sysDbFeature.use();
+          server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
+            database.get(), "server/leader.js", nullptr);
           LOG_TOPIC("98325", INFO, Logger::HEARTBEAT)
               << "Successful leadership takeover: "
               << "All your base are belong to us";

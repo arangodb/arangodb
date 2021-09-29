@@ -473,15 +473,17 @@ Result Manager::lockCollections(TRI_vocbase_t& vocbase,
               if (res.fail()) {
                 return false;
               }
-              res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname,
-                                             mode, /*lockUsage*/ false));
-              if (res.fail()) {
-                return false;
-              }
-              res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname,
-                                             mode, /*lockUsage*/ false));
-              if (res.fail()) {
-                return false;
+              if (!col->isDisjoint()) {
+                res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname,
+                                               mode, /*lockUsage*/ false));
+                if (res.fail()) {
+                  return false;
+                }
+                res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname,
+                                               mode, /*lockUsage*/ false));
+                if (res.fail()) {
+                  return false;
+                }
               }
             }
           } catch (basics::Exception const& ex) {
@@ -1186,7 +1188,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
         }
       }
 
-      auto f = network::sendRequest(pool, "server:" + coordinator,
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator,
                                     fuerte::RestVerb::Get, "/_api/transaction",
                                     body, options, std::move(headers));
       futures.emplace_back(std::move(f));
@@ -1282,7 +1284,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
         }
       }
 
-      auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Delete,
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator, fuerte::RestVerb::Delete,
                                     "_api/transaction/write", body, reqOpts,
                                     std::move(headers));
       futures.emplace_back(std::move(f));

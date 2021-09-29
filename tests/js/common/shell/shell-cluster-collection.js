@@ -472,19 +472,19 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test create
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testCreateEmptyShardKeysArray : function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ ] });
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["_key"], props.shardKeys);
     },
-    
+
     testCreateShardKeysOnKey : function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ "_key" ] });
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["_key"], props.shardKeys);
     },
-    
+
     testCreateShardKeysOnId : function () {
       try {
         db._create("UnitTestsClusterCrud", { shardKeys: [ "_id" ] });
@@ -508,7 +508,7 @@ function ClusterCollectionSuite () {
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["foo"], props.shardKeys);
     },
-    
+
     testCreateIncompleteShardKeys2 : function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ "bar", "" ] });
       let props = db["UnitTestsClusterCrud"].properties();
@@ -520,13 +520,13 @@ function ClusterCollectionSuite () {
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["_from"], props.shardKeys);
     },
-    
+
     testCreateShardKeysOnTo : function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ "_to" ] });
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["_to"], props.shardKeys);
     },
-    
+
     testCreateShardKeysOnFromTo : function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ "_from", "_to" ] });
       let props = db["UnitTestsClusterCrud"].properties();
@@ -538,13 +538,13 @@ function ClusterCollectionSuite () {
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["a", "_from"], props.shardKeys);
     },
-    
+
     testCreateShardKeysMany : function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ "a", "b", "c", "d", "e", "f", "g", "h" ] });
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["a", "b", "c", "d", "e", "f", "g", "h"], props.shardKeys);
     },
-    
+
     testCreateShardKeysTooMany : function () {
       try {
         // only 8 shard keys are allowed
@@ -653,10 +653,52 @@ function ClusterCollectionSuite () {
       }
     },
 
+    testCreateFailureWhenRemovingIsBuilding : function () {
+      if (!isServer) {
+        console.info('Skipping client test');
+        return;
+      }
+      let setFailAt;
+      let removeFailAt;
+      if (internal.debugCanUseFailAt()) {
+        setFailAt = internal.debugSetFailAt;
+        removeFailAt = internal.debugRemoveFailAt;
+      }
+      if (!setFailAt) {
+        console.info('Failure tests disabled, skipping...');
+        return;
+      }
+
+      const failurePoint = 'ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding';
+      try {
+        setFailAt(failurePoint);
+        const colName = "UnitTestClusterShouldNotBeCreated1";
+        let threw = false;
+        try {
+          db._create(colName);
+        } catch (e) {
+          threw = true;
+          assertTrue(e instanceof ArangoError);
+          assertEqual(503, e.errorNum);
+        } finally {
+          // we need to wait for the collecion to show up before the drop can work.
+          while (!db._collection(colName)) {
+            require("internal").sleep(0.1);
+          }
+          db._drop(colName);
+        }
+        assertTrue(threw);
+      } finally {
+        removeFailAt(failurePoint);
+      }
+    },
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test replicationFactor
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testMinReplicationFactor : function () {
       let min = internal.minReplicationFactor;
       if (min > 0) {
@@ -672,7 +714,7 @@ function ClusterCollectionSuite () {
         }
       }
     },
-    
+
     testMaxReplicationFactor : function () {
       let max = internal.maxReplicationFactor;
       if (max > 0) {
@@ -680,7 +722,7 @@ function ClusterCollectionSuite () {
           db._create("UnitTestsClusterCrud", { replicationFactor: max });
           let properties = db["UnitTestsClusterCrud"].properties();
           assertEqual(max, properties.replicationFactor);
-          
+
           try {
             db["UnitTestsClusterCrud"].properties({ replicationFactor: max + 1 });
             fail();

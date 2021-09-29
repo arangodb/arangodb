@@ -24,6 +24,7 @@
 #define APPLICATION_FEATURES_STATISTICS_FEATURE_H 1
 
 #include <array>
+#include <initializer_list>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
@@ -115,7 +116,15 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
 
   bool allDatabases() const { return _statisticsAllDatabases; }
 
+  static arangodb::velocypack::Builder fillDistribution(statistics::Distribution const& dist);
+
  private:
+  void appendHistogram(
+    std::string& result, statistics::Distribution const& dist,
+    std::string const& label, std::initializer_list<std::string> const& les) const;
+  void appendMetric(
+    std::string& result, std::string const& val, std::string const& label) const;
+
   bool _statistics;
   bool _statisticsHistory;
   bool _statisticsHistoryTouched;

@@ -86,7 +86,7 @@ struct ExternalId {
 };
 #else
 struct ExternalId {
-  DWORD _pid;
+  TRI_pid_t _pid;
   HANDLE _readPipe;
   HANDLE _writePipe;
 
@@ -154,6 +154,12 @@ ProcessInfo TRI_ProcessInfoSelf(void);
 ProcessInfo TRI_ProcessInfo(TRI_pid_t pid);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up process in the process list
+////////////////////////////////////////////////////////////////////////////////
+
+ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the process name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -165,8 +171,30 @@ void TRI_SetProcessTitle(char const* title);
 
 void TRI_CreateExternalProcess(char const* executable,
                                std::vector<std::string> const& arguments,
-                               std::vector<std::string> additionalEnv,
+                               std::vector<std::string> const& additionalEnv,
                                bool usePipes, ExternalId* pid);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Closes the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ClosePipe(ExternalProcess* process,
+                   bool read);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reads from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
+                               char* buffer,
+                               size_t bufferSize);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Writes to the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_WritePipe(ExternalProcess const* process,
+                   char const* buffer,
+                   size_t bufferSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process

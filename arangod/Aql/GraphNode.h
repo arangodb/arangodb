@@ -187,6 +187,21 @@ class GraphNode : public ExecutionNode {
  public:
   graph::Graph const* graph() const noexcept;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // Internal helpers used in tests to modify enterprise detections.
+  // These should not be used in production, as their detection
+  // is implemented in constructors.
+  void setIsSmart(bool target) {
+    _isSmart = target;
+  }
+
+  void setIsDisjoint(bool target) {
+    _isDisjoint = target;
+  }
+#endif
+ protected:  
+  void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone, bool withProperties) const;
+
  private:
   void addEdgeCollection(aql::Collections const& collections, std::string const& name, TRI_edge_direction_e dir);
   void addEdgeCollection(aql::Collection& collection, TRI_edge_direction_e dir);

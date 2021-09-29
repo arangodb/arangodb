@@ -1250,7 +1250,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
     auto collectNode = ExecutionNode::castTo<CollectNode*>(n);
     TRI_ASSERT(collectNode != nullptr);
 
-    auto const& varsUsedLater = n->getVarsUsedLater();
+    auto const& varsUsedLater = collectNode->getVarsUsedLater();
     auto outVariable = collectNode->outVariable();
 
     if (outVariable != nullptr &&
@@ -1294,25 +1294,15 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
             }
 
           }  // end - expression exists
-        } else if (planNode->getType() == EN::COLLECT) {
-          auto innerCollectNode = ExecutionNode::castTo<CollectNode const*>(planNode);
-          if (innerCollectNode->hasOutVariable()) {
-            // We have the following situation:
-            //
-            // COLLECT v1 = doc._id INTO g1
-            // COLLECT v2 = doc._id INTO g2
-            //
-            searchVariables.push_back(innerCollectNode->outVariable());
-          } else {
-            // when we find another COLLECT, it will invalidate all
-            // previous variables in the scope
-            searchVariables.clear();
-          }
         } else {
           auto here = planNode->getVariableIdsUsedHere();
+          TRI_ASSERT(!searchVariables.empty());
           if (here.find(searchVariables.back()->id) != here.end()) {
             // the outVariable of the last collect should not be used by any following node directly
             doOptimize = false;
+            break;
+          }
+          if (planNode->getType() == EN::COLLECT) {
             break;
           }
         }

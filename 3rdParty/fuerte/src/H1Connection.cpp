@@ -280,8 +280,15 @@ void H1Connection<ST>::finishConnect() {
     this->asyncWriteNextRequest();  // starts writing if queue non-empty
   } else {
     FUERTE_LOG_ERROR << "finishConnect: found state other than 'Connecting': " << static_cast<int>(exp);
-    FUERTE_ASSERT(false);
-    // If this happens, we probably have a sleeping barber
+    FUERTE_ASSERT(exp == Connection::State::Failed);
+    // If this happens, then the connection has been shut down before
+    // it could be fully connected, but the completion handler of the
+    // connect call was still scheduled.
+    // Note that it is possible that _active is still set here, if the
+    // shutdown has only just happened. In this case we need the following
+    // call to reset _active and prevent a potential sleeping barber,
+    // exactly as the model suggests.
+    this->asyncWriteNextRequest();  // starts writing if queue non-empty
   }
 }
 
