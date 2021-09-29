@@ -59,11 +59,9 @@ class ClientFeature final : public HttpEndpointProvider {
 
   std::string const& databaseName() const { return _databaseName; }
   bool authentication() const { return _authentication; }
-  /*
-  std::string const& endpoint() const { return _endpoint; }
-  void setEndpoint(std::string const& value) { _endpoint = value; }
-  */
+  // get single endpoint. used by client tools that can handle only one endpoint
   std::string const& endpoint() const { return _endpoints[0]; }
+  // set single endpoint
   void setEndpoint(std::string const& value) { _endpoints[0] = value; }
   std::string const& username() const { return _username; }
   void setUsername(std::string const& value) { _username = value; }
@@ -112,7 +110,6 @@ class ClientFeature final : public HttpEndpointProvider {
   void loadJwtSecretFile();
 
   std::string _databaseName;
-  // std::string _endpoint;
   std::vector<std::string> _endpoints;
   size_t _maxNumEndpoints;
   std::string _username;
