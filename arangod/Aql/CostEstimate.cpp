@@ -42,12 +42,14 @@ void CostEstimate::invalidate() {
   // a value of < 0 will mean that the cost estimation was not performed yet
   estimatedCost = -1.0;
   estimatedNrItems = 0;
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(!isValid());
 }
 
 void CostEstimate::initialize() {
   estimatedCost = 0.0;
   estimatedNrItems = 0;
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isValid());
 }
 

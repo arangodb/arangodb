@@ -110,6 +110,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestHandler/RestHotBackupHandler.h"
+#include "Enterprise/RestHandler/RestLicenseHandler.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 
@@ -660,8 +661,10 @@ void GeneralServerFeature::defineHandlers() {
 #ifdef USE_ENTERPRISE
   if (backup.isAPIEnabled()) {
     _handlerFactory->addPrefixHandler("/_admin/backup",
-                                    RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
+                                      RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
   }
+  _handlerFactory->addPrefixHandler("/_admin/license",
+                                    RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
 #endif
 
 

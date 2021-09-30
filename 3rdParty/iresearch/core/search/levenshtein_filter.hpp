@@ -110,7 +110,7 @@ struct IRESEARCH_API by_edit_distance_options : by_edit_distance_filter_options 
 class IRESEARCH_API by_edit_distance final
     : public filter_base<by_edit_distance_options> {
  public:
-  DECLARE_FACTORY();
+  static ptr make();
 
   static prepared::ptr prepare(
     const index_reader& index,

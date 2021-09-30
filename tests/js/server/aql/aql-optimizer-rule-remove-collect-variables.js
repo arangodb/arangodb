@@ -357,6 +357,42 @@ function optimizerRuleTestSuite () {
       assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
 
+    // Regression test for https://github.com/arangodb/arangodb/issues/14807.
+    // This resulted in an invalid memory access in the removeCollectVariablesRule.
+    testIssue14807 : function () {
+      const query = `
+        for u in union([],[])
+        collect test = u.v into g
+        return Distinct {
+          Test: test,
+            Prop1: MIN(g[*].u.someProp),
+            Prop2: MAX(g[*].u.someProp)
+        }
+      `;
+
+      const expectedResults = [];
+
+      const results = AQL_EXECUTE(query);
+      assertEqual(expectedResults, results.json);
+    },
+
+    testCollectIntoBeforeCollectWithoutInto : function () {
+      const query = `
+         LET items = [{_id: 'ID'}]
+         FOR item1 IN items
+           COLLECT unused1 = item1._id INTO first
+           COLLECT unused2 = first[0].item1._id
+           RETURN unused2
+         `;
+      const expected = [ "ID" ];
+
+      let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
+      assertEqual(expected, resultEnabled);
+
+      let explain =  AQL_EXPLAIN(query, { }, paramEnabled);
+      assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
+    },
+
   };
 }
 

@@ -69,6 +69,8 @@ struct alignas(64) ReplicatedLog {
                          std::shared_ptr<ReplicatedLogMetrics> const& metrics,
                          LoggerContext const& logContext);
 
+  ~ReplicatedLog();
+
   ReplicatedLog() = delete;
   ReplicatedLog(ReplicatedLog const&) = delete;
   ReplicatedLog(ReplicatedLog&&) = delete;

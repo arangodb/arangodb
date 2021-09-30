@@ -48,9 +48,7 @@ class IRESEARCH_API directory_cleaner {
   static size_t clean(
     directory& dir,
     const removal_acceptor_t& acceptor =
-      [](const std::string&)->bool { return true; }
-  );
-  static index_file_refs::counter_t& init(directory& dir);
+      [](const std::string&)->bool { return true; });
 };
 
 }
