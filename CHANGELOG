@@ -1,6 +1,11 @@
 v3.8.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-582: ArangoDB client EXE package for Windows has incorrect metadata.
+
+* Fixed BTS-575: Windows EXE installer doesn't replace service during upgrade in
+  silent (non-UI) mode.
+
 * Fix issue #14819: Query: AQL: missing variable # for node #... location
   RestCursorHandler.cpp.
 
