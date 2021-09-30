@@ -852,11 +852,17 @@ bool GraphManager::collectionExists(std::string const& collection) const {
 
 OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
                                           bool dropCollections) {
+  // the set of collections that have no distributeShardsLike attribute
   std::unordered_set<std::string> leadersToBeRemoved;
+  // the set of collections that have a distributeShardsLike attribute, they are
+  // removed before the collections from \p leadersToBeRemoved
   std::unordered_set<std::string> followersToBeRemoved;
   OperationOptions options(ExecContext::current());
 
-  if (dropCollections) {
+  if (dropCollections) { // todo: make another function out of this
+    // Puts the collection with name \p colName to \p leadersToBeRemoved (if \p distributeShardsLike
+    // is not defined) or to \p followersToBeRemoved (if it is defined)
+    // or does nothing if there is no collection with this name.
     auto addToRemoveCollections = [this, &graph, &leadersToBeRemoved,
                                    &followersToBeRemoved](std::string const& colName) {
       std::shared_ptr<LogicalCollection> col =

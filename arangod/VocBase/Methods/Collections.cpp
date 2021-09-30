@@ -374,7 +374,8 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     bool createWaitsForSyncReplication,             // replication wait flag
     bool enforceReplicationFactor,                  // replication factor flag
     bool isNewDatabase,
-    std::shared_ptr<LogicalCollection>& ret) {  // invoke on collection creation
+    std::shared_ptr<LogicalCollection>& ret,
+    bool isSingleServerSmartGraph) {  // invoke on collection creation
   if (name.empty()) {
     events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return TRI_ERROR_ARANGO_ILLEGAL_NAME;
@@ -386,7 +387,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
   std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = create(vocbase, options, infos, createWaitsForSyncReplication,
-                      enforceReplicationFactor, isNewDatabase, nullptr, collections);
+                      enforceReplicationFactor, isNewDatabase, nullptr, collections, isSingleServerSmartGraph);
   if (res.ok() && collections.size() > 0) {
     ret = std::move(collections[0]);
   }

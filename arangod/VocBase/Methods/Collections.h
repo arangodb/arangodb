@@ -90,7 +90,8 @@ struct Collections {
       bool createWaitsForSyncReplication,             // replication wait flag
       bool enforceReplicationFactor,                  // replication factor flag
       bool isNewDatabase,
-      std::shared_ptr<LogicalCollection>& ret);  // invoke on collection creation
+      std::shared_ptr<LogicalCollection>& ret,
+      bool isSingleServerSmartGraph = false);  // invoke on collection creation
 
   /// Create many collections, ownership of collections in callback is
   /// transferred to callee
