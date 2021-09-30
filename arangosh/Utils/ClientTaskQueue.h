@@ -228,7 +228,7 @@ inline bool ClientTaskQueue<JobData>::spawnWorkers(ClientManager& manager,
   try {
     MUTEX_LOCKER(lock, _workersLock);
     for (; spawned < numWorkers; spawned++) {
-      auto client = manager.getConnectedClient(false, false, true);
+      auto client = manager.getConnectedClient(false, false, true, spawned);
       auto worker = std::make_unique<Worker>(_server, *this, std::move(client));
       _workers.emplace_back(std::move(worker));
       _workers.back()->start();
