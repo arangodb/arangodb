@@ -793,8 +793,57 @@ function gatherBlockTestSuite () {
       var actual = AQL_EXECUTE(query).json;
 
       assertEqual(expected, actual, query);
-    }
+    },
 
+    // This is a regression test. TODO Add link to PR
+    // An UnsortedGather would get confused if an input block started with a non-relevant shadow row,
+    // which let it skip some dependencies and thus miss some rows.
+    testGatherOnShadowRowBoundary : function () {
+      db._drop(cn4);
+      c4 = db._create(cn4, {numberOfShards:2});
+      c4.ensureIndex({type: "persistent", fields: ["val"]});
+      c4.insert([{val: 1}, {val: 2}, {val: 3}]);
+
+      const query = `
+        FOR iter IN 1..2
+        // The first shadow row emitted by subquery sq1, corresponding to iter=1,
+        // will be crafted to produce the aforementioned situation.
+        LET sq1 = (
+          // By skipping the first data row, the very first row is now the
+          // (currently relevant) shadow row corresponding to iter=1.
+          FILTER iter > 1
+          FOR d1 IN ${cn4}
+            SORT d1.val
+            // The iter=1 shadow row's depth is now increased to 1, making it non-relevant,
+            // and still the very first row.
+            LET sq2 = (
+              // Now read the three documents, one per subquery iteration, each in one of two shards.
+              FOR d2 IN ${cn4}
+                FILTER d2.val == d1.val
+                // Here we have the UnsortedGather. The very first thing it encounters is the non-relevant
+                // shadow row corresponding to iter=1.
+                // This would leave it in an unwanted state, e.g. having its first dependency already marked as done.
+                // Thus, if the first document lives in the first dependency, it would not be found.
+                LIMIT 1
+                RETURN d2
+            )
+            RETURN sq2[0]
+       )
+       RETURN {iter, vals: sq1[*].val}
+      `;
+      const res = db._query(query).toArray();
+      const expected = [
+        { // The first iteration gives no results due to `FILTER iter > 1`.
+          iter: 1,
+          vals: [],
+        },
+        { // In the second iteration, the self-join should return every document once in order.
+          iter: 2,
+          vals: [1, 2, 3],
+        },
+      ];
+      assertEqual(expected, res);
+    },
   };
 }
 
