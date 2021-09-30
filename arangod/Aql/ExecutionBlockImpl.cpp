@@ -1748,7 +1748,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
           // we do not have any input for this executor on the current depth.
           // We have skipped over the full subquery execution, so claim it is
           // DONE for now. It will be resetted after this shadowRow. If one
-          // of the next SubqueryRuns is not skipepd over.
+          // of the next SubqueryRuns is not skipped over.
           localExecutorState = ExecutorState::DONE;
           _execState = ExecState::SHADOWROWS;
           // The following line is in particular for the UnsortedGatherExecutor,
