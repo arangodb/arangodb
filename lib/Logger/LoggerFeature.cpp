@@ -96,6 +96,7 @@ LoggerFeature::~LoggerFeature() {
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("log.tty", "log.foreground-tty");
+  options->addOldOption("log.escape", "log.escape-control-chars");
 
   options
       ->addOption("--log", "the global or topic-specific log level",
@@ -109,8 +110,12 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_useColor),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--log.escape", "escape characters when logging",
-                     new BooleanParameter(&_useEscaped));
+  options->addOption("--log.escape-control-chars", "escape control characters when logging",
+                     new BooleanParameter(&_useControlEscaped))
+                     .setIntroducedIn(30900);
+  options->addOption("--log.escape-unicode-chars", "escape unicode characters when logging",
+                     new BooleanParameter(&_useUnicodeEscaped))
+                     .setIntroducedIn(30900);
 
   options->addOption(
       "--log.output,-o",
@@ -393,7 +398,8 @@ void LoggerFeature::prepare() {
   Logger::setShowRole(_showRole);
   Logger::setUseColor(_useColor);
   Logger::setTimeFormat(LogTimeFormats::formatFromName(_timeFormatString));
-  Logger::setUseEscaped(_useEscaped);
+  Logger::setUseControlEscaped(_useControlEscaped);
+  Logger::setUseUnicodeEscaped(_useUnicodeEscaped);
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShortenFilenames(_shortenFilenames);
   Logger::setShowProcessIdentifier(_processId);
