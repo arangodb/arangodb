@@ -471,18 +471,21 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
 
   // Get lock on revision tree:
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
-
+  if (maxCommitSeq < _revisionTreeApplied) {
+    // this function is called indirectly from RocksDBSettingsManager::sync which passes
+    // in a seq nr that it has previously obtained, but it can happen that in the meantime
+    // the tree has been moved forward or a tree was rebuilt and _revisionTreeApplied is
+    // now greater than the seq nr we get passed in. In this case we have to bump the seq
+    // nr forward, because we cannot generate a tree from the past.
+    maxCommitSeq = _revisionTreeApplied;
+  }
+  
   maxCommitSeq = _meta.committableSeq(maxCommitSeq);
   if (needToPersistRevisionTree(maxCommitSeq, guard)) {
     rocksdb::SequenceNumber seq = maxCommitSeq;
 
-    if (seq < _revisionTreeApplied) {
-      // this is a special case when we have an applied sequence number
-      // which is higher than what we have blockers for. this can only
-      // happen during tree rebuilding. in this case we have to bump the
-      // seq number forward, because we cannot generate a tree from the past.
-      seq = _revisionTreeApplied;
-    }
+    TRI_ASSERT(maxCommitSeq >= _revisionTreeApplied);
+    
     scratch.clear();
 
     try {
@@ -727,6 +730,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
   }
 
   applyUpdates(commitSeq, lock);  // always apply updates...
+  TRI_ASSERT(_revisionTreeApplied == commitSeq);
 
   // applyUpdates will make sure we will have a valid tree
   TRI_ASSERT(_revisionTree != nullptr);
