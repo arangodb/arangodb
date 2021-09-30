@@ -745,15 +745,10 @@ void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(irs::document con
   TRI_ASSERT(reader.itr);
   TRI_ASSERT(reader.value);
   auto const& payload = reader.value->value;
-  //auto& storedValues = _indexReadBuffer.getStoredValues();
-  //storedValues.emplace_back();
-  //auto& storedValue = storedValues.back();
   bool const found = (doc.value == reader.itr->seek(doc.value));
   if (found && !payload.empty()) {
-    //storedValue = payload;
     _indexReadBuffer.pushStoredValue(payload);
   } else {
-    //storedValue = ref<irs::byte_type>(VPackSlice::nullSlice());
     _indexReadBuffer.pushStoredValue(ref<irs::byte_type>(VPackSlice::nullSlice()));
   }
 }
