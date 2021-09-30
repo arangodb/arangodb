@@ -152,15 +152,15 @@ The query has to be executed within the given runtime or it will be killed.
 The value is specified in seconds. The default value is *0.0* (no timeout).
 
 @RESTSTRUCT{maxTransactionSize,post_api_cursor_opts,integer,optional,int64}
-Transaction size limit in bytes. Honored by the RocksDB storage engine only.
+Transaction size limit in bytes.
 
 @RESTSTRUCT{intermediateCommitSize,post_api_cursor_opts,integer,optional,int64}
 Maximum total size of operations after which an intermediate commit is performed
-automatically. Honored by the RocksDB storage engine only.
+automatically.
 
 @RESTSTRUCT{intermediateCommitCount,post_api_cursor_opts,integer,optional,int64}
 Maximum number of operations after which an intermediate commit is performed
-automatically. Honored by the RocksDB storage engine only.
+automatically.
 
 @RESTSTRUCT{skipInaccessibleCollections,post_api_cursor_opts,boolean,optional,}
 AQL queries (especially graph traversals) will treat collection to which a user has no access rights as if these collections were empty. Instead of returning a forbidden access error, your queries will execute normally. This is intended to help with certain use-cases: A graph contains several collections and different users execute AQL queries on that graph. You can now naturally limit the accessible results by changing the access rights of users on collections. This feature is only available in the Enterprise Edition.
