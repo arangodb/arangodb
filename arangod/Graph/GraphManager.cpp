@@ -444,9 +444,9 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
 
 Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph>)> const& callback) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
-  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
-                                            arangodb::aql::QueryString{queryStr},
-                                            nullptr);
+  auto query =
+      arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
+                                   arangodb::aql::QueryString{queryStr}, nullptr);
   query->queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query->executeSync();
 
@@ -638,10 +638,10 @@ Result GraphManager::ensureCollections(
   const bool sssg = false;
 #endif
 
-
-  Result finalResult = methods::Collections::create(ctx()->vocbase(), opOptions,
-                                                    collectionsToCreate.get(), waitForSync,
-                                                    true, false, nullptr, created, sssg);
+  Result finalResult =
+      methods::Collections::create(ctx()->vocbase(), opOptions,
+                                   collectionsToCreate.get(), waitForSync, true,
+                                   false, nullptr, created, sssg);
 #ifdef USE_ENTERPRISE
   if (finalResult.ok()) {
     guard.cancel();
@@ -713,7 +713,8 @@ Result GraphManager::readGraphKeys(velocypack::Builder& builder) const {
 
 Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
                                       std::string const& queryStr) const {
-  auto query = arangodb::aql::Query::create(ctx(), arangodb::aql::QueryString(queryStr), nullptr);
+  auto query =
+      arangodb::aql::Query::create(ctx(), arangodb::aql::QueryString(queryStr), nullptr);
   query->queryOptions().skipAudit = true;
 
   LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)
@@ -851,11 +852,17 @@ bool GraphManager::collectionExists(std::string const& collection) const {
 
 OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
                                           bool dropCollections) {
+  // the set of collections that have no distributeShardsLike attribute
   std::unordered_set<std::string> leadersToBeRemoved;
+  // the set of collections that have a distributeShardsLike attribute, they are
+  // removed before the collections from \p leadersToBeRemoved
   std::unordered_set<std::string> followersToBeRemoved;
   OperationOptions options(ExecContext::current());
 
-  if (dropCollections) {
+  if (dropCollections) { // todo: make another function out of this
+    // Puts the collection with name \p colName to \p leadersToBeRemoved (if \p distributeShardsLike
+    // is not defined) or to \p followersToBeRemoved (if it is defined)
+    // or does nothing if there is no collection with this name.
     auto addToRemoveCollections = [this, &graph, &leadersToBeRemoved,
                                    &followersToBeRemoved](std::string const& colName) {
       std::shared_ptr<LogicalCollection> col =
@@ -1092,7 +1099,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
   try {
     TRI_ASSERT(input.isObject());
     // TODO: check if it is executed or accessible by a database server
-    //if (ServerState::instance()->isCoordinator())
+    // if (ServerState::instance()->isCoordinator())
     {
       VPackSlice s = input.get(StaticStrings::IsSmart);
       if (s.isBoolean() && s.getBoolean()) {

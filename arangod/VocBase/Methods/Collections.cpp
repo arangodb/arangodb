@@ -113,16 +113,35 @@ Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
 VPackBuilder getBuilder(TRI_vocbase_t const& vocbase,
                   std::vector<CollectionCreationInfo> const& infos,
                   bool isSingleServerSmartGraph, bool enforceReplicationFactor) {
+  StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
-
   VPackBuilder helper;
+
   builder.openArray();
 
   for (auto const& info : infos) {
     TRI_ASSERT(builder.isOpenArray());
-
-
     TRI_ASSERT(info.properties.isObject());
+
+    helper.clear();
+    helper.openObject();
+    helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
+    helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
+
+    // generate a rocksdb collection object id in case it does not exist
+    if (isSingleServerSmartGraph) {
+      engine.addParametersForNewCollection(helper, info.properties);
+    }
+
+    bool addUseRevs = ServerState::instance()->isSingleServerOrCoordinator();
+    bool useRevs =
+        vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB() &&
+        LogicalCollection::currentVersion() >= LogicalCollection::Version::v37;
+
+    if (addUseRevs) {
+      helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
+                 arangodb::velocypack::Value(useRevs));
+    }
 
     if (!isLocalCollection(info) || isSingleServerSmartGraph) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
@@ -448,8 +467,9 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 #endif
     } else {
-      TRI_ASSERT(ServerState::instance()->isSingleServer());
-      // Here we do have a single server setup. In that case, we're not batching collection creating.
+      TRI_ASSERT(ServerState::instance()->isSingleServer() || ServerState::instance()->isDBServer());
+      // Here we do have a single server setup, or we're either on a DBServer.
+      // In that case, we're not batching collection creating.
       // Therefore, we need to iterate over the infoSlice and create each collection one by one.
       for (auto slice : VPackArrayIterator(infoSlice)) {
         // Single server does not yet have a multi collection implementation
@@ -843,17 +863,16 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   std::string const collName = coll.name();
   Result res;
 
-  // If we are a coordinator in a cluster, we have to behave differently:
-  auto const role = ServerState::instance()->getRole();
-  if (ServerState::isCoordinator(role)) {
+// If we are a coordinator in a cluster, we have to behave differently:
 #ifdef USE_ENTERPRISE
-    res = DropColCoordinatorEnterprise(&coll, allowDropSystem);
+  res = DropColEnterprise(&coll, allowDropSystem, timeout);
 #else
+  if (ServerState::isCoordinator(role)) {
     res = DropVocbaseColCoordinator(&coll, allowDropSystem);
-#endif
   } else {
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
+#endif
 
   LOG_TOPIC_IF("1bf4d", WARN, Logger::ENGINES,
                res.fail() && res.isNot(TRI_ERROR_FORBIDDEN) &&

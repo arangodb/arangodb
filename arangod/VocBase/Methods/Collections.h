@@ -146,7 +146,8 @@ struct Collections {
 };
 
 #ifdef USE_ENTERPRISE
-Result DropColCoordinatorEnterprise(LogicalCollection* collection, bool allowDropSystem);
+Result DropColEnterprise(LogicalCollection* collection, bool allowDropSystem,
+                         double singleServerTimeout);
 #endif
 }  // namespace methods
 }  // namespace arangodb
