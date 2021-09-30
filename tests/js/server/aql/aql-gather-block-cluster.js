@@ -795,7 +795,7 @@ function gatherBlockTestSuite () {
       assertEqual(expected, actual, query);
     },
 
-    // This is a regression test. TODO Add link to PR
+    // This is a regression test, see https://github.com/arangodb/arangodb/pull/14837.
     // An UnsortedGather would get confused if an input block started with a non-relevant shadow row,
     // which let it skip some dependencies and thus miss some rows.
     testGatherOnShadowRowBoundary : function () {
