@@ -1,8 +1,9 @@
 devel
 -----
 
-* APM-173: Now, arangobench supports multiple coordinators, so the flag 
-  `--server.endpoint` can be used multiple times, as in the example below:
+* APM-173: Now, arangobench, arangodump and arangorestore support multiple 
+  coordinators, so the flag `--server.endpoint` can be used multiple times, 
+  as in the example below:
 
   arangobench \
     --server.endpoint tcp://[::1]::8529 \
