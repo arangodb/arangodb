@@ -471,21 +471,13 @@ function createSmartGraphSingleServer() {
   if (!isEnterprise) {
     return;
   }
-  db._useDatabase("UnitTestsDumpSrc");
 
   const smartGraphName = "UnitTestDumpSmartGraphSingleServer";
   const edges = "UnitTestDumpSmartEdgesSingleServer";
   const vertices = "UnitTestDumpSmartVerticesSingleServer";
   const orphans = "UnitTestDumpSmartOrphansSingleServer";
-  if (sgm._exists(smartGraphName)) {
-    sgm._drop(smartGraphName, true);
-  }
-  db._drop(edges);
-  db._drop(vertices);
-  db._drop(orphans);
 
-  sgm._create(smartGraphName, [sgm._relation(edges, vertices, vertices)],
-    [orphans], {numberOfShards: 5, smartGraphAttribute: "value"});
+  createSmartGraphWithoutData({ smartGraphName, edges, vertices, orphans });
 
   let vDocs = [];
   for (let i = 0; i < 100; ++i) {
@@ -506,16 +498,17 @@ function createSmartGraphSingleServer() {
  * @brief Only if enterprise mode:
  *        Creates a SmartGraph sharded by `value`, and a single edge relation.
  */
-function createSmartGraphWithoutData() {
+function createSmartGraphWithoutData({
+                                       smartGraphName = "UnitTestDumpSmartGraphWithoutData",
+                                       edges = "UnitTestDumpSmartEdgesWithoutData",
+                                       vertices = "UnitTestDumpSmartVerticesWithoutData",
+                                       orphans = "UnitTestDumpSmartOrphansWithoutData"
+                                     } = {}) {
   if (!isEnterprise) {
     return;
   }
   db._useDatabase("UnitTestsDumpSrc");
 
-  const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
-  const edges = "UnitTestDumpSmartEdgesWithoutData";
-  const vertices = "UnitTestDumpSmartVerticesWithoutData";
-  const orphans = "UnitTestDumpSmartOrphansWithoutData";
   if (sgm._exists(smartGraphName)) {
     sgm._drop(smartGraphName, true);
   }
@@ -561,7 +554,7 @@ function createSmartArangoSearch() {
         }
       }
   });
-};
+}
 
 /**
  * @brief Only if enterprise mode:
