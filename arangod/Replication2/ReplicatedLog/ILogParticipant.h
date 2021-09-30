@@ -35,6 +35,7 @@
 
 namespace arangodb {
 class Result;
+struct LoggerContext;
 }
 
 namespace arangodb::replication2::replicated_log {
@@ -100,5 +101,19 @@ struct LogUnconfiguredParticipant final
   std::unique_ptr<LogCore> _logCore;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
 };
+
+// whether the assertQueueNotEmptyOrTryToClear is called from a leader or follower,
+// to give more precise information in log messages and error codes only.
+enum class TryToClearParticipant { Leader, Follower };
+// How much progress was made clearing the queue.
+// NoProgress means what it says, and Cleared means the queue was completely
+// cleared. Partial means that at least one entry could be erased.
+enum class TryToClearResult { NoProgress, Partial, Cleared };
+// Asserts that the queue is not empty in maintainer mode. Otherwise, tries
+// to clear it and reports the progress. Will log and return on error, which
+// will result in either NoProgress or Partial return value.
+extern auto assertQueueNotEmptyOrTryToClear(
+    TryToClearParticipant participant, LoggerContext const& loggerContext,
+    std::multimap<LogIndex, futures::Promise<WaitForResult>>& queue) noexcept -> TryToClearResult;
 
 }  // namespace arangodb::replication2::replicated_log

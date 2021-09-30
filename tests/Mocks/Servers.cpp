@@ -68,6 +68,7 @@
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SoftShutdownFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -91,6 +92,7 @@
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/License/LicenseFeature.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 
@@ -109,6 +111,7 @@ static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false, false);
   server.addFeature<arangodb::MetricsFeature>(false);
   server.addFeature<arangodb::SharedPRNGFeature>(false);
+  server.addFeature<arangodb::SoftShutdownFeature>(false);
   // We do not need any further features from this phase
 }
 
@@ -134,6 +137,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE
   server.addFeature<arangodb::LdapFeature>(false);
+  server.addFeature<arangodb::LicenseFeature>(false);
 #endif
 }
 
@@ -435,7 +439,7 @@ std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::
     std::lock_guard g(_storeLock);
     ++_commitIndex;
     res = std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>{
-        _readDB.applyTransactions(trxs), _commitIndex};  // apply logs
+      _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true,true}), _commitIndex}; // apply logs
   }
   {
     std::lock_guard g(_callbacksLock);
@@ -565,6 +569,7 @@ consensus::index_t MockClusterServer::agencyTrx(std::string const& key,
 void MockClusterServer::agencyCreateDatabase(std::string const& name) {
   TemplateSpecializer ts(name);
   std::string st = ts.specialize(plan_dbs_string);
+
 
   agencyTrx("/arango/Plan/Databases/" + name, st);
   st = ts.specialize(current_dbs_string);
@@ -857,6 +862,7 @@ MockCoordinator::MockCoordinator(bool start, bool useAgencyMock, bool injectClus
   if (start) {
     MockCoordinator::startFeatures();
     MockCoordinator::createDatabase("_system");
+    agencyTrx("/.agency", R"=({"op":"set", "new":{"timeoutMult":1,"term":1,"size":3,"pool":{"AGNT-ca355865-7e34-40b8-91d4-198811e52f44":"tcp://[::1]:4001","AGNT-93fa47f7-9f79-493e-b2da-b74487baccae":"tcp://[::1]:4003","AGNT-93908f62-5414-4456-be37-2226651b8358":"tcp://[::1]:4002"},"id":"AGNT-ca355865-7e34-40b8-91d4-198811e52f44","active":["AGNT-93908f62-5414-4456-be37-2226651b8358","AGNT-ca355865-7e34-40b8-91d4-198811e52f44","AGNT-93fa47f7-9f79-493e-b2da-b74487baccae"]}})=");
   }
 }
 

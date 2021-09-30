@@ -41,7 +41,7 @@ namespace {
 
 using namespace irs;
 
-inline bool is_subset_of(
+[[maybe_unused]] inline bool is_subset_of(
     const features_t& lhs,
     const feature_map_t& rhs) noexcept {
   for (const irs::type_info::type_id type: lhs) {

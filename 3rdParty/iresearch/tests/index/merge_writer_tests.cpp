@@ -127,10 +127,8 @@ struct merge_writer_test_case : public tests::directory_test_case_base<std::stri
   }
 
   static std::string to_string(
-      const testing::TestParamInfo<std::tuple<tests::dir_factory_f, std::string>>& info) {
-    tests::dir_factory_f factory;
-    std::string codec;
-    std::tie(factory, codec) = info.param;
+      const testing::TestParamInfo<std::tuple<tests::dir_param_f, std::string>>& info) {
+    auto [factory, codec] = info.param;
 
     return (*factory)(nullptr).second + "___" + codec;
   }
@@ -2727,7 +2725,7 @@ INSTANTIATE_TEST_SUITE_P(
   merge_writer_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory),
+      &tests::directory<&tests::memory_directory>),
     ::testing::Values("1_0", "1_3")),
   &merge_writer_test_case::to_string
 );
@@ -4215,7 +4213,7 @@ INSTANTIATE_TEST_SUITE_P(
   merge_writer_test_case_1_4,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory),
+      &tests::directory<&tests::memory_directory>),
     ::testing::Values("1_4")),
   &merge_writer_test_case::to_string
 );

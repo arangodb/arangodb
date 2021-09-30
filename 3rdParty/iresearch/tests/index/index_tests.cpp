@@ -323,10 +323,9 @@ void normalized_string_json_field_factory(
   }
 }
 
-std::string to_string(const testing::TestParamInfo<index_test_context>& info) {
-  dir_factory_f factory;
-  format_info codec;
-  std::tie(factory, codec) = info.param;
+/*static*/ std::string index_test_base::to_string(
+    const testing::TestParamInfo<index_test_context>& info) {
+  auto [factory, codec] = info.param;
 
   std::string str = (*factory)(nullptr).second;
   if (codec.codec) {
@@ -338,7 +337,7 @@ std::string to_string(const testing::TestParamInfo<index_test_context>& info) {
 }
 
 std::shared_ptr<irs::directory> index_test_base::get_directory(const test_base& ctx) const {
-  dir_factory_f factory;
+  dir_param_f factory;
   std::tie(factory, std::ignore) = GetParam();
 
   return (*factory)(&ctx).first;
@@ -702,48 +701,35 @@ class index_test_case : public tests::index_test_base {
     // use global allocator everywhere
     {
       irs::memory_directory dir;
-      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
 
       // open writer
       auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
-      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
     }
 
     // use global allocator in directory
     {
       irs::memory_directory dir;
-      ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
-      ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
 
       // open writer
       irs::index_writer::init_options options;
-      options.memory_pool_size = 42;
       auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE, options);
       ASSERT_NE(nullptr, writer);
-      auto* alloc_attr = dir.attributes().get<irs::memory_allocator>();
-      ASSERT_NE(nullptr, alloc_attr);
-      ASSERT_NE(nullptr, *alloc_attr);
-      ASSERT_NE(&irs::memory_allocator::global(), alloc_attr->get());
+      ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
     }
 
     // use memory directory allocator everywhere
     {
-      irs::memory_directory dir(42);
-      auto* alloc_attr_before = dir.attributes().get<irs::memory_allocator>();
-      ASSERT_NE(nullptr, alloc_attr_before);
-      ASSERT_NE(nullptr, *alloc_attr_before);
-      ASSERT_EQ(alloc_attr_before->get(), &irs::directory_utils::get_allocator(dir));
+      irs::memory_directory dir{irs::directory_attributes{42}};
+      ASSERT_NE(&irs::memory_allocator::global(), &dir.attributes().allocator());
 
       // open writer
       auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
-      auto* alloc_attr_after = dir.attributes().get<irs::memory_allocator>();
-      ASSERT_EQ(alloc_attr_after, alloc_attr_before);
-      ASSERT_EQ(*alloc_attr_after, *alloc_attr_before);
-      ASSERT_EQ(alloc_attr_after->get(), &irs::directory_utils::get_allocator(dir));
+      ASSERT_NE(&irs::memory_allocator::global(), &dir.attributes().allocator());
     }
   }
 
@@ -852,7 +838,7 @@ class index_test_case : public tests::index_test_base {
     {
       auto writer = irs::index_writer::make(dir(), codec(), irs::OM_APPEND);
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"), 
+        resource("simple_sequential.json"),
         &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       ASSERT_EQ(0, writer->buffered_docs());
@@ -994,7 +980,7 @@ class index_test_case : public tests::index_test_base {
 
   void writer_begin_rollback() {
     tests::json_doc_generator gen(
-      resource("simple_sequential.json"), 
+      resource("simple_sequential.json"),
       &tests::generic_json_field_factory);
 
     irs::bytes_ref actual_value;
@@ -1048,8 +1034,7 @@ class index_test_case : public tests::index_test_base {
       auto file_count_before = file_count;
       ASSERT_TRUE(insert(*writer,
         doc3->indexed.begin(), doc3->indexed.end(),
-        doc3->stored.begin(), doc3->stored.end()
-      ));
+        doc3->stored.begin(), doc3->stored.end()));
       ASSERT_TRUE(writer->begin()); // prepare for commit tx #2
       writer->rollback(); // rollback tx #2
       irs::directory_utils::remove_all_unreferenced(dir());
@@ -2180,7 +2165,7 @@ class index_test_case : public tests::index_test_base {
       });
 
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"), 
+        resource("simple_sequential.json"),
         &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       tests::document const* doc2 = gen.next();
@@ -2215,7 +2200,7 @@ class index_test_case : public tests::index_test_base {
       });
 
       tests::json_doc_generator gen(
-        resource("simple_sequential.json"), 
+        resource("simple_sequential.json"),
         &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
       tests::document const* doc2 = gen.next();
@@ -2581,7 +2566,9 @@ TEST_P(index_test_case, concurrent_read_index_mt) {
 }
 
 TEST_P(index_test_case, concurrent_add_mt) {
-  tests::json_doc_generator gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
   std::vector<const tests::document*> docs;
 
   for (const tests::document* doc; (doc = gen.next()) != nullptr; docs.emplace_back(doc)) {}
@@ -2850,14 +2837,22 @@ TEST_P(index_test_case, document_context) {
     std::condition_variable cond;
     std::mutex cond_mutex;
     std::mutex mutex;
+    std::condition_variable wait_cond;
+    std::atomic<bool> wait;
     const irs::string_ref& name() { return irs::string_ref::EMPTY; }
     irs::features_t features() const { return {}; }
     bool write(irs::data_output&) {
       {
         auto cond_lock = irs::make_lock_guard(cond_mutex);
-        cond.notify_all();
       }
-      auto lock = irs::make_lock_guard(mutex);
+
+      cond.notify_all();
+
+      while (wait) {
+        auto lock = irs::make_unique_lock(mutex);
+        wait_cond.wait_for(lock, 100ms);
+      }
+
       return true;
     }
   } field;
@@ -2866,32 +2861,42 @@ TEST_P(index_test_case, document_context) {
   {
     auto writer = open_writer();
     auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
-    auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
+    field.wait = true; // prevent field from finishing
 
-    writer->documents().insert().insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end()); // ensure segment is prsent in the active flush_context
+    // ensure segment is prsent in the active flush_context
+    writer->documents().insert().insert<irs::Action::STORE>(
+      doc1->stored.begin(), doc1->stored.end());
 
     std::thread thread0([&writer, &field]()->void {
       writer->documents().insert().insert<irs::Action::STORE>(field);
     });
 
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, 1000ms)); // wait for insertion to start
+    ASSERT_EQ(std::cv_status::no_timeout,
+              field.cond.wait_for(field_cond_lock, 1000ms)); // wait for insertion to start
 
     std::atomic<bool> stop(false);
     std::thread thread1([&writer, &field, &stop]()->void {
       writer->commit();
       stop = true;
-      auto lock = irs::make_lock_guard(field.cond_mutex);
+      {
+        auto lock = irs::make_lock_guard(field.cond_mutex);
+      }
       field.cond.notify_all();
     });
 
     auto result = field.cond.wait_for(field_cond_lock, 100ms);
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
+    while (!stop && result == std::cv_status::no_timeout) {
+      result = field.cond.wait_for(field_cond_lock, 100ms);
+    }
 
     ASSERT_EQ(std::cv_status::timeout, result); // verify commit() blocks
-    field_lock.unlock();
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000))); // verify commit() finishes
+    field.wait = false;
+    field.wait_cond.notify_all();
+    ASSERT_EQ(std::cv_status::no_timeout,
+              field.cond.wait_for(field_cond_lock, 10000ms)); // verify commit() finishes
+
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(stop);
     thread0.join();
@@ -2909,7 +2914,7 @@ TEST_P(index_test_case, document_context) {
     ));
 
     auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
-    auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
+    field.wait = true; // prevent field from finishing
 
     std::thread thread0([&writer, &query_doc1, &field]()->void {
       writer->documents().replace(*query_doc1.filter).insert<irs::Action::STORE>(field);
@@ -2931,8 +2936,10 @@ TEST_P(index_test_case, document_context) {
     while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
 
     ASSERT_EQ(std::cv_status::timeout, result);
-    field_lock.unlock();
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000))); // verify commit() finishes
+    field.wait = false;
+    field.wait_cond.notify_all();
+    ASSERT_EQ(std::cv_status::no_timeout,
+              field.cond.wait_for(field_cond_lock, 10000ms)); // verify commit() finishes
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(commit);
     thread0.join();
@@ -2949,7 +2956,8 @@ TEST_P(index_test_case, document_context) {
       doc1->stored.begin(), doc1->stored.end()
     ));
     auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
-    auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
+   // auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
+    field.wait = true; // prevent field from finishing
 
     std::thread thread0([&writer, &query_doc1, &field]()->void {
       writer->documents().replace(
@@ -2977,8 +2985,10 @@ TEST_P(index_test_case, document_context) {
     while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, 100ms);
 
     ASSERT_EQ(std::cv_status::timeout, result);
-    field_lock.unlock();
-    ASSERT_EQ(std::cv_status::no_timeout, field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000))); // verify commit() finishes
+    field.wait = false;
+    field.wait_cond.notify_all();
+    ASSERT_EQ(std::cv_status::no_timeout,
+              field.cond.wait_for(field_cond_lock, 10000ms)); // verify commit() finishes
     // FIXME TODO add once segment_context will not block flush_all()
     //ASSERT_TRUE(commit);
     thread0.join();
@@ -7841,19 +7851,13 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        ));
+          name, data.str));
       }
   });
 
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
   tests::document const* doc3 = gen.next();
-
-  constexpr irs::IndexFeatures all_features =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   // 2-phase: clear + consolidate
   {
@@ -7863,22 +7867,19 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     // segment 3
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
 
     writer->begin();
     writer->clear();
@@ -7897,22 +7898,19 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     // segment 3
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
 
     writer->begin();
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
@@ -7931,15 +7929,13 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
@@ -7968,15 +7964,13 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     writer->clear();
@@ -8484,9 +8478,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          name,
-          data.str
-        ));
+          name, data.str));
       }
   });
 
@@ -8516,16 +8508,14 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
@@ -13836,13 +13826,11 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values("1_0")
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values("1_0")),
+  index_test_case::to_string
 );
 
 INSTANTIATE_TEST_SUITE_P(
@@ -13850,13 +13838,11 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
-    ),
-    ::testing::Values(tests::format_info{"1_1", "1_0"})
-  ),
-  tests::to_string
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::fs_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    ::testing::Values(tests::format_info{"1_1", "1_0"})),
+  index_test_case::to_string
 );
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
@@ -13874,13 +13860,11 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
-    ),
-    index_test_case_12_values
-  ),
-  tests::to_string
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::fs_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    index_test_case_12_values),
+  index_test_case::to_string
 );
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
@@ -13898,13 +13882,11 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
-    ),
-    index_test_case_13_values
-  ),
-  tests::to_string
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::fs_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    index_test_case_13_values),
+  index_test_case::to_string
 );
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
@@ -13918,7 +13900,6 @@ const auto index_test_case_14_values = ::testing::Values(tests::format_info{"1_4
 }
 
 class index_test_case_14 : public index_test_case { };
-
 
 TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
   struct feature1 { };
@@ -14154,14 +14135,12 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case_14,
   ::testing::Combine(
     ::testing::Values(
-      tests::mmap_directory,
-      tests::memory_directory,
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
-    ),
-    index_test_case_14_values
-  ),
-  tests::to_string
+      &tests::directory<tests::mmap_directory>,
+      &tests::directory<tests::memory_directory>,
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    index_test_case_14_values),
+  index_test_case_14::to_string
 );
 
 class index_test_case_10 : public tests::index_test_base { };
@@ -14411,13 +14390,11 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case_10,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values("1_0")
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values("1_0")),
+  index_test_case_10::to_string
 );
 
 class index_test_case_11 : public tests::index_test_base { };
@@ -14954,11 +14931,9 @@ INSTANTIATE_TEST_SUITE_P(
   index_test_case_11,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    index_test_case_11_values
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    index_test_case_11_values),
+  index_test_case_11::to_string
 );

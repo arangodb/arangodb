@@ -934,7 +934,7 @@ void Node::toBuilder(Builder& builder, bool showHidden) const {
             continue;
           }
           builder.add(VPackValue(child.first));
-          cptr->toBuilder(builder);
+          cptr->toBuilder(builder, showHidden);
         }
       }
     } else {
