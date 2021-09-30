@@ -293,7 +293,7 @@ class IndexReadBuffer {
 };  // IndexReadBuffer
 
 template <typename Impl>
-struct IResearchViewExecutorTraits {};
+struct IResearchViewExecutorTraits;
 
 template <typename Impl, typename Traits = IResearchViewExecutorTraits<Impl>>
 class IResearchViewExecutorBase {
