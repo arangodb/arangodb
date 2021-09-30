@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
     server.addFeature<CommunicationFeaturePhase>();
     server.addFeature<GreetingsFeaturePhase>(true);
 
-    server.addFeature<ClientFeature, HttpEndpointProvider>(true);
+    server.addFeature<ClientFeature, HttpEndpointProvider>(true, std::numeric_limits<size_t>::max());
     server.addFeature<ConfigFeature>("arangorestore");
     server.addFeature<LoggerFeature>(false);
     server.addFeature<RandomFeature>();

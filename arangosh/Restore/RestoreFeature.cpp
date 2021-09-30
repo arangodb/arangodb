@@ -299,7 +299,7 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
   // checks which will fail if the database doesn't exist
   std::unique_ptr<SimpleHttpClient> httpClient;
   try {
-    httpClient = client.createHttpClient();
+    httpClient = client.createHttpClient(0); // thread number zero
     httpClient->params().setLocationRewriter(static_cast<void*>(&client),
                                              arangodb::ClientManager::rewriteLocation);
     httpClient->params().setUserNamePassword("/", client.username(), client.password());
@@ -1846,7 +1846,7 @@ void RestoreFeature::start() {
         std::this_thread::sleep_for(i * 1s);
       }
       Result result = _clientManager.getConnectedClient(httpClient, _options.force,
-          true, !_options.createDatabase, false);
+          true, !_options.createDatabase, false, 0);
       if (!result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT) && !result.is(TRI_ERROR_INTERNAL)) {
         return result;
       }
@@ -1879,7 +1879,7 @@ void RestoreFeature::start() {
       client.setDatabaseName(dbName);
 
       // re-check connection and version
-      result = _clientManager.getConnectedClient(httpClient, _options.force, true, true, false);
+      result = _clientManager.getConnectedClient(httpClient, _options.force, true, true, false, 0);
     } else {
       LOG_TOPIC("ad95b", WARN, Logger::RESTORE) << "Database '" << dbName << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
     }
@@ -1953,7 +1953,7 @@ void RestoreFeature::start() {
           false, false, true);
 
       result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                                 false, !_options.createDatabase, false);
+                                                 false, !_options.createDatabase, false, 0);
 
       if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
         LOG_TOPIC("3e715", FATAL, Logger::RESTORE)
@@ -1977,7 +1977,7 @@ void RestoreFeature::start() {
           client.setDatabaseName(db.name);
 
           // re-check connection and version
-          result = _clientManager.getConnectedClient(httpClient, _options.force, false, true, false);
+          result = _clientManager.getConnectedClient(httpClient, _options.force, false, true, false, 0);
         } else {
           LOG_TOPIC("be594", WARN, Logger::RESTORE) << "Database '" << db.name << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
         }

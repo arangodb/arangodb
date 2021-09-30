@@ -3,6 +3,46 @@ devel
 
 * Fixed BTS-602 by not starting license feature is upgrade mode.
 
+* APM-173: Now, arangobench, arangodump and arangorestore support multiple 
+  coordinators, so the flag `--server.endpoint` can be used multiple times, 
+  as in the example below:
+
+  arangobench \
+    --server.endpoint tcp://[::1]::8529 \
+    --server.endpoint tcp://[::1]::8530 \
+    --server.endpoint tcp://[::1]::8531 
+
+  This does not compromise the use of the other client tools, which preserve
+  the behavior of having one coordinator.
+
+* The server now has two flags to control the escaping control and Unicode 
+  characters in the log. The flag `--log.escape` is now deprecated and, instead, 
+  the new flags `--log.escape-control-chars` and `--log.escape-unicode-chars` 
+  should be used. 
+
+  - `--log.escape-control-chars`: this flag applies to the control characters, 
+    which have hex code below `\x20`, and also the character DEL, with hex code 
+    of `\x7f`. When its value is set to false, the control character will be 
+    retained, and its actual value will be displayed when it is a visible 
+    character, or a space ` ` character will be displayed if it is not a 
+    visible character. The same will happen to `DEL` character (code `\xF7`), 
+    even though it is not a control character, because it is not visible. For 
+    example, control characer `\n` is visible, so a `\n` will be displayed in 
+    the log, and control character `BEL` is not visible, so a space ` ` would 
+    be displayed. When its value is set to true, the hex code for the character
+    is displayed, for example, `BEL` character would be displayed as its hex 
+    code, `\x07`.
+      The default value for this flag is `true` for compatibility with 
+    previous versions.
+
+  - `--log.escape-unicode-chars`: when its value is set to false, the unicode 
+    character will be retained, and its actual value will be displayed. For 
+    example, `犬` will be displayed as `犬`. When its value is set to true, 
+    the character is escaped, and the hex code for the character is displayed. 
+    For example, `犬` would be displayed as its hex code, `\u72AC`. 
+      The default value for this flag is `false` for compatibility with 
+    previous versions.
+
 * Fixed BTS-582: ArangoDB client EXE package for Windows has incorrect metadata.
 
 * Fixed BTS-575: Windows EXE installer doesn't replace service during upgrade in
