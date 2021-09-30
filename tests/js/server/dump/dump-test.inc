@@ -1191,11 +1191,10 @@
       ////////////////////////////////////////////////////////////////////////////////
       testEmptySmartGraph: function () {
         const smartGraphName = "UnitTestsDumpEmptySmartGraph";
-        const g = db._collection('_graphs');
-        console.warn(g.toArray());
-        assertTrue(!!g.exists(smartGraphName));
+        const graphsColl = db._collection('_graphs');
+        assertTrue(!!graphsColl.exists(smartGraphName));
 
-        const graph = g.document(smartGraphName);
+        const graph = graphsColl.document(smartGraphName);
         assertFalse(graph.isDisjoint);
         assertFalse(graph.isSatellite);
         assertTrue(graph.isSmart);
