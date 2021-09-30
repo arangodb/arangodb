@@ -3,6 +3,11 @@ devel
 
 * Fixes BTS-602 by not starting license feature is upgrade mode.
 
+* Fixed BTS-582: ArangoDB client EXE package for Windows has incorrect metadata.
+
+* Fixed BTS-575: Windows EXE installer doesn't replace service during upgrade in
+  silent (non-UI) mode.
+
 * APM-121: allow the UPSERT query to have indexHint as an extra parameter for 
   OPTIONS. It will be used as a hint by the inner FOR loop that is performed
   as part of the UPSERT query, and would help in cases such as UPSERT not 
