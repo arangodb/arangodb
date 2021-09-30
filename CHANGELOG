@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fixes BTS-602 by not starting license feature is upgrade mode.
+* Fixed BTS-602 by not starting license feature is upgrade mode.
 
 * Fixed BTS-582: ArangoDB client EXE package for Windows has incorrect metadata.
 
