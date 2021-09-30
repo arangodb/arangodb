@@ -1,6 +1,18 @@
 devel
 -----
 
+* APM-173: Now, arangobench, arangodump and arangorestore support multiple 
+  coordinators, so the flag `--server.endpoint` can be used multiple times, 
+  as in the example below:
+
+  arangobench \
+    --server.endpoint tcp://[::1]::8529 \
+    --server.endpoint tcp://[::1]::8530 \
+    --server.endpoint tcp://[::1]::8531 
+
+  This does not compromise the use of the other client tools, which preserve
+  the behavior of having one coordinator.
+
 * The server now has two flags to control the escaping control and Unicode 
   characters in the log. The flag `--log.escape` is now deprecated and, instead, 
   the new flags `--log.escape-control-chars` and `--log.escape-unicode-chars` 
