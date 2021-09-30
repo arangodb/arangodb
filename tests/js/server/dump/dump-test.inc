@@ -90,6 +90,47 @@
     
     console.info("Test suite arguments: " + JSON.stringify(args));
 
+    function assertCommon(graph) {
+      assertFalse(graph.isDisjoint);
+      assertFalse(graph.isSatellite);
+      assertTrue(graph.isSmart);
+      assertEqual(graph.replicationFactor, 1);
+      assertEqual(graph.numberOfShards, 5);
+      assertEqual(graph.smartGraphAttribute, 'value');
+    }
+
+    function assertCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName) {
+      assertEqual(graph.edgeDefinitions, [
+        {
+          "collection": edgeCollName,
+          "from": [vertexCollName],
+          "to": [vertexCollName]
+        }
+      ]);
+      assertEqual(graph.orphanCollections, [orphanCollName]);
+
+      for (const collName of [vertexCollName, orphanCollName]) {
+        const vColl = db._collection(collName);
+        const properties = vColl.properties();
+
+        assertTrue(properties.isSmart);
+        assertFalse(properties.isDisjoint);
+        assertEqual(properties.smartGraphAttribute, 'value');
+        assertEqual(properties.numberOfShards, 5);
+        assertEqual(properties.replicationFactor, 1);
+        assertEqual(properties.shardingStrategy, 'hash');
+      }
+
+      const eColl = db._collection(edgeCollName);
+      const properties = eColl.properties();
+
+      assertTrue(properties.isSmart);
+      assertFalse(properties.isDisjoint);
+      assertEqual(properties.numberOfShards, 0);
+      assertEqual(properties.replicationFactor, 1);
+      assertEqual(properties.shardingStrategy, 'enterprise-hash-smart-edge');
+    }
+
     return {
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief test the users
@@ -124,7 +165,7 @@
           assertEqual(2, props.writeConcern);
         } finally {
           db._useDatabase(old);
-        };
+        }
       },
 
       ////////////////////////////////////////////////////////////////////////////////
@@ -1195,12 +1236,7 @@
         assertTrue(!!graphsColl.exists(smartGraphName));
 
         const graph = graphsColl.document(smartGraphName);
-        assertFalse(graph.isDisjoint);
-        assertFalse(graph.isSatellite);
-        assertTrue(graph.isSmart);
-        assertEqual(graph.replicationFactor, 1);
-        assertEqual(graph.numberOfShards, 5);
-        assertEqual(graph.smartGraphAttribute, 'value');
+        assertCommon(graph);
         assertEqual(graph.edgeDefinitions.length, 0);
         assertEqual(graph.orphanCollections.length, 0);
       },
@@ -1215,41 +1251,8 @@
         assertTrue(!!g.exists(smartGraphName));
 
         const graph = g.document(smartGraphName);
-        assertFalse(graph.isDisjoint);
-        assertFalse(graph.isSatellite);
-        assertTrue(graph.isSmart);
-        assertEqual(graph.replicationFactor, 1);
-        assertEqual(graph.numberOfShards, 5);
-        assertEqual(graph.smartGraphAttribute, 'value');
-        assertEqual(graph.edgeDefinitions, [
-          {
-            "collection": edgeCollName,
-            "from": [vertexCollName],
-            "to": [vertexCollName]
-          }
-        ]);
-        assertEqual(graph.orphanCollections, [orphanCollName]);
-
-        for (const collName of [vertexCollName, orphanCollName]) {
-          const vColl = db._collection(collName);
-          const properties = vColl.properties();
-
-          assertTrue(properties.isSmart);
-          assertFalse(properties.isDisjoint);
-          assertEqual(properties.smartGraphAttribute, 'value');
-          assertEqual(properties.numberOfShards, 5);
-          assertEqual(properties.replicationFactor, 1);
-          assertEqual(properties.shardingStrategy, 'hash');
-        }
-
-        const eColl = db._collection(edgeCollName);
-        const properties = eColl.properties();
-
-        assertTrue(properties.isSmart);
-        assertFalse(properties.isDisjoint);
-        assertEqual(properties.numberOfShards, 0);
-        assertEqual(properties.replicationFactor, 1);
-        assertEqual(properties.shardingStrategy, 'enterprise-hash-smart-edge');
+        assertCommon(graph);
+        assertCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName);
       },
 
       testSmartGraphSingleServer: function() {
@@ -1262,48 +1265,16 @@
         assertTrue(!!g.exists(smartGraphName));
 
         const graph = g.document(smartGraphName);
-        assertFalse(graph.isDisjoint);
-        assertFalse(graph.isSatellite);
-        assertTrue(graph.isSmart);
-        assertEqual(graph.replicationFactor, 1);
-        assertEqual(graph.numberOfShards, 5);
-        assertEqual(graph.smartGraphAttribute, 'value');
-        assertEqual(graph.edgeDefinitions, [
-          {
-            "collection": edgeCollName,
-            "from": [vertexCollName],
-            "to": [vertexCollName]
-          }
-        ]);
-        assertEqual(graph.orphanCollections, [orphanCollName]);
-
-        for (const collName of [vertexCollName, orphanCollName]) {
-          const vColl = db._collection(collName);
-          const properties = vColl.properties();
-
-          assertTrue(properties.isSmart);
-          assertFalse(properties.isDisjoint);
-          assertEqual(properties.smartGraphAttribute, 'value');
-          assertEqual(properties.numberOfShards, 5);
-          assertEqual(properties.replicationFactor, 1);
-          assertEqual(properties.shardingStrategy, 'hash');
-        }
-
-        const eColl = db._collection(edgeCollName);
-        const properties = eColl.properties();
-
-        assertTrue(properties.isSmart);
-        assertFalse(properties.isDisjoint);
-        assertEqual(properties.numberOfShards, 0);
-        assertEqual(properties.replicationFactor, 1);
-        assertEqual(properties.shardingStrategy, 'enterprise-hash-smart-edge');
+        assertCommon(graph);
+        assertCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName);
 
         const vColl = db._collection(vertexCollName);
+        const eColl = db._collection(edgeCollName);
         const oColl = db._collection(orphanCollName);
 
+        assertEqual(eColl.count(), 100);
         assertEqual(vColl.count(), 100);
         assertEqual(oColl.count(), 100);
-        assertEqual(eColl.count(), 100);
 
         const vertices = vColl.toArray();
         const vertexMap = zipObject(map(vertices, '_id'), 1);
