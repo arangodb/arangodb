@@ -49,6 +49,7 @@ class UpgradeFeature final : public application_features::ApplicationFeature {
   void start() override final;
   
   void addTask(methods::Upgrade::Task&& task);
+  bool upgrading() noexcept const { return _upgrade; }
 
  private:
   void upgradeLocalDatabase();

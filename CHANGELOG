@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixes BTS-602 by not starting license feature is upgrade mode.
+
 * APM-121: allow the UPSERT query to have indexHint as an extra parameter for 
   OPTIONS. It will be used as a hint by the inner FOR loop that is performed
   as part of the UPSERT query, and would help in cases such as UPSERT not 
