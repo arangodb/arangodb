@@ -24,8 +24,10 @@
 
 #pragma once
 
+#if defined __has_include
 #if __has_include(<pthread.h>)
 #include <pthread.h>
+#endif
 #endif
 
 #include "Basics/operating-system.h"
