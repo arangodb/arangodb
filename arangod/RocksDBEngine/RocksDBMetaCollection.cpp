@@ -481,7 +481,8 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
   }
   
   maxCommitSeq = _meta.committableSeq(maxCommitSeq);
-  if (needToPersistRevisionTree(maxCommitSeq, guard)) {
+  if ((force || needToPersistRevisionTree(maxCommitSeq, guard)) &&
+      _revisionTreeCanBeSerialized) {
     rocksdb::SequenceNumber seq = maxCommitSeq;
 
     TRI_ASSERT(maxCommitSeq >= _revisionTreeApplied);
