@@ -923,7 +923,7 @@ void HeartbeatThread::runSingleServer() {
       ttlFeature.allowRunning(false);
 
       ServerState::instance()->setFoxxmaster(leaderStr);  // leader is foxxmater
-      ServerState::instance()->setReadOnly(true);  // Disable writes with dirty-read header
+      ServerState::instance()->setReadOnly(ServerState::API_TRUE);  // Disable writes with dirty-read header
 
       std::string endpoint = ci.getServerEndpoint(leaderStr);
       if (endpoint.empty()) {
@@ -1052,7 +1052,7 @@ void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
     readOnly = readOnlySlice.getBool();
   }
 
-  ServerState::instance()->setReadOnly(readOnly);
+  ServerState::instance()->setReadOnly(readOnly ? ServerState::API_TRUE : ServerState::API_FALSE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

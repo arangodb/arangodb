@@ -1,0 +1,13 @@
+name: arangodb_license_expires
+introducedIn: "3.9.1"
+help: |
+  This instance's license expiry in days.
+unit: number
+type: gauge
+category: License
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+description: |
+  This instance's remaining license validity time.

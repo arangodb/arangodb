@@ -120,7 +120,8 @@ bool Logger::_showProcessIdentifier(true);
 bool Logger::_showThreadIdentifier(false);
 bool Logger::_showThreadName(false);
 bool Logger::_useColor(true);
-bool Logger::_useEscaped(true);
+bool Logger::_useControlEscaped(true);
+bool Logger::_useUnicodeEscaped(false);
 bool Logger::_keepLogRotate(false);
 bool Logger::_logRequestParameters(true);
 bool Logger::_showRole(false);
@@ -308,14 +309,22 @@ void Logger::setUseColor(bool value) {
 }
 
 // NOTE: this function should not be called if the logging is active.
-void Logger::setUseEscaped(bool value) {
+void Logger::setUseControlEscaped(bool value) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
+    }
+    _useControlEscaped = value;
+  }
+  // NOTE: this function should not be called if the logging is active.
+  void Logger::setUseUnicodeEscaped(bool value) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
+    }
+    _useUnicodeEscaped = value;
   }
 
-  _useEscaped = value;
-}
 
 // NOTE: this function should not be called if the logging is active.
 void Logger::setShowRole(bool show) {
