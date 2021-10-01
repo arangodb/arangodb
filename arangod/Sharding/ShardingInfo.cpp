@@ -429,7 +429,7 @@ size_t ShardingInfo::numberOfShards() const { return _numberOfShards; }
 
 void ShardingInfo::numberOfShards(size_t numberOfShards) {
   // the only allowed value is "0", because the only allowed
-  // caller of this method is VirtualSmartEdgeCollection, which
+  // caller of this method is VirtualClusterSmartEdgeCollection, which
   // sets the number of shards to 0
   TRI_ASSERT(numberOfShards == 0);
   _numberOfShards = numberOfShards;

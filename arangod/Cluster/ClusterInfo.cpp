@@ -72,7 +72,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/SmartVertexCollection.h"
-#include "Enterprise/VocBase/VirtualCollection.h"
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
 #include <velocypack/Builder.h>
@@ -777,7 +777,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     auto type = data.get(StaticStrings::DataSourceType);
 
     if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
-      return std::make_shared<VirtualSmartEdgeCollection>(vocbase, data);
+      return std::make_shared<VirtualClusterSmartEdgeCollection>(vocbase, data);
     }
     return std::make_shared<SmartVertexCollection>(vocbase, data);
   }
