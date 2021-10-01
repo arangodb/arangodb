@@ -64,8 +64,7 @@ irs::index_file_refs::ref_t load_newest_index_meta(
         }
 
         ref = irs::directory_utils::reference(
-          const_cast<irs::directory&>(dir), filename
-        );
+          const_cast<irs::directory&>(dir), filename);
       }
 
       if (ref) {
@@ -131,8 +130,7 @@ irs::index_file_refs::ref_t load_newest_index_meta(
         }
 
         ref = irs::directory_utils::reference(
-          const_cast<irs::directory&>(dir), filename
-        );
+          const_cast<irs::directory&>(dir), filename);
       }
 
       // initialize to a value that will never pass 'if' below (to make valgrind happy)
@@ -286,7 +284,7 @@ directory_reader_impl::directory_reader_impl(
   index_file_refs::ref_t meta_file_ref = load_newest_index_meta(meta, dir, codec);
 
   if (!meta_file_ref) {
-    throw index_not_found();
+    throw index_not_found{};
   }
 
 #ifdef IRESEARCH_DEBUG
@@ -349,11 +347,11 @@ directory_reader_impl::directory_reader_impl(
 
     docs_max += reader.docs_count();
     docs_count += reader.live_docs_count();
-    directory_utils::reference(const_cast<directory&>(dir), segment, visitor, true);
+    directory_utils::reference(dir, segment, visitor, true);
     segment_file_refs.swap(tmp_file_refs);
   }
 
-  directory_utils::reference(const_cast<directory&>(dir), meta, visitor, true);
+  directory_utils::reference(dir, meta, visitor, true);
   tmp_file_refs.emplace(meta_file_ref);
   file_refs.back().swap(tmp_file_refs); // use last position for storing index_meta refs
 
@@ -370,8 +368,7 @@ directory_reader_impl::directory_reader_impl(
     std::move(dir_meta),
     std::move(readers),
     docs_count,
-    docs_max
-  );
+    docs_max);
 
   return reader;
 }

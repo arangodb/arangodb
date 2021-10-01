@@ -24,7 +24,9 @@ const Select = ({ id, label, children, disabled, inline, ...rest }: SelectProps)
   }
 
   if (inline) {
-    return <PlainLabel htmlFor={id}>
+    return <PlainLabel htmlFor={id} style={{
+      display: 'inline-block'
+    }}>
       {label}:&nbsp;
       <StyledSelect id={id} disabled={disabled} {...rest}>{children}</StyledSelect>
     </PlainLabel>;

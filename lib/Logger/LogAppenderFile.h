@@ -32,6 +32,7 @@
 
 #include "Logger/LogAppender.h"
 #include "Logger/LogLevel.h"
+#include "Logger/Escaper.h"
 
 namespace arangodb {
 struct LogMessage;
@@ -78,7 +79,9 @@ class LogAppenderStream : public LogAppender {
   bool _useColors;
 
   /// @brief whether or not to escape special chars in log output
-  bool const _escape;
+  bool const _controlEscape;
+  bool const _unicodeEscape;
+  std::unique_ptr<GeneralEscaper> _escaper;
 };
 
 class LogAppenderFile : public LogAppenderStream {

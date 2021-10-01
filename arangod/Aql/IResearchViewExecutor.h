@@ -90,7 +90,7 @@ class IResearchViewExecutorInfos {
       Variable const& outVariable, aql::AstNode const& filterCondition,
       std::pair<bool, bool> volatility, VarInfoMap const& varInfoMap, int depth,
       iresearch::IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
-      iresearch::CountApproximate);
+      iresearch::CountApproximate, iresearch::FilterOptimization);
 
   auto getDocumentRegister() const noexcept -> RegisterId;
   auto getCollectionRegister() const noexcept -> RegisterId;
@@ -111,6 +111,7 @@ class IResearchViewExecutorInfos {
   bool volatileSort() const noexcept;
   bool volatileFilter() const noexcept;
   iresearch::CountApproximate countApproximate() const noexcept { return _countApproximate; }
+  iresearch::FilterOptimization filterOptimization() const noexcept { return _filterOptimization; }
 
   // first - sort
   // second - number of sort conditions to take into account
@@ -137,6 +138,7 @@ class IResearchViewExecutorInfos {
   iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;
   iresearch::CountApproximate _countApproximate;
   bool _filterConditionIsEmpty;
+  iresearch::FilterOptimization _filterOptimization;
 };  // IResearchViewExecutorInfos
 
 class IResearchViewStats {

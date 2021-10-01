@@ -179,7 +179,6 @@ class column final : public irs::column_output {
   doc_id_t docs_count_{};
   doc_id_t prev_{}; // last committed doc_id_t
   doc_id_t pend_{}; // last pushed doc_id_t
-  uint16_t num_blocks_{};
   bool fixed_length_{true};
 }; // column
 

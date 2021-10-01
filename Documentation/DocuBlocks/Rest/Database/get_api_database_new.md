@@ -5,7 +5,10 @@
 @RESTHEADER{POST /_api/database, Create database, createDatabase}
 
 @RESTBODYPARAM{name,string,required,string}
-Has to contain a valid database name.
+Has to contain a valid database name. The name must conform to the selected
+naming convention for databases. If the name contains Unicode characters, the
+name must be [NFC-normalized](https://en.wikipedia.org/wiki/Unicode_equivalence#Normal_forms).
+Non-normalized names will be rejected by arangod.
 
 @RESTBODYPARAM{options,object,optional,get_api_database_new_OPTIONS}
 Optional object which can contain the following attributes:

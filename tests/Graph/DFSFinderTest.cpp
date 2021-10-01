@@ -64,7 +64,7 @@ class DFSFinderTest : public ::testing::TestWithParam<MockGraphProvider::LooseEn
   bool activateLogging{false};
   MockGraph mockGraph;
   mocks::MockAqlServer _server{true};
-  std::unique_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
+  std::shared_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor resourceMonitor{global};
 

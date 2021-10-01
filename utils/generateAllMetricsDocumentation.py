@@ -37,7 +37,8 @@ if len(sys.argv) > 1 and (sys.argv[1] == "-h" or sys.argv[1] == "--help"):
 CATEGORYNAMES = ["Health", "AQL", "Transactions", "Foxx", "Pregel",
                  "Statistics", "Replication", "Disk", "Errors",
                  "RocksDB", "Hotbackup", "k8s", "Connectivity", "Network",
-                 "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb"]
+                 "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb",
+                 "License"]
 
 NODE_TYPES = ["coordinator", "dbserver", "agent", "single"]
 
@@ -67,7 +68,7 @@ HEADERHISTOGRAM = re.compile(r"^\s*DECLARE_HISTOGRAM\s*\(")
 NAMEMATCH = re.compile(r"^\s*([a-z_A-Z0-9]+)\s*,")
 
 files = chain(*[ Path(rootdir).glob(pattern)
-            for rootdir in ["arangod", "lib"]
+            for rootdir in ["arangod", "lib", "enterprise"]
             for pattern in ["**/*.cpp", "**/*.h"] ])
 
 for f in files:

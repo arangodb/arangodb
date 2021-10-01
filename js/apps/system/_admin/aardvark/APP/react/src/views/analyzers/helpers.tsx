@@ -1,4 +1,5 @@
 import Ajv from "ajv";
+import ajvErrors from 'ajv-errors';
 import { AnalyzerTypeState, DispatchArgs, FormProps, formSchema } from "./constants";
 import DelimiterForm from "./forms/DelimiterForm";
 import StemForm from "./forms/StemForm";
@@ -16,11 +17,13 @@ import CollationForm from "./forms/CollationForm";
 import SegmentationForm from "./forms/SegmentationForm";
 
 const ajv = new Ajv({
+  allErrors: true,
   removeAdditional: 'failing',
   useDefaults: true,
   discriminator: true,
   $data: true
 });
+ajvErrors(ajv);
 export const validateAndFix = ajv.compile(formSchema);
 
 export const getPath = (basePath: string | undefined, path: string | undefined) => compact([basePath, path]).join('.');

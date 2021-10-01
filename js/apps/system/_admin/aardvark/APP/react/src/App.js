@@ -8,7 +8,6 @@ require('nvd3');
 
 // parse prometheus
 const parsePrometheusTextFormat = require('parse-prometheus-text-format');
-window.parsePrometheusTextFormat = parsePrometheusTextFormat;
 
 // import new react views
 // require('./views/shards/ShardsReactView');

@@ -450,9 +450,6 @@ class Ast {
   static bool getReferencedAttributesRecursive(AstNode const*, Variable const*,
                                                std::unordered_set<arangodb::aql::AttributeNamePath>&);
 
-  static std::unordered_set<std::string> getReferencedAttributesForKeep(
-      AstNode const*, Variable const* searchVariable, bool&);
-
   /// @brief replace an attribute access with just the variable
   static AstNode* replaceAttributeAccess(AstNode* node, Variable const* variable,
                                          std::vector<std::string> const& attributeName);

@@ -32,6 +32,8 @@
 #include "Graph/ShortestPathType.h"
 #include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
+
+
 %}
 
 %union {
@@ -459,6 +461,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> array_element;
 %type <node> for_options;
 %type <node> object;
+%type <node> optional_prune_variable;
 %type <node> options;
 %type <node> optional_object_elements;
 %type <node> object_elements_list;
@@ -489,6 +492,22 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %start queryStart
 
 %%
+
+optional_prune_variable:
+    expression {
+      AstNode* node = parser->ast()->createNodeArray();
+      node->addMember(parser->ast()->createNodeNop());
+      node->addMember($1);
+      $$ = node;
+    }
+  | variable_name T_ASSIGN expression {
+      AstNode* node = parser->ast()->createNodeArray();
+      AstNode* variableNode = parser->ast()->createNodeLet($1.value, $1.length, $3, true);
+      node->addMember(variableNode);
+      node->addMember($3);
+      $$ = node;    
+  }
+;
 
 with_collection:
     T_STRING {
@@ -620,7 +639,7 @@ prune_and_options:
       // Options
       node->addMember(parser->ast()->createNodeNop());
     }
-    | T_STRING expression {
+    | T_STRING optional_prune_variable {
       auto node = static_cast<AstNode*>(parser->peekStack());
       if (TRI_CaseEqualString($1.value, "PRUNE")) {
         /* Only Prune */
@@ -630,18 +649,19 @@ prune_and_options:
         // Options
         node->addMember(parser->ast()->createNodeNop());
       } else if (TRI_CaseEqualString($1.value, "OPTIONS")) {
+        const auto* optionsArgument = $2->getMember(1);
         /* Only Options */
-        TRI_ASSERT($2 != nullptr);
-        ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
+        TRI_ASSERT(optionsArgument != nullptr);
+        ::validateOptions(parser, optionsArgument, yylloc.first_line, yylloc.first_column);
         // Prune
         node->addMember(parser->ast()->createNodeNop());
         // Options
-        node->addMember($2);
+        node->addMember(optionsArgument);
       } else {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE' or 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
     }
-    | T_STRING expression T_STRING object {
+    | T_STRING optional_prune_variable T_STRING object {
       /* prune and options */
       auto node = static_cast<AstNode*>(parser->peekStack());
       if (!TRI_CaseEqualString($1.value, "PRUNE")) {
@@ -761,15 +781,22 @@ for_statement:
       auto variablesNode = static_cast<AstNode*>(parser->popStack());
 
       auto prune = graphInfoNode->getMember(3);
-      if (prune != nullptr) {
-        Ast::traverseReadOnly(prune, [&](AstNode const* node) {
+      TRI_ASSERT(prune != nullptr);
+      if (prune->type == NODE_TYPE_ARRAY) {
+        TRI_ASSERT(prune->numMembers() == 2);
+        Ast::traverseReadOnly(prune->getMember(1), [&](AstNode const* node) {
           if (node->type == NODE_TYPE_REFERENCE && node->hasFlag(AstNodeFlagType::FLAG_SUBQUERY_REFERENCE)) {
             parser->registerParseError(TRI_ERROR_QUERY_PARSE, "prune condition must not use a subquery", yylloc.first_line, yylloc.first_column);
           }
         });
+        graphInfoNode->changeMember(3, prune->getMember(1));
       }
       auto node = parser->ast()->createNodeTraversal(variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
+      if(prune->type == NODE_TYPE_ARRAY && prune->getMember(0)->type != NODE_TYPE_NOP) {
+        auto pruneLetVariableName = prune->getMember(0);
+        parser->ast()->addOperation(pruneLetVariableName);
+      }
     }
   | T_FOR for_output_variables T_IN shortest_path_graph_info {
       // Shortest Path
@@ -1337,12 +1364,27 @@ upsert_statement:
     } T_INSERT expression update_or_replace expression in_or_into_collection options {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       forNode->changeMember(1, $9);
-
+      auto* forOptionsNode = parser->ast()->createNodeObject();
+      auto* upsertOptionsNode = parser->ast()->createNodeObject();
+      if ($10 != nullptr && $10->type == NODE_TYPE_OBJECT) {
+        for (size_t i = 0; i < $10->numMembers(); ++i) {
+          auto nodeMember = $10->getMember(i);
+          if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
+            std::string nodeMemberName = nodeMember->getString();
+            if (nodeMemberName == "indexHint" || nodeMemberName == "forceIndexHint") {
+              forOptionsNode->addMember(nodeMember);
+            } else {
+              upsertOptionsNode->addMember(nodeMember);
+            }
+          }
+        }
+        forNode->changeMember(2, forOptionsNode);
+      }
       if (!parser->configureWriteQuery($9, $10)) {
         YYABORT;
       }
 
-      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($7), parser->ast()->createNodeReference(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)), $6, $8, $9, $10);
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($7), parser->ast()->createNodeReference(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)), $6, $8, $9, upsertOptionsNode);
       parser->ast()->addOperation(node);
     }
   ;
@@ -1667,7 +1709,6 @@ for_options:
         if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
           parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
         }
-      
         ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
 
         node->addMember(parser->ast()->createNodeNop());
@@ -1684,7 +1725,7 @@ for_options:
           !TRI_CaseEqualString($3.value, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
-      
+     
       ::validateOptions(parser, $4, yylloc.first_line, yylloc.first_column);
 
       auto node = parser->ast()->createNodeArray(2);
@@ -1704,7 +1745,7 @@ options:
       if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
-      
+     
       ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
 
       $$ = $2;
