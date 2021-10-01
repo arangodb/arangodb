@@ -1262,7 +1262,7 @@ Done:
       EnVar::SetHKLM
     ${Else}
       EnVar::SetHKCU
-    ${EndIf  
+    ${EndIf}  
     EnVar::DeleteValue "PATH" "$INSTDIR/${BIN_DIR}"
   ${EndIf}
 SectionEnd
