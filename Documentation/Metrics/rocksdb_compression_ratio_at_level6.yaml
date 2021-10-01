@@ -1,7 +1,7 @@
 name: rocksdb_compression_ratio_at_level6
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-compression-ratio-at-level6"
+  RocksDB compression ratio at level 6.
 unit: ratio
 type: gauge
 category: RocksDB

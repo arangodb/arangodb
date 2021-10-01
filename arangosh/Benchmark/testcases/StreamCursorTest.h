@@ -25,83 +25,63 @@
 
 #include "Benchmark.h"
 #include "helpers.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct StreamCursorTest : public Benchmark<StreamCursorTest> {
-  static std::string name() { return "stream-cursor"; }
+  struct StreamCursorTest : public Benchmark<StreamCursorTest> {
+    static std::string name() { return "stream-cursor"; }
 
-  StreamCursorTest(BenchFeature& arangobench) : Benchmark<StreamCursorTest>(arangobench) {}
+    StreamCursorTest(BenchFeature& arangobench) : Benchmark<StreamCursorTest>(arangobench) {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return DeleteCollection(client, _arangobench.collection()) &&
-           CreateCollection(client, _arangobench.collection(), 2, _arangobench);
-  }
-
-  void tearDown() override {}
-
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return std::string("/_api/cursor");
-  }
-
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
-  }
-
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(256);
-
-    size_t const mod = globalCounter % 2;
-
-    if (globalCounter == 0) {
-      TRI_AppendStringStringBuffer(
-          buffer, "{\"query\":\"FOR i IN 1..500 INSERT { _key: TO_STRING(i)");
-
-      uint64_t const n = _arangobench.complexity();
-      for (uint64_t i = 1; i <= n; ++i) {
-        TRI_AppendStringStringBuffer(buffer, ",\\\"value");
-        TRI_AppendUInt64StringBuffer(buffer, i);
-        TRI_AppendStringStringBuffer(buffer, "\\\":true");
-      }
-
-      TRI_AppendStringStringBuffer(buffer, " } INTO ");
-      TRI_AppendStringStringBuffer(buffer, _arangobench.collection().c_str());
-      TRI_AppendStringStringBuffer(buffer,
-                                   "\"}");  // OPTIONS { ignoreErrors: true }");
-    } else if (mod == 0) {
-      TRI_AppendStringStringBuffer(
-          buffer,
-          "{\"query\":\"UPDATE { _key: \\\"1\\\" } WITH { \\\"foo\\\":1");
-
-      uint64_t const n = _arangobench.complexity();
-      for (uint64_t i = 1; i <= n; ++i) {
-        TRI_AppendStringStringBuffer(buffer, ",\\\"value");
-        TRI_AppendUInt64StringBuffer(buffer, i);
-        TRI_AppendStringStringBuffer(buffer, "\\\":true");
-      }
-
-      TRI_AppendStringStringBuffer(buffer, " } INTO ");
-      TRI_AppendStringStringBuffer(buffer, _arangobench.collection().c_str());
-      TRI_AppendStringStringBuffer(buffer,
-                                   " OPTIONS { ignoreErrors: true }\"}");
-    } else {
-      TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR doc IN ");
-      TRI_AppendStringStringBuffer(buffer, _arangobench.collection().c_str());
-      TRI_AppendStringStringBuffer(
-          buffer, " RETURN doc\",\"options\":{\"stream\":true}}");
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      return DeleteCollection(client, _arangobench.collection()) &&
+        CreateCollection(client, _arangobench.collection(), 2, _arangobench);
     }
 
-    *length = TRI_LengthStringBuffer(buffer);
-    *mustFree = true;
-    char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(buffer);
+    void tearDown() override {}
 
-    return (char const*)ptr;
-  }
-};
+    void buildRequest(size_t threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.url = "/_api/cursor";
+      requestData.type = rest::RequestType::POST;
+      size_t mod = globalCounter % 2;
+      uint64_t n = _arangobench.complexity();
+      using namespace arangodb::velocypack;
+      requestData.payload.openObject();
+      std::string query;
+      if (globalCounter == 0) {
+        query = "FOR i IN 1..500 INSERT { \"_key\": TO_STRING(i)";
+        for (uint64_t i = 1; i <= n; ++i) {
+          query += ", \"value" + std::to_string(i) + "\": true";
+        }
+        query += "} INTO " + _arangobench.collection();
+      } else if (mod == 0) {
+        query = "UPDATE { \"_key\": \"1\" } WITH { \"foo\": 1";
+        for (uint64_t i = 1; i <= n; ++i) {
+          query += ", \"value" + std::to_string(i) + "\": true";
+        }
+        query += " } INTO " + _arangobench.collection() + std::string(" OPTIONS { ignoreErrors: true }");
+      } else {
+        query = "FOR doc IN " + _arangobench.collection() + std::string(" RETURN doc");
+        requestData.payload.add("options", Value(ValueType::Object));
+        requestData.payload.add("stream", Value(true));
+        requestData.payload.close();
+      }
+      requestData.payload.add("query", Value(query));
+      requestData.payload.close();
+    }
+
+    char const* getDescription() const noexcept override {
+      return "creates 500 documents in a collection, and then performs a mix of AQL update queries (all on the same document) and a streaming AQL query that returns all documents from the collection. The --complexity parameter can be used to control the number of attributes for the inserted documents and the update queries. This test will trigger a lot of write-write conflicts with --concurrency bigger than 2.";
+    }
+
+    bool isDeprecated() const noexcept override {
+      return true;
+    }
+
+  };
 
 }  // namespace arangodb::arangobench

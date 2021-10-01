@@ -39,36 +39,37 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-std::string GeneralRequest::translateMethod(RequestType method) {
+std::string_view GeneralRequest::translateMethod(RequestType method) {
   switch (method) {
     case RequestType::DELETE_REQ:
-      return "DELETE";
+      return {"DELETE"};
 
     case RequestType::GET:
-      return "GET";
+      return {"GET"};
 
     case RequestType::HEAD:
-      return "HEAD";
+      return {"HEAD"};
 
     case RequestType::OPTIONS:
-      return "OPTIONS";
+      return {"OPTIONS"};
 
     case RequestType::PATCH:
-      return "PATCH";
+      return {"PATCH"};
 
     case RequestType::POST:
-      return "POST";
+      return {"POST"};
 
     case RequestType::PUT:
-      return "PUT";
+      return {"PUT"};
 
     case RequestType::ILLEGAL:
-      LOG_TOPIC("62a53", WARN, arangodb::Logger::FIXME)
-          << "illegal http request method encountered in switch";
-      return "UNKNOWN";
+      break;
   }
+      
+  LOG_TOPIC("62a53", WARN, arangodb::Logger::FIXME)
+        << "illegal http request method encountered in switch";
 
-  return "UNKNOWN";  // in order please MSVC
+  return {"UNKNOWN"};  // in order to please MSVC
 }
 
 namespace  {
@@ -103,7 +104,8 @@ rest::RequestType GeneralRequest::translateMethod(VPackStringRef const& method) 
 
 void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {
   // append RequestType as string value to given String buffer
-  buffer->appendText(translateMethod(method));
+  auto meth = translateMethod(method);
+  buffer->appendText(meth.data(), meth.size());
   buffer->appendChar(' ');
 }
 

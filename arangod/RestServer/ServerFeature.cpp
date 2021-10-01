@@ -23,10 +23,8 @@
 
 #include "ServerFeature.h"
 
-#include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/SupervisorFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
@@ -41,7 +39,9 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"
+#include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SupervisorFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
@@ -144,8 +144,10 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << "'--javascript.script'";
     FATAL_ERROR_EXIT();
   }
+  
+  DatabaseFeature& db = server().getFeature<DatabaseFeature>();
 
-  if (_operationMode == OperationMode::MODE_SERVER && !_restServer) {
+  if (_operationMode == OperationMode::MODE_SERVER && !_restServer && !db.upgrade()) {
     LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
         << "need at least '--console', '--javascript.unit-tests' or"
         << "'--javascript.script if rest-server is disabled";

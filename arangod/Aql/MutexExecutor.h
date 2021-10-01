@@ -68,11 +68,13 @@ class MutexExecutor {
   auto distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                        std::unordered_map<std::string, ClientBlockData>& blockMap) -> void;
   
-  void acquireLock() {
+  void acquireLock() noexcept {
+    // don't continue if locking fails
     _mutex.lock();
   }
 
-  void releaseLock() {
+  void releaseLock() noexcept {
+    // don't continue if locking fails
     _mutex.unlock();
   }
 

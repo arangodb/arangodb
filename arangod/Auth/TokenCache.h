@@ -63,6 +63,7 @@ class TokenCache {
     bool authenticated() const { return _authenticated; }
     void authenticated(bool value) { _authenticated = value; }
     void setExpiry(double expiry) { _expiry = expiry; }
+    double expiry() const noexcept { return _expiry; }
     bool expired() const { return _expiry != 0 && _expiry < TRI_microtime(); }
     std::vector<std::string> const& allowedPaths() const { return _allowedPaths; }
 

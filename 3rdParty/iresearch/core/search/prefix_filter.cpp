@@ -39,8 +39,7 @@ void visit(
     const term_reader& reader,
     const bytes_ref& prefix,
     Visitor& visitor) {
-  // find term
-  auto terms = reader.iterator();
+  auto terms = reader.iterator(SeekMode::NORMAL);
 
   // seek to prefix
   if (IRS_UNLIKELY(!terms) || SeekResult::END == terms->seek_ge(prefix)) {

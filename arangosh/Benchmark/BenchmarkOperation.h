@@ -28,71 +28,65 @@
 #include <map>
 #include <memory>
 
-namespace arangodb {
+#include <velocypack/Builder.h>
+#include <velocypack/Options.h>
 
+namespace arangodb {
 class BenchFeature;
 
 namespace arangobench {
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief simple interface for benchmark operations
-////////////////////////////////////////////////////////////////////////////////
-
 struct BenchmarkOperation {
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief ctor, derived class can implemented something sensible
-  //////////////////////////////////////////////////////////////////////////////
+  struct RequestData {
+    RequestData();
 
-  explicit BenchmarkOperation(BenchFeature& arangobench) : _arangobench(arangobench) {}
+    std::string url;
+    arangodb::rest::RequestType type;
+    arangodb::velocypack::Options options;
+    arangodb::velocypack::Builder payload;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief dtor, derived class can implemented something sensible
-  //////////////////////////////////////////////////////////////////////////////
+    void clear() {
+      url.clear();
+      payload.clear();
+      type = arangodb::rest::RequestType::ILLEGAL;
+    }
+  };
+
+  explicit BenchmarkOperation(BenchFeature& arangobench) 
+      : _arangobench(arangobench) {}
 
   virtual ~BenchmarkOperation() = default;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief setup
-  //////////////////////////////////////////////////////////////////////////////
-
+  /// @brief setup operation. executed once per benchmark run 
   virtual bool setUp(arangodb::httpclient::SimpleHttpClient*) = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief teardown
-  //////////////////////////////////////////////////////////////////////////////
-
+  /// @brief teardown operation. executed once per benchmark run
   virtual void tearDown() = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the URL of the operation to execute
-  //////////////////////////////////////////////////////////////////////////////
+  /// @brief build the HTTP request and set it's values (url, type and payload) 
+  /// inside RequestData.
+  /// The caller must provide it and clean its values before the call
+  virtual void buildRequest(size_t threadNumber, size_t threadCounter, size_t globalCounter, RequestData&) const = 0;
 
-  virtual std::string url(int const, size_t const, size_t const) = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the HTTP method of the operation to execute
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual arangodb::rest::RequestType type(int const, size_t const, size_t const) = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the payload (body) of the HTTP request to execute
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual char const* payload(size_t*, int const, size_t const, size_t const, bool*) = 0;
-  
   using BenchmarkFactory = std::function<std::unique_ptr<BenchmarkOperation>(BenchFeature&)>;
 
   /// @brief return the the map of all available benchmarks
   static std::map<std::string, BenchmarkFactory>& allBenchmarks();
-  
+
   /// @brief register a benchmark with the given name and factory function
   static void registerBenchmark(std::string name, BenchmarkFactory factory);
-  
+
   /// @brief return the benchmark for a name
   static std::unique_ptr<BenchmarkOperation> createBenchmark(std::string const& name, BenchFeature& arangobench);
-  
-protected:
+
+  /// @brief returns the description of the testcase
+  virtual char const* getDescription() const noexcept = 0;
+
+  /// @brief returns wether testcase is deprecated or not 
+  virtual bool isDeprecated() const noexcept = 0;
+
+ protected:
   arangodb::BenchFeature& _arangobench;
 };
 

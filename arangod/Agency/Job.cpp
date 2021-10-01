@@ -54,6 +54,7 @@ std::string const cleanedPrefix = "/Target/CleanedServers";
 std::string const toBeCleanedPrefix = "/Target/ToBeCleanedServers";
 std::string const failedServersPrefix = "/Target/FailedServers";
 std::string const planColPrefix = "/Plan/Collections/";
+std::string const planRepLogPrefix = "/Plan/ReplicatedLogs/";
 std::string const planDBPrefix = "/Plan/Databases/";
 std::string const curServersKnown = "/Current/ServersKnown/";
 std::string const curColPrefix = "/Current/Collections/";
@@ -86,6 +87,17 @@ Job::~Job() = default;
 
 // this will be initialized in the AgencyFeature
 std::string Job::agencyPrefix = "arango";
+
+bool Job::considerCancellation() {
+  // Allow for cancellation of shard moves
+  auto val = 
+    _snapshot.hasAsBool(std::string("/Target/") + jobStatus[_status] + "/" + _jobId + "/abort");
+  auto cancelled = val && val.value();
+  if (cancelled) {
+    abort("Killed via API");
+  }
+  return cancelled;
+};
 
 bool Job::finish(std::string const& server, std::string const& shard,
                  bool success, std::string const& reason, query_t const payload) {

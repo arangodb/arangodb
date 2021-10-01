@@ -115,7 +115,7 @@ struct custom_sort : public irs::sort {
       const irs::term_reader& term_reader_;
     };
 
-    DECLARE_FACTORY(prepared);
+    static ptr make(prepared);
 
     prepared(const custom_sort& sort) : sort_(sort) {}
 
@@ -127,8 +127,8 @@ struct custom_sort : public irs::sort {
       }
     }
 
-    virtual const irs::flags& features() const override {
-      return irs::flags::empty_instance();
+    virtual irs::IndexFeatures features() const override {
+      return irs::IndexFeatures::NONE;
     }
 
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
@@ -199,7 +199,7 @@ struct custom_sort : public irs::sort {
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
   std::function<void(irs::doc_id_t&)> scorer_score;
 
-  DECLARE_FACTORY();
+  static ptr make();
   custom_sort() : sort(irs::type<custom_sort>::get()) {}
   virtual prepared::ptr prepare() const override {
     return std::make_unique<custom_sort::prepared>(*this);
@@ -438,7 +438,9 @@ TEST(GeoDistanceFilterTest, query) {
 
   // index data
   {
-    auto codec = irs::formats::get(arangodb::iresearch::LATEST_FORMAT);
+    constexpr auto formatId = arangodb::iresearch::getFormat(
+      arangodb::iresearch::LinkVersion::MAX);
+    auto codec = irs::formats::get(formatId);
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -911,7 +913,9 @@ TEST(GeoDistanceFilterTest, checkScorer) {
 
   // index data
   {
-    auto codec = irs::formats::get(arangodb::iresearch::LATEST_FORMAT);
+    constexpr auto formatId = arangodb::iresearch::getFormat(
+      arangodb::iresearch::LinkVersion::MAX);
+    auto codec = irs::formats::get(formatId);
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);

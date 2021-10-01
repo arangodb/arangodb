@@ -24,60 +24,49 @@
 #pragma once
 
 #include "Benchmark.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <string>
 
 namespace arangodb::arangobench {
 
-struct CollectionCreationTest : public Benchmark<CollectionCreationTest> {
-  static std::string name() { return "collection"; }
+  struct CollectionCreationTest : public Benchmark<CollectionCreationTest> {
+    static std::string name() { return "collection"; }
 
-  CollectionCreationTest(BenchFeature& arangobench)
-      : Benchmark<CollectionCreationTest>(arangobench), _url("/_api/collection") {}
+    CollectionCreationTest(BenchFeature& arangobench)
+      : Benchmark<CollectionCreationTest>(arangobench) {}
 
-  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return true;
-  }
-
-  void tearDown() override {}
-
-  std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) override {
-    return _url;
-  }
-
-  rest::RequestType type(int const threadNumber, size_t const threadCounter,
-                         size_t const globalCounter) override {
-    return rest::RequestType::POST;
-  }
-
-  char const* payload(size_t* length, int const threadNumber, size_t const threadCounter,
-                      size_t const globalCounter, bool* mustFree) override {
-    TRI_string_buffer_t* buffer;
-    char* data;
-
-    buffer = TRI_CreateSizedStringBuffer(64);
-    if (buffer == nullptr) {
-      return nullptr;
+    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+      //unfortunately, we don't know how many collections we would need to clean up here
+      //because the user can choose a timed execution, so there would be no way to find out
+      //how many collections would be created in a timed execution.
+      return true;
     }
-    TRI_AppendStringStringBuffer(buffer, "{\"name\":\"");
-    TRI_AppendStringStringBuffer(buffer, _arangobench.collection().c_str());
-    TRI_AppendUInt64StringBuffer(buffer, ++_counter);
-    TRI_AppendStringStringBuffer(buffer, "\"}");
 
-    *length = TRI_LengthStringBuffer(buffer);
+    void tearDown() override {}
 
-    // this will free the string buffer frame, but not the string
-    data = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(buffer);
+    void buildRequest(size_t threadNumber, size_t threadCounter,
+                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+      requestData.url = "/_api/collection";
+      requestData.type = rest::RequestType::POST;
+      using namespace arangodb::velocypack;
+      requestData.payload.openObject();
+      requestData.payload.add("name", Value(_arangobench.collection() + std::to_string(++_counter)));
+      requestData.payload.close();
+    }
 
-    *mustFree = true;
-    return (char const*)data;
-  }
+    char const* getDescription() const noexcept override {
+      return "creates as many separate (empty) collections as provided in the value of --requests.";
+    }
 
-  static std::atomic<uint64_t> _counter;
+    bool isDeprecated() const noexcept override {
+      return false;
+    }
 
-  std::string _url;
-};
+    static std::atomic<uint64_t> _counter;
 
-std::atomic<uint64_t> CollectionCreationTest::_counter(0);
+  };
+
+  std::atomic<uint64_t> CollectionCreationTest::_counter(0);
 
 }  // namespace arangodb::arangobench

@@ -78,7 +78,7 @@ namespace iresearch {
     ////////////////////////////////////////////////////////////////////////////////
     class IRESEARCH_API proxy_filter: public proxy_filter_t<irs::filter::ptr> {
      public:
-      DECLARE_FACTORY();
+      static ptr make();
 
       proxy_filter(): proxy_filter_t(irs::type<proxy_filter>::get()) {}
     };

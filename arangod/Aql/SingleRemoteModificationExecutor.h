@@ -34,9 +34,11 @@
 
 namespace arangodb {
 namespace aql {
+class ExecutionEngine;
 
 struct SingleRemoteModificationInfos : ModificationExecutorInfos {
-  SingleRemoteModificationInfos(RegisterId inputRegister, RegisterId outputNewRegisterId,
+  SingleRemoteModificationInfos(ExecutionEngine* engine,
+                                RegisterId inputRegister, RegisterId outputNewRegisterId,
                                 RegisterId outputOldRegisterId, RegisterId outputRegisterId,
                                 arangodb::aql::QueryContext& query, OperationOptions options,
                                 aql::Collection const* aqlCollection,
@@ -44,7 +46,7 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
                                 IgnoreErrors ignoreErrors,
                                 IgnoreDocumentNotFound ignoreDocumentNotFound,
                                 std::string key, bool hasParent, bool replaceIndex)
-      : ModificationExecutorInfos(inputRegister, RegisterPlan::MaxRegisterId,
+      : ModificationExecutorInfos(engine, inputRegister, RegisterPlan::MaxRegisterId,
                                   RegisterPlan::MaxRegisterId, outputNewRegisterId,
                                   outputOldRegisterId, outputRegisterId, query,
                                   std::move(options), aqlCollection,

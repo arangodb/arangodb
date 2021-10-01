@@ -1,3 +1,13 @@
+### Suppressing all warnings from external libs
+if (SUPPRESS_EXTERNAL_WARNINGS)
+  if (MSVC)
+    add_compile_options(/W0)
+  else ()
+    add_compile_options(-Wno-all)
+  endif ()
+endif()
+
+
 ################################################################################
 ### CmdLine library
 ################################################################################
@@ -53,31 +63,14 @@ target_compile_definitions(
 
 # disable warnings for 3rd-party libs for a cleaner build
 if (MSVC)
-  add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
   target_compile_options(
     ${IResearch_TARGET_NAME}-ofst
     # MSVC2015-2017 require "/bigobj" to compile debug build
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
-    # MSVC requires listing each warning code individually
-    # /W0 and /w cannot be used because the produce a single warning themselves
-    PRIVATE "/wd4018"
-    PRIVATE "/wd4100"
-    PRIVATE "/wd4127"
-    PRIVATE "/wd4244"
-    PRIVATE "/wd4245"
-    PRIVATE "/wd4267"
-    PRIVATE "/wd4291"
-    PRIVATE "/wd4305"
-    PRIVATE "/wd4389"
-    PRIVATE "/wd4510"
-    PRIVATE "/wd4512"
-    PRIVATE "/wd4610"
-    PRIVATE "/wd4706"
   )
 else()
   target_compile_options(
     ${IResearch_TARGET_NAME}-ofst
-    PRIVATE "-Wno-all"
     PRIVATE "-fPIC"
   )
 endif()
@@ -129,6 +122,7 @@ target_include_directories(
 ### frozen library
 ################################################################################
 
+set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include)
 set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)
 
 ################################################################################
@@ -136,12 +130,6 @@ set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)
 ################################################################################
 
 add_subdirectory(absl)
-
-################################################################################
-### unicorn library
-################################################################################
-
-add_subdirectory(unicorn)
 
 ################################################################################
 ### velocypack library
@@ -152,8 +140,25 @@ if (NOT TARGET velocypack)
   endif()
 
   if (NOT ("${VPACK_ROOT}" STREQUAL ""))
-    add_subdirectory(${VPACK_ROOT}
-                    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
-                    EXCLUDE_FROM_ALL)
+    expand_path(${VPACK_ROOT} VPACK_ROOT_EXP)
+
+    add_subdirectory(${VPACK_ROOT_EXP}
+                     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
+                     EXCLUDE_FROM_ALL)
+  else()
+   message(FATAL_ERROR "VPACK_ROOT not set")
   endif()
 endif()
+
+################################################################################
+### Highway library
+################################################################################
+
+set(BUILD_TESTING OFF CACHE INTERNAL "" FORCE)
+add_subdirectory(highway)
+
+################################################################################
+### Boost::Text library
+################################################################################
+
+add_subdirectory(text)

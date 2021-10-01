@@ -42,7 +42,7 @@
       $.ajax({
         cache: false,
         type: 'GET',
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.collectionID + '/count'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.collectionID) + '/count'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {

@@ -88,6 +88,10 @@ void Options::setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommit
   defaultIntermediateCommitCount = intermediateCommitCount;
 }
 
+bool Options::isIntermediateCommitEnabled() const noexcept {
+  return intermediateCommitSize != UINT64_MAX || intermediateCommitCount != UINT64_MAX;
+}
+
 void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   VPackSlice value;
 

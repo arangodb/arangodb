@@ -84,9 +84,10 @@
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
-#include "RestHandler/RestSystemReportHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestSupervisionStateHandler.h"
+#include "RestHandler/RestSupportInfoHandler.h"
+#include "RestHandler/RestSystemReportHandler.h"
 #include "RestHandler/RestTasksHandler.h"
 #include "RestHandler/RestTestHandler.h"
 #include "RestHandler/RestTimeHandler.h"
@@ -97,6 +98,7 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
+#include "RestHandler/RestLogHandler.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -108,6 +110,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestHandler/RestHotBackupHandler.h"
+#include "Enterprise/RestHandler/RestLicenseHandler.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 
@@ -118,13 +121,40 @@ namespace arangodb {
 
 static uint64_t const _maxIoThreads = 64;
 
+struct RequestBodySizeScale {
+  static log_scale_t<uint64_t> scale() { return { 2, 64, 65536, 10 }; }
+};
+
+DECLARE_HISTOGRAM(arangodb_request_body_size_http1, RequestBodySizeScale,
+    "Body size of HTTP/1.1 requests");
+DECLARE_HISTOGRAM(arangodb_request_body_size_http2, RequestBodySizeScale,
+    "Body size of HTTP/2 requests");
+DECLARE_HISTOGRAM(arangodb_request_body_size_vst, RequestBodySizeScale,
+    "Body size of VST requests");
+DECLARE_COUNTER(arangodb_http2_connections_total,
+    "Total number of HTTP/2 connections");
+DECLARE_COUNTER(arangodb_vst_connections_total,
+    "Total number of VST connections");
+
 GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
       _proxyCheck(true),
+      _returnQueueTimeHeader(true),
       _permanentRootRedirect(true),
       _redirectRootTo("/_admin/aardvark/index.html"),
-      _numIoThreads(0) {
+      _supportInfoApiPolicy("hardened"),
+      _numIoThreads(0),
+      _requestBodySizeHttp1(
+          server.getFeature<MetricsFeature>().add(arangodb_request_body_size_http1{})),
+      _requestBodySizeHttp2(
+          server.getFeature<MetricsFeature>().add(arangodb_request_body_size_http2{})),
+      _requestBodySizeVst(
+          server.getFeature<MetricsFeature>().add(arangodb_request_body_size_vst{})),
+      _http2Connections(
+          server.getFeature<MetricsFeature>().add(arangodb_http2_connections_total{})),
+      _vstConnections(
+          server.getFeature<MetricsFeature>().add(arangodb_vst_connections_total{})) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
@@ -149,9 +179,16 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOldOption("no-server", "server.rest-server");
 
   options->addOption("--server.io-threads",
-                     "Number of threads used to handle IO",
+                     "number of threads used to handle IO",
                      new UInt64Parameter(&_numIoThreads),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  
+  options->addOption("--server.support-info-api",
+                     "policy for exposing support info API",
+                     new DiscreteValuesParameter<StringParameter>(
+                         &_supportInfoApiPolicy,
+                         std::unordered_set<std::string>{"disabled", "jwt", "hardened", "public"}))
+                     .setIntroducedIn(30900);
 
   options->addSection("http", "HTTP server features");
 
@@ -184,6 +221,11 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                     "if true, use a permanent redirect. If false, use a temporary",
                     new BooleanParameter(&_permanentRootRedirect))
                     .setIntroducedIn(30712);
+  
+  options->addOption("--http.return-queue-time-header",
+                    "if true, return the 'x-arango-queue-time-seconds' response header",
+                    new BooleanParameter(&_returnQueueTimeHeader))
+                    .setIntroducedIn(30900);
 
   options->addOption("--frontend.proxy-request-check",
                      "enable proxy request checking",
@@ -247,9 +289,8 @@ void GeneralServerFeature::prepare() {
 }
 
 void GeneralServerFeature::start() {
-  _jobManager.reset(new AsyncJobManager);
-
-  _handlerFactory.reset(new RestHandlerFactory());
+  _jobManager = std::make_unique<AsyncJobManager>();
+  _handlerFactory = std::make_unique<RestHandlerFactory>();
 
   defineHandlers();
   buildServers();
@@ -286,17 +327,19 @@ void GeneralServerFeature::unprepare() {
   _jobManager.reset();
 }
 
-double GeneralServerFeature::keepAliveTimeout() const {
+double GeneralServerFeature::keepAliveTimeout() const noexcept {
   return _keepAliveTimeout;
 }
 
-bool GeneralServerFeature::proxyCheck() const { return _proxyCheck; }
+bool GeneralServerFeature::proxyCheck() const noexcept { return _proxyCheck; }
+
+bool GeneralServerFeature::returnQueueTimeHeader() const noexcept { return _returnQueueTimeHeader; }
 
 std::vector<std::string> GeneralServerFeature::trustedProxies() const {
   return _trustedProxies;
 }
 
-bool GeneralServerFeature::allowMethodOverride() const {
+bool GeneralServerFeature::allowMethodOverride() const noexcept {
   return _allowMethodOverride;
 }
 
@@ -315,12 +358,16 @@ Result GeneralServerFeature::reloadTLS() {  // reload TLS data from disk
   return res;
 }
 
-bool GeneralServerFeature::permanentRootRedirect() const {
+bool GeneralServerFeature::permanentRootRedirect() const noexcept {
   return _permanentRootRedirect;
 }
 
 std::string GeneralServerFeature::redirectRootTo() const {
   return _redirectRootTo;
+}
+  
+std::string const& GeneralServerFeature::supportInfoApiPolicy() const noexcept {
+  return _supportInfoApiPolicy;
 }
 
 rest::RestHandlerFactory& GeneralServerFeature::handlerFactory() {
@@ -444,6 +491,12 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
                                     RestHandlerCreator<RestViewHandler>::createNoData);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (cluster.isEnabled()) {
+    _handlerFactory->addPrefixHandler("/_api/log", RestHandlerCreator<RestLogHandler>::createNoData);
+  }
+#endif
+
   // This is the only handler were we need to inject
   // more than one data object. So we created the combinedRegistries
   // for it.
@@ -547,6 +600,11 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler("/_admin/status",
                               RestHandlerCreator<RestStatusHandler>::createNoData);
+ 
+  if (_supportInfoApiPolicy != "disabled") {
+    _handlerFactory->addHandler("/_admin/support-info",
+                                RestHandlerCreator<RestSupportInfoHandler>::createNoData);
+  }
 
   _handlerFactory->addHandler("/_admin/system-report",
                               RestHandlerCreator<RestSystemReportHandler>::createNoData);
@@ -603,8 +661,10 @@ void GeneralServerFeature::defineHandlers() {
 #ifdef USE_ENTERPRISE
   if (backup.isAPIEnabled()) {
     _handlerFactory->addPrefixHandler("/_admin/backup",
-                                    RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
+                                      RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
   }
+  _handlerFactory->addPrefixHandler("/_admin/license",
+                                    RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
 #endif
 
 

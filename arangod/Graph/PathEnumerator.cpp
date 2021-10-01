@@ -25,6 +25,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Basics/ResourceUsage.h"
+#include "Containers/Helpers.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserCache.h"
@@ -53,20 +54,7 @@ EnumeratedPath::~EnumeratedPath() {
 
 template <typename T>
 void EnumeratedPath::growStorage(std::vector<T>& data) {
-  size_t capacity;
-
-  if (data.empty()) {
-    // reserve some initial space
-    capacity = 8;
-  } else {
-    capacity = data.size() + 1;
-    // allocate with power of 2 growth
-    if (capacity > data.capacity()) {
-      capacity *= 2;
-    }
-  }
-
-  TRI_ASSERT(capacity > data.size());
+  size_t capacity = arangodb::containers::Helpers::nextCapacity(data, 8);
 
   if (capacity > data.capacity()) {
     // reserve space
@@ -296,6 +284,10 @@ bool DepthFirstEnumerator::next() {
           }
         }
 
+        if (!validDisjointPath()) {
+          return;
+        }
+
         _enumeratedPath.pushEdge(eid);
         foundPath = true;
       }
@@ -413,3 +405,9 @@ bool DepthFirstEnumerator::shouldPrune() {
   }
   return evaluator->evaluate();
 }
+
+#ifndef USE_ENTERPRISE
+bool DepthFirstEnumerator::validDisjointPath() const {
+  return true;
+}
+#endif

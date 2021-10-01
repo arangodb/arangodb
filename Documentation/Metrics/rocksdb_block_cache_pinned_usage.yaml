@@ -1,7 +1,7 @@
 name: rocksdb_block_cache_pinned_usage
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-block-cache-pinned-usage"
+  Size of pinned RocksDB block cache entries.
 unit: bytes
 type: gauge
 category: RocksDB

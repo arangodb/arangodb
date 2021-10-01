@@ -123,7 +123,7 @@ RestStatus RestCursorHandler::continueExecute() {
 }
 
 void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
-  TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
+  auto sg = arangodb::scopeGuard([&]() noexcept { RestVocbaseBaseHandler::shutdownExecute(isFinalized); });
 
   // request not done yet
   if (!isFinalized) {
@@ -207,9 +207,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   
   // simon: access mode can always be write on the coordinator
   const AccessMode::Type mode = AccessMode::Type::WRITE;
-  auto query = std::make_unique<aql::Query>(createTransactionContext(mode),
-      arangodb::aql::QueryString(querySlice.copyString()),
-      bindVarsBuilder, opts);
+  auto query = aql::Query::create(createTransactionContext(mode),
+                                  arangodb::aql::QueryString(querySlice.stringRef()),
+                                  std::move(bindVarsBuilder), aql::QueryOptions(opts));
 
   if (stream) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
@@ -264,7 +264,7 @@ RestStatus RestCursorHandler::processQuery() {
 
   {
     // always clean up
-    auto guard = scopeGuard([this]() { unregisterQuery(); });
+    auto guard = scopeGuard([this]() noexcept { unregisterQuery(); });
 
     // continue handler is registered earlier
     auto state = _query->execute(_queryResult);
@@ -414,7 +414,7 @@ ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
 /// @brief register the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::registerQuery(std::unique_ptr<arangodb::aql::Query> query) {
+void RestCursorHandler::registerQuery(std::shared_ptr<arangodb::aql::Query> query) {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_queryKilled) {
@@ -430,7 +430,7 @@ void RestCursorHandler::registerQuery(std::unique_ptr<arangodb::aql::Query> quer
 /// @brief unregister the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::unregisterQuery() {
+void RestCursorHandler::unregisterQuery() noexcept {
   TRI_IF_FAILURE("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled") {
     _query->debugKillQuery();
   }

@@ -108,6 +108,7 @@ endif ()
 
 add_executable(${BIN_ARANGOBACKUP}
   ${ProductVersionFiles_arangobackup}
+  ../cmake/activeCodePage.manifest
   Backup/BackupFeature.cpp
   Backup/arangobackup.cpp
   ${ADDITIONAL_BIN_ARANGOBACKUP_SOURCES}
@@ -168,6 +169,7 @@ endif ()
 
 add_executable(${BIN_ARANGODUMP}
   ${ProductVersionFiles_arangodump}
+  ../cmake/activeCodePage.manifest
   Dump/DumpFeature.cpp
   Dump/arangodump.cpp
   ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
@@ -226,6 +228,7 @@ endif ()
 
 add_executable(${BIN_ARANGOEXPORT}
   ${ProductVersionFiles_arangoexport}
+  ../cmake/activeCodePage.manifest
   Export/ExportFeature.cpp
   Export/arangoexport.cpp
 )
@@ -282,6 +285,7 @@ endif ()
 
 add_executable(${BIN_ARANGOIMPORT}
   ${ProductVersionFiles_arangoimport}
+  ../cmake/activeCodePage.manifest
   Import/AutoTuneThread.cpp
   Import/ImportFeature.cpp
   Import/ImportHelper.cpp
@@ -349,6 +353,7 @@ endif ()
 
 add_executable(${BIN_ARANGORESTORE}
   ${ProductVersionFiles_arangorestore}
+  ../cmake/activeCodePage.manifest
   Restore/RestoreFeature.cpp
   Restore/arangorestore.cpp
   ${ADDITIONAL_BIN_ARANGORESTORE_SOURCES}
@@ -407,6 +412,7 @@ endif ()
 
 add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
+  ../cmake/activeCodePage.manifest
   Import/AutoTuneThread.cpp
   Import/ImportHelper.cpp
   Import/SenderThread.cpp

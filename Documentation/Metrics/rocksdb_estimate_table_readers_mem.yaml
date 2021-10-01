@@ -1,7 +1,7 @@
 name: rocksdb_estimate_table_readers_mem
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-estimate-table-readers-mem" - sum over column families
+  Estimated memory usage for reading RocksDB SST tables.
 unit: bytes
 type: gauge
 category: RocksDB

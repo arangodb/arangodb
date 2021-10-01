@@ -23,66 +23,17 @@
 #ifndef IRESEARCH_ENCRYPTION_H
 #define IRESEARCH_ENCRYPTION_H
 
+#include "store/directory_attributes.hpp"
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
-#include "utils/attribute_store.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/noncopyable.hpp"
 
 namespace iresearch {
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct encryption
-/// @brief directory encryption provider
-//////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API encryption : public stored_attribute {
-  // FIXME check if it's possible to rename to iresearch::encryption?
-  static constexpr string_ref type_name() noexcept {
-    return "encryption";
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  /// @struct stream
-  ////////////////////////////////////////////////////////////////////////////
-  struct stream {
-    using ptr = std::unique_ptr<stream>;
-
-    virtual ~stream() = default;
-
-    /// @returns size of the block supported by stream
-    virtual size_t block_size() const = 0;
-
-    /// @brief decrypt specified data at a provided offset
-    virtual bool decrypt(uint64_t offset, byte_type* data, size_t size) = 0;
-
-    /// @brief encrypt specified data at a provided offset
-    virtual bool encrypt(uint64_t offset, byte_type* data, size_t size) = 0;
-  };
-
-  /// @returns the length of the header that is added to every file
-  ///          and used for storing encryption options
-  virtual size_t header_length() = 0;
-
-  /// @brief an allocated block of header memory for a new file
-  virtual bool create_header(
-    const std::string& filename,
-    byte_type* header) = 0;
-
-  /// @returns a cipher stream for a file given file name
-  virtual stream::ptr create_stream(
-    const std::string& filename,
-    byte_type* header) = 0;
-};
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           helpers
 // -----------------------------------------------------------------------------
-
-inline irs::encryption* get_encryption(const attribute_store& attrs) noexcept {
-  auto enc = attrs.get<irs::encryption>();
-
-  return enc ? enc.get() : nullptr;
-}
 
 /// @brief initialize an encryption header and create corresponding cipher stream
 /// @returns true if cipher stream was initialized, false if encryption is not

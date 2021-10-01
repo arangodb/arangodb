@@ -30,7 +30,6 @@
 #include "utils/string.hpp"
 #include "utils/thread_utils.hpp"
 #include "utils/std.hpp"
-#include "utils/utf8_path.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/numeric_utils.hpp"
 #include "utils/crc.hpp"
@@ -185,6 +184,27 @@ void memory_index_input::seek(size_t pos) {
   switch_buffer(pos);
 }
 
+const byte_type* memory_index_input::read_buffer(
+    size_t offset,
+    size_t size,
+    BufferHint /*hint*/) noexcept {
+  const auto idx = file_->buffer_offset(offset);
+  assert(idx < file_->buffer_count());
+  const auto& buf = file_->get_buffer(idx);
+  const auto begin = buf.data + offset - buf.offset;
+  const auto end = begin + size;
+  const auto buf_end = buf.data + std::min(buf.size, file_->length() - buf.offset);
+
+  if (end <= buf_end) {
+    buf_ = buf.data;
+    begin_ = end;
+    end_ = buf_end;
+    start_ = buf.offset;
+    return begin;
+  }
+
+  return nullptr;
+}
 
 const byte_type* memory_index_input::read_buffer(
     size_t size,
@@ -226,6 +246,12 @@ size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
     b += copied;
   }
   return length - left;
+}
+
+int16_t memory_index_input::read_short() {
+  return remain() < sizeof(uint16_t)
+    ? data_input::read_short()
+    : irs::read<uint16_t>(begin_);
 }
 
 int32_t memory_index_input::read_int() {
@@ -307,7 +333,7 @@ void memory_index_output::seek(size_t pos) {
   auto idx = file_.buffer_offset(pos);
 
   buf_ = idx < file_.buffer_count() ? file_.get_buffer(idx) : file_.push_buffer();
-  pos_ = buf_.data;
+  pos_ = buf_.data + pos - buf_.offset;
   end_ = buf_.data + buf_.size;
 }
 
@@ -398,26 +424,19 @@ void memory_index_output::operator>>( data_output& out ) {
 // --SECTION--                                   memory_directory implementation
 // -----------------------------------------------------------------------------
 
-memory_directory::memory_directory(size_t pool_size /* = 0*/) {
-  alloc_ = &directory_utils::ensure_allocator(*this, pool_size);
+memory_directory::memory_directory(directory_attributes attrs)
+  : attrs_{std::move(attrs)} {
 }
 
 memory_directory::~memory_directory() noexcept {
-  async_utils::read_write_mutex::write_mutex mutex(flock_);
-  auto lock = make_lock_guard(mutex);
+  auto lock = make_lock_guard(flock_);
 
   files_.clear();
 }
 
-attribute_store& memory_directory::attributes() noexcept {
-  return attributes_;
-}
-
 bool memory_directory::exists(
-  bool& result, const std::string& name
-) const noexcept {
-  async_utils::read_write_mutex::read_mutex mutex(flock_);
-  auto lock = make_lock_guard(mutex);
+    bool& result, const std::string& name) const noexcept {
+  auto lock = make_shared_lock(flock_);
 
   result = files_.find(name) != files_.end();
 
@@ -426,22 +445,20 @@ bool memory_directory::exists(
 
 index_output::ptr memory_directory::create(const std::string& name) noexcept {
   try {
-    async_utils::read_write_mutex::write_mutex mutex(flock_);
-    auto lock = make_lock_guard(mutex);
+    auto lock = make_lock_guard(flock_);
 
     auto res = files_.emplace(
       std::piecewise_construct,
       std::forward_as_tuple(name),
-      std::forward_as_tuple()
-    );
+      std::forward_as_tuple());
 
     auto& file = res.first->second;
 
     if (res.second) {
-      file = memory::make_unique<memory_file>(*alloc_);
+      file = memory::make_unique<memory_file>(attrs_.allocator());
     }
 
-    file->reset(*alloc_);
+    file->reset(attrs_.allocator());
 
     return index_output::make<checksum_memory_index_output>(*file);
   } catch(...) {
@@ -451,10 +468,8 @@ index_output::ptr memory_directory::create(const std::string& name) noexcept {
 }
 
 bool memory_directory::length(
-    uint64_t& result, const std::string& name
-) const noexcept {
-  async_utils::read_write_mutex::read_mutex mutex(flock_);
-  auto lock = make_lock_guard(mutex);
+    uint64_t& result, const std::string& name) const noexcept {
+  auto lock = make_shared_lock(flock_);
 
   const auto it = files_.find(name);
 
@@ -481,8 +496,7 @@ index_lock::ptr memory_directory::make_lock(
 bool memory_directory::mtime(
     std::time_t& result,
     const std::string& name) const noexcept {
-  async_utils::read_write_mutex::read_mutex mutex(flock_);
-  auto lock = make_lock_guard(mutex);
+  auto lock = make_shared_lock(flock_);
 
   const auto it = files_.find(name);
 
@@ -499,8 +513,7 @@ index_input::ptr memory_directory::open(
     const std::string& name,
     IOAdvice /*advice*/) const noexcept {
   try {
-    async_utils::read_write_mutex::read_mutex mutex(flock_);
-    auto lock = make_lock_guard(mutex);
+    auto lock = make_shared_lock(flock_);
 
     const auto it = files_.find(name);
 
@@ -520,8 +533,7 @@ index_input::ptr memory_directory::open(
 
 bool memory_directory::remove(const std::string& name) noexcept {
   try {
-    async_utils::read_write_mutex::write_mutex mutex(flock_);
-    auto lock = make_lock_guard(mutex);
+    auto lock = make_lock_guard(flock_);
 
     return files_.erase(name) > 0;
   } catch (...) {
@@ -533,10 +545,8 @@ bool memory_directory::remove(const std::string& name) noexcept {
 bool memory_directory::rename(
     const std::string& src,
     const std::string& dst) noexcept {
-  async_utils::read_write_mutex::write_mutex mutex(flock_);
-
   try {
-    auto lock = make_lock_guard(mutex);
+    auto lock = make_lock_guard(flock_);
 
     const auto res = files_.try_emplace(dst);
     auto it = files_.find(src);
@@ -568,8 +578,7 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
   // take a snapshot of existing files in directory
   // to avoid potential recursive read locks in visitor
   {
-    async_utils::read_write_mutex::read_mutex mutex(flock_);
-    auto lock = make_lock_guard(mutex);
+    auto lock = make_shared_lock(flock_);
 
     files.reserve(files_.size());
 

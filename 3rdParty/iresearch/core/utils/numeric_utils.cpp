@@ -112,7 +112,7 @@ size_t encode(typename EncodeTraits::type value, byte_type* out, size_t shift) {
   
   value ^= type(1) << (bits_required<type>() - 1);
   value &= std::numeric_limits<type>::max() ^ ((type(1) << shift) - 1);
-  if (!is_big_endian()) {
+  if constexpr (!is_big_endian()) {
     value = EncodeTraits::hton(value);
   } 
 
@@ -130,7 +130,7 @@ typename EncodeTraits::type decode(const byte_type* in) {
   const size_t size = encoded_size<type>(*in - EncodeTraits::TYPE_MAGIC);
   if (size) {
     std::memcpy(reinterpret_cast<void*>(&value), in + 1, size);
-    if (!is_big_endian()) {
+    if constexpr (!is_big_endian()) {
       value = EncodeTraits::ntoh(value);
     }
     value ^= type(1) << (bits_required<type>() - 1);

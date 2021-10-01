@@ -453,7 +453,13 @@ TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
     pool.run(std::move(task2));
     pool.run(std::move(task3));
     pool.max_threads(2);
-    std::this_thread::sleep_for(100ms); // assume threads start within 100msec
+    {
+      const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      while (1 != pool.tasks_pending() || 2 != pool.tasks_active() || count != 2) {
+        std::this_thread::sleep_for(10ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
     ASSERT_EQ(2, count); // 2 tasks started
     ASSERT_EQ(2, pool.threads());
     ASSERT_EQ(2, pool.tasks_active());
@@ -473,7 +479,13 @@ TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
     ASSERT_EQ(0, pool.threads());
     pool.run(std::move(task));
     pool.max_threads_delta(1);
-    std::this_thread::sleep_for(100ms); // assume threads start within 100msec
+    {
+      const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      while (0 != pool.tasks_pending() || 1 != pool.tasks_active() || count != 1) {
+        std::this_thread::sleep_for(10ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
     ASSERT_EQ(1, count); // 1 task started
     ASSERT_EQ(1, pool.threads());
     ASSERT_EQ(1, pool.tasks_active());
@@ -521,14 +533,20 @@ TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
     pool.run(std::move(task3));
     pool.limits(3, 1);
     ASSERT_EQ(std::make_pair(size_t(3), size_t(1)), pool.limits());
-    ASSERT_TRUE(start_count || std::cv_status::no_timeout == start_cond.wait_for(start_lock, 1000ms) || start_count); // wait for all 3 tasks to start
+    ASSERT_TRUE(start_count || std::cv_status::no_timeout == start_cond.wait_for(start_lock, 10000ms) || start_count); // wait for all 3 tasks to start
     ASSERT_EQ(0, count); // 0 tasks complete
     ASSERT_EQ(3, pool.threads());
     ASSERT_EQ(3, pool.tasks_active());
     ASSERT_EQ(0, pool.tasks_pending());
     ASSERT_EQ(std::make_tuple(size_t(3), size_t(0), size_t(3)), pool.stats());
     lock1.unlock();
-    std::this_thread::sleep_for(100ms); // assume threads finish within 100msec
+    {
+      const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
+      while (2 != pool.threads() || count != 2) {
+        std::this_thread::sleep_for(10ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
     ASSERT_EQ(2, count); // 2 tasks complete
     ASSERT_EQ(2, pool.threads());
     lock2.unlock();
@@ -634,10 +652,10 @@ TEST_F(async_utils_tests, test_thread_pool_max_idle_mt) {
         ASSERT_LE(std::chrono::steady_clock::now(), end);
       }
     }
-    lock.unlock();
     ASSERT_EQ(0, pool.tasks_pending());
     ASSERT_EQ(4, pool.tasks_active());
     ASSERT_EQ(4, count);
+    lock.unlock();
     {
       const auto end = std::chrono::steady_clock::now() + 10s; // assume 10s is more than enough
       while (pool.tasks_active()) {

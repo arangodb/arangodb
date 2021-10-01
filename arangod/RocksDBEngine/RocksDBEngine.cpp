@@ -71,6 +71,7 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
+#include "RocksDBEngine/RocksDBPersistedLog.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
@@ -705,9 +706,10 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::VPackIndex);
   addFamily(RocksDBColumnFamilyManager::Family::GeoIndex);
   addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
+  addFamily(RocksDBColumnFamilyManager::Family::ZkdIndex);
 
-  std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
-  size_t const numberOfColumnFamilies = RocksDBColumnFamilyManager::minNumberOfColumnFamilies;
+  size_t const minNumberOfColumnFamilies = RocksDBColumnFamilyManager::minNumberOfColumnFamilies;
   bool dbExisted = false;
   {
     rocksdb::Options testOptions;
@@ -742,36 +744,46 @@ void RocksDBEngine::start() {
 
       LOG_TOPIC("528b8", DEBUG, arangodb::Logger::STARTUP)
           << "found existing column families: " << names;
+      auto const replicatedLogsName = RocksDBColumnFamilyManager::name(
+          RocksDBColumnFamilyManager::Family::ReplicatedLogs);
+      auto const zkdIndexName = RocksDBColumnFamilyManager::name(
+          RocksDBColumnFamilyManager::Family::ZkdIndex);
 
       for (auto const& it : cfFamilies) {
         auto it2 = std::find(existingColumnFamilies.begin(),
                              existingColumnFamilies.end(), it.name);
-
         if (it2 == existingColumnFamilies.end()) {
+
+          if (it.name == replicatedLogsName || it.name == zkdIndexName) {
+            LOG_TOPIC("293c3", INFO, Logger::STARTUP)
+                << "column family " << it.name
+                << " is missing and will be created.";
+            continue;
+          }
+
           LOG_TOPIC("d9df8", FATAL, arangodb::Logger::STARTUP)
               << "column family '" << it.name << "' is missing in database"
               << ". if you are upgrading from an earlier alpha or beta version "
-                 "of ArangoDB 3.2, "
-              << "it is required to restart with a new database directory and "
+                 "of ArangoDB, it is required to restart with a new database directory and "
                  "re-import data";
           FATAL_ERROR_EXIT();
         }
       }
 
-      if (existingColumnFamilies.size() < numberOfColumnFamilies) {
+      if (existingColumnFamilies.size() < minNumberOfColumnFamilies) {
         LOG_TOPIC("e99ec", FATAL, arangodb::Logger::STARTUP)
             << "unexpected number of column families found in database ("
-            << cfHandles.size() << "). "
-            << "expecting at least " << numberOfColumnFamilies
+            << existingColumnFamilies.size() << "). "
+            << "expecting at least " << minNumberOfColumnFamilies
             << ". if you are upgrading from an earlier alpha or beta version "
-               "of ArangoDB 3.2, "
-            << "it is required to restart with a new database directory and "
+               "of ArangoDB, it is required to restart with a new database directory and "
                "re-import data";
         FATAL_ERROR_EXIT();
       }
     }
   }
 
+  std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
   rocksdb::Status status =
       rocksdb::TransactionDB::Open(_options, transactionOptions, _path,
                                    cfFamilies, &cfHandles, &_db);
@@ -793,10 +805,10 @@ void RocksDBEngine::start() {
         << "unable to initialize RocksDB column families";
     FATAL_ERROR_EXIT();
   }
-  if (cfHandles.size() < numberOfColumnFamilies) {
+  if (cfHandles.size() < minNumberOfColumnFamilies) {
     LOG_TOPIC("e572e", FATAL, arangodb::Logger::STARTUP)
         << "unexpected number of column families found in database. "
-        << "got " << cfHandles.size() << ", expecting at least " << numberOfColumnFamilies;
+        << "got " << cfHandles.size() << ", expecting at least " << minNumberOfColumnFamilies;
     FATAL_ERROR_EXIT();
   }
 
@@ -822,11 +834,15 @@ void RocksDBEngine::start() {
                                   cfHandles[5]);
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::FulltextIndex,
                                   cfHandles[6]);
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::ReplicatedLogs,
+                                  cfHandles[7]);
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::ZkdIndex,
+                                  cfHandles[8]);
   TRI_ASSERT(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
 
   // will crash the process if version does not match
-  arangodb::rocksdbStartupVersionCheck(_db, dbExisted);
+  arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted);
 
   // only enable logger after RocksDB start
   if (logger != nullptr) {
@@ -865,6 +881,22 @@ void RocksDBEngine::start() {
   _settingsManager.reset(new RocksDBSettingsManager(*this));
   _replicationManager.reset(new RocksDBReplicationManager(*this));
 
+
+  struct SchedulerExecutor : RocksDBLogPersistor::Executor {
+    explicit SchedulerExecutor(arangodb::application_features::ApplicationServer& server)
+        : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
+
+    void operator()(fu2::unique_function<void() noexcept> func) override {
+      _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
+    }
+
+    Scheduler* _scheduler;
+  };
+
+  _logPersistor = std::make_shared<RocksDBLogPersistor>(
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+      _db, std::make_shared<SchedulerExecutor>(server()));
+
   _settingsManager->retrieveInitialValues();
 
   double const counterSyncSeconds = 2.5;
@@ -901,7 +933,7 @@ void RocksDBEngine::beginShutdown() {
   // signal the event listener that we are going to shut down soon
   if (_shaListener != nullptr) {
     _shaListener->beginShutdown();
-  }  // if
+  } 
 }
 
 void RocksDBEngine::stop() {
@@ -910,6 +942,10 @@ void RocksDBEngine::stop() {
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
   replicationManager()->dropAll();
+  
+  if (_shaListener != nullptr) {
+    _shaListener->waitForShutdown();
+  }
 
   if (_backgroundThread) {
     // stop the press
@@ -1119,6 +1155,35 @@ ErrorCode RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
   result.close();
 
   return TRI_ERROR_NO_ERROR;
+}
+
+void RocksDBEngine::getReplicatedLogs(TRI_vocbase_t& vocbase,
+                                      arangodb::velocypack::Builder& result) {
+  rocksdb::ReadOptions readOptions;
+  std::unique_ptr<rocksdb::Iterator> iter(
+      _db->NewIterator(readOptions, RocksDBColumnFamilyManager::get(
+                                        RocksDBColumnFamilyManager::Family::Definitions)));
+
+  result.openArray();
+
+  auto rSlice = rocksDBSlice(RocksDBEntryType::ReplicatedLog);
+
+  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice); iter->Next()) {
+    if (vocbase.id() != RocksDBKey::databaseId(iter->key())) {
+      continue;
+    }
+
+    auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
+
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::DataSourceDeleted,
+                                                            false)) {
+      continue;
+    }
+
+    result.add(slice);
+  }
+
+  result.close();
 }
 
 ErrorCode RocksDBEngine::getViews(TRI_vocbase_t& vocbase,
@@ -1386,7 +1451,7 @@ void RocksDBEngine::processCompactions() {
     LOG_TOPIC("6ea1b", TRACE, Logger::ENGINES) 
           << "scheduling compaction for execution";
     
-    bool queued = scheduler->queue(arangodb::RequestLane::CLIENT_SLOW, [this, bounds]() {
+    scheduler->queue(arangodb::RequestLane::CLIENT_SLOW, [this, bounds]() {
       if (server().isStopping()) {
         LOG_TOPIC("3d619", TRACE, Logger::ENGINES) 
               << "aborting pending compaction due to server shutdown";
@@ -1417,16 +1482,6 @@ void RocksDBEngine::processCompactions() {
       TRI_ASSERT(_runningCompactions > 0);
       --_runningCompactions;
     });
-
-    if (ADB_UNLIKELY(!queued)) {
-      // in the very unlikely case that queuing the operation in the scheduler has failed,
-      // we will simply put it back onto our own queue
-      WRITE_LOCKER(locker, _pendingCompactionsLock);
-
-      TRI_ASSERT(_runningCompactions > 0);
-      --_runningCompactions;
-      _pendingCompactions.push_front(std::move(bounds));
-    }
   }
 }
 
@@ -2284,12 +2339,41 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       view->open();
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC("554b1", ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("584b1", ERR, arangodb::Logger::ENGINES)
         << "error while opening database: " << ex.what();
     throw;
   } catch (...) {
-    LOG_TOPIC("5933d", ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("593fd", ERR, arangodb::Logger::ENGINES)
         << "error while opening database: unknown exception";
+    throw;
+  }
+
+
+  // scan the database path for replicated logs
+  try {
+    VPackBuilder builder;
+    getReplicatedLogs(*vocbase, builder);
+
+    VPackSlice const slice = builder.slice();
+    TRI_ASSERT(slice.isArray());
+
+    for (VPackSlice it : VPackArrayIterator(slice)) {
+      // we found a log that is still active
+      TRI_ASSERT(!it.get("id").isNone());
+
+      auto logId = arangodb::replication2::LogId{
+          it.get(StaticStrings::DataSourcePlanId).getNumericValue<uint64_t>()};
+      auto objectId = it.get(StaticStrings::ObjectId).getNumericValue<uint64_t>();
+      auto log = std::make_shared<RocksDBPersistedLog>(logId, objectId, _logPersistor);
+      StorageEngine::registerReplicatedLog(*vocbase, logId, log);
+    }
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("554b1", ERR, arangodb::Logger::ENGINES)
+    << "error while opening database: " << ex.what();
+    throw;
+  } catch (...) {
+    LOG_TOPIC("5933d", ERR, arangodb::Logger::ENGINES)
+    << "error while opening database: unknown exception";
     throw;
   }
 
@@ -2564,6 +2648,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder, bool v2) const {
   addCf(RocksDBColumnFamilyManager::Family::VPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::GeoIndex);
   addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
+  addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   builder.close();
 
   if (_throttleListener) {
@@ -2876,6 +2961,45 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
     // RocksDB's compaction job(s) to finish.
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   } while (true);
+}
+
+auto RocksDBEngine::dropReplicatedLog(TRI_vocbase_t& vocbase,
+                                      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const& log)
+    -> Result {
+  auto key = RocksDBKey{};
+  key.constructReplicatedLog(vocbase.id(), log->id());
+
+  auto s = _db->Delete(rocksdb::WriteOptions{}, RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Definitions), key.string());
+  return rocksutils::convertStatus(s);
+}
+
+auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase, arangodb::replication2::LogId logId)
+    -> ResultT<std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> {
+
+  auto key = RocksDBKey{};
+  key.constructReplicatedLog(vocbase.id(), logId);
+
+  auto objectId = TRI_NewTickServer();
+
+  VPackBuilder valueBuilder;
+  {
+    VPackObjectBuilder ob(&valueBuilder);
+    valueBuilder.add(StaticStrings::DataSourceId, VPackValue(logId.id()));
+    valueBuilder.add(StaticStrings::DataSourcePlanId, VPackValue(logId.id()));
+    valueBuilder.add(StaticStrings::ObjectId, VPackValue(objectId));
+  }
+  auto value = RocksDBValue::ReplicatedLog(valueBuilder.slice());
+
+  rocksdb::WriteOptions opts;
+  auto s = _db->GetRootDB()->Put(opts, RocksDBColumnFamilyManager::get(
+                            RocksDBColumnFamilyManager::Family::Definitions),
+                        key.string(), value.string());
+  if (s.ok()) {
+    return { std::make_shared<RocksDBPersistedLog>(logId, objectId, _logPersistor) };
+  }
+
+  return rocksutils::convertStatus(s);
 }
 
 }  // namespace arangodb

@@ -269,11 +269,22 @@ RocksDBShaCalculator::RocksDBShaCalculator(application_features::ApplicationServ
 
 /// @brief Shutdown the background thread only if it was ever started
 RocksDBShaCalculator::~RocksDBShaCalculator() {
+  // when we get here the background thread should have been stopped
+  // already.
+  TRI_ASSERT(!_shaThread.isRunning());
+  waitForShutdown();
+}
+  
+void RocksDBShaCalculator::waitForShutdown() {
+  // send shutdown signal to SHA thread
+  _shaThread.beginShutdown();
+  
   _shaThread.signalLoop();
   CONDITION_LOCKER(locker, _threadDone);
   if (_shaThread.isRunning()) {
     _threadDone.wait();
   }
+  // now we are sure the SHA thread is not running anymore
 }
 
 void RocksDBShaCalculator::OnFlushCompleted(rocksdb::DB* db,

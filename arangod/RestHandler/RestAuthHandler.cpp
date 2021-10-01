@@ -49,6 +49,40 @@ RestStatus RestAuthHandler::execute() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
+  
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um == nullptr) {
+    std::string msg = "This server does not support users";
+    LOG_TOPIC("2e7d4", WARN, Logger::AUTHENTICATION) << msg;
+    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED, msg);
+    return RestStatus::DONE;
+  }
+  
+  auto const& suffixes = _request->suffixes();
+
+  if (suffixes.size() == 1 && suffixes[0] == "renew") {
+    // JWT token renew request
+    if (!_request->authenticated() || 
+        _request->user().empty() ||
+        _request->authenticationMethod() != arangodb::rest::AuthenticationMethod::JWT) {
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_USER_NOT_FOUND);
+    } else {
+      VPackBuilder resultBuilder;
+      {
+        VPackObjectBuilder b(&resultBuilder);
+        // only return a new token if the current token is about to expire
+        if (_request->tokenExpiry() > 0.0 && 
+            _request->tokenExpiry() - TRI_microtime() < 150.0) {
+          resultBuilder.add("jwt", VPackValue(generateJwt(_request->user())));
+        }
+        // otherwise we will send an empty body back. callers must handle
+        // this case!
+      }
+
+      generateDocument(resultBuilder.slice(), true, &VPackOptions::Defaults);
+    }
+    return RestStatus::DONE;
+  }
 
   bool parseSuccess = false;
   VPackSlice slice = this->parseVPackBody(parseSuccess);
@@ -72,7 +106,7 @@ RestStatus RestAuthHandler::execute() {
 
   bool isValid = false;
 
-  auto guard = scopeGuard([&]() {
+  auto guard = scopeGuard([&]() noexcept {
     try {
       if (isValid) {
         events::LoggedIn(*_request, username);
@@ -84,12 +118,7 @@ RestStatus RestAuthHandler::execute() {
     }
   });
   
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-  if (um == nullptr) {
-    std::string msg = "This server does not support users";
-    LOG_TOPIC("2e7d4", ERR, Logger::AUTHENTICATION) << msg;
-    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED, msg);
-  } else if (um->checkPassword(username, password)) {
+  if (um->checkPassword(username, password)) {
     VPackBuilder resultBuilder;
     {
       VPackObjectBuilder b(&resultBuilder);

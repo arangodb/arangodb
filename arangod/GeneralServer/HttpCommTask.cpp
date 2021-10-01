@@ -404,7 +404,7 @@ static void DTraceHttpCommTaskProcessRequest(size_t) {}
 template <SocketType T>
 std::string HttpCommTask<T>::url() const {
   if (_request != nullptr) {
-    return std::string((_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())) +
+    return std::string((_request->databaseName().empty() ? "" : "/_db/" + StringUtils::urlEncode(_request->databaseName()))) +
       (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath());
   }
   return "";
@@ -465,6 +465,7 @@ void HttpCommTask<T>::doProcessRequest() {
         << HttpRequest::translateMethod(_request->requestType()) << "\",\"" << url() << "\"";
 
     VPackStringRef body = _request->rawPayload();
+    this->_generalServerFeature.countHttp1Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
       LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)

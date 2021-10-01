@@ -2,7 +2,7 @@ name: arangodb_connection_pool_connections_current
 renamedFrom: arangodb_connection_connections_current
 introducedIn: "3.8.0"
 help: |
-  Current number of connections in pool
+  Current number of connections in pool.
 unit: number
 type: gauge
 category: Connectivity

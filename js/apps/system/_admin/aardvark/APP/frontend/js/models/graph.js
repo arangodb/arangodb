@@ -20,7 +20,7 @@
         {
           async: false,
           type: 'POST',
-          url: this.urlRoot + '/' + this.get('_key') + '/edge',
+          url: this.urlRoot + '/' + encodeURIComponent(this.get('_key')) + '/edge',
           data: JSON.stringify(edgeDefinition),
           error: function (err) {
             arangoHelper.arangoError(err.responseJSON.errorMessage);
@@ -34,7 +34,7 @@
         {
           async: false,
           type: 'DELETE',
-          url: this.urlRoot + '/' + this.get('_key') + '/edge/' + edgeCollection,
+          url: this.urlRoot + '/' + encodeURIComponent(this.get('_key')) + '/edge/' + encodeURIComponent(edgeCollection),
           error: function (err) {
             arangoHelper.arangoError(err.responseJSON.errorMessage);
           }
@@ -47,7 +47,7 @@
         {
           async: false,
           type: 'PUT',
-          url: this.urlRoot + '/' + this.get('_key') + '/edge/' + edgeDefinition.collection,
+          url: this.urlRoot + '/' + encodeURIComponent(this.get('_key')) + '/edge/' + encodeURIComponent(edgeDefinition.collection),
           data: JSON.stringify(edgeDefinition),
           error: function (err) {
             arangoHelper.arangoError(err.responseJSON.errorMessage);
@@ -61,7 +61,7 @@
         {
           async: false,
           type: 'POST',
-          url: this.urlRoot + '/' + this.get('_key') + '/vertex',
+          url: this.urlRoot + '/' + encodeURIComponent(this.get('_key')) + '/vertex',
           data: JSON.stringify({collection: vertexCollectionName}),
           error: function (err) {
             arangoHelper.arangoError(err.responseJSON.errorMessage);
@@ -75,7 +75,7 @@
         {
           async: false,
           type: 'DELETE',
-          url: this.urlRoot + '/' + this.get('_key') + '/vertex/' + vertexCollectionName,
+          url: this.urlRoot + '/' + encodeURIComponent(this.get('_key')) + '/vertex/' + encodeURIComponent(vertexCollectionName),
           error: function (err) {
             arangoHelper.arangoError(err.responseJSON.errorMessage);
           }

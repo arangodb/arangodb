@@ -99,7 +99,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T
     _readDocumentContext._inputRow = &input;
     _readDocumentContext._outputRow = &output;
     written = collection->getPhysical()->read(
-        &_trx, LocalDocumentId(input.getValue(docRegId).slice().getUInt()), callback).ok();
+        &_trx, LocalDocumentId(input.getValue(docRegId).slice().getUInt()), callback, ReadOwnWrites::no).ok();
     if (written) {
       output.advanceRow();
     }

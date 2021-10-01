@@ -68,7 +68,6 @@ VertexType getEdgeDestination(arangodb::velocypack::Slice edge, VertexType const
 }
 }  // namespace
 
-
 namespace arangodb {
 namespace graph {
 auto operator<<(std::ostream& out, ClusterProvider::Step const& step) -> std::ostream& {
@@ -94,9 +93,11 @@ VertexType const& ClusterProvider::Step::Vertex::getID() const {
 }
 
 EdgeType const& ClusterProvider::Step::Edge::getID() const { return _edge; }
-bool ClusterProvider::Step::Edge::isValid() const {
-  return !_edge.empty();
-};
+bool ClusterProvider::Step::Edge::isValid() const { return !_edge.empty(); };
+
+bool ClusterProvider::Step::isResponsible(transaction::Methods* trx) const {
+  return true;
+}
 
 ClusterProvider::ClusterProvider(arangodb::aql::QueryContext& queryContext,
                                  ClusterBaseProviderOptions opts,
@@ -107,19 +108,19 @@ ClusterProvider::ClusterProvider(arangodb::aql::QueryContext& queryContext,
       _opts(std::move(opts)),
       _stats{} {}
 
-ClusterProvider::~ClusterProvider() {
-  clear();
-}
+ClusterProvider::~ClusterProvider() { clear(); }
 
 void ClusterProvider::clear() {
   for (auto const& entry : _vertexConnectedEdges) {
-    _resourceMonitor->decreaseMemoryUsage(costPerVertexOrEdgeType + (entry.second.size() * (costPerVertexOrEdgeType * 2)));
+    _resourceMonitor->decreaseMemoryUsage(
+        costPerVertexOrEdgeType + (entry.second.size() * (costPerVertexOrEdgeType * 2)));
   }
 }
 
-auto ClusterProvider::startVertex(VertexType vertex) -> Step {
+auto ClusterProvider::startVertex(VertexType vertex, size_t depth, double weight) -> Step {
   LOG_TOPIC("da308", TRACE, Logger::GRAPHS) << "<ClusterProvider> Start Vertex:" << vertex;
   // Create the default initial step.
+  TRI_ASSERT(weight == 0.0);  // Not implemented yet
   return Step(_opts.getCache()->persistString(vertex));
 }
 
@@ -149,7 +150,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
   std::vector<Future<network::Response>> futures;
   futures.reserve(engines->size());
 
-  TRI_DEFER({
+  ScopeGuard sg([&]() noexcept {
     for (Future<network::Response>& f : futures) {
       try {
         // TODO: As soon as we switch to the new future library, we need to replace the wait with proper *finally* method.
@@ -203,9 +204,8 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
       _opts.getCache()->datalake().add(std::move(payload));
     }
 
-    /* TODO: Needs to be taken care of as soon as we enable shortest paths for ClusterProvider
-    bool forShortestPath = true;
-    if (!forShortestPath) {
+    /* TODO: Needs to be taken care of as soon as we enable shortest paths for
+    ClusterProvider bool forShortestPath = true; if (!forShortestPath) {
       // Fill everything we did not find with NULL
       for (auto const& v : vertexIds) {
         result.try_emplace(v, VPackSlice::nullSlice());
@@ -215,15 +215,17 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     */
   }
 
-  // Note: This disables the TRI_DEFER
+  // Note: This disables the ScopeGuard
   futures.clear();
 
   // put back all looseEnds we we're able to cache
   for (auto& lE : looseEnds) {
     if (!_opts.getCache()->isVertexCached(lE->getVertexIdentifier())) {
       // if we end up here, we we're not able to cache the requested vertex (e.g. it does not exist)
-      _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, lE->getVertexIdentifier().toString());
-      _opts.getCache()->cacheVertex(std::move(lE->getVertexIdentifier()), VPackSlice::nullSlice());
+      _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                         lE->getVertexIdentifier().toString());
+      _opts.getCache()->cacheVertex(std::move(lE->getVertexIdentifier()),
+                                    VPackSlice::nullSlice());
     }
     result.emplace_back(std::move(lE));
   }
@@ -249,18 +251,19 @@ void ClusterProvider::destroyEngines() {
   auto const* engines = _opts.engines();
   for (auto const& engine : *engines) {
     _stats.addHttpRequests(1);
-    auto res = network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
-                                    "/_internal/traverser/" +
-                                    arangodb::basics::StringUtils::itoa(engine.second),
-                                    VPackBuffer<uint8_t>(), options)
-        .get();
+    auto res =
+        network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
+                                  "/_internal/traverser/" +
+                                      arangodb::basics::StringUtils::itoa(engine.second),
+                                  VPackBuffer<uint8_t>(), options)
+            .get();
 
     if (res.error != fuerte::Error::NoError) {
       // Note If there was an error on server side we do not have
       // CL_COMM_SENT
       LOG_TOPIC("d31a5", ERR, arangodb::Logger::GRAPHS)
-      << "Could not destroy all traversal engines: "
-      << TRI_errno_string(network::fuerteToArangoErrorCode(res));
+          << "Could not destroy all traversal engines: "
+          << TRI_errno_string(network::fuerteToArangoErrorCode(res));
     }
   }
 }
@@ -283,7 +286,7 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   std::vector<Future<network::Response>> futures;
   futures.reserve(engines->size());
 
-  TRI_DEFER({
+  ScopeGuard sg([&]() noexcept {
     for (Future<network::Response>& f : futures) {
       try {
         // TODO: As soon as we switch to the new future library, we need to replace the wait with proper *finally* method.
@@ -339,7 +342,8 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
 
       arangodb::velocypack::HashedStringRef edgeIdRef(edge.get(StaticStrings::IdString));
 
-      auto edgeToEmplace = std::make_pair(edgeIdRef, VertexType{getEdgeDestination(edge, vertex)});
+      auto edgeToEmplace =
+          std::make_pair(edgeIdRef, VertexType{getEdgeDestination(edge, vertex)});
 
       connectedEdges.emplace_back(edgeToEmplace);
     }
@@ -348,10 +352,11 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
       _opts.getCache()->datalake().add(std::move(payload));
     }
   }
-  // Note: This disables the TRI_DEFER
+  // Note: This disables the ScopeGuard
   futures.clear();
 
-  _resourceMonitor->increaseMemoryUsage(costPerVertexOrEdgeType + (connectedEdges.size() * (costPerVertexOrEdgeType * 2)));
+  _resourceMonitor->increaseMemoryUsage(
+      costPerVertexOrEdgeType + (connectedEdges.size() * (costPerVertexOrEdgeType * 2)));
   _vertexConnectedEdges.emplace(vertex, std::move(connectedEdges));
 
   return TRI_ERROR_NO_ERROR;
@@ -398,11 +403,11 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
   TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
   TRI_ASSERT(_vertexConnectedEdges.find(vertex.getID()) != _vertexConnectedEdges.end());
   for (auto const& relation : _vertexConnectedEdges.at(vertex.getID())) {
-    bool fetched = _vertexConnectedEdges.find(relation.second) != _vertexConnectedEdges.end();
+    bool fetched =
+        _vertexConnectedEdges.find(relation.second) != _vertexConnectedEdges.end();
     callback(Step{relation.second, relation.first, previous, fetched});
   }
 }
-
 
 void ClusterProvider::addVertexToBuilder(Step::Vertex const& vertex,
                                          arangodb::velocypack::Builder& builder) {

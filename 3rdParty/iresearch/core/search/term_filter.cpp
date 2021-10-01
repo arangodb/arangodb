@@ -81,7 +81,7 @@ void visit(
     const bytes_ref& term,
     Visitor& visitor) {
   // find term
-  auto terms = field.iterator();
+  auto terms = field.iterator(SeekMode::RANDOM_ONLY);
 
   if (IRS_UNLIKELY(!terms) || !terms->seek(term)) {
     return;

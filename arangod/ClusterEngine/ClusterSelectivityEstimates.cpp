@@ -42,7 +42,7 @@ void ClusterSelectivityEstimates::flush() {
     std::this_thread::yield();
   }
 
-  auto guard = scopeGuard([this]() {
+  auto guard = scopeGuard([this]() noexcept {
     _updating.store(false, std::memory_order_release);
   });
   
@@ -71,7 +71,7 @@ IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TransactionId t
       if (_updating.load(std::memory_order_relaxed) || _updating.exchange(true, std::memory_order_acquire)) {
         useExpired = true;
       } else {
-        auto guard = scopeGuard([this]() {
+        auto guard = scopeGuard([this]() noexcept {
           _updating.store(false, std::memory_order_release);
         });
 

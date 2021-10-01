@@ -24,6 +24,7 @@
 #include "BreadthFirstEnumerator.h"
 
 #include "Aql/PruneExpressionEvaluator.h"
+#include "Containers/Helpers.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Traverser.h"
@@ -57,7 +58,7 @@ BreadthFirstEnumerator::~BreadthFirstEnumerator() {
 
 void BreadthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
   PathEnumerator::setStartVertex(startVertex);
-  
+
   _schreier.clear();
   _schreierIndex = 0;
   _lastReturned = 0;
@@ -161,6 +162,10 @@ bool BreadthFirstEnumerator::next() {
           }
         }
 
+        if (!validDisjointPath(nextIdx, vId)) {
+          return;
+        }
+
         growStorage();
         TRI_ASSERT(_schreier.capacity() > _schreier.size());
         _schreier.emplace_back(nextIdx, std::move(eid), vId);
@@ -214,7 +219,8 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::edgeToAqlValue(size_t index) {
   return _opts->cache()->fetchEdgeAqlResult(_schreier[index].edge);
 }
 
-VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t index, bool fromPrune) {
+VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result,
+                                                      size_t index, bool fromPrune) {
   _tempPathHelper.clear();
   while (index != 0) {
     // Walk backwards through the path and push everything found on the local
@@ -339,20 +345,11 @@ bool BreadthFirstEnumerator::shouldPrune() {
 }
 
 void BreadthFirstEnumerator::growStorage() {
-  size_t capacity;
-  if (_schreier.empty()) {
-    // minimal reserve size
-    capacity = 8;
-  } else {
-    capacity = _schreier.size() + 1;
-    if (capacity > _schreier.capacity()) {
-      capacity *= 2;
-    }
-  }
-
-  TRI_ASSERT(capacity > _schreier.size());
+  size_t capacity = arangodb::containers::Helpers::nextCapacity(_schreier, 8);
+  
   if (capacity > _schreier.capacity()) {
-    arangodb::ResourceUsageScope guard(_opts->resourceMonitor(), (capacity - _schreier.capacity()) * pathStepSize());
+    arangodb::ResourceUsageScope guard(_opts->resourceMonitor(),
+                                       (capacity - _schreier.capacity()) * pathStepSize());
 
     _schreier.reserve(capacity);
 
@@ -364,3 +361,10 @@ void BreadthFirstEnumerator::growStorage() {
 constexpr size_t BreadthFirstEnumerator::pathStepSize() const noexcept {
   return sizeof(void*) + sizeof(PathStep) + 2 * sizeof(NextStep);
 }
+
+#ifndef USE_ENTERPRISE
+bool BreadthFirstEnumerator::validDisjointPath(size_t /*index*/,
+                                               arangodb::velocypack::StringRef const& /*vertex*/) const {
+  return true;
+}
+#endif

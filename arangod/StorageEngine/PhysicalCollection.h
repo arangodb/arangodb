@@ -106,7 +106,7 @@ class PhysicalCollection {
                               const std::shared_ptr<Index>& right) const;
   };
 
-  using IndexContainerType = std::set<std::shared_ptr<Index>, IndexOrder> ;
+  using IndexContainerType = std::set<std::shared_ptr<Index>, IndexOrder>;
   /// @brief find index by definition
   static std::shared_ptr<Index> findIndex(velocypack::Slice const&,
                                           IndexContainerType const&);
@@ -136,7 +136,7 @@ class PhysicalCollection {
 
   virtual bool dropIndex(IndexId iid) = 0;
 
-  virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const = 0;
+  virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ReadOwnWrites readOwnWrites) const = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const = 0;
 
   /// @brief Get an iterator associated with the specified replication batch
@@ -165,19 +165,19 @@ class PhysicalCollection {
   virtual void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) = 0;
 
   virtual Result lookupKey(transaction::Methods*, arangodb::velocypack::StringRef,
-                           std::pair<LocalDocumentId, RevisionId>&) const = 0;
+                           std::pair<LocalDocumentId, RevisionId>&, ReadOwnWrites readOwnWrites) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-                      IndexIterator::DocumentCallback const& cb) const = 0;
+                      IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites) const = 0;
   
   /// @brief read a documument referenced by token (internal method)
   virtual Result read(transaction::Methods* trx,
                     LocalDocumentId const& token,
-                    IndexIterator::DocumentCallback const& cb) const = 0;
+                    IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites) const = 0;
 
   /// @brief read a documument referenced by token (internal method)
   virtual bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                            ManagedDocumentResult& result) const = 0;
+                            ManagedDocumentResult& result, ReadOwnWrites readOwnWrites) const = 0;
 
   /**
    * @brief Perform document insert, may generate a '_key' value
@@ -256,6 +256,7 @@ class PhysicalCollection {
   LogicalCollection& _logicalCollection;
   ClusterInfo* _ci;
   bool const _isDBServer;
+  bool const _extendedNames; /* for collections */
 
   mutable basics::ReadWriteLock _indexesLock;
   mutable std::atomic<std::thread::id> _indexesLockWriteOwner;  // current thread owning '_indexesLock'

@@ -23,8 +23,8 @@
 #ifndef IRESEARCH_NGRAM_TOKEN_STREAM_H
 #define IRESEARCH_NGRAM_TOKEN_STREAM_H
 
-#include "analyzers.hpp"
-#include "token_attributes.hpp"
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
 
 namespace iresearch {
@@ -131,7 +131,7 @@ class ngram_token_stream_base
 template<ngram_token_stream_base::InputType StreamType>
 class ngram_token_stream: public ngram_token_stream_base {
  public:
-  DECLARE_FACTORY(const ngram_token_stream_base::Options& options);
+  static ptr make(const ngram_token_stream_base::Options& options);
 
   ngram_token_stream(const ngram_token_stream_base::Options& options);
   

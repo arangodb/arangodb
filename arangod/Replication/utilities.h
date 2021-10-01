@@ -168,7 +168,7 @@ struct BatchInfo {
 
   /// @brief send a "finish batch" command
   // TODO worker-safety
-  Result finish(Connection& connection, ProgressInfo& progress, SyncerId syncerId);
+  Result finish(Connection& connection, ProgressInfo& progress, SyncerId syncerId) noexcept;
 };
 
 /// @brief generates basic source headers for ClusterComm requests

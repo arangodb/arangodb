@@ -361,6 +361,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'cacheEnabled': true,
     'syncByRevision': true,
     'schema' : true,
+    'isDisjoint': true,
   };
   var a;
 

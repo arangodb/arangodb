@@ -22,11 +22,14 @@
 
 #include "gtest/gtest.h"
 
+#include <Mocks/Death_Test.h>
+
 #include "Basics/Guarded.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 
+#include <Basics/UnshackledMutex.h>
 #include <atomic>
 #include <mutex>
 #include <thread>
@@ -50,7 +53,11 @@ class GuardedTest : public ::testing::Test {
   using Guarded = Guarded<V, Mutex, Lock>;
 };
 
+template <typename T>
+class GuardedDeathTest : public GuardedTest<T> {};
+
 TYPED_TEST_CASE_P(GuardedTest);
+TYPED_TEST_CASE_P(GuardedDeathTest);
 
 // Test helper that acquires a lock;
 // then executes a callback that tries to acquire the same lock;
@@ -159,6 +166,46 @@ TYPED_TEST_P(GuardedTest, test_guard_waits_for_access) {
   testWaitForLock<GuardedType>(acquireGuard);
 }
 
+TYPED_TEST_P(GuardedTest, test_guard_unlock_releases_mutex) {
+  auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
+  EXPECT_EQ(1, guardedObj.copy().val);
+  auto guard = guardedObj.getLockedGuard();
+  EXPECT_EQ(1, guard.get().val);
+  guard.get().val = 2;
+  EXPECT_EQ(2, guard.get().val);
+  guard.unlock();
+
+  auto threadStarted = std::atomic<bool>{false};
+  auto couldAcquireLock = std::atomic<bool>{false};
+  auto thr = std::thread([&] {
+    threadStarted.store(true, std::memory_order_release);
+    guardedObj.doUnderLock([&](auto&&) {
+      couldAcquireLock.store(true, std::memory_order_release);
+    });
+  });
+
+  EXPECT_EQ(2, guardedObj.copy().val);
+  while (!threadStarted.load(std::memory_order_acquire)) {
+    // busy wait
+  }
+  // wait generously for the thread to try to get the lock and do something
+  std::this_thread::sleep_for(std::chrono::milliseconds{1});
+  EXPECT_TRUE(couldAcquireLock.load(std::memory_order_acquire));
+  thr.join();
+}
+
+TYPED_TEST_P(GuardedDeathTest, test_guard_unlock_releases_value) {
+  auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
+  EXPECT_EQ(1, guardedObj.copy().val);
+  auto guard = guardedObj.getLockedGuard();
+  EXPECT_EQ(1, guard.get().val);
+  guard.get().val = 2;
+  EXPECT_EQ(2, guard.get().val);
+  guard.unlock();
+
+  ASSERT_DEATH_CORE_FREE({ ASSERT_NE(2, guard.get().val); }, "");
+}
+
 TYPED_TEST_P(GuardedTest, test_do_allows_access) {
   auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
   {
@@ -251,6 +298,32 @@ TYPED_TEST_P(GuardedTest, test_try_allows_access) {
   }
 }
 
+TYPED_TEST_P(GuardedTest, test_try_guard_allows_access) {
+  auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
+  {
+    // try is allowed to spuriously fail for no reason. But we expect it to
+    // succeed at some point when noone holds the lock.
+    bool didExecute = false;
+    while (!didExecute) {
+      if (auto guard = guardedObj.tryLockedGuard()) {
+        EXPECT_EQ(1, guard->get().val);
+        guard->get().val = 2;
+        didExecute = true;
+        EXPECT_EQ(2, guard->get().val);
+      }
+
+      {
+        auto guard = guardedObj.getLockedGuard();
+        if (didExecute) {
+          EXPECT_EQ(guard->val, 2);
+        } else {
+          EXPECT_EQ(guard->val, 1);
+        }
+      }
+    }
+  }
+}
+
 TYPED_TEST_P(GuardedTest, test_try_fails_access) {
   auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
   {
@@ -278,11 +351,40 @@ TYPED_TEST_P(GuardedTest, test_try_fails_access) {
   }
 }
 
-REGISTER_TYPED_TEST_CASE_P(GuardedTest, test_copy_allows_access, test_copy_waits_for_access,
-                           test_assign_allows_access, test_assign_waits_for_access,
-                           test_guard_allows_access, test_guard_waits_for_access,
+TYPED_TEST_P(GuardedTest, test_try_guard_fails_access) {
+  auto guardedObj = typename TestFixture::template Guarded<UnderGuard>{1};
+  {
+    auto guard = guardedObj.getLockedGuard();
+    bool threadStarted = false;
+    bool threadFinished = false;
+    auto thr = std::thread([&] {
+      threadStarted = true;
+      bool didExecute = false;
+      if (auto guard = guardedObj.tryLockedGuard()) {
+        EXPECT_EQ(1, guard->get().val);
+        guard->get().val = 2;
+        didExecute = true;
+        EXPECT_EQ(2, guard->get().val);
+      }
+      EXPECT_FALSE(didExecute);
+      threadFinished = true;
+    });
+    thr.join();
+    EXPECT_TRUE(threadStarted);
+    EXPECT_TRUE(threadFinished);
+    EXPECT_EQ(guard->val, 1);
+  }
+}
+
+REGISTER_TYPED_TEST_CASE_P(GuardedTest, test_copy_allows_access,
+                           test_copy_waits_for_access, test_assign_allows_access,
+                           test_assign_waits_for_access, test_guard_allows_access,
+                           test_guard_waits_for_access, test_guard_unlock_releases_mutex,
                            test_do_allows_access, test_do_waits_for_access,
-                           test_try_allows_access, test_try_fails_access);
+                           test_try_allows_access, test_try_guard_allows_access,
+                           test_try_fails_access, test_try_guard_fails_access);
+
+REGISTER_TYPED_TEST_CASE_P(GuardedDeathTest, test_guard_unlock_releases_value);
 
 template <template <typename> typename T>
 struct ParamT {
@@ -292,8 +394,10 @@ struct ParamT {
 
 using TestedTypes =
     ::testing::Types<std::pair<std::mutex, ParamT<std::unique_lock>>,
+                     std::pair<arangodb::basics::UnshackledMutex, ParamT<std::unique_lock>>,
                      std::pair<arangodb::Mutex, ParamT<std::unique_lock>>>;
 
 INSTANTIATE_TYPED_TEST_CASE_P(GuardedTestInstantiation, GuardedTest, TestedTypes);
+INSTANTIATE_TYPED_TEST_CASE_P(GuardedDeathTestInstantiation, GuardedDeathTest, TestedTypes);
 
 }  // namespace arangodb::tests

@@ -27,6 +27,7 @@
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "RestServer/Metrics.h"
 
 namespace arangodb {
 class RestServerThread;
@@ -44,17 +45,39 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   void stop() override final;
   void unprepare() override final;
 
-  double keepAliveTimeout() const;
-  bool proxyCheck() const;
+  double keepAliveTimeout() const noexcept;
+  bool proxyCheck() const noexcept ;
+  bool returnQueueTimeHeader() const noexcept;
   std::vector<std::string> trustedProxies() const;
-  bool allowMethodOverride() const;
+  bool allowMethodOverride() const noexcept;
   std::vector<std::string> const& accessControlAllowOrigins() const;
   Result reloadTLS();
-  bool permanentRootRedirect() const;
+  bool permanentRootRedirect() const noexcept;
   std::string redirectRootTo() const;
+  std::string const& supportInfoApiPolicy() const noexcept;
 
   rest::RestHandlerFactory& handlerFactory();
   rest::AsyncJobManager& jobManager();
+
+  void countHttp1Request(uint64_t bodySize) {
+    _requestBodySizeHttp1.count(bodySize);
+  }
+
+  void countHttp2Request(uint64_t bodySize) {
+    _requestBodySizeHttp2.count(bodySize);
+  }
+
+  void countVstRequest(uint64_t bodySize) {
+    _requestBodySizeVst.count(bodySize);
+  }
+
+  void countHttp2Connection() {
+    _http2Connections.count();
+  }
+
+  void countVstConnection() {
+    _vstConnections.count();
+  }
 
  private:
 
@@ -65,14 +88,23 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   double _keepAliveTimeout = 300.0;
   bool _allowMethodOverride;
   bool _proxyCheck;
+  bool _returnQueueTimeHeader;
   bool _permanentRootRedirect;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
   std::string _redirectRootTo;
+  std::string _supportInfoApiPolicy;
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
   uint64_t _numIoThreads;
+
+  // Some metrics about
+  Histogram<log_scale_t<uint64_t>>& _requestBodySizeHttp1;
+  Histogram<log_scale_t<uint64_t>>& _requestBodySizeHttp2;
+  Histogram<log_scale_t<uint64_t>>& _requestBodySizeVst;
+  Counter& _http2Connections;
+  Counter& _vstConnections;
 };
 
 }  // namespace arangodb

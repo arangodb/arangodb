@@ -89,7 +89,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     bool jobPosted();
 
     /// @brief notifies that a job was done
-    void jobDone();
+    void jobDone() noexcept;
 
     /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
     bool hasJobInFlight() const noexcept;

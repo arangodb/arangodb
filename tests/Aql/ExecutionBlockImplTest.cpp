@@ -135,7 +135,7 @@ class SharedExecutionBlockImplTest {
   mocks::MockAqlServer server{};
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
+  std::shared_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
   SharedExecutionBlockImplTest() {}

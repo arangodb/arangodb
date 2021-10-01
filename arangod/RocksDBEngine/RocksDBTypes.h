@@ -52,9 +52,13 @@ enum class RocksDBEntryType : char {
   KeyGeneratorValue = '=',
   View = '>',
   GeoIndexValue = '?',
+  LogEntry = 'L',
   // RevisionTreeValue = '@', // pre-3.8 GA revision trees. do not use or reuse!
   // RevisionTreeValue = '/', // pre-3.8 GA revision trees. do not use or reuse!
-  RevisionTreeValue = '*'
+  RevisionTreeValue = '*',
+  ReplicatedLog = 'l',
+  ZkdIndexValue = 'z',
+  UniqueZkdIndexValue = 'Z',
 };
 
 char const* rocksDBEntryTypeName(RocksDBEntryType);
@@ -97,7 +101,8 @@ enum class RocksDBSettingsType : char {
   Invalid = 0,
   Version = 'V',
   ServerTick = 'S',
-  Endianness = 'E'
+  Endianness = 'E',
+  ExtendedDatabaseNames = 'X',
 };
 
 /// @brief endianess value

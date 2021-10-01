@@ -55,10 +55,10 @@ std::unordered_map<std::string, EngineInfo> createEngineMap() {
   std::unordered_map<std::string, EngineInfo> map;
   // rocksdb is not deprecated and the engine of choice
   map.try_emplace(arangodb::RocksDBEngine::EngineName,
-                  EngineInfo{ std::type_index(typeid(arangodb::RocksDBEngine)), false, true });
+                  EngineInfo{std::type_index(typeid(arangodb::RocksDBEngine)), false, true});
   return map;
 }
-}
+}  // namespace
 
 namespace arangodb {
 
@@ -134,7 +134,8 @@ void EngineSelectorFeature::prepare() {
   if (selected == engines.end()) {
     if (_engineName == "mmfiles") {
       LOG_TOPIC("10eb6", FATAL, Logger::STARTUP)
-          << "the mmfiles storage engine is unavailable from version v3.7.0 onwards";
+          << "the mmfiles storage engine is unavailable from version v3.7.0 "
+             "onwards";
     } else {
       // should not happen
       LOG_TOPIC("3e975", FATAL, Logger::STARTUP)
@@ -151,8 +152,7 @@ void EngineSelectorFeature::prepare() {
              "engine.";
 
       if (!ServerState::instance()->isCoordinator() &&
-          !basics::FileUtils::isRegularFile(_engineFilePath) &&
-          !_allowDeprecatedDeployments) {
+          !basics::FileUtils::isRegularFile(_engineFilePath) && !_allowDeprecatedDeployments) {
         LOG_TOPIC("ca0a7", FATAL, Logger::STARTUP)
             << "The " << _engineName
             << " storage engine cannot be used for new deployments.";
@@ -173,10 +173,12 @@ void EngineSelectorFeature::prepare() {
     for (auto& engine : engines) {
       StorageEngine& e = server().getFeature<StorageEngine>(engine.second.type);
       // turn off all other storage engines
-      LOG_TOPIC("001b6", TRACE, Logger::STARTUP) << "disabling storage engine " << engine.first;
+      LOG_TOPIC("001b6", TRACE, Logger::STARTUP)
+          << "disabling storage engine " << engine.first;
       e.disable();
       if (engine.first == _engineName) {
-        LOG_TOPIC("4a3fc", INFO, Logger::FIXME) << "using storage engine " << engine.first;
+        LOG_TOPIC("4a3fc", INFO, Logger::FIXME)
+            << "using storage engine " << engine.first;
         ce.setActualEngine(&e);
       }
     }
@@ -239,8 +241,14 @@ void EngineSelectorFeature::unprepare() {
   _engine = nullptr;
 
   if (ServerState::instance()->isCoordinator()) {
-    ClusterEngine& ce = server().getFeature<ClusterEngine>();
-    ce.setActualEngine(nullptr);
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    if (!arangodb::ClusterEngine::Mocking) {
+#endif
+      ClusterEngine& ce = server().getFeature<ClusterEngine>();
+      ce.setActualEngine(nullptr);
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    }
+#endif
   }
 }
 

@@ -91,11 +91,11 @@ struct basic_sort : irs::sort {
     explicit prepared_sort(size_t idx) : idx(idx) {
     }
 
-    const irs::flags& features() const override {
-      return irs::flags::empty_instance();
+    virtual irs::IndexFeatures features() const override {
+      return irs::IndexFeatures::NONE;
     }
 
-    irs::score_function prepare_scorer(
+    virtual irs::score_function prepare_scorer(
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,
@@ -304,7 +304,7 @@ struct boosted: public irs::filter {
     irs::bstring stats;
   }; // prepared
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   virtual irs::filter::prepared::ptr prepare(
       const irs::index_reader&,
@@ -1250,7 +1250,7 @@ struct unestimated: public irs::filter {
     return irs::memory::make_managed<unestimated::prepared>();
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   unestimated() : filter(irs::type<unestimated>::get()) {}
 }; // unestimated
@@ -1313,7 +1313,7 @@ struct estimated: public irs::filter {
     return irs::memory::make_managed<estimated::prepared>(est,&evaluated);
   }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   explicit estimated()
     : filter(irs::type<estimated>::get()) {
@@ -9880,10 +9880,22 @@ TEST(disjunction_test, next) {
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      size_t heap{0};
+      auto visitor = [](void* ptr, disjunction::adapter& iter) {
+        EXPECT_FALSE(irs::doc_limits::eof(iter.doc->value));
+        auto pval = static_cast<uint32_t*>(ptr); 
+        *pval = *pval + 1;
+        return true;
+      };
       for ( ; it.next(); ) {
         result.push_back( it.value() );
+        it.visit(&heap, visitor);
       }
+      ASSERT_GT(heap, 0); // some iterators should be visited
+      heap = 0;
       ASSERT_FALSE(it.next());
+      it.visit(&heap, visitor);
+      ASSERT_EQ(0, heap); // nothing to visit
       ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
 
@@ -15130,18 +15142,16 @@ TEST(Or_test, boosted_not) {
 
 #endif // IRESEARCH_DLL
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   boolean_filter_test,
   boolean_filter_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::memory_directory,
-      &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values("1_0")
-  ),
-  tests::to_string
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values("1_0")),
+  boolean_filter_test_case::to_string
 );
 
 } // tests

@@ -63,7 +63,7 @@ int dump(
     return 1;
   }
 
-  auto reader = irs::directory_reader::open(*dir, irs::formats::get("1_0"));
+  auto reader = irs::directory_reader::open(*dir);
 
   stream << "Index" 
          << " segmentsCount=" << reader.size()
@@ -80,14 +80,14 @@ int dump(
       auto& field = fields->value();
       auto& meta = field.meta();
       stream << "Field name=" << meta.name
-             << " norm=" << meta.norm
+             << " indexFeatures=" << static_cast<uint32_t>(meta.index_features)
              << " minTerm=" << irs::ref_cast<char>(field.min()) 
              << " maxTerm=" << irs::ref_cast<char>(field.max())
              << " termsCount=" << field.size()
              << " docsCount=" << field.docs_count()
              << std::endl;
 
-      auto term = field.iterator();
+      auto term = field.iterator(irs::SeekMode::NORMAL);
       auto const& term_meta = irs::get<irs::term_meta>(*term);
       stream << "Values" << std::endl;
       for (; term->next(); ) {

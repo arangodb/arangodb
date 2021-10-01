@@ -1115,7 +1115,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, AstNode const& n
 
     auto old = v8g->_expressionContext;
     v8g->_expressionContext = expressionContext;
-    TRI_DEFER(v8g->_expressionContext = old);
+    auto sg = arangodb::scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
 
     VPackOptions const& options = trx.vpackOptions();
     std::string jsName;
@@ -1200,8 +1200,15 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  bool result = contains ? outer.contains(&inner) : outer.intersects(&inner);
-  return AqlValue(AqlValueHintBool(result));
+  bool result;
+  try {
+    result = contains ? outer.contains(&inner) : outer.intersects(&inner);
+    return AqlValue(AqlValueHintBool(result));
+  } catch (arangodb::basics::Exception const& ex) {
+    res.reset(ex.code(), ex.what());
+    registerWarning(expressionContext, func, res);
+    return AqlValue(AqlValueHintBool(false));
+  }
 }
 
 static Result parseGeoPolygon(VPackSlice polygon, VPackBuilder& b) {
@@ -8257,7 +8264,7 @@ AqlValue Functions::Apply(ExpressionContext* expressionContext, AstNode const& n
   AqlValue rawParamArray;
   std::vector<bool> mustFree;
 
-  auto guard = scopeGuard([&mustFree, &invokeParams]() {
+  auto guard = scopeGuard([&mustFree, &invokeParams]() noexcept {
     for (size_t i = 0; i < mustFree.size(); ++i) {
       if (mustFree[i]) {
         invokeParams[i].destroy();
@@ -8571,7 +8578,7 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
 
   Result res;
   {
-    arangodb::ScopeGuard guardi([storedLevel, &validator]{
+    arangodb::ScopeGuard guard([storedLevel, &validator]() noexcept {
         validator->setLevel(storedLevel);
     });
 

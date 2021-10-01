@@ -68,6 +68,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
@@ -350,7 +351,7 @@ RestStatus RestReplicationHandler::execute() {
       // this may throw when too many threads are going into tailing
       rf.trackTailingStart();
 
-      auto guard = scopeGuard([&rf]() { rf.trackTailingEnd(); });
+      auto guard = scopeGuard([&rf]() noexcept { rf.trackTailingEnd(); });
 
       handleCommandLoggerFollow();
     } else if (command == OpenTransactions) {
@@ -1145,7 +1146,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
 
       // force one shard, and force distributeShardsLike to be "_graphs"
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
-      if (!_vocbase.IsSystemName(name) && !isSatellite) {
+      if (!NameValidator::isSystemName(name) && !isSatellite) {
         // system-collections will be sharded normally. only user collections
         // will get the forced sharding. SatelliteCollections must not be
         // sharded like a non-satellite collection.
@@ -1618,9 +1619,9 @@ Result RestReplicationHandler::processRestoreUsersBatch(bool generateNewRevision
   bindVars->add(documentsToInsert.slice());
   bindVars->close();  // bindVars
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), bindVars);
-  aql::QueryResult queryResult = query.executeSync();
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase), 
+                                            arangodb::aql::QueryString(aql), std::move(bindVars));
+  aql::QueryResult queryResult = query->executeSync();
 
   // neither agency nor dbserver should get here
   AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -2042,7 +2043,9 @@ void RestReplicationHandler::handleCommandRestoreView() {
       }
     }
 
-    auto res = LogicalView::create(view, _vocbase, slice);  // must create() since view was drop()ed
+    // must create() since view was drop()ed
+    auto res = LogicalView::create(
+      view, _vocbase, slice, false);
 
     if (!res.ok()) {
       generateError(res);
@@ -2422,16 +2425,15 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
  
-  auto cleanup = scopeGuard([&body, this]() {
-    // untrack the (async) replication client, so the WAL may be cleaned
-    arangodb::ServerId const serverId{StringUtils::uint64(
-        basics::VelocyPackHelper::getStringValue(body, "serverId", ""))};
-    SyncerId const syncerId = SyncerId{StringUtils::uint64(
-        basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
-    std::string const clientInfo =
-        basics::VelocyPackHelper::getStringValue(body, "clientInfo", "");
-
+  auto cleanup = scopeGuard([&body, this]() noexcept {
     try {
+      // untrack the (async) replication client, so the WAL may be cleaned
+      arangodb::ServerId const serverId{StringUtils::uint64(
+          basics::VelocyPackHelper::getStringValue(body, "serverId", ""))};
+      SyncerId const syncerId = SyncerId{StringUtils::uint64(
+          basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
+      std::string const clientInfo =
+          basics::VelocyPackHelper::getStringValue(body, "clientInfo", "");
       _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId, clientInfo);
     } catch (std::exception const& ex) {
       // not much we can do here except logging
@@ -2970,6 +2972,10 @@ void RestReplicationHandler::handleCommandRevisionTree() {
   // shall we do a verification?
   bool withVerification = _request->parsedValue("verification", false);
 
+  // return only populated nodes in the tree (can make the result a lot
+  // smaller and thus improve efficiency)
+  bool onlyPopulated = _request->parsedValue("onlyPopulated", false);
+
   auto tree = ctx.collection->getPhysical()->revisionTree(ctx.batchId);
   if (!tree) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
@@ -2990,13 +2996,13 @@ void RestReplicationHandler::handleCommandRevisionTree() {
 
     VPackObjectBuilder guard(&result);
     result.add(VPackValue("computed"));
-    tree2->serialize(result);
+    tree2->serialize(result, onlyPopulated);
     result.add(VPackValue("stored"));
-    tree->serialize(result);
+    tree->serialize(result, onlyPopulated);
     auto diff = tree->diff(*tree2);
     result.add("equal", VPackValue(diff.empty()));
   } else {
-    tree->serialize(result);
+    tree->serialize(result, onlyPopulated);
   }
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));
@@ -3282,7 +3288,7 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   VPackBuilder patch;
   patch.openObject();
   patch.add(StaticStrings::Version, VPackSlice::nullSlice());
-  patch.add(StaticStrings::DataSourceSystem, VPackValue(TRI_vocbase_t::IsSystemName(name)));
+  patch.add(StaticStrings::DataSourceSystem, VPackValue(NameValidator::isSystemName(name)));
   if (!uuid.empty()) {
     bool valid = false;
     NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);

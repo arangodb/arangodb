@@ -50,7 +50,8 @@ struct analyzer_token {
 using analyzer_tokens = std::vector<analyzer_token>;
 
 void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
-                     const analyzer_tokens& expected_tokens) {
+                     const analyzer_tokens& expected_tokens,
+                     bool shouldBeOptimized) {
   SCOPED_TRACE(data);
   auto* term = irs::get<irs::term_attribute>(*analyzer);
   auto* vpack_term = irs::get<arangodb::iresearch::VPackTermAttribute>(*analyzer);
@@ -61,6 +62,7 @@ void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
   auto* inc = irs::get<irs::increment>(*analyzer);
   ASSERT_TRUE(inc);
   ASSERT_TRUE(analyzer->reset(data));
+  ASSERT_EQ(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(analyzer)->isOptimized(), shouldBeOptimized);
   uint32_t pos{std::numeric_limits<uint32_t>::max()};
   auto expected_token = expected_tokens.begin();
   while (analyzer->next()) {
@@ -80,6 +82,7 @@ void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
     ++expected_token;
   }
   ASSERT_EQ(expected_token, expected_tokens.end());
+  ASSERT_FALSE(analyzer->next());
 }
 
 } // namespace
@@ -93,7 +96,8 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                VPackParser::fromJson("{\"queryString\": \"RETURN '1'\"}")->slice()),
                                              false);
     ASSERT_NE(nullptr, ptr);
-    assert_analyzer(ptr.get(), "2", {{"1", 0}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    assert_analyzer(ptr.get(), "2", {{"1", 0}}, true);
   }
   // just parameter
   {
@@ -102,8 +106,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN @param\"}")->slice()),
         false);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
     ASSERT_NE(nullptr, ptr);
-    assert_analyzer(ptr.get(), "2", {{"2", 0}});
+    assert_analyzer(ptr.get(), "2", {{"2", 0}}, true);
   }
 
   // calculation
@@ -114,7 +119,11 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
             VPackParser::fromJson("{\"queryString\": \"RETURN TO_STRING(TO_NUMBER(@param)+1)\"}")->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
-    assert_analyzer(ptr.get(), "2", {{"3", 0}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    assert_analyzer(ptr.get(), "2", {{"3", 0}}, true);
+    assert_analyzer(ptr.get(), "3", {{"4", 0}}, true);
+    assert_analyzer(ptr.get(), "4", {{"5", 0}}, true);
+    assert_analyzer(ptr.get(), "5", {{"6", 0}}, true);
   }
   // object
   {
@@ -126,8 +135,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                           ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
-    assert_analyzer(ptr.get(), "2", {{"2test", 0}});
-    assert_analyzer(ptr.get(), "3", {{"3test", 0}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    assert_analyzer(ptr.get(), "2", {{"2test", 0}}, false);
+    assert_analyzer(ptr.get(), "3", {{"3test", 0}}, false);
   }
   // cycle
   {
@@ -137,10 +147,11 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
             VPackParser::fromJson("{\"queryString\": \"FOR d IN 1..5 RETURN CONCAT(UPPER(@param), d)\"}")->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
     assert_analyzer(ptr.get(), "a",
-                    {{"A1", 0}, {"A2", 1}, {"A3", 2}, {"A4", 3}, {"A5", 4}});
+                    {{"A1", 0}, {"A2", 1}, {"A3", 2}, {"A4", 3}, {"A5", 4}}, false);
     assert_analyzer(ptr.get(), "b",
-                    {{"B1", 0}, {"B2", 1}, {"B3", 2}, {"B4", 3}, {"B5", 4}});
+                    {{"B1", 0}, {"B2", 1}, {"B3", 2}, {"B4", 3}, {"B5", 4}}, false);
   }
   // cycle with collapse
   {
@@ -152,8 +163,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                          ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
     assert_analyzer(ptr.get(), "a",
-                    {{"A1", 0}, {"A2", 0}, {"A3", 0}, {"A4", 0}, {"A5", 0}});
+                    {{"A1", 0}, {"A2", 0}, {"A3", 0}, {"A4", 0}, {"A5", 0}}, false);
   }
   // cycle with array
   {
@@ -165,10 +177,11 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                          ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
     assert_analyzer(ptr.get(), "ArangoDB",
-                    {{"ARANGODB", 0}, {"ArangoDB", 1}, {"arangodb", 2}});
+                    {{"ARANGODB", 0}, {"ArangoDB", 1}, {"arangodb", 2}}, false);
     assert_analyzer(ptr.get(), "TeST",
-                    {{"TEST", 0}, {"TeST", 1}, {"test", 2}});
+                    {{"TEST", 0}, {"TeST", 1}, {"test", 2}}, false);
   }
   // nested cycles
   {
@@ -183,7 +196,8 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                  FILTER c%2 == 0\
                                                                    RETURN CONCAT(d,c)\"}")->slice()), false);
     ASSERT_NE(nullptr, ptr);
-    assert_analyzer(ptr.get(), "4", {{"12", 0}, {"14", 1}, {"32", 2}, {"34", 3}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    assert_analyzer(ptr.get(), "4", {{"12", 0}, {"14", 1}, {"32", 2}, {"34", 3}}, false);
   }
   // subquery
   {
@@ -198,8 +212,9 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                          ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
-    assert_analyzer(ptr.get(), "4", {{"43", 0}});
-    assert_analyzer(ptr.get(), "5", {{"53", 0}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    assert_analyzer(ptr.get(), "4", {{"43", 0}}, false);
+    assert_analyzer(ptr.get(), "5", {{"53", 0}}, false);
   }
 
   // filter nulls
@@ -212,7 +227,8 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                 ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
-    assert_analyzer(ptr.get(), "a", {{"A2", 0}, {"A4", 1}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    assert_analyzer(ptr.get(), "a", {{"A2", 0}, {"A4", 1}}, false);
   }
 
   // keep nulls
@@ -225,7 +241,8 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
-    assert_analyzer(ptr.get(), "a", {{"", 0}, {"A2", 1}, {"", 2}, {"A4", 3}, {"", 4}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    assert_analyzer(ptr.get(), "a", {{"", 0}, {"A2", 1}, {"", 2}, {"A4", 3}, {"", 4}}, false);
   }
 
   // only null
@@ -236,7 +253,22 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
             VPackParser::fromJson("{\"queryString\": \"RETURN null\", \"keepNull\":false}")->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
     ASSERT_TRUE(ptr->reset("2"));
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_FALSE(ptr->next());
+  }
+
+  // only null with keepNull = true
+  {
+    auto ptr = irs::analysis::analyzers::get(
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN null\", \"keepNull\":true}")->slice()),
+        false);
+    ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    assert_analyzer(ptr.get(), "a", {{"", 0}}, true);
     ASSERT_FALSE(ptr->next());
   }
 
@@ -248,7 +280,8 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
             VPackParser::fromJson("{\"queryString\": \"FOR d IN ['e', 1, ['v', 'w'], null, true, @param, 'b'] RETURN d\"}")->slice()),
         false);
     ASSERT_NE(nullptr, ptr);
-    assert_analyzer(ptr.get(), "a", {{"e", 0}, {"1", 1}, {"[\"v\",\"w\"]", 2}, {"", 3}, {"true", 4}, {"a", 5}, {"b", 6}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    assert_analyzer(ptr.get(), "a", {{"e", 0}, {"1", 1}, {"[\"v\",\"w\"]", 2}, {"", 3}, {"true", 4}, {"a", 5}, {"b", 6}}, false);
   }
 
   // nulls with collapsed positions
@@ -263,7 +296,28 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
             ->slice()),
           false);
     ASSERT_NE(nullptr, ptr);
-    assert_analyzer(ptr.get(), "a", {{"", 0}, {"", 0}, {"a", 0}, {"b", 0}});
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    assert_analyzer(ptr.get(), "a", {{"", 0}, {"", 0}, {"a", 0}, {"b", 0}}, false);
+  }
+
+  // multiple resets with optimization
+  {
+    auto ptr =
+        irs::analysis::analyzers::get(
+          AQL_ANALYZER_NAME,
+          irs::type<irs::text_format::vpack>::get(),
+          arangodb::iresearch::ref<char>(VPackParser::fromJson(
+            "{\"collapsePositions\": true, \"keepNull\":true,"
+            "\"queryString\": \" RETURN TO_STRING(@param)\"}")
+            ->slice()),
+          false);
+    ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    assert_analyzer(ptr.get(), "ab", {{"ab", 0}}, true);
+    assert_analyzer(ptr.get(), "abababababababab", {{"abababababababab", 0}}, true);
+    assert_analyzer(ptr.get(), "abababababababab", {{"abababababababab", 0}}, true);
+    assert_analyzer(ptr.get(), "ab", {{"ab", 0}}, true);
+    assert_analyzer(ptr.get(), "123", {{"123", 0}}, true);
   }
 
   // check memoryLimit does not kill query
@@ -275,8 +329,10 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                          ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
     ASSERT_TRUE(ptr->reset("AAAAAAAAA"));
-    ASSERT_TRUE(ptr->next());
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_TRUE(ptr->next());                                                                                               
   }
 
   // check memoryLimit kills query
@@ -290,8 +346,28 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
                                                                          ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
     ASSERT_TRUE(ptr->reset("AAAAAAAAA"));
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
     ASSERT_FALSE(ptr->next());
+  }
+
+  // check memoryLimit does not kill query
+  {
+    auto ptr =
+        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
+                                      irs::type<irs::text_format::vpack>::get(),
+                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN @param\", \"memoryLimit\":1048576}")
+                                                                         ->slice()),
+                                      false);
+    ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_TRUE(ptr->reset("A"));
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_TRUE(ptr->reset("A"));
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
+    ASSERT_TRUE(ptr->reset("A"));
+    ASSERT_TRUE(dynamic_cast<arangodb::iresearch::AqlAnalyzer*>(ptr.get())->isOptimized());
   }
 }
 
@@ -438,7 +514,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_json) {
         "\"queryString\": \"FOR d IN [null, null, @param, 'b'] RETURN d\"}",
         false);
   ASSERT_NE(nullptr, ptr);
-  assert_analyzer(ptr.get(), "a", {{"", 0}, {"", 0}, {"a", 0}, {"b", 0}});
+  assert_analyzer(ptr.get(), "a", {{"", 0}, {"", 0}, {"a", 0}, {"b", 0}}, false);
 }
 
 TEST_F(IResearchAqlAnalyzerTest, test_normalize_json) {
@@ -759,7 +835,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_numeric_return) {
   token.pos = 0;
   token.value.assign(val.slice().startAs<char>(), val.slice().byteSize());
   expected_tokens.push_back(std::move(token));
-  assert_analyzer(ptr.get(), "2", expected_tokens);
+  assert_analyzer(ptr.get(), "2", expected_tokens, true);
 }
 
 TEST_F(IResearchAqlAnalyzerTest, test_numeric_return_array) {
@@ -779,7 +855,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_numeric_return_array) {
     token.value.assign(val.slice().startAs<char>(), val.slice().byteSize());
     expected_tokens.push_back(std::move(token));
   }
-  assert_analyzer(ptr.get(), "3", expected_tokens);
+  assert_analyzer(ptr.get(), "3", expected_tokens, false);
 }
 
 TEST_F(IResearchAqlAnalyzerTest, test_bool_return) {
@@ -796,7 +872,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_bool_return) {
   token.pos = 0;
   token.value.assign(val.slice().startAs<char>(), val.slice().byteSize());
   expected_tokens.push_back(std::move(token));
-  assert_analyzer(ptr.get(), "2", expected_tokens);
+  assert_analyzer(ptr.get(), "2", expected_tokens, true);
 }
 
 TEST_F(IResearchAqlAnalyzerTest, test_bool_return_array) {
@@ -816,7 +892,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_bool_return_array) {
     token.value.assign(val.slice().startAs<char>(), val.slice().byteSize());
     expected_tokens.push_back(std::move(token));
   }
-  assert_analyzer(ptr.get(), "3", expected_tokens);
+  assert_analyzer(ptr.get(), "3", expected_tokens, false);
 }
 
 TEST_F(IResearchAqlAnalyzerTest, test_string_return) {
@@ -832,7 +908,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_string_return) {
   token.pos = 0;
   token.value = "12";
   expected_tokens.push_back(std::move(token));
-  assert_analyzer(ptr.get(), "2", expected_tokens);
+  assert_analyzer(ptr.get(), "2", expected_tokens, true);
 }
 
 TEST_F(IResearchAqlAnalyzerTest, test_string_return_array) {
@@ -851,7 +927,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_string_return_array) {
     token.value = std::to_string(i);
     expected_tokens.push_back(std::move(token));
   }
-  assert_analyzer(ptr.get(), "3", expected_tokens);
+  assert_analyzer(ptr.get(), "3", expected_tokens, false);
 }
 
 TEST_F(IResearchAqlAnalyzerTest, test_string_return_array_keep_null) {
@@ -872,7 +948,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_string_return_array_keep_null) {
     token.value = i <= 5  ? std::to_string(i) : "";
     expected_tokens.push_back(std::move(token));
   }
-  assert_analyzer(ptr.get(), "3", expected_tokens);
+  assert_analyzer(ptr.get(), "3", expected_tokens, false);
 }
 
 TEST_F(IResearchAqlAnalyzerTest, test_number_return_array_keep_null) {
@@ -894,7 +970,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_number_return_array_keep_null) {
     token.value.assign(val.slice().startAs<char>(), val.slice().byteSize());
     expected_tokens.push_back(std::move(token));
   }
-  assert_analyzer(ptr.get(), "3", expected_tokens);
+  assert_analyzer(ptr.get(), "3", expected_tokens, false);
 }
 
 
@@ -917,5 +993,5 @@ TEST_F(IResearchAqlAnalyzerTest, test_bool_return_array_keep_null) {
     token.value.assign(val.slice().startAs<char>(), val.slice().byteSize());
     expected_tokens.push_back(std::move(token));
   }
-  assert_analyzer(ptr.get(), "3", expected_tokens);
+  assert_analyzer(ptr.get(), "3", expected_tokens, false);
 }

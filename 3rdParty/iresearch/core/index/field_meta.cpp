@@ -21,8 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "field_meta.hpp"
+
+#include "shared.hpp"
+#include "analysis/token_attributes.hpp"
 
 namespace iresearch {
 
@@ -35,32 +37,32 @@ namespace iresearch {
 field_meta::field_meta(field_meta&& rhs) noexcept
   : features(std::move(rhs.features)),
     name(std::move(rhs.name)),
-    norm(rhs.norm) {
-  rhs.norm = field_limits::invalid();
+    index_features(rhs.index_features) {
+  rhs.index_features = IndexFeatures::NONE;
 }
 
 field_meta::field_meta(
     const string_ref& name,
-    const flags& features,
-    field_id norm /* = field_limits::invalid() */)
-  : features(features),
-    name(name.c_str(), name.size()),
-    norm(norm) {
+    IndexFeatures index_features)
+  : name(name.c_str(), name.size()),
+    index_features(index_features) {
 }
 
 field_meta& field_meta::operator=(field_meta&& rhs) noexcept {
   if (this != &rhs) {
     features = std::move(rhs.features);
     name = std::move(rhs.name);
-    norm = rhs.norm;
-    rhs.norm = field_limits::invalid();
+    index_features = rhs.index_features;
+    rhs.index_features = IndexFeatures::NONE;
   }
 
   return *this;
 }
 
 bool field_meta::operator==(const field_meta& rhs) const {
-  return features == rhs.features && name == rhs.name;
+  return index_features == rhs.index_features &&
+         name == rhs.name &&
+         features == rhs.features;
 }
 
 // -----------------------------------------------------------------------------

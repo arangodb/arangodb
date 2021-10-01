@@ -693,7 +693,7 @@
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/cluster/nodeVersion?ServerID=' + this.serverInfo.target),
+          url: arangoHelper.databaseUrl('/_admin/cluster/nodeVersion?ServerID=' + encodeURIComponent(this.serverInfo.target)),
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -710,7 +710,7 @@
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/cluster/nodeEngine?ServerID=' + this.serverInfo.target),
+          url: arangoHelper.databaseUrl('/_admin/cluster/nodeEngine?ServerID=' + encodeURIComponent(this.serverInfo.target)),
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -725,7 +725,7 @@
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/cluster/nodeStatistics?ServerID=' + this.serverInfo.target),
+          url: arangoHelper.databaseUrl('/_admin/cluster/nodeStatistics?ServerID=' + encodeURIComponent(this.serverInfo.target)),
           contentType: 'application/json',
           processData: false,
           success: function (data) {

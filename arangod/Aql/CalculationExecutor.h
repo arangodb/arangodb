@@ -116,9 +116,9 @@ class CalculationExecutor {
 
   // Only for V8Conditions
   template <CalculationType U = calculationType, typename = std::enable_if_t<U == CalculationType::V8Condition>>
-  void exitContext();
+  void exitContext() noexcept;
 
-  [[nodiscard]] bool shouldExitContextBetweenBlocks() const;
+  [[nodiscard]] bool shouldExitContextBetweenBlocks() const noexcept;
 
  private:
   transaction::Methods _trx;
