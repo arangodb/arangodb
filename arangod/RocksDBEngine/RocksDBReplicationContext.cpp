@@ -336,15 +336,13 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
     vocbase.server().getFeature<DatabaseFeature>().inventory(inventory, tick, nameFilter);
   } else {
     // database-specific inventory
+    inventory.openObject();
     vocbase.inventory(inventory, tick, nameFilter);
+    inventory.close();
   }
-  
-  // order blockers for all collections in the inventory
+
   size_t created = 0;
-  TRI_ASSERT(inventory.slice().isObject());
-  for (auto it : VPackObjectIterator(inventory.slice())) {
-    std::string dbName = it.key.copyString();
-    VPackSlice collections = it.value.get("collections");
+  auto handleCollections = [&](std::string const& dbName, VPackSlice collections) {
     TRI_ASSERT(collections.isArray());
     for (auto it2 : VPackArrayIterator(collections)) {
       DataSourceId collection(basics::StringUtils::uint64(it2.get({"parameters", "id"}).copyString()));
@@ -368,11 +366,25 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
         ++created;
       });
     }
+  };
+  
+  // order blockers for all collections in the inventory
+  TRI_ASSERT(inventory.slice().isObject());
+  if (global) {
+    for (auto it : VPackObjectIterator(inventory.slice())) {
+      std::string dbName = it.key.copyString();
+      VPackSlice collections = it.value.get("collections");
+      handleCollections(dbName, collections);
+    }
+    result.add(inventory.slice());
+  } else {
+    handleCollections(vocbase.name(), inventory.slice().get("collections"));
+    // add inventory data to result
+    for (auto it : VPackObjectIterator(inventory.slice())) {
+      result.add(it.key.copyString(), it.value);
+    }
   }
 
-  // add inventory data to result
-  result.add(inventory.slice());
-  
   {
     MUTEX_LOCKER(locker, _contextLock);
     lazyCreateSnapshot();
