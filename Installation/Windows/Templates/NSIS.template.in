@@ -124,7 +124,6 @@ SetCompressor @CPACK_NSIS_COMPRESSOR@
 ; RequestExecutionLevel admin
 RequestExecutionLevel highest
 
-!include "AddToPath.nsh"
 !include "AddToRegistry.nsh"
 !include "WaitForService.nsh"
 !include "ReadINIFileKeys.nsh"
