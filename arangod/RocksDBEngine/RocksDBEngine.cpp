@@ -124,7 +124,9 @@ DECLARE_GAUGE(rocksdb_wal_sequence_lower_bound, uint64_t, "RocksDB WAL sequence 
 DECLARE_GAUGE(rocksdb_archived_wal_files, uint64_t, "Number of archived RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_prunable_wal_files, uint64_t, "Number of prunable RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_wal_pruning_active, uint64_t, "Whether or not RocksDB WAL file pruning is active");
-
+DECLARE_COUNTER(arangodb_revision_tree_rebuilds_success_total, "Number of successful revision tree rebuilds");
+DECLARE_COUNTER(arangodb_revision_tree_rebuilds_failure_total, "Number of successful revision tree failures");
+          
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
@@ -220,7 +222,11 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _metricsPrunableWalFiles(server.getFeature<arangodb::MetricsFeature>().add(
           rocksdb_prunable_wal_files{})),
       _metricsWalPruningActive(server.getFeature<arangodb::MetricsFeature>().add(
-          rocksdb_wal_pruning_active{})) {
+          rocksdb_wal_pruning_active{})),
+      _metricsTreeRebuildsSuccess(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_revision_tree_rebuilds_success_total{})),
+      _metricsTreeRebuildsFailure(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_revision_tree_rebuilds_failure_total{})) {
 
   server.addFeature<RocksDBOptionFeature>();
 
@@ -1436,10 +1442,12 @@ void RocksDBEngine::processTreeRebuilds() {
                   << "starting background rebuild of revision tree for collection " << collection->name();
               Result res = static_cast<RocksDBCollection*>(collection->getPhysical())->rebuildRevisionTree();
               if (res.ok()) {
+                ++_metricsTreeRebuildsSuccess;
                 LOG_TOPIC("2f997", INFO, Logger::ENGINES)
                     << "successfully rebuilt revision tree for collection " << collection->name();
               } else {
-                LOG_TOPIC("a1fc2", WARN, Logger::ENGINES)
+                ++_metricsTreeRebuildsFailure;
+                LOG_TOPIC("a1fc2", ERR, Logger::ENGINES)
                     << "failure during revision tree rebuilding for collection " << collection->name() 
                     << ": " << res.errorMessage();
                 {
