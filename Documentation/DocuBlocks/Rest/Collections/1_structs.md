@@ -75,18 +75,5 @@ The type of the collection:
   - 2: regular document collection
   - 3: edge collection
 
-@RESTSTRUCT{status,collection_info,string,optional,}
-corresponds to **statusString**; *Only relevant for the MMFiles storage engine*
-  - 0: "unknown" - may be corrupted
-  - 1: (deprecated, maps to "unknown")
-  - 2: "unloaded"
-  - 3: "loaded"
-  - 4: "unloading"
-  - 5: "deleted"
-  - 6: "loading"
-
-@RESTSTRUCT{statusString,collection_info,string,optional,}
-any of: ["unloaded", "loading", "loaded", "unloading", "deleted", "unknown"] *Only relevant for the MMFiles storage engine*
-
 @RESTSTRUCT{globallyUniqueId,collection_info,string,optional,}
 Unique identifier of the collection
