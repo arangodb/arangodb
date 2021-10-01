@@ -2178,8 +2178,6 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       auto [it, emplaced] = _prunableWalFiles.try_emplace(f->PathName(), -1.0);
       if (emplaced) {
         doPrint = true;
-        // using an expiration time of -1.0 indicates the file is subject to
-        // deletion because the archive outgrew the maximum allowed size
       } else {
         // file already in list. now set its expiration time to the past
         // so we are sure it will get deleted
