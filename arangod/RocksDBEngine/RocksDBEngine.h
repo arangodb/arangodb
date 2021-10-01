@@ -583,6 +583,8 @@ class RocksDBEngine final : public StorageEngine {
   Gauge<uint64_t>& _metricsArchivedWalFiles;
   Gauge<uint64_t>& _metricsPrunableWalFiles;
   Gauge<uint64_t>& _metricsWalPruningActive;
+  Counter& _metricsTreeRebuildsSuccess;
+  Counter& _metricsTreeRebuildsFailure;
   
   // @brief persistor for replicated logs
   std::shared_ptr<RocksDBLogPersistor> _logPersistor;

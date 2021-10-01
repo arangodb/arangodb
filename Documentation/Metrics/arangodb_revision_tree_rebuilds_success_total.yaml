@@ -1,0 +1,17 @@
+name: arangodb_revision_tree_rebuilds_success_total
+introducedIn: "3.8.2"
+help: |
+  Number of successful revision tree rebuilds.
+unit: number
+type: counter
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  Number of successful background revision tree rebuilds.
+  Ideally this value stays at 0, because a revision tree rebuild
+  indicates a problem with a collection/shard's revision tree that
+  has happened before.
