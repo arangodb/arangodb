@@ -93,7 +93,7 @@ class AqlExecutorTestCase : public ::testing::Test {
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
 };
 
 /**

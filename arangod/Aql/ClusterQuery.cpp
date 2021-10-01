@@ -43,9 +43,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ClusterQuery::ClusterQuery(QueryId id, std::shared_ptr<transaction::Context> const& ctx,
-                           QueryOptions&& options)
-    : Query(id, ctx, aql::QueryString(), /*bindParams*/ nullptr, std::move(options),
+ClusterQuery::ClusterQuery(QueryId id, std::shared_ptr<transaction::Context> ctx,
+                           QueryOptions options)
+    : Query(id, ctx, aql::QueryString(), 
+            /*bindParams*/ nullptr, std::move(options),
             /*sharedState*/ ServerState::instance()->isDBServer()
                 ? nullptr
                 : std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
@@ -55,6 +56,24 @@ ClusterQuery::~ClusterQuery() {
     _traversers.clear();
   } catch (...) {
   }
+}
+
+/// @brief factory method for creating a cluster query. this must be used to
+/// ensure that ClusterQuery objects are always created using shared_ptrs.
+/*static*/ std::shared_ptr<ClusterQuery> ClusterQuery::create(QueryId id,
+                                                              std::shared_ptr<transaction::Context> ctx,
+                                                              aql::QueryOptions options) {
+  // workaround to enable make_shared on a class with a private/protected constructor
+  struct MakeSharedQuery : public ClusterQuery {
+    MakeSharedQuery(QueryId id,
+                    std::shared_ptr<transaction::Context> ctx,
+                    aql::QueryOptions options)
+      : ClusterQuery(id, std::move(ctx), std::move(options)) {}
+  };
+  
+  TRI_ASSERT(ctx != nullptr);
+
+  return std::make_shared<MakeSharedQuery>(id, std::move(ctx), std::move(options));
 }
 
 void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,

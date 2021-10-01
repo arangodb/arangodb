@@ -55,6 +55,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/ManagedDirectory.h"
+#include "Utilities/NameValidator.h"
 
 namespace {
 
@@ -141,6 +142,7 @@ std::pair<arangodb::Result, std::vector<std::string>> getDatabases(arangodb::htt
     return {::ErrorMalformedJsonResponse, databases};
   }
   VPackSlice resBody = parsedBody->slice();
+
   if (resBody.isObject()) {
     resBody = resBody.get("result");
   }
@@ -412,6 +414,14 @@ void processJob(arangodb::httpclient::SimpleHttpClient& client, arangodb::DumpFe
   if (res.fail()) {
     job.feature.reportError(res);
   }
+}
+
+/// @brief return either the name of the database to be used as a folder name, or its id if its name contains special characters and is not fully supported in every OS
+[[nodiscard]] std::string getDatabaseDirName(std::string const& databaseName, std::string const& id) {
+  bool isOldStyleName = 
+      arangodb::DatabaseNameValidator::isAllowedName(/*allowSystem*/ true, /*extendedNames*/ false, 
+                                                     arangodb::velocypack::StringRef(databaseName));
+  return isOldStyleName ? databaseName : id;
 }
 
 }  // namespace
@@ -819,7 +829,21 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   if (!body.isObject()) {
     return ::ErrorMalformedJsonResponse;
   }
-  
+
+  if (_options.allDatabases) {
+    std::string const dbId = body.get("properties").get("id").copyString();
+    // inject current database
+    LOG_TOPIC("4af42", INFO, Logger::DUMP) << "Dumping database '" << dbName << "' (" << dbId << ")";
+    _directory = std::make_unique<ManagedDirectory>(
+        server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, ::getDatabaseDirName(dbName, dbId)),
+        !_options.overwrite, true, _options.useGzip);
+
+    if (_directory->status().fail()) {
+      LOG_TOPIC("94201", ERR, Logger::DUMP) << _directory->status().errorMessage();
+      return _directory->status();
+    }
+  }
+
   // use tick provided by server if user did not specify one
   if (_options.tickEnd == 0 && !_options.clusterMode) {
     uint64_t tick = basics::VelocyPackHelper::stringUInt64(body, "tick");
@@ -1100,9 +1124,8 @@ void DumpFeature::start() {
 
   // get database name to operate on
   auto& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
-
   // get a client to use in main thread
-  auto httpClient = _clientManager.getConnectedClient(_options.force, true, true);
+  auto httpClient = _clientManager.getConnectedClient(_options.force, true, true, 0);
 
   // check if we are in cluster or single-server mode
   Result result{TRI_ERROR_NO_ERROR};
@@ -1156,20 +1179,8 @@ void DumpFeature::start() {
   if (res.ok()) {
     for (auto const& db : databases) {
       if (_options.allDatabases) {
-        // inject current database
-        LOG_TOPIC("4af42", INFO, Logger::DUMP) << "Dumping database '" << db << "'";
         client.setDatabaseName(db);
-        httpClient = _clientManager.getConnectedClient(_options.force, false, true);
-
-        _directory = std::make_unique<ManagedDirectory>(
-            server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, db),
-            true, true, _options.useGzip);
-
-        if (_directory->status().fail()) {
-          res = _directory->status();
-          LOG_TOPIC("94201", ERR, Logger::DUMP) << _directory->status().errorMessage();
-          break;
-        }
+        httpClient = _clientManager.getConnectedClient(_options.force, false, true, 0);
       }
 
       try {

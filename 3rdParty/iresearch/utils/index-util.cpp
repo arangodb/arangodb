@@ -22,11 +22,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <functional>
+#include <string>
+#include <unordered_map>
+
 #include "index-dump.hpp"
 #include "index-convert.hpp"
-
-#include <unordered_map>
-#include <functional>
 
 typedef std::unordered_map<
   std::string,

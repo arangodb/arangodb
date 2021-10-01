@@ -71,7 +71,7 @@ class PathValidatorTest : public ::testing::Test {
   graph::MockGraph mockGraph;
   mocks::MockAqlServer _server{true};
 
-  std::unique_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
+  std::shared_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
 
  private:
   arangodb::GlobalResourceMonitor _global{};

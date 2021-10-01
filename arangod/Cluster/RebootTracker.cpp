@@ -285,13 +285,7 @@ void RebootTracker::queueCallbacks(
                           [](auto it) { return it->empty(); }));
 
   auto cb = createSchedulerCallback(std::move(callbacks));
-
-  if (!_scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(cb))) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUEUE_FULL,
-        "No available threads when trying to queue cleanup "
-        "callbacks due to a server reboot");
-  }
+  _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(cb));
 }
 
 void RebootTracker::unregisterCallback(PeerState const& peerState,

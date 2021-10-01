@@ -55,37 +55,37 @@ const AqlForm = ({ formState, dispatch, disabled }: FormProps) => {
   const aqlFormState = formState as AqlState;
 
   return <Grid>
-    <Cell size={'1-3'}>
+    <Cell size={'1-2'}>
       <Textarea label={'Query String'} value={aqlFormState.properties.queryString || ''} disabled={disabled}
                 onChange={updateQueryString} rows={4} required={true}/>
     </Cell>
 
-    <Cell size={'1-3'}>
+    <Cell size={'1-2'}>
       <Grid>
         <Cell size={'1'}>
-          <Textbox label={'Batch Size'} type={'number'} min={1} placeholder={'10'} required={true}
+          <Textbox label={'Batch Size'} type={'number'} min={1} required={true}
                    value={aqlFormState.properties.batchSize || ''} disabled={disabled}
                    onChange={getNumericFieldSetter('properties.batchSize')}/>
         </Cell>
         <Cell size={'1'}>
           <Textbox label={'Memory Limit'} type={'number'} min={1} max={33554432} required={true}
-                   placeholder={'1048576'} value={aqlFormState.properties.memoryLimit || ''}
+                   value={aqlFormState.properties.memoryLimit || ''}
                    disabled={disabled} onChange={getNumericFieldSetter('properties.memoryLimit')}/>
         </Cell>
       </Grid>
     </Cell>
 
-    <Cell size={'1-3'}>
+    <Cell size={'1-2'}>
       <Grid>
-        <Cell size={'1-2'}>
+        <Cell size={'1-3'}>
           <Checkbox checked={aqlFormState.properties.collapsePositions || false} disabled={disabled}
                     onChange={updateCollapsePositions} label={'Collapse Positions'}/>
         </Cell>
-        <Cell size={'1-2'}>
+        <Cell size={'1-3'}>
           <Checkbox checked={aqlFormState.properties.keepNull || false} onChange={updateKeepNull}
                     disabled={disabled} label={'Keep Null'}/>
         </Cell>
-        <Cell size={'1'}>
+        <Cell size={'1-3'}>
           <Select label={'Return Type'} value={aqlFormState.properties.returnType || 'string'}
                   onChange={updateReturnType} required={true} disabled={disabled}>
             <option value={'string'}>String</option>

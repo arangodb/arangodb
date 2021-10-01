@@ -83,7 +83,7 @@ class AsyncLinkHandle {
 class IResearchLink {
  public:
   using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
-  using InitCallback = std::function<void(irs::directory&)>;
+  using InitCallback = std::function<irs::directory_attributes()>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a snapshot representation of the data-store

@@ -92,6 +92,10 @@ function BaseTestConfig() {
         // PRUNE
         "FOR v, e, p IN @minDepth..@maxDepth OUTBOUND @start GRAPH '" + gn + "' PRUNE v.testi == 'abc' RETURN p",
         "FOR v, e, p IN @minDepth..@maxDepth OUTBOUND @start GRAPH '" + gn + "' PRUNE v['testi'] == 'abc' RETURN p.edges",
+        "FOR v, e, p IN @minDepth..@maxDepth OUTBOUND @start GRAPH '" + gn + "' PRUNE pruneCondition = v.testi == 'abc' FILTER pruneCondition RETURN p",
+        "FOR v, e, p IN @minDepth..@maxDepth OUTBOUND @start GRAPH '" + gn + "' PRUNE pruneCondition = v['testi'] == 'abc' FILTER pruneCondition RETURN p.edges",
+        "FOR v, e, p IN @minDepth..@maxDepth OUTBOUND @start GRAPH '" + gn + "' PRUNE pruneCondition = v.testi == 'abc' OPTIONS {bfs: true} FILTER pruneCondition RETURN p",
+        "FOR v, e, p IN @minDepth..@maxDepth OUTBOUND @start GRAPH '" + gn + "' PRUNE pruneCondition = v['testi'] == 'abc' OPTIONS {bfs: true} FILTER pruneCondition RETURN p.edges",
         "FOR v, e, p IN @minDepth..@maxDepth OUTBOUND @start GRAPH '" + gn + "' PRUNE v.testi == 'abc' RETURN p.edges",
         "FOR v, e, p IN @minDepth..@maxDepth OUTBOUND @start GRAPH '" + gn + "' PRUNE v['testi'] == 'abc' RETURN p.vertices",
         "FOR v, e, p IN @minDepth..@maxDepth OUTBOUND @start GRAPH '" + gn + "' PRUNE v.testi == 'abc' RETURN p.vertices",

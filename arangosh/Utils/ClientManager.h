@@ -66,7 +66,7 @@ class ClientManager {
    */
   Result getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>& httpClient,
                             bool force, bool logServerVersion,
-                            bool logDatabaseNotFound, bool quiet);
+                            bool logDatabaseNotFound, bool quiet, size_t threadNumber);
 
   /**
    * @brief Initializes a client, connects to server, and verifies version
@@ -83,7 +83,7 @@ class ClientManager {
    * @return         A connected `SimpleHttpClient`
    */
   std::unique_ptr<httpclient::SimpleHttpClient> getConnectedClient(bool force, bool logServerVersion,
-                                                                   bool logDatabaseNotFound);
+                                                                   bool logDatabaseNotFound, size_t threadNumber);
 
   /**
    * @brief Conditionally prefixes a relative URI with database-specific path

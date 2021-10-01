@@ -233,7 +233,7 @@ class filter_base : public filter_with_options<Options> {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API empty final : public filter {
  public:
-  DECLARE_FACTORY();
+  static ptr make();
 
   empty();
 

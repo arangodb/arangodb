@@ -44,12 +44,12 @@ const NGramForm = ({ formState, dispatch, disabled }: FormProps) => {
     </Cell>
 
     <Cell size={'1-3'}>
-      <Textbox label={'Start Marker'} type={'text'} placeholder={disabled ? '' : '^'} disabled={disabled}
+      <Textbox label={'Start Marker'} type={'text'} disabled={disabled}
                onChange={updateStartMarker} value={ngramFormState.properties.startMarker || ''}/>
     </Cell>
 
     <Cell size={'1-3'}>
-      <Textbox label={'End Marker'} type={'text'} placeholder={disabled ? '' : '$'} onChange={updateEndMarker}
+      <Textbox label={'End Marker'} type={'text'} onChange={updateEndMarker}
                value={ngramFormState.properties.endMarker || ''} disabled={disabled}/>
     </Cell>
 

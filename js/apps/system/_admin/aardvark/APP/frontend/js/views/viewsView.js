@@ -425,6 +425,10 @@
         undefined, this.events);
 
       // select2 workaround
+      this.select2FixSearchBar();
+    },
+
+    select2FixSearchBar: function () {
       $('.select2-search-field input').on('focusout', function (e) {
         if ($('.select2-drop').is(':visible')) {
           if (!$('#select2-search-field input').is(':focus')) {
@@ -450,21 +454,24 @@
         newRow = row.clone(true);
       } else {
         newRow = row.clone(false);
-
-        let firstCell = newRow.find('td:first-child');
-        firstCell.html('<div></div>');
       }
 
       const idParts = newRow.attr('id').split('-');
-
       idParts[idParts.length - 1] = parseInt(idParts[idParts.length - 1]) + 1;
       const newId = idParts.join('-');
 
       newRow.attr('id', newId);
 
-      const inputs = newRow.find('input,textarea');
-      inputs.val('');
-      inputs.attr('id', (idx, id) => id ? `${id.split('-')[0]}-${_.uniqueId()}` : id);
+      let select2id = '';
+      if (foundSelect2) {
+        select2id = newId + '-select2';
+        let firstCell = newRow.find('td:first-child');
+        firstCell.html('<input type="hidden" id="' + select2id + '"/>');
+      } else {
+        const inputs = newRow.find('input,textarea');
+        inputs.val('');
+        inputs.attr('id', (idx, id) => id ? `${id.split('-')[0]}-${_.uniqueId()}` : id);
+      }
 
       if (!newRow.find('button.delete').length) {
         const lastCell = newRow.children().last().find('span');
@@ -476,6 +483,15 @@
       }
 
       newRow.insertAfter(row);
+
+      if (foundSelect2) {
+        // unfortunately we need to trigger select2 creation after input gets rendered
+        window.modalView.handleSelect2Row({
+          id: select2id,
+          width: "resolve"
+        });
+        this.select2FixSearchBar();
+      }
     },
 
     removeRow: function (e) {
@@ -504,13 +520,21 @@
         }
       });
 
+      // Section: "Stored Values"
       const storedValues = [];
       $('#newStoredValues tbody').children().each((idx, tr) => {
-        const inputs = $(tr).find('textarea,select');
-        const [fields, compression] = inputs.map((idx, input) => input.value);
+        const s2field = $(tr).find('.select2-container');
+        const compression = $(tr).find('select').val();
 
-        if (fields) {
-          const fieldsArr = fields.trim().split('\n');
+        if (s2field) {
+          let s2dataObj = $(s2field).select2('data');
+          let fieldsArr = [];
+
+          if (s2dataObj.length > 0) {
+            _.each(s2dataObj, function(value, key) {
+              fieldsArr.push(value.text);
+            });
+          }
 
           storedValues.push({
             fields: fieldsArr,
@@ -518,6 +542,7 @@
           });
         }
       });
+
 
       var options = JSON.stringify({
         name: name,

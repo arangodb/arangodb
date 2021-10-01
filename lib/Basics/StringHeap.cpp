@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
+#include "Containers/Helpers.h"
 
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/StringRef.h>
@@ -94,25 +95,8 @@ char const* StringHeap::registerString(char const* ptr, size_t length) {
 
 /// @brief allocate a new block of memory
 void StringHeap::allocateBlock() {
-  size_t capacity;
-  if (_blocks.empty()) {
-    // reserve some initial space
-    capacity = 8;
-  } else {
-    capacity = _blocks.size() + 1;
-    // allocate with power of 2 growth
-    if (capacity > _blocks.capacity()) {
-      capacity *= 2;
-    }
-  }
-
-  TRI_ASSERT(capacity > _blocks.size());
-
-  // reserve space
-  if (capacity > _blocks.capacity()) {
-    // if this fails, we don't have to rollback anything
-    _blocks.reserve(capacity);
-  }
+  // may throw
+  arangodb::containers::Helpers::reserveSpace(_blocks, 8);
 
   // may throw
   ResourceUsageScope scope(_resourceMonitor, sizeof(char*) + _blockSize);

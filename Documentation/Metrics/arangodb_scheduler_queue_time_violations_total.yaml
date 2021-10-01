@@ -1,0 +1,28 @@
+name: arangodb_scheduler_queue_time_violations_total
+introducedIn: "3.9.0"
+help: |
+  Number of tasks/requests dropped and not added to internal queue
+  due to the client-specified queue time requirements not being
+  satisfiable.
+unit: number
+type: counter
+category: Scheduler
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Number of tasks/requests dropped because the client-specified queue time
+  requirements, as indicated by client applications in the request header
+  "x-arango-queue-time-seconds" could not be satisfied by the receiving 
+  server instance. This happens when the actual time need to queue/dequeue
+  requests on the scheduler queue exceeds the maximum time value that the
+  client has specified in the request. 
+  Whenever this happens, the client application will get an HTTP 412 error 
+  response back with error code 21004 ("queue time violated").
+  Although the metric is exposed on all instance types, it will very likely
+  always be 0 on DB servers, simply because coordinators do not forward the
+  "x-arango-queue-time-seconds" when they send internal requests to DB
+  servers.

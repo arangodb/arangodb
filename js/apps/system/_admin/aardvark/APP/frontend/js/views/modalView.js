@@ -283,6 +283,22 @@
       $('#modal-delete-confirmation strong').html('Really ' + buttonText.toLowerCase() + '?');
     },
 
+    handleSelect2Row: function (row) {
+      // handle select2
+      let options = {
+        tags: row.tags || [],
+        showSearchBox: false,
+        minimumResultsForSearch: -1,
+        width: row.width || '336px'
+      };
+
+      if (row.maxEntrySize) {
+        options.maximumSelectionSize = row.maxEntrySize;
+      }
+
+      $('#' + row.id).select2(options);
+    },
+
     show: function (templateName, title, buttons, tableContent, advancedContent,
       extraInfo, events, noConfirm, tabBar, divID) {
       var self = this;
@@ -427,28 +443,10 @@
         });
       }
 
-      let handleSelect2Row = function (row) {
-        console.log("Handling: ");
-        console.log(row);
-        // handle select2
-        var options = {
-          tags: row.tags || [],
-          showSearchBox: false,
-          minimumResultsForSearch: -1,
-          width: row.width || '336px'
-        };
-
-        if (row.maxEntrySize) {
-          options.maximumSelectionSize = row.maxEntrySize;
-        }
-
-        $('#' + row.id).select2(options);
-      };
-
       _.each(completeTableContent, function (row) {
         self.modalBindValidation(row);
         if (row.type === self.tables.SELECT2) {
-          handleSelect2Row(row);
+          self.handleSelect2Row(row);
         }
 
         if (row.type === self.tables.TABLE) {
@@ -458,7 +456,7 @@
             _.each(row, function(innerRow) {
               if (innerRow.type === self.tables.SELECT2) {
                 innerRow.width = "resolve";
-                handleSelect2Row(innerRow);
+                self.handleSelect2Row(innerRow);
               }
             });
           });
