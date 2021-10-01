@@ -82,7 +82,7 @@ struct RocksDBMetadata final {
    * @param  seq   The sequence number immediately prior to call
    * @return       May return error if we fail to allocate and place blocker
    */
-  Result placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq);
+  Result placeBlocker(TransactionId trxId, rocksdb::SequenceNumber& seq);
 
   /**
    * @brief Update a blocker to allow proper commit/serialize semantics
