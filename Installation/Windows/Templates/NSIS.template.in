@@ -1,6 +1,6 @@
 ; CPack install script designed for a nmake build
 Unicode False
-!addplugindir '@CPACK_PLUGIN_PATH@/EnVar_plugin/Plugins/x86-ansi'
+!addplugindir  '@CPACK_PLUGIN_PATH@/EnVar_plugin/Plugins/x86-ansi'
 !addplugindir  '@CPACK_PLUGIN_PATH@/NSIS_Simple_Service_Plugin_1.30'
 !addplugindir  '@CPACK_PLUGIN_PATH@/AccessControl/Plugins'
 !addincludedir '@CPACK_PLUGIN_PATH@/'
@@ -1009,7 +1009,7 @@ Function .onInstSuccess
       EnVar::SetHKLM
     ${Else}
       EnVar::SetHKCU
-    ${EndIf
+    ${EndIf}
     EnVar::AddValue "PATH" "$INSTDIR/${BIN_DIR}"
   ${EndIf}
 
