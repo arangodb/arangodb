@@ -2,6 +2,10 @@
 !addplugindir  '@CPACK_PLUGIN_PATH@/NSIS_Simple_Service_Plugin_1.30'
 !addplugindir  '@CPACK_PLUGIN_PATH@/AccessControl/Plugins'
 !addincludedir '@CPACK_PLUGIN_PATH@/'
+!addplugindir  '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS/Plugins/x86-ansi'
+!addincludedir '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS'
+!addincludedir '@CPACK_PLUGIN_PATH@/EnVar_plugin/Plugins/x86-ansi'
+!addincludedir '@CPACK_PLUGIN_PATH@/EnVar_plugin'
 !include "exitcodes.nsh"
 
 ;--------------------------------
@@ -14,7 +18,7 @@
   !include "xcopy.nsh"
   !include "Utf8Converter.nsh"
   !include "BaseDir.nsh"
-;   !include "GetTime.nsh"
+  !include "UAC.nsh"
 ;--------------------------------
 ; get commandline parameters
 !include "FileFunc.nsh"
@@ -1002,7 +1006,12 @@ SectionEnd
 Function .onInstSuccess
   Call insert_registration_keys
   ${If} $ADD_TO_PATH == "1"
-    !insertmacro AddToPath "$INSTDIR/${BIN_DIR}" $TRI_INSTALL_SCOPE_ALL
+    ${If} $TRI_INSTALL_SCOPE_ALL = "1"
+      EnVar::SetHKLM
+    ${Else}
+      EnVar::SetHKCU
+    ${EndIf
+    EnVar::AddValue "PATH" "$INSTDIR/${BIN_DIR}"
   ${EndIf}
 
   IfSilent 0 continueUI
@@ -1086,8 +1095,10 @@ Function un.onInit
 
   ${If} $TRI_INSTALL_SCOPE_ALL == 1
     SetShellVarContext all
+    EnVar::SetHKLM
   ${Else}
     SetShellVarContext current
+    EnVar::SetHKCU
   ${EndIf}
 FunctionEnd
 
@@ -1248,7 +1259,12 @@ Done:
   DeleteRegKey HKLM "${TRI_UNINSTALL_REG_PATH}"
 
   ${If} $ADD_TO_PATH == 1
-    !InsertMacro un.RemoveFromPath "$INSTDIR/${BIN_DIR}"
+    ${If} $TRI_INSTALL_SCOPE_ALL = "1"
+      EnVar::SetHKLM
+    ${Else}
+      EnVar::SetHKCU
+    ${EndIf  
+    EnVar::DeleteValue "PATH" "$INSTDIR/${BIN_DIR}"
   ${EndIf}
 SectionEnd
 
