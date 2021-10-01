@@ -1,6 +1,9 @@
 devel
 -----
 
+* Retain backwards-compatibility for client tools when more than one
+  endpoint is specified but the tool only supports a single endpoint.
+
 * Fixed BTS-602 by not starting license feature is upgrade mode.
 
 * APM-173: Now, arangobench, arangodump and arangorestore support multiple 

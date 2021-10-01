@@ -203,9 +203,15 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (_endpoints.size() > _maxNumEndpoints) {
-    LOG_TOPIC("6e305", FATAL, arangodb::Logger::FIXME)
-        << "Maximum number of endpoints exceeded";
-    FATAL_ERROR_EXIT();
+    // this is the case if we have more endpoints than allowed.
+    // in versions before 3.9, it was allowed to specify `--server.endpoint`
+    // multiple times, and if this was done, only the last provided endpoint
+    // was used. to keep backward-compatibility, we now emulate this 
+    // behavior here.
+    TRI_ASSERT(_maxNumEndpoints == 1);
+    std::string selectedEndpoint = _endpoints.back();
+
+    _endpoints = { std::move(selectedEndpoint) };
   }
 
   // if a username is specified explicitly, assume authentication is desired
