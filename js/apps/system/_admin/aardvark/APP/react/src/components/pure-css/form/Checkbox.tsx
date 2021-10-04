@@ -1,4 +1,4 @@
-import React, { ChangeEvent, ReactNode } from 'react';
+import React, { ChangeEvent, ReactNode, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { uniqueId } from 'lodash';
 
@@ -20,20 +20,24 @@ type CheckboxProps = {
 };
 
 const Checkbox = ({ id, checked, onChange, label, inline, disabled }: CheckboxProps) => {
-  if (!id) {
-    id = uniqueId('checkbox-');
-  }
+  const [thisId, setThisId] = useState(id || uniqueId('checkbox-'));
+
+  useEffect(() => {
+    if (id) {
+      setThisId(id);
+    }
+  }, [id]);
 
   if (inline) {
-    return <label htmlFor={id} className="pure-checkbox">
-      <StyledCheckbox id={id} checked={checked} onChange={onChange} disabled={disabled}/>
+    return <label htmlFor={thisId} className="pure-checkbox">
+      <StyledCheckbox id={thisId} checked={checked} onChange={onChange} disabled={disabled}/>
       &nbsp;{label}
     </label>;
   }
 
   return <>
-    <label htmlFor={id} className="pure-checkbox">{label}</label>
-    <StyledCheckbox id={id} checked={checked} onChange={onChange} disabled={disabled}/>
+    <label htmlFor={thisId} className="pure-checkbox">{label}</label>
+    <StyledCheckbox id={thisId} checked={checked} onChange={onChange} disabled={disabled}/>
   </>;
 };
 

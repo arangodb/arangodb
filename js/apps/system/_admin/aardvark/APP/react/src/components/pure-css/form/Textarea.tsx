@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { uniqueId } from 'lodash';
 import PlainLabel from "./PlainLabel";
@@ -16,13 +16,17 @@ type TextareaProps = {
 };
 
 const Textarea = ({ id, label, disabled, ...rest }: TextareaProps) => {
-  if (!id) {
-    id = uniqueId('textbox-');
-  }
+  const [thisId, setThisId] = useState(id || uniqueId('textarea-'));
+
+  useEffect(() => {
+    if (id) {
+      setThisId(id);
+    }
+  }, [id]);
 
   return <>
-    <PlainLabel htmlFor={id}>{label}</PlainLabel>
-    <StyledTextarea id={id} disabled={disabled} {...rest}/>
+    <PlainLabel htmlFor={thisId}>{label}</PlainLabel>
+    <StyledTextarea id={thisId} disabled={disabled} {...rest}/>
   </>;
 };
 

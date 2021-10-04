@@ -15,9 +15,10 @@ declare var arangoHelper: { [key: string]: any };
 
 type ButtonProps = {
   analyzer: FormState;
+  modalCid: string;
 }
 
-const DeleteButton = ({ analyzer }: ButtonProps) => {
+const DeleteButton = ({ analyzer, modalCid }: ButtonProps) => {
   const [show, setShow] = useState(false);
   const [forceDelete, setForceDelete] = useState(false);
 
@@ -45,7 +46,7 @@ const DeleteButton = ({ analyzer }: ButtonProps) => {
             style={{ background: 'transparent' }}>
       <i className={'fa fa-trash-o'}/>
     </button>
-    <Modal show={show} setShow={setShow}>
+    <Modal show={show} setShow={setShow} cid={modalCid}>
       <ModalHeader title={`Delete Analyzer ${analyzer.name}?`}/>
       <ModalBody>
         <p>
@@ -71,7 +72,7 @@ const DeleteButton = ({ analyzer }: ButtonProps) => {
   </>;
 };
 
-const ViewButton = ({ analyzer }: ButtonProps) => {
+const ViewButton = ({ analyzer, modalCid }: ButtonProps) => {
   const [show, setShow] = useState(false);
   const [showJsonForm, setShowJsonForm] = useState(false);
 
@@ -105,7 +106,7 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
     <button className={'pure-button'} onClick={handleClick} style={{ background: 'transparent' }}>
       <i className={'fa fa-eye'}/>
     </button>
-    <Modal show={show} setShow={setShow}>
+    <Modal show={show} setShow={setShow} cid={modalCid}>
       <ModalHeader title={formState.name}>
         <button className={'button-info'} onClick={toggleJsonForm} style={{ float: 'right' }}>
           {showJsonForm ? 'Switch to form view' : 'Switch to code view'}
@@ -160,9 +161,10 @@ const ViewButton = ({ analyzer }: ButtonProps) => {
 interface ActionProps {
   analyzer: FormState;
   permission: string;
+  modalCidSuffix: string;
 }
 
-const Actions = ({ analyzer, permission }: ActionProps) => {
+const Actions = ({ analyzer, permission, modalCidSuffix }: ActionProps) => {
   const isUserDefined = analyzer.name.includes('::');
   const isSameDB = isUserDefined
     ? analyzer.name.split('::')[0] === frontendConfig.db
@@ -171,8 +173,15 @@ const Actions = ({ analyzer, permission }: ActionProps) => {
   const canDelete = isUserDefined && isSameDB && isAdminUser;
 
   return <>
-    <ViewButton analyzer={analyzer}/>
-    {canDelete ? <>&nbsp;<DeleteButton analyzer={analyzer}/></> : null}
+    <ViewButton analyzer={analyzer} modalCid={`modal-content-view-${modalCidSuffix}`}/>
+    {
+      canDelete
+        ? <>
+          &nbsp;
+          <DeleteButton analyzer={analyzer} modalCid={`modal-content-delete-${modalCidSuffix}`}/>
+        </>
+        : null
+    }
   </>;
 };
 
