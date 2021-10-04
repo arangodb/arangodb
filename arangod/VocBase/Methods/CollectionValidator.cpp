@@ -2,16 +2,20 @@
 #include <Basics/StaticStrings.h>
 #include <Basics/VelocyPackHelper.h>
 #include <Cluster/ClusterFeature.h>
+#include <RestServer/DatabaseFeature.h>
+#include <Sharding/ShardingInfo.h>
 #include <Utilities/NameValidator.h>
 #include <Utils/Events.h>
 #include <VocBase/vocbase.h>
-#include "Sharding/ShardingInfo.h"
 
 using namespace arangodb;
 
 Result CollectionValidator::validateCreationInfo() {
   // check whether the name of the collection is valid
-  if (CollectionNameValidator::isAllowedName(false, false, _vocbase.name())) {  // todo check second false
+  bool extendedNames =
+      _vocbase.server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+  if (!CollectionNameValidator::isAllowedName(_allowSystemCollectionCreation, extendedNames,
+                                              _info.name)) {  // todo check second false
     events::CreateCollection(_vocbase.name(), _info.name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }

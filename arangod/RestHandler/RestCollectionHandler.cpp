@@ -372,6 +372,12 @@ void RestCollectionHandler::handleCommandPost() {
   VPackBuilder filtered = methods::Collections::filterInput(body);
   VPackSlice const parameters = filtered.slice();
 
+  bool allowSystem = false;
+  if (parameters.hasKey(StaticStrings::DataSourceSystem) &&
+      parameters.get(StaticStrings::DataSourceSystem).isBoolean()) {
+    allowSystem = parameters.get(StaticStrings::DataSourceSystem).getBoolean();
+  }
+
   // now we can create the collection
   std::string const& name = nameSlice.copyString();
   _builder.clear();
@@ -387,7 +393,7 @@ void RestCollectionHandler::handleCommandPost() {
                                    waitForSyncReplication,  // replication wait flag
                                    enforceReplicationFactor,  // replication factor flag
                                    false,  // new Database?, here always false
-                                   coll);
+                                   coll, allowSystem);
 
   if (res.ok()) {
     TRI_ASSERT(coll);

@@ -26,13 +26,13 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/fasthash.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -52,10 +52,10 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
+#include "Utilities/NameValidator.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utilities/NameValidator.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
@@ -78,19 +78,19 @@ using namespace arangodb::methods;
 using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
-bool isLocalCollection(CollectionCreationInfo const & info) {
-     return (!ServerState::instance()->isCoordinator() &&
-       Helper::stringUInt64(info.properties.get(StaticStrings::DataSourcePlanId)) == 0);
-
+bool isLocalCollection(CollectionCreationInfo const& info) {
+  return (!ServerState::instance()->isCoordinator() &&
+          Helper::stringUInt64(info.properties.get(StaticStrings::DataSourcePlanId)) == 0);
 }
 
-bool isSystemName(CollectionCreationInfo const & info) {
+bool isSystemName(CollectionCreationInfo const& info) {
   return NameValidator::isSystemName(info.name);
 }
 
 Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
-                std::vector<CollectionCreationInfo> const& infos,
-                bool isSingleServerSmartGraph, bool enforceReplicationFactor) {
+                                  std::vector<CollectionCreationInfo> const& infos,
+                                  bool allowSystem, bool isSingleServerSmartGraph,
+                                  bool enforceReplicationFactor) {
   for (auto const& info : infos) {
     // If the PlanId is not set, we either are on a single server, or this is
     // a local collection in a cluster; which means, it is neither a user-facing
@@ -99,7 +99,8 @@ Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
     // validate the information of the collection to be created
     CollectionValidator collectionValidator(info, vocbase, isSingleServerSmartGraph,
                                             enforceReplicationFactor,
-                                            isLocalCollection(info), isSystemName(info));
+                                            isLocalCollection(info),
+                                            isSystemName(info), allowSystem);
     Result res = collectionValidator.validateCreationInfo();
     if (res.fail()) {
       events::CreateCollection(vocbase.name(), info.name, res.errorNumber());
@@ -111,8 +112,8 @@ Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
 
 // Returns a builder that combines the information from \p infos and cluster related information.
 VPackBuilder getBuilder(TRI_vocbase_t const& vocbase,
-                  std::vector<CollectionCreationInfo> const& infos,
-                  bool isSingleServerSmartGraph, bool enforceReplicationFactor) {
+                        std::vector<CollectionCreationInfo> const& infos,
+                        bool isSingleServerSmartGraph, bool enforceReplicationFactor) {
   StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
   VPackBuilder helper;
@@ -125,7 +126,8 @@ VPackBuilder getBuilder(TRI_vocbase_t const& vocbase,
 
     helper.clear();
     helper.openObject();
-    helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
+    helper.add(arangodb::StaticStrings::DataSourceType,
+               VPackValue(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
     // generate a rocksdb collection object id in case it does not exist
@@ -220,7 +222,7 @@ VPackBuilder getBuilder(TRI_vocbase_t const& vocbase,
 
   return builder;
 }
-} // namespace
+}  // namespace
 
 Collections::Context::Context(std::shared_ptr<LogicalCollection> coll)
     : _coll(std::move(coll)), _trx(nullptr), _responsibleForTrx(true) {}
@@ -373,8 +375,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     arangodb::velocypack::Slice const& properties,  // collection properties
     bool createWaitsForSyncReplication,             // replication wait flag
     bool enforceReplicationFactor,                  // replication factor flag
-    bool isNewDatabase,
-    std::shared_ptr<LogicalCollection>& ret,
+    bool isNewDatabase, std::shared_ptr<LogicalCollection>& ret, bool allowSystem,
     bool isSingleServerSmartGraph) {  // invoke on collection creation
   if (name.empty()) {
     events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -387,7 +388,8 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
   std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = create(vocbase, options, infos, createWaitsForSyncReplication,
-                      enforceReplicationFactor, isNewDatabase, nullptr, collections, isSingleServerSmartGraph);
+                      enforceReplicationFactor, isNewDatabase, nullptr,
+                      collections, allowSystem, isSingleServerSmartGraph);
   if (res.ok() && collections.size() > 0) {
     ret = std::move(collections[0]);
   }
@@ -400,7 +402,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
                            bool enforceReplicationFactor, bool isNewDatabase,
                            std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
                            std::vector<std::shared_ptr<LogicalCollection>>& ret,
-                           bool isSingleServerSmartGraph) {
+                           bool allowSystem, bool isSingleServerSmartGraph) {
   ExecContext const& exec = options.context();
   if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
     for (auto const& info : infos) {
@@ -415,7 +417,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
   TRI_ASSERT(!vocbase.isDangling());
 
   {  // validate information from every element of infos
-    Result res = validateAllCollectionsInfo(vocbase, infos, isSingleServerSmartGraph,
+    Result res = validateAllCollectionsInfo(vocbase, infos, allowSystem, isSingleServerSmartGraph,
                                             enforceReplicationFactor);
     if (res.fail()) {
       return res;
@@ -423,8 +425,8 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
   }
 
   // construct a builder that contains information from all elements of infos and cluster related information
-  VPackBuilder builder = getBuilder(vocbase, infos, isSingleServerSmartGraph,
-                     enforceReplicationFactor);
+  VPackBuilder builder =
+      getBuilder(vocbase, infos, isSingleServerSmartGraph, enforceReplicationFactor);
 
   VPackSlice const infoSlice = builder.slice();
 
@@ -459,7 +461,6 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
         THROW_ARANGO_EXCEPTION(res);
       }
 
-
       for (auto& col : collections) {
         TRI_ASSERT(col != nullptr);
         vocbase.persistCollection(col);
@@ -468,7 +469,8 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 #endif
     } else {
-      TRI_ASSERT(ServerState::instance()->isSingleServer() || ServerState::instance()->isDBServer());
+      TRI_ASSERT(ServerState::instance()->isSingleServer() ||
+                 ServerState::instance()->isDBServer());
       // Here we do have a single server setup, or we're either on a DBServer.
       // In that case, we're not batching collection creating.
       // Therefore, we need to iterate over the infoSlice and create each collection one by one.
@@ -611,7 +613,7 @@ void Collections::createSystemCollectionProperties(std::string const& collection
                               bb.slice(),  // collection definition to create
                               true,        // waitsForSyncReplication
                               true,        // enforceReplicationFactor
-                              isNewDatabase, createdCollection);
+                              isNewDatabase, createdCollection, true /* allow system collection creation */);
 
     if (res.ok()) {
       TRI_ASSERT(createdCollection);

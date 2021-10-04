@@ -35,13 +35,14 @@ class CollectionValidator {
  public:
   CollectionValidator(CollectionCreationInfo const& info, TRI_vocbase_t const& vocbase,
                       bool isSingleServerSmartGraph, bool enforceReplicationFactor,
-                      bool isLocalCollection, bool isSystemName)
+                      bool isLocalCollection, bool isSystemName, bool allowSystem = false)
       : _info(info),
         _vocbase(vocbase),
         _isSingleServerSmartGraph(isSingleServerSmartGraph),
         _enforceReplicationFactor(enforceReplicationFactor),
         _isLocalCollection(isLocalCollection),
-        _isSystemName(isSystemName) {}
+        _isSystemName(isSystemName),
+        _allowSystemCollectionCreation(allowSystem) {}
 
   Result validateCreationInfo();
 
@@ -52,5 +53,5 @@ class CollectionValidator {
   bool _enforceReplicationFactor;
   bool _isLocalCollection;
   bool _isSystemName;
+  bool _allowSystemCollectionCreation;
 };
-

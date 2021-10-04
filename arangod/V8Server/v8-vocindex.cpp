@@ -265,6 +265,12 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   VPackBuilder filtered = methods::Collections::filterInput(propSlice);
   propSlice = filtered.slice();
 
+  bool allowSystem = false;
+  if (propSlice.hasKey(StaticStrings::DataSourceSystem) &&
+      propSlice.get(StaticStrings::DataSourceSystem).isBoolean()) {
+    allowSystem = propSlice.get(StaticStrings::DataSourceSystem).getBoolean();
+  }
+
   v8::Handle<v8::Value> result;
   std::shared_ptr<LogicalCollection> coll;
   OperationOptions options(ExecContext::current());
@@ -276,7 +282,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
                                           createWaitsForSyncReplication,  // replication wait flag
                                           enforceReplicationFactor,
                                           false,  // is new Database?, here always false
-                                          coll);
+                                          coll, allowSystem);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
