@@ -25,6 +25,7 @@
 #ifndef ARANGODB_BASICS_MUTEX_H
 #define ARANGODB_BASICS_MUTEX_H 1
 
+// cppcheck-suppress preprocessorErrorDirective
 #if defined __has_include
 #if __has_include(<pthread.h>)
 #include <pthread.h>
