@@ -67,7 +67,7 @@ struct BenchmarkOperation {
   /// @brief build the HTTP request and set it's values (url, type and payload) 
   /// inside RequestData.
   /// The caller must provide it and clean its values before the call
-  virtual void buildRequest(int threadNumber, size_t threadCounter, size_t globalCounter, RequestData&) const = 0;
+  virtual void buildRequest(size_t threadNumber, size_t threadCounter, size_t globalCounter, RequestData&) const = 0;
 
   using BenchmarkFactory = std::function<std::unique_ptr<BenchmarkOperation>(BenchFeature&)>;
 
