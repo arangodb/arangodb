@@ -274,13 +274,29 @@
         type: this.tables.TABLE,
         head,
         rows,
-        style
+        style: style + " ; display: table; "
       };
     },
 
     renameDangerButton: function (buttonID) {
       var buttonText = $(buttonID).text();
       $('#modal-delete-confirmation strong').html('Really ' + buttonText.toLowerCase() + '?');
+    },
+
+    handleSelect2Row: function (row) {
+      // handle select2
+      let options = {
+        tags: row.tags || [],
+        showSearchBox: false,
+        minimumResultsForSearch: -1,
+        width: row.width || '336px'
+      };
+
+      if (row.maxEntrySize) {
+        options.maximumSelectionSize = row.maxEntrySize;
+      }
+
+      $('#' + row.id).select2(options);
     },
 
     show: function (templateName, title, buttons, tableContent, advancedContent,
@@ -419,29 +435,31 @@
       var completeTableContent = tableContent || [];
       if (advancedContent && advancedContent.content) {
         completeTableContent = completeTableContent.concat(advancedContent.content);
+      } else if (Array.isArray(advancedContent)) {
+        _.each(advancedContent, function(arrEntry){
+          if (arrEntry.content) {
+            completeTableContent = completeTableContent.concat(arrEntry.content);
+          }
+        });
       }
 
       _.each(completeTableContent, function (row) {
         self.modalBindValidation(row);
         if (row.type === self.tables.SELECT2) {
-          // handle select2
-
-          var options = {
-            tags: row.tags || [],
-            showSearchBox: false,
-            minimumResultsForSearch: -1,
-            width: '336px'
-          };
-
-          if (row.maxEntrySize) {
-            options.maximumSelectionSize = row.maxEntrySize;
-          }
-
-          $('#' + row.id).select2(options);
+          self.handleSelect2Row(row);
         }
 
         if (row.type === self.tables.TABLE) {
-          row.rows.forEach(row => _.each(row, self.modalBindValidation, self));
+          row.rows.forEach(row => {
+            _.each(row, self.modalBindValidation, self);
+
+            _.each(row, function(innerRow) {
+              if (innerRow.type === self.tables.SELECT2) {
+                innerRow.width = "resolve";
+                self.handleSelect2Row(innerRow);
+              }
+            });
+          });
         }
       });
 
@@ -450,24 +468,37 @@
         this.delegateEvents();
       }
 
-      if ($('#accordion2')) {
-        $('#accordion2 .accordion-toggle').bind('click', function () {
-          if ($('#collapseOne').is(':visible')) {
-            $('#collapseOne').hide();
-            setTimeout(function () {
-              $('.accordion-toggle').addClass('collapsed');
-            }, 100);
-          } else {
-            $('#collapseOne').show();
-            setTimeout(function () {
-              $('.accordion-toggle').removeClass('collapsed');
-            }, 100);
-          }
+      let enableAccordion = function (counter) {
+        const timeoutDuration = 100;
+        if ($(`#accordion${counter}`)) {
+          $(`#accordion${counter} .accordion-toggle`).bind('click', function () {
+            if ($(`#collapseOne${counter}`).is(':visible')) {
+              $(`#collapseOne${counter}`).hide();
+              setTimeout(function () {
+                $(`#accordion${counter} .accordion-toggle`).addClass('collapsed');
+              }, timeoutDuration);
+            } else {
+              $(`#collapseOne${counter}`).show();
+              setTimeout(function () {
+                $(`#accordion${counter} .accordion-toggle`).removeClass('collapsed');
+              }, timeoutDuration);
+            }
+          });
+          $(`#collapseOne${counter}`).hide();
+          setTimeout(function () {
+            $(`#accordion${counter} .accordion-toggle`).addClass('collapsed');
+          }, timeoutDuration);
+        }
+      };
+
+      if (advancedContent && Array.isArray(advancedContent)) {
+        let c = 2;
+        _.each(advancedContent, function(entry) {
+          enableAccordion(c);
+          c++;
         });
-        $('#collapseOne').hide();
-        setTimeout(function () {
-          $('.accordion-toggle').addClass('collapsed');
-        }, 100);
+      } else if (advancedContent) {
+        enableAccordion(2);
       }
 
       if (!divID) {
