@@ -86,8 +86,50 @@
     const gm = (isEnterprise) ? require("@arangodb/smart-graph"): {};
     const satgm = (isEnterprise) ? require("@arangodb/satellite-graph") : {};
     const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
+    const { map, zipObject } = require('lodash');
     
     console.info("Test suite arguments: " + JSON.stringify(args));
+
+    function assertCommon(graph) {
+      assertFalse(graph.isDisjoint);
+      assertFalse(graph.isSatellite);
+      assertTrue(graph.isSmart);
+      assertEqual(graph.replicationFactor, 1);
+      assertEqual(graph.numberOfShards, 5);
+      assertEqual(graph.smartGraphAttribute, 'value');
+    }
+
+    function assertCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName) {
+      assertEqual(graph.edgeDefinitions, [
+        {
+          "collection": edgeCollName,
+          "from": [vertexCollName],
+          "to": [vertexCollName]
+        }
+      ]);
+      assertEqual(graph.orphanCollections, [orphanCollName]);
+
+      for (const collName of [vertexCollName, orphanCollName]) {
+        const vColl = db._collection(collName);
+        const properties = vColl.properties();
+
+        assertTrue(properties.isSmart);
+        assertFalse(properties.isDisjoint);
+        assertEqual(properties.smartGraphAttribute, 'value');
+        assertEqual(properties.numberOfShards, 5);
+        assertEqual(properties.replicationFactor, 1);
+        assertEqual(properties.shardingStrategy, 'hash');
+      }
+
+      const eColl = db._collection(edgeCollName);
+      const properties = eColl.properties();
+
+      assertTrue(properties.isSmart);
+      assertFalse(properties.isDisjoint);
+      assertEqual(properties.numberOfShards, 0);
+      assertEqual(properties.replicationFactor, 1);
+      assertEqual(properties.shardingStrategy, 'enterprise-hash-smart-edge');
+    }
 
     return {
       ////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +165,7 @@
           assertEqual(2, props.writeConcern);
         } finally {
           db._useDatabase(old);
-        };
+        }
       },
 
       ////////////////////////////////////////////////////////////////////////////////
@@ -1184,7 +1226,65 @@
           assertTrue(next < 100000000, "expected next uniqid after restore to be less than 100000000, not " + next);
         }
       },
-      
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief test smart graph restores
+      ////////////////////////////////////////////////////////////////////////////////
+      testEmptySmartGraph: function () {
+        const smartGraphName = "UnitTestsDumpEmptySmartGraph";
+        const graphsColl = db._collection('_graphs');
+        assertTrue(!!graphsColl.exists(smartGraphName));
+
+        const graph = graphsColl.document(smartGraphName);
+        assertCommon(graph);
+        assertEqual(graph.edgeDefinitions.length, 0);
+        assertEqual(graph.orphanCollections.length, 0);
+      },
+
+      testSmartGraphWithoutData: function() {
+        const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
+        const vertexCollName = 'UnitTestDumpSmartVerticesWithoutData';
+        const edgeCollName = 'UnitTestDumpSmartEdgesWithoutData';
+        const orphanCollName = 'UnitTestDumpSmartOrphansWithoutData';
+
+        const g = db._collection('_graphs');
+        assertTrue(!!g.exists(smartGraphName));
+
+        const graph = g.document(smartGraphName);
+        assertCommon(graph);
+        assertCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName);
+      },
+
+      testSmartGraphSingleServer: function() {
+        const smartGraphName = "UnitTestDumpSmartGraphSingleServer";
+        const vertexCollName = 'UnitTestDumpSmartVerticesSingleServer';
+        const edgeCollName = 'UnitTestDumpSmartEdgesSingleServer';
+        const orphanCollName = 'UnitTestDumpSmartOrphansSingleServer';
+
+        const g = db._collection('_graphs');
+        assertTrue(!!g.exists(smartGraphName));
+
+        const graph = g.document(smartGraphName);
+        assertCommon(graph);
+        assertCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName);
+
+        const vColl = db._collection(vertexCollName);
+        const eColl = db._collection(edgeCollName);
+        const oColl = db._collection(orphanCollName);
+
+        assertEqual(eColl.count(), 100);
+        assertEqual(vColl.count(), 100);
+        assertEqual(oColl.count(), 100);
+
+        const vertices = vColl.toArray();
+        const vertexMap = zipObject(map(vertices, '_id'), 1);
+        const edges = eColl.toArray();
+
+        for (const edge of edges) {
+          assertEqual(vertexMap[edge._from], 1);
+          assertEqual(vertexMap[edge._to], 1);
+        }
+      }
     };
   };
 }());
