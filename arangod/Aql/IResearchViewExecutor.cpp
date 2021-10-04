@@ -624,17 +624,19 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
     ReadContext& ctx, LocalDocumentId const& documentId, LogicalCollection const& collection) {
   // we will need collection Id also as View could produce documents from multiple collections
   if (ADB_LIKELY(documentId.isSet())) {
-    // For sake of performance we store raw pointer to collection
-    // It is safe as pipeline work inside one process
-    static_assert(sizeof(void*) <= sizeof(uint64_t),
-                  "Pointer not fits in uint64_t");
-    ctx.outputRow.moveValueInto(
-      ctx.getCollectionPointerReg(), ctx.inputRow, 
-      AqlValueHintUInt(reinterpret_cast<uint64_t>(&collection)));
+    {
+      // For sake of performance we store raw pointer to collection
+      // It is safe as pipeline work inside one process
+      static_assert(sizeof(void*) <= sizeof(uint64_t),
+                    "Pointer doesn't fit uint64_t");
 
-    ctx.outputRow.moveValueInto(
-      ctx.getDocumentIdReg(), ctx.inputRow, 
-      AqlValueHintUInt(documentId.id()));
+      AqlValueHintUInt value{reinterpret_cast<uint64_t>(&collection)};
+      ctx.outputRow.moveValueInto(ctx.getCollectionPointerReg(), ctx.inputRow, value);
+    }
+    {
+      AqlValueHintUInt value{documentId.id()};
+      ctx.outputRow.moveValueInto(ctx.getDocumentIdReg(), ctx.inputRow, value);
+    }
     return true;
   } else {
     return false;
