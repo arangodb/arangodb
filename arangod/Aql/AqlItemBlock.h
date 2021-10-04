@@ -148,6 +148,7 @@ class AqlItemBlock {
     // construct the AqlValue in place
     AqlValue* value;
     try {
+    // cppcheck-suppress uninitvar
       value = new (p) AqlValue(std::forward<Args>(args)...);
     } catch (...) {
       // clean up the cell
