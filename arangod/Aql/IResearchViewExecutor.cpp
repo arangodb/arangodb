@@ -273,7 +273,7 @@ IndexIterator::DocumentCallback IResearchViewExecutorBase<Impl, Traits>::ReadCon
   typedef std::function<IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
 
   static CallbackFactory const callbackFactory{[](ReadContext& ctx) {
-    return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
+    return [&ctx](LocalDocumentId /*id*/, VPackSlice const doc) {
       ctx.outputRow.moveValueInto(ctx.getDocumentReg(), ctx.inputRow, doc);
       return true;
     };
@@ -629,11 +629,11 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
       static_assert(sizeof(void*) <= sizeof(uint64_t),
                     "Pointer doesn't fit uint64_t");
 
-      AqlValueHintUInt value{reinterpret_cast<uint64_t>(&collection)};
+      AqlValueHintUInt const value{reinterpret_cast<uint64_t>(&collection)};
       ctx.outputRow.moveValueInto(ctx.getCollectionPointerReg(), ctx.inputRow, value);
     }
     {
-      AqlValueHintUInt value{documentId.id()};
+      AqlValueHintUInt const value{documentId.id()};
       ctx.outputRow.moveValueInto(ctx.getDocumentIdReg(), ctx.inputRow, value);
     }
     return true;
@@ -651,7 +651,7 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(
   auto const& storedValue = storedValues[index];
   TRI_ASSERT(!storedValue.empty());
   auto const totalSize = storedValue.size();
-  auto slice = VPackSlice(storedValue.c_str());
+  VPackSlice slice{storedValue.c_str()};
   size_t size = 0;
   size_t i = 0;
   for (auto const& [fieldNum, registerId] : fieldsRegs) {
@@ -661,11 +661,13 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(
       if (ADB_UNLIKELY(size > totalSize)) {
         return false;
       }
-      slice = VPackSlice(slice.end());
+      slice = VPackSlice{slice.end()};
       ++i;
     }
     TRI_ASSERT(!slice.isNone());
-    ctx.outputRow.moveValueInto(registerId, ctx.inputRow, slice);
+
+    VPackSlice const& value = slice;
+    ctx.outputRow.moveValueInto(registerId, ctx.inputRow, value);
   }
   return true;
 }
