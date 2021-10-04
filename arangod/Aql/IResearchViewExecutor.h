@@ -186,8 +186,6 @@ class IndexReadBuffer;
 
 class IndexReadBufferEntry {
  public:
-  IndexReadBufferEntry() = delete;
-
   size_t getKeyIdx() const noexcept { return _keyIdx; };
 
  private:
@@ -206,21 +204,19 @@ class IndexReadBuffer {
  public:
   class ScoreIterator {
    public:
-    ScoreIterator() = delete;
-    ScoreIterator(std::vector<AqlValue>& scoreBuffer, size_t keyIdx, size_t numScores) noexcept;
+    ScoreIterator(std::vector<AqlValueHintDouble>& scoreBuffer, size_t keyIdx, size_t numScores) noexcept;
 
-    std::vector<AqlValue>::iterator begin() noexcept;
+    std::vector<AqlValueHintDouble>::iterator begin() noexcept;
 
-    std::vector<AqlValue>::iterator end() noexcept;
+    std::vector<AqlValueHintDouble>::iterator end() noexcept;
 
    private:
-    std::vector<AqlValue>& _scoreBuffer;
+    std::vector<AqlValueHintDouble>& _scoreBuffer;
     size_t _scoreBaseIdx;
     size_t _numScores;
   };
 
  public:
-  IndexReadBuffer() = delete;
   explicit IndexReadBuffer(size_t numScoreRegisters);
 
   ValueType const& getValue(IndexReadBufferEntry bufferEntry) const noexcept;
@@ -250,24 +246,25 @@ class IndexReadBuffer {
   // before and after.
   void assertSizeCoherence() const noexcept;
 
-  void preAllocateStoredValuesBuffer(size_t atMost) {
-    if constexpr (copyStored) {
-      TRI_ASSERT(_ownedStoredData.empty());
-      _ownedStoredData.reserve(atMost);
+  void preAllocateStoredValuesBuffer(size_t atMost, size_t scores, size_t stored) {
+    TRI_ASSERT(_storedValuesBuffer.empty());
+    if (_keyBuffer.capacity() < atMost) {
+      _keyBuffer.reserve(atMost);
+      _scoreBuffer.reserve(atMost * scores);
+      _storedValuesBuffer.reserve(atMost * stored);
     }
   }
 
   void pushStoredValue(irs::bytes_ref value) {
-    if constexpr (copyStored) {
-      TRI_ASSERT(_ownedStoredData.size() < _ownedStoredData.capacity());
-      _ownedStoredData.emplace_back(value);
-      _storedValuesBuffer.emplace_back(_ownedStoredData.back());
-    } else {
-      _storedValuesBuffer.push_back(value);
-    }
+    TRI_ASSERT(_storedValuesBuffer.size() < _storedValuesBuffer.capacity());
+    _storedValuesBuffer.emplace_back(value.c_str(), value.size());
   }
 
-  std::vector<irs::bytes_ref> const& getStoredValues() const noexcept;
+  using StoredValuesContainer =  typename std::conditional<copyStored,
+                   std::vector<irs::bstring>,
+                   std::vector<irs::bytes_ref>>::type;
+
+  StoredValuesContainer const& getStoredValues() const noexcept;
 
  private:
   // _keyBuffer, _scoreBuffer, _storedValuesBuffer together hold all the
@@ -281,13 +278,8 @@ class IndexReadBuffer {
   // .
   
   std::vector<ValueType> _keyBuffer;
-  std::vector<AqlValue> _scoreBuffer;
-  std::vector<irs::bytes_ref> _storedValuesBuffer;
-  // buffer to hold data read from columnstore in case
-  // of temporary pointer returned from reader (e.g. encryption)
-  typename std::conditional<copyStored,
-                   std::vector<irs::bstring>,
-                   bool>::type _ownedStoredData{};
+  std::vector<AqlValueHintDouble> _scoreBuffer;
+  StoredValuesContainer _storedValuesBuffer;
   size_t _numScoreRegisters;
   size_t _keyBaseIdx;
 };  // IndexReadBuffer
@@ -309,7 +301,7 @@ class IResearchViewExecutorBase {
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = IResearchViewExecutorInfos;
   using Stats = IResearchViewStats;
-
+  using IndexReadBufferType = IndexReadBuffer<typename Traits::IndexBufferValueType, Traits::CopyStored>;
   /**
    * @brief produce the next Rows of Aql Values.
    *
@@ -398,7 +390,8 @@ class IResearchViewExecutorBase {
 
   void reset();
 
-  bool writeStoredValue(ReadContext& ctx, std::vector<irs::bytes_ref> const& storedValues,
+  bool writeStoredValue(ReadContext& ctx, 
+                        typename IndexReadBufferType::StoredValuesContainer const& storedValues,
                         size_t index, std::map<size_t, RegisterId> const& fieldsRegs);
 
   void readStoredValues(irs::document const& doc, size_t index);
@@ -416,7 +409,7 @@ class IResearchViewExecutorBase {
   AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   Infos& _infos;
   InputAqlItemRow _inputRow;
-  IndexReadBuffer<typename Traits::IndexBufferValueType, Traits::CopyStored> _indexReadBuffer;
+  IndexReadBufferType _indexReadBuffer;
   iresearch::ViewExpressionContext _ctx;
   FilterCtx _filterCtx;  // filter context
   std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;

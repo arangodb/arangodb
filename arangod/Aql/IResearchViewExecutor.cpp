@@ -304,19 +304,19 @@ IndexReadBufferEntry::IndexReadBufferEntry(size_t keyIdx) noexcept
 
 template <typename ValueType, bool copyStored>
 IndexReadBuffer<ValueType, copyStored>::IndexReadBuffer::ScoreIterator::ScoreIterator(
-    std::vector<AqlValue>& scoreBuffer, size_t keyIdx, size_t numScores) noexcept
+    std::vector<AqlValueHintDouble>& scoreBuffer, size_t keyIdx, size_t numScores) noexcept
     : _scoreBuffer(scoreBuffer), _scoreBaseIdx(keyIdx * numScores), _numScores(numScores) {
   TRI_ASSERT(_scoreBaseIdx + _numScores <= _scoreBuffer.size());
 }
 
 template <typename ValueType, bool copyStored>
-std::vector<AqlValue>::iterator IndexReadBuffer<
+std::vector<AqlValueHintDouble>::iterator IndexReadBuffer<
     ValueType, copyStored>::IndexReadBuffer::ScoreIterator::begin() noexcept {
   return _scoreBuffer.begin() + static_cast<ptrdiff_t>(_scoreBaseIdx);
 }
 
 template <typename ValueType, bool copyStored>
-std::vector<AqlValue>::iterator IndexReadBuffer<
+std::vector<AqlValueHintDouble>::iterator IndexReadBuffer<
     ValueType, copyStored>::IndexReadBuffer::ScoreIterator::end() noexcept {
   return _scoreBuffer.begin() + static_cast<ptrdiff_t>(_scoreBaseIdx + _numScores);
 }
@@ -348,7 +348,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushValue(Args&&... args) {
 }
 
 template <typename ValueType, bool copyStored>
-std::vector<irs::bytes_ref> const&
+typename IndexReadBuffer<ValueType, copyStored>::StoredValuesContainer const&
 IndexReadBuffer<ValueType, copyStored>::getStoredValues() const
     noexcept {
   return _storedValuesBuffer;
@@ -356,12 +356,12 @@ IndexReadBuffer<ValueType, copyStored>::getStoredValues() const
 
 template <typename ValueType, bool copyStored>
 void IndexReadBuffer<ValueType, copyStored>::pushScore(float_t const scoreValue) {
-  _scoreBuffer.emplace_back(AqlValueHintDouble{static_cast<double>(scoreValue)});
+  _scoreBuffer.emplace_back(static_cast<double>(scoreValue));
 }
 
 template <typename ValueType, bool copyStored>
 void IndexReadBuffer<ValueType, copyStored>::pushScoreNone() {
-  _scoreBuffer.emplace_back();
+  _scoreBuffer.emplace_back(std::numeric_limits<double>::quiet_NaN());
 }
 
 template <typename ValueType, bool copyStored>
@@ -372,9 +372,6 @@ void IndexReadBuffer<ValueType, copyStored>::reset() noexcept {
   _keyBuffer.clear();
   _scoreBuffer.clear();
   _storedValuesBuffer.clear();
-  if constexpr (copyStored) {
-    _ownedStoredData.clear();
-  }
 }
 
 template <typename ValueType, bool copyStored>
@@ -655,7 +652,8 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
 
 template <typename Impl, typename Traits>
 inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(
-    ReadContext& ctx, std::vector<irs::bytes_ref> const& storedValues,
+    ReadContext& ctx,
+    typename IResearchViewExecutorBase<Impl, Traits>::IndexReadBufferType::StoredValuesContainer const& storedValues,
     size_t index, std::map<size_t, RegisterId> const& fieldsRegs) {
   TRI_ASSERT(index < storedValues.size());
   auto const& storedValue = storedValues[index];
@@ -721,11 +719,9 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
     // scorer register are placed right before the document output register
     std::vector<RegisterId> const& scoreRegisters = infos().getScoreRegisters();
     auto scoreRegIter = scoreRegisters.begin();
-    for (auto& it : _indexReadBuffer.getScores(bufferEntry)) {
+    for (auto const& it : _indexReadBuffer.getScores(bufferEntry)) {
       TRI_ASSERT(scoreRegIter != scoreRegisters.end());
-      AqlValueGuard guard{it, false};
-
-      ctx.outputRow.moveValueInto(*scoreRegIter, ctx.inputRow, guard);
+      ctx.outputRow.moveValueInto(*scoreRegIter, ctx.inputRow, it);
       ++scoreRegIter;
     }
 
@@ -872,10 +868,9 @@ void IResearchViewExecutor<copyStored, ordered, materializeType>::fillBuffer(IRe
   size_t const atMost = ctx.outputRow.numRowsLeft();
   TRI_ASSERT(this->_indexReadBuffer.empty());
   this->_indexReadBuffer.reset();
-  if constexpr (copyStored) {
-    this->_indexReadBuffer.preAllocateStoredValuesBuffer(
-      atMost * this->_infos.getOutNonMaterializedViewRegs().size());
-  }
+  this->_indexReadBuffer.preAllocateStoredValuesBuffer(
+    atMost, this->_infos.getScoreRegisters().size(),
+    this->_infos.getOutNonMaterializedViewRegs().size());
   size_t const count = this->_reader->size();
 
   for (; _readerOffset < count;) {
@@ -1351,10 +1346,10 @@ void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::fillBuffe
   size_t const atMost = ctx.outputRow.numRowsLeft();
   TRI_ASSERT(this->_indexReadBuffer.empty());
   this->_indexReadBuffer.reset();
-  if constexpr (copyStored) {
-    this->_indexReadBuffer.preAllocateStoredValuesBuffer(
-      atMost * this->_infos.getOutNonMaterializedViewRegs().size());
-  }
+  this->_indexReadBuffer.preAllocateStoredValuesBuffer(
+    atMost, this->_infos.getScoreRegisters().size(),
+    this->_infos.getOutNonMaterializedViewRegs().size());
+
 
   while (_heap_it.next()) {
     auto& segment = _segments[_heap_it.value()];
