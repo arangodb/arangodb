@@ -88,6 +88,7 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
   LeaderStatus status;
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
   status.local = LogStatistics::fromVelocyPack(slice.get("local"));
+  status.largestCommonIndex = slice.get("largestCommonIndex").extract<LogIndex>();
   status.commitLagMS = std::chrono::duration<double, std::milli>{
       slice.get("commitLagMS").extract<double>()};
   for (auto [key, value] : VPackObjectIterator(slice.get(StaticStrings::Follower))) {
