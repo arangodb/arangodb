@@ -147,7 +147,8 @@ RocksDBReplicationContext::~RocksDBReplicationContext() {
         });
       } catch (std::exception const& ex) {
         LOG_TOPIC("7dca6", WARN, Logger::ENGINES) 
-            << "unable to remove blocker for revision tree in " << it.first << "/" << it2.first.id();
+            << "unable to remove blocker for revision tree in " << it.first << "/" << it2.first.id()
+            << ": " << ex.what();
       }
     }
   }
