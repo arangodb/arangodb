@@ -161,7 +161,7 @@ class RocksDBTransactionState final : public TransactionState {
   rocksdb::SequenceNumber beginSeq() const;
 
  private:
-  void prepareCollections();
+  rocksdb::SequenceNumber prepareCollections();
   void commitCollections(rocksdb::SequenceNumber lastWritten);
   void cleanupCollections();
   

@@ -41,6 +41,7 @@
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -67,7 +68,6 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   adjustQuickKeysNumDocsLimit();
 #endif
-
 }
 
 void RocksDBRestReplicationHandler::handleCommandBatch() {
@@ -837,6 +837,62 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     }
   }
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the revision tree for a given collection, if available
+//////////////////////////////////////////////////////////////////////////////
+
+void RocksDBRestReplicationHandler::handleCommandRevisionTree() {
+  RevisionOperationContext ctx;
+  if (!prepareRevisionOperation(ctx)) {
+    return;
+  }
+
+  // shall we do a verification?
+  bool withVerification = _request->parsedValue("verification", false);
+
+  auto tree = ctx.collection->getPhysical()->revisionTree(ctx.batchId);
+   
+  {
+    RocksDBReplicationContext* c = _manager->find(ctx.batchId);
+    RocksDBReplicationContextGuard guard(_manager, c);
+    if (c != nullptr) {
+      c->removeBlocker(_request->databaseName(), _request->value("collection"));
+    }
+  }
+
+  if (!tree) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "could not generate revision tree");
+    return;
+  }
+  
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder result(buffer);
+
+  if (withVerification) {
+    auto tree2 = ctx.collection->getPhysical()->computeRevisionTree(ctx.batchId);
+  
+    if (!tree2) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    "could not generate revision tree from collection");
+      return;
+    }
+
+    VPackObjectBuilder guard(&result);
+    result.add(VPackValue("computed"));
+    tree2->serialize(result);
+    result.add(VPackValue("stored"));
+    tree->serialize(result);
+    auto diff = tree->diff(*tree2);
+    result.add("equal", VPackValue(diff.empty()));
+  } else {
+    tree->serialize(result);
+  }
+
+  generateResult(rest::ResponseCode::OK, std::move(buffer));
+}
+
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 /// @brief patch quickKeysNumDocsLimit for testing
