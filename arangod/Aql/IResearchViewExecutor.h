@@ -198,24 +198,23 @@ class IndexReadBufferEntry {
   size_t _keyIdx;
 }; // IndexReadBufferEntry
 
+class ScoreIterator {
+  public:
+   ScoreIterator(std::vector<AqlValueHintDouble>& scoreBuffer, size_t keyIdx, size_t numScores) noexcept;
+
+   std::vector<AqlValueHintDouble>::iterator begin() noexcept;
+
+   std::vector<AqlValueHintDouble>::iterator end() noexcept;
+
+  private:
+   std::vector<AqlValueHintDouble>& _scoreBuffer;
+   size_t _scoreBaseIdx;
+   size_t _numScores;
+};
+
 // Holds and encapsulates the data read from the iresearch index.
 template <typename ValueType, bool copyStored>
 class IndexReadBuffer {
- public:
-  class ScoreIterator {
-   public:
-    ScoreIterator(std::vector<AqlValueHintDouble>& scoreBuffer, size_t keyIdx, size_t numScores) noexcept;
-
-    std::vector<AqlValueHintDouble>::iterator begin() noexcept;
-
-    std::vector<AqlValueHintDouble>::iterator end() noexcept;
-
-   private:
-    std::vector<AqlValueHintDouble>& _scoreBuffer;
-    size_t _scoreBaseIdx;
-    size_t _numScores;
-  };
-
  public:
   explicit IndexReadBuffer(size_t numScoreRegisters);
 

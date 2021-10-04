@@ -302,22 +302,17 @@ IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(
 IndexReadBufferEntry::IndexReadBufferEntry(size_t keyIdx) noexcept
     : _keyIdx(keyIdx) {}
 
-template <typename ValueType, bool copyStored>
-IndexReadBuffer<ValueType, copyStored>::IndexReadBuffer::ScoreIterator::ScoreIterator(
+ScoreIterator::ScoreIterator(
     std::vector<AqlValueHintDouble>& scoreBuffer, size_t keyIdx, size_t numScores) noexcept
     : _scoreBuffer(scoreBuffer), _scoreBaseIdx(keyIdx * numScores), _numScores(numScores) {
   TRI_ASSERT(_scoreBaseIdx + _numScores <= _scoreBuffer.size());
 }
 
-template <typename ValueType, bool copyStored>
-std::vector<AqlValueHintDouble>::iterator IndexReadBuffer<
-    ValueType, copyStored>::IndexReadBuffer::ScoreIterator::begin() noexcept {
+std::vector<AqlValueHintDouble>::iterator ScoreIterator::begin() noexcept {
   return _scoreBuffer.begin() + static_cast<ptrdiff_t>(_scoreBaseIdx);
 }
 
-template <typename ValueType, bool copyStored>
-std::vector<AqlValueHintDouble>::iterator IndexReadBuffer<
-    ValueType, copyStored>::IndexReadBuffer::ScoreIterator::end() noexcept {
+std::vector<AqlValueHintDouble>::iterator ScoreIterator::end() noexcept {
   return _scoreBuffer.begin() + static_cast<ptrdiff_t>(_scoreBaseIdx + _numScores);
 }
 
@@ -334,7 +329,7 @@ ValueType const& IndexReadBuffer<ValueType, copyStored>::getValue(
 }
 
 template <typename ValueType, bool copyStored>
-typename  IndexReadBuffer<ValueType, copyStored>::ScoreIterator
+ScoreIterator
 IndexReadBuffer<ValueType, copyStored>::getScores(
     const IndexReadBufferEntry bufferEntry) noexcept {
   assertSizeCoherence();
