@@ -25,6 +25,7 @@
 #pragma once
 
 #if defined __has_include
+// cppcheck-suppress preprocessorErrorDirective
 #if __has_include(<pthread.h>)
 #include <pthread.h>
 #endif
