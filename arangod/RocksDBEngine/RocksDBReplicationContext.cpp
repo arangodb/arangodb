@@ -136,19 +136,20 @@ RocksDBReplicationContext::~RocksDBReplicationContext() {
   MUTEX_LOCKER(guard, _contextLock);
   _iterators.clear();
 
-  try {
-    size_t removed = 0;
-    for (auto& it : _blockers) {
-      for (auto& it2 : it.second) {
+  size_t removed = 0;
+  for (auto& it : _blockers) {
+    for (auto& it2 : it.second) {
+      try {
         findCollection(it.first, it2.first, [&](TRI_vocbase_t& vocbase, LogicalCollection& collection) {
           auto* rcoll = static_cast<RocksDBMetaCollection*>(collection.getPhysical());
           rcoll->removeRevisionTreeBlocker(TransactionId(it2.second));
           ++removed;
         });
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("7dca6", WARN, Logger::ENGINES) 
+            << "unable to remove blocker for revision tree in " << it.first << "/" << it2.first.id();
       }
     }
-  } catch (...) {
-    // not much we can do here
   }
 
   if (_snapshot != nullptr) {
