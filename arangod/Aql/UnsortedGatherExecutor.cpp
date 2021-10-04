@@ -87,6 +87,7 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     auto callSet = AqlCallSet{};
     callSet.calls.emplace_back(
         AqlCallSet::DepCallPair{currentDependency(), AqlCallList{output.getClientCall()}});
+    TRI_ASSERT(input.upstreamState(currentDependency()) != ExecutorState::DONE);
     return {input.upstreamState(currentDependency()), Stats{}, callSet};
   }
 }
