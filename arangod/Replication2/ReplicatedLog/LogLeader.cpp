@@ -98,33 +98,10 @@ replicated_log::LogLeader::LogLeader(LoggerContext logContext,
 
 replicated_log::LogLeader::~LogLeader() {
   _logMetrics->replicatedLogLeaderNumber->fetch_sub(1);
-  tryHardToClearQueue();
-}
-
-auto replicated_log::LogLeader::tryHardToClearQueue() noexcept -> void {
-  bool finished = false;
-  auto consecutiveTriesWithoutProgress = 0;
-  do {
-    ++consecutiveTriesWithoutProgress;
-    auto leaderDataGuard = acquireMutex();
-    auto& queue = leaderDataGuard->_waitForQueue;
-    switch (assertQueueNotEmptyOrTryToClear(TryToClearParticipant::Leader, _logContext, queue)) {
-      case TryToClearResult::NoProgress:
-        break;
-      case TryToClearResult::Partial:
-        consecutiveTriesWithoutProgress = 0;
-        break;
-      case TryToClearResult::Cleared:
-        finished = true;
-        break;
-    }
-    if (!finished && consecutiveTriesWithoutProgress > 10) {
-      LOG_CTX("d5d25", FATAL, _logContext)
-          << "We keep failing at destroying a log leader instance. Giving up "
-             "now.";
-      FATAL_ERROR_EXIT();
-    }
-  } while (!finished);
+  if (auto queueEmpty = _guardedLeaderData.getLockedGuard()->_waitForQueue.empty(); !queueEmpty) {
+    TRI_ASSERT(false) << "expected wait-for-queue to be empty";
+    LOG_CTX("ce7f7", ERR, _logContext) << "expected wait-for-queue to be empty";
+  }
 }
 
 auto replicated_log::LogLeader::instantiateFollowers(
