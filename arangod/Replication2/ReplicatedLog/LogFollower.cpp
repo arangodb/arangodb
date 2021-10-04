@@ -448,7 +448,7 @@ replicated_log::LogFollower::~LogFollower() {
           _guardedFollowerData.getLockedGuard()->_waitForQueue.getLockedGuard()->empty();
       !queueEmpty) {
     TRI_ASSERT(false) << "expected wait-for-queue to be empty";
-    LOG_CTX("ce7f7", ERR, _loggerContext)
+    LOG_CTX("ce7f8", ERR, _loggerContext)
         << "expected wait-for-queue to be empty";
   }
 }
