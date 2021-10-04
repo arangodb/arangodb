@@ -44,6 +44,8 @@
 #include <unistd.h>
 #endif
 
+#include <thread>
+
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/LogMacros.h"
@@ -102,89 +104,94 @@ thread_local sPriorityInfo gThreadPriority = {false, 0, 0};
 
 // rocksdb flushes and compactions start and stop within same thread, no
 // overlapping
-//  (OSX 10.12 requires a static initializer for thread_local ... time_point on
-//  mac does not have
-//   one in clang 9.0.0)
-thread_local uint8_t gFlushStart[sizeof(std::chrono::steady_clock::time_point)];
+thread_local std::chrono::steady_clock::time_point flushStart = std::chrono::steady_clock::time_point{};
 
-//
 // Setup the object, clearing variables, but do no real work
-//
 RocksDBThrottle::RocksDBThrottle()
     : _internalRocksDB(nullptr),
-      _threadRunning(false),
+      _throttleState(ThrottleState::NotStarted),
       _replaceIdx(2),
       _throttleBps(0),
       _firstThrottle(true) {
   memset(&_throttleData, 0, sizeof(_throttleData));
 }
 
-//
 // Shutdown the background thread only if it was ever started
-//
-RocksDBThrottle::~RocksDBThrottle() { StopThread(); }
+RocksDBThrottle::~RocksDBThrottle() { stopThread(); }
 
-//
 // Shutdown the background thread only if it was ever started
-//
-void RocksDBThrottle::StopThread() {
-  if (_threadRunning.load()) {
-    {
-      CONDITION_LOCKER(guard, _threadCondvar);
+void RocksDBThrottle::stopThread() {
+  ThrottleState state = _throttleState.load(std::memory_order_relaxed);
 
-      _threadRunning.store(false);
-      _threadCondvar.signal();
-    }  // lock
+  while (state != ThrottleState::Done) {
+    // we cannot shut down while we are currently starting
+    if (state == ThrottleState::NotStarted) {
+      // NotStarted => Done
+      if (_throttleState.compare_exchange_strong(state, ThrottleState::Done)) {
+        break;
+      }
+    } else if (state == ThrottleState::Running) {
+      // Started => ShuttingDown
+      if (_throttleState.compare_exchange_strong(state, ThrottleState::ShuttingDown)) {
+        {
+          CONDITION_LOCKER(guard, _threadCondvar);
+          _threadCondvar.signal();
+        }
+        _threadFuture.wait();
 
-    _threadFuture.wait();
+        TRI_ASSERT(_throttleState.load() == ThrottleState::ShuttingDown);
+        _throttleState.store(ThrottleState::Done);
 
-    {
-      CONDITION_LOCKER(guard, _threadCondvar);
+        {
+          CONDITION_LOCKER(guard, _threadCondvar);
 
-      _internalRocksDB = nullptr;
-      _delayToken.reset();
-    }  // lock
-  }    // if
-}  // RocksDBThrottle::StopThread
+          _internalRocksDB = nullptr;
+          _delayToken.reset();
+        }
+        break;
+      }
+    }
 
-///
+    // wait until startup has finished
+    TRI_ASSERT(state == ThrottleState::Starting);
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+}
+
 /// @brief rocksdb does not track flush time in its statistics.  Save start time
-/// in
-///  a thread specific storage
-///
+/// in a thread specific storage
 void RocksDBThrottle::OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) {
   // save start time in thread local storage
-  std::chrono::steady_clock::time_point osx_hack = std::chrono::steady_clock::now();
-  memcpy(gFlushStart, &osx_hack, sizeof(std::chrono::steady_clock::time_point));
+  flushStart = std::chrono::steady_clock::now();
+
   AdjustThreadPriority(1);
-}  // RocksDBThrottle::OnFlushBegin
+} 
 
 void RocksDBThrottle::OnFlushCompleted(rocksdb::DB* db,
                                        const rocksdb::FlushJobInfo& flush_job_info) {
-  std::chrono::microseconds flush_time;
-  uint64_t flush_size;
-  std::chrono::steady_clock::time_point osx_hack;
+  std::chrono::microseconds flushTime = std::chrono::duration_cast<std::chrono::microseconds>(
+      std::chrono::steady_clock::now() - flushStart);
+  uint64_t flushSize = 
+      flush_job_info.table_properties.data_size +
+      flush_job_info.table_properties.index_size +
+      flush_job_info.table_properties.filter_size;
 
-  memcpy(&osx_hack, gFlushStart, sizeof(std::chrono::steady_clock::time_point));
-
-  flush_time = std::chrono::duration_cast<std::chrono::microseconds>(
-      std::chrono::steady_clock::now() - osx_hack);
-  flush_size = flush_job_info.table_properties.data_size +
-               flush_job_info.table_properties.index_size +
-               flush_job_info.table_properties.filter_size;
-
-  SetThrottleWriteRate(flush_time, flush_job_info.table_properties.num_entries,
-                       flush_size, true);
+  SetThrottleWriteRate(flushTime, flush_job_info.table_properties.num_entries,
+                       flushSize, true);
 
   // start throttle after first data is posted
   //  (have seen some odd zero and small size flushes early)
   //  (64<<20) is default size for write_buffer_size in column family options,
   //  too hard to read from here
-  if ((64 << 19) < flush_size) {
-    std::call_once(_initFlag, &RocksDBThrottle::Startup, this, db);
-  }  // if
-
-}  // RocksDBThrottle::OnFlushCompleted
+  if ((64 << 19) < flushSize) {
+    ThrottleState state = _throttleState.load(std::memory_order_relaxed);
+    // call the throttle startup exactly once
+    if (state == ThrottleState::NotStarted &&
+        _throttleState.compare_exchange_strong(state, ThrottleState::Starting)) {
+      startup(db);
+    }
+  }
+} 
 
 void RocksDBThrottle::OnCompactionCompleted(rocksdb::DB* db,
                                             const rocksdb::CompactionJobInfo& ci) {
@@ -202,31 +209,31 @@ void RocksDBThrottle::OnCompactionCompleted(rocksdb::DB* db,
 
 }  // RocksDBThrottle::OnCompactionCompleted
 
-void RocksDBThrottle::Startup(rocksdb::DB* db) {
+void RocksDBThrottle::startup(rocksdb::DB* db) {
   CONDITION_LOCKER(guard, _threadCondvar);
 
   _internalRocksDB = (rocksdb::DBImpl*)db;
 
-  // addresses race condition during fast start/stop
+  TRI_ASSERT(_throttleState.load() == ThrottleState::Starting);
+
+  // addresses race condition during fast start/stop.
+  // the ThreadLoop will set the _throttleState to Started
   _threadFuture = std::async(std::launch::async, &RocksDBThrottle::ThreadLoop, this);
 
-  while (!_threadRunning.load()) {
+  while (_throttleState.load() == ThrottleState::Starting) {
     _threadCondvar.wait(10000);
-  }  // while
-
-}  // RocksDBThrottle::Startup
+  } 
+}
 
 void RocksDBThrottle::SetThrottleWriteRate(std::chrono::microseconds Micros,
                                            uint64_t Keys, uint64_t Bytes, bool IsLevel0) {
-  // lock _threadMutex while we update _throttleData
-  MUTEX_LOCKER(mutexLocker, _threadMutex);
-  unsigned target_idx;
-
   // throw out anything smaller than 32Mbytes ... be better if this
   //  was calculated against write_buffer_size, but that varies by column family
   if ((64 << 19) < Bytes) {
+    // lock _threadMutex while we update _throttleData
+    MUTEX_LOCKER(mutexLocker, _threadMutex);
     // index 0 for level 0 compactions, index 1 for all others
-    target_idx = (IsLevel0 ? 0 : 1);
+    unsigned target_idx = (IsLevel0 ? 0 : 1);
 
     _throttleData[target_idx]._micros += Micros;
     _throttleData[target_idx]._keys += Keys;
@@ -236,12 +243,12 @@ void RocksDBThrottle::SetThrottleWriteRate(std::chrono::microseconds Micros,
     // attempt to override throttle changes by rocksdb ... hammer this often
     //  (note that _threadMutex IS HELD)
     SetThrottle();
-  }  // if
+  } 
 
   LOG_TOPIC("7afe9", DEBUG, arangodb::Logger::ENGINES)
       << "SetThrottleWriteRate: Micros " << Micros.count() << ", Keys " << Keys
       << ", Bytes " << Bytes << ", IsLevel0 " << IsLevel0;
-}  // RocksDBThrottle::SetThrottleWriteRate
+}  
 
 void RocksDBThrottle::ThreadLoop() {
   _replaceIdx = 2;
@@ -250,40 +257,39 @@ void RocksDBThrottle::ThreadLoop() {
   {
     CONDITION_LOCKER(guard, _threadCondvar);
 
-    _threadRunning.store(true);
+    // Starting => Running
+    TRI_ASSERT(_throttleState.load() == ThrottleState::Starting);
+    _throttleState.store(ThrottleState::Running);
     _threadCondvar.signal();
-  }  // lock
+  } 
 
   LOG_TOPIC("a4a57", DEBUG, arangodb::Logger::ENGINES)
       << "ThreadLoop() started";
 
-  while (_threadRunning.load()) {
-    //
+  while (_throttleState.load(std::memory_order_relaxed) == ThrottleState::Running) {
     // start actual throttle work
-    //
     try {
       RecalculateThrottle();
-    } catch (...) {
-      LOG_TOPIC("b0a2e", ERR, arangodb::Logger::ENGINES)
-          << "RecalculateThrottle() sent a throw. RocksDB?";
-      _threadRunning.store(false);
-    }  // try/catchxs
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("b0a2e", WARN, arangodb::Logger::ENGINES)
+          << "caught exception in RecalculateThrottle: " << ex.what();
+    } 
 
     ++_replaceIdx;
-    if (THROTTLE_INTERVALS == _replaceIdx) _replaceIdx = 2;
+    if (THROTTLE_INTERVALS == _replaceIdx) {
+      _replaceIdx = 2;
+    }
 
     // wait on _threadCondvar
-    {
-      CONDITION_LOCKER(guard, _threadCondvar);
+    CONDITION_LOCKER(guard, _threadCondvar);
 
-      if (_threadRunning.load()) {  // test in case of race at shutdown
-        _threadCondvar.wait(THROTTLE_SECONDS * 1000000);
-      }  // if
-    }    // lock
-  }      // while
+    if (_throttleState.load(std::memory_order_relaxed) == ThrottleState::Running) {  
+      // test in case of race at shutdown
+      _threadCondvar.wait(THROTTLE_SECONDS * 1000000);
+    } 
+  }
 
   LOG_TOPIC("eebbe", DEBUG, arangodb::Logger::ENGINES) << "ThreadLoop() ended";
-
 }  // RocksDBThrottle::ThreadLoop
 
 //
