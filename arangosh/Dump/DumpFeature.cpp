@@ -1125,7 +1125,7 @@ void DumpFeature::start() {
   // get database name to operate on
   auto& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
   // get a client to use in main thread
-  auto httpClient = _clientManager.getConnectedClient(_options.force, true, true);
+  auto httpClient = _clientManager.getConnectedClient(_options.force, true, true, 0);
 
   // check if we are in cluster or single-server mode
   Result result{TRI_ERROR_NO_ERROR};
@@ -1180,7 +1180,7 @@ void DumpFeature::start() {
     for (auto const& db : databases) {
       if (_options.allDatabases) {
         client.setDatabaseName(db);
-        httpClient = _clientManager.getConnectedClient(_options.force, false, true);
+        httpClient = _clientManager.getConnectedClient(_options.force, false, true, 0);
       }
 
       try {
