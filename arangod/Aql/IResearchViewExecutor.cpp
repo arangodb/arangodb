@@ -274,8 +274,7 @@ IndexIterator::DocumentCallback IResearchViewExecutorBase<Impl, Traits>::ReadCon
 
   static CallbackFactory const callbackFactory{[](ReadContext& ctx) {
     return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-      VPackSlice slice(doc.begin());
-      ctx.outputRow.moveValueInto(ctx.getDocumentReg(), ctx.inputRow, slice);
+      ctx.outputRow.moveValueInto(ctx.getDocumentReg(), ctx.inputRow, doc);
       return true;
     };
   }};
