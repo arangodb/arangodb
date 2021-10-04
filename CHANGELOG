@@ -1,6 +1,14 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
+* Properly clean up replication client entries for tailing from WAL so that 
+  archived WAL files are not retained for an unnecessary long time period.
+
+* Added metrics `rocksdb_wal_sequence_lower_bound`, 
+  `rocksdb_archived_wal_files`, `rocskdb_prunable_wal_files` and 
+  `rocksdb_wal_pruning_active` to allow inspection of WAL file pruning from 
+  the outside.
+
 * Fixed BTS-582: ArangoDB client EXE package for Windows has incorrect metadata.
 
 * Fixed BTS-575: Windows EXE installer doesn't replace service during upgrade in

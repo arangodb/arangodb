@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "RestServer/Metrics.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
@@ -298,6 +299,15 @@ class RocksDBEngine final : public StorageEngine {
   CollectionPair mapObjectToCollection(uint64_t) const;
   IndexTriple mapObjectToIndex(uint64_t) const;
 
+  /// @brief determine how many archived WAL files are available. this is called
+  /// during the first few minutes after the instance start, when we don't want
+  /// to prune any WAL files yet.
+  /// this also updates the metrics for the number of available WAL files.
+  void determineWalFilesInitial();
+
+  /// @brief determine which archived WAL files are prunable. as a side-effect,
+  /// this updates the metrics for the number of available and prunable WAL
+  /// files.
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
 
@@ -308,6 +318,12 @@ class RocksDBEngine final : public StorageEngine {
   virtual TRI_voc_tick_t currentTick() const override;
   virtual TRI_voc_tick_t releasedTick() const override;
   virtual void releaseTick(TRI_voc_tick_t) override;
+  
+  /// @brief whether or not the database existed at startup. this function
+  /// provides a valid answer only after start() has successfully finished, 
+  /// so don't call it from other features during their start() if they are
+  /// earlier in the startup sequence
+  bool dbExisted() const noexcept { return _dbExisted; }
 
  private:
   void shutdownRocksDBInstance() noexcept;
@@ -489,6 +505,9 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief whether or not the in-memory cache for edges is used
   bool _useEdgeCache;
+  
+  /// @brief whether or not the DB existed at startup
+  bool _dbExisted;
 
   // code to pace ingest rate of writes to reduce chances of compactions getting
   // too far behind and blocking incoming writes
@@ -509,6 +528,11 @@ class RocksDBEngine final : public StorageEngine {
   std::deque<RocksDBKeyBounds> _pendingCompactions;
   // number of currently running compaction jobs
   size_t _runningCompactions;
+
+  Gauge<uint64_t>& _metricsWalSequenceLowerBound;
+  Gauge<uint64_t>& _metricsArchivedWalFiles;
+  Gauge<uint64_t>& _metricsPrunableWalFiles;
+  Gauge<uint64_t>& _metricsWalPruningActive;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";
