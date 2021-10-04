@@ -126,7 +126,7 @@ DECLARE_GAUGE(rocksdb_archived_wal_files, uint64_t, "Number of archived RocksDB 
 DECLARE_GAUGE(rocksdb_prunable_wal_files, uint64_t, "Number of prunable RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_wal_pruning_active, uint64_t, "Whether or not RocksDB WAL file pruning is active");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_success_total, "Number of successful revision tree rebuilds");
-DECLARE_COUNTER(arangodb_revision_tree_rebuilds_failure_total, "Number of successful revision tree failures");
+DECLARE_COUNTER(arangodb_revision_tree_rebuilds_failure_total, "Number of failed revision tree rebuilds");
           
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
