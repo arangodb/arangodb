@@ -274,9 +274,8 @@ IndexIterator::DocumentCallback IResearchViewExecutorBase<Impl, Traits>::ReadCon
 
   static CallbackFactory const callbackFactory{[](ReadContext& ctx) {
     return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-      AqlValue a{AqlValueHintCopy(doc.begin())};
-      AqlValueGuard guard{a, true};
-      ctx.outputRow.moveValueInto(ctx.getDocumentReg(), ctx.inputRow, guard);
+      VPackSlice slice(doc.begin());
+      ctx.outputRow.moveValueInto(ctx.getDocumentReg(), ctx.inputRow, slice);
       return true;
     };
   }};
@@ -625,20 +624,17 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
     ReadContext& ctx, LocalDocumentId const& documentId, LogicalCollection const& collection) {
   // we will need collection Id also as View could produce documents from multiple collections
   if (ADB_LIKELY(documentId.isSet())) {
-    {
-      // For sake of performance we store raw pointer to collection
-      // It is safe as pipeline work inside one process
-      static_assert(sizeof(void*) <= sizeof(uint64_t),
-                    "Pointer not fits in uint64_t");
-      AqlValue a(AqlValueHintUInt(reinterpret_cast<uint64_t>(&collection)));
-      AqlValueGuard guard{a, true};
-      ctx.outputRow.moveValueInto(ctx.getCollectionPointerReg(), ctx.inputRow, guard);
-    }
-    {
-      AqlValue a(AqlValueHintUInt(documentId.id()));
-      AqlValueGuard guard{a, true};
-      ctx.outputRow.moveValueInto(ctx.getDocumentIdReg(), ctx.inputRow, guard);
-    }
+    // For sake of performance we store raw pointer to collection
+    // It is safe as pipeline work inside one process
+    static_assert(sizeof(void*) <= sizeof(uint64_t),
+                  "Pointer not fits in uint64_t");
+    ctx.outputRow.moveValueInto(
+      ctx.getCollectionPointerReg(), ctx.inputRow, 
+      AqlValueHintUInt(reinterpret_cast<uint64_t>(&collection)));
+
+    ctx.outputRow.moveValueInto(
+      ctx.getDocumentIdReg(), ctx.inputRow, 
+      AqlValueHintUInt(documentId.id()));
     return true;
   } else {
     return false;
@@ -668,9 +664,7 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(
       ++i;
     }
     TRI_ASSERT(!slice.isNone());
-    AqlValue v(slice);
-    AqlValueGuard guard{v, true};
-    ctx.outputRow.moveValueInto(registerId, ctx.inputRow, guard);
+    ctx.outputRow.moveValueInto(registerId, ctx.inputRow, slice);
   }
   return true;
 }
