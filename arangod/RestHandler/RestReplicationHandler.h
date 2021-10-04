@@ -291,13 +291,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandLoggerTickRanges();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the revision tree for a given collection, if available
-  /// @response serialized revision tree, binary
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandRevisionTree();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief rebuild the revision tree for a given collection, if allowed
   /// @response 204 No Content if all goes well
   //////////////////////////////////////////////////////////////////////////////
@@ -335,7 +328,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   ReplicationApplier* getApplier(bool& global);
 
- private:
+ protected:
   struct RevisionOperationContext {
     uint64_t batchId;
     RevisionId resume;
@@ -343,8 +336,10 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
     std::shared_ptr<LogicalCollection> collection;
     std::unique_ptr<ReplicationIterator> iter;
   };
-
+  
   bool prepareRevisionOperation(RevisionOperationContext&);
+
+ private:
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection
@@ -514,6 +509,12 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void handleCommandDump() = 0;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the revision tree for a given collection, if available
+  //////////////////////////////////////////////////////////////////////////////
+  
+  virtual void handleCommandRevisionTree() = 0;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

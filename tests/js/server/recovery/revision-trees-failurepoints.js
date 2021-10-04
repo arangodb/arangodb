@@ -33,72 +33,66 @@ const jsunity = require('jsunity');
 const colName1 = 'UnitTestsRecovery1';
 const colName2 = 'UnitTestsRecovery2';
 
+let waitForUpdatesToFinish = (c) => {
+  while (true) {
+    let updates = c._revisionTreePendingUpdates();
+    if (!updates.hasOwnProperty('inserts')) {
+      return;
+    }
+    if (updates.inserts === 0 && updates.removes === 0) {
+      return;
+    }
+    internal.sleep(0.25);
+  }
+};
+
 function runSetup () {
   'use strict';
-  let c = db._create(colName1);
-
-  for (let i = 0; i < 1000; ++i) {
-    c.insert({ _key: "test_" + i });
-  }
-
-  c = db._create(colName2);
+  jsunity.jsUnity.attachAssertions();
 
   let docs = [];
-  for (let i = 0; i < 100000; ++i) {
-    docs.push({ _key: "test" + i });
-    if (docs.length === 5000) {
-      c.insert(docs);
-      docs = [];
-    }
-  }
-  
-  // wait until all changes have been applied
-  let haveUpdates;
-  while (true) {
-    haveUpdates = false;
-    [colName1, colName2].forEach((cn) => {
-      let updates = db[cn]._revisionTreePendingUpdates();
-      if (!updates.hasOwnProperty('inserts')) {
-        // no revision tree yet
-        haveUpdates = true;
-        return;
-      }
-      haveUpdates |= updates.inserts > 0;
-      haveUpdates |= updates.removes > 0;
-      haveUpdates |= updates.truncates > 0;
-    });
-    if (!haveUpdates) {
-      break;
-    }
-    internal.wait(0.25);
-  }
-  
-  // now break inserts
-  internal.debugSetFailAt("RevisionTree::applyInserts");
-  
-  c = db._collection(colName1);
-
   for (let i = 0; i < 1000; ++i) {
-    c.insert({ _key: "new_" + i });
+    docs.push({ value: i });
   }
 
-  c = db._collection(colName2);
+  let c1 = db._create(colName1);
+  c1.insert(docs);
 
-  docs = [];
-  for (let i = 0; i < 100000; ++i) {
-    docs.push({ _key: "new_" + i });
-    if (docs.length === 5000) {
-      c.insert(docs);
-      docs = [];
-    }
-  }
+  waitForUpdatesToFinish(c1);
 
-  // wait for at least one iteration of RocksDBBackgroundThread.
-  // unfortunately there is no proper way to control that it was
-  // was already run with our data above
-  internal.wait(6.0);
+  // wait long enough so that the tree of c1 is persisted
+  internal.sleep(5);
+
+  assertTrue(c1._revisionTreeVerification().equal);
+ 
+  // don't take into account any buffered updates when decided whether we
+  // need to persist a tree to disk
+  internal.debugSetFailAt("needToPersistRevisionTree::checkBuffers");
+  // add extra delays between the decision not to persist the tree and what
+  // we bump our sequence number to
+  internal.debugSetFailAt("serializeMeta::delayCallToLastSerializedRevisionTree");
+  internal.debugSetFailAt("RocksDBMetaCollection::forceSerialization");
   
-  c.insert({ _key: 'crashme' }, true);
+  // let background thread finish
+  internal.sleep(2);
+
+  // create another collection, for which the initial tree will be persisted
+  let c2 = db._create(colName2);
+  c2.insert(docs);
+  
+  // insert into the original collection
+  c1.insert(docs);
+
+  waitForUpdatesToFinish(c2);
+  
+  // wait long enough so that the tree of c2 is persisted.
+  // the tree for c1 will not be persisted anymore because of the checkBuffers
+  // failure point above.
+  // the persisting of c2 and the decision that nothing needs to be persisted
+  // for c1 will bump the min sequence number for c1 beyond what was actually
+  // persisted.
+  internal.debugRemoveFailAt("needToPersistRevisionTree::checkBuffers");
+  internal.sleep(15);
 
   internal.debugTerminate('crashing server');
 }
@@ -112,16 +106,20 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
-    testRevisionTreeInsertFails: function() {
+    testRevisionTreeInconsistency: function() {
       const c1 = db._collection(colName1);
+      waitForUpdatesToFinish(c1);
       assertEqual(2000, c1.count());
       assertEqual(c1._revisionTreeSummary().count, c1.count());
       assertEqual(c1._revisionTreeSummary().count, 2000);
+      assertTrue(c1._revisionTreeVerification().equal);
 
       const c2 = db._collection(colName2);
-      assertEqual(200001, c2.count());
+      waitForUpdatesToFinish(c2);
+      assertEqual(1000, c2.count());
       assertEqual(c2._revisionTreeSummary().count, c2.count());
-      assertEqual(c2._revisionTreeSummary().count, 200001);
+      assertEqual(c2._revisionTreeSummary().count, 1000);
+      assertTrue(c2._revisionTreeVerification().equal);
     },
 
   };

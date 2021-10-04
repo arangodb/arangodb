@@ -1572,6 +1572,28 @@ Result TailingSyncer::runContinuousSync() {
               ", open transactions: " + StringUtils::itoa(_ongoingTransactions.size()) +
               ", parallel: yes");
 
+  // when we leave this method, we must unregister ourselves from the leader,
+  // otherwise the leader may keep WAL logs around for us for too long
+  auto unregister = scopeGuard([&]() noexcept {
+    if (ServerState::instance()->isRunningInCluster()) {
+      try {
+        _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+          std::unique_ptr<httpclient::SimpleHttpResult> response;
+          std::string const url = tailingBaseUrl("tail") +
+                                  "serverId=" + _state.localServerIdString +
+                                  "&syncerId=" + syncerId().toString();
+          // simply send the request, but don't care about the response. if it
+          // fails, there is not much we can do from here.
+          auto headers = replutils::createHeaders();
+          response.reset(client->request(rest::RequestType::DELETE_REQ, url, nullptr, 0, headers));
+        });
+      } catch (...) {
+        // this must be exception-safe, but if an exception occurs, there is not
+        // much we can do
+      }
+    }
+  });
+
   // the shared status will wait in its destructor until all posted
   // requests have been completed/canceled!
   auto self = shared_from_this();
@@ -1809,7 +1831,7 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
                                    TRI_voc_tick_t fetchTick, TRI_voc_tick_t lastScannedTick,
                                    TRI_voc_tick_t firstRegularTick) {
   try {
-    std::string const url =
+    std::string url =
         tailingBaseUrl("tail") +
         "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
         "&from=" + StringUtils::itoa(fetchTick) +
@@ -1819,7 +1841,13 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
         "&serverId=" + _state.localServerIdString +
         "&includeSystem=" + (_state.applier._includeSystem ? "true" : "false") +
         "&includeFoxxQueues=" + (_state.applier._includeFoxxQueues ? "true" : "false");
-    
+
+    if (syncerId().value > 0) {
+      // we must only send the syncerId along if it is != 0, otherwise we will
+      // trigger an error on the leader
+      url += "&syncerId=" + syncerId().toString();
+    }
+
     // send request
     setProgress(std::string("fetching leader log from tick ") + StringUtils::itoa(fetchTick) +
                 ", last scanned tick " + StringUtils::itoa(lastScannedTick) +
