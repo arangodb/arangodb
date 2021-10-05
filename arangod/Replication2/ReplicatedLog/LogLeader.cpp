@@ -304,9 +304,12 @@ auto replicated_log::LogLeader::construct(
     // Immediately append an empty log entry in the new term. This is necessary
     // because we must not commit entries of older terms, but do not want to
     // wait with committing until the next insert.
+
+    // Also make sure that this entry is written with waitForSync = true to ensure
+    // that entries of the previous term are synced as well.
     log.appendInPlace(logContext,
                       InMemoryLogEntry(PersistingLogEntry(term, lastIndex.index + 1,
-                                                          std::nullopt)));
+                                                          std::nullopt), true));
     // Note that we do still want to use the unchanged lastIndex to initialize
     // our followers with, as none of them can possibly have this entry.
     // This is particularly important for the LocalFollower, which blindly
