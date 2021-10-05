@@ -18,11 +18,9 @@
 #include "util.h"
 
 #if (defined(_MSC_VER) && !defined(_DEBUG))
-#	if _MSC_VER < 1400
-#		pragma comment(linker,"/opt:nowin98")
-#		pragma comment(linker,"/ignore:4078")
-#	endif
-#	pragma comment(linker,"/merge:.rdata=.text")
+	#pragma comment(linker,"/opt:nowin98")
+	#pragma comment(linker,"/ignore:4078")
+	#pragma comment(linker,"/merge:.rdata=.text")
 #endif
 
 #if 0
@@ -33,6 +31,7 @@
 
 extern HINSTANCE g_hInst;
 
+extern UINT_PTR StrToUInt(LPTSTR s,bool ForceHEX=false,BOOL*pFoundBadChar=0);
 #ifdef FEAT_CUSTOMRUNASDLG
 extern DWORD WINAPI MyRunAs(HINSTANCE hInstDll,SHELLEXECUTEINFO&sei); 
 #endif

@@ -74,7 +74,7 @@ void MyRunAsFmtCurrUserRadio(HWND hDlg,LPCTSTR Fmt) {
 }
 
 #ifdef FEAT_CUSTOMRUNASDLG_TRANSLATE
-void MyRunAsTranslateDlgString(LPCTSTR StrID,LPTSTR Ini,HWND hDlg,int DlgItemId,int special=0) {
+void MyRunAsTranslateDlgString(LPCTSTR StrID,LPTSTR Ini,HWND hDlg,INT_PTR DlgItemId,int special=0) {
 	TCHAR buf[MAX_PATH*2];
 	DWORD len=GetPrivateProfileString(_T("MyRunAsStrings"),StrID,0,buf,ARRAYSIZE(buf),Ini);
 	if (len) {
@@ -215,8 +215,7 @@ INT_PTR CALLBACK MyRunAsDlgProc(HWND hwnd,UINT uMsg,WPARAM wp,LPARAM lp) {
 					if (PerformTCharFmt)wsprintf((TCHAR*)wszExec,_T("%s%s%s"),sei.lpFile,((sei.lpParameters&&*sei.lpParameters)?_T(" "):_T("")),sei.lpParameters);
 					if (!ec) {
 						if (pRADD->AsSelf) {
-							STARTUPINFO si;
-							ZEROSTRUCT(si), si.cb = sizeof(si);
+							STARTUPINFO si={sizeof(si)};
 							TRACEF("MyRunAs:CreateProcess:%s|\n",wszExec);
 							ec=(CreateProcess(0,(TCHAR*)wszExec,0,0,false,0,0,0,&si,&pi)?NO_ERROR:GetLastError());
 						}
@@ -224,8 +223,7 @@ INT_PTR CALLBACK MyRunAsDlgProc(HWND hwnd,UINT uMsg,WPARAM wp,LPARAM lp) {
 							//All Wide strings!
 							WCHAR wszPwd[PWLEN+1];
 							WCHAR wszUName[UNLEN+1+MYMAX_DOMAIN+1];
-							STARTUPINFOW siw;
-							ZEROSTRUCT(siw), siw.cb = sizeof(siw);
+							STARTUPINFOW siw={sizeof(siw)};
 							WCHAR*p;
 #ifndef UNICODE
 							//Build unicode string, we already know the buffer is big enough so no error handling

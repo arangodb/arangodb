@@ -8,27 +8,17 @@ FORCEINLINE HANDLE WINAPI GetCurrentProcess(){return ((HANDLE)(-1));}
 FORCEINLINE HANDLE WINAPI GetCurrentThread(){return ((HANDLE)(-2));}
 #endif
 
-
-#if defined(_MSC_FULL_VER) && _MSC_VER >= 1400
-#if _MSC_FULL_VER >= 140050727
-#include <intrin.h>
-#else
-EXTERN_C void __stosb(BYTE*,BYTE,size_t);
-#endif
-#pragma intrinsic(__stosb)
-#define MemSet(p,cb,v) __stosb((p),(v),(cb))
-#else
-void WINAPI MemSet(void*pMem,BYTE val,SIZE_T cb);
-#endif
-#define MemZero UACHlpr_MemZero
-void WINAPI UACHlpr_MemZero(void*pMem,SIZE_T cb) ;
-#define ZEROSTRUCT(r) MemZero(&(r),sizeof(r))
-void WINAPI MemCopy(void*pD,void*pS,SIZE_T cb);
 #define MySecureZeroMemory MemZero
-
+#if 1
+#define MemZero(p,s) SecureZeroMemory(p,s)
+#else
+#define MemZero ___MemZero
+void WINAPI ___MemZero(void*pMem,SIZE_T cb) ;
+#endif
+void WINAPI MemSet(void*pMem,SIZE_T cb,BYTE set);
+void WINAPI MemCopy(void*pD,void*pS,SIZE_T cb);
 DWORD GetSysVer(bool Major);
-UINT_PTR StrToUIntPtr(LPTSTR s,bool ForceHEX=false,BOOL*pFoundBadChar=0);
-inline UINT StrToUInt(LPTSTR s,bool ForceHEX=false,BOOL*pFoundBadChar=0) { return (UINT) StrToUIntPtr(s, ForceHEX, pFoundBadChar); }
+UINT_PTR StrToUInt(LPTSTR s,bool ForceHEX,BOOL*pFoundBadChar) ;
 LPTSTR StrSkipWhitespace(LPCTSTR s) ;
 BOOL EnablePrivilege(LPCTSTR pszPrivilege,BOOL Enable,BOOL *pWasEnabled);
 
@@ -49,7 +39,7 @@ FORCEINLINE LRESULT SndDlgItemMsg(HWND hDlg,int id,UINT Msg,WPARAM wp=0,LPARAM l
 
 FORCEINLINE BOOL MySetDlgItemText(HWND hDlg,int id,LPCTSTR s) 
 {
-	return (BOOL)SndDlgItemMsg(hDlg,id,WM_SETTEXT,0,(LPARAM)s);
+	return SndDlgItemMsg(hDlg,id,WM_SETTEXT,0,(LPARAM)s);
 }
 
 FORCEINLINE LONG_PTR WndModifyLong(HWND hwnd,int idx,LONG_PTR Mask,LONG_PTR Bits) 

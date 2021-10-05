@@ -2,57 +2,54 @@
 
 #include "util.h"
 
-#ifndef MemSet
 void WINAPI MemSet(void*pMem,SIZE_T cb,BYTE set) 
 {
 	char *p=(char*)pMem;
 	while (cb-- > 0){*p++=set;}
 //	return pMem;
 }
-#endif
 
-void WINAPI UACHlpr_MemZero(void*pMem,SIZE_T cb) 
+void WINAPI ___MemZero(void*pMem,SIZE_T cb) 
 {
-	MemSet((BYTE*) pMem,cb,0);
+	MemSet(pMem,cb,0);
 }
 
 void WINAPI MemCopy(void*pD,void*pS,SIZE_T cb)
 {
-	for(SIZE_T i=0;i<cb;++i) ((BYTE*)pD)[i] = ((BYTE*)pS)[i];
+	for(SIZE_T i=0;i<cb;++i)((BYTE*)pD)[i]=((BYTE*)pS)[i];
 }
 
 
 DWORD GetSysVer(bool Major) 
 {
-	OSVERSIONINFO ovi;
-	ZEROSTRUCT(ovi), ovi.dwOSVersionInfoSize = sizeof(ovi);
+	OSVERSIONINFO ovi = { sizeof(ovi) };
 	if ( !GetVersionEx(&ovi) ) return 0;
 	return Major ? ovi.dwMajorVersion : ovi.dwMinorVersion;
 }
 
 LPTSTR StrSkipWhitespace(LPCTSTR s)
 {
-	while(*s && *s<=_T(' ')) ++s;
+	while(*s && *s<=_T(' '))++s;
 	return (LPTSTR)s;
 }
 
 
-UINT_PTR StrToUIntPtr(LPTSTR s,bool ForceHEX,BOOL*pFoundBadChar) 
+UINT_PTR StrToUInt(LPTSTR s,bool ForceHEX,BOOL*pFoundBadChar) 
 {
-	UINT_PTR v = 0;
-	BYTE base = ForceHEX ? 16 : 10;
-	if (pFoundBadChar)*pFoundBadChar = false;
-	if ( !ForceHEX && *s == '0' && ((*(s = StrNextChar(s)))&~0x20) == 'X' && (s = StrNextChar(s)) ) base = 16;
-	for (TCHAR c = *s; c; c = *(s=StrNextChar(s)) ) 
+	UINT_PTR v=0;
+	BYTE base=ForceHEX?16:10;	
+	if (pFoundBadChar)*pFoundBadChar=false;
+	if ( !ForceHEX && *s=='0' && ((*(s=StrNextChar(s)))&~0x20)=='X' && (s=StrNextChar(s)) )base=16;
+	for (TCHAR c=*s; c; c=*(s=StrNextChar(s)) ) 
 	{
 		if (c >= _T('0') && c <= _T('9')) c-='0';
-		else if (base == 16 && (c & ~0x20) >= 'A' && (c & ~0x20) <= 'F') c = (c & 7) +9;
+		else if (base==16 && (c & ~0x20) >= 'A' && (c & ~0x20) <= 'F') c=(c & 7) +9;
 		else 
 		{
-			if (pFoundBadChar /*&& c!=' '*/)*pFoundBadChar = true;
+			if (pFoundBadChar /*&& c!=' '*/)*pFoundBadChar=true;
 			break;
 		}
-		v*= base, v += c;
+		v*=base;v+=c;
 	}
 	return v;
 }

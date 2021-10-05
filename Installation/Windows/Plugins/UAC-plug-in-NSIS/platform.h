@@ -11,9 +11,7 @@
 #include <TChar.h>
 #include <WindowsX.h>
 
-#ifndef FORCEINLINE
 #define FORCEINLINE __forceinline
-#endif
 
 #ifndef ARRAYSIZE
 #	define ARRAYSIZE(___c) ( sizeof(___c)/sizeof(___c[0]) )

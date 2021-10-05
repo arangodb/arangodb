@@ -64,8 +64,7 @@ inline bool NT5_IsSecondaryLogonSvcRunning()
 BOOL QueryIsAdminOrGetIL(UINT32*pIL)
 {
 	BOOL isAdmin=false;
-	OSVERSIONINFO ovi;
-	ZEROSTRUCT(ovi), ovi.dwOSVersionInfoSize = sizeof(ovi);
+	OSVERSIONINFO ovi={sizeof(ovi)};
 	SetLastError(NO_ERROR);
 	GetVersionEx(&ovi);
 	const bool OSAtleastVista = ovi.dwMajorVersion >= 6;
@@ -245,7 +244,7 @@ bool GetOuterHwndFromCommandline(HWND&hwndOut)
 	TRACEF("GetOuterHwndFromCommandline:%s|\n",p);
 	if (p && *p++=='/'&&*p++=='U'&&*p++=='A'&&*p++=='C'&&*p++==':') 
 	{
-		hwndOut=(HWND)StrToUIntPtr(p,true);
+		hwndOut=(HWND)StrToUInt(p,true);
 		return (/*IsWindow*/(hwndOut))!=0;
 	}
 	return false;
@@ -283,7 +282,7 @@ BOOL CALLBACK ProcessThreadMessages(HWND hwndDlg=NULL,DWORD*pExitCode=NULL)
 		if (msg.message==WM_QUIT) 
 		{
 			TRACEF("ProcessThreadMessages got WM_QUIT %d:%d, code=%u hDlg=%X\n",GetCurrentProcessId(),GetCurrentThreadId(),msg.wParam,hwndDlg);
-			if (pExitCode) *pExitCode = (DWORD) msg.wParam;
+			if (pExitCode)*pExitCode=msg.wParam;
 			return true;
 		//	ASSERT(!"TODO: should we handle WM_QUIT?");
 		//	ec=ERROR_CANCELLED;
@@ -461,7 +460,7 @@ LRESULT CALLBACK OuterWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 			break;
 #ifdef FEAT_AUTOPAGEJUMP
 		case SOSI_ELEVATIONPAGE_GUIINITERRORCODE:
-			OG().ecInner_InitSharedData = (DWORD) lp;
+			OG().ecInner_InitSharedData=lp;
 			break;
 #endif
 		}
@@ -494,7 +493,7 @@ LRESULT CALLBACK OuterWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 DWORD CALLBACK OuterWndThread(LPVOID param) 
 {
 	DWORD ec=NO_ERROR;
-	CoInitialize(NULL); // Why?
+	CoInitialize(NULL);
 	if ( G().hwndOuter=CreateWindowEx(WS_EX_TOOLWINDOW,_T("Static"),NULL,/*WS_VISIBLE*/0,0,0,0,0,NULL,0,g_hInst,NULL) )
 	{
 		TRACEF("OuterWndThread: Created outer IPC window %X\n",G().hwndOuter);
@@ -630,7 +629,7 @@ LRESULT CALLBACK OuterMainWndSubProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 	switch(msg)
 	{
 	case WM_NOTIFY_OUTER_NEXT:
-		G().JumpPageOffset += (WORD) wp;
+		G().JumpPageOffset+=wp;
 		TRACEF("WM_NOTIFY_OUTER_NEXT: now=%d change=%d\n",G().JumpPageOffset,wp);
 		break;
 	}
@@ -814,7 +813,7 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 #endif
 					
 					p=FindExePathEnd(pCL);
-					len=(UINT)(p-pCL) / sizeof(TCHAR);
+					len=(p-pCL)/sizeof(TCHAR);
 					ec=ERROR_FILE_NOT_FOUND;
 
 					if (p && len)

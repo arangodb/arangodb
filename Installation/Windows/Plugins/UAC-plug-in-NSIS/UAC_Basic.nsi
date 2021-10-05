@@ -1,7 +1,7 @@
 /*
 Basic script for a all users/shared installer that runs the installed application as the correct user.
 */
-!addplugindir ".\plugins\x86-ansi"
+
 !define S_NAME "UAC_Basic example"
 Name "${S_NAME}"
 OutFile "${S_NAME}.exe"

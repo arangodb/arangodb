@@ -1,12 +1,6 @@
 History:
 --------
 
-v0.2.4c - 20150526 (AndersK)
-	*Fixed v0.2.4b custom RunAs dialog resource
-
-v0.2.4b - 20140728 (AndersK)
-	*Avoid using memset when compiling with _MSC_VER 1400
-
 v0.2.4 - 20111123 (AndersK)
 	+Added UAC_GetIntegrityLevel
 	*Macro documentation in UAC.nsh

@@ -7,25 +7,7 @@
 //
 // Generated from the TEXTINCLUDE 2 resource.
 //
-#if 0
 #include "afxres.h"
-#else
-#define LANG_ENGLISH 0x09
-#define SUBLANG_ENGLISH_US 0x01
-#define DS_FIXEDSYS 8
-#define DS_MODALFRAME 0x0080
-#define DS_NOIDLEMSG 0x0100
-#define DS_SETFOREGROUND 0x0200
-#define DS_CENTER 0x0800
-#define WS_SYSMENU      0x00080000L
-#define WS_CAPTION      0x00C00000L
-#define WS_POPUP        0x80000000L
-#define BS_AUTORADIOBUTTON 0x09
-#define ES_PASSWORD    0x0020
-#define ES_AUTOHSCROLL 0x0080
-#define IDOK 1
-#define IDCANCEL 2
-#endif
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS

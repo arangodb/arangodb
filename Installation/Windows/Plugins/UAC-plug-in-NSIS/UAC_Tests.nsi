@@ -6,7 +6,7 @@ RequestExecutionLevel user
 ShowInstDetails show
 completedtext "Completed, passed $_t_p of $_t_c tests"
 
-!addplugindir ".\release"
+!addplugindir ".\Ansi"
 !include LogicLib.nsh
 !include UAC.nsh
 
