@@ -345,8 +345,7 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
 
 }  // namespace
 
-namespace arangodb {
-namespace ClusterTrxMethods {
+namespace arangodb::ClusterTrxMethods {
 using namespace arangodb::futures;
 
 bool IsServerIdLessThan::operator()(ServerID const& lhs, ServerID const& rhs) const noexcept {
@@ -575,5 +574,4 @@ bool isElCheapo(TransactionState const& state) {
           state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
 }
 
-}  // namespace ClusterTrxMethods
-}  // namespace arangodb
+}  // namespace arangodb::ClusterTrxMethods

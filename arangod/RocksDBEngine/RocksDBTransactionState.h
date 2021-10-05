@@ -60,43 +60,43 @@ class LogicalCollection;
 class RocksDBTransactionMethods;
 
 /// @brief transaction type
-class RocksDBTransactionState final : public TransactionState {
+class RocksDBTransactionState : public TransactionState {
   friend class RocksDBTrxBaseMethods;
 
  public:
   RocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                           transaction::Options const& options);
-  ~RocksDBTransactionState();
+  ~RocksDBTransactionState() override;
 
   /// @brief begin a transaction
-  Result beginTransaction(transaction::Hints hints) override;
+  [[nodiscard]] Result beginTransaction(transaction::Hints hints) override;
 
   /// @brief commit a transaction
-  Result commitTransaction(transaction::Methods* trx) override;
+  [[nodiscard]] Result commitTransaction(transaction::Methods* trx) override;
 
   /// @brief abort a transaction
-  Result abortTransaction(transaction::Methods* trx) override;
+  [[nodiscard]] Result abortTransaction(transaction::Methods* trx) override;
 
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
   ///       transaction is committed
-  TRI_voc_tick_t lastOperationTick() const noexcept override;
+  [[nodiscard]] TRI_voc_tick_t lastOperationTick() const noexcept override;
   
   /// @brief number of commits, including intermediate commits
-  uint64_t numCommits() const override;
+  [[nodiscard]] uint64_t numCommits() const override;
   
-  bool hasOperations() const noexcept;
+  [[nodiscard]] bool hasOperations() const noexcept;
 
-  uint64_t numOperations() const noexcept;
+  [[nodiscard]] uint64_t numOperations() const noexcept;
 
-  bool hasFailedOperations() const override {
+  [[nodiscard]] bool hasFailedOperations() const override {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
 
   void beginQuery(bool isModificationQuery) override;
   void endQuery(bool isModificationQuery) noexcept override;
 
-  bool iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const;
+  [[nodiscard]] bool iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const;
 
   void prepareOperation(DataSourceId cid, RevisionId rid,
                         TRI_voc_document_operation_e operationType);
@@ -107,28 +107,28 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief add an operation for a transaction collection
   /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
   /// performed
-  Result addOperation(DataSourceId collectionId, RevisionId revisionId,
+  [[nodiscard]] Result addOperation(DataSourceId collectionId, RevisionId revisionId,
                       TRI_voc_document_operation_e opType,
                       bool& hasPerformedIntermediateCommit);
 
   /// @brief return wrapper around rocksdb transaction
-  RocksDBTransactionMethods* rocksdbMethods() {
+  [[nodiscard]] RocksDBTransactionMethods* rocksdbMethods() {
     TRI_ASSERT(_rocksMethods);
     return _rocksMethods.get();
   }
   
   /// @brief acquire a database snapshot if we do not yet have one.
   /// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
-  bool ensureSnapshot();
+  [[nodiscard]] bool ensureSnapshot();
   
-  static RocksDBTransactionState* toState(transaction::Methods* trx) {
+  [[nodiscard]] static RocksDBTransactionState* toState(transaction::Methods* trx) {
     TRI_ASSERT(trx != nullptr);
     TransactionState* state = trx->state();
     TRI_ASSERT(state != nullptr);
     return static_cast<RocksDBTransactionState*>(state);
   }
 
-  static RocksDBTransactionMethods* toMethods(transaction::Methods* trx) {
+  [[nodiscard]] static RocksDBTransactionMethods* toMethods(transaction::Methods* trx) {
     TRI_ASSERT(trx != nullptr);
     TransactionState* state = trx->state();
     TRI_ASSERT(state != nullptr);
@@ -139,9 +139,9 @@ class RocksDBTransactionState final : public TransactionState {
   /// parallel from multiple threads. READ-ONLY transactions
   void prepareForParallelReads() { _parallel = true; }
   /// @brief in parallel mode. READ-ONLY transactions
-  bool inParallelMode() const { return _parallel; }
+  [[nodiscard]] bool inParallelMode() const { return _parallel; }
 
-  RocksDBTransactionCollection::TrackedOperations& trackedOperations(DataSourceId cid);
+  [[nodiscard]] RocksDBTransactionCollection::TrackedOperations& trackedOperations(DataSourceId cid);
 
   /// @brief Track documents inserted to the collection
   ///        Used to update the revision tree for replication after commit
@@ -159,9 +159,9 @@ class RocksDBTransactionState final : public TransactionState {
   ///        Used to update the estimate after the trx committed
   void trackIndexRemove(DataSourceId cid, IndexId idxObjectId, uint64_t hash);
 
-  bool isOnlyExclusiveTransaction() const;
+  [[nodiscard]] bool isOnlyExclusiveTransaction() const;
 
-  rocksdb::SequenceNumber beginSeq() const;
+  [[nodiscard]] rocksdb::SequenceNumber beginSeq() const;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// @brief only needed for RocksDBTransactionStateGuard

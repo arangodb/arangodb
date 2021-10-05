@@ -114,7 +114,7 @@ TransactionCollection* TransactionState::collection(std::string const& name,
   return (*it);
 }
 
-TransactionState::Cookie* TransactionState::cookie(void const* key) noexcept {
+TransactionState::Cookie* TransactionState::cookie(void const* key) const noexcept {
   auto itr = _cookies.find(key);
 
   return itr == _cookies.end() ? nullptr : itr->second.get();

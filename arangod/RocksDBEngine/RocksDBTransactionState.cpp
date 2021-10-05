@@ -272,7 +272,8 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
     cleanupTransaction();  // deletes trx
     ++statistics()._transactionsCommitted;
   } else {
-    abortTransaction(activeTrx);  // deletes trx
+    // what if this fails?
+    std::ignore = abortTransaction(activeTrx);  // deletes trx
   }
   TRI_ASSERT(!_cacheTx);
 

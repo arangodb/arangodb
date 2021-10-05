@@ -73,7 +73,7 @@ class TransactionState {
     virtual ~Cookie() = default;
   };
 
-  static bool ServerIdLessThan(ServerID const& lhs, ServerID const& rhs) {
+  [[nodiscard]] static bool ServerIdLessThan(ServerID const& lhs, ServerID const& rhs) {
     return lhs < rhs;
   }
 
@@ -88,51 +88,59 @@ class TransactionState {
   virtual ~TransactionState();
 
   /// @return a cookie associated with the specified key, nullptr if none
-  Cookie* cookie(void const* key) noexcept;
+  [[nodiscard]] Cookie* cookie(void const* key) const noexcept;
 
   /// @brief associate the specified cookie with the specified key
   /// @return the previously associated cookie, if any
   Cookie::ptr cookie(void const* key, Cookie::ptr&& cookie);
 
-  bool isRunningInCluster() const {
+  [[nodiscard]] bool isRunningInCluster() const {
     return ServerState::isRunningInCluster(_serverRole);
   }
-  bool isDBServer() const { return ServerState::isDBServer(_serverRole); }
-  bool isCoordinator() const { return ServerState::isCoordinator(_serverRole); }
-  ServerState::RoleEnum serverRole() const { return _serverRole; }
+  [[nodiscard]] bool isDBServer() const {
+    return ServerState::isDBServer(_serverRole);
+  }
+  [[nodiscard]] bool isCoordinator() const {
+    return ServerState::isCoordinator(_serverRole);
+  }
+  [[nodiscard]] ServerState::RoleEnum serverRole() const { return _serverRole; }
 
-  inline transaction::Options& options() { return _options; }
-  inline transaction::Options const& options() const { return _options; }
-  inline TRI_vocbase_t& vocbase() const { return _vocbase; }
-  inline TransactionId id() const { return _id; }
-  inline transaction::Status status() const { return _status; }
-  inline bool isRunning() const {
+  [[nodiscard]] inline transaction::Options& options() { return _options; }
+  [[nodiscard]] inline transaction::Options const& options() const {
+    return _options;
+  }
+  [[nodiscard]] inline TRI_vocbase_t& vocbase() const { return _vocbase; }
+  [[nodiscard]] inline TransactionId id() const { return _id; }
+  [[nodiscard]] inline transaction::Status status() const { return _status; }
+  [[nodiscard]] inline bool isRunning() const {
     return _status == transaction::Status::RUNNING;
   }
   void setRegistered() noexcept { _registeredTransaction = true; }
-  bool wasRegistered() const noexcept { return _registeredTransaction; }
+  [[nodiscard]] bool wasRegistered() const noexcept {
+    return _registeredTransaction;
+  }
 
   /// @brief returns the name of the actor the transaction runs on:
   /// - leader
   /// - follower
   /// - coordinator
   /// - single
-  char const* actorName() const noexcept;
+  [[nodiscard]] char const* actorName() const noexcept;
 
   /// @brief return a reference to the global transaction statistics/counters
   TransactionStatistics& statistics() noexcept;
 
-  double lockTimeout() const { return _options.lockTimeout; }
+  [[nodiscard]] double lockTimeout() const { return _options.lockTimeout; }
   void lockTimeout(double value) {
     if (value > 0.0) {
       _options.lockTimeout = value;
     }
   }
 
-  bool waitForSync() const { return _options.waitForSync; }
+  [[nodiscard]] bool waitForSync() const { return _options.waitForSync; }
   void waitForSync(bool value) { _options.waitForSync = value; }
 
-  bool allowImplicitCollectionsForRead() const {
+  [[nodiscard]] bool allowImplicitCollectionsForRead() const {
     return _options.allowImplicitCollectionsForRead;
   }
   void allowImplicitCollectionsForRead(bool value) {
@@ -140,17 +148,19 @@ class TransactionState {
   }
 
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(DataSourceId cid, AccessMode::Type accessType) const;
+  [[nodiscard]] TransactionCollection* collection(DataSourceId cid,
+                                                  AccessMode::Type accessType) const;
 
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(std::string const& name, AccessMode::Type accessType) const;
+  [[nodiscard]] TransactionCollection* collection(std::string const& name,
+                                                  AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
-  Result addCollection(DataSourceId cid, std::string const& cname,
-                       AccessMode::Type accessType, bool lockUsage);
+  [[nodiscard]] Result addCollection(DataSourceId cid, std::string const& cname,
+                                     AccessMode::Type accessType, bool lockUsage);
 
   /// @brief use all participating collections of a transaction
-  Result useCollections();
+  [[nodiscard]] Result useCollections();
 
   /// @brief run a callback on all collections of the transaction
   template <typename F>
@@ -164,10 +174,10 @@ class TransactionState {
   }
 
   /// @brief return the number of collections in the transaction
-  size_t numCollections() const { return _collections.size(); }
+  [[nodiscard]] size_t numCollections() const { return _collections.size(); }
 
   /// @brief whether or not a transaction consists of a single operation
-  bool isSingleOperation() const {
+  [[nodiscard]] bool isSingleOperation() const {
     return hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
@@ -175,52 +185,54 @@ class TransactionState {
   void updateStatus(transaction::Status status) noexcept;
 
   /// @brief whether or not a specific hint is set for the transaction
-  bool hasHint(transaction::Hints::Hint hint) const { return _hints.has(hint); }
+  [[nodiscard]] bool hasHint(transaction::Hints::Hint hint) const {
+    return _hints.has(hint);
+  }
 
   /// @brief begin a transaction
-  virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
+  [[nodiscard]] virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
 
   /// @brief commit a transaction
-  virtual arangodb::Result commitTransaction(transaction::Methods* trx) = 0;
+  [[nodiscard]] virtual arangodb::Result commitTransaction(transaction::Methods* trx) = 0;
 
   /// @brief abort a transaction
-  virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
+  [[nodiscard]] virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
 
   /// @brief return number of commits.
   /// for cluster transactions on coordinator, this either returns 0 or 1.
   /// for leader, follower or single-server transactions, this can include any
   /// number, because it will also include intermediate commits.
-  virtual uint64_t numCommits() const = 0;
+  [[nodiscard]] virtual uint64_t numCommits() const = 0;
 
-  virtual bool hasFailedOperations() const = 0;
+  [[nodiscard]] virtual bool hasFailedOperations() const = 0;
 
   virtual void beginQuery(bool /*isModificationQuery*/) {}
   virtual void endQuery(bool /*isModificationQuery*/) noexcept {}
 
-  TransactionCollection* findCollection(DataSourceId cid) const;
+  [[nodiscard]] TransactionCollection* findCollection(DataSourceId cid) const;
 
   /// @brief make a exclusive transaction, only valid before begin
   void setExclusiveAccessType();
 
   /// @brief whether or not a transaction is read-only
-  bool isReadOnlyTransaction() const {
+  [[nodiscard]] bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
   }
 
   /// @brief whether or not a transaction is a follower transaction
-  bool isFollowerTransaction() const {
+  [[nodiscard]] bool isFollowerTransaction() const {
     return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
   /// @brief whether or not a transaction only has exculsive or read accesses
-  bool isOnlyExclusiveTransaction() const;
+  [[nodiscard]] bool isOnlyExclusiveTransaction() const;
 
   /// @brief servers already contacted
-  ::arangodb::containers::HashSet<std::string> const& knownServers() const {
+  [[nodiscard]] ::arangodb::containers::HashSet<std::string> const& knownServers() const {
     return _knownServers;
   }
 
-  bool knowsServer(std::string const& uuid) const {
+  [[nodiscard]] bool knowsServer(std::string const& uuid) const {
     return _knownServers.find(uuid) != _knownServers.end();
   }
 
@@ -235,18 +247,18 @@ class TransactionState {
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
   ///       transaction is committed
-  virtual TRI_voc_tick_t lastOperationTick() const noexcept { return 0; }
+  [[nodiscard]] virtual TRI_voc_tick_t lastOperationTick() const noexcept = 0;
 
   void acceptAnalyzersRevision(QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
-  const QueryAnalyzerRevisions& analyzersRevision() const noexcept {
+  [[nodiscard]] QueryAnalyzerRevisions const& analyzersRevision() const noexcept {
     return _analyzersRevision;
   }
 
 #ifdef USE_ENTERPRISE
   void addInaccessibleCollection(DataSourceId cid, std::string const& cname);
-  bool isInaccessibleCollection(DataSourceId cid);
-  bool isInaccessibleCollection(std::string const& cname);
+  [[nodiscard]] bool isInaccessibleCollection(DataSourceId cid);
+  [[nodiscard]] bool isInaccessibleCollection(std::string const& cname);
 #endif
 
   /// @brief roll a new transaction ID on the coordintor. Use this method
@@ -271,12 +283,12 @@ class TransactionState {
 
  private:
   /// @brief check if current user can access this collection
-  Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
-                                   AccessMode::Type);
-  
+  [[nodiscard]] Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
+                                                 AccessMode::Type);
+
   /// @brief helper function for addCollection
-  Result addCollectionInternal(DataSourceId cid, std::string const& cname,
-                               AccessMode::Type accessType, bool lockUsage);
+  [[nodiscard]] Result addCollectionInternal(DataSourceId cid, std::string const& cname,
+                                             AccessMode::Type accessType, bool lockUsage);
 
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
@@ -310,4 +322,3 @@ class TransactionState {
 };
 
 }  // namespace arangodb
-

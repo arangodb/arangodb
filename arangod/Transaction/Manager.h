@@ -157,7 +157,7 @@ class Manager final {
                           std::vector<std::string> const& exclusiveCollections,
                           transaction::Options options, double ttl = 0.0);
 
-  Result beginTransaction(transaction::Hints hints, std::shared_ptr<TransactionState>& state);
+  static Result beginTransaction(transaction::Hints hints, std::shared_ptr<TransactionState>& state);
 
   /// @brief lease the transaction, increases nesting
   std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid, AccessMode::Type mode, bool isSideUser);
