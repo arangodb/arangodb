@@ -1,17 +1,17 @@
-import { FormProps, GeoOptions } from "../../constants";
+import { GeoOptionsProperty } from "../../constants";
+import { FormProps } from "../../../../utils/constants";
 import React, { ChangeEvent } from "react";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Fieldset from "../../../../components/pure-css/form/Fieldset";
 import Textbox from "../../../../components/pure-css/form/Textbox";
-import { get } from "lodash";
 import { setIntegerField } from "../../helpers";
 
-const GeoOptionsInput = ({ formState, dispatch, disabled }: FormProps) => {
+const GeoOptionsInput = ({ formState, dispatch, disabled }: FormProps<GeoOptionsProperty>) => {
   const getNumericFieldSetter = (field: string) => (event: ChangeEvent<HTMLInputElement>) => {
     setIntegerField(field, event.target.value, dispatch);
   };
 
-  const geoOptions = get(formState, 'properties.options', {}) as GeoOptions;
+  const geoOptions = formState.properties.options || {};
 
   return <Fieldset legend={'Options'}>
     <Grid>

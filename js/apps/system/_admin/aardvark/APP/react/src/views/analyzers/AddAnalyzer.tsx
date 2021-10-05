@@ -1,16 +1,17 @@
-import React, { useReducer } from 'react';
+import React, { Dispatch, useReducer } from 'react';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
-import { cloneDeep, merge, set, uniqueId, unset } from 'lodash';
+import { cloneDeep, uniqueId } from 'lodash';
 import JsonForm from "./forms/JsonForm";
 import FeatureForm from "./forms/FeatureForm";
 import BaseForm from "./forms/BaseForm";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
-import { DispatchArgs, FormState, State } from "./constants";
+import { AnalyzerTypeState, FormState } from "./constants";
+import { DispatchArgs, State } from '../../utils/constants';
 import CopyFromInput from "./forms/inputs/CopyFromInput";
 import { Cell, Grid } from "../../components/pure-css/grid";
-import { getForm, validateAndFix } from "./helpers";
-import { getPath } from "../../utils/helpers";
+import { getForm } from "./helpers";
+import { getReducer } from "../../utils/helpers";
 
 declare var arangoHelper: { [key: string]: any };
 
@@ -23,7 +24,7 @@ const initialFormState: FormState = {
   }
 };
 
-const initialState: State = {
+const initialState: State<FormState> = {
   formState: cloneDeep(initialFormState),
   formCache: cloneDeep(initialFormState),
   show: false,
@@ -32,103 +33,12 @@ const initialState: State = {
   renderKey: uniqueId('force_re-render_')
 };
 
-const reducer = (state: State, action: DispatchArgs): State => {
-  let newState = state;
-
-  switch (action.type) {
-    case 'lockJsonForm':
-      newState = {
-        ...state,
-        lockJsonForm: true
-      };
-      break;
-
-    case 'unlockJsonForm':
-      newState = {
-        ...state,
-        lockJsonForm: false
-      };
-      break;
-
-    case 'show':
-      newState = {
-        ...state,
-        show: true
-      };
-      break;
-
-    case 'showJsonForm':
-      newState = {
-        ...state,
-        showJsonForm: true
-      };
-      break;
-
-    case 'hideJsonForm':
-      newState = {
-        ...state,
-        showJsonForm: false
-      };
-      break;
-
-    case 'regenRenderKey':
-      newState = {
-        ...state,
-        renderKey: uniqueId('force_re-render_')
-      };
-      break;
-
-    case 'setField':
-      if (action.field && action.field.value !== undefined) {
-        newState = cloneDeep(state);
-        const path = getPath(action.basePath, action.field.path);
-
-        set(newState.formCache, path, action.field.value);
-
-        if (action.field.path === 'type') {
-          const tempFormState = cloneDeep(newState.formCache);
-          validateAndFix(tempFormState);
-          newState.formState = tempFormState as FormState;
-
-          merge(newState.formCache, newState.formState);
-        } else {
-          set(newState.formState, path, action.field.value);
-        }
-      }
-      break;
-
-    case 'unsetField':
-      if (action.field) {
-        newState = cloneDeep(state);
-        const path = getPath(action.basePath, action.field.path);
-
-        unset(newState.formState, path);
-        unset(newState.formCache, path);
-      }
-      break;
-
-    case 'setFormState':
-      if (action.formState) {
-        newState = cloneDeep(state);
-        newState.formState = action.formState;
-        merge(newState.formCache, newState.formState);
-      }
-      break;
-
-    case 'reset':
-      newState = initialState;
-      break;
-  }
-
-  return newState;
-};
-
 interface AddAnalyzerProps {
   analyzers: FormState[];
 }
 
 const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(getReducer<FormState>(initialState), initialState);
 
   const formState = state.formState;
 
@@ -209,7 +119,7 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
                         {
                           getForm({
                             formState,
-                            dispatch,
+                            dispatch: dispatch as Dispatch<DispatchArgs<AnalyzerTypeState>>,
                             disabled: false
                           })
                         }

@@ -3,7 +3,8 @@ import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/mod
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { mutate } from "swr";
 import { noop, pick } from 'lodash';
-import { FormState, State } from "./constants";
+import { FormState } from "./constants";
+import { State } from '../../utils/constants';
 import { Cell, Grid } from "../../components/pure-css/grid";
 import BaseForm from "./forms/BaseForm";
 import FeatureForm from "./forms/FeatureForm";
@@ -76,7 +77,7 @@ const ViewButton = ({ analyzer, modalCid }: ButtonProps) => {
   const [show, setShow] = useState(false);
   const [showJsonForm, setShowJsonForm] = useState(false);
 
-  const state: State = {
+  const state: State<FormState> = {
     formState: pick(analyzer, 'name', 'type', 'features', 'properties') as FormState,
     formCache: {},
     show: false,

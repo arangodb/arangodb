@@ -1,5 +1,6 @@
 import React, { ChangeEvent } from "react";
-import { AqlState, FormProps } from "../constants";
+import { AqlState } from "../constants";
+import { FormProps } from '../../../utils/constants';
 import Checkbox from "../../../components/pure-css/form/Checkbox";
 import Textbox from "../../../components/pure-css/form/Textbox";
 import Textarea from "../../../components/pure-css/form/Textarea";
@@ -7,7 +8,7 @@ import { Cell, Grid } from "../../../components/pure-css/grid";
 import { setIntegerField } from "../helpers";
 import Select from "../../../components/pure-css/form/Select";
 
-const AqlForm = ({ formState, dispatch, disabled }: FormProps) => {
+const AqlForm = ({ formState, dispatch, disabled }: FormProps<AqlState>) => {
   const getNumericFieldSetter = (field: string) => (event: ChangeEvent<HTMLInputElement>) => {
     setIntegerField(field, event.target.value, dispatch);
   };
@@ -52,11 +53,9 @@ const AqlForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const aqlFormState = formState as AqlState;
-
   return <Grid>
     <Cell size={'1-2'}>
-      <Textarea label={'Query String'} value={aqlFormState.properties.queryString || ''} disabled={disabled}
+      <Textarea label={'Query String'} value={formState.properties.queryString || ''} disabled={disabled}
                 onChange={updateQueryString} rows={4} required={true}/>
     </Cell>
 
@@ -64,12 +63,12 @@ const AqlForm = ({ formState, dispatch, disabled }: FormProps) => {
       <Grid>
         <Cell size={'1'}>
           <Textbox label={'Batch Size'} type={'number'} min={1} required={true}
-                   value={aqlFormState.properties.batchSize || ''} disabled={disabled}
+                   value={formState.properties.batchSize || ''} disabled={disabled}
                    onChange={getNumericFieldSetter('properties.batchSize')}/>
         </Cell>
         <Cell size={'1'}>
           <Textbox label={'Memory Limit'} type={'number'} min={1} max={33554432} required={true}
-                   value={aqlFormState.properties.memoryLimit || ''}
+                   value={formState.properties.memoryLimit || ''}
                    disabled={disabled} onChange={getNumericFieldSetter('properties.memoryLimit')}/>
         </Cell>
       </Grid>
@@ -78,15 +77,15 @@ const AqlForm = ({ formState, dispatch, disabled }: FormProps) => {
     <Cell size={'1-2'}>
       <Grid>
         <Cell size={'1-3'}>
-          <Checkbox checked={aqlFormState.properties.collapsePositions || false} disabled={disabled}
+          <Checkbox checked={formState.properties.collapsePositions || false} disabled={disabled}
                     onChange={updateCollapsePositions} label={'Collapse Positions'}/>
         </Cell>
         <Cell size={'1-3'}>
-          <Checkbox checked={aqlFormState.properties.keepNull || false} onChange={updateKeepNull}
+          <Checkbox checked={formState.properties.keepNull || false} onChange={updateKeepNull}
                     disabled={disabled} label={'Keep Null'}/>
         </Cell>
         <Cell size={'1-3'}>
-          <Select label={'Return Type'} value={aqlFormState.properties.returnType || 'string'}
+          <Select label={'Return Type'} value={formState.properties.returnType || 'string'}
                   onChange={updateReturnType} required={true} disabled={disabled}>
             <option value={'string'}>String</option>
             <option value={'number'}>Number</option>

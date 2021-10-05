@@ -1,5 +1,13 @@
-import React, { ChangeEvent } from "react";
-import { FormProps, TextState } from "../constants";
+import React, { ChangeEvent, Dispatch } from "react";
+import {
+  AccentProperty,
+  CaseProperty,
+  LocaleProperty,
+  NGramBaseProperty,
+  StopwordsProperty,
+  TextState
+} from "../constants";
+import { DispatchArgs, FormProps } from "../../../utils/constants";
 import CaseInput from "./inputs/CaseInput";
 import LocaleInput from "./inputs/LocaleInput";
 import { Cell, Grid } from "../../../components/pure-css/grid";
@@ -10,7 +18,7 @@ import NGramInput from "./inputs/NGramInput";
 import AccentInput from "./inputs/AccentInput";
 import StopwordsInput from "./inputs/StopwordsInput";
 
-const TextForm = ({ formState, dispatch, disabled }: FormProps) => {
+const TextForm = ({ formState, dispatch, disabled }: FormProps<TextState>) => {
   const updateStopwordsPath = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -37,11 +45,14 @@ const TextForm = ({ formState, dispatch, disabled }: FormProps) => {
     <Cell size={'1-2'}>
       <Grid>
         <Cell size={'1'}>
-          <LocaleInput formState={formState} dispatch={dispatch} disabled={disabled}/>
+          <LocaleInput formState={formState} dispatch={dispatch as Dispatch<DispatchArgs<LocaleProperty>>}
+                       disabled={disabled}/>
         </Cell>
 
         <Cell size={'1'}>
-          <StopwordsInput formState={formState} dispatch={dispatch} disabled={disabled}/>
+          <StopwordsInput formState={formState}
+                          dispatch={dispatch as Dispatch<DispatchArgs<StopwordsProperty>>}
+                          disabled={disabled}/>
         </Cell>
       </Grid>
     </Cell>
@@ -54,7 +65,8 @@ const TextForm = ({ formState, dispatch, disabled }: FormProps) => {
         </Cell>
 
         <Cell size={'1-3'}>
-          <CaseInput formState={formState} dispatch={dispatch} disabled={disabled}/>
+          <CaseInput formState={formState} dispatch={dispatch as Dispatch<DispatchArgs<CaseProperty>>}
+                     disabled={disabled}/>
         </Cell>
 
         <Cell size={'1-3'}>
@@ -63,7 +75,8 @@ const TextForm = ({ formState, dispatch, disabled }: FormProps) => {
         </Cell>
 
         <Cell size={'1-3'}>
-          <AccentInput formState={formState} dispatch={dispatch} disabled={disabled} inline={false}/>
+          <AccentInput formState={formState} dispatch={dispatch as Dispatch<DispatchArgs<AccentProperty>>}
+                       disabled={disabled} inline={false}/>
         </Cell>
       </Grid>
     </Cell>
@@ -74,7 +87,9 @@ const TextForm = ({ formState, dispatch, disabled }: FormProps) => {
 
     <Cell size={'1'}>
       <Fieldset legend={'Edge N-Gram'}>
-        <NGramInput formState={formState} dispatch={dispatch} disabled={disabled} required={false}
+        <NGramInput formState={formState.properties.edgeNgram || {}}
+                    dispatch={dispatch as Dispatch<DispatchArgs<NGramBaseProperty>>} disabled={disabled}
+                    required={false}
                     basePath={'properties.edgeNgram'}/>
       </Fieldset>
     </Cell>

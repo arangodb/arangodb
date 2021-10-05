@@ -1,7 +1,8 @@
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import Ajv, { ErrorObject } from 'ajv';
-import { FormProps, formSchema, FormState, State } from "../constants";
+import { formSchema, FormState } from "../constants";
+import { FormProps, State } from "../../../utils/constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import { usePrevious } from "../../../utils/helpers";
 import { has, isEqual } from 'lodash';
@@ -16,7 +17,9 @@ const ajv = new Ajv({
 ajvErrors(ajv);
 const validate = ajv.compile(formSchema);
 
-type JsonFormProps = Pick<FormProps, 'formState' | 'dispatch'> & Pick<State, 'renderKey'>;
+type JsonFormProps =
+  Pick<FormProps<FormState>, 'formState' | 'dispatch'>
+  & Pick<State<FormState>, 'renderKey'>;
 
 const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
   const [formErrors, setFormErrors] = useState<string[]>([]);

@@ -1,4 +1,5 @@
-import { FormProps, FormState } from "../../constants";
+import { FormState } from "../../constants";
+import { FormProps } from "../../../../utils/constants";
 import React, { ChangeEvent, useEffect, useState } from "react";
 import { cloneDeep, find, sortBy } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
@@ -13,7 +14,7 @@ const StyledIcon = styled.i`
 
 type CopyFromInputProps = {
   analyzers: FormState[];
-} & Pick<FormProps, 'dispatch'>;
+} & Pick<FormProps<FormState>, 'dispatch'>;
 
 const CopyFromInput = ({ analyzers, dispatch }: CopyFromInputProps) => {
   const [sortedAnalyzers, setSortedAnalyzers] = useState(sortBy(analyzers, 'name'));

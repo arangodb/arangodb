@@ -1,9 +1,10 @@
 import React, { ChangeEvent } from "react";
-import { FormProps } from "../../constants";
-import { filter, get, isEmpty, negate } from "lodash";
+import { FormProps } from "../../../../utils/constants";
+import { filter, isEmpty, negate } from "lodash";
 import Textarea from "../../../../components/pure-css/form/Textarea";
+import { StopwordsProperty } from "../../constants";
 
-type StopwordsInputProps = FormProps & {
+type StopwordsInputProps = FormProps<StopwordsProperty> & {
   required?: boolean
 };
 
@@ -30,7 +31,7 @@ const StopwordsInput = ({ formState, dispatch, disabled, required = false }: Sto
   };
 
   const getStopwords = () => {
-    return (get(formState, 'properties.stopwords', [])).join('\n');
+    return (formState.properties.stopwords || []).join('\n');
   };
 
   return <Textarea label={'Stopwords (One per line)'} value={getStopwords()} onChange={updateStopwords}

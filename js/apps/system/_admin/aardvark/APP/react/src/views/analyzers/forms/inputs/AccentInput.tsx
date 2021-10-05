@@ -1,9 +1,9 @@
 import React, { ChangeEvent } from "react";
-import { FormProps } from "../../constants";
-import { get } from "lodash";
+import { FormProps } from "../../../../utils/constants";
+import { AccentProperty } from "../../constants";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
 
-type AccentInputProps = FormProps & {
+type AccentInputProps = FormProps<AccentProperty> & {
   inline?: boolean;
 };
 
@@ -19,7 +19,7 @@ const AccentInput = ({ formState, dispatch, disabled, inline = true }: AccentInp
   };
 
   return <Checkbox onChange={updateAccent} label={'Accent'} inline={inline} disabled={disabled}
-                   checked={get(formState, 'properties.accent', false)}/>;
+                   checked={formState.properties.accent}/>;
 };
 
 export default AccentInput;

@@ -1,5 +1,6 @@
-import React from "react";
-import { DispatchArgs, FormProps, PipelineStates, typeNameMap } from "../constants";
+import React, { Dispatch } from "react";
+import { AnalyzerTypeState, PipelineState, PipelineStates, typeNameMap } from "../constants";
+import { DispatchArgs, FormProps } from "../../../utils/constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import { getForm } from "../helpers";
 import { omit } from "lodash";
@@ -20,8 +21,8 @@ const StyledIcon = styled.i`
 `;
 const restrictedTypeNameMap = omit(typeNameMap, 'geojson', 'geopoint', 'pipeline', 'identity');
 
-const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
-  const items = (formState as PipelineStates).properties.pipeline;
+const PipelineForm = ({ formState, dispatch, disabled }: FormProps<PipelineStates>) => {
+  const items = formState.properties.pipeline;
 
   const removeItem = (index: number) => {
     const tempItems = items.slice();
@@ -100,9 +101,9 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const getWrappedDispatch = (index: number) => (action: DispatchArgs) => {
+  const getWrappedDispatch = (index: number): Dispatch<DispatchArgs<PipelineState>> => (action: DispatchArgs<PipelineState>) => {
     action.basePath = getPath(`properties.pipeline[${index}]`, action.basePath);
-    dispatch(action);
+    (dispatch as unknown as Dispatch<DispatchArgs<PipelineState>>)(action);
   };
 
   return <Grid>
@@ -131,7 +132,9 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
               <ArangoTD seq={1}>
                 <Grid>
                   <Cell size={'3-4'}>
-                    <TypeInput formState={item} dispatch={itemDispatch} inline={true} key={idx}
+                    <TypeInput formState={item}
+                               dispatch={itemDispatch as Dispatch<DispatchArgs<AnalyzerTypeState>>}
+                               inline={true} key={idx}
                                typeNameMap={restrictedTypeNameMap} disabled={disabled}/>
                   </Cell>
                   {
@@ -155,7 +158,7 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
                     {
                       getForm({
                         formState: item,
-                        dispatch: itemDispatch,
+                        dispatch: itemDispatch as Dispatch<DispatchArgs<AnalyzerTypeState>>,
                         disabled
                       })
                     }
