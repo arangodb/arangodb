@@ -32,7 +32,7 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -51,11 +51,12 @@ class RDBNearIterator final : public IndexIterator {
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   RDBNearIterator(LogicalCollection* collection, transaction::Methods* trx,
                   RocksDBGeoIndex const* index, geo::QueryParams&& params)
-      : IndexIterator(collection, trx), _index(index), _near(std::move(params)) {
-    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-    rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-    TRI_ASSERT(options.prefix_same_as_start);
-    _iter = mthds->NewIterator(options, _index->columnFamily());
+      : IndexIterator(collection, trx, ReadOwnWrites::no),
+        // geo index never needs to observe own writes since it cannot be used for an UPSERT subquery
+        _index(index),
+        _near(std::move(params)) {
+    RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(trx);
+    _iter = mthds->NewIterator(_index->columnFamily(), {});
     TRI_ASSERT(_index->columnFamily()->GetID() ==
                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex)
                    ->GetID());
@@ -111,7 +112,8 @@ class RDBNearIterator final : public IndexIterator {
                 cb(gdoc.token, doc);  // return document
                 result = true;
                 return true;
-              })) {
+                // geo index never needs to observe own writes
+              }, ReadOwnWrites::no).ok()) {
             return false;  // ignore document
           }
           return result;
@@ -138,7 +140,8 @@ class RDBNearIterator final : public IndexIterator {
                     return false;
                   }
                   return true;
-                })) {
+                  // geo index never needs to observe own writes
+                }, ReadOwnWrites::no).ok()) {
               return false;
             }
             if (!result) {
@@ -339,9 +342,11 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 /// @brief creates an IndexIterator for the given Condition
 std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
+    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
+    ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(readOwnWrites == ReadOwnWrites::no); // geo index never needs to observe own writes
 
   geo::QueryParams params;
   params.sorted = opts.sorted;
@@ -377,8 +382,9 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
 /// internal insert function, set batch or trx before calling
 Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                LocalDocumentId const& documentId,
-                               velocypack::Slice const doc,
-                               arangodb::OperationOptions& options) {
+                               velocypack::Slice doc,
+                               arangodb::OperationOptions const& /*options*/,
+                               bool /*performChecks*/) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
   std::vector<S2CellId> cells;
@@ -426,7 +432,7 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 /// internal remove function, set batch or trx before calling
 Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                LocalDocumentId const& documentId,
-                               velocypack::Slice const doc) {
+                               velocypack::Slice doc) {
   Result res;
 
   // covering and centroid of coordinate / polygon / ...

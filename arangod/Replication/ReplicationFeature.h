@@ -21,12 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REPLICATION_REPLICATION_FEATURE_H
-#define ARANGODB_REPLICATION_REPLICATION_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/Metrics.h"
+#include "SimpleHttpClient/ConnectionCache.h"
 
 struct TRI_vocbase_t;
 
@@ -51,6 +51,8 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   void stop() override final;
   void unprepare() override final;
 
+  httpclient::ConnectionCache& connectionCache();
+
   /// @brief return a pointer to the global replication applier
   GlobalReplicationApplier* globalReplicationApplier() const;
 
@@ -74,7 +76,7 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   /// timeout via configuration. otherwise it will return the configured
   /// timeout value
   double checkConnectTimeout(double value) const;
-  
+
   /// @brief returns the request timeout for replication requests
   /// this will return the provided value if the user has not adjusted the
   /// timeout via configuration. otherwise it will return the configured
@@ -103,17 +105,20 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   /// @brief fill a response object with correct response for a follower
   void prepareFollowerResponse(GeneralResponse*, arangodb::ServerState::Mode);
 
+  /// @brief get max document num for quick call to _api/replication/keys to get actual keys or only doc count
+  uint64_t quickKeysLimit() const { return _quickKeysLimit; }
+
  private:
   /// @brief connection timeout for replication requests
   double _connectTimeout;
-  
+
   /// @brief request timeout for replication requests
   double _requestTimeout;
 
   /// @brief whether or not the user-defined connect timeout is forced to be used
   /// this is true only if the user set the connect timeout at startup
   bool _forceConnectTimeout;
-  
+
   /// @brief whether or not the user-defined request timeout is forced to be used
   /// this is true only if the user set the request timeout at startup
   bool _forceRequestTimeout;
@@ -125,6 +130,9 @@ class ReplicationFeature final : public application_features::ApplicationFeature
 
   /// Use the revision-based replication protocol
   bool _syncByRevision;
+  
+  /// @brief cache for reusable connections
+  httpclient::ConnectionCache _connectionCache;
 
   /// @brief number of currently operating tailing operations
   std::atomic<uint64_t> _parallelTailingInvocations;
@@ -134,9 +142,11 @@ class ReplicationFeature final : public application_features::ApplicationFeature
 
   std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
 
+  /// @brief quick replication keys limit
+  uint64_t _quickKeysLimit;
+
   Counter& _inventoryRequests;
 };
 
 }  // namespace arangodb
 
-#endif

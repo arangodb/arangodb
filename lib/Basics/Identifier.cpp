@@ -59,8 +59,8 @@ bool Identifier::operator>=(Identifier const& other) const {
   return _id >= other._id;
 }
 
-}  // namespace arangodb::basics
-
 std::ostream& operator<<(std::ostream& s, arangodb::basics::Identifier const& i) {
   return s << std::to_string(i.id());
 }
+
+}  // namespace arangodb::basics

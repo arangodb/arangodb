@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONTAINER_ROLLING_VECTOR_H
-#define ARANGODB_CONTAINER_ROLLING_VECTOR_H 1
+#pragma once
 
 #include <type_traits>
 
@@ -156,4 +155,3 @@ class RollingVector {
 }  // namespace containers
 }  // namespace arangodb
 
-#endif

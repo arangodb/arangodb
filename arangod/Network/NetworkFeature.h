@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_NETWORK_NETWORK_FEATURE_H
-#define ARANGOD_NETWORK_NETWORK_FEATURE_H 1
+#pragma once
 
 #include <atomic>
 #include <mutex>
@@ -43,7 +42,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
  public:
   using RequestCallback =
       std::function<void(fuerte::Error err, std::unique_ptr<fuerte::Request> req,
-                         std::unique_ptr<fuerte::Response> res)>;
+                         std::unique_ptr<fuerte::Response> res, bool isFromPool)>;
 
   explicit NetworkFeature(application_features::ApplicationServer& server);
   explicit NetworkFeature(application_features::ApplicationServer& server,
@@ -89,7 +88,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   uint64_t _idleTtlMilli;
   uint32_t _numIOThreads;
   bool _verifyHosts;
-  bool _prepared;
+  std::atomic<bool> _prepared;
 
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
@@ -113,4 +112,3 @@ class NetworkFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

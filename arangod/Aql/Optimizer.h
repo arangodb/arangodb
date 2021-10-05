@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_OPTIMIZER_H
-#define ARANGOD_AQL_OPTIMIZER_H 1
+#pragma once
 
 #include "Aql/ExecutionPlan.h"
 #include "Basics/Common.h"
@@ -172,6 +171,11 @@ class Optimizer {
   Stats _stats;
 
  private:
+ 
+  void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
+  void finalizePlans();
+  void estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans);
+ 
   /// @brief the current set of plans to be optimized
   PlanList _plans;
 
@@ -194,4 +198,3 @@ class Optimizer {
 
 }  // namespace aql
 }  // namespace arangodb
-#endif

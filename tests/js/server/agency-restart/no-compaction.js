@@ -66,10 +66,11 @@ function recoverySuite () {
 
   return {
     testRestart: function () {
+      // turn off compaction
+      internal.debugSetFailAt("State::compact");
+
       let state = ArangoAgent.state();
-      assertEqual(0, state.current);
       assertEqual(state.current, state.log[0].index);
-      assertTrue(state.log.length >= 50000);
 
       let found = 0;
       let index = state.log[0].index;

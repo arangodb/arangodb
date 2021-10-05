@@ -48,7 +48,7 @@ namespace arangodb {
 RestControlPregelHandler::RestControlPregelHandler(application_features::ApplicationServer& server,
                                                    GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestVocbaseBaseHandler(server, request, response), _pregel(server.getFeature<pregel::PregelFeature>()) {}
 
 RestStatus RestControlPregelHandler::execute() {
   auto const type = _request->requestType();
@@ -174,8 +174,8 @@ void RestControlPregelHandler::startExecution() {
     }
   }
 
-  auto res = pregel::PregelFeature::startExecution(_vocbase, algorithm, vertexCollections,
-                                                   edgeCollections, edgeCollectionRestrictions, parameters);
+  auto res = _pregel.startExecution(_vocbase, algorithm, vertexCollections,
+                                    edgeCollections, edgeCollectionRestrictions, parameters);
   if (res.first.fail()) {
     generateError(res.first);
     return;
@@ -188,6 +188,17 @@ void RestControlPregelHandler::startExecution() {
 
 void RestControlPregelHandler::getExecutionStatus() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+
+  if (suffixes.empty()) {
+    bool const allDatabases = _request->parsedValue("all", false);
+    bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+
+    VPackBuilder builder;
+    _pregel.toVelocyPack(_vocbase, builder, allDatabases, fanout);
+    generateResult(rest::ResponseCode::OK, builder.slice());
+    return;
+  }
+
   if (suffixes.size() != 1 || suffixes[0].empty()) {
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
@@ -196,13 +207,7 @@ void RestControlPregelHandler::getExecutionStatus() {
   }
 
   uint64_t executionNumber = arangodb::basics::StringUtils::uint64(suffixes[0]);
-  std::shared_ptr<pregel::PregelFeature> pf = pregel::PregelFeature::instance();
-  if (!pf) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "pregel feature not available");
-    return;
-  }
-  auto c = pf->conductor(executionNumber);
+  auto c = _pregel.conductor(executionNumber);
 
   if (nullptr == c) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
@@ -210,7 +215,8 @@ void RestControlPregelHandler::getExecutionStatus() {
     return;
   }
 
-  VPackBuilder builder = c->toVelocyPack();
+  VPackBuilder builder;
+  c->toVelocyPack(builder);
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
@@ -222,15 +228,8 @@ void RestControlPregelHandler::cancelExecution() {
     return;
   }
 
-  std::shared_ptr<pregel::PregelFeature> pf = pregel::PregelFeature::instance();
-  if (nullptr == pf) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "pregel feature not available");
-    return;
-  }
-
   uint64_t executionNumber = arangodb::basics::StringUtils::uint64(suffixes[0]);
-  auto c = pf->conductor(executionNumber);
+  auto c = _pregel.conductor(executionNumber);
 
   if (nullptr == c) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,

@@ -6,8 +6,8 @@
 
 @HINTS
 {% hint 'warning' %}
-This revision-based replication endpoint will only work with the RocksDB
-engine, and with collections created in ArangoDB v3.8.0 or later.
+This revision-based replication endpoint will only work with collections
+created in ArangoDB v3.8.0 or later.
 {% endhint %}
 
 @RESTQUERYPARAMETERS
@@ -68,7 +68,6 @@ is returned when an invalid HTTP method is used.
 is returned if an error occurred while assembling the response.
 
 @RESTRETURNCODE{501}
-is returned if called with mmfiles or on a collection which doesn't support
-sync-by-revision
+is returned if called on a collection which doesn't support sync-by-revision
 
 @endDocuBlock

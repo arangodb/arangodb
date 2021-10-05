@@ -22,25 +22,34 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_DOCUMENT_H
-#define ARANGOD_IRESEARCH__IRESEARCH_DOCUMENT_H 1
+#pragma once
 
 #include "VocBase/voc-types.h"
 
+#include "IResearchAnalyzerFeature.h"
 #include "IResearchLinkMeta.h"
+#include "IResearchVPackTermAttribute.h"
 #include "VelocyPackHelper.h"
 
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+#include "analysis/token_attributes.hpp"
 #include "search/filter.hpp"
 #include "store/data_output.hpp"
+#include "index/norm.hpp"
+
 
 namespace iresearch {
 
-class boolean_filter;  // forward declaration
-struct data_output;    // forward declaration
-class token_stream;    // forward declaration
+class boolean_filter;
+struct data_output;
+class token_stream;
+class numeric_token_stream;
+class boolean_token_stream;
 
+namespace analysis {
+class analyzer;
+}  // namespace analysis
 }  // namespace iresearch
 
 namespace arangodb {
@@ -95,9 +104,12 @@ struct Field {
     return _name;
   }
 
-  irs::flags const& features() const {
-    TRI_ASSERT(_features);
-    return *_features;
+  irs::features_t features() const noexcept {
+    return _fieldFeatures;
+  }
+
+  irs::IndexFeatures index_features() const noexcept {
+    return _indexFeatures;
   }
 
   irs::token_stream& get_tokens() const {
@@ -113,11 +125,12 @@ struct Field {
     return true;
   }
 
-  irs::flags const* _features{&irs::flags::empty_instance()};
-  std::shared_ptr<irs::token_stream> _analyzer;
+  AnalyzerPool::CacheType::ptr _analyzer;
   irs::string_ref _name;
   irs::bytes_ref _value;
   ValueStorage _storeValues;
+  irs::features_t _fieldFeatures;
+  irs::IndexFeatures _indexFeatures;
 };  // Field
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,6 +164,9 @@ class FieldIterator {
                          FieldMeta const*& rootMeta,
                          IteratorValue const& value);
 
+  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
+                                         VPackSlice slice);
+
   struct Level {
     Level(velocypack::Slice slice,
           size_t nameLength,
@@ -170,8 +186,6 @@ class FieldIterator {
     TRI_ASSERT(!_stack.empty());
     return _stack.back();
   }
-
-  IteratorValue const& topValue() noexcept { return top().it.value(); }
 
   // disallow copy and assign
   FieldIterator(FieldIterator const&) = delete;
@@ -196,7 +210,13 @@ class FieldIterator {
   arangodb::transaction::Methods* _trx;
   irs::string_ref _collection;
   Field _value;  // iterator's value
-  IndexId _linkId;    
+  IndexId _linkId;
+
+  // Support for outputting primitive type from analyzer
+  AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
+  VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
+  PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
+
   bool _isDBServer;
 }; // FieldIterator
 
@@ -245,4 +265,3 @@ struct StoredValue {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

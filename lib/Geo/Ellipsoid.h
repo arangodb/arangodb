@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GEO_ELLIPSOID_H
-#define ARANGOD_GEO_ELLIPSOID_H 1
+#pragma once
 
 #include <cstddef>
 
@@ -64,5 +63,4 @@ Ellipsoid const& ellipsoidFromString(const char* ptr, std::size_t len);
 }  // namespace geo
 }  // namespace arangodb
 
-#endif  // ARANGOD_GEO_ELLIPSOID_H
 

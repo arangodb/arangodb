@@ -22,15 +22,14 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_LEVEL_H
-#define ARANGODB_LOGGER_LOG_LEVEL_H 1
+#pragma once
 
 #include <iosfwd>
 
 #include "Basics/operating-system.h"
 
-#ifdef TRI_UNDEF_ERR
-#undef ERR
+#ifdef _WIN32
+#undef DEBUG
 #endif
 
 namespace arangodb {
@@ -46,5 +45,3 @@ enum class LogLevel {
 }
 
 std::ostream& operator<<(std::ostream&, arangodb::LogLevel);
-
-#endif

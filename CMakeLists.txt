@@ -95,7 +95,7 @@ option(USE_MINIMAL_DEBUGINFO "use minimal debug symbols for builds containing de
 # ARANGODB_RPM_REVISION
 
 set(ARANGODB_VERSION_MAJOR "3")
-set(ARANGODB_VERSION_MINOR "8")
+set(ARANGODB_VERSION_MINOR "9")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
@@ -375,7 +375,7 @@ endif()
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
+  "${CMAKE_CURRENT_SOURCE_DIR}/ARANGO-VERSION"
   NEWLINE_STYLE UNIX
 )
 
@@ -405,6 +405,35 @@ else ()
   set(ARANGODB_BUILD_REPOSITORY "")
   set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
 endif()
+
+if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/enterprise/.git")
+  execute_process(
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+
+    COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
+    OUTPUT_VARIABLE GIT_OUTPUT)
+
+  # this may fail on shallow clones that only knows about a limited number of commits.
+  # if there is an older merged revision the head, it may not be available to git.
+  if (NOT GIT_OUTPUT)
+      set(ENTERPRISE_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
+      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
+    else()
+      string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
+      set(ENTERPRISE_BUILD_REPOSITORY ${REPOSITORY_VERSION})
+      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
+    endif()
+else ()
+  set(ENTERPRISE_BUILD_REPOSITORY "")
+  set(HAVE_ENTERPRISE_BUILD_REPOSITORY "0")
+endif()
+
+if (DEFINED OSKAR_BUILD_REPOSITITORY)
+  set(HAVE_OSKAR_BUILD_REPOSITORY "1")
+else ()
+  set(OSKAR_BUILD_REPOSITORY "")
+  set(HAVE_OSKAR_BUILD_REPOSITORY "0")
+endif ()
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-repository.h.in"
@@ -556,8 +585,8 @@ else ()
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.3")
-    message(WARNING "ArangoDB requires g++ 9.3 or newer, building with older compiler versions is unsupported")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
+    message(WARNING "ArangoDB requires g++ 10.0 or newer, building with older compiler versions is unsupported")
   elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "10.9.9")
     message(WARNING "ArangoDB doesn't support g++ 11.0 yet, building with newer compiler versions is unsupported")
   endif()
@@ -612,13 +641,6 @@ if (MSVC)
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
   add_definitions("-DFD_SETSIZE=8192")
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
-  add_definitions("-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS=1") # try to remove this when
-                                                                 # boost is upgraded to 1.70 or later
-
-  # https://blogs.msdn.microsoft.com/vcblog/2016/04/14/stl-fixes-in-vs-2015-update-2/
-  # https://connect.microsoft.com/VisualStudio/feedback/details/1892487
-  # http://lists.boost.org/boost-users/2016/04/85968.php
-  add_definitions("-D_ENABLE_ATOMIC_ALIGNMENT_FIX")
 
   # bcrypt is needed for SSL
   set(MSVC_LIBS Shlwapi.lib;crypt32.lib;bcrypt.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)
@@ -741,14 +763,6 @@ endif (ASM_OPTIMIZATIONS)
 ################################################################################
 ## MAINTAINER MODE
 ################################################################################
-
-option(UNCONDITIONALLY_BUILD_LOG_MESSAGES
-  "whether log strings should be generated regardless of active loglevel"
-  OFF
-  )
-if (UNCONDITIONALLY_BUILD_LOG_MESSAGES)
-  add_definitions("-DARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES=1")
-endif()
 
 option(USE_MAINTAINER_MODE
   "whether we want to have assertions and other development features"
@@ -892,6 +906,53 @@ add_definitions(-DNDEBUG)
 ## FLAGS
 ################################################################################
 
+include(CheckCCompilerFlag)
+include(CheckCXXCompilerFlag)
+
+# Tests whether an argument can be passed to the C compiler without diagnostics,
+# and appends it to the first variable if possible.
+# If called with multiple arguments, they are tested and possibly appended
+# independently.
+function(add_c_flags_if_supported var)
+  foreach(flag ${ARGN})
+    set(flag_var_name "C_COMPILER_SUPPORTS_${flag}")
+    # Note that this compiles a test file, also using CMAKE_C_FLAGS, which
+    # may thus affect the result.
+    # Also note that check_c_compiler_flag *internally caches* the result for
+    # per *var_name*, forcing us to use a unique variable for each call with the
+    # same option.
+    # An alternative (albeit more costly) would be to unset the variable each time.
+    check_c_compiler_flag(${flag} "${flag_var_name}")
+    set(is_supported ${${flag_var_name}})
+    if(is_supported)
+      set(${var} "${${var}} ${flag}")
+    endif()
+  endforeach()
+  set(${var} "${${var}}" PARENT_SCOPE)
+endfunction()
+
+# Tests whether an argument can be passed to the C++ compiler without diagnostics,
+# and appends it to the first variable if possible.
+# If called with multiple arguments, they are tested and possibly appended
+# independently.
+function(add_cxx_flags_if_supported var)
+  foreach(flag ${ARGN})
+    set(flag_var_name "CXX_COMPILER_SUPPORTS_${flag}")
+    # Note that this compiles a test file, also using CMAKE_CXX_FLAGS, which
+    # may thus affect the result.
+    # Also note that check_cxx_compiler_flag *internally caches* the result for
+    # per *var_name*, forcing us to use a unique variable for each call with the
+    # same option.
+    # An alternative (albeit more costly) would be to unset the variable each time.
+    check_cxx_compiler_flag(${flag} "${flag_var_name}")
+    set(is_supported ${${flag_var_name}})
+    if(is_supported)
+      set(${var} "${${var}} ${flag}")
+    endif()
+  endforeach()
+  set(${var} "${${var}}" PARENT_SCOPE)
+endfunction()
+
 if (VERBOSE)
   message(STATUS)
 endif ()
@@ -924,6 +985,7 @@ if (MSVC)
     add_definitions(/Z7)
   endif ()
 
+  add_definitions(/bigobj)
 else () # NOT MSVC
   set(EXTRA_C_FLAGS "")
   set(EXTRA_CXX_FLAGS "")
@@ -932,6 +994,9 @@ else () # NOT MSVC
     message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
     set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
+    endif()
   elseif (CMAKE_COMPILER_IS_CLANG)
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
@@ -994,6 +1059,13 @@ else () # NOT MSVC
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
 
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+      # On Darwin -fstandalone-debug is enabled by default, so we don't need
+      # to add it for AppleClang.
+      set(CMAKE_CXX_FLAGS_DEBUG             "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")
+      set(CMAKE_CXX_FLAGS_RELWITHDEBINFO    "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fstandalone-debug")
+  endif ()
+
 endif ()
 
 # put together the final flags
@@ -1026,7 +1098,6 @@ if(ARANGODB_DEBUG_CMAKE)
   endforeach()
   message( STATUS "DirDefs: ${DirDefs}" )
 endif()
-
 
 ################################################################################
 ## OpenSSL
@@ -1185,7 +1256,7 @@ include_directories(${ROCKSDB_INCLUDE_DIR})
 
 set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
-add_dependencies(rocksdb snappy-static)
+add_dependencies(rocksdb snappy)
 
 if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc_build)
@@ -1252,7 +1323,7 @@ if (USE_MAINTAINER_MODE)
 
   set(ERROR_FILES
     lib/Basics/voc-errors.h
-    lib/Basics/voc-errors.cpp
+    lib/Basics/error-registry.h
     js/common/bootstrap/errors.js
   )
 
@@ -1265,7 +1336,7 @@ if (USE_MAINTAINER_MODE)
       COMMAND ${PYTHON_EXECUTABLE} ./utils/generateErrorfile.py ./${ERRORS_DAT} ./${m}.tmp
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
       COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT}
+      DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT} ./utils/generateErrorfile.py
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       COMMENT  "Building errors files ${m}"
       VERBATIM
@@ -1278,7 +1349,6 @@ if (USE_MAINTAINER_MODE)
 
   set(EXIT_CODE_FILES
     lib/Basics/exitcodes.h
-    lib/Basics/exitcodes.cpp
     js/common/bootstrap/exitcodes.js
     Installation/Windows/Plugins/exitcodes.nsh
   )
@@ -1292,7 +1362,7 @@ if (USE_MAINTAINER_MODE)
       COMMAND ${PYTHON_EXECUTABLE} ./utils/generateExitCodesFiles.py ./${EXIT_CODES_DAT} ./${m}.tmp
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
       COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT}
+      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ./utils/generateExitCodesFiles.py
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       COMMENT  "Building exitcode files ${m}"
       VERBATIM

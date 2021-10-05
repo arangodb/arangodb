@@ -104,7 +104,7 @@ class RemoveExecutorTestPatterns
 TEST_F(RemoveExecutorTest, remove_non_existent_assert_error) {
   std::string query = std::string("REMOVE { _key: \"invalidFoo\"} IN " + collectionName);
 
-  AssertQueryFailsWith(vocbase, query, 1202);
+  AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
 TEST_F(RemoveExecutorTest, remove_non_existent_ignore_error) {

@@ -71,7 +71,8 @@ static void VerifyAttributes(VPackSlice result, std::string const& colName,
 }
 
 static void VerifyNumbers(VPackSlice result, std::string const& colName,
-                          std::string const& sName, uint64_t testTotal, uint64_t testCurrent) {
+                          std::string const& sName, uint64_t testTotal, uint64_t testCurrent,
+                          double testFollowerPercent) {
   ASSERT_TRUE(result.isObject());
 
   VPackSlice col = result.get(colName);
@@ -93,6 +94,14 @@ static void VerifyNumbers(VPackSlice result, std::string const& colName,
   VPackSlice current = progress.get("current");
   ASSERT_TRUE(current.isNumber());
   ASSERT_EQ(current.getNumber<uint64_t>(), testCurrent);
+
+  VPackSlice pct = progress.get("followerPercent");
+  if (testFollowerPercent >= 0.0) {
+    ASSERT_TRUE(pct.isNumber());
+    ASSERT_DOUBLE_EQ(pct.getDouble(), testFollowerPercent * double(100.0));
+  } else {
+    ASSERT_TRUE(pct.isNull());
+  }
 }
 
 static std::unique_ptr<fuerte::Response> generateCountResponse(uint64_t count) {
@@ -329,7 +338,7 @@ TEST_F(ShardDistributionReporterTest,
     ShardDistributionReporter testee(&ci, sender);
     testee.getDistributionForDatabase(dbname, resultBuilder);
     VPackSlice result = resultBuilder.slice();
-
+  
     ASSERT_TRUE(result.isObject());
 
     {
@@ -653,6 +662,12 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice current = progress.get("current");
             ASSERT_TRUE(current.isNumber());
             ASSERT_EQ(current.getNumber<uint64_t>(), shard2LowFollowerCount);
+            
+            VPackSlice pct = progress.get("followerPercent");
+            ASSERT_TRUE(pct.isNumber());
+            
+            VPackSlice syncing = progress.get("followersSyncing");
+            ASSERT_TRUE(syncing.isNumber());
           }
         }
 
@@ -699,6 +714,12 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice current = progress.get("current");
             ASSERT_TRUE(current.isNumber());
             ASSERT_TRUE(current.getNumber<uint64_t>() == shard3FollowerCount);
+            
+            VPackSlice pct = progress.get("followerPercent");
+            ASSERT_TRUE(pct.isNumber());
+            
+            VPackSlice syncing = progress.get("followersSyncing");
+            ASSERT_TRUE(syncing.isNumber());
           }
         }
       }
@@ -844,7 +865,7 @@ TEST_F(ShardDistributionReporterTest,
         ShardDistributionReporter testee(&ci, sender);
         testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
 
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount);
+        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount, double(smallerFollowerCount + largerFollowerCount) / double(2.0) / double(leaderCount));
       }
     }
 
@@ -857,7 +878,8 @@ TEST_F(ShardDistributionReporterTest,
         ShardDistributionReporter testee(&ci, sender);
         testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
 
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount);
+        // follower has more docs than leader. cap follower pct to 1.0
+        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount, 1.0);
       }
     }
 
@@ -870,7 +892,8 @@ TEST_F(ShardDistributionReporterTest,
         ShardDistributionReporter testee(&ci, sender);
         testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
 
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount);
+        // follower has more docs than leader. cap follower pct to 1.0
+        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount, 1.0);
       }
     }
   }
@@ -1073,7 +1096,7 @@ TEST_F(ShardDistributionReporterTest,
     VPackBuilder resultBuilder;
     ShardDistributionReporter testee(&ci, sender);
     testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
-    VerifyNumbers(resultBuilder.slice(), colName, s1, 1, 0);
+    VerifyNumbers(resultBuilder.slice(), colName, s1, 1, 0, -1.0);
   }
 }
 
@@ -1126,7 +1149,7 @@ TEST_F(ShardDistributionReporterTest,
     VPackBuilder resultBuilder;
     ShardDistributionReporter testee(&ci, sender);
     testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
-    VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount);
+    VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount, double(largerFollowerCount) / 1.0 / double(leaderCount));
   }
 }
 
@@ -1178,6 +1201,6 @@ TEST_F(ShardDistributionReporterTest,
     VPackBuilder resultBuilder;
     ShardDistributionReporter testee(&ci, sender);
     testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
-    VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, 0);
+    VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, 0, -1.0);
   }
 }

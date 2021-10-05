@@ -179,7 +179,7 @@ TEST_F(CleanUpLostCollectionTest, clean_up_a_lost_collection_when_leader_is_fail
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  Supervision::cleanupLostCollections(baseStructure("arango"), &agent, jobId);
+  Supervision::cleanupLostCollections(baseStructure.getOrCreate("arango"), &agent, jobId);
   Verify(Method(mockAgent, write));
 }
 

@@ -1,0 +1,17 @@
+name: arangodb_scheduler_num_awake_threads
+renamedFrom: arangodb_scheduler_awake_threads
+introducedIn: "3.8.0"
+help: |
+  Number of awake worker threads.
+unit: number
+type: gauge
+category: Scheduler
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  The number of worker threads currently working on some job or spinning while
+  waiting for new work (i.e., not sleeping).

@@ -102,7 +102,7 @@ class CalculationExecutorTest
         outRegID(1),
         inRegID(0),
         registerInfos(RegIdSet{inRegID}, RegIdSet{outRegID},
-                      RegisterId(1) /*in width*/, RegisterId(2) /*out width*/,
+                      1 /*in width*/, 2 /*out width*/,
                       RegIdSet{} /*to clear*/, RegIdSetStack{{}} /*to keep*/),
         executorInfos(outRegID /*out reg*/, *fakedQuery.get() /*query*/, expr /*expression*/,
                       std::vector<Variable const*>{&var} /*expression input variables*/,

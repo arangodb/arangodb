@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_MFORMAT_H
-#define ARANGODB_PREGEL_MFORMAT_H 1
+#pragma once
 
 #include <cstddef>
 #include "Basics/Common.h"
@@ -91,4 +90,3 @@ struct NumberMessageFormat : public MessageFormat<M> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

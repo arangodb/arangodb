@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STATISTICS_CONNECTION_STATISTICS_H
-#define ARANGOD_STATISTICS_CONNECTION_STATISTICS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -67,6 +66,12 @@ class ConnectionStatistics {
       }
     }
 
+    void SET_END() {
+      if (_stat != nullptr) {
+        _stat->_connEnd = StatisticsFeature::time();
+      }
+    }
+    
     void SET_HTTP();
 
    private:
@@ -108,4 +113,3 @@ class ConnectionStatistics {
 };
 }  // namespace arangodb
 
-#endif

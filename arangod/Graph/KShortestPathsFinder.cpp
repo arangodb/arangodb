@@ -24,6 +24,7 @@
 #include "KShortestPathsFinder.h"
 
 #include "Aql/AqlValue.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ServerState.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -43,6 +44,7 @@ using namespace arangodb::graph;
 
 KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
     : ShortestPathFinder(options),
+      _resourceMonitor(options.resourceMonitor()),
       _left(FORWARD),
       _right(BACKWARD) {
   // cppcheck-suppress *
@@ -51,12 +53,26 @@ KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
   _backwardCursor = options.buildCursor(true);
 }
 
-KShortestPathsFinder::~KShortestPathsFinder() = default;
+KShortestPathsFinder::~KShortestPathsFinder() {
+  try {
+    // necessary to revert memory usage trackers
+    clear();
+  } catch (...) {}
+}
 
 void KShortestPathsFinder::clear() {
   _shortestPaths.clear();
-  _candidatePaths.clear();
+
+  while (!_candidatePaths.empty()) {
+    _resourceMonitor.decreaseMemoryUsage(_candidatePaths.back().memoryUsage());
+    _candidatePaths.pop_back();
+  }
+  TRI_ASSERT(_candidatePaths.empty());
+ 
+  // clear cache and forget about its memory usage
+  _resourceMonitor.decreaseMemoryUsage(_vertexCache.size() * vertexCacheEntryMemoryUsage());
   _vertexCache.clear();
+
   _traversalDone = true;
 }
 
@@ -68,10 +84,7 @@ bool KShortestPathsFinder::startKShortestPathsTraversal(
   _start = arangodb::velocypack::StringRef(start);
   _end = arangodb::velocypack::StringRef(end);
 
-  _vertexCache.clear();
-  _shortestPaths.clear();
-  _candidatePaths.clear();
-
+  clear();
   _traversalDone = false;
 
   TRI_IF_FAILURE("Travefalse") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
@@ -86,8 +99,6 @@ bool KShortestPathsFinder::computeShortestPath(VertexRef const& start, VertexRef
   _left.reset(start);
   _right.reset(end);
   VertexRef join;
-
-  result.clear();
 
   auto currentBest = std::optional<double>{};
 
@@ -104,6 +115,7 @@ bool KShortestPathsFinder::computeShortestPath(VertexRef const& start, VertexRef
     }
   }
 
+  result.clear();
   if (currentBest.has_value()) {
     reconstructPath(_left, _right, join, result);
     return true;
@@ -115,8 +127,21 @@ bool KShortestPathsFinder::computeShortestPath(VertexRef const& start, VertexRef
 void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(VertexRef vertex,
                                                              Direction direction,
                                                              std::vector<Step>*& res) {
-  auto lookup = _vertexCache.try_emplace(vertex, FoundVertex(vertex)).first;
-  auto& cache = lookup->second;  // want to update the cached vertex in place
+  // track memory usage for one more item
+  // if we can't insert the item into the cache, it means the item is
+  // already in the cache. then we are not responsible for tracking its memory
+  // usage.
+  ResourceUsageScope guard(_resourceMonitor, vertexCacheEntryMemoryUsage());
+  
+  auto result = _vertexCache.try_emplace(vertex, FoundVertex(vertex));
+
+  if (result.second) {
+    // successful insert - now _vertexCache has taken over responsibility
+    // for memory usage tracking
+    guard.steal();
+  }
+
+  auto& cache = result.first->second;  // want to update the cached vertex in place
 
   switch (direction) {
     case BACKWARD: 
@@ -241,6 +266,9 @@ void KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
 
 void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
                                            VertexRef const& join, Path& result) {
+  // track memory used for reconstructing the path
+  ResourceUsageScope guard(_resourceMonitor);
+
   result.clear();
   TRI_ASSERT(!join.empty());
   result._vertices.emplace_back(join);
@@ -250,6 +278,9 @@ void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
   double startToJoin = it->weight();
   result._weight = startToJoin;
   while (it != nullptr && it->getKey() != left.center()) {
+    // may throw
+    guard.increase(Path::pathItemMemoryUsage());
+
     result._vertices.push_front(it->_pred);
     result._edges.push_front(it->_edge);
     result._weights.push_front(it->_weight);
@@ -263,24 +294,30 @@ void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
   double joinToEnd = it->weight();
   result._weight += joinToEnd;
   while (it != nullptr && it->getKey() != right.center()) {
+    // may throw
+    guard.increase(Path::pathItemMemoryUsage());
+
     result._vertices.emplace_back(it->_pred);
     result._edges.emplace_back(it->_edge);
     it = right._frontier.find(it->_pred);
     TRI_ASSERT(it != nullptr);  // should run into 0 weight before
+    // cppcheck-suppress nullPointerRedundantCheck
     result._weights.emplace_back(startToJoin + (joinToEnd - it->_weight));
   }
 
   TRI_IF_FAILURE("TraversalOOMPath") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+
+  // we don't commit the memory usage to the _resourceMonitor here
+  // intentionally. we will do this later at the call site.
 }
 
 bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
   VertexSet forbiddenVertices;
   EdgeSet forbiddenEdges;
   TRI_ASSERT(!_shortestPaths.empty());
-  auto& lastShortestPath = _shortestPaths.back();
-  bool available = false;
+  auto const& lastShortestPath = _shortestPaths.back();
 
   for (size_t i = lastShortestPath._branchpoint; i + 1 < lastShortestPath.length(); ++i) {
     auto& spur = lastShortestPath._vertices[i];
@@ -315,6 +352,11 @@ bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
     // abuse result variable for some intermediate calculations here...
     // the "real" result is only calculated at the very end of this method
     result.clear();
+
+    // computeShortestPath will internally track memory usage for result,
+    // however it won't commit the memory usage, because result is only
+    // temporary. if we use the result for something else later, we will store
+    // it in _candidatePaths and track its memory usage there
     if (computeShortestPath(spur, _end, forbiddenVertices, forbiddenEdges, result)) {
       _candidate.clear();
       _candidate.append(lastShortestPath, 0, i);
@@ -326,17 +368,29 @@ bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
                           return v._weight >= _candidate._weight;
                         });
       if (it == _candidatePaths.end() || !(*it == _candidate)) {
+        // track memory usage for the path path
+        ResourceUsageScope guard(_resourceMonitor, _candidate.memoryUsage());
         _candidatePaths.emplace(it, std::move(_candidate));
+
+        // successful insert - now _candidatePaths has taken over responsibility
+        // for memory usage tracking
+        guard.steal();
       }
     }
   }
     
+  // only used for function return value, which is currently ignored
+  bool available = false; 
+
   result.clear();
 
   if (!_candidatePaths.empty()) {
     auto const& p = _candidatePaths.front();
     result.append(p, 0, p.length() - 1);
     result._branchpoint = p._branchpoint;
+   
+    // count down the memory usage again
+    _resourceMonitor.decreaseMemoryUsage(p.memoryUsage());
     _candidatePaths.pop_front();
     available = true;
   }
@@ -393,8 +447,6 @@ bool KShortestPathsFinder::getNextPathShortestPathResult(ShortestPathResult& res
 #endif
 
 bool KShortestPathsFinder::getNextPathAql(arangodb::velocypack::Builder& result) {
-  _tempPath.clear();
-
   if (getNextPath(_tempPath)) {
     result.clear();
     result.openObject();
@@ -425,6 +477,11 @@ bool KShortestPathsFinder::getNextPathAql(arangodb::velocypack::Builder& result)
 }
 
 bool KShortestPathsFinder::skipPath() {
-  _tempPath.clear();
   return getNextPath(_tempPath);
+}
+
+size_t KShortestPathsFinder::vertexCacheEntryMemoryUsage() const noexcept {
+  return 16 /*arbitrary*/ + 
+         sizeof(typename decltype(_vertexCache)::key_type) + 
+         sizeof(typename decltype(_vertexCache)::value_type);
 }

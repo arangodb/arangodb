@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_STORAGE_ENGINE_ROCKSDB_OPTION_FEATURE_H
-#define ARANGODB_STORAGE_ENGINE_ROCKSDB_OPTION_FEATURE_H 1
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -121,4 +120,3 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
 
 }  // namespace arangodb
 
-#endif

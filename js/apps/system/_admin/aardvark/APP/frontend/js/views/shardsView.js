@@ -10,13 +10,14 @@
     interval: 10000,
     knownServers: [],
     pending: false,
-    visibleCollection: null,
+    visibleCollections: [],
 
     events: {
+      'click #toggleAllShards': 'toggleAllShards',
       'click #shardsContent .shardLeader span': 'moveShard',
       'click #shardsContent .shardFollowers span': 'moveShardFollowers',
       'click #rebalanceShards': 'rebalanceShards',
-      'click .sectionHeader': 'toggleSections'
+      'click .sectionHeader': 'toggleSection'
     },
 
     initialize: function (options) {
@@ -45,42 +46,98 @@
       delete this.el;
       return this;
     },
+    
+    toggleAllShards: function () {
+      var wasVisible = (this.visibleCollections.length > 0);
+      var self = this;
+      this.visibleCollections = [];
 
-    renderArrows: function (e) {
-      $('#shardsContent .fa-arrow-down').removeClass('fa-arrow-down').addClass('fa-arrow-right');
-      $(e.currentTarget).find('.fa-arrow-right').removeClass('fa-arrow-right').addClass('fa-arrow-down');
+      _.each($('.sectionShard'), function (elem) {
+        var colName = $(elem).attr('id');
+
+        if (wasVisible) {
+          // hide
+          $(elem).next().hide();
+          $(elem).find('.fa-arrow-down').removeClass('fa-arrow-down').addClass('fa-arrow-right');
+        } else {
+          // show
+          self.visibleCollections.push(colName);
+          $(elem).next().show();
+          $(elem).find('.fa-arrow-right').removeClass('fa-arrow-right').addClass('fa-arrow-down');
+        }
+      });
+            
+      self.render(false);
     },
 
-    toggleSections: function (e) {
+    toggleSection: function (e) {
       var colName = $(e.currentTarget).parent().attr('id');
-      this.visibleCollection = colName;
-      $('.sectionShardContent').hide();
-      $(e.currentTarget).next().show();
-      this.renderArrows(e);
-
-      this.getShardDetails(colName);
+      var wasVisible = (this.visibleCollections.indexOf(colName) !== -1);
+      if (wasVisible) {
+        // remove the collection from the array
+        this.visibleCollections = this.visibleCollections.filter(function(c) { return c !== colName; });
+        // hide it
+        $(e.currentTarget).next().hide();
+        $(e.currentTarget).find('.fa-arrow-down').removeClass('fa-arrow-down').addClass('fa-arrow-right');
+      } else {
+        // add the collection to the array
+        this.visibleCollections.push(colName);
+        // show it
+        $(e.currentTarget).next().show();
+        $(e.currentTarget).find('.fa-arrow-right').removeClass('fa-arrow-right').addClass('fa-arrow-down');
+      
+        this.getShardDetails(colName);
+      }
     },
 
     renderShardDetail: function (collection, data) {
-      var percent = 0;
       var inSync = 0;
       var total = 0;
 
+      var percentify = function (value) {
+        if (value > 100) {
+          // do not exceed 100%, because this looks unintuitive. however, it is possible
+          // to get above 100% here because our method simply divides counts, and there
+          // can be more documents on the follower than on the leader during catch-up
+          value = 100;
+        }
+        return value.toFixed(1) + '%';
+      };
+
       _.each(data.results[collection].Plan, function (value, shard) {
+        var shardProgress = '';
+        var followersSyncing = '';
+        var working = '';
+
         if (value.progress) {
-          if (value.progress.current === 0) {
-            var spin = '<span>n/A</span>';
-            $('#' + collection + '-' + shard + ' .shardProgress').html(spin);
-          } else {
-            percent = (value.progress.current / value.progress.total * 100).toString().match(/^-?\d+(?:\.\d{0,2})?/)[0] + '%';
-            $('#' + collection + '-' + shard + ' .shardProgress').html(percent);
+          if (value.progress.hasOwnProperty('followersSyncing') && 
+              value.progress.followersSyncing > 0) {
+            // number of followers currently running the synchronization for the shard
+            followersSyncing = '<span>' + arangoHelper.escapeHtml(value.progress.followersSyncing) + ' follower';
+            if (value.progress.followersSyncing > 1) {
+              // pluralize
+              followersSyncing += 's';
+            }
+            followersSyncing += ' syncing...</span> ';
+            working = ' <i class="fa fa-circle-o-notch fa-spin fa-fw"></i>';
           }
+
+          if (value.progress.hasOwnProperty('followerPercent') &&
+              typeof value.progress.followerPercent === 'number') {
+            shardProgress = percentify(value.progress.followerPercent);
+          } else if (value.progress.current !== 0) {
+            shardProgress = percentify(value.progress.current / value.progress.total * 100);
+          }
+          if (shardProgress === '' || followersSyncing === '') {
+            shardProgress = 'waiting for follower...';
+          }
+
+          shardProgress = '<span>' + arangoHelper.escapeHtml(shardProgress) + '</span>';
         } else {
-          $('#' + collection + '-' + shard + ' .shardProgress').html(
-            '<i class="fa fa-check-circle">'
-          );
+          shardProgress = '<i class="fa fa-check-circle">';
           inSync++;
         }
+        $('#' + collection + '-' + shard + ' .shardProgress').html(followersSyncing + shardProgress + working);
         total++;
       });
 
@@ -309,8 +366,8 @@
             window.setTimeout(function () {
               self.render(false);
             }, 3000);
-            arangoHelper.arangoNotification('Started rebalance process.');
           }
+          arangoHelper.arangoNotification('Started rebalance process.');
         },
         error: function () {
           arangoHelper.arangoError('Could not start rebalance process.');
@@ -375,7 +432,7 @@
 
       this.$el.html(this.template.render({
         collections: ordered,
-        visible: this.visibleCollection
+        visible: this.visibleCollections
       }));
 
       // if we have only one collection to show, automatically open the entry

@@ -21,8 +21,7 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_MEMORY__MAP__POSIX_H
-#define ARANGODB_BASICS_MEMORY__MAP__POSIX_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -81,4 +80,3 @@
 
 #endif
 
-#endif

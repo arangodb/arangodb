@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_IMPORT_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_IMPORT_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
@@ -89,10 +88,11 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief process a single VelocyPack document
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleSingleDocument(SingleCollectionTransaction& trx, VPackBuilder& lineBuilder,
-                           RestImportResult& result, arangodb::velocypack::Builder& babies,
-                           arangodb::velocypack::Slice slice,
-                           bool isEdgeCollection, size_t);
+  ErrorCode handleSingleDocument(SingleCollectionTransaction& trx,
+                                 VPackBuilder& tempBuilder, RestImportResult& result,
+                                 arangodb::velocypack::Builder& babies,
+                                 arangodb::velocypack::Slice slice,
+                                 bool isEdgeCollection, size_t i);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates documents by JSON objects
@@ -183,4 +183,3 @@ class RestImportHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

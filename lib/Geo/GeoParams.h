@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GEO_GEO_PARAMS_H
-#define ARANGOD_GEO_GEO_PARAMS_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
@@ -160,4 +159,3 @@ struct QueryParams {
 }  // namespace geo
 }  // namespace arangodb
 
-#endif

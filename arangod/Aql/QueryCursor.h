@@ -22,8 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_CURSOR_H
-#define ARANGOD_AQL_QUERY_CURSOR_H 1
+#pragma once
 
 #include "Aql/QueryResult.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
@@ -84,11 +83,17 @@ class QueryResultCursor final : public arangodb::Cursor {
 /// cursor is deleted (or query exhausted)
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
-  QueryStreamCursor(std::unique_ptr<aql::Query> q, size_t batchSize, double ttl);
+  QueryStreamCursor(std::shared_ptr<aql::Query> q, size_t batchSize, double ttl);
 
   ~QueryStreamCursor();
 
   void kill() override;
+
+  // Debug method to kill a query at a specific position
+  // during execution. It internally asserts that the query
+  // is actually visible through other APIS (e.g. current queries)
+  // so user actually has a chance to kill it here.
+  void debugKillQuery() override;
 
   size_t count() const override final { return 0; }
 
@@ -118,11 +123,10 @@ class QueryStreamCursor final : public arangodb::Cursor {
   velocypack::UInt8Buffer _extrasBuffer;
   std::deque<SharedAqlItemBlockPtr> _queryResults; /// buffered results
   std::shared_ptr<transaction::Context> _ctx; /// cache context
-  std::unique_ptr<aql::Query> _query;
+  std::shared_ptr<aql::Query> _query;
   /// index of the next to-be-returned row in _queryResults.front()
   size_t _queryResultPos;
   
-  int64_t _exportCount;  // used by RocksDBRestExportHandler (<0 is not used)
   /// used when cursor is owned by V8 transaction
   transaction::Methods::StatusChangeCallback _stateChangeCb;
   
@@ -132,4 +136,3 @@ class QueryStreamCursor final : public arangodb::Cursor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

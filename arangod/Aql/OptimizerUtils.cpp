@@ -62,13 +62,11 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
   ::arangodb::containers::SmallVector<ConditionData*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ConditionData*> conditionData{a};
 
-  auto cleanup = [&conditionData]() -> void {
+  auto sg = arangodb::scopeGuard([&conditionData]() noexcept -> void {
     for (auto& it : conditionData) {
       delete it;
     }
-  };
-
-  TRI_DEFER(cleanup());
+  });
 
   std::vector<arangodb::aql::ConditionPart> parts;
   parts.reserve(n);
@@ -80,6 +78,7 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
     AstNode* sub = root->getMemberUnchecked(i);
 
     TRI_ASSERT(sub != nullptr && sub->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
+    // cppcheck-suppress nullPointerRedundantCheck
     size_t const nAnd = sub->numMembers();
 
     if (nAnd != 1) {
@@ -304,7 +303,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const& sortCondition, size_t itemsInCollection,
     aql::IndexHint const& hint, std::vector<transaction::Methods::IndexHandle>& usedIndexes,
-    arangodb::aql::AstNode*& specializedCondition, bool& isSparse) {
+    arangodb::aql::AstNode*& specializedCondition, bool& isSparse, bool failOnForcedHint) {
   std::shared_ptr<Index> bestIndex;
   double bestCost = 0.0;
   bool bestSupportsFilter = false;
@@ -345,7 +344,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
       // only go in here if we actually have a sort condition and it can in
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
-      // must be sorted in the direction
+      // must be sorted in the same direction
       Index::SortCosts sc =
           idx->supportsSortCondition(&sortCondition, reference, itemsInIndex);
       if (sc.supportsCondition) {
@@ -371,32 +370,39 @@ std::pair<bool, bool> findIndexHandleForAndNode(
       return;
     }
 
-    double totalCost = filterCost;
     if (!sortCondition.isEmpty()) {
       // only take into account the costs for sorting if there is actually
       // something to sort
-      if (supportsSort) {
-        totalCost += sortCost;
-      } else {
-        totalCost +=
-            Index::SortCosts::defaultCosts(itemsInIndex, idx->isPersistent()).estimatedCosts;
+      if (!supportsSort) {
+        sortCost = Index::SortCosts::defaultCosts(itemsInIndex).estimatedCosts;
       }
+    } else {
+      sortCost = 0.0;
     }
+      
+    double totalCost = filterCost + sortCost;
+
+    // the more attributes an index contains, the more useful it will be for projections.
+    double projectionsFactor = 1.0 - ((idx->fields().size() - 1) * 0.02);
+    totalCost *= projectionsFactor;
 
     LOG_TOPIC("7278d", TRACE, Logger::FIXME)
-        << "looking at index: " << idx.get()
+        << "looked at candidate index: " << idx.get()
         << ", isSorted: " << idx->isSorted()
         << ", isSparse: " << idx->sparse()
         << ", fields: " << idx->fields().size()
+        << ", hasSelectivityEstimate: " << idx->hasSelectivityEstimate()
+        << ", selectivityEstimate: " << (idx->hasSelectivityEstimate() ? std::to_string(idx->selectivityEstimate()) : "n/a")
         << ", supportsFilter: " << supportsFilter
         << ", supportsSort: " << supportsSort
-        << ", filterCost: " << (supportsFilter ? filterCost : 0.0)
-        << ", sortCost: " << (supportsSort ? sortCost : 0.0)
-        << ", totalCost: " << totalCost
+        << ", projectionsFactor: " << projectionsFactor
         << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess
         << ", isUnidirectional: " << sortCondition.isUnidirectional()
         << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch()
-        << ", itemsInIndex/estimatedItems: " << itemsInIndex;
+        << ", itemsInIndex/estimatedItems: " << itemsInIndex
+        << ", filterCost: " << filterCost
+        << ", sortCost: " << sortCost
+        << ", totalCost: " << totalCost;
 
     if (bestIndex == nullptr || totalCost < bestCost) {
       bestIndex = idx;
@@ -425,7 +431,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
       }
     }
 
-    if (hint.isForced() && bestIndex == nullptr) {
+    if (hint.isForced() && bestIndex == nullptr && failOnForcedHint) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
           "could not use index hint to serve query; " + hint.toString());
@@ -439,8 +445,19 @@ std::pair<bool, bool> findIndexHandleForAndNode(
   }
 
   if (bestIndex == nullptr) {
+    // intentionally commented out here. can be enabled during development
+    // LOG_TOPIC("3aac4", TRACE, Logger::FIXME) << "- no index used";
     return std::make_pair(false, false);
   }
+
+  LOG_TOPIC("1d732", TRACE, Logger::FIXME)
+      << "selected index: " << bestIndex.get()
+      << ", isSorted: " << bestIndex->isSorted()
+      << ", isSparse: " << bestIndex->sparse()
+      << ", fields: " << bestIndex->fields().size();
+  
+  // intentionally commented out here. can be enabled during development
+  // LOG_TOPIC("4b655", TRACE, Logger::FIXME) << "- picked: " << bestIndex.get();
 
   specializedCondition = bestIndex->specializeCondition(node, reference);
 
@@ -487,7 +504,7 @@ bool getBestIndexHandleForFilterCondition(aql::Collection const& collection,
   std::vector<std::shared_ptr<Index>> usedIndexes;
   if (findIndexHandleForAndNode(indexes, node,
                                 reference, sortCondition, itemsInCollection,
-                                hint, usedIndexes, specializedCondition, isSparse)
+                                hint, usedIndexes, specializedCondition, isSparse, true /*failOnForcedHint*/)
           .first) {
     TRI_ASSERT(!usedIndexes.empty());
     usedIndex = usedIndexes[0];
@@ -515,12 +532,19 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
   bool canUseForSort = false;
   bool isSparse = false;
 
-  for (size_t i = 0; i < root->numMembers(); ++i) {
+  TRI_ASSERT(usedIndexes.empty());
+
+  size_t const n = root->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    // BTS-398: if there are multiple OR-ed conditions, fail only for forced index
+    // hints if no index can be found for _any_ condition part.
     auto node = root->getMemberUnchecked(i);
     arangodb::aql::AstNode* specializedCondition = nullptr;
+    
+    bool failOnForcedHint = (hint.isForced() && i + 1 == n && usedIndexes.empty());
     auto canUseIndex = findIndexHandleForAndNode(indexes, node, reference, *sortCondition,
                                                  itemsInCollection, hint, usedIndexes,
-                                                 specializedCondition, isSparse);
+                                                 specializedCondition, isSparse, failOnForcedHint);
 
     if (canUseIndex.second && !canUseIndex.first) {
       // index can be used for sorting only

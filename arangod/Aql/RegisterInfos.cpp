@@ -65,10 +65,10 @@ RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeable
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   for (RegisterId const inReg : _inRegs) {
-    TRI_ASSERT(inReg < nrInputRegisters);
+    TRI_ASSERT(inReg.isConstRegister() || inReg < nrInputRegisters);
   }
   for (RegisterId const outReg : _outRegs) {
-    TRI_ASSERT(outReg < nrOutputRegisters);
+    TRI_ASSERT(outReg.isConstRegister() || outReg < nrOutputRegisters);
   }
   for (RegisterId const regToClear : _registersToClear) {
     // sic: It's possible that a current output register is immediately cleared!

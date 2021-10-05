@@ -86,6 +86,27 @@ function testSuite() {
   };
 
   return {
+    tearDownAll : function() {
+      // Need to restart without authentication for other tests to succeed:
+      let coordinators = getServers('coordinator');
+      let coordinator = coordinators[0];
+      let instanceInfo = global.instanceInfo;
+      let newInstanceInfo = {
+        arangods: [ coordinator ],
+        endpoint: instanceInfo.endpoint,
+      };
+      let options = global.testOptions;
+      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
+      coordinator.pid = null;
+      console.warn("Cleaning up and restarting coordinator without authentication...", coordinator);
+      let extraOptions = {
+        "server.authentication": "false"
+      };
+      pu.reStartInstance(options, instanceInfo, extraOptions);
+      let aliveStatus = waitForAlive(30, coordinator.url, {});
+      assertEqual(200, aliveStatus);
+    },
+
     testRestartCoordinatorNormal : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
@@ -103,32 +124,6 @@ function testSuite() {
       assertTrue(shutdownStatus);
 
       let extraOptions = {
-        "database.old-system-collections": "true",
-        "server.jwt-secret": jwtSecret
-      };
-      pu.reStartInstance(options, instanceInfo, extraOptions);
-      
-      waitForAlive(30, coordinator.url, {});
-    },
-    
-    testRestartCoordinatorNormalNoOldSys : function() {
-      let coordinators = getServers('coordinator');
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-      let instanceInfo = global.instanceInfo;
-
-      let newInstanceInfo = {
-        arangods: [ coordinator ],
-        endpoint: instanceInfo.endpoint,
-      };
-
-      let options = global.testOptions;
-      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
-      coordinator.pid = null;
-      assertTrue(shutdownStatus);
-
-      let extraOptions = {
-        "database.old-system-collections": "false",
         "server.jwt-secret": jwtSecret
       };
       pu.reStartInstance(options, instanceInfo, extraOptions);
@@ -163,7 +158,6 @@ function testSuite() {
         // assume all db servers are unreachable
         checkAvailability(dbServers, 500);
         let extraOptions = {
-          "database.old-system-collections": "true",
           "server.authentication": "false",
         };
 
@@ -183,51 +177,6 @@ function testSuite() {
         // check that the coordinator is usable again
         let aliveStatus = waitForAlive(20, coordinator.url, {});
         assertEqual(200, aliveStatus);
-      }
-    },
-    
-    testRestartCoordinatorNoDBServersNoAuthenticationNoOldSys : function() {
-      let dbServers = getServers('dbserver');
-      // assume all db servers are reachable
-      checkAvailability(dbServers, 200);
-
-      let coordinators = getServers('coordinator');
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
-      let instanceInfo = global.instanceInfo;
-      let newInstanceInfo = {
-        arangods: [ coordinator ],
-        endpoint: instanceInfo.endpoint,
-      };
-
-      let options = global.testOptions;
-      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
-      coordinator.pid = null;
-      assertTrue(shutdownStatus);
-
-      // make db servers unavailable
-      suspend(dbServers);
-   
-      try {
-        // assume all db servers are unreachable
-        checkAvailability(dbServers, 500);
-        let extraOptions = {
-          "database.old-system-collections": "false",
-          "server.authentication": "false",
-        };
-
-        coordinator.pid = null;
-        coordinator.suspended = true; 
-        pu.reStartInstance(options, instanceInfo, extraOptions);
-       
-        // we expect the coordinator to start eventually
-        let aliveStatus = waitForAlive(20, coordinator.url, {});
-        assertEqual(200, aliveStatus);
-      } finally {
-        // make db servers available again
-        coordinator.suspended = false; 
-        resume(dbServers);
       }
     },
     
@@ -258,7 +207,6 @@ function testSuite() {
         // assume all db servers are unreachable
         checkAvailability(dbServers, 500);
         let extraOptions = {
-          "database.old-system-collections": "false",
           "server.jwt-secret": jwtSecret,
           "server.authentication": "true",
         };
@@ -308,7 +256,6 @@ function testSuite() {
         // assume all db servers are unreachable
         checkAvailability(dbServers, 500);
         let extraOptions = {
-          "database.old-system-collections": "false",
           "server.jwt-secret": jwtSecret,
           "server.authentication": "true",
         };

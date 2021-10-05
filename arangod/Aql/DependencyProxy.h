@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_BLOCK_FETCHER_H
-#define ARANGOD_AQL_BLOCK_FETCHER_H
+#pragma once
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/ExecutionBlock.h"
@@ -102,4 +101,3 @@ class DependencyProxy {
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_BLOCK_FETCHER_H

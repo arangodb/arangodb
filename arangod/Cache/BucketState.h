@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_BUCKET_STATE_H
-#define ARANGODB_CACHE_BUCKET_STATE_H
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -132,4 +131,3 @@ static_assert(sizeof(BucketState) == sizeof(std::uint32_t),
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

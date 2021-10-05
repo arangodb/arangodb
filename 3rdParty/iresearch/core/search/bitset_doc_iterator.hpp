@@ -28,7 +28,6 @@
 #include "search/score.hpp"
 #include "utils/frozen_attributes.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/bitset.hpp"
 
 namespace iresearch {
 
@@ -36,22 +35,14 @@ class bitset_doc_iterator
   : public doc_iterator,
     private util::noncopyable {
  public:
-  bitset_doc_iterator(
-      const bitset::word_t* begin,
-      const bitset::word_t* end) noexcept
-    : cost_(bitset::count(begin, end)),
-      doc_(cost_.estimate()
-        ? doc_limits::invalid()
-        : doc_limits::eof()),
-      begin_(begin),
-      end_(end) {
-    reset();
-  }
+  using word_t = size_t;
+
+  bitset_doc_iterator(const word_t* begin, const word_t* end) noexcept;
 
   virtual bool next() noexcept override final;
   virtual doc_id_t seek(doc_id_t target) noexcept override final;
   virtual doc_id_t value() const noexcept override final { return doc_.value; }
-  virtual attribute* get_mutable(type_info::type_id id) noexcept override;
+  virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override;
 
  protected:
   explicit bitset_doc_iterator(cost::cost_t cost) noexcept
@@ -62,8 +53,8 @@ class bitset_doc_iterator
     reset();
   }
 
-  virtual bool refill(const bitset::word_t** /*begin*/,
-                      const bitset::word_t** /*end*/) {
+  virtual bool refill(const word_t** /*begin*/,
+                      const word_t** /*end*/) {
     return false;
   }
 
@@ -75,8 +66,6 @@ class bitset_doc_iterator
     base_ = doc_limits::invalid() - bits_required<word_t>(); // before the first word
     assert(begin_ <= end_);
   }
-
-  using word_t = bitset::word_t;
 
   cost cost_;
   document doc_;

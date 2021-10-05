@@ -48,6 +48,7 @@ struct background_thread_stats_s {
 	size_t num_threads;
 	uint64_t num_runs;
 	nstime_t run_interval;
+	mutex_prof_data_t max_counter_per_bg_thd;
 };
 typedef struct background_thread_stats_s background_thread_stats_t;
 

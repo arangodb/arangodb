@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_ENGINE_CLUSTER_COLLECTION_H
-#define ARANGOD_CLUSTER_ENGINE_CLUSTER_COLLECTION_H 1
+#pragma once
 
 #include <velocypack/StringRef.h>
 
@@ -81,9 +80,7 @@ class ClusterCollection final : public PhysicalCollection {
   futures::Future<OperationResult> figures(bool details, OperationOptions const& options) override;
 
   /// @brief closes an open collection
-  int close() override;
-  void load() override;
-  void unload() override;
+  ErrorCode close() override;
 
   RevisionId revision(arangodb::transaction::Methods* trx) const override;
   uint64_t numberDocuments(transaction::Methods* trx) const override;
@@ -102,7 +99,7 @@ class ClusterCollection final : public PhysicalCollection {
 
   /// @brief Drop an index with the given iid.
   bool dropIndex(IndexId iid) override;
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 
   std::unique_ptr<IndexIterator> getSortedAllIterator(transaction::Methods* trx) const;
@@ -114,22 +111,19 @@ class ClusterCollection final : public PhysicalCollection {
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
   
-  /// @brief compact-data operation
-  Result compact() override;
-
   void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) override;
 
   Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
-                   std::pair<LocalDocumentId, RevisionId>& result) const override;
+                   std::pair<LocalDocumentId, RevisionId>& result, ReadOwnWrites) const override;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-              IndexIterator::DocumentCallback const& cb) const override;
+              IndexIterator::DocumentCallback const& cb, ReadOwnWrites) const override;
   
-  bool read(transaction::Methods* trx, LocalDocumentId const& token,
-            IndexIterator::DocumentCallback const& cb) const override;
+  Result read(transaction::Methods* trx, LocalDocumentId const& token,
+            IndexIterator::DocumentCallback const& cb, ReadOwnWrites) const override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result) const override;
+                    ManagedDocumentResult& result, ReadOwnWrites) const override;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result, OperationOptions& options) override;
@@ -161,4 +155,3 @@ class ClusterCollection final : public PhysicalCollection {
 
 }  // namespace arangodb
 
-#endif

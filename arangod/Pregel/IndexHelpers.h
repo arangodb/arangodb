@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_PREGEL_INDEX_HELPERS_H
-#define ARANGOD_PREGEL_INDEX_HELPERS_H 1
+#pragma once
 
 #include <memory>
 
@@ -89,4 +88,3 @@ class EdgeCollectionInfo {
 }  // namespace traverser
 }  // namespace arangodb
 
-#endif

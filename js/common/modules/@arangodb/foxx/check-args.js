@@ -29,7 +29,7 @@ const joi = require('joi');
 const util = require('util');
 const statuses = require('statuses');
 const mimeTypes = require('mime-types');
-const mediaTyper = require('media-typer');
+const ct = require('content-type');
 const ArangoError = require('@arangodb').ArangoError;
 const ERROR_BAD_PARAMETER = require('@arangodb').errors.ERROR_BAD_PARAMETER;
 
@@ -38,12 +38,8 @@ function normalizeMimeType (mime) {
     mime = 'application/octet-stream';
   }
   const contentType = mimeTypes.contentType(mime) || mime;
-  const parsed = mediaTyper.parse(contentType);
-  return mediaTyper.format(_.pick(parsed, [
-    'type',
-    'subtype',
-    'suffix'
-  ]));
+  const parsed = ct.parse(contentType);
+  return parsed.type;
 }
 
 function runValidation (methodName, paramName, type, value) {

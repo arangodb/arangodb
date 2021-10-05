@@ -155,7 +155,7 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
     TRI_ASSERT(!this->aggregators.empty());
     TRI_ASSERT(infos.getAggregatedRegisters().size() > j);
     RegisterId const reg = infos.getAggregatedRegisters()[j].second;
-    if (reg != RegisterPlan::MaxRegisterId) {
+    if (reg.value() != RegisterId::maxRegisterId) {
       it->reduce(input.getValue(reg));
     } else {
       it->reduce(EmptyValue);
@@ -165,7 +165,7 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
   TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  if (infos.getCollectRegister() != RegisterPlan::MaxRegisterId) {
+  if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     if (infos.getExpressionVariable() != nullptr) {
       // compute the expression
       input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getVPackOptions(), _builder,
@@ -262,7 +262,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
   }
 
   // set the group values
-  if (infos.getCollectRegister() != RegisterPlan::MaxRegisterId) {
+  if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     TRI_ASSERT(_builder.isOpenArray());
     _builder.close();
 

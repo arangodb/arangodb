@@ -15,11 +15,33 @@ must be equal to *"persistent"*.
 @RESTBODYPARAM{fields,array,required,string}
 an array of attribute paths.
 
-@RESTBODYPARAM{unique,boolean,required,}
+@RESTBODYPARAM{unique,boolean,optional,}
 if *true*, then create a unique index.
 
-@RESTBODYPARAM{sparse,boolean,required,}
+@RESTBODYPARAM{sparse,boolean,optional,}
 if *true*, then create a sparse index.
+
+@RESTBODYPARAM{deduplicate,boolean,optional,}
+The attribute **deduplicate** is supported by array indexes of type *persistent*,
+*hash* or *skiplist*. It controls whether inserting duplicate index values
+from the same document into a unique array index will lead to a unique constraint
+error or not. The default value is *true*, so only a single instance of each
+non-unique index value will be inserted into the index per document. Trying to
+insert a value into the index that already exists in the index will always fail,
+regardless of the value of this attribute.
+
+@RESTBODYPARAM{estimates,boolean,optional,}
+The attribute **estimates** is supported by indexes of type *persistent*. This
+attribute controls whether index selectivity estimates are maintained for the
+index. Not maintaining index selectivity estimates can have a slightly positive
+impact on write performance.
+The downside of turning off index selectivity estimates will be that
+the query optimizer will not be able to determine the usefulness of different
+competing indexes in AQL queries when there are multiple candidate indexes to
+choose from.
+The *estimates* attribute is optional and defaults to *true* if not set. It will
+have no effect on indexes other than *persistent* (with *hash* and *skiplist*
+being mere aliases for *persistent* nowadays).
 
 @RESTDESCRIPTION
 

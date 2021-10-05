@@ -96,7 +96,7 @@ void Parser::parse() {
   TRI_ASSERT(_scanner != nullptr);
   Aqlset_extra(this, _scanner);
 
-  auto guard = scopeGuard([this]() {
+  auto guard = scopeGuard([this]() noexcept {
     Aqllex_destroy(_scanner);
     _scanner = nullptr;
   });
@@ -132,22 +132,22 @@ QueryResult Parser::parseWithDetails() {
 }
 
 /// @brief register a parse error, position is specified as line / column
-void Parser::registerParseError(int errorCode, char const* format,
-                                char const* data, int line, int column) {
+void Parser::registerParseError(ErrorCode errorCode, char const* format,
+                                std::string_view data, int line, int column) {
   char buffer[512];
   // make sure the buffer is always initialized
   buffer[0] = '\0';
   buffer[sizeof(buffer) - 1] = '\0';
 
-  snprintf(buffer, sizeof(buffer) - 1, format, data);
+  snprintf(buffer, sizeof(buffer) - 1, format, data.data());
 
   return registerParseError(errorCode, buffer, line, column);
 }
 
 /// @brief register a parse error, position is specified as line / column
-void Parser::registerParseError(int errorCode, char const* data, int line, int column) {
+void Parser::registerParseError(ErrorCode errorCode, std::string_view data, int line, int column) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
-  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(data.data() != nullptr);
 
   // extract the query string part where the error happened
   std::string const region(queryString().extractRegion(line, column));
@@ -172,11 +172,12 @@ void Parser::registerParseError(int errorCode, char const* data, int line, int c
     errorMessage << '^' << '^' << std::endl;
   }
 
-  _query.warnings().registerError(errorCode, errorMessage.str().c_str());
+  _query.warnings().registerError(errorCode, errorMessage.str());
 }
 
 /// @brief register a warning
-void Parser::registerWarning(int errorCode, char const* data, int line, int column) {
+void Parser::registerWarning(ErrorCode errorCode, std::string_view data,
+                             [[maybe_unused]] int line, [[maybe_unused]] int column) {
   // ignore line and column for now
   _query.warnings().registerWarning(errorCode, data);
 }

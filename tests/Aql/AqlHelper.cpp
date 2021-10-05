@@ -44,7 +44,7 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream, AqlItemBlock const
     stream << " ";
     VPackBuilder builder{};
     builder.openArray();
-    for (RegisterId reg = 0; reg < block.numRegisters(); reg++) {
+    for (RegisterId::value_t reg = 0; reg < block.numRegisters(); reg++) {
       if (reg > 0) {
         stream << ",";
       }
@@ -88,7 +88,7 @@ bool arangodb::aql::operator==(arangodb::aql::AqlItemBlock const& left,
   size_t const rows = left.numRows();
   RegisterCount const regs = left.numRegisters();
   for (size_t row = 0; row < rows; row++) {
-    for (RegisterId reg = 0; reg < regs; reg++) {
+    for (RegisterId::value_t reg = 0; reg < regs; reg++) {
       AqlValue const& l = left.getValueReference(row, reg);
       AqlValue const& r = right.getValueReference(row, reg);
       // Doesn't work for docvecs or ranges

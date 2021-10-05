@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SHADOW_AQL_ITEM_ROW_H
-#define ARANGOD_AQL_SHADOW_AQL_ITEM_ROW_H 1
+#pragma once
 
 #include "Aql/SharedAqlItemBlockPtr.h"
 
@@ -141,4 +140,3 @@ class ShadowAqlItemRow {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

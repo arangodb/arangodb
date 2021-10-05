@@ -219,6 +219,30 @@ void ApplicationServer::run(int argc, char* argv[]) {
   reportServerProgress(State::STOPPED);
 }
 
+// signal the server to initiate a soft shutdown
+void ApplicationServer::initiateSoftShutdown() {
+  LOG_TOPIC("aa452", TRACE, Logger::STARTUP) << "ApplicationServer::initiateSoftShutdown";
+
+  // fowards the begin shutdown signal to all features
+  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+    ApplicationFeature& feature = it->get();
+    if (feature.isEnabled()) {
+      LOG_TOPIC("65421", TRACE, Logger::STARTUP) << (*it).get().name() << "::initiateSoftShutdown";
+      try {
+        feature.initiateSoftShutdown();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("eaf42", ERR, Logger::STARTUP)
+            << "caught exception during initiateSoftShutdown of feature '"
+            << feature.name() << "': " << ex.what();
+      } catch (...) {
+        LOG_TOPIC("53421", ERR, Logger::STARTUP)
+            << "caught unknown exception during initiateSoftShutdown of feature '"
+            << feature.name() << "'";
+      }
+    }
+  }
+}
+
 // signal the server to shut down
 void ApplicationServer::beginShutdown() {
   // fetch the old state, check if somebody already called shutdown, and only
@@ -236,7 +260,7 @@ void ApplicationServer::beginShutdown() {
   LOG_TOPIC("c7911", TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
 
   // make sure that we advance the state when we get out of here
-  auto waitAborter = scopeGuard([this]() {
+  auto waitAborter = scopeGuard([this]() noexcept {
     CONDITION_LOCKER(guard, _shutdownCondition);
 
     _abortWaiting = true;
@@ -290,7 +314,7 @@ void ApplicationServer::apply(std::function<void(ApplicationFeature&)> callback,
 void ApplicationServer::collectOptions() {
   LOG_TOPIC("0eac7", TRACE, Logger::STARTUP) << "ApplicationServer::collectOptions";
 
-  _options->addSection(Section("", "Global configuration", "global options", false, false));
+  _options->addSection(Section("", "general settings", "", "general options", false, false));
 
   _options->addOption("--dump-dependencies", "dump dependency graph",
                       new BooleanParameter(&_dumpDependencies),

@@ -26,15 +26,18 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Random/RandomGenerator.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
+namespace StringUtils = arangodb::basics::StringUtils;
 
 namespace {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -158,11 +161,11 @@ Result FollowerInfo::add(ServerID const& sid) {
   if (!agencyRes.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
       !agencyRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     // "Real error", report and log
-    std::string errorMessage =
+    auto errorMessage = StringUtils::concatT(
         "unable to add follower in agency, timeout in agency CAS operation for "
-        "key " +
-        _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId().id()) +
-        ": " + TRI_errno_string(agencyRes.errorNumber());
+        "key ",
+        _docColl->vocbase().name(), "/", _docColl->planId().id(), ": ",
+        TRI_errno_string(agencyRes.errorNumber()));
     LOG_TOPIC("6295b", ERR, Logger::CLUSTER) << errorMessage;
     agencyRes.reset(agencyRes.errorNumber(), std::move(errorMessage));
   }
@@ -259,11 +262,11 @@ Result FollowerInfo::remove(ServerID const& sid) {
   // rollback:
   _followers = oldFollowers;
   _failoverCandidates = oldFailovers;
-  std::string errorMessage =
+  auto errorMessage = StringUtils::concatT(
       "unable to remove follower from agency, timeout in agency CAS operation "
-      "for key " +
-      _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId().id()) +
-      ": " + TRI_errno_string(agencyRes.errorNumber());
+      "for key ",
+      _docColl->vocbase().name(), "/", _docColl->planId().id(), ": ",
+      TRI_errno_string(agencyRes.errorNumber()));
   LOG_TOPIC("a0dcc", ERR, Logger::CLUSTER) << errorMessage;
   return Result{agencyRes.errorNumber(), std::move(errorMessage)};
 }
@@ -298,33 +301,70 @@ bool FollowerInfo::contains(ServerID const& sid) const {
 
 void FollowerInfo::takeOverLeadership(std::vector<ServerID> const& previousInsyncFollowers,
                                       std::shared_ptr<std::vector<ServerID>> realInsyncFollowers) {
+  auto emptyFollowers = std::make_shared<std::vector<ServerID>>();
+  auto emptyFailoverCandidates = std::make_shared<std::vector<ServerID>>();
+
   // This function copies over the information taken from the last CURRENT into a local vector.
   // Where we remove the old leader and ourself from the list of followers
   WRITE_LOCKER(canWriteLocker, _canWriteLock);
   WRITE_LOCKER(writeLocker, _dataLock);
-  // Reset local structures, if we take over leadership we do not know anything!
-  _followers = realInsyncFollowers ? realInsyncFollowers : std::make_shared<std::vector<ServerID>>();
-  _failoverCandidates = std::make_shared<std::vector<ServerID>>();
-  // We disallow writes until the first write.
-  _canWrite = false;
-  // Take over leadership
-  _theLeader = "";
-  _theLeaderTouched = true;
-  TRI_ASSERT(_failoverCandidates->empty());
+  
+  // all modifications to the internal state are guaranteed to be 
+  // atomic
   if (previousInsyncFollowers.size() > 1) {
     auto ourselves = arangodb::ServerState::instance()->getId();
     auto failoverCandidates =
         std::make_shared<std::vector<ServerID>>(previousInsyncFollowers);
     auto myEntry =
         std::find(failoverCandidates->begin(), failoverCandidates->end(), ourselves);
-    // We are a valid failover follower
-    TRI_ASSERT(myEntry != failoverCandidates->end());
-    // The first server is a different leader! (For some reason the job can be
-    // triggered twice) TRI_ASSERT(myEntry != failoverCandidates->begin());
-    failoverCandidates->erase(myEntry);
+
+    // We expect of course to be one of the fail over candidates. However, if the creation
+    // of the TakeOverLeadership job and it's start leading here are timewise apart, chances
+    // are that Current has been changed in the meantime. The assertion should remain here
+    // to detect any errors during CI.
+    if (myEntry == failoverCandidates->end()) {
+      LOG_TOPIC("c9422", WARN, Logger::CLUSTER)
+          << "invalid failover candidates for FollowerInfo of shard - "
+          << "can happen, when scheduling and starting the leadership "
+          << "takeover are timewise apart, so that the Current entry has expired. "
+          << _docColl->vocbase().name() << "/" << _docColl->name() 
+          << ". our id: " << ourselves << ", failover candidates: "
+          << *failoverCandidates << ", previous in-sync followers: "
+          << previousInsyncFollowers << ", real in-sync followers: " 
+          << (realInsyncFollowers != nullptr ? *realInsyncFollowers : *emptyFollowers)
+          << ", theLeader: " << _theLeader << ", theLeaderTouched; "
+          << std::boolalpha << _theLeaderTouched;
+   
+      TRI_ASSERT(false);
+    } else {
+      // We are a valid failover follower
+      
+      // The first server is a different leader! (For some reason the job can be
+      // triggered twice) TRI_ASSERT(myEntry != failoverCandidates->begin());
+      failoverCandidates->erase(myEntry);
+    }
+
     // Put us in front, put old leader somewhere, we do not really care
-    _failoverCandidates = failoverCandidates;
+    _failoverCandidates = std::move(failoverCandidates);
+  } else {
+    _failoverCandidates = std::move(emptyFailoverCandidates);
   }
+
+  // all the following modifications will be noexcept, so if we get here
+  // this method will not leave anything in a semi-modified state
+  
+  // Reset local structures, if we take over leadership we do not know anything!
+  if (realInsyncFollowers) {
+    _followers = std::move(realInsyncFollowers); 
+  } else {
+    _followers = std::move(emptyFollowers);
+  }
+  
+  // We disallow writes until the first write.
+  _canWrite = false;
+  // Take over leadership
+  _theLeader.clear();
+  _theLeaderTouched = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -509,4 +549,37 @@ VPackBuilder FollowerInfo::newShardEntry(VPackSlice oldValue) const {
     injectFollowerInfoInternal(newValue);
   }
   return newValue;
+}
+
+uint64_t FollowerInfo::newFollowingTermId(ServerID const& s) noexcept {
+  WRITE_LOCKER(guard, _dataLock);
+  uint64_t i = 0;
+  uint64_t prev = 0;
+  auto it = _followingTermId.find(s);
+  if (it != _followingTermId.end()) {
+    prev = it->second;
+  }
+  // We want the random number to be non-zero and different from a previous one:
+  do {
+    i = RandomGenerator::interval(UINT64_MAX);
+  } while (i == 0 || i == prev);
+  try {
+    _followingTermId[s] = i;
+  } catch(std::bad_alloc const&) {
+    i = 1;   // I assume here that I do not get bad_alloc if the key is
+             // already in the map, since it then only has to overwrite
+             // an integer, if the key is not in the map, we default to 1.
+  }
+  return i;
+}
+
+uint64_t FollowerInfo::getFollowingTermId(ServerID const& s) const noexcept {
+  READ_LOCKER(guard, _dataLock);
+  // Note that we assume that find() does not throw!
+  auto it = _followingTermId.find(s);
+  if (it == _followingTermId.end()) {
+    // If not found, we use the default from above:
+    return 1;
+  }
+  return it->second;
 }

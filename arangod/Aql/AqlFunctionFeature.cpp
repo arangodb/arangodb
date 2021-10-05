@@ -195,7 +195,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"ENCODE_URI_COMPONENT", ".", flags, &Functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &Functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &Functions::LevenshteinDistance});
-  add({"LEVENSHTEIN_MATCH", ".,.,.|.,.", flags, &Functions::LevenshteinMatch});  // (attribute, target, max distance, [include transpositions, max terms])
+  add({"LEVENSHTEIN_MATCH", ".,.,.|.,.,.", flags, &Functions::LevenshteinMatch});  // (attribute, target, max distance, [include transpositions, max terms, prefix])
   add({"NGRAM_MATCH", ".,.|.,.", flags, &Functions::NgramMatch}); // (attribute, target, [threshold, analyzer]) OR (attribute, target, [analyzer])
   add({"NGRAM_SIMILARITY", ".,.,.", flags, &Functions::NgramSimilarity}); // (attribute, target, ngram size)
   add({"NGRAM_POSITIONAL_SIMILARITY", ".,.,.", flags, &Functions::NgramPositionalSimilarity}); // (attribute, target, ngram size)
@@ -235,7 +235,7 @@ void AqlFunctionFeature::addNumericFunctions() {
   add({"RADIANS", ".", flags, &Functions::Radians});
   add({"DEGREES", ".", flags, &Functions::Degrees});
   add({"PI", "", flags, &Functions::Pi});
-  
+
   add({"BIT_AND", ".|.", flags, &Functions::BitAnd});
   add({"BIT_OR", ".|.", flags, &Functions::BitOr});
   add({"BIT_XOR", ".|.", flags, &Functions::BitXOr});
@@ -314,6 +314,13 @@ void AqlFunctionFeature::addListFunctions() {
   add({"REPLACE_NTH", ".,.,.|.", flags, &Functions::ReplaceNth});
   add({"INTERLEAVE", ".,.|+", flags, &Functions::Interleave});
 
+  add({"DECAY_GAUSS", ".,.,.,.,.,", flags, &Functions::DecayGauss});
+  add({"DECAY_EXP", ".,.,.,.,.,", flags, &Functions::DecayExp});
+  add({"DECAY_LINEAR", ".,.,.,.,.,", flags, &Functions::DecayLinear});
+
+  add({"COSINE_SIMILARITY", ".,.", flags, &Functions::CosineSimilarity});
+  add({"L1_DISTANCE", ".,.", flags, &Functions::L1Distance});
+  add({"L2_DISTANCE", ".,.", flags, &Functions::L2Distance});
   // special flags:
   // CALL and APPLY will always run on the coordinator and are not deterministic
   // and not cacheable, as we don't know what function is actually gonna be
@@ -474,6 +481,17 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
   add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
   add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
+
+  add({"MAKE_DISTRIBUTE_INPUT", ".,.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
+                           FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard),
+       &Functions::MakeDistributeInput});
+  add({"MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION", ".,.,.",
+       Function::makeFlags(FF::Internal), &Functions::MakeDistributeInputWithKeyCreation});
+  add({"MAKE_DISTRIBUTE_GRAPH_INPUT", ".",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
+                           FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard),
+       &Functions::MakeDistributeGraphInput});
   
   // this is an internal function that is only here for testing. it cannot
   // be invoked by end users, because refering to internal functions from user

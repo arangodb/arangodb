@@ -24,14 +24,18 @@
 #include "RestCollectionHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/MaintenanceFeature.h"
+#include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
@@ -130,7 +134,6 @@ RestStatus RestCollectionHandler::handleCommandGet() {
     return RestStatus::DONE;
   }
 
-  std::string const& sub = suffixes[1];
   _builder.clear();
 
   std::shared_ptr<LogicalCollection> coll;
@@ -141,6 +144,9 @@ RestStatus RestCollectionHandler::handleCommandGet() {
   }
 
   TRI_ASSERT(coll);
+
+  std::string const& sub = suffixes[1];
+  
   if (sub == "checksum") {
     // /_api/collection/<identifier>/checksum
     bool withRevisions = _request->parsedValue("withRevisions", false);
@@ -185,14 +191,48 @@ RestStatus RestCollectionHandler::handleCommandGet() {
     // /_api/collection/<identifier>/count
     initializeTransaction(*coll);
     _ctxt = std::make_unique<methods::Collections::Context>(coll, _activeTrx.get());
-
+    
     bool details = _request->parsedValue("details", false);
+    bool checkSyncStatus = _request->parsedValue("checkSyncStatus", false);
+    // the checkSyncStatus flag is only set in internal requests performed 
+    // by the ShardDistributionReporter. it is used to determine the shard 
+    // synchronization status by asking the maintainance. the functionality
+    // is only available on DB servers. as this is an internal API, it is ok
+    // to make some assumptions about the requests and let everything else 
+    // fail.
+    if (checkSyncStatus) {
+      if (!ServerState::instance()->isDBServer()) {
+        generateError(Result(TRI_ERROR_NOT_IMPLEMENTED, "syncStatus API is only available on DB servers"));
+        return RestStatus::DONE;
+      }
+
+      // details automatically turned off here, as we will not need them
+      details = false;
+    
+      // check if a SynchronizeShard job is currently executing for the specified shard
+      bool isSyncing = server().getFeature<MaintenanceFeature>().hasAction(
+          maintenance::EXECUTING, 
+          name, 
+          arangodb::maintenance::SYNCHRONIZE_SHARD);
+
+      // already put some data into the response
+      _builder.openObject();
+      _builder.add("syncing", VPackValue(isSyncing));
+    }
+
     return waitForFuture(
         collectionRepresentationAsync(*_ctxt,
                                       /*showProperties*/ true,
                                       /*showFigures*/ FiguresType::None,
                                       /*showCount*/ details ? CountType::Detailed : CountType::Standard)
-            .thenValue([this](futures::Unit&&) { standardResponse(); }));
+            .thenValue([this, checkSyncStatus](futures::Unit&&) { 
+              if (checkSyncStatus) {
+                // checkSyncStatus == true, so we opened the _builder on our own
+                // before, and we are now responsible for closing it again.
+                _builder.close();
+              }
+              standardResponse(); 
+            }));
   } else if (sub == "properties") {
     // /_api/collection/<identifier>/properties
     collectionRepresentation(coll,
@@ -283,6 +323,11 @@ RestStatus RestCollectionHandler::handleCommandGet() {
 
 // create a collection
 void RestCollectionHandler::handleCommandPost() {
+  if (ServerState::instance()->isDBServer()) {
+    generateError(Result(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR));
+    return;
+  }
+
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -332,6 +377,7 @@ void RestCollectionHandler::handleCommandPost() {
   _builder.clear();
   std::shared_ptr<LogicalCollection> coll;
   OperationOptions options(_context);
+
   Result res =
       methods::Collections::create(_vocbase,  // collection vocbase
                                    options,
@@ -425,16 +471,12 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     }
 
   } else if (sub == "compact") {
-    res = coll->compact();
+    coll->compact();
 
-    if (res.ok()) {
-      collectionRepresentation(name, /*showProperties*/ false,
-                               /*showFigures*/ FiguresType::None,
-                               /*showCount*/ CountType::None);
-      return standardResponse();
-    }
-    generateError(res);
-    return RestStatus::DONE;
+    collectionRepresentation(name, /*showProperties*/ false,
+                             /*showFigures*/ FiguresType::None,
+                             /*showCount*/ CountType::None);
+    return standardResponse();
   } else if (sub == "responsibleShard") {
     if (!ServerState::instance()->isCoordinator()) {
       res.reset(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
@@ -489,6 +531,25 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       return RestStatus::DONE;
     }
 
+    if (ServerState::instance()->isDBServer() &&
+        (_activeTrx->state()->collection(coll->name(), AccessMode::Type::EXCLUSIVE) == nullptr ||
+         _activeTrx->state()->isReadOnlyTransaction())) {
+      // make sure that the current transaction includes the collection that we want to
+      // write into. this is not necessarily the case for follower transactions that
+      // are started lazily. in this case, we must reject the request.
+      // we _cannot_ do this for follower transactions, where shards may lazily be
+      // added (e.g. if servers A and B both replicate their own write ops to follower
+      // C one after the after, then C will first see only shards from A and then only
+      // from B).
+      res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+          std::string("Transaction with id '") + std::to_string(_activeTrx->tid().id())
+          + "' does not contain collection '" + coll->name()
+          + "' with the required access mode.");
+      generateError(res);
+      _activeTrx.reset();
+      return RestStatus::DONE;
+    }
+  
     return waitForFuture(
       _activeTrx->truncateAsync(coll->name(), opts).thenValue([this, coll, opts](OperationResult&& opres) {
           // Will commit if no error occured.
@@ -724,6 +785,9 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
 
   return std::move(figures)
       .thenValue([=, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {
+        if (figures.fail()) {
+          THROW_ARANGO_EXCEPTION(figures.result);
+        }
         if (figures.buffer) {
           _builder.add("figures", figures.slice());
         }
@@ -761,7 +825,7 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
 
 RestStatus RestCollectionHandler::standardResponse() {
   generateOk(rest::ResponseCode::OK, _builder);
-  _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
+  _response->setHeaderNC(StaticStrings::Location, "/_db/" + StringUtils::urlEncode(_vocbase.name()) + _request->requestPath());
   return RestStatus::DONE;
 }
 

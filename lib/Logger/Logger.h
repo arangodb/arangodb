@@ -52,11 +52,10 @@
 /// Author: Ray Sidney
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOGGER_H
-#define ARANGODB_LOGGER_LOGGER_H 1
+#pragma once
 
-#include <stddef.h>
 #include <atomic>
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <string>
@@ -64,7 +63,6 @@
 #include <vector>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/threads.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogTimeFormat.h"
@@ -86,22 +84,37 @@ struct LogMessage {
   LogMessage& operator=(LogMessage const&) = delete;
 
   LogMessage(char const* function, char const* file, int line,
-             LogLevel level, size_t topicId, std::string&& message, size_t offset)
-      : _function(function),
-        _file(file),
-        _line(line),
-        _level(level),
-        _topicId(topicId),
-        _message(std::move(message)),
-        _offset(offset) {}
+             LogLevel level, size_t topicId, std::string&& message, 
+             uint32_t offset, bool shrunk) noexcept;
 
+  /// @brief whether or no the message was already shrunk
+  bool shrunk() const noexcept { return _shrunk; }
+
+  /// @brief shrink log message to at most maxLength bytes (plus "..." appended)
+  void shrink(std::size_t maxLength);
+
+  /// @brief all details about the log message. we need to
+  /// keep all this data around and not just the big log
+  /// message string, because some LogAppenders will refer
+  /// to individual components such as file, line etc.
+
+  /// @brief function name of log message source code location
   char const* _function;
+  /// @brief file of log message source code location
   char const* _file;
+  /// @brief line of log message source code location
   int const _line;
+  /// @brief log level
   LogLevel const _level;
+  /// @brief id of log topic
   size_t const _topicId;
-  std::string const _message;
-  size_t const _offset;
+  /// @biref the actual log message
+  std::string _message;
+  /// @brief byte offset where actual message starts (i.e. excluding prologue)
+  uint32_t _offset;
+  /// @brief whether or not the log message was already shrunk (used to
+  /// prevent duplicate shrinking of message)
+  bool _shrunk;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,6 +160,7 @@ class Logger {
   static LogTopic AUTHENTICATION;
   static LogTopic AUTHORIZATION;
   static LogTopic BACKUP;
+  static LogTopic BENCH;
   static LogTopic CACHE;
   static LogTopic CLUSTER;
   static LogTopic CLUSTERCOMM;
@@ -162,6 +176,7 @@ class Logger {
   static LogTopic GRAPHS;
   static LogTopic HEARTBEAT;
   static LogTopic HTTPCLIENT;
+  static LogTopic LICENSE;
   static LogTopic MAINTENANCE;
   static LogTopic MEMORY;
   static LogTopic MMAP;
@@ -169,6 +184,7 @@ class Logger {
   static LogTopic PREGEL;
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
+  static LogTopic REPLICATION2;
   static LogTopic REQUESTS;
   static LogTopic RESTORE;
   static LogTopic ROCKSDB;
@@ -250,6 +266,7 @@ class Logger {
 
   static void setRole(char role);
   static void setOutputPrefix(std::string const&);
+  static void setHostname(std::string const&);
   static void setShowIds(bool);
   static bool getShowIds() { return _showIds; };
   static void setShowLineNumber(bool);
@@ -261,8 +278,10 @@ class Logger {
   static void setShowThreadName(bool);
   static void setUseColor(bool);
   static bool getUseColor() { return _useColor; };
-  static void setUseEscaped(bool);
-  static bool getUseEscaped() { return _useEscaped; };
+  static void setUseControlEscaped(bool);
+  static void setUseUnicodeEscaped(bool);
+  static bool getUseControlEscaped() { return _useControlEscaped; };
+  static bool getUseUnicodeEscaped() { return _useUnicodeEscaped; };
   static bool getUseLocalTime() { return LogTimeFormats::isLocalFormat(_timeFormat); }
   static void setTimeFormat(LogTimeFormats::TimeFormat);
   static void setKeepLogrotate(bool);
@@ -274,6 +293,8 @@ class Logger {
   // can be called after fork()
   static void clearCachedPid() { _cachedPid = 0; }
 
+  static bool translateLogLevel(std::string const& l, bool isGeneral, LogLevel& level) noexcept;
+
   static std::string const& translateLogLevel(LogLevel) noexcept;
 
   static void log(char const* logid, char const* function, char const* file, int line,
@@ -284,17 +305,6 @@ class Logger {
                      std::function<void(std::unique_ptr<LogMessage>&)> const& inactive =
                          [](std::unique_ptr<LogMessage>&) -> void {});
 
-#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-  static bool isEnabled(LogLevel level) {
-    return true;
-  }
-  static bool isEnabled(LogLevel level, LogTopic const& topic) {
-    return true;
-  }
-  static bool _isEnabled(LogLevel level, LogLevel topicLevel) {
-    return (int)level <= (int)topicLevel;
-  }
-#else
   static bool isEnabled(LogLevel level) {
     return (int)level <= (int)_level.load(std::memory_order_relaxed);
   }
@@ -303,17 +313,13 @@ class Logger {
                                    ? _level.load(std::memory_order_relaxed)
                                    : topic.level());
   }
-#endif
 
  public:
   static void initialize(application_features::ApplicationServer&, bool);
   static void shutdown();
-  static void shutdownLogThread();
   static void flush() noexcept;
 
  private:
-  static Mutex _initializeMutex;
-
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;
   static std::atomic<LogLevel> _level;
@@ -326,9 +332,9 @@ class Logger {
   static bool _showThreadIdentifier;
   static bool _showThreadName;
   static bool _showRole;
-  static bool _threaded;
   static bool _useColor;
-  static bool _useEscaped;
+  static bool _useControlEscaped;
+  static bool _useUnicodeEscaped;
   static bool _keepLogRotate;
   static bool _logRequestParameters;
   static bool _showIds;
@@ -336,9 +342,27 @@ class Logger {
   static char _role;  // current server role to log
   static TRI_pid_t _cachedPid;
   static std::string _outputPrefix;
+  static std::string _hostname;
 
-  static std::unique_ptr<LogThread> _loggingThread;
+  struct ThreadRef {
+    ThreadRef();
+    ~ThreadRef();
+    
+    ThreadRef(const ThreadRef&) = delete;
+    ThreadRef(ThreadRef&&) = delete;
+    ThreadRef& operator=(const ThreadRef&) = delete;
+    ThreadRef& operator=(ThreadRef&&) = delete;
+    
+    LogThread* operator->() const noexcept { return _thread; }
+    operator bool() const noexcept { return _thread != nullptr; }
+   private:
+    LogThread* _thread;
+  };
+  
+  // logger thread. only populated when threaded logging is selected.
+  // the pointer must only be used with atomic accessors after the ref counter
+  // has been increased. Best to usethe ThreadRef class for this!
+  static std::atomic<std::size_t> _loggingThreadRefs;
+  static std::atomic<LogThread*> _loggingThread;
 };
 }  // namespace arangodb
-
-#endif

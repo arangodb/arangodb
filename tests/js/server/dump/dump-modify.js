@@ -280,7 +280,7 @@ function dumpTestSuite () {
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
-      assertEqual(1000, c.count());
+      assertEqual(1001, c.count());
 
       for (let i = 0; i < 1000; ++i) {
         var doc = c.document(String(7 + (i * 42)));
@@ -293,6 +293,70 @@ function dumpTestSuite () {
       for (let i = 0; i < 1000; ++i) {
         c.save({value: i, more: [ i, i ] });
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test padded keygen
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeygenPadded : function () {
+      var c = db._collection("UnitTestsDumpKeygenPadded");
+      var p = c.properties();
+
+      assertEqual(2, c.type()); // document
+      assertFalse(p.waitForSync);
+      assertEqual("padded", p.keyOptions.type);
+      assertFalse(p.keyOptions.allowUserKeys);
+
+      assertEqual(1, c.getIndexes().length); // just primary index
+      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1001, c.count());
+
+      let allDocs = {};
+      c.toArray().forEach(doc => {
+        allDocs[doc.value] = doc;
+      });
+      let lastKey = "";
+      for (var i = 0; i < 1000; ++i) {
+        var doc = allDocs[i];
+
+        assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
+        assertEqual(i, doc.value);
+        assertEqual({ value: [ i, i ] }, doc.more);
+        lastKey = doc._key;
+      }
+      doc = c.save({});
+      assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test uuid keygen
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeygenUuid : function () {
+      var c = db._collection("UnitTestsDumpKeygenUuid");
+      var p = c.properties();
+
+      assertEqual(2, c.type()); // document
+      assertFalse(p.waitForSync);
+      assertEqual("uuid", p.keyOptions.type);
+      assertFalse(p.keyOptions.allowUserKeys);
+
+      assertEqual(1, c.getIndexes().length); // just primary index
+      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1001, c.count());
+
+      let allDocs = {};
+      c.toArray().forEach(doc => {
+        allDocs[doc.value] = doc;
+      });
+      let docs = [];
+      for (var i = 0; i < 1000; ++i) docs.push({"a": i});
+
+      let savedDocs = c.save(docs);
+      savedDocs.forEach(doc => {
+        assertFalse(allDocs.hasOwnProperty(doc._key), "found " + doc._key + "!");
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -423,6 +487,28 @@ function dumpTestSuite () {
       res = db._query("FOR doc IN " + c.name() + " FILTER doc.value >= 10000 RETURN doc").toArray();
       assertEqual(0, res.length);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test latestId
+////////////////////////////////////////////////////////////////////////////////
+
+    testLatestId : function () {
+      if (arango.getRole() === "COORDINATOR") {
+        // Only executed in the cluster
+        // The following increases /arango/Sync/LatestID in the agency
+        // by 100.000.000 and thus consumes so many cluster wide unique
+        // ids. This is checked below.
+        // Then, after a hotbackup restore, we check in the file
+        // `tests/js/server/dump/dump-cluster.js` (by means of including
+        // `tests/js/server/dump/dump-test.js`) that the lower number
+        // has been stored in the hotbackup and restored in the restore
+        // process.
+        let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(100000000)"));
+        assertTrue(next < 100000000, "expected next uniqid in agency to be less than 100000000, not " + next);
+        next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(100000000)"));
+        assertTrue(next > 100000000, "expected next uniqid in agency to be greater than 100000000, not " + next);
+      }
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test view restoring

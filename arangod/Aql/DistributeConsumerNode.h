@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_DISTRIBUTE_CONSUMER_NODE_H
-#define ARANGOD_AQL_DISTRIBUTE_CONSUMER_NODE_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
@@ -48,10 +47,6 @@ class DistributeConsumerNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override { return DISTRIBUTE_CONSUMER; }
-
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -93,8 +88,8 @@ class DistributeConsumerNode : public ExecutionNode {
   }
 
  protected:
-  void toVelocyPackHelperInternal(arangodb::velocypack::Builder& nodes, unsigned flags,
-                                  std::unordered_set<ExecutionNode const*>& seen) const;
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override;
 
  private:
   /// @brief our own distributeId. If it is set, we will fetch only ata for
@@ -110,4 +105,3 @@ class DistributeConsumerNode : public ExecutionNode {
 
 }  // namespace arangodb::aql
 
-#endif

@@ -45,11 +45,11 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> Re
   auto writeOutput = RegIdSet{};
   RegIdSet toClear{};
   RegIdSetStack toKeep{{}};
-  RegisterId regs = 1;
+  RegisterCount regs = 1;
   for (auto const& b : blocks) {
     if (b != nullptr) {
       // Find the first non-nullptr block
-      regs = static_cast<RegisterId>(b->numRegisters());
+      regs = b->numRegisters();
 
       break;
     }
@@ -60,7 +60,7 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> Re
   // for the rime being no test is showing this behavior.
   // Consider adding data first if the test fails
 
-  for (RegisterId r = 0; r < regs; ++r) {
+  for (RegisterId::value_t r = 0; r < regs; ++r) {
     toKeep.back().emplace(r);
   }
   return {readInput, writeOutput, regs, regs, toClear, toKeep};
@@ -107,7 +107,7 @@ std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlock
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack stack) {
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack const& stack) {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
   traceExecuteEnd(res);

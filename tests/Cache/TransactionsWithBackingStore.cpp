@@ -345,7 +345,7 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
   bool doneRebalancing = false;
   auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
     while (!doneRebalancing) {
-      int status = rebalancer.rebalance();
+      auto status = rebalancer.rebalance();
       if (status != TRI_ERROR_ARANGO_BUSY) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
       } else {

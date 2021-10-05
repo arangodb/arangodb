@@ -47,7 +47,7 @@ WindowBounds::WindowBounds(Type type,
                            AqlValue&& preceding,
                            AqlValue&& following)
     : _type(type) {
-  auto g = scopeGuard([&] {
+  auto g = scopeGuard([&]() noexcept {
     preceding.destroy();
     following.destroy();
   });
@@ -56,21 +56,17 @@ WindowBounds::WindowBounds(Type type,
     auto validate = [&](AqlValue& val) -> int64_t {
       if (val.isNumber()) {
         int64_t v = val.toInt64();
-        if (v < 0) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                         "WINDOW row spec is invalid");
+        if (v >= 0) {
+          return v;
         }
-        return v;
-      }
-      if (val.isString() && (val.slice().isEqualString("unbounded") ||
-                             val.slice().isEqualString("inf"))) {
+      } else if (val.isString() && (val.slice().isEqualString("unbounded") ||
+                 val.slice().isEqualString("inf"))) {
         return std::numeric_limits<int64_t>::max();
-      }
-      if (val.isNone()) {
+      } else if (val.isNone()) {
         return 0;
       }
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "WINDOW row spec is invalid");
+        "WINDOW row spec is invalid; bounds must be positive integers or \"unbounded\"");
     };
     _numPrecedingRows = validate(preceding);
     _numFollowingRows = validate(following);
@@ -78,27 +74,46 @@ WindowBounds::WindowBounds(Type type,
   }
       
   if (Type::Range == type) {
-    if (!(preceding.isString() && following.isString()) &&
-        !(preceding.isNumber() && following.isNumber())) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                                     "WINDOW range spec is invalid");
+    auto checkType = [](AqlValue const& val) {
+      if (!val.isString() && !val.isNumber() && !val.isNone()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "WINDOW range spec is invalid");
+      }
+    };
+    checkType(preceding);
+    checkType(following);
+
+    if ((preceding.isNone() == following.isNone()) &&
+        (preceding.isString() != following.isString())) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "WINDOW range spec is invalid; bounds must be of the same type - "
+                                     "either both are numeric values, or both are ISO 8601 duration strings");
     }
 
-    if (preceding.isString()) {
+    if (preceding.isString() || following.isString()) {
       _rangeType = RangeType::Date;
-      TRI_ASSERT(following.isString());
-      if (!basics::parseIsoDuration(preceding.slice().stringRef(), _precedingDuration)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "WINDOW bound 'preceding' is not a "
-                                       "valid ISO 8601 duration string");
+      if (preceding.isString()) {
+        if (!basics::parseIsoDuration(preceding.slice().stringRef(), _precedingDuration)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "WINDOW range spec is invalid; 'preceding' is not a "
+                                         "valid ISO 8601 duration string");
+        }
+      } else {
+        TRI_ASSERT(preceding.isNone());
       }
-      if (!basics::parseIsoDuration(following.slice().stringRef(), _followingDuration)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "WINDOW bound 'following' is not a "
-                                       "valid ISO 8601 duration string");
+
+      if (following.isString()) {
+        if (!basics::parseIsoDuration(following.slice().stringRef(), _followingDuration)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "WINDOW range spec is invalid; 'following' is not a "
+                                         "valid ISO 8601 duration string");
+        }
+      } else {
+        TRI_ASSERT(following.isNone());
       }
       return;
     }
+
     _rangeType = RangeType::Numeric;
     _precedingNumber = preceding.toDouble();
     _followingNumber = following.toDouble();
@@ -139,7 +154,7 @@ bool WindowBounds::needsFollowingRows() const {
            _followingDuration.minutes > 0 || _followingDuration.seconds > 0 ||
            _followingDuration.milliseconds > 0;
   }
-  TRI_ASSERT(_rangeType == RangeType::Numeric)
+  TRI_ASSERT(_rangeType == RangeType::Numeric);
   return _followingNumber > 0.0;
 }
 
@@ -169,7 +184,7 @@ bool parameterToTimePoint(AqlValue const& value, QueryWarnings& warnings,
     }
     return true;
   }*/
-  warnings.registerWarning(TRI_ERROR_QUERY_INVALID_DATE_VALUE, nullptr);
+  warnings.registerWarning(TRI_ERROR_QUERY_INVALID_DATE_VALUE);
   return false;
 }
 
@@ -232,7 +247,7 @@ WindowBounds::Row WindowBounds::calcRow(AqlValue const& input, QueryWarnings& w)
   bool failed;
   double val = input.toDouble(failed);
   if (failed) {
-    w.registerWarning(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, nullptr);
+    w.registerWarning(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     return {0, 0, 0, /*valid*/ false};
   }
 
@@ -241,26 +256,53 @@ WindowBounds::Row WindowBounds::calcRow(AqlValue const& input, QueryWarnings& w)
 
 void WindowBounds::toVelocyPack(VPackBuilder& b) const {
   switch (_type) {
-    case Type::Row:
-      b.add("preceding", VPackValue(_numPrecedingRows));
-      b.add("following", VPackValue(_numFollowingRows));
+    case Type::Row: {
+      auto translate = [](int64_t v) {
+        if (v == std::numeric_limits<int64_t>::max()) {
+          return VPackValue("unbounded");
+        }
+        return VPackValue(v);
+      };
+      b.add("preceding", translate(_numPrecedingRows));
+      b.add("following", translate(_numFollowingRows));
       break;
-      
+    }
     case Type::Range:
       if (_rangeType == RangeType::Numeric) {
         b.add("preceding", VPackValue(_precedingNumber));
         b.add("following", VPackValue(_followingNumber));
       } else {
         auto makeDuration = [](basics::ParsedDuration const& duration) {
-          std::string p = "P";
-          p.append(std::to_string(duration.years)).append("Y");
-          p.append(std::to_string(duration.months)).append("M");
-          p.append(std::to_string(duration.days)).append("DT");
-          p.append(std::to_string(duration.hours)).append("H");
-          p.append(std::to_string(duration.minutes)).append("M");
-          p.append(std::to_string(duration.seconds)).append(".");
-          p.append(std::to_string(duration.milliseconds)).append("S");
-          return p;
+          std::string result = "P";
+          auto append = [&result](int v, char suffix) {
+            if (v != 0) {
+              result.append(std::to_string(v)).push_back(suffix);
+            }
+          };
+          append(duration.years, 'Y');
+          append(duration.months, 'M');
+          append(duration.weeks, 'W');
+          append(duration.days, 'D');
+          if (duration.hours != 0 || duration.minutes != 0 || duration.seconds != 0 || duration.milliseconds != 0) {
+            result.push_back('T');
+            append(duration.hours, 'H');
+            append(duration.minutes, 'M');
+            if (duration.milliseconds == 0) {
+              append(duration.seconds, 'S');
+            } else {
+              result.append(std::to_string(duration.seconds)).push_back('.');
+              auto ms = std::to_string(duration.milliseconds);
+              // parseIsoDuration already limits the number of decimals in milliseconds
+              TRI_ASSERT(ms.size() <= 3);
+              result.append(3 - ms.size(), '0').append(ms).push_back('S');
+            }
+          }
+          if (result == "P") {
+            // we have an "empty" duration
+            // -> create the shortest ISO string representing such
+            result.append("0D");
+          }
+          return result;
         };
         b.add("preceding", VPackValue(makeDuration(_precedingDuration)));
         b.add("following", VPackValue(makeDuration(_followingDuration)));
@@ -287,12 +329,8 @@ WindowNode::WindowNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 
 WindowNode::~WindowNode() = default;
 
-/// @brief toVelocyPack, for CollectNode
-void WindowNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                    std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+/// @brief doToVelocyPack, for CollectNode
+void WindowNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   if (_rangeVariable) {
     nodes.add(VPackValue("rangeVariable"));
     _rangeVariable->toVelocyPack(nodes);
@@ -313,9 +351,6 @@ void WindowNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   }
 
   _bounds.toVelocyPack(nodes);
-
-  // And close it:
-  nodes.close();
 }
 
 void WindowNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
@@ -327,14 +362,14 @@ void WindowNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, Regist
     auto itOut = getRegisterPlan()->varInfo.find(p.outVar->id);
     TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
     RegisterId outReg = itOut->second.registerId;
-    TRI_ASSERT(outReg < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(outReg.isValid());
 
     RegisterId inReg = RegisterPlan::MaxRegisterId;
     if (Aggregator::requiresInput(p.type)) {
       auto itIn = getRegisterPlan()->varInfo.find(p.inVar->id);
       TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
       inReg = itIn->second.registerId;
-      TRI_ASSERT(inReg < RegisterPlan::MaxRegisterId);
+      TRI_ASSERT(inReg.isValid());
       readableInputRegisters.insert(inReg);
     }
     // else: no input variable required
@@ -366,7 +401,7 @@ std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
     auto itIn = getRegisterPlan()->varInfo.find(_rangeVariable->id);
     TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
     rangeRegister = itIn->second.registerId;
-    TRI_ASSERT(rangeRegister < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(rangeRegister.isValid());
     readableInputRegisters.insert(rangeRegister);
   }
 
@@ -422,6 +457,15 @@ ExecutionNode* WindowNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void WindowNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _rangeVariable = Variable::replace(_rangeVariable, replacements);
+  for (auto& variable : _aggregateVariables) {
+    variable.inVar = Variable::replace(variable.inVar, replacements);
+  }
+}
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void WindowNode::getVariablesUsedHere(VarSet& vars) const {
   if (_rangeVariable) {
@@ -441,8 +485,14 @@ CostEstimate WindowNode::estimateCost() const {
   // we never return more rows than above
   CostEstimate estimate = _dependencies.at(0)->getCost();
   if (_rangeVariable == nullptr) {
-    int64_t numRows = 1 + _bounds.numPrecedingRows() + _bounds.numFollowingRows();
-    estimate.estimatedCost += double(numRows * numRows) * _aggregateVariables.size();
+    uint64_t numRows = 1;
+    if ( _bounds.unboundedPreceding()) {
+      numRows += estimate.estimatedNrItems;
+    } else {
+      numRows += std::min<uint64_t>(estimate.estimatedNrItems, _bounds.numPrecedingRows());
+    }
+    numRows += _bounds.numFollowingRows();
+    estimate.estimatedCost += double(numRows) * double(numRows) * _aggregateVariables.size();
   } else {  // guestimate
     estimate.estimatedCost += 4 * _aggregateVariables.size();
   }

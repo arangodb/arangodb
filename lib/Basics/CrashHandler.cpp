@@ -33,9 +33,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#ifdef _WIN32
+#include <DbgHelp.h>
+#endif
+
 #include <algorithm>
 #include <atomic>
 #include <exception>
+#include <mutex>
 #include <thread>
 
 #include <boost/core/demangle.hpp>
@@ -157,6 +162,14 @@ void appendHexValue(unsigned char const* src, size_t len, char*& dst, bool strip
   if (stripLeadingZeros) {
     *dst++ = '0';
   }
+}
+
+template <typename T>
+void appendHexValue(T value, char*& dst, bool stripLeadingZeros) {
+  static_assert(std::is_integral_v<T> || std::is_pointer_v<T>);
+  unsigned char buffer[sizeof(T)];
+  memcpy(buffer, &value, sizeof(T));
+  appendHexValue(buffer, sizeof(T), dst, stripLeadingZeros);
 }
 
 #ifdef ARANGODB_HAVE_LIBUNWIND
@@ -474,6 +487,85 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 }
 #endif
 
+#ifdef _WIN32
+
+static std::string miniDumpDirectory = "C:\\temp";
+static std::mutex miniDumpLock;
+
+void createMiniDump(EXCEPTION_POINTERS* pointers) {
+  // we have to serialize calls to MiniDumpWriteDump
+  std::lock_guard<std::mutex> lock(miniDumpLock);
+
+  char buffer[4096];
+  memset(&buffer[0], 0, sizeof(buffer));
+
+  time_t rawtime;
+  time(&rawtime);
+  struct tm timeinfo;
+  _gmtime64_s(&timeinfo, &rawtime);
+  char time[20];
+  strftime(time, sizeof(time), "%Y-%m-%dT%H-%M-%S", &timeinfo);
+
+  char filename[MAX_PATH];
+  _snprintf_s(filename, sizeof(filename), "%s\\%s_%d_%d.dmp", miniDumpDirectory.c_str(),
+              time, GetCurrentProcessId(), GetCurrentThreadId());
+  HANDLE hFile = CreateFile(filename, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                            FILE_ATTRIBUTE_NORMAL, NULL);
+
+  if (hFile == INVALID_HANDLE_VALUE) {
+    char* p = &buffer[0];
+    appendNullTerminatedString("Could not open minidump file: ", p);
+    p += arangodb::basics::StringUtils::itoa(GetLastError(), p);
+    LOG_TOPIC("ba80e", WARN, arangodb::Logger::CRASH)
+        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+    return;
+  }
+
+  MINIDUMP_EXCEPTION_INFORMATION exceptionInfo;
+  exceptionInfo.ThreadId = GetCurrentThreadId();
+  exceptionInfo.ExceptionPointers = pointers;
+  exceptionInfo.ClientPointers = FALSE;
+
+  if (MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile,
+                        MINIDUMP_TYPE(MiniDumpNormal | MiniDumpWithProcessThreadData | MiniDumpWithDataSegs),
+                        pointers ? &exceptionInfo : nullptr, nullptr, nullptr)) {
+    char* p = &buffer[0];
+    appendNullTerminatedString("Wrote minidump: ", p);
+    appendNullTerminatedString(filename, p);
+    LOG_TOPIC("93315", INFO, arangodb::Logger::CRASH)
+        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+  } else {
+    char* p = &buffer[0];
+    appendNullTerminatedString("Failed to write minidump: ", p);
+    p += arangodb::basics::StringUtils::itoa(GetLastError(), p);
+    LOG_TOPIC("af06b", WARN, arangodb::Logger::CRASH)
+        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+  }
+
+  CloseHandle(hFile);
+}
+
+LONG CALLBACK unhandledExceptionFilter(EXCEPTION_POINTERS* pointers) {
+  TRI_ASSERT(pointers && pointers->ExceptionRecord);
+
+  {
+    char buffer[4096];
+    memset(&buffer[0], 0, sizeof(buffer));
+    char* p = &buffer[0];
+    appendNullTerminatedString("Unhandled exception: ", p);
+    appendHexValue(pointers->ExceptionRecord->ExceptionCode, p, false);
+    appendNullTerminatedString(" at address ", p);
+    appendHexValue(pointers->ContextRecord->Rip, p, false);
+    appendNullTerminatedString(" in thread ", p);
+    appendHexValue(GetCurrentThreadId(), p, true);
+    LOG_TOPIC("87ff4", INFO, arangodb::Logger::CRASH)
+        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+  } 
+  createMiniDump(pointers);
+  return EXCEPTION_CONTINUE_SEARCH;
+}
+#endif
+
 } // namespace
 
 namespace arangodb {
@@ -496,7 +588,7 @@ void CrashHandler::crash(char const* context) {
 }
 
 /// @brief logs an assertion failure and crashes the program
-void CrashHandler::assertionFailure(char const* file, int line, char const* func, char const* context) {
+void CrashHandler::assertionFailure(char const* file, int line, char const* func, char const* context, const char *message) {
   // assemble an "assertion failured in file:line: message" string
   char buffer[4096];
   memset(&buffer[0], 0, sizeof(buffer));
@@ -513,6 +605,10 @@ void CrashHandler::assertionFailure(char const* file, int line, char const* func
   }
   appendNullTerminatedString(": ", p);
   appendNullTerminatedString(context, 256, p);
+  if (message != nullptr) {
+    appendNullTerminatedString(" ; ", p);
+    appendNullTerminatedString(message, p);
+  }
 
   crash(&buffer[0]);
 }
@@ -580,6 +676,8 @@ void CrashHandler::installCrashHandler() {
   sigaction(SIGILL, &act, nullptr);
   sigaction(SIGFPE, &act, nullptr);
   sigaction(SIGABRT, &act,nullptr);
+#else // _WIN32
+  SetUnhandledExceptionFilter(unhandledExceptionFilter);
 #endif
 
   // install handler for std::terminate()
@@ -618,5 +716,11 @@ void CrashHandler::installCrashHandler() {
     CrashHandler::crash(&buffer[0]);
   });
 }
+
+#ifdef _WIN32
+void CrashHandler::setMiniDumpDirectory(std::string path) {
+  ::miniDumpDirectory = std::move(path);
+}
+#endif
 
 }  // namespace arangodb

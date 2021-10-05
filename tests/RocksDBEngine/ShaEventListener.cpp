@@ -124,13 +124,12 @@ TEST(RocksDBShaCalculatorThread, sha_a_new_file) {
   CFilesSetup s;
   std::string new_sst;
   bool good;
-  int ret_val;
 
   new_sst=s._directory.c_str();
   new_sst+= TRI_DIR_SEPARATOR_CHAR;
   new_sst+="000042.sst";
 
-  ret_val = TRI_WriteFile(new_sst.c_str(), "the quick brown fox", 19);
+  auto ret_val = TRI_WriteFile(new_sst.c_str(), "the quick brown fox", 19);
   EXPECT_EQ(ret_val, TRI_ERROR_NO_ERROR);
 
   good = arangodb::RocksDBShaCalculatorThread::shaCalcFile(new_sst.c_str());
@@ -141,14 +140,13 @@ TEST(RocksDBShaCalculatorThread, delete_matching_sha) {
   CFilesSetup s;
   std::string new_sst, basepath, new_sha;
   bool good;
-  int ret_val;
 
   basepath=s._directory.c_str();
   basepath+= TRI_DIR_SEPARATOR_CHAR;
   basepath+="000069";
   new_sst = basepath + ".sst";
 
-  ret_val = TRI_WriteFile(new_sst.c_str(), "12345 67890 12345 67890", 23);
+  auto ret_val = TRI_WriteFile(new_sst.c_str(), "12345 67890 12345 67890", 23);
   EXPECT_EQ(ret_val, TRI_ERROR_NO_ERROR);
 
   /// not real ssh for the data written above

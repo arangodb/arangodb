@@ -129,14 +129,14 @@ Node createNode(char const* c) {
 
 Node createRootNode() { return createNode(agency); }
 
-Node createAgency() { return createNode(agency)("arango"); }
+Node createAgency() { return createNode(agency).getOrCreate("arango"); }
 
 Node createAgency(TestStructureType const& createTestStructure) {
   auto node = createNode(agency);
   auto finalAgency = createTestStructure(node.toBuilder().slice(), "");
 
   auto finalAgencyNode = createNodeFromBuilder(*finalAgency);
-  return finalAgencyNode("arango");
+  return finalAgencyNode.getOrCreate("arango");
 }
 
 VPackBuilder createJob(std::string const& server) {
@@ -585,7 +585,7 @@ TEST_F(CleanOutServerTest, cleanout_server_job_should_move_into_pending_if_ok) {
   Verify(Method(mockAgent, write));
 }
 
-TEST_F(CleanOutServerTest, cleanout_server_job_should_abort_after_timeout) {
+TEST_F(CleanOutServerTest, test_cancel_pending_job) {
   TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
     std::unique_ptr<VPackBuilder> builder;
     builder.reset(new VPackBuilder());
@@ -604,13 +604,9 @@ TEST_F(CleanOutServerTest, cleanout_server_job_should_abort_after_timeout) {
         builder->add(VPackValue(JOBID));
         builder->add(VPackValue(VPackValueType::Object));
         for (auto const& jobIt : VPackObjectIterator(job.slice())) {
-          if (jobIt.key.copyString() == "timeCreated") {
-            builder->add(jobIt.key.copyString(),
-                         VPackValue("2015-01-03T20:00:00Z"));
-          } else {
             builder->add(jobIt.key.copyString(), jobIt.value);
-          }
         }
+        builder->add("abort", VPackValue(true));
         builder->close();
       } else if (path == "/arango/Target/ToDo") {
         VPackBuilder moveBuilder = createMoveShardJob();
@@ -657,8 +653,69 @@ TEST_F(CleanOutServerTest, cleanout_server_job_should_abort_after_timeout) {
   Node agency = createAgency(createTestStructure);
   // should not throw
   auto cleanOutServer = CleanOutServer(agency, &agent, JOB_STATUS::PENDING, JOBID);
-  cleanOutServer.run(aborts);
-  Verify(Method(mockAgent, write));
+
+  Mock<Job> spy(cleanOutServer);
+  Fake(Method(spy, abort));
+
+  Job& spyCleanOutServer = spy.get();
+  spyCleanOutServer.run(aborts);
+  Verify(Method(spy, abort));
+
+}
+
+TEST_F(CleanOutServerTest, test_cancel_todo_job) {
+  TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto it : VPackObjectIterator(s)) {
+        auto childBuilder =
+            createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/ToDo") {
+        auto job = createJob(SERVER);
+        builder->add(VPackValue(JOBID));
+        builder->add(VPackValue(VPackValueType::Object));
+        for (auto const& jobIt : VPackObjectIterator(job.slice())) {
+            builder->add(jobIt.key.copyString(), jobIt.value);
+        }
+        builder->add("abort", VPackValue(true));
+        builder->close();
+        VPackBuilder moveBuilder = createMoveShardJob();
+        builder->add("1-0", moveBuilder.slice());
+      }
+      builder->close();
+    } else {
+      builder->add(s);
+    }
+    return builder;
+  };
+
+  int qCount = 0;
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    if (qCount++ == 0) {
+      checkFailed(JOB_STATUS::TODO, q);
+    }
+    return fakeWriteResult;
+  });
+  AgentInterface& agent = mockAgent.get();
+
+  Node agency = createAgency(createTestStructure);
+  // should not throw
+  auto cleanOutServer = CleanOutServer(agency, &agent, JOB_STATUS::TODO, JOBID);
+  Mock<Job> spy(cleanOutServer);
+  Fake(Method(spy, abort));
+
+  Job& spyCleanOutServer = spy.get();
+  spyCleanOutServer.run(aborts);
+  Verify(Method(spy, abort));
+
 }
 
 TEST_F(CleanOutServerTest, when_there_are_still_subjobs_it_should_wait) {
@@ -838,7 +895,7 @@ TEST_F(CleanOutServerTest, when_the_cleanout_server_job_aborts_abort_all_subjobs
       EXPECT_TRUE(writes.get("/arango/Target/ToDo/1-0").get("op").copyString() ==
                   "delete");
       // a not yet started job will be moved to finished
-      EXPECT_TRUE(std::string(writes.get("/arango/Target/Finished/1-0").typeName()) ==
+      EXPECT_TRUE(std::string(writes.get("/arango/Target/Failed/1-0").typeName()) ==
                   "object");
       auto preconds = q->slice()[0][1];
       EXPECT_TRUE(preconds.get("/arango/Target/ToDo/1-0").get("oldEmpty").isFalse());

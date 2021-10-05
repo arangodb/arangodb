@@ -21,8 +21,7 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_WIN__UTILS_H
-#define ARANGODB_BASICS_WIN__UTILS_H 1
+#pragma once
 
 #include <string>
 #include <IntSafe.h>
@@ -36,7 +35,6 @@
 
 typedef enum {
   TRI_WIN_INITIAL_SET_DEBUG_FLAG,
-  TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER,
   TRI_WIN_INITIAL_SET_MAX_STD_IO,
   TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL
 } TRI_win_initialize_e;
@@ -131,8 +129,8 @@ bool terminalKnowsANSIColors();
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_read_return_t TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length);
+bool TRI_WRITE_POINTER(HANDLE fd, void const* buffer, size_t length);
 
 std::string getFileNameFromHandle(HANDLE fileHandle);
 #endif
 
-#endif

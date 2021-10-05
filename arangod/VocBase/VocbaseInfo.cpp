@@ -24,13 +24,18 @@
 #include "VocbaseInfo.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FeatureFlags.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
+#include "Replication2/Version.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/Events.h"
+#include "Utilities/NameValidator.h"
+#include "VocBase/Methods/Databases.h"
 
 namespace arangodb {
 
@@ -50,9 +55,7 @@ void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
 }
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
-  Result res;
-
-  _name = name;
+  _name = methods::Databases::normalizeName(name);
   _id = id;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -79,30 +82,9 @@ Result CreateDatabaseInfo::load(VPackSlice const& options, VPackSlice const& use
   return checkOptions();
 }
 
-Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options,
-                                VPackSlice const& users) {
-  _id = id;
-
-  Result res = extractOptions(options, false /*getId*/, true /*getUser*/);
-  if (!res.ok()) {
-    return res;
-  }
-
-  res = extractUsers(users);
-  if (!res.ok()) {
-    return res;
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _valid = true;
-#endif
-
-  return checkOptions();
-}
-
 Result CreateDatabaseInfo::load(std::string const& name, VPackSlice const& options,
                                 VPackSlice const& users) {
-  _name = name;
+  _name = methods::Databases::normalizeName(name);
 
   Result res = extractOptions(options, true /*getId*/, false /*getName*/);
   if (!res.ok()) {
@@ -123,7 +105,7 @@ Result CreateDatabaseInfo::load(std::string const& name, VPackSlice const& optio
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id,
                                 VPackSlice const& options, VPackSlice const& users) {
-  _name = name;
+  _name = methods::Databases::normalizeName(name);
   _id = id;
 
   Result res = extractOptions(options, false /*getId*/, false /*getUser*/);
@@ -153,7 +135,7 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
 
   if (ServerState::instance()->isCoordinator() ||
       ServerState::instance()->isDBServer()) {
-    addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern);
+    addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern, _replicationVersion);
   } 
 
   if (withUsers) {
@@ -254,13 +236,14 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
   _replicationFactor = vocopts.replicationFactor;
   _writeConcern = vocopts.writeConcern;
   _sharding = vocopts.sharding;
+  _replicationVersion = vocopts.replicationVersion;
 
   if (extractName) {
     auto nameSlice = options.get(StaticStrings::DatabaseName);
     if (!nameSlice.isString()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "no valid id given");
     }
-    _name = nameSlice.copyString();
+    _name = methods::Databases::normalizeName(nameSlice.copyString());
   }
   if (extractId) {
     auto idSlice = options.get(StaticStrings::DatabaseId);
@@ -284,24 +267,30 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
 }
 
 Result CreateDatabaseInfo::checkOptions() {
-  if (_id != 0) {
-    _validId = true;
-  } else {
-    _validId = false;
-  }
+  _validId = (_id != 0);
 
-  // we cannot use IsAllowedName for database name length validation alone, because
-  // IsAllowedName allows up to 256 characters. Database names are just up to 64
-  // chars long, as their names are also used as filesystem directories (for Foxx apps)
+  if (_replicationVersion == replication::Version::TWO && !replication2::EnableReplication2) {
+    LOG_TOPIC("8fdd7", ERR, Logger::REPLICATION2)
+        << "Replication version 2 is disabled in this binary, but loading a "
+           "version 2 database "
+        << "(named '" << _name << "'). "
+        << "Creating such databases is disabled. Loading a version 2 database "
+           "that was created with another binary will work, but it is strongly "
+           "discouraged to use it in production. Please dump the data, and "
+           "recreate the database with replication version 1 (the default), "
+           "and then restore the data.";
+  }
+  
   bool isSystem = _name == StaticStrings::SystemDatabase;
+  bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
 
-  if (_name.empty() ||
-      !TRI_vocbase_t::IsAllowedName(isSystem, arangodb::velocypack::StringRef(_name)) ||
-      _name.size() > 64) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+  Result res;
+
+  if (!DatabaseNameValidator::isAllowedName(isSystem, extendedNames, _name)) {
+    res.reset(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
-  return Result();
+  return res;
 }
 
 VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server, VPackSlice const& options) {
@@ -316,6 +305,7 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
   vocbaseOptions.replicationFactor = 1;
   vocbaseOptions.writeConcern = 1;
   vocbaseOptions.sharding = "";
+  vocbaseOptions.replicationVersion = replication::Version::ONE;
 
   //  sanitize input for vocbase creation
   //  sharding -- must be "", "flexible" or "single"
@@ -380,12 +370,30 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
     }
   }
 
+  {
+    auto replicationVersionSlice = options.get(StaticStrings::ReplicationVersion);
+    if (!replicationVersionSlice.isNone()) {
+      auto res = replication::parseVersion(replicationVersionSlice);
+      if (res.ok()) {
+        auto version = res.get();
+
+        vocbaseOptions.replicationVersion = version;
+      } else {
+        THROW_ARANGO_EXCEPTION(std::move(res).result().withError([&](result::Error& err) {
+          err.resetErrorMessage(
+              basics::StringUtils::concatT("Error parsing ", StaticStrings::ReplicationVersion,
+                                           ": ", err.errorMessage()));
+        }));
+      }
+    }
+  }
+
   return vocbaseOptions;
 }
 
 void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
-                                   std::uint32_t replicationFactor,
-                                   std::uint32_t writeConcern) {
+                       std::uint32_t replicationFactor, std::uint32_t writeConcern,
+                       replication::Version replicationVersion) {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(StaticStrings::Sharding, VPackValue(sharding));
   if (replicationFactor) {
@@ -394,9 +402,12 @@ void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
     builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
   }
   builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
+  builder.add(StaticStrings::ReplicationVersion,
+              VPackValue(replication::versionToString(replicationVersion)));
 }
 
 void addClusterOptions(VPackBuilder& builder, VocbaseOptions const& opt) {
-  addClusterOptions(builder, opt.sharding, opt.replicationFactor, opt.writeConcern);
+  addClusterOptions(builder, opt.sharding, opt.replicationFactor,
+                    opt.writeConcern, opt.replicationVersion);
 }
 }  // namespace arangodb

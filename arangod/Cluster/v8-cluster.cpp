@@ -104,10 +104,10 @@ static void CreateAgencyException(v8::FunctionCallbackInfo<v8::Value> const& arg
 
   errorObject->Set(context,
                    TRI_V8_STD_STRING(isolate, StaticStrings::Code),
-                   v8::Number::New(isolate, result.httpCode())).FromMaybe(false);
+                   v8::Number::New(isolate, static_cast<int>(result.httpCode()))).FromMaybe(false);
   errorObject->Set(context,
                    TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                   v8::Number::New(isolate, result.errorCode())).FromMaybe(false);
+                   v8::Number::New(isolate, static_cast<int>(result.errorCode()))).FromMaybe(false);
   errorObject->Set(context,
                    TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage).FromMaybe(false);
   errorObject->Set(context,
@@ -578,7 +578,7 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     count = TRI_ObjectToUInt64(isolate, args[0], true);
   }
 
-  if (count < 1 || count > 10000000) {
+  if (count < 1 || count > 100000000) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("<count> is invalid");
   }
 
@@ -992,8 +992,8 @@ static void JS_GetResponsibleShardClusterInfo(v8::FunctionCallbackInfo<v8::Value
 
   bool usesDefaultShardingAttributes;
 
-  int res = collInfo->getResponsibleShard(builder.slice(), documentIsComplete,
-                                          shardId, usesDefaultShardingAttributes);
+  auto res = collInfo->getResponsibleShard(builder.slice(), documentIsComplete,
+                                           shardId, usesDefaultShardingAttributes);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1509,7 +1509,7 @@ static void JS_PropagateSelfHeal(v8::FunctionCallbackInfo<v8::Value> const& args
         // ourselves
         continue;
       }
-      auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Post,
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator, fuerte::RestVerb::Post,
                                     url, buffer, options, headers);
       futures.emplace_back(std::move(f));
     }

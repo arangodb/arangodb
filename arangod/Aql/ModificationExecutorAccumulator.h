@@ -21,17 +21,16 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MODIFICATION_EXECUTOR_ACCUMULATOR_H
-#define ARANGOD_AQL_MODIFICATION_EXECUTOR_ACCUMULATOR_H
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 
-#include <velocypack/Collection.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 // Hack-i-ty-hack
 //
@@ -44,8 +43,10 @@ class ModificationExecutorAccumulator {
  public:
   ModificationExecutorAccumulator() { reset(); }
 
-  VPackSlice closeAndGetContents() {
+  [[nodiscard]] VPackSlice closeAndGetContents() {
+    TRI_ASSERT(_accumulator.isOpenArray());
     _accumulator.close();
+    TRI_ASSERT(_accumulator.isClosed());
     return _accumulator.slice();
   }
 
@@ -59,13 +60,13 @@ class ModificationExecutorAccumulator {
     _accumulator.openArray();
   }
 
-  size_t nrOfDocuments() const { return _accumulator.slice().length(); }
+  [[nodiscard]] size_t nrOfDocuments() const {
+    TRI_ASSERT(_accumulator.isClosed());
+    return _accumulator.slice().length();
+  }
 
  private:
-  VPackBuilder _accumulator;
+  VPackBuilder _accumulator{};
 };
 
-}  // namespace aql
-}  // namespace arangodb
-
-#endif
+}  // namespace arangodb::aql

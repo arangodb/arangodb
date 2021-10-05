@@ -20,8 +20,8 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_COMPRESSION_H
-#define ARANGOD_IRESEARCH__IRESEARCH_COMPRESSION_H 1
+
+#pragma once
 
 #include "utils/string.hpp"
 #include <utils/compression.hpp>
@@ -35,4 +35,3 @@ irs::type_info::type_id getDefaultCompression() noexcept;
 } // iresearch
 } // arangodb
 
-#endif // ARANGOD_IRESEARCH__IRESEARCH_COMPRESSION_H

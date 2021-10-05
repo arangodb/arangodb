@@ -21,13 +21,15 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_REGISTRY_H
-#define ARANGOD_AQL_QUERY_REGISTRY_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/ErrorCode.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
+
+#include <unordered_map>
 
 namespace arangodb {
 namespace aql {
@@ -59,7 +61,7 @@ class QueryRegistry {
   /// The callback guard needs to be stored with the query to prevent it from
   /// firing. This is used for the RebootTracker to destroy the query when
   /// the coordinator which created it restarts or fails.
-  TEST_VIRTUAL void insertQuery(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
+  TEST_VIRTUAL void insertQuery(std::shared_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
 
   /// @brief open, find a engine in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -94,11 +96,10 @@ class QueryRegistry {
   /// and removed regardless if it is in use by anything else. this is only
   /// safe to call if the current thread is currently using the query itself
   // cppcheck-suppress virtualCallInConstructor
-  std::unique_ptr<ClusterQuery> destroyQuery(std::string const& vocbase, QueryId qId,
-                                             int errorCode);
+  std::shared_ptr<ClusterQuery> destroyQuery(std::string const& vocbase, QueryId id, ErrorCode errorCode);
   
   /// used for a legacy shutdown
-  bool destroyEngine(EngineId qId, int errorCode);
+  bool destroyEngine(EngineId engineId, ErrorCode errorCode);
 
   /// @brief destroy all queries for the specified database. this can be used
   /// when the database gets dropped  
@@ -123,19 +124,30 @@ class QueryRegistry {
   /// @brief return the default TTL value
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  bool queryIsRegistered(std::string const& dbName, QueryId id);
+#endif
+
  private:
   
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo final {
-    QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
+    /// @brief constructor for a regular query entry
+    QueryInfo(std::shared_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
+    
+    /// @brief constructor for a tombstone entry
+    explicit QueryInfo(ErrorCode errorCode, double ttl);
     ~QueryInfo();
 
-    std::unique_ptr<ClusterQuery> _query;  // the actual query pointer
+    std::shared_ptr<ClusterQuery> _query;  // the actual query pointer
     
     const double _timeToLive;  // in seconds
     double _expires;     // UNIX UTC timestamp of expiration
     size_t _numEngines; // used for legacy shutdown
     size_t _numOpen;
+
+    ErrorCode _errorCode;
+    bool const _isTombstone;
 
     cluster::CallbackGuard _rebootTrackerCallbackGuard;
   };
@@ -182,4 +194,3 @@ class QueryRegistry {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

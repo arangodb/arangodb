@@ -33,8 +33,7 @@
 //   http://www.apache.org/licenses/LICENSE-2.0
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_THROTTLE_H
-#define ARANGO_ROCKSDB_ENGINE_LISTENERS_ROCKSDB_THROTTLE_H 1
+#pragma once
 
 #include <chrono>
 #include <future>
@@ -52,7 +51,6 @@
 // write_controller.
 //  need either ROCKSDB_PLATFORM_POSIX or OS_WIN set before the <db/...>
 //  includes
-using namespace rocksdb;
 #ifndef _WIN32
 #define ROCKSDB_PLATFORM_POSIX 1
 #else
@@ -145,11 +143,9 @@ class RocksDBThrottle : public rocksdb::EventListener {
   std::atomic<uint64_t> _throttleBps;
   bool _firstThrottle;
 
-  std::unique_ptr<WriteControllerToken> _delayToken;
+  std::unique_ptr<rocksdb::WriteControllerToken> _delayToken;
   std::vector<rocksdb::ColumnFamilyHandle*> _families;
 
 };  // class RocksDBThrottle
 
 }  // namespace arangodb
-
-#endif

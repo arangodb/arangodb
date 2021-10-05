@@ -16,7 +16,8 @@
     "preserveConstEnums": true,
     "sourceMap": true,
     "skipLibCheck": true,
-    "allowJs": true
+    "allowJs": true,
+    "outDir": "build"
   },
   "exclude": [
     "node_modules",

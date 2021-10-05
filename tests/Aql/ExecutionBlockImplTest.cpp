@@ -43,6 +43,8 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SubqueryStartExecutor.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -131,8 +133,9 @@ static constexpr auto onlySkipAndCount = []() -> const AqlCall {
 class SharedExecutionBlockImplTest {
  protected:
   mocks::MockAqlServer server{};
-  arangodb::ResourceMonitor monitor{};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  std::shared_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
   SharedExecutionBlockImplTest() {}
@@ -162,13 +165,13 @@ class SharedExecutionBlockImplTest {
     return stack;
   }
 
-  RegisterInfos makeRegisterInfos(RegisterId inputRegisters = RegisterPlan::MaxRegisterId,
-                                  RegisterId outputRegisters = RegisterPlan::MaxRegisterId) {
-    if (inputRegisters != RegisterPlan::MaxRegisterId) {
+  RegisterInfos makeRegisterInfos(RegisterCount inputRegisters = RegisterId::maxRegisterId,
+                                  RegisterCount outputRegisters = RegisterId::maxRegisterId) {
+    if (inputRegisters != RegisterId::maxRegisterId) {
       EXPECT_LE(inputRegisters, outputRegisters);
       // We cannot have no output registers here.
-      EXPECT_LT(outputRegisters, RegisterPlan::MaxRegisterId);
-    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
+      EXPECT_LT(outputRegisters, RegisterId::maxRegisterId);
+    } else if (outputRegisters != RegisterId::maxRegisterId) {
       // Special case: we do not have input registers, but need an output register.
       // For now we only allow a single output register, but actually we could leverage this restriction if necessary.
       EXPECT_EQ(outputRegisters, 0);
@@ -176,23 +179,23 @@ class SharedExecutionBlockImplTest {
 
     auto readAble = RegIdSet{};
     auto writeAble = RegIdSet{};
-    if (inputRegisters != RegisterPlan::MaxRegisterId) {
-      for (RegisterId i = 0; i <= inputRegisters; ++i) {
+    if (inputRegisters != RegisterId::maxRegisterId) {
+      for (RegisterId::value_t i = 0; i <= inputRegisters; ++i) {
         readAble.emplace(i);
       }
-      for (RegisterId i = inputRegisters + 1; i <= outputRegisters; ++i) {
+      for (RegisterId::value_t i = inputRegisters + 1; i <= outputRegisters; ++i) {
         writeAble.emplace(i);
       }
-    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
-      for (RegisterId i = 0; i <= outputRegisters; ++i) {
+    } else if (outputRegisters != RegisterId::maxRegisterId) {
+      for (RegisterId::value_t i = 0; i <= outputRegisters; ++i) {
         writeAble.emplace(i);
       }
     }
     RegIdSetStack registersToKeep = {readAble, readAble, readAble};
-    RegisterId regsToRead =
-        (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters + 1;
-    RegisterId regsToWrite =
-        (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters + 1;
+    RegisterCount regsToRead =
+        (inputRegisters == RegisterId::maxRegisterId) ? 0 : inputRegisters + 1;
+    RegisterCount regsToWrite =
+        (outputRegisters == RegisterId::maxRegisterId) ? 0 : outputRegisters + 1;
     return RegisterInfos(readAble, writeAble, regsToRead, regsToWrite, {}, registersToKeep);
   }
 
@@ -382,12 +385,12 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
   }
 
   std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
-                                                      RegisterId nrRegs) {
+                                                      RegisterCount nrRegs) {
     auto readableIn = RegIdSet{};
     auto writeableOut = RegIdSet{};
     auto registersToClear = RegIdFlatSet{};
     auto regsToKeepProto = RegIdFlatSet{};
-    for (RegisterId r = 1; r <= nrRegs; ++r) {
+    for (RegisterId::value_t r = 1; r <= nrRegs; ++r) {
       // NrReg and usedRegs are off-by-one...
       readableIn.emplace(r - 1);
       regsToKeepProto.emplace(r - 1);
@@ -433,8 +436,8 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
 
   auto onceLinesProducer(ExecutionBlock* dependency, size_t numberLines)
       -> std::unique_ptr<ExecutionBlock> {
-    RegisterId outReg = 0;
-    RegisterId inReg = RegisterPlan::MaxRegisterId;
+    RegisterCount outReg = 0;
+    RegisterCount inReg = RegisterId::maxRegisterId;
     SkipCall skipCall = generateNeverSkipCall();
     auto didProduce = std::make_shared<bool>(false);
     auto builder = std::make_shared<VPackBuilder>();
@@ -757,6 +760,100 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_ful
     ASSERT_TRUE(block->isShadowRow(0));
     ShadowAqlItemRow shadow{block, 0};
     EXPECT_EQ(shadow.getDepth(), 1);
+  }
+}
+
+TEST_P(ExecutionBlockImplExecuteSpecificTest, retain_once_thrown_error) {
+  AqlCall fullCall{};
+  // Let the executor only throw once
+  // and assert that it is never called again.
+  bool hasThrown = false;
+
+  ProduceCall execImpl = [&hasThrown](AqlItemBlockInputRange&, OutputAqlItemRow&)
+      -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
+    // Crash if we get called twice
+    TRI_ASSERT(!hasThrown);
+    hasThrown = true;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  };
+  SkipCall skipCall = generateNeverSkipCall();
+
+  auto stack = buildStack(fullCall);
+  auto singleton = createSingleton();
+  std::unique_ptr<ExecutionBlock> testee =
+      passthrough()
+          ? static_cast<std::unique_ptr<ExecutionBlock>>(
+                std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
+                    fakedQuery->rootEngine(), generateNodeDummy(),
+                    makeRegisterInfos(0, 0), makeExecutorInfos(execImpl)))
+          : std::make_unique<ExecutionBlockImpl<LambdaExe>>(
+                fakedQuery->rootEngine(), generateNodeDummy(),
+                makeRegisterInfos(0, 0), makeSkipExecutorInfos(execImpl, skipCall));
+  try {
+    testee->execute(stack);
+    // This error is on purpose different, and cannot happen in AQL
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEAD_PID);
+  } catch (arangodb::basics::Exception const& e) {
+    // Make sure we get the correct error.
+    EXPECT_EQ(e.code(), TRI_ERROR_DEBUG);
+  }
+
+  try {
+    // And call Execute again, we should see the same error,
+    // But we should crash if we ask the Produce again.
+    testee->execute(stack);
+    // This error is on purpose different, and cannot happen in AQL
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEAD_PID);
+  } catch (arangodb::basics::Exception const& e) {
+    // Make sure we get the correct error.
+    EXPECT_EQ(e.code(), TRI_ERROR_DEBUG);
+  }
+}
+
+TEST_P(ExecutionBlockImplExecuteSpecificTest, retain_once_thrown_std_error) {
+  AqlCall fullCall{};
+  // Let the executor only throw once
+  // and assert that it is never called again.
+  bool hasThrown = false;
+
+  ProduceCall execImpl = [&hasThrown](AqlItemBlockInputRange&, OutputAqlItemRow&)
+      -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
+    // Crash if we get called twice
+    TRI_ASSERT(!hasThrown);
+    hasThrown = true;
+    throw std::runtime_error("Debug Error");
+  };
+  SkipCall skipCall = generateNeverSkipCall();
+
+  auto stack = buildStack(fullCall);
+  auto singleton = createSingleton();
+  std::unique_ptr<ExecutionBlock> testee =
+      passthrough()
+          ? static_cast<std::unique_ptr<ExecutionBlock>>(
+                std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
+                    fakedQuery->rootEngine(), generateNodeDummy(),
+                    makeRegisterInfos(0, 0), makeExecutorInfos(execImpl)))
+          : std::make_unique<ExecutionBlockImpl<LambdaExe>>(
+                fakedQuery->rootEngine(), generateNodeDummy(),
+                makeRegisterInfos(0, 0), makeSkipExecutorInfos(execImpl, skipCall));
+  try {
+    testee->execute(stack);
+    // This error is on purpose different, and cannot happen in AQL
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEAD_PID);
+  } catch (arangodb::basics::Exception const& e) {
+    // Make sure we get the correct error.
+    EXPECT_EQ(e.code(), TRI_ERROR_INTERNAL);
+  }
+
+  try {
+    // And call Execute again, we should see the same error,
+    // But we should crash if we ask the Produce again.
+    testee->execute(stack);
+    // This error is on purpose different, and cannot happen in AQL
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEAD_PID);
+  } catch (arangodb::basics::Exception const& e) {
+    // Make sure we get the correct error.
+    EXPECT_EQ(e.code(), TRI_ERROR_INTERNAL);
   }
 }
 
@@ -1108,7 +1205,7 @@ class ExecutionBlockImplExecuteIntegrationTest
                          RegisterId reg, size_t expected) const -> void {
     ASSERT_NE(block, nullptr);
     ASSERT_GT(block->numRows(), row);
-    ASSERT_GE(block->numRegisters(), reg);
+    ASSERT_GE(block->numRegisters(), reg.value());
     auto const& value = block->getValueReference(row, reg);
     ASSERT_TRUE(value.isNumber());
     EXPECT_EQ(static_cast<size_t>(value.toInt64()), expected);
@@ -1221,8 +1318,8 @@ class ExecutionBlockImplExecuteIntegrationTest
       call.fullCount = false;
       return {inputRange.upstreamState(), NoStats{}, skipped, call};
     };
-    auto const inReg = outReg == 0 ? RegisterPlan::MaxRegisterId : outReg - 1;
-    auto registerInfos = makeRegisterInfos(inReg, outReg);
+    auto const inReg = outReg == 0 ? RegisterId::maxRegisterId : outReg.value() - 1;
+    auto registerInfos = makeRegisterInfos(inReg, outReg.value());
     auto executorInfos = makeSkipExecutorInfos(std::move(writeData), skipData, resetCall);
     auto producer =
         std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->rootEngine(),
@@ -1258,7 +1355,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
-        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg, maxReg),
+        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg.value(), maxReg.value()),
         makeExecutorInfos(std::move(forwardData)));
     producer->addDependency(dependency);
     return producer;
@@ -1318,18 +1415,18 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, skipped, request};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg, maxReg),
+        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg.value(), maxReg.value()),
         makeSkipExecutorInfos(std::move(forwardData), std::move(skipData)));
     producer->addDependency(dependency);
     return producer;
   }
 
   std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
-                                                      RegisterId nrRegs) {
+                                                      RegisterCount nrRegs) {
     auto readableIn = RegIdSet{};
     auto writeableOut = RegIdSet{};
     RegIdSet registersToClear{};
-    for (RegisterId r = 1; r <= nrRegs; ++r) {
+    for (RegisterId::value_t r = 1; r <= nrRegs; ++r) {
       // NrReg and usedRegs are off-by-one...
       readableIn.emplace(r - 1);
     }
@@ -1405,7 +1502,7 @@ class ExecutionBlockImplExecuteIntegrationTest
         auto got = result->getValueReference(i, testReg).slice();
         EXPECT_TRUE(basics::VelocyPackHelper::equal(got, *expectedIt, false))
             << "Expected: " << expectedIt.value().toJson() << " got: " << got.toJson()
-            << " in row " << i << " and register " << testReg;
+            << " in row " << i << " and register " << testReg.value();
         expectedIt++;
       }
     } else {
@@ -1694,7 +1791,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_
   };
 
   auto lower = std::make_unique<ExecutionBlockImpl<TestLambdaSkipExecutor>>(
-      fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(outReg, outReg),
+      fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(outReg.value(), outReg.value()),
       makeSkipExecutorInfos(std::move(forwardCall), std::move(forwardSkipCall)));
   lower->addDependency(upper.get());
 
@@ -1862,7 +1959,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_pa
       auto got = block->getValueReference(0, outReg).slice();
       EXPECT_TRUE(basics::VelocyPackHelper::equal(got, *it, false))
           << "Expected: " << it.value().toJson() << " got: " << got.toJson()
-          << " in row " << i << " and register " << outReg;
+          << " in row " << i << " and register " << outReg.value();
       if (i == 0) {
         // The first data row includes skip
         EXPECT_EQ(skipped.getSkipCount(), offset);

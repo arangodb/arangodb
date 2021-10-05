@@ -42,14 +42,12 @@ ServerSecurityFeature::ServerSecurityFeature(application_features::ApplicationSe
 }
 
 void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "Server features");
   options->addOption("--server.harden",
                      "lock down REST APIs that reveal version information or server "
                      "internals for non-admin users",
                      new BooleanParameter(&_hardenedRestApi))
                      .setIntroducedIn(30500);
 
-  options->addSection("foxx", "Configure Foxx");
   options->addOption("--foxx.api", "enables Foxx management REST APIs",
                      new BooleanParameter(&_enableFoxxApi),
                      arangodb::options::makeFlags(

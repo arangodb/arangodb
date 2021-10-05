@@ -53,8 +53,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 // private hash function
-static int HexHashFromData(std::string const& hashMethod,
-                           std::string const& str, std::string& outHash) {
+static ErrorCode HexHashFromData(std::string const& hashMethod,
+                                 std::string const& str, std::string& outHash) {
   char* crypted = nullptr;
   size_t cryptedLength;
 
@@ -83,7 +83,7 @@ static int HexHashFromData(std::string const& hashMethod,
     return TRI_ERROR_FAILED;
   }
 
-  TRI_DEFER(delete[] crypted);
+  auto sg = arangodb::scopeGuard([&]() noexcept { delete[] crypted; });
 
   if (crypted == nullptr || cryptedLength == 0) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -152,7 +152,7 @@ auth::User auth::User::newUser(std::string const& user,
 
   std::string salt = UniformCharacter(8, "0123456789abcdef").random();
   std::string hash;
-  int res = HexHashFromData("sha256", salt + password, hash);
+  auto res = HexHashFromData("sha256", salt + password, hash);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res,
                                    "Could not calculate hex-hash from data");
@@ -325,7 +325,7 @@ void auth::User::touch() { _loaded = TRI_microtime(); }
 
 bool auth::User::checkPassword(std::string const& password) const {
   std::string hash;
-  int res = HexHashFromData(_passwordMethod, _passwordSalt + password, hash);
+  auto res = HexHashFromData(_passwordMethod, _passwordSalt + password, hash);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res,
                                    "Could not calculate hex-hash from input");
@@ -335,7 +335,7 @@ bool auth::User::checkPassword(std::string const& password) const {
 
 void auth::User::updatePassword(std::string const& password) {
   std::string hash;
-  int res = HexHashFromData(_passwordMethod, _passwordSalt + password, hash);
+  auto res = HexHashFromData(_passwordMethod, _passwordSalt + password, hash);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res,
                                    "Could not calculate hex-hash from input");

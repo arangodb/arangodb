@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SHAREDAQLITEMBLOCKPTR_H
-#define ARANGOD_AQL_SHAREDAQLITEMBLOCKPTR_H
+#pragma once
 
 #include "Aql/AqlItemBlock.h"
 #include "Basics/debugging.h"
@@ -186,7 +185,7 @@ AqlItemBlock* SharedAqlItemBlockPtr::get() const noexcept {
 }
 
 void SharedAqlItemBlockPtr::reset(AqlItemBlock* other) noexcept {
-  TRI_ASSERT(_aqlItemBlock != other);
+  TRI_ASSERT(_aqlItemBlock == nullptr || _aqlItemBlock != other);
   decrRefCount();
   _aqlItemBlock = other;
   incrRefCount();
@@ -208,4 +207,3 @@ void arangodb::aql::SharedAqlItemBlockPtr::decrRefCount() noexcept {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_SHAREDAQLITEMBLOCKPTR_H

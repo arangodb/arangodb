@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_STORE_H
-#define ARANGOD_CONSENSUS_STORE_H 1
+#pragma once
 
 #include "AgentInterface.h"
 #include "Basics/ConditionVariable.h"
@@ -122,12 +121,6 @@ class Store {
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;
 
-  /// @brief Notify observers
-  void notifyObservers() const;
-
-  /// @brief See how far the path matches anything in store
-  size_t matchPath(std::vector<std::string> const& pv) const;
-
   Store& operator=(VPackSlice const& slice);
 
   /// @brief Create Builder representing this store
@@ -150,16 +143,9 @@ class Store {
 
   void clear();
 
-  /// @brief Apply single slice
-  bool applies(arangodb::velocypack::Slice const&);
-
   /// @brief Remove time to live entries for uri
   void removeTTL(std::string const&);
 
-  std::multimap<TimePoint, std::string>& timeTable();
-  std::multimap<TimePoint, std::string> const& timeTable() const;
-  std::unordered_multimap<std::string, std::string>& observerTable();
-  std::unordered_multimap<std::string, std::string> const& observerTable() const;
   std::unordered_multimap<std::string, std::string>& observedTable();
   std::unordered_multimap<std::string, std::string> const& observedTable() const;
   
@@ -174,14 +160,26 @@ class Store {
   /// and ignoring multiple subsequent forward slashes
   static std::vector<std::string> split(std::string const& str);
 
+#if !defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
  private:
+#endif // defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
+
+  /// @brief Notify observers
+  void notifyObservers() const;
+
+ private:
+  /// @brief Apply single slice
+  bool applies(arangodb::velocypack::Slice const&);
+
+  friend class consensus::Node;
+  std::multimap<TimePoint, std::string>& timeTable();
+  std::multimap<TimePoint, std::string> const& timeTable() const;
   /// @brief Check precondition
   check_ret_t check(arangodb::velocypack::Slice const&, CheckMode = FIRST_FAIL) const;
 
   /// @brief Clear entries, whose time to live has expired
   query_t clearExpired() const;
 
-  /// @brief Run thread
  private:
   /// @brief underlying application server, needed for testing code
   application_features::ApplicationServer& _server;
@@ -214,4 +212,3 @@ inline std::ostream& operator<<(std::ostream& o, Store const& store) {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

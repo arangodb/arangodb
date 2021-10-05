@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_LABELPROP_H
-#define ARANGODB_PREGEL_ALGOS_LABELPROP_H 1
+#pragma once
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
@@ -54,4 +53,3 @@ struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

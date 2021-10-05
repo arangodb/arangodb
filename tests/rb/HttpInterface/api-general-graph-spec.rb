@@ -216,6 +216,8 @@ describe ArangoDB do
       bought_collection = "UnitTestBoughts"
       graph_name = "UnitTestGraph"
       unknown_name = "UnitTestUnknown"
+      unknown_collection = "UnitTestUnknownCollection"
+      unknown_key = "UnitTestUnknownKey"
 
       context "testing general graph methods:" do
 
@@ -737,6 +739,38 @@ describe ArangoDB do
             
             doc.parsed_response['old'].should eq(nil)
             doc.parsed_response['new']['value'].should eq("foo")
+          end
+
+          it "can not create edge with unknown _from vertex collection, waitForSync = #{sync}" do
+            v1 = create_vertex( sync, graph_name, user_collection, {})
+            v1 = v1.parsed_response['vertex']['_id']
+            doc = create_edge( sync, graph_name, friend_collection, "MISSING/v2", v1, {})
+            doc.parsed_response['error'].should eq(true)
+            doc.parsed_response['code'].should eq(400)
+            doc.parsed_response['errorMessage'].should include("referenced _from collection 'MISSING' is not part of the graph")
+            doc.parsed_response['errorNum'].should eq(1947)
+          end
+
+          it "can not create edge with unknown _to vertex collection, waitForSync = #{sync}" do
+            v1 = create_vertex( sync, graph_name, user_collection, {})
+            v1 = v1.parsed_response['vertex']['_id']
+            doc = create_edge( sync, graph_name, friend_collection, v1, "MISSING/v2", {})
+            doc.parsed_response['error'].should eq(true)
+            doc.parsed_response['code'].should eq(400)
+            doc.parsed_response['errorMessage'].should include("referenced _to collection 'MISSING' is not part of the graph")
+            doc.parsed_response['errorNum'].should eq(1947)
+          end
+
+          it "should not replace an edge in case the collection does not exist, waitForSync = #{sync}" do
+            v1 = create_vertex( sync, graph_name, user_collection, {})
+            v1 = v1.parsed_response['vertex']['_id']
+            v2 = create_vertex( sync, graph_name, user_collection, {})
+            v2 = v2.parsed_response['vertex']['_id']
+            doc = replace_edge( sync, graph_name, unknown_collection, unknown_key, {"_from" => "#{v1}/1", "_to" => "#{v2}/2"})
+            doc.parsed_response['error'].should eq(true)
+            doc.parsed_response['code'].should eq(404)
+            doc.parsed_response['errorNum'].should eq(1203)
+            doc.parsed_response['errorMessage'].should include("collection or view not found")
           end
 
           it "can get an edge, waitForSync = #{sync}" do
@@ -1340,13 +1374,6 @@ describe ArangoDB do
             
             it "replace edge invalid throw, waitForSync = #{sync}" do
               check400(replace_edge( sync, graph_name, friend_collection, unknown_name, {"_from" => "1", "_to" => "2"}))
-            end
-
-            it "replace edge (collection does not exist) not found, waitForSync = #{sync}" do
-              # Added _from and _to, because otherwise a 400 might conceal the
-              # 404. Another test checking that missing _from or _to trigger
-              # errors was added to api-gharial-spec.js.
-              check400Collection(replace_edge( sync, graph_name, friend_collection, unknown_name, {"_from" => "xyz/1", "_to" => "abc/2"}))
             end
 
             it "replace edge (document does not exist) not found, waitForSync = #{sync}" do

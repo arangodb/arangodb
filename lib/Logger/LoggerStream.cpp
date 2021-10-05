@@ -32,16 +32,19 @@
 
 namespace arangodb {
 
-LoggerStreamBase::LoggerStreamBase()
+LoggerStreamBase::LoggerStreamBase(bool enabled)
     : _topicId(LogTopic::MAX_LOG_TOPICS),
-#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-      _topicLevel(LogLevel::DEFAULT),
-#endif
       _level(LogLevel::DEFAULT),
       _line(0),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _enabled(enabled),
+#endif
       _logid(nullptr),
       _file(nullptr),
       _function(nullptr) {}
+
+LoggerStreamBase::LoggerStreamBase()
+    : LoggerStreamBase(true) {}
 
 LoggerStreamBase& LoggerStreamBase::operator<<(LogLevel const& level) noexcept {
   _level = level;
@@ -50,14 +53,11 @@ LoggerStreamBase& LoggerStreamBase::operator<<(LogLevel const& level) noexcept {
 
 LoggerStreamBase& LoggerStreamBase::operator<<(LogTopic const& topic) noexcept {
   _topicId = topic.id();
-#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-  _topicLevel = topic.level();
-#endif
   return *this;
-  }
+}
 
 // print a hex representation of the binary data
-LoggerStreamBase& LoggerStreamBase::operator<<(Logger::BINARY const& binary) {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::BINARY const& binary) noexcept {
   try {
     uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
     uint8_t const* end = ptr + binary.size;
@@ -80,7 +80,7 @@ LoggerStreamBase& LoggerStreamBase::operator<<(Logger::BINARY const& binary) {
 }
 
 // print a character array
-LoggerStreamBase& LoggerStreamBase::operator<<(Logger::CHARS const& data) {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::CHARS const& data) noexcept {
   try {
     _out.write(data.data, data.size);
   } catch (...) {
@@ -90,7 +90,7 @@ LoggerStreamBase& LoggerStreamBase::operator<<(Logger::CHARS const& data) {
   return *this;
 }
 
-LoggerStreamBase& LoggerStreamBase::operator<<(Logger::RANGE const& range) {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::RANGE const& range) noexcept {
   try {
     _out << range.baseAddress << " - "
          << static_cast<void const*>(static_cast<char const*>(range.baseAddress) +
@@ -103,7 +103,7 @@ LoggerStreamBase& LoggerStreamBase::operator<<(Logger::RANGE const& range) {
   return *this;
 }
 
-LoggerStreamBase& LoggerStreamBase::operator<<(Logger::FIXED const& value) {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::FIXED const& value) noexcept {
   try {
     std::ostringstream tmp;
     tmp << std::setprecision(value._precision) << std::fixed << value._value;
@@ -135,14 +135,24 @@ LoggerStreamBase& LoggerStreamBase::operator<<(Logger::LOGID const& logid) noexc
   return *this;
 }
 
-LoggerStream::~LoggerStream() {
-  try {
-#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-    // log maintainer mode disables this if in the macro, do it here:
-    if (!::arangodb::Logger::_isEnabled(_level, _topicLevel)) {
-      return;
-    }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+LoggerStream::LoggerStream(bool enabled)
+    : LoggerStreamBase(enabled) {}
 #endif
+
+LoggerStream::LoggerStream() 
+    : LoggerStreamBase(true) {}
+
+LoggerStream::~LoggerStream() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // this instance variable can only be false in maintainer mode.
+  // so save the check here if it is known to be always true.
+  if (!_enabled) {
+    return;
+  }
+#endif
+    
+  try {
     // TODO: with c++20, we can get a view on the stream's underlying buffer,
     // without copying it
     Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.str());

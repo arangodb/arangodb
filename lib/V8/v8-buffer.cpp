@@ -475,8 +475,11 @@ static bool IsBigEndian() {
 
 static void Swizzle(char* buf, size_t len) {
   for (size_t i = 0; i < len / 2; ++i) {
+    // cppcheck-suppress objectIndex
     char t = buf[i];
+    // cppcheck-suppress objectIndex
     buf[i] = buf[len - i - 1];
+    // cppcheck-suppress objectIndex
     buf[len - i - 1] = t;
   }
 }
@@ -1326,6 +1329,7 @@ static void ReadFloatGeneric(v8::FunctionCallbackInfo<v8::Value> const& args) {
   memcpy(&val, ptr, sizeof(T));
 
   if (ENDIANNESS != IsBigEndian()) {
+    // cppcheck-suppress objectIndex
     Swizzle(reinterpret_cast<char*>(&val), sizeof(T));
   }
 

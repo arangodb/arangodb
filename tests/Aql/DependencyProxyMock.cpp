@@ -43,7 +43,7 @@ using namespace arangodb::aql;
 // constructor will not access it.
 template <BlockPassthrough passBlocksThrough>
 DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(
-    arangodb::ResourceMonitor& monitor, ::arangodb::aql::RegisterId nrRegisters)
+    arangodb::ResourceMonitor& monitor, ::arangodb::aql::RegisterCount nrRegisters)
     : DependencyProxy<passBlocksThrough>({}, nrRegisters),
       _itemsToReturn(),
       _numFetchBlockCalls(0),
@@ -86,7 +86,7 @@ DependencyProxyMock<passBlocksThrough>& DependencyProxyMock<passBlocksThrough>::
     ExecutionState state, SharedAqlItemBlockPtr const& block) {
   auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
   // add all registers as input
-  for (RegisterId i = 0; i < this->getNrInputRegisters(); i++) {
+  for (RegisterId::value_t i = 0; i < this->getNrInputRegisters(); i++) {
     inputRegisters->emplace(i);
   }
   // keep the block address
@@ -135,7 +135,7 @@ template <BlockPassthrough passBlocksThrough>
 MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
     arangodb::ResourceMonitor& monitor,
     RegIdSet const& inputRegisters,
-    ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps)
+    ::arangodb::aql::RegisterCount nrRegisters, size_t nrDeps)
     : DependencyProxy<passBlocksThrough>({}, nrRegisters),
       _itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {
   _dependencyMocks.reserve(nrDeps);

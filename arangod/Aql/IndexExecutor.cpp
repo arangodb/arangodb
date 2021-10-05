@@ -186,7 +186,7 @@ IndexExecutorInfos::IndexExecutorInfos(
     Expression* filter, arangodb::aql::Projections projections,
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
-    bool hasV8Expression, bool count, AstNode const* condition,
+    bool hasV8Expression, bool count, ReadOwnWrites readOwnWrites, AstNode const* condition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
     IndexIteratorOptions options, IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
     IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
@@ -208,7 +208,8 @@ IndexExecutorInfos::IndexExecutorInfos(
       _hasMultipleExpansions(false),
       _produceResult(produceResult),
       _hasV8Expression(hasV8Expression),
-      _count(count) {
+      _count(count),
+      _readOwnWrites(readOwnWrites) {
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
     for (size_t i = 0; i < _condition->numMembers(); ++i) {
@@ -346,7 +347,7 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
       _condition(condition),
       _index(index),
       _cursor(_trx.indexScanForCondition(
-          index, condition, infos.getOutVariable(), infos.getOptions())),
+          index, condition, infos.getOutVariable(), infos.getOptions(), infos.canReadOwnWrites())),
       _context(context),
       _type(infos.getCount() ? Type::Count :
                 infos.isLateMaterialized()
@@ -356,7 +357,8 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
                           : _cursor->hasCovering() &&  // if change see IndexNode::canApplyLateDocumentMaterializationRule()
                                     infos.getProjections().supportsCoveringIndex()
                                 ? Type::Covering
-                                : Type::Document) {
+                                : Type::Document),
+      _checkUniqueness(checkUniqueness) {
   switch (_type) {
     case Type::NoResult: {
       _documentNonProducer = checkUniqueness ? getNullCallback<true>(context)
@@ -389,6 +391,7 @@ IndexExecutor::CursorReader::CursorReader(CursorReader&& other) noexcept
       _cursor(std::move(other._cursor)),
       _context(other._context),
       _type(other._type),
+      _checkUniqueness(other._checkUniqueness),
       _documentNonProducer(std::move(other._documentNonProducer)),
       _documentProducer(std::move(other._documentProducer)),
       _documentSkipper(std::move(other._documentSkipper)) {}
@@ -422,7 +425,18 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
       return _cursor->nextDocument(_documentProducer, output.numRowsLeft());
     case Type::Count: {
       uint64_t counter = 0;
-      _cursor->skipAll(counter);
+
+      if (_checkUniqueness) {
+        _cursor->all([&](LocalDocumentId const& token) -> bool {
+          if (_context.checkUniqueness(token)) {
+            counter++;
+          }
+          return true;
+        });
+      } else {
+        _cursor->skipAll(counter);
+      }
+
       InputAqlItemRow const& input = _context.getInputRow();
       RegisterId registerId = _context.getOutputRegister();
       TRI_ASSERT(!output.isFull());
@@ -442,13 +456,13 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
 
 size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
   TRI_ASSERT(_type != Type::Count);
-  
+
   if (!hasMore()) {
     return 0;
   }
 
   uint64_t skipped = 0;
-  if (_infos.getFilter() != nullptr) {
+  if (_infos.getFilter() != nullptr || _checkUniqueness) {
     switch (_type) {
       case Type::Covering:
       case Type::LateMaterialized:
@@ -496,7 +510,8 @@ void IndexExecutor::CursorReader::reset() {
     // We need to build a fresh search and cannot go the rearm shortcut
     _cursor = _trx.indexScanForCondition(_index, _condition,
                                          _infos.getOutVariable(),
-                                         _infos.getOptions());
+                                         _infos.getOptions(),
+                                         _infos.canReadOwnWrites());
   }
 }
 
@@ -505,10 +520,10 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _state(ExecutorState::HASMORE),
       _documentProducingFunctionContext(
-      _input, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
-      infos.query(), _trx, infos.getFilter(), infos.getProjections(),
-      false,
-      infos.getIndexes().size() > 1 || infos.hasMultipleExpansions()),
+        _input, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
+        infos.query(), _trx, infos.getFilter(), infos.getProjections(),
+        false,
+        infos.getIndexes().size() > 1 || infos.hasMultipleExpansions()),
       _infos(infos),
       _currentIndex(_infos.getIndexes().size()),
       _skipped(0) {
@@ -549,7 +564,7 @@ void IndexExecutor::initIndexes(InputAqlItemRow& input) {
       };
 
       _infos.query().enterV8Context();
-      TRI_DEFER(cleanup());
+      auto sg = arangodb::scopeGuard([&]() noexcept { cleanup(); });
 
       ISOLATE;
       v8::HandleScope scope(isolate);  // do not delete this!

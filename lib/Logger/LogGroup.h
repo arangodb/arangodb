@@ -21,9 +21,9 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_GROUP_H
-#define ARANGODB_LOGGER_LOG_GROUP_H 1
+#pragma once
 
+#include <atomic>
 #include <cstddef>
 
 namespace arangodb {
@@ -31,14 +31,35 @@ namespace arangodb {
 class LogGroup {
  public:
   // @brief Number of log groups; must increase this when a new group is added
+  // we currently use the following log groups:
+  // - 0: default log group: normal logging
+  // - 1: audit log group: audit logging
   static constexpr std::size_t Count = 2;
+
+  LogGroup() 
+      : _maxLogEntryLength(256U * 1048576U) {}
+
   virtual ~LogGroup() = default;
 
   /// @brief Must return a UNIQUE identifier amongst all LogGroup derivatives
   /// and must be less than Count
   virtual std::size_t id() const = 0;
+
+  /// @brief max length of log entries in this group
+  std::size_t maxLogEntryLength() const noexcept {
+    return _maxLogEntryLength.load(std::memory_order_relaxed);
+  }
+  
+  /// @brief set the max length of log entries in this group.
+  /// should not be called during the setup of the Logger, and not at runtime
+  void maxLogEntryLength(std::size_t value) {
+    _maxLogEntryLength.store(value);
+  }
+
+ protected:
+  /// @brief maximum length of log entries in this LogGroup
+  std::atomic<std::size_t> _maxLogEntryLength;
 };
 
 }  // namespace arangodb
 
-#endif

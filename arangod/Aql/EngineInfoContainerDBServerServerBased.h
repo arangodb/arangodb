@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ENGINE_INFO_CONTAINER_DBSERVER_SERVER_BASED_H
-#define ARANGOD_AQL_ENGINE_INFO_CONTAINER_DBSERVER_SERVER_BASED_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -30,6 +29,7 @@
 #include "Aql/ShardLocking.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterTypes.h"
 #include "VocBase/AccessMode.h"
 
 #include <map>
@@ -41,7 +41,7 @@ namespace network {
 class ConnectionPool;
 struct RequestOptions;
 struct Response;
-}
+}  // namespace network
 
 namespace velocypack {
 class Builder;
@@ -56,57 +56,6 @@ class QueryContext;
 class QuerySnippet;
 
 class EngineInfoContainerDBServerServerBased {
- private:
-  // @brief Local struct to create the
-  // information required to build traverser engines
-  // on DB servers.
-  class TraverserEngineShardLists {
-   public:
-    TraverserEngineShardLists(GraphNode const*, ServerID const& server,
-                              std::unordered_map<ShardID, ServerID> const& shardMapping,
-                              QueryContext& query);
-
-    ~TraverserEngineShardLists() = default;
-
-    void serializeIntoBuilder(arangodb::velocypack::Builder& infoBuilder) const;
-
-    bool hasShard() const { return _hasShard; }
-
-    /// inaccessible edge and verte collection names
-#ifdef USE_ENTERPRISE
-    std::set<CollectionID> inaccessibleCollNames() const {
-      return _inaccessible;
-    }
-#endif
-
-   private:
-    std::vector<ShardID> getAllLocalShards(std::unordered_map<ShardID, ServerID> const& shardMapping,
-                                           ServerID const& server,
-                                           std::shared_ptr<std::vector<std::string>> shardIds);
-
-   private:
-    // The graph node we need to serialize
-    GraphNode const* _node;
-
-    // Flag if we found any shard for the given server.
-    // If not serializeToBuilder will be a noop
-    bool _hasShard;
-
-    // Mapping for edge collections to shardIds.
-    // We have to retain the ordering of edge collections, all
-    // vectors of these in one run need to have identical size.
-    // This is because the conditions to query those edges have the
-    // same ordering.
-    std::vector<std::vector<ShardID>> _edgeCollections;
-
-    // Mapping for vertexCollections to shardIds.
-    std::unordered_map<std::string, std::vector<ShardID>> _vertexCollections;
-
-#ifdef USE_ENTERPRISE
-    std::set<CollectionID> _inaccessible;
-#endif
-  };
-
  public:
   explicit EngineInfoContainerDBServerServerBased(QueryContext& query) noexcept;
 
@@ -122,7 +71,6 @@ class EngineInfoContainerDBServerServerBased {
   // Closes the given snippet and let it use
   // the given queryid of the coordinator as data provider.
   void closeSnippet(QueryId inputSnippet);
-
 
   // Build the Engines for the DBServer
   //   * Creates one Query-Entry for each Snippet per Shard (multiple on the
@@ -140,16 +88,28 @@ class EngineInfoContainerDBServerServerBased {
                       MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverQueryIds,
                       std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
-
   // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.
   void addGraphNode(GraphNode* node, bool pushToSingleServer);
 
  private:
-
-  std::vector<bool> buildEngineInfo(VPackBuilder& infoBuilder, ServerID const& server,
-                                    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-                                    std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
+  /**
+   * @brief Helper method to generate the Request to be send to a specific database server.
+   * this request contains all the necessary information to create a transaction with correct shard
+   * locking, as well as QuerySnippets and GraphEngines on the receiver side.
+   *
+   * @param clusterQueryId cluster-wide query id (used from 3.8 onwards)
+   * @param infoBuilder (mutable) the request body will be written into this builder.
+   * @param server The DatabaseServer we suppose to send the request to, used to identify the shards on this server
+   * @param nodesById A vector to get Nodes by their id.
+   * @param nodeAliases (mutable) A map of node-aliases, if a server is responsible for more then one shard we need to duplicate some nodes in the query (e.g. an IndexNode can only access one shard at a time) this list can map cloned node -> original node ids.
+   *
+   * @return A vector with one entry per GraphNode in the query (in order) it indicates if this Server has created a GraphEngine for this Node and needs to participate in the GraphOperation or not.
+   */
+  std::vector<bool> buildEngineInfo(
+      QueryId clusterQueryId, VPackBuilder& infoBuilder, ServerID const& server,
+      std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+      std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
   arangodb::futures::Future<Result> buildSetupRequest(
       transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
@@ -159,7 +119,6 @@ class EngineInfoContainerDBServerServerBased {
 
   [[nodiscard]] bool isNotSatelliteLeader(VPackSlice infoSlice) const;
 
-
   /**
    * @brief Will send a shutdown to all engines registered in the list of
    * queryIds.
@@ -168,15 +127,14 @@ class EngineInfoContainerDBServerServerBased {
    * they may be leftovers from Coordinator.
    * Will also clear the list of queryIds after return.
    *
-   * @param pool The ConnectionPool
    * @param errorCode error Code to be send to DBServers for logging.
    * @param dbname Name of the database this query is executed in.
-   * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId)
+   * @param serverQueryIds A map of QueryIds of the format: (remoteNodeId:shardId)
    * -> queryid.
    */
   std::vector<futures::Future<network::Response>> cleanupEngines(
-      int errorCode, std::string const& dbname, aql::ServerQueryIdList& queryIds) const;
-
+      ErrorCode errorCode, std::string const& dbname,
+      aql::ServerQueryIdList& serverQueryIds) const;
 
   // Insert the Locking information into the message to be send to DBServers
   void addLockingPart(arangodb::velocypack::Builder& builder, ServerID const& server) const;
@@ -200,9 +158,9 @@ class EngineInfoContainerDBServerServerBased {
 
   // Parse the response of a DBServer to a setup request
   Result parseResponse(VPackSlice response, MapRemoteToSnippet& queryIds,
-                       ServerID const& server, std::string const& serverDest,
+                       ServerID const& server,
                        std::vector<bool> const& didCreateEngine,
-                       QueryId& globalQueryId) const;
+                       QueryId& globalQueryId, RebootId& rebootId) const;
 
   void injectVertexCollections(GraphNode* node);
 
@@ -226,4 +184,3 @@ class EngineInfoContainerDBServerServerBased {
 
 }  // namespace aql
 }  // namespace arangodb
-#endif

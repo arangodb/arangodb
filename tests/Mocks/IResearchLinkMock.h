@@ -43,7 +43,7 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
  public:
   IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& collection);
 
-  [[nodiscard]] static auto setCallbakForScope(std::function<void(irs::directory&)> callback) {
+  [[nodiscard]] static auto setCallbakForScope(std::function<irs::directory_attributes()> callback) {
     InitCallback = callback;
     return irs::make_finally([]() {InitCallback = nullptr; });
   }
@@ -63,8 +63,6 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
                           arangodb::velocypack::Slice const doc) {
     return IResearchLink::insert(trx, documentId, doc);
   }
-
-  bool isPersistent() const override;
 
   bool isSorted() const override { return IResearchLink::isSorted(); }
 
@@ -115,7 +113,7 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
     }
   }
 
-  static  std::function<void(irs::directory&)> InitCallback;
+  static  std::function<irs::directory_attributes()> InitCallback;
 };
 
 }  // namespace iresearch

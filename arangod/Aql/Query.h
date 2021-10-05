@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_H
-#define ARANGOD_AQL_QUERY_H 1
+#pragma once
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/BindParameters.h"
@@ -41,6 +40,8 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include <optional>
 
 struct TRI_vocbase_t;
 
@@ -64,7 +65,7 @@ struct QueryProfile;
 enum class SerializationFormat;
 
 /// @brief an AQL query
-class Query : public QueryContext {
+class Query : public QueryContext, public std::enable_shared_from_this<Query> {
  private:
   enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
@@ -73,21 +74,31 @@ class Query : public QueryContext {
 
  protected:
   /// @brief internal constructor, Used to construct a full query or a ClusterQuery
-  Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
-        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-        aql::QueryOptions&& options, std::shared_ptr<SharedQueryState> sharedState);
+  Query(QueryId id, 
+        std::shared_ptr<transaction::Context> ctx, 
+        QueryString queryString,
+        std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+        aql::QueryOptions options, 
+        std::shared_ptr<SharedQueryState> sharedState);
 
+  /// Used to construct a full query. the constructor is protected to ensure
+  /// that call sites only create Query objects using the `create` factory
+  /// method
+  Query(std::shared_ptr<transaction::Context> ctx, 
+        QueryString queryString,
+        std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+        aql::QueryOptions options = aql::QueryOptions{});
+ 
  public:
-  /// @brief public constructor, Used to construct a full query
-  Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
-        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-        aql::QueryOptions&& options);
-  Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
-        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-        arangodb::velocypack::Slice options = arangodb::velocypack::Slice());
-
   virtual ~Query();
 
+  /// @brief factory method for creating a query. this must be used to
+  /// ensure that Query objects are always created using shared_ptrs.
+  static std::shared_ptr<Query> create(std::shared_ptr<transaction::Context> ctx,
+                                       QueryString queryString,
+                                       std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+                                       aql::QueryOptions options = aql::QueryOptions{});
+  
   /// @brief note that the query uses the DataSource
   void addDataSource(std::shared_ptr<arangodb::LogicalDataSource> const& ds);
 
@@ -108,8 +119,6 @@ class Query : public QueryContext {
 
   QueryString const& queryString() const { return _queryString; }
     
-  TEST_VIRTUAL QueryOptions& queryOptions() { return _queryOptions; }
-
   /// @brief return the start time of the query (steady clock value)
   double startTime() const noexcept;
 
@@ -155,7 +164,7 @@ class Query : public QueryContext {
 
   /// @brief return the final query result status code (0 = no error,
   /// > 0 = error, one of TRI_ERROR_...)
-  int resultCode() const noexcept;
+  ErrorCode resultCode() const noexcept;
 
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const {
@@ -171,7 +180,11 @@ class Query : public QueryContext {
     return _ast.get();
   }
   
-  virtual QueryOptions const& queryOptions() const override {
+  QueryOptions const& queryOptions() const override {
+    return _queryOptions;
+  }
+  
+  QueryOptions& queryOptions() noexcept override {
     return _queryOptions;
   }
   
@@ -193,6 +206,7 @@ class Query : public QueryContext {
     return nullptr;
   }
   void initForTests();
+  void initTrxForTests();
 #endif
   
   AqlItemBlockManager& itemBlockManager() {
@@ -203,10 +217,19 @@ class Query : public QueryContext {
   aql::SnippetList& snippets() { return _snippets; }
   aql::ServerQueryIdList& serverQueryIds() { return _serverQueryIds; }
   aql::ExecutionStats& executionStats() { return _execStats; }
+
+  // Debug method to kill a query at a specific position
+  // during execution. It internally asserts that the query
+  // is actually visible through other APIS (e.g. current queries)
+  // so user actually has a chance to kill it here.
+  void debugKillQuery() override;
   
  protected:
   /// @brief initializes the query
   void init(bool createProfile);
+  
+  void registerQueryInTransactionState();
+  void unregisterQueryInTransactionState() noexcept;
 
   /// @brief calculate a hash for the query, once
   uint64_t hash();
@@ -230,22 +253,23 @@ class Query : public QueryContext {
   void enterState(QueryExecutionState::ValueType);
 
   /// @brief cleanup plan and engine for current query can issue WAITING
-  aql::ExecutionState cleanupPlanAndEngine(int errorCode, bool sync);
+  aql::ExecutionState cleanupPlanAndEngine(ErrorCode errorCode, bool sync);
   
   void unregisterSnippets();
   
  private:
   
-  aql::ExecutionState cleanupTrxAndEngines(int errorCode);
+  aql::ExecutionState cleanupTrxAndEngines(ErrorCode errorCode);
   
   void finishDBServerParts(int errorCode);
-
+  
  protected:
   
   AqlItemBlockManager _itemBlockManager;
   
   /// @brief the actual query string
   QueryString _queryString;
+
   /// collect execution stats, contains aliases
   aql::ExecutionStats _execStats;
 
@@ -309,25 +333,39 @@ class Query : public QueryContext {
 
   /// @brief return the final query result status code (0 = no error,
   /// > 0 = error, one of TRI_ERROR_...)
-  int _resultCode;
+  std::optional<ErrorCode> _resultCode;
   
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;
   
   /// @brief set if we are inside a JS transaction
-  bool _embeddedQuery;
+  bool const _embeddedQuery;
+  
+  /// @brief whether or not the transaction context was registered
+  /// in a v8 context
+  bool _registeredInV8Context;
   
   /// @brief was this query killed
-  bool _queryKilled;
+  std::atomic<bool> _queryKilled;
   
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
-  
+
   /// @brief user that started the query
   std::string _user;
+
+  bool _registeredQueryInTrx{false};
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // Intentionally initialized here to not
+  // be present in production constructors
+  // Indicator if a query was already killed
+  // via a debug failure. This should not
+  // retrigger a kill.
+  bool _wasDebugKilled{false};
+#endif
 };
 
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

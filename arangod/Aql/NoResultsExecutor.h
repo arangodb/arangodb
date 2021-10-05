@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_NORESULTS_EXECUTOR_H
-#define ARANGOD_AQL_NORESULTS_EXECUTOR_H
+#pragma once
 
 #include "Aql/EmptyExecutorInfos.h"
 #include "Aql/ExecutionState.h"
@@ -80,4 +79,3 @@ class NoResultsExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

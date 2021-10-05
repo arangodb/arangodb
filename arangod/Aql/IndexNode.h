@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_INDEX_NODE_H
-#define ARANGOD_AQL_INDEX_NODE_H 1
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -92,10 +91,6 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   bool needsGatherNodeSort() const;
   void needsGatherNodeSort(bool value);
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -144,6 +139,10 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
   void setProjections(arangodb::aql::Projections projections);
 
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+
  private:
   void initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
                       std::vector<RegisterId>& inRegs,
@@ -179,4 +178,3 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CALACULATION_EXECUTOR_H
-#define ARANGOD_AQL_CALACULATION_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -117,9 +116,9 @@ class CalculationExecutor {
 
   // Only for V8Conditions
   template <CalculationType U = calculationType, typename = std::enable_if_t<U == CalculationType::V8Condition>>
-  void exitContext();
+  void exitContext() noexcept;
 
-  [[nodiscard]] bool shouldExitContextBetweenBlocks() const;
+  [[nodiscard]] bool shouldExitContextBetweenBlocks() const noexcept;
 
  private:
   transaction::Methods _trx;
@@ -140,4 +139,3 @@ class CalculationExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

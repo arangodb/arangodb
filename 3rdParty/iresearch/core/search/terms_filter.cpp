@@ -39,7 +39,7 @@ void visit(
     const term_reader& field,
     const by_terms_options::search_terms& search_terms,
     Visitor& visitor) {
-  auto terms = field.iterator();
+  auto terms = field.iterator(SeekMode::NORMAL);
 
   if (IRS_UNLIKELY(!terms)) {
     return;
@@ -136,7 +136,7 @@ filter::prepared::ptr by_terms::prepare(
 
   field_collectors field_stats(order);
   term_collectors term_stats(order, size);
-  multiterm_query::states_t states(index.size());
+  multiterm_query::states_t states(index);
 
   all_terms_collector<decltype(states)> collector(states, field_stats, term_stats);
   collect_terms(index, field(), terms, collector);

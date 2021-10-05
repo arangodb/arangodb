@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_NETWORK_CONNECTION_POOL_H
-#define ARANGOD_NETWORK_CONNECTION_POOL_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -80,7 +79,7 @@ class ConnectionPool final {
   /// @brief request a connection for a specific endpoint
   /// note: it is the callers responsibility to ensure the endpoint
   /// is always the same, we do not do any post-processing
-  ConnectionPtr leaseConnection(std::string const& endpoint);
+  ConnectionPtr leaseConnection(std::string const& endpoint, bool& isFromPool);
 
   /// @brief event loop service to create a connection seperately
   /// user is responsible for correctly shutting it down
@@ -127,7 +126,7 @@ class ConnectionPool final {
   };
 
   TEST_VIRTUAL std::shared_ptr<fuerte::Connection> createConnection(fuerte::ConnectionBuilder&);
-  ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket);
+  ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket, bool& isFromPool);
   
  private:
   Config const _config;
@@ -168,4 +167,3 @@ class ConnectionPtr {
 }  // namespace network
 }  // namespace arangodb
 
-#endif

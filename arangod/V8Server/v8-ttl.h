@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_TTL_H
-#define ARANGOD_V8_SERVER_V8_TTL_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -30,4 +29,3 @@
 
 void TRI_InitV8Ttl(v8::Isolate* isolate);
 
-#endif

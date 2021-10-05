@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_METRICS_H
-#define ARANGODB_REST_SERVER_METRICS_H 1
+#pragma once
 
 #include <atomic>
 #include <cmath>
@@ -46,7 +45,8 @@ class Metric {
   std::string const& help() const;
   std::string const& name() const;
   std::string const& labels() const;
-  virtual void toPrometheus(std::string& result) const = 0;
+  virtual std::string type() const = 0;
+  virtual void toPrometheus(std::string& result, std::string const& globals, std::string const& alternativeName = std::string()) const = 0;
   void header(std::string& result) const;
  protected:
   std::string const _name;
@@ -60,7 +60,6 @@ struct Metrics {
   using buffer_type = gcl::counter::buffer<uint64_t, gcl::counter::atomicity::full, gcl::counter::atomicity::full>;
 };
 
-
 /**
  * @brief Counter functionality
  */
@@ -71,16 +70,17 @@ class Counter : public Metric {
   Counter(Counter const&) = delete;
   ~Counter();
   std::ostream& print (std::ostream&) const;
-  Counter& operator++();
+  Counter& operator++() noexcept;
   Counter& operator++(int);
   Counter& operator+=(uint64_t const&);
   Counter& operator=(uint64_t const&);
+  virtual std::string type() const override { return "counter"; }
   void count();
   void count(uint64_t);
   uint64_t load() const;
   void store(uint64_t const&);
   void push();
-  virtual void toPrometheus(std::string&) const override;
+  virtual void toPrometheus(std::string&, std::string const&, std::string const&) const override;
  private:
   mutable Metrics::counter_type _c;
   mutable Metrics::buffer_type _b;
@@ -98,6 +98,7 @@ template<typename T> class Gauge : public Metric {
   ~Gauge() = default;
   
   std::ostream& print(std::ostream&) const;
+  virtual std::string type() const override { return "gauge"; }
 
   T fetch_add(T t, std::memory_order mo = std::memory_order_relaxed) noexcept {
     if constexpr(std::is_integral_v<T>) {
@@ -171,13 +172,21 @@ template<typename T> class Gauge : public Metric {
   
   T load(std::memory_order mo = std::memory_order_relaxed) const noexcept { return _g.load(mo); }
   
-  void toPrometheus(std::string& result) const override {
-    result += "\n#TYPE " + name() + " gauge\n";
-    result += "#HELP " + name() + " " + help() + "\n" + name();
-    if (!labels().empty()) {
-      result += "{" + labels() + "}";
+  void toPrometheus(std::string& result, std::string const& globalLabels, std::string const& alternativeName) const override {
+    result += !alternativeName.empty() ? alternativeName : name();
+    result += "{";
+    bool haveGlobals = false;
+    if (!globalLabels.empty()) {
+      result += globalLabels;
+      haveGlobals = true;
     }
-    result += " " + std::to_string(load()) + "\n";
+    if (!labels().empty()) {
+      if (haveGlobals) {
+        result += ",";
+      }
+      result += labels();
+    }
+    result += "} " + std::to_string(load()) + "\n";
   }
  private:
   std::atomic<T> _g;
@@ -202,7 +211,7 @@ struct scale_t {
   /**
    * @brief number of buckets
    */
-  size_t n() const {
+  [[nodiscard]] size_t n() const {
     return _n;
   }
   /**
@@ -220,7 +229,7 @@ struct scale_t {
   /**
    * @brief number of buckets
    */
-  std::string const delim(size_t const& s) const {
+  [[nodiscard]] std::string delim(size_t s) const {
     return (s < _n - 1) ? std::to_string(_delim.at(s)) : "+Inf";
   }
   /**
@@ -308,6 +317,17 @@ struct log_scale_t : public scale_t<T> {
   using value_type = T;
   static constexpr ScaleType scale_type = Logarithmic;
 
+  static constexpr auto getHighFromSmallestBucket(T smallestBucketSize, T base, T low, size_t n) -> T {
+    return static_cast<T>((smallestBucketSize - low) * std::pow(base, n - 1) + low);
+  }
+  struct supply_smallest_bucket_t {};
+  static constexpr auto supply_smallest_bucket = supply_smallest_bucket_t{};
+
+  log_scale_t(supply_smallest_bucket_t, T const& base, T const& low,
+              T const& smallestBucketSize, size_t n)
+      : log_scale_t(base, low,
+                    getHighFromSmallestBucket(smallestBucketSize, base, low, n), n) {}
+
   log_scale_t(T const& base, T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n), _base(base) {
     TRI_ASSERT(base > T(0));
@@ -327,7 +347,7 @@ struct log_scale_t : public scale_t<T> {
    * @param val value
    * @return    index
    */
-  size_t pos(T const& val) const {
+  size_t pos(T val) const {
     return static_cast<size_t>(1+std::floor(log((val - this->_low)/_div)/_lbase));
   }
   /**
@@ -378,7 +398,7 @@ struct lin_scale_t : public scale_t<T> {
    * @param val value
    * @return    index
    */
-  size_t pos(T const& val) const {
+  size_t pos(T val) const {
     return static_cast<size_t>(std::floor((val - this->_low)/ _div));
   }
 
@@ -406,40 +426,51 @@ template<typename Scale> class Histogram : public Metric {
   Histogram(Scale&& scale, std::string const& name, std::string const& help,
             std::string const& labels = std::string())
     : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
-      _lowr(std::numeric_limits<value_type>::max()),
-      _highr(std::numeric_limits<value_type>::min()),
-      _n(_scale.n() - 1) {}
+      _n(_scale.n() - 1),
+      _sum(0) {}
 
   Histogram(Scale const& scale, std::string const& name, std::string const& help,
             std::string const& labels = std::string())
     : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(scale),
-      _lowr(std::numeric_limits<value_type>::max()),
-      _highr(std::numeric_limits<value_type>::min()),
-      _n(_scale.n() - 1) {}
+      _n(_scale.n() - 1),
+      _sum(0) {}
 
   ~Histogram() = default;
 
-  void records(value_type const& val) {
-    if (val < _lowr) {
-      _lowr = val;
-    } else if (val > _highr) {
-      _highr = val;
+  void track_extremes(value_type const& val) noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // the value extremes are not actually required and therefore only tracked in
+    // maintainer mode so they can be used when debugging.
+    auto expected = _lowr.load(std::memory_order_relaxed);
+    while (val < expected) {
+      if (_lowr.compare_exchange_weak(expected, val, std::memory_order_relaxed)) {
+        return;
+      }
     }
+    expected = _highr.load(std::memory_order_relaxed);
+    while (val > expected) {
+      if (_highr.compare_exchange_weak(expected, val, std::memory_order_relaxed)) {
+        return;
+      }
+    }
+#endif
   }
 
-  Scale const& scale() {
+  virtual std::string type() const override { return "histogram"; }
+  
+  Scale const& scale() const {
     return _scale;
   }
 
-  size_t pos(value_type const& t) const {
+  size_t pos(value_type t) const {
     return _scale.pos(t);
   }
 
-  void count(value_type const& t) {
+  void count(value_type t) noexcept {
     count(t, 1);
   }
 
-  void count(value_type const& t, uint64_t n) {
+  void count(value_type t, uint64_t n) noexcept {
     if (t < _scale.delims().front()) {
       _c[0] += n;
     } else if (t >= _scale.delims().back()) {
@@ -447,16 +478,26 @@ template<typename Scale> class Histogram : public Metric {
     } else {
       _c[pos(t)] += n;
     }
-    records(t);
+    if constexpr(std::is_integral_v<value_type>) {
+      _sum.fetch_add(static_cast<value_type>(n) * t);
+    } else {
+      value_type tmp = _sum.load(std::memory_order_relaxed);
+      do {
+      } while (!_sum.compare_exchange_weak(tmp,
+                                        tmp + static_cast<value_type>(n) * t,
+                                        std::memory_order_relaxed,
+                                        std::memory_order_relaxed));
+    }
+    track_extremes(t);
   }
 
-  value_type const& low() const { return _scale.low(); }
-  value_type const& high() const { return _scale.high(); }
+  value_type low() const { return _scale.low(); }
+  value_type high() const { return _scale.high(); }
 
   Metrics::hist_type::value_type& operator[](size_t n) {
     return _c[n];
   }
-
+  
   std::vector<uint64_t> load() const {
     std::vector<uint64_t> v(size());
     for (size_t i = 0; i < size(); ++i) {
@@ -465,47 +506,70 @@ template<typename Scale> class Histogram : public Metric {
     return v;
   }
 
-  uint64_t load(size_t i) const { return _c.load(i); };
+  uint64_t load(size_t i) const { return _c.load(i); }
 
   size_t size() const { return _c.size(); }
 
-  virtual void toPrometheus(std::string& result) const override {
-    result += "\n#TYPE " + name() + " histogram\n";
-    result += "#HELP " + name() + " " + help() + "\n";
-    std::string lbs = labels();
-    auto const haveLabels = !lbs.empty();
-    auto const separator = haveLabels && lbs.back() != ',';
+  virtual void toPrometheus(std::string& result, std::string const& globals, std::string const& alternativeName) const override {
     uint64_t sum(0);
+    std::string ls;
+    bool haveGlobals = false;
+    if (!globals.empty()) {
+      ls += globals;
+      haveGlobals = true;
+    }
+    if (!labels().empty()) {
+      if (haveGlobals) {
+        ls += ",";
+      }
+      ls += labels();
+    }
+
+    std::string const& theName 
+      = !alternativeName.empty() ? alternativeName : name();
+
     for (size_t i = 0; i < size(); ++i) {
       uint64_t n = load(i);
       sum += n;
-      result += name() + "_bucket{";
-      if (haveLabels) {
-        result += lbs;
+      result += theName;
+      result += "_bucket{";
+      if (!ls.empty()) {
+        result += ls + ",";
       }
-      if (separator) {
-        result += ",";
-      }
-      result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(n) + "\n";
+      auto v = !alternativeName.empty() ? n : sum;
+      result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(v) + "\n";
     }
-    result += name() + "_count";
-    if (!labels().empty()) {
-      result += "{" + labels() + "}";
+    result += theName + "_count";
+    if (!ls.empty()) {
+      result += "{" + ls + "}";
     }
     result += " " + std::to_string(sum) + "\n";
+    if (alternativeName.empty()) {  // This is version 2 of the API
+      result += theName + "_sum";
+      if (!ls.empty()) {
+        result += "{" + ls + "}";
+      }
+      result += " " + std::to_string(_sum.load(std::memory_order_relaxed)) + "\n";
+    }
   }
 
   std::ostream& print(std::ostream& o) const {
-    o << name() << " scale: " <<  _scale << " extremes: [" << _lowr << ", " << _highr << "]";
+    o << name() << " scale: " <<  _scale;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    o << " extremes: [" << _lowr << ", " << _highr << "]";
+#endif
     return o;
   }
 
  private:
   Metrics::hist_type _c;
-  Scale _scale;
-  value_type _lowr, _highr;
-  size_t _n;
-
+  Scale const _scale;
+  size_t const _n;
+  std::atomic<value_type> _sum;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::atomic<value_type> _lowr{std::numeric_limits<value_type>::max()};
+  std::atomic<value_type> _highr{std::numeric_limits<value_type>::min()};
+#endif
 };
 
 std::ostream& operator<< (std::ostream&, Metrics::counter_type const&);
@@ -514,4 +578,3 @@ std::ostream& operator<<(std::ostream& o, Histogram<T> const& h) {
   return h.print(o);
 }
 
-#endif

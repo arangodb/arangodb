@@ -26,6 +26,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -48,13 +49,13 @@ std::string ArangoClientHelper::rewriteLocation(void* data, std::string const& l
   std::string const& dbname = client->databaseName();
 
   if (location[0] == '/') {
-    return "/_db/" + dbname + location;
+    return "/_db/" + basics::StringUtils::urlEncode(dbname) + location;
   }
-  return "/_db/" + dbname + "/" + location;
+  return "/_db/" + basics::StringUtils::urlEncode(dbname) + "/" + location;
 }
 
 // extract an error message from a response
-std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result, int* err) {
+std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result, ErrorCode* err) {
   if (err != nullptr) {
     *err = TRI_ERROR_NO_ERROR;
   }
@@ -67,13 +68,13 @@ std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result, in
     std::string const& errorMessage =
         arangodb::basics::VelocyPackHelper::getStringValue(body, "errorMessage",
                                                            "");
-    int errorNum =
+    auto errorNum =
         arangodb::basics::VelocyPackHelper::getNumericValue<int>(body,
                                                                  "errorNum", 0);
 
-    if (errorMessage != "" && errorNum > 0) {
+    if (!errorMessage.empty() && errorNum > 0) {
       if (err != nullptr) {
-        *err = errorNum;
+        *err = ErrorCode{errorNum};
       }
       details = ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
     }
@@ -86,7 +87,7 @@ std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result, in
 }
 
 // check if server is a coordinator of a cluster
-bool ArangoClientHelper::getArangoIsCluster(int* err) {
+bool ArangoClientHelper::getArangoIsCluster(ErrorCode* err) {
   std::unique_ptr<SimpleHttpResult> response(
       _httpClient->request(rest::RequestType::GET, "/_admin/server/role", "", 0));
 

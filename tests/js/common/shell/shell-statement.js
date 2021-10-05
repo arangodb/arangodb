@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:1000*/
-/*global assertEqual, assertTrue, assertFalse, assertUndefined, assertMatch, fail */
+/*global assertEqual, assertTrue, assertFalse, assertUndefined, assertMatch, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -28,12 +28,12 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-
-var arangodb = require("@arangodb");
-var db = arangodb.db;
-var aql = arangodb.aql;
-var ERRORS = arangodb.errors;
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const db = arangodb.db;
+const aql = arangodb.aql;
+const ERRORS = arangodb.errors;
+const isServer = typeof arango === 'undefined';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: statements
@@ -620,6 +620,63 @@ function StatementSuite () {
       
       var docs = result.toArray();
       assertEqual(10, docs.length);
+    },
+    
+    testProfilingSilentStreamingQuery: function () {
+      let st = db._createStatement({
+        query : "FOR i IN 1..10 RETURN i",
+        options: { profile: 2, batchSize: 1, silent: true },
+        stream: true,
+      });
+      let result = st.execute();
+      assertTrue(result.getExtra().hasOwnProperty("stats"));
+      while (result.hasNext()) {
+        result.next();
+      }
+    },
+
+    testProfilingSilentStreamingQueryWithBatchSize: function () {
+      let st = db._createStatement({
+        query : "FOR i IN 1..10 RETURN i",
+        options: { profile: 2, batchSize: 1, silent: true },
+        batchSize: 1,
+        stream: true,
+      });
+      let result = st.execute();
+      assertTrue(result.getExtra().hasOwnProperty("stats"));
+      while (result.hasNext()) {
+        result.next();
+      }
+    },
+    
+    testProfilingStreamingQuery: function () {
+      let st = db._createStatement({
+        query : "FOR i IN 1..10 RETURN i",
+        options: { profile: 2, batchSize: 1 },
+        stream: true,
+      });
+      let result = st.execute();
+      assertTrue(result.getExtra().hasOwnProperty("stats"));
+      while (result.hasNext()) {
+        result.next();
+      }
+    },
+
+    testProfilingStreamingQueryWithBatchSize: function () {
+      let st = db._createStatement({
+        query : "FOR i IN 1..10 RETURN i",
+        options: { profile: 2, batchSize: 1 },
+        batchSize: 1,
+        stream: true
+      });
+      let result = st.execute();
+      // batchSize is ignored in arangod
+      assertEqual(isServer, result.getExtra().hasOwnProperty("stats"));
+      assertTrue(result.hasNext());
+      while (result.hasNext()) {
+        result.next();
+      }
+      assertTrue(result.getExtra().hasOwnProperty("stats"));
     },
     
 ////////////////////////////////////////////////////////////////////////////////

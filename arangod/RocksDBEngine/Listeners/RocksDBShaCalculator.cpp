@@ -132,7 +132,7 @@ bool RocksDBShaCalculatorThread::shaCalcFile(std::string const& filename) {
       newfile += ".hash";
       LOG_TOPIC("80257", DEBUG, arangodb::Logger::ENGINES)
           << "shaCalcFile: done " << filename << " result: " << newfile;
-      int ret_val = TRI_WriteFile(newfile.c_str(), "", 0);
+      auto ret_val = TRI_WriteFile(newfile.c_str(), "", 0);
       if (TRI_ERROR_NO_ERROR != ret_val) {
         good = false;
         LOG_TOPIC("8f7ef", DEBUG, arangodb::Logger::ENGINES)
@@ -169,7 +169,7 @@ bool RocksDBShaCalculatorThread::deleteFile(std::string const& filename) {
       if (69 < it.size() && 0 == it.compare(0, basename.size(), basename) &&
           0 == it.substr(basename.size(), 5).compare(".sha.")) {
         std::string deletefile = basics::FileUtils::buildFilename(dirname, it);
-        int ret_val = TRI_UnlinkFile(deletefile.c_str());
+        auto ret_val = TRI_UnlinkFile(deletefile.c_str());
         good = (TRI_ERROR_NO_ERROR == ret_val);
         if (!good) {
           LOG_TOPIC("acb34", DEBUG, arangodb::Logger::ENGINES)
@@ -208,11 +208,14 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(std::string const& pathnam
 
   std::string temppath, tempname;
   for (auto iter = filelist.begin(); filelist.end() != iter; ++iter) {
+    // cppcheck-suppress derefInvalidIteratorRedundantCheck
     std::string::size_type shaIdx = iter->find(".sha.");
     if (std::string::npos != shaIdx) {
       // two cases: 1. its .sst follows so skip both, 2. no matching .sst, so delete
       bool match = false;
+      // cppcheck-suppress derefInvalidIteratorRedundantCheck
       auto next = iter + 1;
+      // cppcheck-suppress derefInvalidIteratorRedundantCheck
       if (filelist.end() != next) {
         tempname = iter->substr(0, shaIdx);
         tempname += ".sst";
@@ -241,8 +244,8 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(std::string const& pathnam
       temppath = basics::FileUtils::buildFilename(pathname, *iter);
       int64_t now = ::time(nullptr);
       int64_t modTime;
-      int r = TRI_MTimeFile(temppath.c_str(), &modTime);
-      if (r == 0 && (now - modTime) >= requireAge) {
+      auto r = TRI_MTimeFile(temppath.c_str(), &modTime);
+      if (r == TRI_ERROR_NO_ERROR && (now - modTime) >= requireAge) {
         LOG_TOPIC("d6c86", DEBUG, arangodb::Logger::ENGINES)
             << "checkMissingShaFiles:"
                " Computing checksum for "
@@ -266,11 +269,22 @@ RocksDBShaCalculator::RocksDBShaCalculator(application_features::ApplicationServ
 
 /// @brief Shutdown the background thread only if it was ever started
 RocksDBShaCalculator::~RocksDBShaCalculator() {
+  // when we get here the background thread should have been stopped
+  // already.
+  TRI_ASSERT(!_shaThread.isRunning());
+  waitForShutdown();
+}
+  
+void RocksDBShaCalculator::waitForShutdown() {
+  // send shutdown signal to SHA thread
+  _shaThread.beginShutdown();
+  
   _shaThread.signalLoop();
   CONDITION_LOCKER(locker, _threadDone);
   if (_shaThread.isRunning()) {
     _threadDone.wait();
   }
+  // now we are sure the SHA thread is not running anymore
 }
 
 void RocksDBShaCalculator::OnFlushCompleted(rocksdb::DB* db,

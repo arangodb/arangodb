@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_SYNCERID_H
-#define ARANGOD_REPLICATION_SYNCERID_H
+#pragma once
 
 #include "VocBase/voc-types.h"
 
@@ -43,4 +42,3 @@ struct SyncerId {
 };
 }
 
-#endif // ARANGOD_REPLICATION_SYNCERID_H

@@ -100,7 +100,7 @@ TEST_F(RestTransactionHandlerTest, parsing_errors) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_BAD_PARAMETER ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestTransactionHandlerTest, collection_not_found_ro) {
@@ -123,7 +123,7 @@ TEST_F(RestTransactionHandlerTest, collection_not_found_ro) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestTransactionHandlerTest, collection_not_found_write) {
@@ -146,7 +146,7 @@ TEST_F(RestTransactionHandlerTest, collection_not_found_write) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestTransactionHandlerTest, collection_not_found_exclusive) {
@@ -169,7 +169,7 @@ TEST_F(RestTransactionHandlerTest, collection_not_found_exclusive) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestTransactionHandlerTest, simple_transaction_abort) {
@@ -337,7 +337,7 @@ TEST_F(RestTransactionHandlerTest, permission_denied_read_only) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_ARANGO_READ_ONLY ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
@@ -376,5 +376,5 @@ TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_FORBIDDEN ==
-                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }

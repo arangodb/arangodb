@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SHARED_QUERY_STATE_H
-#define ARANGOD_AQL_SHARED_QUERY_STATE_H 1
+#pragma once
 
 #include <atomic>
 #include <condition_variable>
@@ -153,4 +152,3 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
 
 }  // namespace aql
 }  // namespace arangodb
-#endif

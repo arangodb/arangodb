@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual, require*/
+/* global assertTrue, assertFalse, assertEqual, assertNotEqual, require*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -116,6 +116,66 @@ function PregelSuite () {
       db._drop("vertices");
       cs = [];
       coordinators = [];
+    },
+    
+    testPregelAllJobs: function() {
+      let url = baseUrl;
+      const task = {
+        algorithm: "pagerank",
+        vertexCollections: ["vertices"],
+        edgeCollections: ["edges"],
+        params: {
+          resultField: "result",
+          store: false
+        },
+        store: false
+      };
+      let ids = [];
+      for (let i = 0; i < 5; ++i) {
+        let result = sendRequest('POST', url, task, i % 2 === 0);
+
+        assertFalse(result === undefined || result === {});
+        assertEqual(result.status, 200);
+        assertTrue(result.body > 1);
+        ids.push(result.body);
+      }
+      assertEqual(5, ids.length);
+      
+      let result = sendRequest('GET', url, {}, false);
+      assertEqual(result.status, 200);
+      assertEqual(5, result.body.length);
+      result.body.forEach((task) => {
+        assertEqual("PageRank", task.algorithm);
+        assertEqual(db._name(), task.database);
+        assertNotEqual(-1, ids.indexOf(task.id));
+      });
+
+      ids.forEach((id) => {
+        const taskId = id;
+        url = `${baseUrl}/${taskId}`;
+        result = sendRequest('GET', url, {}, false);
+
+        assertFalse(result === undefined || result === {});
+        assertEqual(result.status, 200);
+        assertTrue(result.body.state === 'running' || result.body.state === 'done');
+      });
+
+      require('internal').wait(5.0, false);
+
+      ids.forEach((id) => {
+        const taskId = id;
+        url = `${baseUrl}/${taskId}`;
+        result = sendRequest('DELETE', url, {}, {}, false);
+
+        assertFalse(result === undefined || result === {});
+        assertFalse(result.body.error);
+        assertEqual(result.status, 200);
+      });
+      
+      url = baseUrl;
+      result = sendRequest('GET', url, {}, false);
+      assertEqual(result.status, 200);
+      assertEqual([], result.body);
     },
 
     testPregelForwarding: function() {

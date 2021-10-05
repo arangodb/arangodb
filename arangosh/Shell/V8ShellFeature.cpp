@@ -95,7 +95,7 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
 }
 
 void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the JavaScript engine");
+  options->addSection("javascript", "JavaScript engine");
 
   options->addOption("--javascript.startup-directory",
                      "startup paths containing the JavaScript files",
@@ -231,7 +231,7 @@ void V8ShellFeature::unprepare() {
 
 void V8ShellFeature::stop() {
   if (_removeCopyInstallation && !_copyDirectory.empty()) {
-    int res = TRI_RemoveDirectory(_copyDirectory.c_str());
+    auto res = TRI_RemoveDirectory(_copyDirectory.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("cac43", DEBUG, Logger::V8)
@@ -254,11 +254,11 @@ void V8ShellFeature::copyInstallationFiles() {
 
   LOG_TOPIC("65ed7", DEBUG, Logger::V8) << "Copying JS installation files from '" << _startupDirectory
                                << "' to '" << _copyDirectory << "'";
-  int res = TRI_ERROR_NO_ERROR;
 
   _nodeModulesDirectory = _startupDirectory;
 
   if (FileUtils::exists(_copyDirectory)) {
+    auto res = TRI_ERROR_NO_ERROR;
     res = TRI_RemoveDirectory(_copyDirectory.c_str());
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("379f5", FATAL, Logger::V8) << "Error cleaning JS installation path '" << _copyDirectory
@@ -266,9 +266,11 @@ void V8ShellFeature::copyInstallationFiles() {
       FATAL_ERROR_EXIT();
     }
   }
-  if (!FileUtils::createDirectory(_copyDirectory, &res)) {
-    LOG_TOPIC("6d915", FATAL, Logger::V8) << "Error creating JS installation path '"
-                                 << _copyDirectory << "': " << TRI_errno_string(res);
+
+  if (auto res = TRI_ERROR_NO_ERROR; !FileUtils::createDirectory(_copyDirectory, &res)) {
+    auto err = TRI_last_error();
+    LOG_TOPIC("6d915", FATAL, Logger::V8)
+        << "Error creating JS installation path '" << _copyDirectory << "': " << err;
     FATAL_ERROR_EXIT();
   }
 
@@ -437,7 +439,7 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
   return v8connection;
 }
 
-int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
+ErrorCode V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
   ConsoleFeature& console = server().getFeature<ConsoleFeature>();
 
   auto isolate = _isolate;
@@ -561,7 +563,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       promptError = true;
     }
 
-    if (v8connection != nullptr) {
+    if (v8connection != nullptr && v8connection->isConnected()) {
       v8connection->setInterrupted(false);
     }
 

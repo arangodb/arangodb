@@ -48,7 +48,7 @@ void arangodb::tests::VPackToAqlItemBlock(VPackSlice data, RegisterCount nrRegs,
                                           AqlItemBlock& block) {
   // coordinates in the matrix rowNr, entryNr
   size_t rowIndex = 0;
-  RegisterId entry = 0;
+  RegisterId::value_t entry = 0;
   for (auto const& row : VPackArrayIterator(data)) {
     // Walk through the rows
     TRI_ASSERT(row.isArray());

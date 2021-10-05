@@ -22,12 +22,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_ORDER_FACTORY_H
-#define ARANGOD_IRESEARCH__IRESEARCH_ORDER_FACTORY_H 1
+#pragma once
 
 #include "AqlHelper.h"
 
 #include "VocBase/voc-types.h"
+
 
 #include "search/sort.hpp"
 
@@ -164,4 +164,3 @@ class ScorerReplacer {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__IRESEARCH_ORDER_FACTORY_H

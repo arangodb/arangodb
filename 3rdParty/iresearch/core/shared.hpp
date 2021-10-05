@@ -24,6 +24,12 @@
 #ifndef IRESEARCH_SHARED_H
 #define IRESEARCH_SHARED_H
 
+#ifdef __APPLE__
+#include <machine/endian.h>
+#elif __linux__
+#include <endian.h>
+#endif
+
 #include <cfloat>
 #include <cstdlib>
 #include <iostream>
@@ -163,13 +169,6 @@
   #define GCC_ONLY(...)
 #endif
 
-// hool for Valgrind-only code
-#if defined(IRESEARCH_VALGRIND)
-  #define VALGRIND_ONLY(...) __VA_ARGS__
-#else
-  #define VALGRIND_ONLY(...)
-#endif
-
 // check if sizeof(float_t) == sizeof(double_t)
 #if defined(FLT_EVAL_METHOD) && ((FLT_EVAL_METHOD == 1) || (FLT_EVAL_METHOD == 2))
   static_assert(sizeof(float_t) == sizeof(double_t), "sizeof(float_t) != sizeof(double_t)");
@@ -255,10 +254,25 @@
   #error "compiler is not supported"
 #endif
 
+// IRESEARCH_COMPILER_HAS_FEATURE
 #ifndef __has_feature
   #define IRESEARCH_COMPILER_HAS_FEATURE(x) 0 // Compatibility with non-clang compilers.
 #else
   #define IRESEARCH_COMPILER_HAS_FEATURE(x) __has_feature(x)
+#endif
+
+// IRESEARCH_HAS_ATTRIBUTE
+#ifndef __has_attribute
+#define IRESEARCH_HAS_ATTRIBUTE(x) 0
+#else
+#define IRESEARCH_HAS_ATTRIBUTE(x) __has_attribute(x)
+#endif
+
+// IRESEARCH_ATTRIBUTE_NONNULL
+#if IRESEARCH_HAS_ATTRIBUTE(nonnull) || (defined(__GNUC__) && !defined(__clang__))
+#define IRESEARCH_ATTRIBUTE_NONNULL(arg_index) __attribute__((nonnull(arg_index)))
+#else
+#define IRESEARCH_ATTRIBUTE_NONNULL(...)
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,6 +301,24 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// Endianess
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __APPLE__
+#if BYTE_ORDER == BIG_ENDIAN
+#define IRESEARCH_BIG_ENDIAN
+#endif
+#elif _WIN32
+// always LE
+#elif __linux__
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define IRESEARCH_BIG_ENDIAN
+#endif
+#elif !defined(_MSC_VER)
+#error "unsupported os or compiler"
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 
 // likely/unlikely branch indicator
 // macro definitions similar to the ones at
@@ -308,7 +340,21 @@
 
 #define UNUSED(par) (void)(par)
 
-namespace iresearch { }
+namespace iresearch_absl { }
+namespace iresearch {
+constexpr bool is_big_endian() noexcept {
+#ifdef IRESEARCH_BIG_ENDIAN
+ return true;
+#else
+ return false;
+#endif
+}
+// we are using custom absl namespace (and also prefixed macros names)
+// as absl does not support side-by-side compiling in single project
+// with another target also using another version of absl. So with this custom
+// namespace/macros we have isolated our absl copy.
+namespace absl = ::iresearch_absl; 
+}
 namespace irs = ::iresearch;
 
 #define STRINGIFY(x) #x

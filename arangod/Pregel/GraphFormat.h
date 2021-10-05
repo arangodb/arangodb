@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_GRAPH_FORMAT_H
-#define ARANGODB_PREGEL_GRAPH_FORMAT_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -189,4 +188,3 @@ class VertexGraphFormat : public GraphFormat<V, E> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

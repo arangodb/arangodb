@@ -52,7 +52,7 @@ CollectNode::CollectNode(
     std::unordered_map<VariableId, std::string const> const& variableMap,
     std::vector<GroupVarInfo> const& groupVariables,
     std::vector<AggregateVarInfo> const& aggregateVariables,
-    bool isDistinctCommand, bool count)
+    bool isDistinctCommand)
     : ExecutionNode(plan, base),
       _options(base),
       _groupVariables(groupVariables),
@@ -62,15 +62,7 @@ CollectNode::CollectNode(
       _keepVariables(keepVariables),
       _variableMap(variableMap),
       _isDistinctCommand(isDistinctCommand),
-      _specialized(false) {
-  // TODO - this is only relevant for backwards compatibility in cluster upgrade 3.7 -> 3.8
-  // and can be removed in 3.9.
-  if (count) {
-    TRI_ASSERT(aggregateVariables.empty());
-    _aggregateVariables.push_back({outVariable, nullptr, "COUNT"});
-    _outVariable = nullptr;
-  }
-}
+      _specialized(false) {}
 
 CollectNode::CollectNode(
     ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
@@ -93,12 +85,8 @@ CollectNode::CollectNode(
 
 CollectNode::~CollectNode() = default;
 
-/// @brief toVelocyPack, for CollectNode
-void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                     std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+/// @brief doToVelocyPack, for CollectNode
+void CollectNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // group variables
   nodes.add(VPackValue("groups"));
   {
@@ -152,15 +140,10 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     }
   }
 
-  // TODO - this can be removed in 3.9
-  nodes.add("count", VPackValue(false));
   nodes.add("isDistinctCommand", VPackValue(_isDistinctCommand));
   nodes.add("specialized", VPackValue(_specialized));
   nodes.add(VPackValue("collectOptions"));
   _options.toVelocyPack(nodes);
-
-  // And close it:
-  nodes.close();
 }
 
 void CollectNode::calcExpressionRegister(arangodb::aql::RegisterId& expressionRegister,
@@ -179,7 +162,7 @@ void CollectNode::calcCollectRegister(arangodb::aql::RegisterId& collectRegister
     auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     collectRegister = (*it).second.registerId;
-    TRI_ASSERT(collectRegister < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(collectRegister.isValid());
     writeableOutputRegisters.insert((*it).second.registerId);
   }
 }
@@ -198,8 +181,8 @@ void CollectNode::calcGroupRegisters(
 
     RegisterId inReg = itIn->second.registerId;
     RegisterId outReg = itOut->second.registerId;
-    TRI_ASSERT(inReg < RegisterPlan::MaxRegisterId);
-    TRI_ASSERT(outReg < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(inReg.isValid());
+    TRI_ASSERT(outReg.isValid());
     groupRegisters.emplace_back(outReg, inReg);
     writeableOutputRegisters.insert(outReg);
     readableInputRegisters.insert(inReg);
@@ -215,14 +198,14 @@ void CollectNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, Regis
     auto itOut = getRegisterPlan()->varInfo.find(p.outVar->id);
     TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
     RegisterId outReg = itOut->second.registerId;
-    TRI_ASSERT(outReg < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(outReg.isValid());
 
-    RegisterId inReg = RegisterPlan::MaxRegisterId;
+    RegisterId inReg{RegisterId::maxRegisterId};
     if (Aggregator::requiresInput(p.type)) {
       auto itIn = getRegisterPlan()->varInfo.find(p.inVar->id);
       TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
       inReg = itIn->second.registerId;
-      TRI_ASSERT(inReg < RegisterPlan::MaxRegisterId);
+      TRI_ASSERT(inReg.isValid());
       readableInputRegisters.insert(inReg);
     }
     // else: no input variable required
@@ -271,7 +254,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       RegIdSet readableInputRegisters;
       RegIdSet writeableOutputRegisters;
 
-      RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+      RegisterId collectRegister{RegisterId::maxRegisterId};
       calcCollectRegister(collectRegister, writeableOutputRegisters);
 
       // calculate the group registers
@@ -311,10 +294,10 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       RegIdSet readableInputRegisters;
       RegIdSet writeableOutputRegisters;
 
-      RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+      RegisterId collectRegister{RegisterId::maxRegisterId};
       calcCollectRegister(collectRegister, writeableOutputRegisters);
 
-      RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
+      RegisterId expressionRegister{RegisterId::maxRegisterId};
       calcExpressionRegister(expressionRegister, readableInputRegisters);
 
       // calculate the group registers
@@ -655,6 +638,25 @@ void CollectNode::calculateAccessibleUserVariables(ExecutionNode const& node,
   std::ignore = ::calculateAccessibleUserVariables(node, userVariables, false, 0);
 }
 
+void CollectNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  for (auto& variable : _groupVariables) {
+    variable.inVar = Variable::replace(variable.inVar, replacements);
+  }
+  for (auto& variable : _keepVariables) {
+    auto old = variable;
+    variable = Variable::replace(old, replacements);
+  }
+  for (auto& variable : _aggregateVariables) {
+    variable.inVar = Variable::replace(variable.inVar, replacements);
+  }
+  if (_expressionVariable != nullptr) {
+    _expressionVariable = Variable::replace(_expressionVariable, replacements);
+  }
+  for (auto const& it : replacements) {
+    _variableMap.try_emplace(it.second->id, it.second->name);
+  }
+}
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void CollectNode::getVariablesUsedHere(VarSet& vars) const {
   for (auto const& p : _groupVariables) {
@@ -778,7 +780,7 @@ std::vector<Variable const*> const& CollectNode::keepVariables() const {
   return _keepVariables;
 }
 
-void CollectNode::restrictKeepVariables(std::unordered_set<const Variable*> const& variables) {
+void CollectNode::restrictKeepVariables(containers::HashSet<Variable const*> const& variables) {
   auto remainingKeepVariables = decltype(this->_keepVariables){};
   remainingKeepVariables.reserve(std::min(_keepVariables.size(), variables.size()));
 

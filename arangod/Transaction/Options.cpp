@@ -24,6 +24,7 @@
 #include "Options.h"
 
 #include "Basics/debugging.h"
+#include "Cluster/ServerState.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -46,7 +47,30 @@ Options::Options()
       skipInaccessibleCollections(false),
 #endif
       waitForSync(false),
-      isFollowerTransaction(false) {}
+      fillBlockCache(true),
+      isFollowerTransaction(false),
+      origin("", arangodb::RebootId(0)) {
+
+  // if we are a coordinator, fill in our own server id/reboot id.
+  // the data is passed to DB servers when the transaction is started
+  // there. the DB servers use this data to abort the transaction
+  // timely should the coordinator die or be rebooted.
+  // in the DB server case, we leave the origin empty in the beginning,
+  // because the coordinator id will be sent via JSON and thus will be
+  // picked up inside fromVelocyPack()
+  if (ServerState::instance()->isCoordinator()) {
+    // cluster transactions always originate on a coordinator
+    origin = arangodb::cluster::RebootTracker::PeerState(
+        ServerState::instance()->getId(), 
+        ServerState::instance()->getRebootId()
+    );
+  }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // patch intermediateCommitCount for testing
+  adjustIntermediateCommitCount(*this);
+#endif
+}
   
 Options Options::replicationDefaults() {
   Options options;
@@ -62,6 +86,10 @@ void Options::setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommit
   defaultMaxTransactionSize = maxTransactionSize;
   defaultIntermediateCommitSize = intermediateCommitSize;
   defaultIntermediateCommitCount = intermediateCommitCount;
+}
+
+bool Options::isIntermediateCommitEnabled() const noexcept {
+  return intermediateCommitSize != UINT64_MAX || intermediateCommitCount != UINT64_MAX;
 }
 
 void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
@@ -98,12 +126,31 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   if (value.isBool()) {
     waitForSync = value.getBool();
   }
-  value = slice.get("isFollowerTransaction");
+  value = slice.get("fillBlockCache");
   if (value.isBool()) {
-    isFollowerTransaction = value.getBool();
+    fillBlockCache = value.getBool();
+  }
+  
+  if (!ServerState::instance()->isSingleServer()) {
+    value = slice.get("isFollowerTransaction");
+    if (value.isBool()) {
+      isFollowerTransaction = value.getBool();
+    }
+
+    // pick up the originating coordinator's id. note: this can be
+    // empty if the originating coordinator is an ArangoDB 3.7.
+    value = slice.get("origin");
+    if (value.isObject()) {
+      origin = cluster::RebootTracker::PeerState::fromVelocyPack(value);
+    }
   }
   // we are intentionally *not* reading allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
+  
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // patch intermediateCommitCount for testing
+  adjustIntermediateCommitCount(*this);
+#endif
 }
 
 /// @brief add the options to an opened vpack builder
@@ -119,7 +166,34 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("skipInaccessibleCollections", VPackValue(skipInaccessibleCollections));
 #endif
   builder.add("waitForSync", VPackValue(waitForSync));
+  builder.add("fillBlockCache", VPackValue(fillBlockCache));
   // we are intentionally *not* writing allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
-  builder.add("isFollowerTransaction", VPackValue(isFollowerTransaction));
+
+  // serialize data for cluster-wide collections
+  if (!ServerState::instance()->isSingleServer()) {
+    builder.add("isFollowerTransaction", VPackValue(isFollowerTransaction));
+    
+    // serialize the server id/reboot id of the originating server (which must
+    // be a coordinator id if set)
+    if (!origin.serverId().empty()) {
+      builder.add(VPackValue("origin"));
+      origin.toVelocyPack(builder);
+    }
+  }
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+/// @brief patch intermediateCommitCount for testing
+/*static*/ void Options::adjustIntermediateCommitCount(Options& options) {
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount100") {
+    options.intermediateCommitCount = 100;
+  }
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount1000") {
+    options.intermediateCommitCount = 1000;
+  }
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount10000") {
+    options.intermediateCommitCount = 10000;
+  }
+}
+#endif

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_APPLICATION_SERVER_H
-#define ARANGODB_APPLICATION_FEATURES_APPLICATION_SERVER_H 1
+#pragma once
 
 #include <atomic>
 #include <functional>
@@ -175,6 +174,9 @@ class ApplicationServer {
    // of all feature, start them and wait for a shutdown
    // signal. after that, it will shutdown all features
    void run(int argc, char* argv[]);
+
+   // signal a soft shutdown (only used for coordinators so far)
+   void initiateSoftShutdown();
 
    // signal the server to shut down
    void beginShutdown();
@@ -406,4 +408,3 @@ class ApplicationServer {
 }  // namespace application_features
 }  // namespace arangodb
 
-#endif

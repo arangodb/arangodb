@@ -60,8 +60,6 @@ DatabasePathFeature::DatabasePathFeature(application_features::ApplicationServer
 }
 
 void DatabasePathFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("database", "Configure the database");
-
   options->addOption("--database.directory", "path to the database directory",
                      new StringParameter(&_directory));
 
@@ -205,7 +203,7 @@ void DatabasePathFeature::start() {
     std::string systemErrorStr;
     long errorNo;
 
-    int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo, systemErrorStr);
+    auto const res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo, systemErrorStr);
 
     if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("24783", INFO, arangodb::Logger::FIXME)

@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_STANDALONE_CONTEXT_H
-#define ARANGOD_TRANSACTION_STANDALONE_CONTEXT_H 1
+#pragma once
 
 #include "SmartContext.h"
 
@@ -59,4 +58,3 @@ struct StandaloneContext final : public SmartContext {
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

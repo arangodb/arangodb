@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_SERVER_ID_FEATURE_H
-#define ARANGODB_REST_SERVER_SERVER_ID_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/debugging.h"
@@ -50,13 +49,13 @@ class ServerIdFeature final : public application_features::ApplicationFeature {
   void generateId();
 
   /// @brief reads server id from file
-  int readId();
+  ErrorCode readId();
 
   /// @brief writes server id to file
-  int writeId();
+  ErrorCode writeId();
 
   /// @brief read / create the server id on startup
-  int determineId(bool checkVersion);
+  ErrorCode determineId(bool checkVersion);
 
   std::string _idFilename;
 
@@ -65,4 +64,3 @@ class ServerIdFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

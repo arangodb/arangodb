@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_CRASH_HANDLER_H
-#define ARANGODB_BASICS_CRASH_HANDLER_H 1
+#pragma once
 
 namespace arangodb {
 class CrashHandler {
@@ -34,7 +33,7 @@ class CrashHandler {
   [[noreturn]] static void crash(char const* context);
 
   /// @brief logs an assertion failure and crashes the program
-  [[noreturn]] static void assertionFailure(char const* file, int line, char const* func, char const* context);
+  [[noreturn]] static void assertionFailure(char const* file, int line, char const* func, char const* context, const char* message);
 
   /// @brief set flag to kill process hard using SIGKILL, in order to circumvent core
   /// file generation etc.
@@ -45,8 +44,11 @@ class CrashHandler {
 
   /// @brief installs the crash handler globally
   static void installCrashHandler();
+  
+#ifdef _WIN32
+  static void setMiniDumpDirectory(std::string path);
+#endif
 };
 
 }  // namespace arangodb
 
-#endif

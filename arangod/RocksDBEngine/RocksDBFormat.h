@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_FORMAT_H
-#define ARANGO_ROCKSDB_ROCKSDB_FORMAT_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Endian.h"
@@ -91,4 +90,3 @@ inline void uintToPersistentBigEndian(std::string& p, T value) {
 }  // namespace rocksutils
 }  // namespace arangodb
 
-#endif

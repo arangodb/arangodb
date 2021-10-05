@@ -186,9 +186,11 @@ class IRESEARCH_API by_phrase : public filter_base<by_phrase_options> {
   //////////////////////////////////////////////////////////////////////////////
   /// @returns features required for filter
   //////////////////////////////////////////////////////////////////////////////
-  static const flags& required();
+  static constexpr IndexFeatures required() noexcept {
+    return IndexFeatures::FREQ | IndexFeatures::POS;
+  }
 
-  DECLARE_FACTORY();
+  static ptr make();
 
   using filter::prepare;
 

@@ -22,8 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_REGISTER_PLAN_H
-#define ARANGOD_AQL_REGISTER_PLAN_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
@@ -119,12 +118,12 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   // have the same length:
   std::vector<RegisterCount> nrRegs;
 
-  // We collect the subquery nodes to deal with them at the end:
-  std::vector<T*> subqueryNodes;
+  RegisterCount nrConstRegs = 0;
 
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
-  static constexpr RegisterId MaxRegisterId = RegisterId{1000};
+  static constexpr RegisterId MaxRegisterId = RegisterId(RegisterId::maxRegisterId);
+  // TODO - remove MaxRegisterId in favor of RegisterId::maxRegisterId
 
   /// @brief Only used when the register plan is being explained
   std::map<ExecutionNodeId, RegIdOrderedSetStack> unusedRegsByNode;
@@ -134,8 +133,6 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
  public:
   RegisterPlanT();
   RegisterPlanT(arangodb::velocypack::Slice slice, unsigned int depth);
-  // Copy constructor used for a subquery:
-  RegisterPlanT(RegisterPlan const& v, unsigned int newdepth);
   ~RegisterPlanT() = default;
 
   std::shared_ptr<RegisterPlanT> clone();
@@ -143,13 +140,13 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   RegisterId registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters);
   void increaseDepth();
   auto addRegister() -> RegisterId;
-  void addSubqueryNode(T* subquery);
   void shrink(T* start);
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
 
   auto variableToRegisterId(Variable const* variable) const -> RegisterId;
+  auto variableToOptionalRegisterId(VariableId varId) const -> RegisterId;
 
   auto calcRegsToKeep(VarSetStack const& varsUsedLaterStack, VarSetStack const& varsValidStack,
                       std::vector<Variable const*> const& varsSetHere) const -> RegIdSetStack;
@@ -163,4 +160,3 @@ std::ostream& operator<<(std::ostream& os, RegisterPlanT<T> const& r);
 
 }  // namespace arangodb::aql
 
-#endif

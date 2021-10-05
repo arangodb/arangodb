@@ -20,8 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_ENUM_DESERIALIZER_H
-#define VELOCYPACK_ENUM_DESERIALIZER_H
+
+#pragma once
 namespace arangodb {
 namespace velocypack {
 
@@ -97,4 +97,3 @@ struct deserialize_plan_executor<enum_deserializer<Enum, enum_member<EnumValues,
 }  // namespace deserializer::executor
 }  // namespace velocypack
 }  // namespace arangodb
-#endif  // VELOCYPACK_ENUM_DESERIALIZER_H

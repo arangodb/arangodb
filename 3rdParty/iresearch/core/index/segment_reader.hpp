@@ -32,9 +32,7 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interface for a segment reader
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API segment_reader final
-    : public sub_reader,
-      private atomic_shared_ptr_helper<const sub_reader> {
+class IRESEARCH_API segment_reader final : public sub_reader {
  public:
   typedef atomic_shared_ptr_helper<const sub_reader> atomic_utils;
   typedef segment_reader element_type; // type same as self
@@ -132,7 +130,7 @@ class IRESEARCH_API segment_reader final
   }
 
  private:
-  typedef std::shared_ptr<const sub_reader> impl_ptr;
+  using impl_ptr = std::shared_ptr<const sub_reader>;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   impl_ptr impl_;

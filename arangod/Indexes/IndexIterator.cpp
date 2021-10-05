@@ -30,10 +30,11 @@
 
 using namespace arangodb;
 
-IndexIterator::IndexIterator(LogicalCollection* collection, transaction::Methods* trx)
+IndexIterator::IndexIterator(LogicalCollection* collection, transaction::Methods* trx, ReadOwnWrites readOwnWrites)
     : _collection(collection), 
       _trx(trx),
-      _hasMore(true) {
+      _hasMore(true),
+      _readOwnWrites(readOwnWrites) {
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_trx != nullptr);
 }
@@ -159,7 +160,7 @@ bool IndexIterator::nextImpl(LocalDocumentIdCallback const&, size_t /*limit*/) {
 bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb, size_t limit) {
   return nextImpl(
       [this, &cb](LocalDocumentId const& token) {
-        return _collection->getPhysical()->read(_trx, token, cb);
+        return _collection->getPhysical()->read(_trx, token, cb, _readOwnWrites).ok();
       },
       limit);
 }

@@ -4,6 +4,9 @@ project(rocksdb C CXX)
 
 set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
 
+add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-suggest-override)
+add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-suggest-override)
+
 set(ARANGO_ROCKSDB_VERSION "6.8")
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 

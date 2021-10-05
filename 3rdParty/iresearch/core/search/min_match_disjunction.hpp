@@ -43,7 +43,7 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator>
 class min_match_disjunction
-    : public frozen_attributes<3, doc_iterator>,
+    : public doc_iterator,
       private score_ctx {
  public:
   struct cost_iterator_adapter : score_iterator_adapter<DocIterator> {
@@ -69,23 +69,10 @@ class min_match_disjunction
       size_t min_match_count = 1,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
-    : attributes{{
-        { type<document>::id(), &doc_   },
-        { type<cost>::id(),     &cost_  },
-        { type<score>::id(),    &score_ }
-      }},
-      itrs_(std::move(itrs)),
+    : itrs_(std::move(itrs)),
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
-      lead_(itrs_.size()), doc_(doc_limits::invalid()),
-      score_(ord),
-      cost_([this](){
-        return std::accumulate(
-          itrs_.begin(), itrs_.end(), cost::cost_t(0),
-          [](cost::cost_t lhs, const doc_iterator_t& rhs) {
-            return lhs + cost::extract(rhs, 0);
-          });
-      }),
+      lead_(itrs_.size()),
       merger_(ord.prepare_merger(merge_type)) {
     assert(!itrs_.empty());
     assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
@@ -97,6 +84,14 @@ class min_match_disjunction
         return cost::extract(lhs, 0) < cost::extract(rhs, 0);
     });
 
+    std::get<cost>(attrs_).reset([this](){
+      return std::accumulate(
+        itrs_.begin(), itrs_.end(), cost::cost_t(0),
+        [](cost::cost_t lhs, const doc_iterator_t& rhs) {
+          return lhs + cost::extract(rhs, 0);
+        });
+    });
+
     // prepare external heap
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
@@ -104,11 +99,17 @@ class min_match_disjunction
     prepare_score(ord);
   }
 
+  virtual attribute* get_mutable(type_info::type_id id) noexcept override {
+    return irs::get_mutable(attrs_, id);
+  }
+
   virtual doc_id_t value() const override {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
   virtual bool next() override {
+    auto& doc_ = std::get<document>(attrs_);
+
     if (doc_limits::eof(doc_.value)) {
       return false;
     }
@@ -151,6 +152,8 @@ class min_match_disjunction
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
+    auto& doc_ = std::get<document>(attrs_);
+
     if (target <= doc_.value) {
       return doc_.value;
     }
@@ -242,15 +245,21 @@ class min_match_disjunction
   }
 
  private:
+  using attributes = std::tuple<document, cost, score>;
+
   void prepare_score(const order::prepared& ord) {
     if (ord.empty()) {
       return;
     }
 
+    auto& score = std::get<irs::score>(attrs_);
+
+    score.realloc(ord);
+
     scores_vals_.resize(itrs_.size());
-    score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
+    score.reset(this, [](score_ctx* ctx) -> const byte_type* {
       auto& self = *static_cast<min_match_disjunction*>(ctx);
-      auto* score_buf = self.score_.data();
+      auto* score_buf = std::get<irs::score>(self.attrs_).data();
       assert(!self.heap_.empty());
 
       self.push_valid_to_lead();
@@ -275,6 +284,8 @@ class min_match_disjunction
   /// @brief push all valid iterators to lead
   //////////////////////////////////////////////////////////////////////////////
   inline void push_valid_to_lead() {
+    auto& doc_ = std::get<document>(attrs_);
+
     for(auto lead = this->lead(), begin = heap_.begin();
       lead != begin && top().value() <= doc_.value;) {
       // hitch head
@@ -441,9 +452,7 @@ class min_match_disjunction
   mutable std::vector<const irs::byte_type*> scores_vals_;
   size_t min_match_count_; // minimum number of hits
   size_t lead_; // number of iterators in lead group
-  document doc_; // current doc
-  score score_;
-  cost cost_;
+  attributes attrs_;
   order::prepared::merger merger_;
 }; // min_match_disjunction
 

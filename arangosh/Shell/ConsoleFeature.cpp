@@ -112,7 +112,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
 void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--quiet", "silent startup", new BooleanParameter(&_quiet));
 
-  options->addSection("console", "Configure the console");
+  options->addSection("console", "console");
 
   options->addOption("--console.colors", "enable color support",
                      new BooleanParameter(&_colors),
@@ -131,8 +131,7 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console.history",
                      "whether or not to load and persist command-line history",
                      new BooleanParameter(&_useHistory))
-                     .setIntroducedIn(30405)
-                     .setIntroducedIn(30500);
+                     .setIntroducedIn(30405);
 
   options->addOption("--console.pager", "enable paging", new BooleanParameter(&_pager));
 
@@ -317,7 +316,7 @@ std::string ConsoleFeature::readPassword(std::string const& message) {
 std::string ConsoleFeature::readPassword() {
   TRI_SetStdinVisibility(false);
 
-  TRI_DEFER(TRI_SetStdinVisibility(true));
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
 
   std::string password;
 

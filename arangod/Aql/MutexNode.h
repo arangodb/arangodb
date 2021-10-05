@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MUTEX_NODE_H
-#define ARANGOD_AQL_MUTEX_NODE_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 
@@ -44,10 +43,6 @@ class MutexNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final;
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -61,7 +56,11 @@ class MutexNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   void addClient(DistributeConsumerNode const* client);
-  
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+
  private:
   std::vector<std::string> _clients;
 };
@@ -69,4 +68,3 @@ class MutexNode : public ExecutionNode {
 }
 }
 
-#endif

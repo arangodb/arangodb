@@ -282,9 +282,9 @@ void RestQueryHandler::parseQuery() {
   std::string const queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");
 
-  Query query(transaction::StandaloneContext::Create(_vocbase),
-              QueryString(queryString), nullptr);
-  auto parseResult = query.parse();
+  auto query = Query::create(transaction::StandaloneContext::Create(_vocbase),
+                             QueryString(queryString), nullptr);
+  auto parseResult = query->parse();
 
   if (parseResult.result.fail()) {
     generateError(parseResult.result);

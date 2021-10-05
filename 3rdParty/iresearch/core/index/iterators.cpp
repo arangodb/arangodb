@@ -20,10 +20,10 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "iterators.hpp"
-#include "field_meta.hpp"
-#include "formats/formats.hpp"
 #include "analysis/token_attributes.hpp"
+#include "index/iterators.hpp"
+#include "index/field_meta.hpp"
+#include "formats/empty_term_reader.hpp"
 #include "search/cost.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/singleton.hpp"
@@ -36,8 +36,8 @@ namespace {
 //////////////////////////////////////////////////////////////////////////////
 struct empty_doc_iterator final : irs::doc_iterator {
   empty_doc_iterator() noexcept
-    : doc{irs::doc_limits::eof()} {
-    cost.value(0);
+    : cost(0),
+      doc{irs::doc_limits::eof()} {
   }
 
   virtual irs::doc_id_t value() const override {
@@ -71,7 +71,7 @@ struct empty_term_iterator : irs::term_iterator {
   virtual const irs::bytes_ref& value() const noexcept override final {
     return irs::bytes_ref::NIL;
   }
-  virtual irs::doc_iterator::ptr postings(const irs::flags&) const noexcept override final {
+  virtual irs::doc_iterator::ptr postings(irs::IndexFeatures) const noexcept override final {
     return irs::doc_iterator::empty();
   }
   virtual void read() noexcept override final { }
@@ -91,7 +91,7 @@ struct empty_seek_term_iterator final : irs::seek_term_iterator {
   virtual const irs::bytes_ref& value() const noexcept override final {
     return irs::bytes_ref::NIL;
   }
-  virtual irs::doc_iterator::ptr postings(const irs::flags&) const noexcept override final {
+  virtual irs::doc_iterator::ptr postings(irs::IndexFeatures) const noexcept override final {
     return irs::doc_iterator::empty();
   }
   virtual void read() noexcept override final { }
@@ -105,55 +105,20 @@ struct empty_seek_term_iterator final : irs::seek_term_iterator {
   virtual bool seek(const irs::bytes_ref&) noexcept override {
     return false;
   }
-  virtual bool seek(const irs::bytes_ref&, const seek_cookie&) noexcept override {
+  virtual bool seek(const irs::bytes_ref&, const irs::seek_cookie&) noexcept override {
     return false;
   }
-  virtual seek_cookie::ptr cookie() const noexcept override {
+  virtual irs::seek_cookie::ptr cookie() const noexcept override {
     return nullptr;
   }
-}; // empty_term_iterator
+}; // empty_seek_term_iterator
 
 empty_seek_term_iterator EMPTY_SEEK_TERM_ITERATOR;
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class empty_term_reader
 /// @brief represents a reader with no terms
 //////////////////////////////////////////////////////////////////////////////
-struct empty_term_reader final : irs::singleton<empty_term_reader>, irs::term_reader {
-  virtual irs::seek_term_iterator::ptr iterator() const override {
-    return irs::seek_term_iterator::empty(); // no terms in reader
-  }
-
-  virtual irs::seek_term_iterator::ptr iterator(irs::automaton_table_matcher&) const override {
-    return irs::seek_term_iterator::empty(); // no terms in reader
-  }
-
-  virtual const irs::field_meta& meta() const override {
-    return irs::field_meta::EMPTY;
-  }
-
-  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
-    return nullptr;
-  }
-
-  // total number of terms
-  virtual size_t size() const override { return 0; }
-
-  // total number of documents
-  virtual uint64_t docs_count() const override { return 0; }
-
-  // less significant term
-  virtual const irs::bytes_ref& (min)() const override {
-    return irs::bytes_ref::NIL;
-  }
-
-  // most significant term
-  virtual const irs::bytes_ref& (max)() const override {
-    return irs::bytes_ref::NIL;
-  }
-}; // empty_term_reader
-
-empty_term_reader EMPTY_TERM_READER;
+const irs::empty_term_reader EMPTY_TERM_READER{0};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_field_iterator
@@ -161,7 +126,7 @@ empty_term_reader EMPTY_TERM_READER;
 //////////////////////////////////////////////////////////////////////////////
 struct empty_field_iterator final : irs::field_iterator {
   virtual const irs::term_reader& value() const override {
-    return empty_term_reader::instance();
+    return EMPTY_TERM_READER;
   }
 
   virtual bool seek(const irs::string_ref&) override {

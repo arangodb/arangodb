@@ -24,6 +24,7 @@
 #define IRESEARCH_TERM_QUERY_H
 
 #include "search/filter.hpp"
+#include "search/states_cache.hpp"
 
 namespace iresearch {
 

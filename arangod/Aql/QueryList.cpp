@@ -53,10 +53,9 @@ using namespace arangodb::aql;
 QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
                                std::string const& user, std::string&& queryString,
                                std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-                               std::vector<std::string> dataSources,
-                               double started, double runTime,
-                               QueryExecutionState::ValueType state, bool stream,
-                               int resultCode)
+                               std::vector<std::string> dataSources, double started,
+                               double runTime, QueryExecutionState::ValueType state,
+                               bool stream, std::optional<ErrorCode> resultCode)
     : id(id),
       database(database),
       user(user),
@@ -93,9 +92,9 @@ void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
   out.add("runTime", VPackValue(runTime));
   out.add("state", VPackValue(aql::QueryExecutionState::toString(state)));
   out.add("stream", VPackValue(stream));
-  if (resultCode >= TRI_ERROR_NO_ERROR) {
+  if (resultCode.has_value()) {
     // exit code can only be determined if query is fully finished
-    out.add("exitCode", VPackValue(resultCode));
+    out.add("exitCode", VPackValue(*resultCode));
   }
   out.close();
 }
@@ -231,7 +230,7 @@ void QueryList::remove(Query* query) {
         }
       }
           
-      int resultCode = query->resultCode();
+      auto resultCode = query->resultCode();
 
       LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
           << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
@@ -342,7 +341,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
                           query->killed() ? QueryExecutionState::ValueType::KILLED
                                           : query->state(),
                           query->queryOptions().stream,
-                          /*resultCode*/ -1 /*not set yet*/);
+                          /*resultCode*/ std::nullopt /*not set yet*/);
     }
   }
 

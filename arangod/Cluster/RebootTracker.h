@@ -21,11 +21,11 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_REBOOTTRACKER_H
-#define ARANGOD_CLUSTER_REBOOTTRACKER_H
+#pragma once
 
-#include "Cluster/CallbackGuard.h"
 #include "Basics/Mutex.h"
+#include "Cluster/CallbackGuard.h"
+#include "Cluster/ClusterTypes.h"
 
 #include <map>
 #include <memory>
@@ -36,6 +36,11 @@
 namespace arangodb {
 
 class SupervisedScheduler;
+
+namespace velocypack {
+class Builder;
+class Slice;
+}
 
 namespace cluster {
 
@@ -54,6 +59,9 @@ class RebootTracker {
 
     ServerID const& serverId() const noexcept { return _serverId; }
     RebootId rebootId() const noexcept { return _rebootId; }
+
+    void toVelocyPack(velocypack::Builder& builder) const;
+    static PeerState fromVelocyPack(velocypack::Slice);
 
    private:
     ServerID _serverId;
@@ -89,9 +97,9 @@ class RebootTracker {
 
   void queueCallbacks(std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
   void queueCallback(DescriptedCallback callback);
-
+ 
  private:
-  Mutex _mutex;
+  mutable Mutex _mutex;
 
   CallbackId _nextCallbackId{1};
 
@@ -120,4 +128,3 @@ class RebootTracker {
 }  // namespace cluster
 }  // namespace arangodb
 
-#endif  // ARANGOD_CLUSTER_REBOOTTRACKER_H

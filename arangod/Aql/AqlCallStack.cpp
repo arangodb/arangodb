@@ -48,7 +48,7 @@ AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCallList call)
 #endif
 }
 
-AqlCallStack::AqlCallStack(std::vector<AqlCallList>&& operations)
+AqlCallStack::AqlCallStack(std::vector<AqlCallList>&& operations) noexcept
     : _operations(std::move(operations)) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   validateNoCallHasSkippedRows();

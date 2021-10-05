@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_REST_WAL_HANDLER_H
-#define ARANGOD_CLUSTER_CLUSTER_REST_WAL_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -48,4 +47,3 @@ class ClusterRestWalHandler : public RestBaseHandler {
 };
 }  // namespace arangodb
 
-#endif

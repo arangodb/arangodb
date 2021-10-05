@@ -258,7 +258,7 @@ auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,
     }
   });
 
-  return {state, skippedTotal, ranges};
+  return {state, skippedTotal, std::move(ranges)};
 }
 
 auto MultiDependencySingleRowFetcher::upstreamState() const -> ExecutionState {

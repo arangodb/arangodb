@@ -43,24 +43,9 @@
 namespace {
 void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
                             std::function<void(bool)>& gcfunc, std::chrono::seconds offset) {
-  bool queued = false;
-  {
-    std::lock_guard<std::mutex> guard(mutex);
-    std::tie(queued, workItem) =
-        arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
-            [&gcfunc, offset]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
-              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
-                                                                       offset, gcfunc);
-            },
-            arangodb::Logger::COMMUNICATION,
-            "queue transaction garbage collection");
-  }
-  if (!queued) {
-    LOG_TOPIC("c8b3d", FATAL, arangodb::Logger::COMMUNICATION)
-        << "Failed to queue transaction garbage collection, for 5 minutes, "
-           "exiting.";
-    FATAL_ERROR_EXIT();
-  }
+  std::lock_guard<std::mutex> guard(mutex);
+  workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
+    arangodb::RequestLane::INTERNAL_LOW, offset, gcfunc);
 }
 
 constexpr double CongestionRatio = 0.5;
@@ -78,6 +63,15 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
   this->_numIOThreads = 2; // override default
 }
 
+struct NetworkFeatureScale {
+  static fixed_scale_t<double> scale() { return { 0.0, 100.0, {1.0, 5.0, 15.0, 50.0} }; }
+};
+
+DECLARE_COUNTER(arangodb_network_forwarded_requests_total, "Number of requests forwarded to another coordinator");
+DECLARE_COUNTER(arangodb_network_request_timeouts_total, "Number of internal requests that have timed out");
+DECLARE_HISTOGRAM(arangodb_network_request_duration_as_percentage_of_timeout, NetworkFeatureScale, "Internal request round-trip time as a percentage of timeout [%]");
+DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t, "Number of outgoing internal requests in flight");
+
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
     : ApplicationFeature(server, "Network"),
@@ -87,20 +81,15 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
       _numIOThreads(config.numIOThreads),
       _verifyHosts(config.verifyHosts),
       _prepared(false),
-      _forwardedRequests(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_network_forwarded_requests", 0,
-          "Number of requests forwarded to another coordinator")),
+      _forwardedRequests(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_forwarded_requests_total{})),
       _maxInFlight(::MaxAllowedInFlight),
-      _requestsInFlight(server.getFeature<arangodb::MetricsFeature>().gauge<std::uint64_t>(
-          "arangodb_network_requests_in_flight", 0,
-          "Number of outgoing internal requests in flight")),
-      _requestTimeouts(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_network_request_timeouts", 0,
-          "Number of internal requests that have timed out")),
-      _requestDurations(server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_network_request_duration_as_percentage_of_timeout",
-          fixed_scale_t(0.0, 100.0, {1.0, 5.0, 15.0, 50.0}),
-          "Internal request round-trip time as a percentage of timeout [%]")) {
+      _requestsInFlight(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_requests_in_flight{})),
+      _requestTimeouts(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_request_timeouts_total{})),
+      _requestDurations(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_request_duration_as_percentage_of_timeout{})) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -109,7 +98,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
 }
 
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("network", "Configure cluster-internal networking");
+  options->addSection("network", "cluster-internal networking");
 
   options->addOption("--network.io-threads", "number of network IO threads for cluster-internal communication",
                      new UInt32Parameter(&_numIOThreads))
@@ -129,9 +118,12 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   std::unordered_set<std::string> protos = {
       "", "http", "http2", "h2", "vst"};
 
+  // starting with 3.9, we will hard-code the protocol for cluster-internal communication
   options->addOption("--network.protocol", "network protocol to use for cluster-internal communication",
-                     new DiscreteValuesParameter<StringParameter>(&_protocol, protos))
-                     .setIntroducedIn(30700);
+                     new DiscreteValuesParameter<StringParameter>(&_protocol, protos),
+                     options::makeDefaultFlags(options::Flags::Hidden))
+                     .setIntroducedIn(30700)
+                     .setDeprecatedIn(30900);
 
   options
       ->addOption("--network.max-requests-in-flight",
@@ -178,6 +170,11 @@ void NetworkFeature::prepare() {
   config.clusterInfo = ci;
   config.name = "ClusterComm";
 
+  // using an internal network protocol other than HTTP/1 is
+  // not supported since 3.9. the protocol is always hard-coded
+  // to HTTP/1 from now on. 
+  // note: we plan to upgrade the internal protocol to HTTP/2 at 
+  // some point in the future
   config.protocol = fuerte::ProtocolType::Http;
   if (_protocol == "http" || _protocol == "h1") {
     config.protocol = fuerte::ProtocolType::Http;
@@ -185,6 +182,13 @@ void NetworkFeature::prepare() {
     config.protocol = fuerte::ProtocolType::Http2;
   } else if (_protocol == "vst") {
     config.protocol = fuerte::ProtocolType::Vst;
+  }
+
+  if (config.protocol != fuerte::ProtocolType::Http) {
+    LOG_TOPIC("6d221", WARN, Logger::CONFIG)
+        << "using `--network.protocol` is deprecated. "
+        << "the network protocol for cluster-internal requests is hard-coded to HTTP/1 in this version";
+    config.protocol = fuerte::ProtocolType::Http;
   }
 
   _pool = std::make_unique<network::ConnectionPool>(config);
@@ -292,16 +296,17 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
                                  RequestCallback&& cb) {
   TRI_ASSERT(req != nullptr);
   prepareRequest(pool, req);
-  auto conn = pool.leaseConnection(endpoint);
+  bool isFromPool = false;
+  auto conn = pool.leaseConnection(endpoint, isFromPool);
   conn->sendRequest(std::move(req),
-                    [this, &pool,
+                    [this, &pool, isFromPool,
                      cb = std::move(cb)](fuerte::Error err,
                                          std::unique_ptr<fuerte::Request> req,
                                          std::unique_ptr<fuerte::Response> res) {
                       TRI_ASSERT(req != nullptr);
                       finishRequest(pool, err, req, res);
                       TRI_ASSERT(req != nullptr);
-                      cb(err, std::move(req), std::move(res));
+                      cb(err, std::move(req), std::move(res), isFromPool);
                     });
 }
 
@@ -325,10 +330,22 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool, fuerte::
                                                               req->timestamp());
     std::chrono::milliseconds timeout = req->timeout();
     TRI_ASSERT(timeout.count() > 0);
-    double percentage = std::clamp(100.0 * static_cast<double>(duration.count()) /
-                                       static_cast<double>(timeout.count()),
-                                   0.0, 100.0);
-    _requestDurations.count(percentage);
+    if (timeout.count() > 0) {
+      // only go in here if we are sure to not divide by zero 
+      double percentage = std::clamp(100.0 * static_cast<double>(duration.count()) /
+                                         static_cast<double>(timeout.count()),
+                                     0.0, 100.0);
+      _requestDurations.count(percentage);
+    } else {
+      // the timeout value was 0, for whatever reason. this is unexpected,
+      // but we must not make the program crash here.
+      // so instead log a warning and interpret this as a request that took
+      // 100% of the timeout duration.
+      _requestDurations.count(100.0);
+      LOG_TOPIC("1688c", WARN, Logger::FIXME) 
+          << "encountered invalid 0s timeout for internal request to path " 
+          << req->header.path;
+    }
   }
 }
 

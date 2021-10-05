@@ -25,11 +25,11 @@
 
 using namespace arangodb;
 
-RocksDBReplicationResult::RocksDBReplicationResult(int errorNumber, uint64_t maxTick)
+RocksDBReplicationResult::RocksDBReplicationResult(ErrorCode errorNumber, uint64_t maxTick)
     : _result(errorNumber), _maxTick(maxTick), _lastScannedTick(0), _minTickIncluded(false) {}
 
-RocksDBReplicationResult::RocksDBReplicationResult(int errorNumber, char const* errorMessage,
-                                                   uint64_t maxTick)
+RocksDBReplicationResult::RocksDBReplicationResult(ErrorCode errorNumber,
+                                                   char const* errorMessage, uint64_t maxTick)
     : _result(errorNumber, errorMessage),
       _maxTick(maxTick),
       _lastScannedTick(0),

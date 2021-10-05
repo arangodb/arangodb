@@ -28,32 +28,18 @@
 namespace iresearch {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                 basic_token_stream implementation
-// -----------------------------------------------------------------------------
-
-attribute* basic_token_stream::get_mutable(type_info::type_id type) noexcept {
-  if (irs::type<increment>::id() == type) {
-    return &inc_;
-  }
-
-  return irs::type<term_attribute>::id() == type
-    ? &term_
-    : nullptr;
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                               boolean_token_stream implementation
 // -----------------------------------------------------------------------------
 
 boolean_token_stream::boolean_token_stream(bool value /*= false*/) noexcept
-  : in_use_(false),
+  : basic_token_stream(irs::type<boolean_token_stream>::get()), in_use_(false),
     value_(value) {
 }
 
 bool boolean_token_stream::next() noexcept {
   const auto in_use = in_use_;
   in_use_ = true;
-  term_.value = ref_cast<byte_type>(value(value_));
+  std::get<term_attribute>(attrs_).value = ref_cast<byte_type>(value(value_));
   return !in_use;
 }
 
@@ -62,19 +48,15 @@ bool boolean_token_stream::next() noexcept {
 // -----------------------------------------------------------------------------
 
 string_token_stream::string_token_stream() noexcept
-  : attributes{{
-      { type<increment>::id(),      &inc_   },
-      { type<term_attribute>::id(), &term_  },
-      { type<offset>::id(),         &offset_}
-    }},
-    in_use_(false) {
+   : analysis::analyzer(irs::type<string_token_stream>::get()), in_use_(false) {
 }
 
 bool string_token_stream::next() noexcept {
   const auto in_use = in_use_;
-  term_.value = value_;
-  offset_.start = 0;
-  offset_.end = static_cast<uint32_t>(value_.size());
+  std::get<term_attribute>(attrs_).value = value_;
+  auto& offset = std::get<irs::offset>(attrs_);
+  offset.start = 0;
+  offset.end = static_cast<uint32_t>(value_.size());
   value_ = irs::bytes_ref::NIL;
   in_use_ = true;
   return !in_use;
@@ -85,32 +67,36 @@ bool string_token_stream::next() noexcept {
 // -----------------------------------------------------------------------------
 
 bytes_ref numeric_token_stream::numeric_term::value(
-    bstring& buf, NumericType type,
+    byte_type* buf, NumericType type,
     value_t val, uint32_t shift) {
   switch (type) {
     case NT_LONG: {
-      typedef numeric_utils::numeric_traits<int64_t> traits_t;
-      string_utils::oversize(buf, traits_t::size());
+      using traits_t = numeric_utils::numeric_traits<int64_t> ;
+      static_assert(traits_t::size() <=
+        IRESEARCH_COUNTOF(decltype(numeric_token_stream::numeric_term::data_){}));
 
-      return bytes_ref(&(buf[0]), traits_t::encode(val.i64, &(buf[0]), shift));
+      return {buf, traits_t::encode(val.i64, buf, shift)};
     }
     case NT_DBL: {
-      typedef numeric_utils::numeric_traits<double_t> traits_t;
-      string_utils::oversize(buf, traits_t::size());
+      using traits_t = numeric_utils::numeric_traits<double_t>;
+      static_assert(traits_t::size() <=
+        IRESEARCH_COUNTOF(decltype(numeric_token_stream::numeric_term::data_){}));
 
-      return bytes_ref(&(buf[0]), traits_t::encode(val.i64, &(buf[0]), shift));
+      return {buf, traits_t::encode(val.i64, buf, shift)};
     }
     case NT_INT: {
-      typedef numeric_utils::numeric_traits<int32_t> traits_t;
-      string_utils::oversize(buf, traits_t::size());
+      using traits_t = numeric_utils::numeric_traits<int32_t>;
+      static_assert(traits_t::size() <=
+        IRESEARCH_COUNTOF(decltype(numeric_token_stream::numeric_term::data_){}));
 
-      return bytes_ref(&(buf[0]), traits_t::encode(val.i32, &(buf[0]), shift));
+      return {buf, traits_t::encode(val.i32, buf, shift)};
     }
     case NT_FLOAT: {
-      typedef numeric_utils::numeric_traits<float_t> traits_t;
-      string_utils::oversize(buf, traits_t::size());
+      using traits_t = numeric_utils::numeric_traits<float_t>;
+      static_assert(traits_t::size() <=
+        IRESEARCH_COUNTOF(decltype(numeric_token_stream::numeric_term::data_){}));
 
-      return bytes_ref(&(buf[0]), traits_t::encode(val.i32, &(buf[0]), shift));
+      return {buf, traits_t::encode(val.i32, buf, shift)};
     }
   }
 
@@ -139,7 +125,9 @@ bool numeric_token_stream::numeric_term::next(increment& inc, bytes_ref& out) {
 // -----------------------------------------------------------------------------
 
 bool numeric_token_stream::next() {
-  return num_.next(inc_, term_.value);
+  return num_.next(
+    std::get<increment>(attrs_),
+    std::get<term_attribute>(attrs_).value);
 }
 
 void numeric_token_stream::reset(
@@ -193,7 +181,7 @@ void numeric_token_stream::reset(
 bool null_token_stream::next() noexcept {
   const auto in_use = in_use_;
   in_use_ = true;
-  term_.value = irs::ref_cast<byte_type>(value_null());
+  std::get<term_attribute>(attrs_).value = irs::ref_cast<byte_type>(value_null());
   return !in_use;
 }
 

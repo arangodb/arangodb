@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ROCKSDB_LOGGER_H
-#define ARANGODB_BASICS_ROCKSDB_LOGGER_H 1
+#pragma once
 
 #include <stdarg.h>
 #include <atomic>
@@ -58,4 +57,3 @@ class RocksDBLogger final : public rocksdb::Logger {
 
 }  // namespace arangodb
 
-#endif

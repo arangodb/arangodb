@@ -16,8 +16,10 @@ must be equal to *"ttl"*.
 an array with exactly one attribute path.
 
 @RESTBODYPARAM{expireAfter,number,required,}
-The time (in seconds) after a document's creation after which the
-documents count as "expired".
+The time interval (in seconds) from the point in time stored in the `fields`
+attribute after which the documents count as expired. Can be set to `0` to let
+documents expire as soon as the server time passes the point in time stored in
+the document attribute, or to a higher number to delay the expiration.
 
 @RESTDESCRIPTION
 Creates a TTL index for the collection *collection-name* if it

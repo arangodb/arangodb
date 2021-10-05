@@ -21,8 +21,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_GEO
-#define ARANGODB_IRESEARCH__IRESEARCH_GEO 1
+#pragma once
 
 #include <s2/s2region_term_indexer.h>
 
@@ -70,5 +69,4 @@ void toVelocyPack(velocypack::Builder& builder, S2LatLng const& point);
 } // iresearch
 } // arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_GEO
 

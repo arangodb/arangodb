@@ -60,9 +60,9 @@ class NgramSimilarityFunctionTest : public ::testing::Test {
     std::set<int>* warnings = nullptr) {
     fakeit::Mock<ExpressionContext> expressionContextMock;
     ExpressionContext& expressionContext = expressionContextMock.get();
-    fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([warnings](int c, char const*) {
+    fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([warnings](ErrorCode c, char const*) {
       if (warnings) {
-        warnings->insert(c);
+        warnings->insert(static_cast<int>(c));
       }});
     TRI_vocbase_t mockVocbase(TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto trx = server.createFakeTransaction();
@@ -126,9 +126,9 @@ TEST_F(NgramSimilarityFunctionTest, test) {
     AqlValue const ValidString{ "ValidString" };
     AqlValue const ValidInt{ AqlValueHintInt{5} };
 
-    const std::set<int> badParamWarning{ TRI_ERROR_BAD_PARAMETER };
-    const std::set<int> typeMismatchWarning{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH };
-    const std::set<int> invalidArgsCount{ TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH };
+    const std::set<int> badParamWarning{ static_cast<int>(TRI_ERROR_BAD_PARAMETER) };
+    const std::set<int> typeMismatchWarning{ static_cast<int>(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) };
+    const std::set<int> invalidArgsCount{ static_cast<int>(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) };
 
     //invalid args count
     assertNgramSimilarityFail(__LINE__, invalidArgsCount, &ValidString, &ValidString, nullptr);

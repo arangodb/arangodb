@@ -73,7 +73,15 @@ function recoverySuite () {
           return false;
         }
         if (line.match(/\[bd666\].*=+/)) {
-          // and its following lie ===============================
+          // and its following line ===============================
+          return false;
+        }
+        if (internal.env["isAsan"] === "true" && line.match(/\[3ad54\].*=+/)) {
+          // intentionally ignore "slow background settings sync: " in case of ASan
+          return false;
+        }
+        if (line.match(/\[2c0c6\].*Extended names+/)) {
+          // intentionally ignore "extended names for databases is an experimental feature...
           return false;
         }
 

@@ -67,9 +67,9 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   // set hints
   _hints = hints;
 
-  auto cleanup = scopeGuard([&] {
+  auto cleanup = scopeGuard([&]() noexcept {
     updateStatus(transaction::Status::ABORTED);
-    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
+    ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted;
   });
 
   Result res = useCollections();
@@ -79,7 +79,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   // all valid
   updateStatus(transaction::Status::RUNNING);
-  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
+  ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted;
 
   transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
   setRegistered();
@@ -102,7 +102,9 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     // if there is only one server we may defer the lazy locking
     // until the first actual operation (should save one request)
     if (leaders.size() > 1) {
-      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders).get();
+      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders,
+                                                         transaction::MethodsApi::Synchronous)
+                .get();
       if (res.fail()) {  // something is wrong
         return res;
       }
@@ -124,7 +126,7 @@ Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTr
   }
 
   updateStatus(transaction::Status::COMMITTED);
-  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted++;
+  ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted;
 
   return {};
 }
@@ -135,7 +137,7 @@ Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   updateStatus(transaction::Status::ABORTED);
-  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
+  ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted;
   
   return {};
 }

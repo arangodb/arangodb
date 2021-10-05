@@ -1,0 +1,18 @@
+name: arangodb_scheduler_maintenance_prio_queue_length
+introducedIn: "3.8.0"
+help: |
+  Current queue length of the maintenance priority queue in the scheduler.
+unit: number
+type: gauge
+category: Scheduler
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  The number of jobs currently queued on the scheduler's maintenance priority
+  queue. These are the jobs with the highest priority and are mainly used for
+  cluster internal operations. The capacity of the maintenance priority queue
+  can be configured via the startup option `--server.scheduler-queue-size`.

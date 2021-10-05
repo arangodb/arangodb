@@ -45,14 +45,14 @@ FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
   auto tmp_server = _snapshot.hasAsString(path + "server");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
 
-  if (tmp_server.second && tmp_creator.second) {
-    _server = tmp_server.first;
-    _creator = tmp_creator.first;
+  if (tmp_server && tmp_creator) {
+    _server = tmp_server.value();
+    _creator = tmp_creator.value();
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
     LOG_TOPIC("ac06a", ERR, Logger::SUPERVISION) << err.str();
-    finish(tmp_server.first, "", false, err.str());
+    finish(tmp_server.value(), "", false, err.str());
     _status = FAILED;
   }
 }
@@ -66,13 +66,13 @@ bool FailedServer::start(bool& aborts) {
 
   // Fail job, if Health back to not FAILED
   auto status = _snapshot.hasAsString(healthPrefix + _server + "/Status");
-  if (status.second && status.first != "FAILED") {
+  if (status && status.value() != "FAILED") {
     std::stringstream reason;
     reason << "Server " << _server << " is no longer failed. Not starting FailedServer job";
     LOG_TOPIC("a04da", INFO, Logger::SUPERVISION) << reason.str();
     finish(_server, "", false, reason.str());
     return false;
-  } else if (!status.second) {
+  } else if (!status) {
     std::stringstream reason;
     reason << "Server " << _server << " no longer in health. Already removed. Abort.";
     LOG_TOPIC("1479a", INFO, Logger::SUPERVISION) << reason.str();
@@ -91,9 +91,10 @@ bool FailedServer::start(bool& aborts) {
     return true;
   };
 
-  std::pair<Slice, bool> dbserverLock =
+  auto dbserverLock =
       _snapshot.hasAsSlice(blockedServersPrefix + _server);
-  if (auto const& s = dbserverLock.first; dbserverLock.second) {
+  if (dbserverLock) {
+    auto s = *dbserverLock;
     if (s.isArray()) {
       for (auto const& m : VPackArrayIterator(s)) {
         if (m.isString()) {
@@ -127,8 +128,8 @@ bool FailedServer::start(bool& aborts) {
     VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
       auto const& toDoJob = _snapshot.hasAsNode(toDoPrefix + _jobId);
-      if (toDoJob.second) {
-        toDoJob.first.toBuilder(todo);
+      if (toDoJob) {
+        toDoJob.value().get().toBuilder(todo);
       } else {
         LOG_TOPIC("729c3", INFO, Logger::SUPERVISION)
             << "Failed to get key " + toDoPrefix + _jobId +
@@ -149,7 +150,7 @@ bool FailedServer::start(bool& aborts) {
       VPackObjectBuilder oper(transactions.get());
       // Add pending
 
-      auto const& databases = _snapshot.hasAsChildren("/Plan/Collections").first;
+      auto const& databases = _snapshot.hasAsChildren("/Plan/Collections").value().get();
       // auto const& current = _snapshot.hasAsChildren("/Current/Collections").first;
 
       size_t sub = 0;
@@ -163,8 +164,8 @@ bool FailedServer::start(bool& aborts) {
 
           auto const& replicationFactorPair =
               collection.hasAsNode(StaticStrings::ReplicationFactor);
-          if (replicationFactorPair.second) {
-            VPackSlice const replicationFactor = replicationFactorPair.first.slice();
+          if (replicationFactorPair) {
+            VPackSlice const replicationFactor = replicationFactorPair.value().get().slice();
             uint64_t number = 1;
             bool isSatellite = false;
 
@@ -177,7 +178,7 @@ bool FailedServer::start(bool& aborts) {
               } catch (...) {
                 LOG_TOPIC("f5290", ERR, Logger::SUPERVISION)
                     << "Failed to read replicationFactor. job: " << _jobId
-                    << " " << collection.hasAsString("id").first;
+                    << " " << collection.hasAsString("id").value();
                 continue;
               }
 
@@ -192,7 +193,7 @@ bool FailedServer::start(bool& aborts) {
               continue;  // we only deal with the master
             }
 
-            for (auto const& shard : collection.hasAsChildren("shards").first) {
+            for (auto const& shard : collection.hasAsChildren("shards").value().get()) {
               size_t pos = 0;
 
               for (VPackSlice it : VPackArrayIterator(shard.second->slice())) {
@@ -317,7 +318,7 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
       _jb->add(VPackValue(failedServersPrefix));
       {
         VPackObjectBuilder old(_jb.get());
-        _jb->add("old", _snapshot.hasAsBuilder(failedServersPrefix).first.slice());
+        _jb->add("old", _snapshot.hasAsBuilder(failedServersPrefix).value().slice());
       }
     }  // Preconditions
   }
@@ -341,12 +342,12 @@ JOB_STATUS FailedServer::status() {
   auto serverHealth = _snapshot.hasAsString(healthPrefix + _server + "/Status");
 
   // mop: ohhh...server is healthy again!
-  bool serverHealthy = serverHealth.second && serverHealth.first == Supervision::HEALTH_STATUS_GOOD;
+  bool serverHealthy = serverHealth && *serverHealth == Supervision::HEALTH_STATUS_GOOD;
 
   std::shared_ptr<Builder> deleteTodos;
 
-  Node::Children const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
-  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  Node::Children const& todos = _snapshot.hasAsChildren(toDoPrefix).value().get();
+  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).value().get();
   bool hasOpenChildTasks = false;
 
   for (auto const& subJob : todos) {

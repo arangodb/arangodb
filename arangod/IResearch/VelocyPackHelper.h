@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VELOCY_PACK_HELPER_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VELOCY_PACK_HELPER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
@@ -209,8 +208,8 @@ inline bool getNumber(T& buf, arangodb::velocypack::Slice const& slice) noexcept
 //////////////////////////////////////////////////////////////////////////////
 template <typename T>
 inline bool getNumber(T& buf, arangodb::velocypack::Slice const& slice,
-                      std::string const& fieldName, bool& seen, T fallback) noexcept {
-  seen = slice.hasKey(fieldName);
+                      std::string_view fieldName, bool& seen, T fallback) noexcept {
+  seen = slice.hasKey(fieldName.data(), fieldName.length());
 
   if (!seen) {
     buf = fallback;
@@ -226,9 +225,9 @@ inline bool getNumber(T& buf, arangodb::velocypack::Slice const& slice,
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
 inline bool getString(std::string& buf, arangodb::velocypack::Slice const& slice,
-                      std::string const& fieldName, bool& seen,
+                      std::string_view fieldName, bool& seen,
                       std::string const& fallback) noexcept {
-  seen = slice.hasKey(fieldName);
+  seen = slice.hasKey(fieldName.data(), fieldName.length());
 
   if (!seen) {
     buf = fallback;
@@ -252,9 +251,9 @@ inline bool getString(std::string& buf, arangodb::velocypack::Slice const& slice
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
 inline bool getString(irs::string_ref& buf, arangodb::velocypack::Slice const& slice,
-                      std::string const& fieldName, bool& seen,
+                      std::string_view fieldName, bool& seen,
                       irs::string_ref const& fallback) noexcept {
-  seen = slice.hasKey(fieldName);
+  seen = slice.hasKey(fieldName.data(), fieldName.length());
 
   if (!seen) {
     buf = fallback;
@@ -367,4 +366,3 @@ class Iterator {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif

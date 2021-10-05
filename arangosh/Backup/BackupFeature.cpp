@@ -69,13 +69,14 @@ const arangodb::Result ErrorMalformedJsonResponse = {
 /// @brief check whether HTTP response is valid, complete, and not an error
 arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& client,
                                    std::unique_ptr<arangodb::httpclient::SimpleHttpResult> const& response) {
+  using arangodb::basics::StringUtils::concatT;
   using arangodb::basics::StringUtils::itoa;
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
             "got invalid response from server: " + client.getErrorMessage()};
   }
   if (response->wasHttpError()) {
-    int errorNum = TRI_ERROR_INTERNAL;
+    auto errorNum = TRI_ERROR_INTERNAL;
     std::string errorMsg = response->getHttpReturnMessage();
     std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder;
     // Handle case of no body:
@@ -83,13 +84,14 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
       bodyBuilder = response->getBodyVelocyPack();
       arangodb::velocypack::Slice error = bodyBuilder->slice();
       if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
-        errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
+        errorNum = ErrorCode{
+            error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>()};
         errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
       }
     } catch(...) {
     }
-    return {errorNum, "got invalid response from server: HTTP " +
-                          itoa(response->getHttpReturnCode()) + ": " + errorMsg};
+    return {errorNum, concatT("got invalid response from server: HTTP ",
+                         itoa(response->getHttpReturnCode()), ": ", errorMsg)};
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -160,7 +162,7 @@ arangodb::Result waitForRestart(arangodb::ClientManager& clientManager,
   while (timeSinceStart() < maxWaitForRestart) {
     std::unique_ptr<arangodb::httpclient::SimpleHttpClient> client;
     try {
-      result = clientManager.getConnectedClient(client, true, false, false, true);
+      result = clientManager.getConnectedClient(client, true, false, false, true, 0);
       if (result.ok() && client != nullptr) {
         double uptime = 0.0;
         result = ::getUptime(*client, uptime);
@@ -858,7 +860,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 void BackupFeature::start() {
   Result result;
   std::unique_ptr<httpclient::SimpleHttpClient> client =
-      _clientManager.getConnectedClient(false, true, true);
+      _clientManager.getConnectedClient(false, true, true, 0);
   if (_options.operation == OperationList) {
     result = ::executeList(*client, _options);
   } else if (_options.operation == OperationCreate) {

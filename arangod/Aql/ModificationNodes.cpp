@@ -55,13 +55,10 @@ ModificationNode::ModificationNode(ExecutionPlan* plan, arangodb::velocypack::Sl
                            : true) {}
 
 /// @brief toVelocyPack
-void ModificationNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
-                                          std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(builder, flags, seen);
-
+void ModificationNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder, flags);
+  CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(builder);
 
   // Now put info about vocbase and cid in there
   builder.add("countStats", VPackValue(_countStats));
@@ -115,15 +112,10 @@ RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
     : ModificationNode(plan, base),
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
-void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                    std::unordered_set<ExecutionNode const*>& seen) const {
-  ModificationNode::toVelocyPackHelper(nodes, flags, seen);
-  ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
+void RemoveNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+  ModificationNode::doToVelocyPack(nodes, flags);
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
-
-  // And close it:
-  nodes.close();
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -142,15 +134,16 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
 
   auto readableInputRegisters = RegIdSet{inDocRegister};
   auto writableOutputRegisters = RegIdSet{};
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
 
   auto executorInfos = ModificationExecutorInfos(
+      &engine,
       inDocRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       _plan->getAst()->query(), std::move(options), collection(),
@@ -204,16 +197,12 @@ InsertNode::InsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
 /// @brief toVelocyPack
-void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                    std::unordered_set<ExecutionNode const*>& seen) const {
-  ModificationNode::toVelocyPackHelper(nodes, flags, seen);  // call base class method
+void InsertNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+  ModificationNode::doToVelocyPack(nodes, flags);  // call base class method
 
   // Now put info about vocbase and cid in there
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
-
-  // And close it:
-  nodes.close();
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -234,15 +223,16 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
 
   auto readableInputRegisters = RegIdSet{inputRegister};
   auto writableOutputRegisters = RegIdSet{};
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
 
   ModificationExecutorInfos infos(
+      &engine,
       inputRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       _plan->getAst()->query(), std::move(options), collection(),
@@ -286,6 +276,10 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
+  
+void InsertNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _inVariable = Variable::replace(_inVariable, replacements);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// REMOVE
@@ -303,9 +297,8 @@ UpdateReplaceNode::UpdateReplaceNode(ExecutionPlan* plan,
       _inKeyVariable(
           Variable::varFromVPack(plan->getAst(), base, "inKeyVariable", true)) {}
 
-void UpdateReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                           std::unordered_set<ExecutionNode const*>& seen) const {
-  ModificationNode::toVelocyPackHelper(nodes, flags, seen);
+void UpdateReplaceNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+  ModificationNode::doToVelocyPack(nodes, flags);
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);
 
@@ -319,12 +312,13 @@ void UpdateReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : UpdateReplaceNode(plan, base) {}
 
-/// @brief toVelocyPack
-void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                    std::unordered_set<ExecutionNode const*>& seen) const {
-  UpdateReplaceNode::toVelocyPackHelper(nodes, flags, seen);
-  ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
-  nodes.close();
+void UpdateReplaceNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (_inDocVariable != nullptr) {
+    _inDocVariable = Variable::replace(_inDocVariable, replacements);
+  }
+  if (_inKeyVariable != nullptr) {
+    _inKeyVariable = Variable::replace(_inKeyVariable, replacements);
+  }
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -342,14 +336,14 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDocRegister};
-  if (inKeyRegister < RegisterPlan::MaxRegisterId) {
+  if (inKeyRegister.isValid()) {
     readableInputRegisters.emplace(inKeyRegister);
   }
   auto writableOutputRegisters = RegIdSet{};
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
@@ -358,6 +352,7 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   auto executorInfos = ModificationExecutorInfos(
+      &engine,
       inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),
@@ -373,6 +368,10 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
     return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
+}
+
+void RemoveNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  _inVariable = Variable::replace(_inVariable, replacements);
 }
 
 /// @brief clone ExecutionNode recursively
@@ -406,14 +405,6 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
 ReplaceNode::ReplaceNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : UpdateReplaceNode(plan, base) {}
 
-/// @brief toVelocyPack
-void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                     std::unordered_set<ExecutionNode const*>& seen) const {
-  UpdateReplaceNode::toVelocyPackHelper(nodes, flags, seen);
-  ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
-  nodes.close();
-}
-
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
@@ -429,14 +420,14 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDocRegister};
-  if (inKeyRegister < RegisterPlan::MaxRegisterId) {
+  if (inKeyRegister.isValid()) {
     readableInputRegisters.emplace(inKeyRegister);
   }
   auto writableOutputRegisters = RegIdSet{};;
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
@@ -445,6 +436,7 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   auto executorInfos = ModificationExecutorInfos(
+      &engine,
       inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),
@@ -508,10 +500,8 @@ UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _isReplace(base.get("isReplace").getBoolean()) {}
 
 /// @brief toVelocyPack
-void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                    std::unordered_set<ExecutionNode const*>& seen) const {
-  ModificationNode::toVelocyPackHelper(nodes, flags, seen);
-  ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
+void UpsertNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+  ModificationNode::doToVelocyPack(nodes, flags);
 
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);
@@ -520,9 +510,6 @@ void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   nodes.add(VPackValue("updateVariable"));
   _updateVariable->toVelocyPack(nodes);
   nodes.add("isReplace", VPackValue(_isReplace));
-
-  // And close it:
-  nodes.close();
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -543,18 +530,21 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
 
   auto readableInputRegisters = RegIdSet{inDoc, insert, update};
   auto writableOutputRegisters = RegIdSet{};;
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
 
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
+  // We must not disable indexing for UPSERTs because the subquery might rely on a non-unique secondary index
+  options.canDisableIndexing = false;
 
   auto executorInfos = ModificationExecutorInfos(
+      &engine,
       inDoc, insert, update, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),
@@ -597,5 +587,18 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
+
+void UpsertNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (_inDocVariable != nullptr) {
+    _inDocVariable = Variable::replace(_inDocVariable, replacements);
+  }
+  if (_insertVariable != nullptr) {
+    _insertVariable = Variable::replace(_insertVariable, replacements);
+  }
+  if (_updateVariable != nullptr) {
+    _updateVariable = Variable::replace(_updateVariable, replacements);
+  }
+}
+
 }  // namespace aql
 }  // namespace arangodb

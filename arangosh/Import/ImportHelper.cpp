@@ -25,8 +25,8 @@
 #include "ImportHelper.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
@@ -55,12 +55,10 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace std::literals::string_literals;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to determine if a field value is an integer
 /// this function is here to avoid usage of regexes, which are too slow
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IsInteger(char const* field, size_t fieldLength) {
+namespace {
+bool isInteger(char const* field, size_t fieldLength) {
   char const* end = field + fieldLength;
 
   if (*field == '+' || *field == '-') {
@@ -77,13 +75,10 @@ static bool IsInteger(char const* field, size_t fieldLength) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to determine if a field value maybe is a decimal
 /// value. this function peeks into the first few bytes of the value only
 /// this function is here to avoid usage of regexes, which are too slow
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IsDecimal(char const* field, size_t fieldLength) {
+bool isDecimal(char const* field, size_t fieldLength) {
   char const* ptr = field;
   char const* end = ptr + fieldLength;
 
@@ -134,6 +129,8 @@ static bool IsDecimal(char const* field, size_t fieldLength) {
 
   return true;
 }
+
+} // namespace
 
 namespace arangodb {
 namespace import {
@@ -191,7 +188,8 @@ ImportHelper::ImportHelper(ClientFeature const& client, std::string const& endpo
       _outputBuffer(false),
       _firstLine(""),
       _columnNames(),
-      _hasError(false) {
+      _hasError(false),
+      _headersSeen(false) {
   for (uint32_t i = 0; i < threadCount; i++) {
     auto http = client.createHttpClient(endpoint, params);
     _senderThreads.emplace_back(
@@ -204,9 +202,9 @@ ImportHelper::ImportHelper(ClientFeature const& client, std::string const& endpo
 
   // should self tuning code activate?
   if (_autoUploadSize) {
-    _autoTuneThread.reset(new AutoTuneThread(client.server(), *this));
+    _autoTuneThread = std::make_unique<AutoTuneThread>(client.server(), *this);
     _autoTuneThread->start();
-  }  // if
+  } 
 
   // wait until all sender threads are ready
   while (true) {
@@ -228,15 +226,109 @@ ImportHelper::~ImportHelper() {
   }
 }
 
+// read headers from separate file
+bool ImportHelper::readHeadersFile(std::string const& headersFile,
+                                   DelimitedImportType typeImport,
+                                   char separator) {
+  TRI_ASSERT(!headersFile.empty());
+  TRI_ASSERT(!_headersSeen);
+  
+  ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(headersFile),
+                             false, false, false);
+  if (directory.status().fail()) {
+    _errorMessages.emplace_back(directory.status().errorMessage());
+    return false;
+  }
+
+  std::string fileName(TRI_Basename(headersFile.c_str()));
+  std::unique_ptr<arangodb::ManagedDirectory::File> fd = directory.readableFile(fileName.c_str(), 0);
+  if (!fd) {
+    _errorMessages.push_back(TRI_LAST_ERROR_STR);
+    return false;
+  }
+
+  // make a copy of _rowsToSkip
+  size_t rowsToSkip = _rowsToSkip;
+  _rowsToSkip = 0;
+
+  TRI_csv_parser_t parser;
+  TRI_InitCsvParser(&parser, ProcessCsvBegin, ProcessCsvAdd, ProcessCsvEnd, nullptr);
+  TRI_SetSeparatorCsvParser(&parser, separator);
+  TRI_UseBackslashCsvParser(&parser, _useBackslash);
+  
+  // in csv, we'll use the quote char if set
+  // in tsv, we do not use the quote char
+  if (typeImport == ImportHelper::CSV && _quote.size() > 0) {
+    TRI_SetQuoteCsvParser(&parser, _quote[0], true);
+  } else {
+    TRI_SetQuoteCsvParser(&parser, '\0', false);
+  }
+  parser._dataAdd = this;
+
+  auto guard = scopeGuard([&parser]() noexcept {
+    TRI_DestroyCsvParser(&parser);
+  });
+  
+  constexpr int BUFFER_SIZE = 16384;
+  char buffer[BUFFER_SIZE];
+
+  while (!_hasError) {
+    ssize_t n = fd->read(buffer, sizeof(buffer));
+
+    if (n < 0) {
+      _errorMessages.push_back(TRI_LAST_ERROR_STR);
+      return false;
+    } 
+    if (n == 0) {
+      // we have read the entire file
+      // now have the CSV parser parse an additional new line so it
+      // will definitely process the last line of the input data if
+      // it did not end with a newline
+      TRI_ParseCsvString(&parser, "\n", 1);
+      break;
+    }
+
+    TRI_ParseCsvString(&parser, buffer, n);
+  }
+
+  if (_outputBuffer.size() > 0 &&
+      *(_outputBuffer.begin() + _outputBuffer.size() - 1) != '\n') {
+    // add a newline to finish the headers line
+    _outputBuffer.appendChar('\n');
+  }
+
+  if (_rowsRead > 2) {
+    _errorMessages.push_back("headers file '" + headersFile + "' contained more than a single line of headers");
+    return false;
+  }
+
+  // reset our state properly
+  _lineBuffer.clear();
+  _headersSeen = true;
+  _rowOffset = 0;
+  _rowsRead = 0;
+  _numberLines = 0;
+  // restore copy of _rowsToSkip 
+  _rowsToSkip = rowsToSkip;
+
+  return true;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief imports a delimited file
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ImportHelper::importDelimited(std::string const& collectionName,
                                    std::string const& pathName,
+                                   std::string const& headersFile,
                                    DelimitedImportType typeImport) {
   ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
                              false, false, true);
+  if (directory.status().fail()) {
+    _errorMessages.emplace_back(directory.status().errorMessage());
+    return false;
+  }
+
   std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";
@@ -244,6 +336,10 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   _lineBuffer.clear();
   _errorMessages.clear();
   _hasError = false;
+  _headersSeen = false;
+  _rowOffset = 0;
+  _rowsRead = 0;
+  _numberLines = 0;
 
   if (!checkCreateCollection()) {
     return false;
@@ -251,8 +347,28 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   if (!collectionExists()) {
     return false;
   }
+ 
+  // handle separator
+  char separator;
+  {
+    size_t separatorLength;
+    char* s = TRI_UnescapeUtf8String(_separator.c_str(), _separator.size(),
+                                     &separatorLength, true);
 
-  // read and convert
+    if (s == nullptr) {
+      _errorMessages.push_back("out of memory");
+      return false;
+    }
+ 
+    separator = s[0];
+    TRI_Free(s);
+  }
+
+  if (!headersFile.empty() &&
+      !readHeadersFile(headersFile, typeImport, separator)) {
+    return false;
+  }
+
   // read and convert
   int64_t totalLength;
   std::unique_ptr<arangodb::ManagedDirectory::File> fd;
@@ -264,7 +380,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(pathName.c_str());
-    fd = directory.readableFile(TRI_Basename(pathName.c_str()), 0);
+    fd = directory.readableFile(fileName.c_str(), 0);
 
     if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -275,20 +391,9 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   // progress display control variables
   double nextProgress = ProgressStep;
 
-  size_t separatorLength;
-  char* separator = TRI_UnescapeUtf8String(_separator.c_str(), _separator.size(),
-                                           &separatorLength, true);
-
-  if (separator == nullptr) {
-    _errorMessages.push_back("out of memory");
-    return false;
-  }
-
   TRI_csv_parser_t parser;
-
   TRI_InitCsvParser(&parser, ProcessCsvBegin, ProcessCsvAdd, ProcessCsvEnd, nullptr);
-
-  TRI_SetSeparatorCsvParser(&parser, separator[0]);
+  TRI_SetSeparatorCsvParser(&parser, separator);
   TRI_UseBackslashCsvParser(&parser, _useBackslash);
 
   // in csv, we'll use the quote char if set
@@ -299,16 +404,14 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
     TRI_SetQuoteCsvParser(&parser, '\0', false);
   }
   parser._dataAdd = this;
-  _rowOffset = 0;
-  _rowsRead = 0;
 
-  char buffer[32768];
+  constexpr int BUFFER_SIZE = 262144;
+  char buffer[BUFFER_SIZE];
 
   while (!_hasError) {
     ssize_t n = fd->read(buffer, sizeof(buffer));
 
     if (n < 0) {
-      TRI_Free(separator);
       TRI_DestroyCsvParser(&parser);
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
@@ -331,7 +434,6 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   }
 
   TRI_DestroyCsvParser(&parser);
-  TRI_Free(separator);
 
   waitForSenders();
   reportProgress(totalLength, fd->offset(), nextProgress);
@@ -369,7 +471,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(pathName.c_str());
-    fd = directory.readableFile(TRI_Basename(fileName.c_str()), 0);
+    fd = directory.readableFile(fileName.c_str(), 0);
 
     if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -388,14 +490,12 @@ bool ImportHelper::importJson(std::string const& collectionName,
   // progress display control variables
   double nextProgress = ProgressStep;
 
-  static int const BUFFER_SIZE = 32768;
-  _rowOffset = 0;
-  _rowsRead = 0;
+  constexpr int BUFFER_SIZE = 1048576;
 
   while (!_hasError) {
     // reserve enough room to read more data
     if (_outputBuffer.reserve(BUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
-      _errorMessages.push_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+      _errorMessages.emplace_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
 
       return false;
     }
@@ -431,12 +531,14 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
     reportProgress(totalLength, fd->offset(), nextProgress);
 
-    if (_outputBuffer.length() > _maxUploadSize) {
+    uint64_t maxUploadSize = getMaxUploadSize();
+
+    if (_outputBuffer.length() > maxUploadSize) {
       if (isObject) {
         _errorMessages.push_back(
             "import file is too big. please increase the value of --batch-size "
             "(currently " +
-            StringUtils::itoa(_maxUploadSize) + ")");
+            StringUtils::itoa(maxUploadSize) + ")");
         return false;
       }
 
@@ -485,6 +587,8 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
     return;
   }
 
+  using arangodb::basics::StringUtils::formatSize;
+
   if (totalLength == 0) {
     // length of input is unknown
     // in this case we cannot report the progress as a percentage
@@ -493,7 +597,7 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
 
     if (totalRead >= nextProcessed) {
       LOG_TOPIC("c0e6e", INFO, arangodb::Logger::FIXME)
-          << "processed " << totalRead << " bytes of input file";
+          << "processed " << formatSize(totalRead) << " of input file";
       nextProcessed += 10 * 1000 * 1000;
     }
   } else {
@@ -501,7 +605,7 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
 
     if (pct >= nextProgress && totalLength >= 1024) {
       LOG_TOPIC("9ddf3", INFO, arangodb::Logger::FIXME)
-          << "processed " << totalRead << " bytes (" << (int)nextProgress
+          << "processed " << formatSize(totalRead) << " (" << (int)nextProgress
           << "%) of input file";
       nextProgress = (double)((int)(pct + ProgressStep));
     }
@@ -553,10 +657,11 @@ void ImportHelper::ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field, si
 void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
                             size_t column, bool escaped) {
   if (_rowsRead < _rowsToSkip) {
+    // still some rows left to skip over
     return;
   }
-  // we read the first line if we get here
-  if (row == _rowsToSkip) {
+  // we are reading the first line if we get here
+  if (row == _rowsToSkip && !_headersSeen) {
     std::string name = std::string(field, fieldLength);
     if (fieldLength > 0) {  // translate field
       auto it = _translations.find(name);
@@ -567,25 +672,62 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     }
     _columnNames.push_back(std::move(name));
   }
+
   // skip removable attributes
   if (!_removeAttributes.empty() && column < _columnNames.size() &&
       _removeAttributes.find(_columnNames[column]) != _removeAttributes.end()) {
     return;
   }
 
+  // we will write out this attribute!
+
   if (column > 0) {
     _lineBuffer.appendChar(',');
   }
 
-  if (_keyColumn == -1 && row == _rowsToSkip && fieldLength == 4 &&
+  if (_keyColumn == -1 && row == _rowsToSkip && !_headersSeen && fieldLength == 4 &&
       memcmp(field, "_key", 4) == 0) {
     _keyColumn = column;
   }
+  
+  // check if a datatype was forced for this attribute
+  auto itTypes = _datatypes.end();
+  if (!_datatypes.empty() && column < _columnNames.size()) {
+    itTypes = _datatypes.find(_columnNames[column]);
+  }
 
-  if (row == _rowsToSkip || escaped ||
+  if ((row == _rowsToSkip && !_headersSeen) ||
+      (escaped && itTypes == _datatypes.end()) ||
       _keyColumn == static_cast<decltype(_keyColumn)>(column)) {
-    // head line or escaped value
+    // headline or escaped value
     _lineBuffer.appendJsonEncoded(field, fieldLength);
+    return;
+  }
+
+  // check if a datatype was forced for this attribute
+  if (itTypes != _datatypes.end()) {
+    std::string const& datatype = (*itTypes).second;
+    if (datatype == "number") {
+      if (::isInteger(field, fieldLength) || ::isDecimal(field, fieldLength)) {
+        _lineBuffer.appendText(field, fieldLength);
+      } else {
+        _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("0"));
+      }
+    } else if (datatype == "boolean") {
+      if ((fieldLength == 5 && memcmp(field, "false", 5) == 0) ||
+          (fieldLength == 4 && memcmp(field, "null", 4) == 0) ||
+          (fieldLength == 1 && *field == '0')) {
+        _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("false"));
+      } else {
+        _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("true"));
+      }
+    } else if (datatype == "null") {
+      _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
+    } else {
+      // string
+      TRI_ASSERT(datatype == "string");
+      _lineBuffer.appendJsonEncoded(field, fieldLength);
+    }
     return;
   }
 
@@ -595,17 +737,13 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     return;
   }
 
-  // check for literals null, false and true
-  if (fieldLength == 4 && (memcmp(field, "true", 4) == 0 || memcmp(field, "null", 4) == 0)) {
-    _lineBuffer.appendText(field, fieldLength);
-    return;
-  } else if (fieldLength == 5 && memcmp(field, "false", 5) == 0) {
-    _lineBuffer.appendText(field, fieldLength);
-    return;
-  }
-
+  // automatic detection of datatype based on value (--convert)
   if (_convert) {
-    if (IsInteger(field, fieldLength)) {
+    // check for literals null, false and true
+    if ((fieldLength == 4 && (memcmp(field, "true", 4) == 0 || memcmp(field, "null", 4) == 0)) ||
+        (fieldLength == 5 && memcmp(field, "false", 5) == 0)) {
+      _lineBuffer.appendText(field, fieldLength);
+    } else if (::isInteger(field, fieldLength)) {
       // integer value
       // conversion might fail with out-of-range error
       try {
@@ -624,7 +762,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
         // conversion failed
         _lineBuffer.appendJsonEncoded(field, fieldLength);
       }
-    } else if (IsDecimal(field, fieldLength)) {
+    } else if (::isDecimal(field, fieldLength)) {
       // double value
       // conversion might fail with out-of-range error
       try {
@@ -652,7 +790,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
       _lineBuffer.appendJsonEncoded(field, fieldLength);
     }
   } else {
-    if (IsInteger(field, fieldLength) || IsDecimal(field, fieldLength)) {
+    if (::isInteger(field, fieldLength) || ::isDecimal(field, fieldLength)) {
       // numeric value. don't convert
       _lineBuffer.appendChar('"');
       _lineBuffer.appendText(field, fieldLength);
@@ -714,7 +852,7 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
     ++_stats._numberErrors;
   }
 
-  if (_outputBuffer.length() > _maxUploadSize) {
+  if (_outputBuffer.length() > getMaxUploadSize()) {
     sendCsvBuffer();
     _outputBuffer.appendText(_firstLine);
   }
@@ -909,7 +1047,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
   if (t != nullptr) {
     _tempBuffer.reset();
     _tempBuffer.appendText(str, len);
-    t->sendData(url, &_tempBuffer, _rowOffset +1, _rowsRead);
+    t->sendData(url, &_tempBuffer, _rowOffset + 1, _rowsRead);
     addPeriodByteCount(len + url.length());
   }
 }
@@ -919,7 +1057,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
 SenderThread* ImportHelper::findIdleSender() {
   if (_autoUploadSize) {
     _autoTuneThread->paceSends();
-  }  // if
+  } 
 
   while (!_senderThreads.empty()) {
     for (auto const& t : _senderThreads) {

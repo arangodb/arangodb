@@ -97,7 +97,7 @@ class Parser {
         _pos(0), 
         _nesting(0), 
         options(&Options::Defaults) {
-    _builder.reset(new Builder());
+    _builder = std::make_shared<Builder>();
     _builderPtr = _builder.get();
     _builderPtr->options = &Options::Defaults;
   }
@@ -111,7 +111,7 @@ class Parser {
     if (VELOCYPACK_UNLIKELY(options == nullptr)) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
-    _builder.reset(new Builder());
+    _builder = std::make_shared<Builder>();
     _builderPtr = _builder.get();
     _builderPtr->options = options;
   }

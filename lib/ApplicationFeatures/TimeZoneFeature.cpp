@@ -44,7 +44,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "date/tz.h"
 
-
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
@@ -63,26 +62,31 @@ void TimeZoneFeature::prepareTimeZoneData(std::string const& binaryPath,
                                           std::string const& binaryName) {
 
   std::string tz_path;
-  std::string test_exe = FileUtils::buildFilename(binaryExecutionPath, "tzdata");
+  if (!TRI_GETENV("TZ_DATA", tz_path)) {
+    tz_path.clear();
+    std::string test_exe = FileUtils::buildFilename(binaryExecutionPath, "tzdata");
 
-  if (FileUtils::isDirectory(test_exe)) {
-    FileUtils::makePathAbsolute(test_exe);
-    FileUtils::normalizePath(test_exe);
-    tz_path = test_exe;
-  } else {
-    std::string argv0 = FileUtils::buildFilename(binaryExecutionPath, binaryName);
-    std::string path = TRI_LocateInstallDirectory(argv0.c_str(), binaryPath.c_str());
-    path = FileUtils::buildFilename(path, ICU_DESTINATION_DIRECTORY, "tzdata");
-    FileUtils::makePathAbsolute(path);
-    FileUtils::normalizePath(path);
-    tz_path = path;
+    if (FileUtils::isDirectory(test_exe)) {
+      FileUtils::makePathAbsolute(test_exe);
+      FileUtils::normalizePath(test_exe);
+      tz_path = test_exe;
+    } else {
+      std::string argv0 = FileUtils::buildFilename(binaryExecutionPath, binaryName);
+      std::string path = TRI_LocateInstallDirectory(argv0.c_str(), binaryPath.c_str());
+      path = FileUtils::buildFilename(path, ICU_DESTINATION_DIRECTORY, "tzdata");
+      FileUtils::makePathAbsolute(path);
+      FileUtils::normalizePath(path);
+      tz_path = path;
+    }
   }
 
   if (FileUtils::isDirectory(tz_path)) {
     date::set_install(tz_path);
   } else {
     LOG_TOPIC("67bdc", FATAL, arangodb::Logger::STARTUP)
-        << "failed to locate timezone data " << tz_path;
+        << "failed to locate timezone data " << tz_path
+        << ". please set the TZ_DATA environment variable to the "
+        << "tzdata directory in case you are running an unusual setup";
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_TZDATA_INITIALIZATION_FAILED);
   }
 }

@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_REPAIR_OPERATIONS_H
-#define ARANGOD_CLUSTER_CLUSTER_REPAIR_OPERATIONS_H
+#pragma once
 
 #include <velocypack/velocypack-common.h>
 #include <map>
@@ -384,4 +383,3 @@ class RepairOperationToVPackVisitor {
 }  // namespace cluster_repairs
 }  // namespace arangodb
 
-#endif  // ARANGOD_CLUSTER_CLUSTER_REPAIR_OPERATIONS_H

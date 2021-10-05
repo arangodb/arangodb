@@ -89,8 +89,6 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
   // Different implementations of the Scheduler may require different
   // options to be set. This requires a solution here.
 
-  options->addSection("server", "Server features");
-
   // max / min number of threads
   options->addOption("--server.maximal-threads",
                      std::string(
@@ -372,27 +370,31 @@ bool CtrlHandler(DWORD eventType) {
 
 #else
 
-extern "C" void c_exit_handler(int signal) {
+extern "C" void c_exit_handler(int signal, siginfo_t* info, void*) {
   if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
     static std::atomic<bool> seen{false};
 
     if (!seen.exchange(true)) {
+      std::string sender = info ? std::to_string(info->si_pid) : std::string("unknown");
       LOG_TOPIC("b4133", INFO, arangodb::Logger::FIXME)
-          << "control-c received, beginning shut down sequence";
+          << signals::name(signal) << " received (sender pid " << sender
+          << "), beginning shut down sequence";
 
       application_features::ApplicationServer::CTRL_C.store(true);
     } else {
       LOG_TOPIC("11ca3", FATAL, arangodb::Logger::FIXME)
-          << "control-c received (again!), terminating";
+          << signals::name(signal) << " received during shutdown sequence (sender pid "
+          << info->si_pid << "), terminating!";
       FATAL_ERROR_EXIT();
     }
   }
 }
 
-extern "C" void c_hangup_handler(int signal) {
+extern "C" void c_hangup_handler(int signal, siginfo_t * info, void *) {
   if (signal == SIGHUP) {
+    std::string sender = info ? std::to_string(info->si_pid) : std::string("unknown");
     LOG_TOPIC("33eae", INFO, arangodb::Logger::FIXME)
-        << "hangup received, about to reopen logfile";
+        << "hangup received, about to reopen logfile (sender pid " << sender << ")";
     LogAppender::reopen();
     LOG_TOPIC("23db2", INFO, arangodb::Logger::FIXME)
         << "hangup received, reopened logfile";
@@ -405,7 +407,8 @@ void SchedulerFeature::buildHangupHandler() {
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   sigfillset(&action.sa_mask);
-  action.sa_handler = c_hangup_handler;
+  action.sa_flags = SA_SIGINFO;
+  action.sa_sigaction = c_hangup_handler;
 
   int res = sigaction(SIGHUP, &action, nullptr);
 
@@ -438,7 +441,8 @@ void SchedulerFeature::buildControlCHandler() {
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   sigfillset(&action.sa_mask);
-  action.sa_handler = c_exit_handler;
+  action.sa_flags = SA_SIGINFO;
+  action.sa_sigaction = c_exit_handler;
 
   int res = sigaction(SIGINT, &action, nullptr);
   if (res == 0) {

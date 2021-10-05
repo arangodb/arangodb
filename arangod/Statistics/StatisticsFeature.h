@@ -21,17 +21,19 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_STATISTICS_FEATURE_H
-#define APPLICATION_FEATURES_STATISTICS_FEATURE_H 1
+#pragma once
 
 #include <array>
 #include <initializer_list>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Result.h"
 #include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/figures.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 class Thread;
@@ -93,7 +95,7 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
   void prepare() override final;
   void start() override final;
   void stop() override final;
-  void toPrometheus(std::string& result, double const& now);
+  void toPrometheus(std::string& result, double const& now, bool v2);
 
   stats::Descriptions const& descriptions() const {
     return _descriptions;
@@ -103,14 +105,23 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
   
   static void appendHistogram(
     std::string& result, statistics::Distribution const& dist,
-    std::string const& label, std::initializer_list<std::string> const& les);
+    std::string const& label, std::initializer_list<std::string> const& les,
+    bool v2);
   static void appendMetric(
-    std::string& result, std::string const& val, std::string const& label);
+    std::string& result, std::string const& val, std::string const& label,
+    bool v2);
+
+  Result getClusterSystemStatistics(TRI_vocbase_t& vocbase,
+                                    double start, 
+                                    arangodb::velocypack::Builder& result) const;
+
+  bool allDatabases() const { return _statisticsAllDatabases; }
 
  private:
   bool _statistics;
   bool _statisticsHistory;
   bool _statisticsHistoryTouched;
+  bool _statisticsAllDatabases;
 
   stats::Descriptions _descriptions;
   std::unique_ptr<Thread> _statisticsThread;
@@ -119,4 +130,3 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
 
 }  // namespace arangodb
 
-#endif

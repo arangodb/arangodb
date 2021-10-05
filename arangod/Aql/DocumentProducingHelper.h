@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H
-#define ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H 1
+#pragma once
 
 #include <functional>
 #include <string>
@@ -126,6 +125,7 @@ struct DocumentProducingFunctionContext {
   arangodb::aql::Projections const& _projections;
   size_t _numScanned;
   size_t _numFiltered;
+  uint_fast16_t _killCheckCounter = 0;
 
   /// @brief Builder that is reused to generate projection results 
   arangodb::velocypack::Builder _objectBuilder;
@@ -171,4 +171,3 @@ IndexIterator::DocumentCallback buildDocumentCallback(DocumentProducingFunctionC
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

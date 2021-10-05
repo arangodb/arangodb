@@ -81,6 +81,9 @@ void ApplicationFeature::prepare() {}
 // start the feature
 void ApplicationFeature::start() {}
 
+// notify the feature about a soft shutdown request
+void ApplicationFeature::initiateSoftShutdown() {}
+
 // notify the feature about a shutdown request
 void ApplicationFeature::beginShutdown() {}
 

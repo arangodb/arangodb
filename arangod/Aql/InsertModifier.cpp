@@ -50,6 +50,6 @@ ModifierOperationType InsertModifierCompletion::accumulate(ModificationExecutorA
   }
 }
 
-OperationResult InsertModifierCompletion::transact(transaction::Methods& trx, VPackSlice const& data) {
-  return trx.insert(_infos._aqlCollection->name(), data, _infos._options);
+futures::Future<OperationResult> InsertModifierCompletion::transact(transaction::Methods& trx, VPackSlice const& data) {
+  return trx.insertAsync(_infos._aqlCollection->name(), data, _infos._options);
 }

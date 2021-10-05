@@ -53,3 +53,53 @@
     }
   }
 }
+
+.pure-table {
+  &.pure-table-inner {
+    margin: 0;
+    padding: 0;
+    border: 0;
+
+    thead, tbody {
+      width: 100%;
+      display: table;
+      background: $c-bluegrey-dark !important;
+      border-radius: 5px;
+      color: white;
+    }
+
+    th {
+      padding: 0;
+      border: 0;
+      height: 20px;
+    }
+
+    tr {
+      height: 10px;
+      background: rgba(0,0,0,0) !important;
+      padding: 0;
+      border: 0;
+
+      td {
+        vertical-align: baseline;
+        height: 10px;
+        padding: 0;
+        border: 0;
+
+        ul {
+          margin: 0;
+          padding: 0;
+
+          li {
+            list-style-type: none;
+            margin: 0;
+          }
+        }
+
+        span {
+          margin-left: 10px;
+        }
+      }
+    }
+  }
+}

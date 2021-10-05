@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_BASE_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_BASE_HANDLER_H 1
+#pragma once
 
 #include "GeneralServer/RestHandler.h"
 
@@ -81,4 +80,3 @@ class RestBaseHandler : public rest::RestHandler {
 };
 }  // namespace arangodb
 
-#endif

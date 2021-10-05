@@ -20,12 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Created by lars on 30.12.19.
-//
 
-#ifndef VELOCYPACK_UNPACK_PROXY_H
-#define VELOCYPACK_UNPACK_PROXY_H
+#pragma once
 
 namespace arangodb {
 namespace velocypack {
@@ -63,4 +59,3 @@ struct deserialize_plan_executor<unpack_proxy<D, P>, H> {
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-#endif

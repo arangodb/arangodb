@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOSH_UTILS_MANAGED_DIRECTORY_H
-#define ARANGOSH_UTILS_MANAGED_DIRECTORY_H 1
+#pragma once
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -143,7 +142,7 @@ class ManagedDirectory {
      * @brief Count of bytes read from regular or gzip file, not amount returned by read
      */
 
-    TRI_read_return_t offset() const;
+    std::int64_t offset() const;
 
     /**
      * @brief skips `count` bytes of uncompressed data.
@@ -153,6 +152,7 @@ class ManagedDirectory {
    private:
     void writeNoLock(char const* data, size_t length);
     TRI_read_return_t readNoLock(char* buffer, size_t length);
+    void prepareGzip(char const* gzFlags);
 
    private:
     ManagedDirectory const& _directory;
@@ -287,4 +287,3 @@ class ManagedDirectory {
 };
 }  // namespace arangodb
 
-#endif

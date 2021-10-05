@@ -184,6 +184,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   options.indexOperationMode = IndexOperationMode::internal;
   options.waitForSync = false;
   options.validate = false;
+  options.checkUniqueConstraintsInPreflight = true;
 
   if (!syncer._state.leaderId.empty()) {
     options.isSynchronousReplicationFrom = syncer._state.leaderId;
@@ -333,7 +334,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     } else {
       // see if key exists
       RevisionId currentRevisionId = RevisionId::none();
-      if (!physical->lookupRevision(trx, keySlice, currentRevisionId)) {
+      if (!physical->lookupRevision(trx, keySlice, currentRevisionId, ReadOwnWrites::yes)) {
         // key not found locally
         toFetch.emplace_back(i);
       } else {
@@ -376,6 +377,16 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     // nothing to do
     return Result();
   }
+  
+  // determine number of unique indexes. we may need it later
+  std::size_t numUniqueIndexes = [&]() {
+    std::size_t numUnique = 0;
+    for (auto const& idx : coll->getIndexes()) {
+      numUnique += idx->unique() ? 1 : 0;
+    }
+    return numUnique;
+  }();
+
 
   LOG_TOPIC("48f94", TRACE, Logger::REPLICATION)
       << "will refetch " << toFetch.size() << " documents for this chunk";
@@ -390,7 +401,6 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   std::string const keyJsonString(keyBuilder->slice().toJson());
 
   size_t offsetInChunk = 0;
-
   while (true) {
     std::unique_ptr<httpclient::SimpleHttpResult> response;
 
@@ -448,6 +458,10 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
                         syncer._state.leader.endpoint +
                         ": response is no array");
     }
+      
+    syncer.setProgress(std::string("applying documents chunk ") +
+                       std::to_string(chunkId) + " (" + std::to_string(toFetch.size()) +
+                       " keys) for collection '" + collectionName + "'");
 
     size_t foundLength = slice.length();
 
@@ -498,71 +512,59 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         return res;
       };
 
+      // check if target _key already exists
       std::pair<LocalDocumentId, RevisionId> lookupResult;
-      if (physical->lookupKey(trx, keySlice.stringRef(), lookupResult).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-        // key does not yet exist
-        // INSERT
-        TRI_ASSERT(options.indexOperationMode == IndexOperationMode::internal);
-
-        Result res = physical->insert(trx, it, mdr, options);
+      // We must see our own writes, because we may have to remove conflicting documents
+      // (that we just inserted) as documents may be replicated in unexpected order.
+      bool mustInsert = physical->lookupKey(trx, keySlice.stringRef(), lookupResult, ReadOwnWrites::yes).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
         
-        if (res.fail()) {
-          if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-              res.errorMessage() > keySlice.stringView()) {
-            // remove conflict and retry
-            // errorMessage() is this case contains the conflicting key
-            auto inner = removeConflict(res.errorMessage());
-            if (inner.fail()) {
-              return res;
-            }
-
-            options.indexOperationMode = IndexOperationMode::normal;
-            res = physical->insert(trx, it, mdr, options);
-            
-            options.indexOperationMode = IndexOperationMode::internal;
-            if (res.fail()) {
-              return res;
-            }
-            // fall-through
-          } else {
-            int errorNumber = res.errorNumber();
-            res.reset(errorNumber, basics::StringUtils::concatT(TRI_errno_string(errorNumber),
-                                                   ": ", res.errorMessage()));
-            return res;
-          }
+      TRI_ASSERT(options.indexOperationMode == IndexOperationMode::internal);
+     
+      // there exists the problem of secondary unique index violations when we insert
+      // documents here.
+      // we may need as many retries as there are unique indexes here.
+      std::size_t tries = 1 + numUniqueIndexes;
+      while (tries-- > 0) {
+        if (tries == 0) {
+          options.indexOperationMode = arangodb::IndexOperationMode::normal;
         }
 
-        ++stats.numDocsInserted;
-      } else {
-        // REPLACE
-        TRI_ASSERT(options.indexOperationMode == IndexOperationMode::internal);
-
-        Result res = physical->replace(trx, it, mdr, options, previous);
-        
-        if (res.fail()) {
-          if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-              res.errorMessage() > keySlice.stringView()) {
-            // remove conflict and retry
-            // errorMessage() is this case contains the conflicting key
-            auto inner = removeConflict(res.errorMessage());
-            if (inner.fail()) {
-              return res;
-            }
-            options.indexOperationMode = IndexOperationMode::normal;
-            res = physical->replace(trx, it, mdr, options, previous);
-            
-            options.indexOperationMode = IndexOperationMode::internal;
-            if (res.fail()) {
-              return res;
-            }
-            // fall-through
-          } else {
-            int errorNumber = res.errorNumber();
-            res.reset(errorNumber,
-                      basics::StringUtils::concatT(TRI_errno_string(errorNumber),
-                                                   ": ", res.errorMessage()));
-            return res;
+        Result res;
+        if (mustInsert) {
+          res = physical->insert(trx, it, mdr, options);
+          if (res.ok()) {
+            ++stats.numDocsInserted;
           }
+        } else {
+          res = physical->replace(trx, it, mdr, options, previous);
+          // do NOT count up stats.numDocsInserted, as this will influence the 
+          // persisted document count later!!
+        }
+        
+        options.indexOperationMode = arangodb::IndexOperationMode::internal;
+        
+        if (res.ok()) {
+          // all good, we can exit the retry loop now!
+          break;
+        }
+       
+        if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
+          res.errorMessage() <= keySlice.stringView()) {
+
+          auto errorNumber = res.errorNumber();
+          res.reset(errorNumber,
+                    basics::StringUtils::concatT(TRI_errno_string(errorNumber),
+                                                 ": ", res.errorMessage()));
+          return res;
+        }
+
+        // unique constraint violation!
+            
+        // remove conflict and retry
+        // errorMessage() is this case contains the conflicting key
+        auto inner = removeConflict(res.errorMessage());
+        if (inner.fail()) {
+          return res;
         }
       }
     }
@@ -800,8 +802,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
               tempBuilder.clear();
               // use a temporary char buffer for building to rid string
-              char ridBuffer[21];
-              tempBuilder.add(docRev.toValuePair(&ridBuffer[0]));
+              char ridBuffer[arangodb::basics::maxUInt64StringSize];
+              tempBuilder.add(docRev.toValuePair(ridBuffer));
               localHash ^= tempBuilder.slice().hashString();  // revision as string
 
               if (cmp2 == 0) {  // found highKey
@@ -853,7 +855,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                            [&docRev](LocalDocumentId const&, VPackSlice doc) {
                              docRev = RevisionId::fromSlice(doc);
                              return true;
-                           });
+                           }, ReadOwnWrites::yes);
           }
           compareChunk(docKey, docRev);
           return true;

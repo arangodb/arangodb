@@ -30,7 +30,7 @@
 
 const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
-var analyzers = require("@arangodb/analyzers");
+const analyzers = require("@arangodb/analyzers");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const db = arangodb.db;
@@ -38,19 +38,19 @@ const _ = require('lodash');
 
 const replication = require('@arangodb/replication');
 const internal = require('internal');
-const masterEndpoint = arango.getEndpoint();
-const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
+const leaderEndpoint = arango.getEndpoint();
+const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const cn = 'UnitTestsReplication';
 const sysCn = '_UnitTestsReplication';
 
-const connectToMaster = function () {
-  reconnectRetry(masterEndpoint, db._name(), 'root', '');
+const connectToLeader = function () {
+  reconnectRetry(leaderEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
-const connectToSlave = function () {
-  reconnectRetry(slaveEndpoint, db._name(), 'root', '');
+const connectToFollower = function () {
+  reconnectRetry(followerEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
@@ -62,27 +62,27 @@ const collectionCount = function (name) {
   return db._collection(name).count();
 };
 
-const compare = function (masterFunc, slaveInitFunc, slaveCompareFunc, incremental, system) {
+const compare = function (leaderFunc, followerInitFunc, followerCompareFunc, incremental, system) {
   var state = {};
   
   db._flushCache();
-  masterFunc(state);
+  leaderFunc(state);
 
   db._flushCache();
-  connectToSlave();
+  connectToFollower();
 
-  slaveInitFunc(state);
+  followerInitFunc(state);
   internal.wait(0.1, false);
 
   replication.syncCollection(system ? sysCn : cn, {
-    endpoint: masterEndpoint,
+    endpoint: leaderEndpoint,
     verbose: true,
     includeSystem: true,
     incremental
   });
 
   db._flushCache();
-  slaveCompareFunc(state);
+  followerCompareFunc(state);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -98,46 +98,53 @@ function BaseTestConfig () {
     // / @brief test existing collection
     // //////////////////////////////////////////////////////////////////////////////
     
-    testExistingPatchBrokenSlaveCounters1: function () {
+    testExistingPatchBrokenFollowerCounters1: function () {
       // can only use this with failure tests enabled
       let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
-      if (String(r) === "false") {
+      if (String(r) === "false" || r.error) {
         return;
       }
 
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
-          arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
+          try {
+            arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
 
-          let c = db._create(cn);
-          let docs = [];
+            let c = db._create(cn);
+            let docs = [];
 
-          for (let i = 0; i < 5000; ++i) {
-            docs.push({ value: i });
+            for (let i = 0; i < 5000; ++i) {
+              docs.push({ value: i });
+            }
+            c.insert(docs);
+
+            state.checksum = collectionChecksum(cn);
+            state.count = collectionCount(cn);
+            assertEqual(5000, state.count);
+          } finally {
+            arango.DELETE_RAW("/_admin/debug/failat", "");
           }
-          c.insert(docs);
-
-          state.checksum = collectionChecksum(cn);
-          state.count = collectionCount(cn);
-          assertEqual(5000, state.count);
         },
         function (state) {
           arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
 
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
-          // collection present on slave now
+          // collection present on follower now
           var c = db._collection(cn);
           assertEqual(5000, c.count());
           assertEqual(5000, c.toArray().length);
-          arango.PUT_RAW("/_admin/debug/failat/RocksDBCommitCounts", "");
-          c.insert({});
-          arango.DELETE_RAW("/_admin/debug/failat", "");
+          try {
+            arango.PUT_RAW("/_admin/debug/failat/RocksDBCommitCounts", "");
+            c.insert({});
+          } finally {
+            arango.DELETE_RAW("/_admin/debug/failat", "");
+          }
           assertEqual(5000, c.count());
           assertEqual(5001, c.toArray().length);
         },
@@ -153,51 +160,58 @@ function BaseTestConfig () {
       );
     },
     
-    testExistingPatchBrokenSlaveCounters2: function () {
+    testExistingPatchBrokenFollowerCounters2: function () {
       // can only use this with failure tests enabled
       let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
-      if (String(r) === "false") {
+      if (String(r) === "false" || r.error) {
         return;
       }
 
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
-          arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
-          let c = db._create(cn);
-          let docs = [];
+          try {
+            arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
+            let c = db._create(cn);
+            let docs = [];
 
-          for (let i = 0; i < 10000; ++i) {
-            docs.push({ value: i, _key: "test" + i });
+            for (let i = 0; i < 10000; ++i) {
+              docs.push({ value: i, _key: "test" + i });
+            }
+            c.insert(docs);
+
+            state.checksum = collectionChecksum(cn);
+            state.count = collectionCount(cn);
+            assertEqual(10000, state.count);
+          } finally {
+            arango.DELETE_RAW("/_admin/debug/failat", "");
           }
-          c.insert(docs);
-
-          state.checksum = collectionChecksum(cn);
-          state.count = collectionCount(cn);
-          assertEqual(10000, state.count);
         },
         function (state) {
-          arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
+          try {
+            arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
 
-          //  already create the collection on the slave
-          replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
-            incremental: false
-          });
-          
-          // collection present on slave now
-          var c = db._collection(cn);
-          for (let i = 0; i < 10000; i += 10) {
-            c.remove("test" + i);
+            //  already create the collection on the follower
+            replication.syncCollection(cn, {
+              endpoint: leaderEndpoint,
+              incremental: false
+            });
+
+            // collection present on follower now
+            var c = db._collection(cn);
+            for (let i = 0; i < 10000; i += 10) {
+              c.remove("test" + i);
+            }
+            assertEqual(9000, c.count());
+            assertEqual(9000, c.toArray().length);
+            arango.PUT_RAW("/_admin/debug/failat/RocksDBCommitCounts", "");
+            for (let i = 0; i < 100; ++i) {
+              c.insert({ _key: "testmann" + i });
+            }
+          } finally {
+            arango.DELETE_RAW("/_admin/debug/failat", "");
           }
-          assertEqual(9000, c.count());
-          assertEqual(9000, c.toArray().length);
-          arango.PUT_RAW("/_admin/debug/failat/RocksDBCommitCounts", "");
-          for (let i = 0; i < 100; ++i) {
-            c.insert({ _key: "testmann" + i });
-          }
-          arango.DELETE_RAW("/_admin/debug/failat", "");
           assertEqual(9000, c.count());
           assertEqual(9100, c.toArray().length);
         },
@@ -214,42 +228,42 @@ function BaseTestConfig () {
     },
 
     testExistingIndexId: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
           const c = db._create(cn);
           state.indexDef = {type: 'skiplist', id: '1234567', fields: ['value']};
           c.ensureIndex(state.indexDef);
-          state.masterProps = c.index(state.indexDef.id);
+          state.leaderProps = c.index(state.indexDef.id);
         },
         function (state) {
-          //  already create the collection and index on the slave
+          //  already create the collection and index on the follower
           const c = db._create(cn);
           c.ensureIndex(state.indexDef);
         },
         function (state) {
           const c = db._collection(cn);
           const i = c.index(state.indexDef.id);
-          assertEqual(state.masterProps.id, i.id);
-          assertEqual(state.masterProps.name, i.name);
+          assertEqual(state.leaderProps.id, i.id);
+          assertEqual(state.leaderProps.name, i.name);
         },
         true
       );
     },
 
     testExistingIndexIdConflict: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
           const c = db._create(cn);
           state.indexDef = {type: 'hash', id: '1234567', fields: ['value']};
           c.ensureIndex(state.indexDef);
-          state.masterProps = c.index(state.indexDef.id);
+          state.leaderProps = c.index(state.indexDef.id);
         },
         function (state) {
-          //  already create the collection and index on the slave
+          //  already create the collection and index on the follower
           const c = db._create(cn);
           const def = {type: 'skiplist', id: '1234567', fields: ['value2']};
           c.ensureIndex(def);
@@ -258,25 +272,25 @@ function BaseTestConfig () {
           const c = db._collection(cn);
           const i = c.index(state.indexDef.id);
           assertEqual(state.indexDef.type, i.type);
-          assertEqual(state.masterProps.id, i.id);
-          assertEqual(state.masterProps.name, i.name);
+          assertEqual(state.leaderProps.id, i.id);
+          assertEqual(state.leaderProps.name, i.name);
         },
         true
       );
     },
 
     testExistingSystemIndexIdConflict: function () {
-      connectToMaster();
+      connectToLeader();
       
       compare(
         function (state) {
           const c = db._create(sysCn, {isSystem: true});
           state.indexDef = {type: 'hash', id: '1234567', fields: ['value']};
           c.ensureIndex(state.indexDef);
-          state.masterProps = c.index(state.indexDef.id);
+          state.leaderProps = c.index(state.indexDef.id);
         },
         function (state) {
-          //  already create the index on the slave
+          //  already create the index on the follower
           const c = db._create(sysCn, {isSystem: true});
           const def = {type: 'skiplist', id: '1234567', fields: ['value2']};
           c.ensureIndex(def);
@@ -285,50 +299,50 @@ function BaseTestConfig () {
           const c = db._collection(sysCn);
           const i = c.index(state.indexDef.id);
           assertEqual(state.indexDef.type, i.type);
-          assertEqual(state.masterProps.id, i.id);
-          assertEqual(state.masterProps.name, i.name);
+          assertEqual(state.leaderProps.id, i.id);
+          assertEqual(state.leaderProps.name, i.name);
         },
         true, true
       );
     },
 
     testExistingIndexName: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
           const c = db._create(cn);
           state.indexDef = {type: 'skiplist', name: 'foo', fields: ['value']};
           c.ensureIndex(state.indexDef);
-          state.masterProps = c.index(state.indexDef.name);
+          state.leaderProps = c.index(state.indexDef.name);
         },
         function (state) {
-          //  already create the collection and index on the slave
+          //  already create the collection and index on the follower
           const c = db._create(cn);
           c.ensureIndex(state.indexDef);
         },
         function (state) {
           const c = db._collection(cn);
           const i = c.index(state.indexDef.name);
-          assertEqual(state.masterProps.id, i.id);
-          assertEqual(state.masterProps.name, i.name);
+          assertEqual(state.leaderProps.id, i.id);
+          assertEqual(state.leaderProps.name, i.name);
         },
         true
       );
     },
 
     testExistingIndexNameConflict: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
           const c = db._create(cn);
           state.indexDef = {type: 'hash', name: 'foo', fields: ['value']};
           c.ensureIndex(state.indexDef);
-          state.masterProps = c.index(state.indexDef.name);
+          state.leaderProps = c.index(state.indexDef.name);
         },
         function (state) {
-          //  already create the collection and index on the slave
+          //  already create the collection and index on the follower
           const c = db._create(cn);
           const def = {type: 'skiplist', name: 'foo', fields: ['value2']};
           c.ensureIndex(def);
@@ -343,17 +357,17 @@ function BaseTestConfig () {
     },
 
     testExistingSystemIndexNameConflict: function () {
-      connectToMaster();
+      connectToLeader();
       
       compare(
         function (state) {
           const c = db._create(sysCn, {isSystem: true});
           state.indexDef = {type: 'hash', name: 'foo', fields: ['value3']};
           c.ensureIndex(state.indexDef);
-          state.masterProps = c.index(state.indexDef.name);
+          state.leaderProps = c.index(state.indexDef.name);
         },
         function (state) {
-          //  already create the index on the slave
+          //  already create the index on the follower
           const c = db._create(sysCn, {isSystem: true});
           const def  = {type: 'skiplist', name: 'foo', fields: ['value4']};
           c.ensureIndex(def);
@@ -372,7 +386,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRemoveSomeWithIncremental: function () {
-      connectToMaster();
+      connectToLeader();
 
       var st;
 
@@ -402,7 +416,7 @@ function BaseTestConfig () {
         true
       );
 
-      connectToSlave();
+      connectToFollower();
 
       assertEqual(5000, collectionCount(cn));
       var c = db._collection(cn);
@@ -414,7 +428,7 @@ function BaseTestConfig () {
 
       //  and sync again
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true,
         incremental: true
       });
@@ -428,7 +442,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testInsertSomeWithIncremental: function () {
-      connectToMaster();
+      connectToLeader();
 
       var st;
 
@@ -457,7 +471,7 @@ function BaseTestConfig () {
         true
       );
 
-      connectToSlave();
+      connectToFollower();
 
       let c = db._collection(cn);
       //  insert some random documents
@@ -471,7 +485,7 @@ function BaseTestConfig () {
 
       //  and sync again
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true,
         incremental: true
       });
@@ -484,8 +498,8 @@ function BaseTestConfig () {
     // / @brief test existing collection
     // //////////////////////////////////////////////////////////////////////////////
 
-    testInsertHugeIncrementalMoreOnMaster: function () {
-      connectToMaster();
+    testInsertHugeIncrementalMoreOnLeader: function () {
+      connectToLeader();
 
       var st;
 
@@ -514,7 +528,7 @@ function BaseTestConfig () {
         true
       );
 
-      connectToMaster();
+      connectToLeader();
       var c = db._collection(cn);
       let docs = [];
       //  insert some documents 'before'
@@ -540,11 +554,11 @@ function BaseTestConfig () {
       st.count = collectionCount(cn);
       assertEqual(225000, collectionCount(cn));
 
-      connectToSlave();
+      connectToFollower();
 
       //  and sync again
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true,
         incremental: true
       });
@@ -553,8 +567,8 @@ function BaseTestConfig () {
       assertEqual(st.checksum, collectionChecksum(cn));
     },
 
-    testInsertHugeIncrementalMoreOnSlave: function () {
-      connectToMaster();
+    testInsertHugeIncrementalMoreOnFollower: function () {
+      connectToLeader();
 
       var st;
 
@@ -583,7 +597,7 @@ function BaseTestConfig () {
         true
       );
 
-      connectToSlave();
+      connectToFollower();
 
       var c = db._collection(cn);
       let docs = [];
@@ -609,7 +623,7 @@ function BaseTestConfig () {
 
       //  and sync again
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true,
         incremental: true
       });
@@ -622,8 +636,8 @@ function BaseTestConfig () {
     // / @brief test existing collection
     // //////////////////////////////////////////////////////////////////////////////
 
-    testInsertHugeIncrementalLessOnMaster: function () {
-      connectToMaster();
+    testInsertHugeIncrementalLessOnLeader: function () {
+      connectToLeader();
 
       var st;
 
@@ -664,7 +678,7 @@ function BaseTestConfig () {
         true
       );
 
-      connectToMaster();
+      connectToLeader();
       var c = db._collection(cn);
       let docs = [];
       //  remove some documents from the 'front'
@@ -690,11 +704,11 @@ function BaseTestConfig () {
       st.count = collectionCount(cn);
       assertEqual(120000, collectionCount(cn));
 
-      connectToSlave();
+      connectToFollower();
 
       //  and sync again
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true,
         incremental: true
       });
@@ -706,11 +720,11 @@ function BaseTestConfig () {
     testUpdateHugeIntermediateCommits: function () {
       // can only use this with failure tests enabled
       let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
-      if (String(r) === "false") {
+      if (String(r) === "false" || r.error) {
         return;
       }
 
-      connectToMaster();
+      connectToLeader();
 
       var st;
 
@@ -752,7 +766,7 @@ function BaseTestConfig () {
         true
       );
 
-      connectToMaster();
+      connectToLeader();
       var c = db._collection(cn);
       let selectors = [];
       let docs = [];
@@ -783,11 +797,11 @@ function BaseTestConfig () {
       st.count = collectionCount(cn);
       assertEqual(220000, collectionCount(cn));
 
-      connectToSlave();
+      connectToFollower();
 
       //  and sync again
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true,
         incremental: true
       });
@@ -803,7 +817,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testProperties: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -814,7 +828,7 @@ function BaseTestConfig () {
           });
         },
         function (state) {
-          //  don't create the collection on the slave
+          //  don't create the collection on the follower
         },
         function (state) {
           var c = db._collection(cn);
@@ -830,7 +844,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testPropertiesOther: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -841,7 +855,7 @@ function BaseTestConfig () {
           });
         },
         function (state) {
-          //  create the collection on the slave, but with default properties
+          //  create the collection on the follower, but with default properties
           db._create(cn);
         },
         function (state) {
@@ -858,7 +872,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCreateIndexes: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -888,9 +902,9 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           let c = db._collection(cn);
@@ -936,21 +950,21 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testSyncView: function () {
-      connectToMaster();
+      connectToLeader();
 
       // create custom analyzer
       let analyzer = analyzers.save('custom', 'delimiter', { delimiter: ' ' }, ['frequency']);
 
-      //  create view & collection on master
+      //  create view & collection on leader
       db._flushCache();
       db._create(cn);
       db._createView(cn + 'View', 'arangosearch', {consolidationIntervalMsec:0});
 
       db._flushCache();
-      connectToSlave();
+      connectToFollower();
       internal.wait(0.1, false);
-      //  sync on slave
-      replication.sync({ endpoint: masterEndpoint });
+      //  sync on follower
+      replication.sync({ endpoint: leaderEndpoint });
 
       db._flushCache();
       {
@@ -963,7 +977,7 @@ function BaseTestConfig () {
         assertEqual(Object.keys(props.links).length, 0);
       }
 
-      connectToMaster();
+      connectToLeader();
 
       //  update view properties
       {
@@ -979,17 +993,17 @@ function BaseTestConfig () {
       }
 
       db._flushCache();
-      connectToSlave();
+      connectToFollower();
 
-      replication.sync({ endpoint: masterEndpoint });
+      replication.sync({ endpoint: leaderEndpoint });
 
       // check replicated analyzer
       {
-        let analyzerSlave = analyzers.analyzer('custom');
-        assertEqual(analyzer.name, analyzerSlave.name());
-        assertEqual(analyzer.type, analyzerSlave.type());
-        assertEqual(analyzer.properties, analyzerSlave.properties());
-        assertEqual(analyzer.features, analyzerSlave.features());
+        let analyzerFollower = analyzers.analyzer('custom');
+        assertEqual(analyzer.name, analyzerFollower.name());
+        assertEqual(analyzer.type, analyzerFollower.type());
+        assertEqual(analyzer.properties, analyzerFollower.properties());
+        assertEqual(analyzer.features, analyzerFollower.features());
       }
 
       {
@@ -1009,17 +1023,17 @@ function BaseTestConfig () {
     },
 
     testSyncViewOnAnalyzersCollection: function () {
-      connectToMaster();
+      connectToLeader();
 
       // create custom analyzer
       assertNotEqual(null, db._collection("_analyzers"));
       assertEqual(0, db._analyzers.count());
       let analyzer = analyzers.save('custom', 'delimiter', { delimiter: ' ' }, ['frequency']);
       assertEqual(1, db._analyzers.count());
-      // check analyzer is usable on master
+      // check analyzer is usable on leader
       assertEqual(3, db._query("RETURN TOKENS('1 2 3', 'custom')").toArray()[0].length);
 
-      //  create view & collection on master
+      //  create view & collection on leader
       db._flushCache();
       db._createView('analyzersView', 'arangosearch', {
         consolidationIntervalMsec:0,
@@ -1027,10 +1041,10 @@ function BaseTestConfig () {
       });
 
       db._flushCache();
-      connectToSlave();
+      connectToFollower();
       internal.wait(0.1, false);
-      //  sync on slave
-      replication.sync({ endpoint: masterEndpoint });
+      //  sync on follower
+      replication.sync({ endpoint: leaderEndpoint });
 
       db._flushCache();
 
@@ -1040,7 +1054,7 @@ function BaseTestConfig () {
       assertEqual(1, res.length);
       assertEqual(db._analyzers.toArray()[0], res[0]);
       
-      // check analyzer is usable on slave
+      // check analyzer is usable on follower
       assertEqual(3, db._query("RETURN TOKENS('1 2 3', 'custom')").toArray()[0].length);
 
       {
@@ -1063,7 +1077,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testEdges: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1083,9 +1097,9 @@ function BaseTestConfig () {
           assertEqual(100, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           var c = db._collection(cn);
@@ -1125,7 +1139,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testEdgesDifferences: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1145,9 +1159,9 @@ function BaseTestConfig () {
           assertEqual(100, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           var c = db._collection(cn);
@@ -1190,7 +1204,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testNonPresent: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1220,7 +1234,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testNonPresentIncremental: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1250,7 +1264,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testExisting: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1267,9 +1281,9 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           var c = db._collection(cn);
@@ -1288,7 +1302,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testExistingIncremental: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1305,9 +1319,9 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           var c = db._collection(cn);
@@ -1322,11 +1336,11 @@ function BaseTestConfig () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test with existing documents - but empty on master
+    // / @brief test with existing documents - but empty on leader
     // //////////////////////////////////////////////////////////////////////////////
 
-    testExistingEmptyOnMaster: function () {
-      connectToMaster();
+    testExistingEmptyOnLeader: function () {
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1337,9 +1351,9 @@ function BaseTestConfig () {
           assertEqual(0, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           let c = db._collection(cn);
@@ -1361,11 +1375,11 @@ function BaseTestConfig () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test with existing documents - but empty on master
+    // / @brief test with existing documents - but empty on leader
     // //////////////////////////////////////////////////////////////////////////////
 
-    testExistingEmptyOnMasterIncremental: function () {
-      connectToMaster();
+    testExistingEmptyOnLeaderIncremental: function () {
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1376,9 +1390,9 @@ function BaseTestConfig () {
           assertEqual(0, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           let c = db._collection(cn);
@@ -1400,11 +1414,11 @@ function BaseTestConfig () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test with existing documents - less on the slave
+    // / @brief test with existing documents - less on the follower
     // //////////////////////////////////////////////////////////////////////////////
 
     testExistingDocumentsLess: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1421,9 +1435,9 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           var c = db._collection(cn);
@@ -1444,11 +1458,11 @@ function BaseTestConfig () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test with existing documents - less on the slave
+    // / @brief test with existing documents - less on the follower
     // //////////////////////////////////////////////////////////////////////////////
 
     testExistingDocumentsLessIncremental: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1465,9 +1479,9 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           var c = db._collection(cn);
@@ -1488,11 +1502,11 @@ function BaseTestConfig () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test with existing documents - more on the slave
+    // / @brief test with existing documents - more on the follower
     // //////////////////////////////////////////////////////////////////////////////
 
     testMoreDocuments: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1509,9 +1523,9 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           let c = db._collection(cn);
@@ -1532,11 +1546,11 @@ function BaseTestConfig () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test with existing documents - more on the slave
+    // / @brief test with existing documents - more on the follower
     // //////////////////////////////////////////////////////////////////////////////
 
     testMoreDocumentsIncremental: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1553,9 +1567,9 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           let c = db._collection(cn);
@@ -1576,11 +1590,11 @@ function BaseTestConfig () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test with existing documents - same on the slave
+    // / @brief test with existing documents - same on the follower
     // //////////////////////////////////////////////////////////////////////////////
 
     testSameDocuments: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1600,9 +1614,9 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           let c = db._collection(cn);
@@ -1627,11 +1641,11 @@ function BaseTestConfig () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test with existing documents - same on the slave
+    // / @brief test with existing documents - same on the follower
     // //////////////////////////////////////////////////////////////////////////////
 
     testSameDocumentsIncremental: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1651,9 +1665,9 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           let c = db._collection(cn);
@@ -1678,11 +1692,11 @@ function BaseTestConfig () {
     },
     
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test with existing documents - same on the slave but different keys
+    // / @brief test with existing documents - same on the follower but different keys
     // //////////////////////////////////////////////////////////////////////////////
 
     testSameSameButDifferentKeys: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1701,9 +1715,9 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           let c = db._collection(cn);
@@ -1727,11 +1741,11 @@ function BaseTestConfig () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test with existing documents - same on the slave but different keys
+    // / @brief test with existing documents - same on the follower but different keys
     // //////////////////////////////////////////////////////////////////////////////
 
     testSameSameButDifferentKeysIncremental: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1750,9 +1764,9 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           let c = db._collection(cn);
@@ -1776,11 +1790,11 @@ function BaseTestConfig () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test with existing documents - same on the slave but different values
+    // / @brief test with existing documents - same on the follower but different values
     // //////////////////////////////////////////////////////////////////////////////
 
     testSameSameButDifferentValues: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1801,9 +1815,9 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           let c = db._collection(cn);
@@ -1828,11 +1842,11 @@ function BaseTestConfig () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test with existing documents - same on the slave but different values
+    // / @brief test with existing documents - same on the follower but different values
     // //////////////////////////////////////////////////////////////////////////////
 
     testSameSameButDifferentValuesIncremental: function () {
-      connectToMaster();
+      connectToLeader();
 
       compare(
         function (state) {
@@ -1853,9 +1867,9 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
-          //  already create the collection on the slave
+          //  already create the collection on the follower
           replication.syncCollection(cn, {
-            endpoint: masterEndpoint,
+            endpoint: leaderEndpoint,
             incremental: false
           });
           let c = db._collection(cn);
@@ -1895,7 +1909,7 @@ function ReplicationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
-      connectToMaster();
+      connectToLeader();
       arango.DELETE_RAW("/_admin/debug/failat", "");
       try {
         db._dropView(cn + 'View');
@@ -1912,7 +1926,7 @@ function ReplicationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      connectToMaster();
+      connectToLeader();
       arango.DELETE_RAW("/_admin/debug/failat", "");
       try {
         db._dropView(cn + 'View');
@@ -1929,7 +1943,7 @@ function ReplicationSuite () {
         analyzers.remove('smartCustom');
       } catch (e) { }
 
-      connectToSlave();
+      connectToFollower();
       arango.DELETE_RAW("/_admin/debug/failat", "");
       try {
         db._dropView(cn + 'View');
@@ -1956,47 +1970,37 @@ function ReplicationSuite () {
 // / @brief test suite on other database
 // //////////////////////////////////////////////////////////////////////////////
 
-function ReplicationOtherDBSuite () {
+function ReplicationOtherDBSuiteBase (dbName) {
   'use strict';
-
-  const dbName = 'UnitTestDB';
 
   let suite = {
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
-
     setUp: function () {
-      connectToMaster();
+      connectToLeader();
       try {
         db._dropDatabase(dbName);
       } catch (e) {
       }
       db._createDatabase(dbName);
-      connectToSlave();
+      connectToFollower();
       try {
         db._dropDatabase(dbName);
       } catch (e) {
       }
       db._createDatabase(dbName);
       db._useDatabase(dbName);
-      connectToMaster();
+      connectToLeader();
     },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       db._useDatabase('_system');
-      connectToMaster();
+      connectToLeader();
       try {
         db._dropDatabase(dbName);
       } catch (e) {
       }
 
-      connectToSlave();
+      connectToFollower();
       try {
         db._dropDatabase(dbName);
       } catch (e) {
@@ -2004,8 +2008,16 @@ function ReplicationOtherDBSuite () {
     }
   };
 
-  deriveTestSuite(BaseTestConfig(), suite, '_OtherRepl');
+  deriveTestSuite(BaseTestConfig(), suite, '_' + dbName);
   return suite;
+}
+
+function ReplicationOtherDBTraditionalNameSuite () {
+  return ReplicationOtherDBSuiteBase('UnitTestDB');
+}
+
+function ReplicationOtherDBExtendedNameSuite () {
+  return ReplicationOtherDBSuiteBase("Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨");
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2022,7 +2034,7 @@ function ReplicationIncrementalKeyConflict () {
     // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
-      connectToMaster();
+      connectToLeader();
       db._drop(cn);
     },
 
@@ -2031,10 +2043,10 @@ function ReplicationIncrementalKeyConflict () {
     // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      connectToMaster();
+      connectToLeader();
       db._drop(cn);
 
-      connectToSlave();
+      connectToFollower();
       db._drop(cn);
     },
 
@@ -2059,9 +2071,9 @@ function ReplicationIncrementalKeyConflict () {
         value: 3
       });
 
-      connectToSlave();
+      connectToFollower();
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true
       });
       db._flushCache();
@@ -2075,7 +2087,7 @@ function ReplicationIncrementalKeyConflict () {
       assertEqual(2, c.document('y').value);
       assertEqual(3, c.document('z').value);
 
-      connectToMaster();
+      connectToLeader();
       db._flushCache();
       c = db._collection(cn);
       c.remove('z');
@@ -2089,9 +2101,9 @@ function ReplicationIncrementalKeyConflict () {
       assertEqual(1, c.document('x').value);
       assertEqual(2, c.document('y').value);
 
-      connectToSlave();
+      connectToFollower();
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true,
         incremental: true
       });
@@ -2108,7 +2120,7 @@ function ReplicationIncrementalKeyConflict () {
       assertEqual(2, c.document('y').value);
 
       
-      connectToMaster();
+      connectToLeader();
       db._flushCache();
       c = db._collection(cn);
 
@@ -2123,9 +2135,9 @@ function ReplicationIncrementalKeyConflict () {
       assertEqual(2, c.document('y').value);
       assertEqual(3, c.document('z').value);
 
-      connectToSlave();
+      connectToFollower();
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true,
         incremental: true
       });
@@ -2147,9 +2159,9 @@ function ReplicationIncrementalKeyConflict () {
         unique: true
       });
 
-      connectToSlave();
+      connectToFollower();
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true
       });
       db._flushCache();
@@ -2164,7 +2176,7 @@ function ReplicationIncrementalKeyConflict () {
         c.insert({ _key: key, value: i });
       });
 
-      connectToMaster();
+      connectToLeader();
       db._flushCache();
       c = db._collection(cn);
      
@@ -2183,9 +2195,9 @@ function ReplicationIncrementalKeyConflict () {
       assertEqual(1000, c.count());
       let checksum = collectionChecksum(c.name());
 
-      connectToSlave();
+      connectToFollower();
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true,
         incremental: true
       });
@@ -2208,9 +2220,9 @@ function ReplicationIncrementalKeyConflict () {
         unique: true
       });
 
-      connectToSlave();
+      connectToFollower();
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true
       });
       db._flushCache();
@@ -2220,7 +2232,7 @@ function ReplicationIncrementalKeyConflict () {
         c.insert({ _key: internal.genRandomAlphaNumbers(10), value: i });
       }
 
-      connectToMaster();
+      connectToLeader();
       db._flushCache();
       c = db._collection(cn);
       
@@ -2231,9 +2243,9 @@ function ReplicationIncrementalKeyConflict () {
       assertEqual(1000, c.count());
       let checksum = collectionChecksum(c.name());
 
-      connectToSlave();
+      connectToFollower();
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true,
         incremental: true
       });
@@ -2264,9 +2276,9 @@ function ReplicationIncrementalKeyConflict () {
         });
       }
 
-      connectToSlave();
+      connectToFollower();
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true
       });
       db._flushCache();
@@ -2277,7 +2289,7 @@ function ReplicationIncrementalKeyConflict () {
       assertEqual('hash', c.getIndexes()[1].type);
       assertTrue(c.getIndexes()[1].unique);
 
-      connectToMaster();
+      connectToLeader();
       db._flushCache();
       c = db._collection(cn);
 
@@ -2305,9 +2317,9 @@ function ReplicationIncrementalKeyConflict () {
 
       assertEqual(10000, c.count());
 
-      connectToSlave();
+      connectToFollower();
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true,
         incremental: true
       });
@@ -2333,15 +2345,15 @@ function ReplicationNonIncrementalKeyConflict () {
   return {
 
     setUp: function () {
-      connectToMaster();
+      connectToLeader();
       db._drop(cn);
     },
 
     tearDown: function () {
-      connectToMaster();
+      connectToLeader();
       db._drop(cn);
 
-      connectToSlave();
+      connectToFollower();
       db._drop(cn);
     },
 
@@ -2366,9 +2378,9 @@ function ReplicationNonIncrementalKeyConflict () {
         value: 3
       });
 
-      connectToSlave();
+      connectToFollower();
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true
       });
       db._flushCache();
@@ -2382,7 +2394,7 @@ function ReplicationNonIncrementalKeyConflict () {
       assertEqual('hash', c.getIndexes()[1].type);
       assertTrue(c.getIndexes()[1].unique);
 
-      connectToMaster();
+      connectToLeader();
       db._flushCache();
       c = db._collection(cn);
       c.remove('z');
@@ -2396,9 +2408,9 @@ function ReplicationNonIncrementalKeyConflict () {
       assertEqual(1, c.document('x').value);
       assertEqual(2, c.document('y').value);
 
-      connectToSlave();
+      connectToFollower();
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true,
         incremental: false,
         skipCreateDrop: true
@@ -2432,9 +2444,9 @@ function ReplicationNonIncrementalKeyConflict () {
         });
       }
 
-      connectToSlave();
+      connectToFollower();
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true
       });
       db._flushCache();
@@ -2445,7 +2457,7 @@ function ReplicationNonIncrementalKeyConflict () {
       assertEqual('hash', c.getIndexes()[1].type);
       assertTrue(c.getIndexes()[1].unique);
 
-      connectToMaster();
+      connectToLeader();
       db._flushCache();
       c = db._collection(cn);
 
@@ -2473,9 +2485,9 @@ function ReplicationNonIncrementalKeyConflict () {
 
       assertEqual(10000, c.count());
 
-      connectToSlave();
+      connectToFollower();
       replication.syncCollection(cn, {
-        endpoint: masterEndpoint,
+        endpoint: leaderEndpoint,
         verbose: true,
         incremental: false,
         skipCreateDrop: true
@@ -2492,12 +2504,9 @@ function ReplicationNonIncrementalKeyConflict () {
   };
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes the test suite
-// //////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(ReplicationSuite);
-jsunity.run(ReplicationOtherDBSuite);
+jsunity.run(ReplicationOtherDBTraditionalNameSuite);
+jsunity.run(ReplicationOtherDBExtendedNameSuite);
 jsunity.run(ReplicationIncrementalKeyConflict);
 jsunity.run(ReplicationNonIncrementalKeyConflict);
 

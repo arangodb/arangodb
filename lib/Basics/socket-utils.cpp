@@ -44,7 +44,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_closesocket(TRI_socket_t s) {
-  int res = TRI_ERROR_NO_ERROR;
+  int res = 0;
 #ifdef _WIN32
   if (s.fileHandle != TRI_INVALID_SOCKET) {
     res = shutdown(s.fileHandle, SD_SEND);
@@ -89,16 +89,6 @@ int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead, int flag
   res = recv(s.fileHandle, (char*)(buffer), (int)(numBytesToRead), flags);
 #else
   res = read(s.fileDescriptor, buffer, numBytesToRead);
-#endif
-  return res;
-}
-
-int TRI_writesocket(TRI_socket_t s, const void* buffer, size_t numBytesToWrite, int flags) {
-  int res;
-#ifdef _WIN32
-  res = send(s.fileHandle, (char const*)(buffer), (int)(numBytesToWrite), flags);
-#else
-  res = (int)write(s.fileDescriptor, buffer, numBytesToWrite);
 #endif
   return res;
 }
@@ -169,7 +159,7 @@ bool TRI_SetNonBlockingSocket(TRI_socket_t s) {
 /// This code is copyright Internet Systems Consortium, Inc. ("ISC")
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InetPton4(char const* src, unsigned char* dst) {
+ErrorCode TRI_InetPton4(char const* src, unsigned char* dst) {
   static char const digits[] = "0123456789";
 
   int saw_digit, octets, ch;
@@ -235,7 +225,7 @@ int TRI_InetPton4(char const* src, unsigned char* dst) {
 /// This code is copyright Internet Systems Consortium, Inc. ("ISC")
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InetPton6(char const* src, unsigned char* dst) {
+ErrorCode TRI_InetPton6(char const* src, unsigned char* dst) {
   static char const xdigits_l[] = "0123456789abcdef";
   static char const xdigits_u[] = "0123456789ABCDEF";
 
@@ -309,9 +299,9 @@ int TRI_InetPton6(char const* src, unsigned char* dst) {
     }
 
     if (ch == '.' && ((tp + sizeof(struct in_addr)) <= endp)) {
-      int err = TRI_InetPton4(curtok, tp);
+      auto err = TRI_InetPton4(curtok, tp);
 
-      if (err == 0) {
+      if (err == TRI_ERROR_NO_ERROR) {
         tp += sizeof(struct in_addr);
         seen_xdigits = 0;
         break; /*%< '\\0' was seen by inet_pton4(). */

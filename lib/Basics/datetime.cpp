@@ -522,7 +522,7 @@ std::
 std::regex dateFormatRegex;
 
 std::regex const durationRegex(
-    "^P((\\d+)Y)?((\\d+)M)?((\\d+)W)?((\\d+)D)?(T((\\d+)H)?((\\d+)M)?((\\d+)(\\."
+    "^P((\\d+)Y)?((\\d+)M)?((\\d+)W)?((\\d+)D)?(T((\\d+)H)?((\\d+)M)?((\\d+)((\\.|,)"
     "(\\d{1,3}))?S)?)?", std::regex::optimize);
 
 struct DateRegexInitializer {
@@ -866,13 +866,13 @@ bool arangodb::basics::parseIsoDuration(arangodb::velocypack::StringRef duration
   // The Milli seconds can be shortened:
   // .1 => 100ms
   // so we append 00 but only take the first 3 digits
-  auto matchLength = durationParts.length(17);
+  auto matchLength = durationParts.length(18);
   int number = 0;
   if (matchLength > 0) {
     if (matchLength > 3) {
       matchLength = 3;
     }
-    begin = duration.data() + durationParts.position(17);
+    begin = duration.data() + durationParts.position(18);
     number = NumberUtils::atoi_unchecked<int>(begin, begin + matchLength);
     if (matchLength == 2) {
       number *= 10;

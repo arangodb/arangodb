@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_EDGE_CURSOR_H
-#define ARANGOD_CLUSTER_CLUSTER_EDGE_CURSOR_H 1
+#pragma once
 
 #include "Graph/EdgeCursor.h"
 #include "Graph/TraverserOptions.h"
@@ -84,4 +83,3 @@ class ClusterShortestPathEdgeCursor final : public ClusterEdgeCursor {
 }  // namespace traverser
 }  // namespace arangodb
 
-#endif

@@ -10,8 +10,7 @@
 single collection name as string. Collections that will be written to in the
 transaction must be declared with the *write* or *exclusive* attribute or it
 will fail, whereas non-declared collections from which is solely read will be
-added lazily. See [locking and isolation](../../Manual/Transactions/LockingAndIsolation.html)
-for more information.
+added lazily.
 
 @RESTBODYPARAM{waitForSync,boolean,optional,}
 an optional boolean flag that, if set, will force the
@@ -27,7 +26,7 @@ value will be used. Setting *lockTimeout* to *0* will make ArangoDB
 not time out waiting for a lock.
 
 @RESTBODYPARAM{maxTransactionSize,integer,optional,int64}
-Transaction size limit in bytes. Honored by the RocksDB storage engine only.
+Transaction size limit in bytes.
 
 @RESTDESCRIPTION
 The transaction description must be passed in the body of the POST request.

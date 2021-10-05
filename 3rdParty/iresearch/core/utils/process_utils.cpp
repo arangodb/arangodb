@@ -68,8 +68,8 @@ pid_t get_pid() {
 bool is_valid_pid(const char* buf) {
   const auto pid = strtol(buf, nullptr, 10);
   return 0 != pid
-      && pid <= integer_traits<pid_t>::const_max
-      && pid >= integer_traits<pid_t>::const_min
+      && pid <= std::numeric_limits<pid_t>::max()
+      && pid >= std::numeric_limits<pid_t>::min()
       && is_running(static_cast<pid_t>(pid));
 }
 

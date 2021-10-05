@@ -21,8 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_AUTH_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_AUTH_HANDLER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -34,22 +33,14 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
  public:
   RestAuthHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
 
-  std::string generateJwt(std::string const&, std::string const&);
-
  public:
   char const* name() const override final { return "RestAuthHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
-  void shutdownExecute(bool isFinalized) noexcept override;
 
  private:
+  std::string generateJwt(std::string const& username) const;
   RestStatus badRequest();
-
- private:
-  std::string _username;
-  bool _isValid = false;
-  std::chrono::seconds _validFor;
 };
 }  // namespace arangodb
 
-#endif

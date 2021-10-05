@@ -64,7 +64,8 @@ TEST_F(NetworkConnectionPoolTest, acquire_endpoint) {
   ConnectionPool pool(config);
   std::this_thread::sleep_for(std::chrono::seconds(1));
   
-  auto conn = pool.leaseConnection("tcp://example.org:80");
+  bool isFromPool;
+  auto conn = pool.leaseConnection("tcp://example.org:80", isFromPool);
   ASSERT_EQ(pool.numOpenConnections(), 1);
   auto req = fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset);
   auto res = conn->sendRequest(std::move(req));
@@ -83,17 +84,18 @@ TEST_F(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
   ConnectionPool pool(config);
   std::this_thread::sleep_for(std::chrono::seconds(1));
   
-  auto conn1 = pool.leaseConnection("tcp://example.org:80");
+  bool isFromPool;
+  auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
   
   conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                            fuerte::ContentType::Unset), doNothing);
   
-  auto conn2 = pool.leaseConnection("tcp://example.org:80");
+  auto conn2 = pool.leaseConnection("tcp://example.org:80", isFromPool);
   
   ASSERT_NE(conn1.get(), conn2.get());
   ASSERT_EQ(pool.numOpenConnections(), 2);
   
-  auto conn3 = pool.leaseConnection("tcp://example.com:80");
+  auto conn3 = pool.leaseConnection("tcp://example.com:80", isFromPool);
   ASSERT_NE(conn1.get(), conn3.get());
   
   ASSERT_EQ(pool.numOpenConnections(), 3);
@@ -110,12 +112,13 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
   ConnectionPool pool(config);
 
   {
-    auto conn1 = pool.leaseConnection("tcp://example.org:80");
+    bool isFromPool;
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
     conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
     
-    auto conn2 = pool.leaseConnection("tcp://example.com:80");
+    auto conn2 = pool.leaseConnection("tcp://example.com:80", isFromPool);
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
   }
@@ -138,13 +141,14 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   ConnectionPool pool(config);
   std::this_thread::sleep_for(std::chrono::seconds(1));
   
+  bool isFromPool;
   {
-    auto conn1 = pool.leaseConnection("tcp://example.org:80");
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
     conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
     
-    auto conn2 = pool.leaseConnection("tcp://example.com:80");
+    auto conn2 = pool.leaseConnection("tcp://example.com:80", isFromPool);
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
   }
@@ -158,10 +162,11 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   pool.drainConnections();
   
   {
-    auto conn1 = pool.leaseConnection("tcp://example.org:80");
+
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
     
-    auto conn2 = pool.leaseConnection("tcp://example.com:80");
+    auto conn2 = pool.leaseConnection("tcp://example.com:80", isFromPool);
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
   }
@@ -174,12 +179,12 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   pool.drainConnections();
   
   {
-    auto conn1 = pool.leaseConnection("tcp://example.org:80");
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
     conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
     
-    auto conn2 = pool.leaseConnection("tcp://example.com:80");
+    auto conn2 = pool.leaseConnection("tcp://example.com:80", isFromPool);
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
     
@@ -206,21 +211,22 @@ TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
   ConnectionPool pool(config);
   std::this_thread::sleep_for(std::chrono::seconds(1));
   
+  bool isFromPool;
   {
-    auto conn1 = pool.leaseConnection("tcp://example.org:80");
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
     
     conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
    
-    auto conn2 = pool.leaseConnection("tcp://example.org:80");
+    auto conn2 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
     
     conn2->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
     
-    auto conn3 = pool.leaseConnection("tcp://example.org:80");
+    auto conn3 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_NE(conn1.get(), conn3.get());
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 3);
@@ -237,20 +243,20 @@ TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
   pool.drainConnections();
   
   {
-    auto conn1 = pool.leaseConnection("tcp://example.org:80");
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
     
     conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
    
-    auto conn2 = pool.leaseConnection("tcp://example.org:80");
+    auto conn2 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
     
     conn2->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset), doNothing);
     
-    auto conn3 = pool.leaseConnection("tcp://example.org:80");
+    auto conn3 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_NE(conn1.get(), conn3.get());
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 3);
@@ -280,8 +286,9 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration) {
   ConnectionPool pool(config);
   std::this_thread::sleep_for(std::chrono::seconds(1));
   
+  bool isFromPool;
   {
-    auto conn1 = pool.leaseConnection("tcp://example.org:80");
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
   }
   ASSERT_EQ(pool.numOpenConnections(), 1);
@@ -296,10 +303,10 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration) {
   pool.drainConnections();
   
   {
-    auto conn1 = pool.leaseConnection("tcp://example.org:80");
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
     
-    auto conn2 = pool.leaseConnection("tcp://example.org:80");
+    auto conn2 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 2);
   }
   ASSERT_EQ(pool.numOpenConnections(), 2);
@@ -314,13 +321,13 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration) {
   pool.drainConnections();
   
   {
-    auto conn1 = pool.leaseConnection("tcp://example.org:80");
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
     
-    auto conn2 = pool.leaseConnection("tcp://example.org:80");
+    auto conn2 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 2);
     
-    auto conn3 = pool.leaseConnection("tcp://example.org:80");
+    auto conn3 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 3);
   }
   ASSERT_EQ(pool.numOpenConnections(), 3);
@@ -346,11 +353,12 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
   ConnectionPool pool(config);
   std::this_thread::sleep_for(std::chrono::seconds(1));
   
+  bool isFromPool;
   {
-    auto conn1 = pool.leaseConnection("tcp://example.org:80");
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
     
-    auto conn2 = pool.leaseConnection("tcp://example.org:80");
+    auto conn2 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 2);
   }
   ASSERT_EQ(pool.numOpenConnections(), 2);
@@ -365,10 +373,10 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
   pool.drainConnections();
   
   {
-    auto conn1 = pool.leaseConnection("tcp://example.org:80");
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
     
-    auto conn2 = pool.leaseConnection("tcp://example.com:80");
+    auto conn2 = pool.leaseConnection("tcp://example.com:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 2);
   }
   ASSERT_EQ(pool.numOpenConnections(), 2);
@@ -383,13 +391,13 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
   pool.drainConnections();
   
   {
-    auto conn1 = pool.leaseConnection("tcp://example.org:80");
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
     
-    auto conn2 = pool.leaseConnection("tcp://example.org:80");
+    auto conn2 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 2);
     
-    auto conn3 = pool.leaseConnection("tcp://example.com:80");
+    auto conn3 = pool.leaseConnection("tcp://example.com:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 3);
   }
   ASSERT_EQ(pool.numOpenConnections(), 3);
@@ -404,21 +412,21 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
   pool.drainConnections();
   
   {
-    auto conn1 = pool.leaseConnection("tcp://example.org:80");
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
     
-    auto conn2 = pool.leaseConnection("tcp://example.org:80");
+    auto conn2 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 2);
     
-    auto conn3 = pool.leaseConnection("tcp://example.org:80");
+    auto conn3 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 3);
   }  
   {
     
-    auto conn4 = pool.leaseConnection("tcp://example.com:80");
+    auto conn4 = pool.leaseConnection("tcp://example.com:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 4);
     
-    auto conn5 = pool.leaseConnection("tcp://example.com:80");
+    auto conn5 = pool.leaseConnection("tcp://example.com:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 5);
     
     // 21ms > 2 * 10ms
@@ -432,13 +440,13 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
   pool.drainConnections();
   
   {
-    auto conn1 = pool.leaseConnection("tcp://example.org:80");
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
     
-    auto conn2 = pool.leaseConnection("tcp://example.com:80");
+    auto conn2 = pool.leaseConnection("tcp://example.com:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 2);
     
-    auto conn3 = pool.leaseConnection("tcp://example.net:80");
+    auto conn3 = pool.leaseConnection("tcp://example.net:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 3);
   }
   ASSERT_EQ(pool.numOpenConnections(), 3);

@@ -23,8 +23,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H
-#define ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H 1
+#pragma once
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/iterator.h>
@@ -71,12 +70,12 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   ~RocksDBVPackIndex();
 
-  bool hasSelectivityEstimate() const override { return true; }
+  bool hasSelectivityEstimate() const override;
 
   double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
-  RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
-  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override;
+  RocksDBCuckooIndexEstimatorType* estimator() override;
+  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override;
   void recalculateEstimates() override;
 
   void toVelocyPack(velocypack::Builder&,
@@ -97,7 +96,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   /// @brief attempts to locate an entry in the index
   std::unique_ptr<IndexIterator> lookup(transaction::Methods*,
-                                        arangodb::velocypack::Slice const, bool reverse) const;
+                                        arangodb::velocypack::Slice const, bool reverse, ReadOwnWrites readOwnWrites) const;
 
   Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
                                              arangodb::aql::AstNode const* node,
@@ -114,27 +113,46 @@ class RocksDBVPackIndex : public RocksDBIndex {
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
                                                       arangodb::aql::AstNode const* node,
                                                       arangodb::aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts) override;
+                                                      IndexIteratorOptions const& opts,
+                                                      ReadOwnWrites readOwnWrites) override;
 
   void afterTruncate(TRI_voc_tick_t tick,
                      arangodb::transaction::Methods* trx) override;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const doc,
-                OperationOptions& options) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options, 
+                bool performChecks) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const doc) override;
+                velocypack::Slice doc) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& oldDocumentId,
-                velocypack::Slice const oldDoc, LocalDocumentId const& newDocumentId,
-                velocypack::Slice const newDoc,
-                OperationOptions& options) override;
+                velocypack::Slice oldDoc, LocalDocumentId const& newDocumentId,
+                velocypack::Slice newDoc,
+                OperationOptions const& options,
+                bool performChecks) override;
 
  private:
+  /// @brief returns whether the document can be inserted into the index
+  /// (or if there will be a conflict)
+  [[nodiscard]] Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
+                                   LocalDocumentId const& documentId, velocypack::Slice doc,
+                                   OperationOptions const& options) override;
+  
+  /// @brief returns whether the document can be updated/replaced in the index
+  /// (or if there will be a conflict)
+  [[nodiscard]] Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
+                                    LocalDocumentId const& documentId, velocypack::Slice doc,
+                                    OperationOptions const& options) override;
+                      
+  [[nodiscard]] Result checkOperation(transaction::Methods& trx, RocksDBMethods* methods,
+                                      LocalDocumentId const& documentId, velocypack::Slice doc,
+                                      OperationOptions const& options, bool ignoreExisting);
+
   /// @brief return the number of paths
   inline size_t numPaths() const { return _paths.size(); }
 
@@ -142,10 +160,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void fillPaths(std::vector<std::vector<std::string>>& paths, std::vector<int>& expanding);
 
   /// @brief helper function to insert a document into any index type
-  int fillElement(velocypack::Builder& leased,
-                  LocalDocumentId const& documentId, VPackSlice const& doc,
-                  ::arangodb::containers::SmallVector<RocksDBKey>& elements,
-                  ::arangodb::containers::SmallVector<uint64_t>& hashes);
+  ErrorCode fillElement(velocypack::Builder& leased,
+                        LocalDocumentId const& documentId, VPackSlice const& doc,
+                        ::arangodb::containers::SmallVector<RocksDBKey>& elements,
+                        ::arangodb::containers::SmallVector<uint64_t>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
@@ -180,11 +198,13 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief whether or not partial indexing is allowed
   bool _allowPartialIndex;
 
+  /// @brief whether or not we want to have estimates
+  bool _estimates;
+
   /// @brief A fixed size library to estimate the selectivity of the index.
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.
-  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> _estimator;
+  std::unique_ptr<RocksDBCuckooIndexEstimatorType> _estimator;
 };
 }  // namespace arangodb
 
-#endif

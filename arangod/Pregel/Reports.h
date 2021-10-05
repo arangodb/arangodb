@@ -21,8 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_REPORTS_H
-#define ARANGODB_PREGEL_REPORTS_H
+#pragma once
 #include <sstream>
 
 #include <velocypack/Builder.h>
@@ -105,4 +104,3 @@ struct ReportManager {
 };
 }  // namespace arangodb::pregel
 
-#endif

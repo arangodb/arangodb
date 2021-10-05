@@ -25,22 +25,19 @@
 #ifndef VELOCYPACK_SLICE_H
 #define VELOCYPACK_SLICE_H 1
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
-#include <string>
-#include <vector>
+#include <functional>
 #include <initializer_list>
 #include <iosfwd>
 #include <iterator>
-#include <algorithm>
-#include <functional>
+#include <limits>
+#include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
-
-#if __cplusplus >= 201703L
-#include <string_view>
-#define VELOCYPACK_HAS_STRING_VIEW 1
-#endif
+#include <vector>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
@@ -244,11 +241,24 @@ class Slice {
 
   // Set new memory position
   void set(uint8_t const* s) { _start = s; }
+  
+  // hashes the binary representation of a value. this value is only suitable
+  // to be stored in memory, but should not be persisted, as its implementation
+  // may change in the future
+  inline uint64_t volatileHash() const {
+    std::size_t const size = checkOverflow(byteSize());
+    if (size == 1) {
+      uint64_t h = SliceStaticData::PrecalculatedHashesForDefaultSeedWYHash[head()];
+      VELOCYPACK_ASSERT(h != 0);
+      return h;
+    }
+    return VELOCYPACK_HASH_WYHASH(start(), size, defaultSeed64);
+  }
 
   // hashes the binary representation of a value
   inline uint64_t hash(uint64_t seed = defaultSeed64) const {
     std::size_t const size = checkOverflow(byteSize());
-    if (seed == defaultSeed64 && size == 1) {
+    if (size == 1 && seed == defaultSeed64) {
       uint64_t h = SliceStaticData::PrecalculatedHashesForDefaultSeed[head()];
       VELOCYPACK_ASSERT(h != 0);
       return h;
@@ -596,6 +606,10 @@ class Slice {
   // returns a Slice(ValueType::None) if not found
   Slice get(StringRef const& attribute) const;
 
+  Slice get(std::string_view attribute) const {
+    return get(StringRef{attribute.data(), attribute.size()});
+  }
+
   Slice get(HashedStringRef const& attribute) const {
     return get(StringRef(attribute));
   }
@@ -605,11 +619,7 @@ class Slice {
   }
 
   Slice get(char const* attribute) const {
-#if __cplusplus >= 201703
     return get(StringRef(attribute, std::char_traits<char>::length(attribute)));
-#else
-    return get(StringRef(attribute, strlen(attribute)));
-#endif
   }
 
   Slice get(char const* attribute, std::size_t length) const {
@@ -653,11 +663,7 @@ class Slice {
   }
 
   bool hasKey(char const* attribute) const {
-#if __cplusplus >= 201703
     return hasKey(StringRef(attribute, std::char_traits<char>::length(attribute)));
-#else
-    return hasKey(StringRef(attribute, std::strlen(attribute)));
-#endif
   }
 
   bool hasKey(char const* attribute, std::size_t length) const {
@@ -869,12 +875,11 @@ class Slice {
 
     throw Exception(Exception::InvalidValueType, "Expecting type String");
   }
-#ifdef VELOCYPACK_HAS_STRING_VIEW
+
   std::string_view stringView() const {
     StringRef ref  = this->stringRef();
     return std::string_view(ref.data(), ref.size());
   }
-#endif
 
   // return the value for a Binary object
   uint8_t const* getBinary(ValueLength& length) const {
@@ -1390,14 +1395,12 @@ struct Extractor<StringRef> {
   }
 };
 
-#if VELOCYPACK_HAS_STRING_VIEW
 template<>
 struct Extractor<std::string_view> {
   static std::string_view extract(Slice slice) {
     return slice.stringView();
   }
 };
-#endif
 
 template<>
 struct Extractor<bool> {

@@ -21,8 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SUBQUERY_START_EXECUTION_NODE_H
-#define ARANGOD_AQL_SUBQUERY_START_EXECUTION_NODE_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
@@ -46,9 +45,6 @@ class SubqueryStartNode : public ExecutionNode {
 
   NodeType getType() const override final { return SUBQUERY_START; }
 
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
       std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
@@ -57,6 +53,9 @@ class SubqueryStartNode : public ExecutionNode {
                        bool withProperties) const override final;
 
   bool isEqualTo(ExecutionNode const& other) const override final;
+
+ protected:
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
  private:
   /// @brief This is only required for Explain output.
@@ -67,4 +66,3 @@ class SubqueryStartNode : public ExecutionNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

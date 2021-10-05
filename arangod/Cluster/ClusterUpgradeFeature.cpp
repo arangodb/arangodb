@@ -195,7 +195,7 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
     } else {
       LOG_TOPIC("a0b4f", ERR, arangodb::Logger::CLUSTER) << "unable to store cluster upgrade information in agency: " << result.errorMessage();
     }
-  } else if (result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+  } else if (result.httpCode() != rest::ResponseCode::PRECONDITION_FAILED) {
     LOG_TOPIC("482a3", WARN, arangodb::Logger::CLUSTER) << "unable to fetch upgrade information: " << result.errorMessage();
   } else {
     // someone else is performing the upgrade
@@ -217,7 +217,7 @@ bool ClusterUpgradeFeature::upgradeCoordinator() {
       continue;
     }
 
-    auto guard = scopeGuard([&vocbase]() { vocbase->release(); });
+    auto guard = scopeGuard([&vocbase]() noexcept { vocbase->release(); });
 
     auto res = methods::Upgrade::startupCoordinator(*vocbase);
     if (res.fail()) {

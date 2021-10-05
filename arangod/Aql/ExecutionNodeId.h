@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTIONNODEID_H
-#define ARANGOD_AQL_EXECUTIONNODEID_H
+#pragma once
 
 #include "Basics/Identifier.h"
 
@@ -43,4 +42,3 @@ class ExecutionNodeId : public basics::Identifier {
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::aql::ExecutionNodeId)
 
-#endif  // ARANGOD_AQL_EXECUTIONNODEID_H

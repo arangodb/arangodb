@@ -24,7 +24,7 @@
 #define IRESEARCH_TYPE_ID_H
 
 #include "type_info.hpp"
-#include "misc.hpp"
+#include "type_utils.hpp"
 
 namespace iresearch {
 

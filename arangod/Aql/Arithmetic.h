@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ARITHMETIC_H
-#define ARANGOD_AQL_ARITHMETIC_H 1
+#pragma once
 
 #include <string>
 
@@ -46,4 +45,3 @@ bool isUnsafeDivision(T l, T r);
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

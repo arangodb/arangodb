@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_PATHCOMPONENT_H
-#define ARANGOD_CLUSTER_PATHCOMPONENT_H
+#pragma once
 
 #include <functional>
 #include <iosfwd>
@@ -31,9 +30,14 @@
 #include <string>
 #include <vector>
 
-namespace arangodb {
-namespace cluster {
-namespace paths {
+namespace arangodb::cluster::paths {
+
+struct SkipComponents {
+  constexpr SkipComponents() : num(0) {}
+  explicit constexpr SkipComponents(std::size_t num) : num(num) {}
+
+  std::size_t num;
+};
 
 class Path {
  public:
@@ -43,31 +47,37 @@ class Path {
 
   // Fold the path.
   template <class T>
-  T fold(std::function<T(const char*, T)> const& callback, T init) const {
+  auto fold(std::function<T(const char*, T)> const& callback, T init) const -> T {
     forEach([&callback, &init](const char* component) { init = callback(init); });
     return std::move(init);
   }
 
-  std::ostream& toStream(std::ostream& stream) const {
-    forEach([&stream](const char* component) { stream << "/" << component; });
+  auto toStream(std::ostream& stream, SkipComponents skip = SkipComponents()) const -> std::ostream& {
+    forEach([&stream, &skip](const char* component) {
+      if (skip.num == 0) {
+        stream << "/" << component;
+      } else {
+        --skip.num;
+      }
+    });
     return stream;
   }
 
-  std::vector<std::string> vec(size_t skip = 0) const {
+  [[nodiscard]] auto vec(SkipComponents skip = SkipComponents()) const -> std::vector<std::string> {
     std::vector<std::string> res;
     forEach([&res, &skip](const char* component) {
-      if (skip == 0) {
-        res.emplace_back(std::string{component});
+      if (skip.num == 0) {
+        res.emplace_back(component);
       } else {
-        skip--;
+        --skip.num;
       }
     });
     return res;
   }
 
-  std::string str() const {
+  [[nodiscard]] auto str(SkipComponents skip = SkipComponents()) const -> std::string {
     auto stream = std::stringstream{};
-    toStream(stream);
+    toStream(stream, skip);
     return stream.str();
   }
 
@@ -82,7 +92,7 @@ class StaticComponent : public std::enable_shared_from_this<T> /* (sic) */, publ
 
   StaticComponent() = delete;
 
-  void forEach(std::function<void(char const* component)> const& callback) const override final {
+  void forEach(std::function<void(char const* component)> const& callback) const final {
     parent().forEach(callback);
     callback(child().component());
   }
@@ -99,7 +109,7 @@ class StaticComponent : public std::enable_shared_from_this<T> /* (sic) */, publ
       : _parent(std::move(parent)) {}
 
   // shared ptr constructor
-  static std::shared_ptr<T const> make_shared(std::shared_ptr<P const> parent) {
+  static auto make_shared(std::shared_ptr<P const> parent) -> std::shared_ptr<T const> {
     struct ConstructibleT : public T {
      public:
       explicit ConstructibleT(std::shared_ptr<P const> parent) noexcept
@@ -110,10 +120,10 @@ class StaticComponent : public std::enable_shared_from_this<T> /* (sic) */, publ
 
  private:
   // Accessor to our subclass
-  T const& child() const { return static_cast<T const&>(*this); }
+  auto child() const -> T const& { return static_cast<T const&>(*this); }
 
   // Accessor to our parent. Could be made public, but should then probably return the shared_ptr.
-  P const& parent() const noexcept { return *_parent; }
+  auto parent() const noexcept -> P const& { return *_parent; }
 
   std::shared_ptr<P const> const _parent;
 };
@@ -126,7 +136,7 @@ class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */, pub
 
   DynamicComponent() = delete;
 
-  void forEach(std::function<void(char const* component)> const& callback) const override final {
+  void forEach(std::function<void(char const* component)> const& callback) const final {
     parent().forEach(callback);
     callback(child().component());
   }
@@ -147,7 +157,7 @@ class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */, pub
   }
 
   // shared ptr constructor
-  static std::shared_ptr<T const> make_shared(std::shared_ptr<P const> parent, V value) {
+  static auto make_shared(std::shared_ptr<P const> parent, V value) -> std::shared_ptr<T const> {
     struct ConstructibleT : public T {
      public:
       explicit ConstructibleT(std::shared_ptr<P const> parent, V value) noexcept
@@ -156,24 +166,21 @@ class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */, pub
     return std::make_shared<ConstructibleT const>(std::move(parent), std::move(value));
   }
 
-  V const& value() const noexcept { return _value; }
+  auto value() const noexcept -> V const& { return _value; }
 
  private:
   // Accessor to our subclass
-  T const& child() const { return static_cast<T const&>(*this); }
+  auto child() const -> T const& { return static_cast<T const&>(*this); }
 
   // Accessor to our parent. Could be made public, but should then probably return the shared_ptr.
-  P const& parent() const noexcept { return *_parent; }
+  auto parent() const noexcept -> P const& { return *_parent; }
 
   std::shared_ptr<P const> const _parent;
 
   V const _value;
 };
 
-std::ostream& operator<<(std::ostream& stream, Path const& path);
+auto operator<<(std::ostream& stream, Path const& path) -> std::ostream&;
 
-}  // namespace paths
-}  // namespace cluster
 }  // namespace arangodb
 
-#endif  // ARANGOD_CLUSTER_PATHCOMPONENT_H

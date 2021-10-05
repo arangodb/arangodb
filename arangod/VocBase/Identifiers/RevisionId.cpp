@@ -65,7 +65,8 @@ std::string RevisionId::toString() const {
 }
 
 /// encodes the uint64_t timestamp into the provided result buffer
-/// the buffer must be at least 11 chars long
+/// the buffer should be at least arangodb::basics::maxUInt64StringSize
+/// bytes long.
 /// the length of the encoded value and the start position into
 /// the result buffer are returned by the function
 std::pair<size_t, size_t> RevisionId::toString(char* buffer) const {
@@ -79,7 +80,8 @@ std::pair<size_t, size_t> RevisionId::toString(char* buffer) const {
 
 /// encodes the uint64_t timestamp into a temporary velocypack ValuePair,
 /// using the specific temporary result buffer
-/// the result buffer must be at least 11 chars long
+/// the result buffer should be at least
+/// arangodb::basics::maxUInt64StringSize bytes long
 arangodb::velocypack::ValuePair RevisionId::toValuePair(char* buffer) const {
   auto positions = toString(buffer);
   return arangodb::velocypack::ValuePair(&buffer[0] + positions.first, positions.second,
@@ -89,6 +91,14 @@ arangodb::velocypack::ValuePair RevisionId::toValuePair(char* buffer) const {
 /// @brief Write revision ID to string for storage with correct endianness
 void RevisionId::toPersistent(std::string& buffer) const {
   rocksutils::uint64ToPersistent(buffer, id());
+}
+
+/// @brief create a revision id with a lower-bound HLC value
+RevisionId RevisionId::lowerBound() { 
+  // "2021-01-01T00:00:00.000Z" => 1609459200000 milliseconds since the epoch
+  RevisionId value{uint64_t(1609459200000ULL) << 20ULL};
+  TRI_ASSERT(value.id() > ::TickLimit);
+  return value;
 }
 
 /// @brief create a revision id using an HLC value

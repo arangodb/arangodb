@@ -50,19 +50,23 @@
 #include "Cluster/ClusterInfo.h"
 #include "Containers/SmallVector.h"
 #include "Graph/Graph.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
+namespace StringUtils = arangodb::basics::StringUtils;
 
 namespace {
 
 auto doNothingVisitor = [](AstNode const*) {};
-   
-[[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query, int code, char const* details) {
+
+[[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query,
+                                      ErrorCode code, char const* details) {
   std::string msg = arangodb::aql::QueryWarnings::buildFormattedString(code, details);
   query.warnings().registerError(code, msg.c_str());
 }
@@ -467,7 +471,7 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
 
   bool returnOld = false;
   if (options->type == NODE_TYPE_OBJECT) {
-    auto ops = ExecutionPlan::parseModificationOptions(options);
+    auto ops = ExecutionPlan::parseModificationOptions(query(), "INSERT", options, /*addWarnings*/ false);
     returnOld = ops.isOverwriteModeUpdateReplace();
   }
 
@@ -559,6 +563,8 @@ AstNode* Ast::createNodeUpsert(AstNodeType type, AstNode const* docVariable,
 
   node->addMember(createNodeReference(Variable::NAME_OLD));
   node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_NEW), false));
+
+  this->setContainsUpsertNode();
 
   return node;
 }
@@ -683,10 +689,6 @@ AstNode* Ast::createNodeAssign(char const* variableName, size_t nameLength,
 AstNode* Ast::createNodeVariable(char const* name, size_t nameLength, bool isUserDefined) {
   if (name == nullptr || nameLength == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  if (isUserDefined && *name == '_') {
-    ::throwFormattedError(_query, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name);
   }
 
   if (_scopes.existsVariable(name, nameLength)) {
@@ -1122,6 +1124,14 @@ AstNode* Ast::createNodeValueInt(int64_t value) {
 
 /// @brief create an AST double value node
 AstNode* Ast::createNodeValueDouble(double value) {
+  if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
+    return createNodeValueNull();
+  }
+
+  if (value == -0.0) {
+    // unify -0.0 and +0.0 
+    value = 0.0;
+  }
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_DOUBLE);
   node->setDoubleValue(value);
@@ -1682,8 +1692,6 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
 /// @brief injects bind parameters into the AST
 void Ast::injectBindParameters(BindParameters& parameters,
                                arangodb::CollectionNameResolver const& resolver) {
-  auto& p = parameters.get();
-
   if (_containsBindParameters || _containsTraversal) {
     // inject bind parameters into query AST
     auto func = [&](AstNode* node) -> AstNode* {
@@ -1696,17 +1704,11 @@ void Ast::injectBindParameters(BindParameters& parameters,
           ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         }
 
-        auto const& it = p.find(param);
-
-        if (it == p.end()) {
+        VPackSlice value = parameters.markUsed(param);
+        if (value.isNone()) {
           // query uses a bind parameter that was not defined by the user
           ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         }
-
-        // mark the bind parameter as being used
-        (*it).second.second = true;
-
-        auto const& value = (*it).second.first;
 
         if (node->type == NODE_TYPE_PARAMETER) {
           auto const constantParameter = node->isConstant();
@@ -1881,12 +1883,12 @@ void Ast::injectBindParameters(BindParameters& parameters,
     }
   }
 
-  for (auto it = p.begin(); it != p.end(); ++it) {
-    if (!(*it).second.second) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED,
-                                    (*it).first.c_str());
+  // visit all bind parameters to ensure that they are all marked as used
+  parameters.visit([](std::string const& key, VPackSlice /*value*/, bool used) {
+    if (!used) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, key.c_str());
     }
-  }
+  });
 }
 
 /// @brief replace an attribute access with just the variable
@@ -1945,8 +1947,9 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
 
 /// @brief replace variables
 /*static*/ AstNode* Ast::replaceVariables(AstNode* node,
-                               std::unordered_map<VariableId, Variable const*> const& replacements) {
-  auto visitor = [&replacements](AstNode* node) -> AstNode* {
+                                          std::unordered_map<VariableId, Variable const*> const& replacements,
+                                          bool unlockNodes) {
+  auto visitor = [&replacements, &unlockNodes](AstNode* node) -> AstNode* {
     if (node == nullptr) {
       return nullptr;
     }
@@ -1959,8 +1962,13 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
         auto it = replacements.find(variable->id);
 
         if (it != replacements.end()) {
-          // overwrite the node in place
-          node->setData((*it).second);
+          if (unlockNodes) {
+            TEMPORARILY_UNLOCK_NODE(node);
+            // overwrite the node in place
+            node->setData((*it).second);
+          } else {
+            node->setData((*it).second);
+          }
         }
       }
       // intentionally falls through
@@ -2046,13 +2054,13 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     TraversalContext(transaction::Methods& t) : trx(t) {}
     
     std::unordered_set<std::string> writeCollectionsSeen;
-    std::unordered_map<std::string, int64_t> collectionsFirstSeen;
     std::unordered_map<Variable const*, AstNode const*> variableDefinitions;
     AqlFunctionsInternalCache aqlFunctionsInternalCache;
     transaction::Methods& trx;
     int64_t stopOptimizationRequests = 0;
-    int64_t nestingLevel = 0;
+    int64_t nestingLevel = 0;  // only used for subqueries
     int64_t filterDepth = -1;  // -1 = not in filter
+    uint64_t recursionDepth = 0;  // current depth of the tree we walk
     bool hasSeenAnyWriteNode = false;
     bool hasSeenWriteNodeInCurrentScope = false;
   };
@@ -2061,6 +2069,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 
   auto preVisitor = [&](AstNode const* node) -> bool {
     auto ctx = &context;
+    
     if (ctx->filterDepth >= 0) {
       ++ctx->filterDepth;
     }
@@ -2090,12 +2099,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     } else if (node->type == NODE_TYPE_COLLECTION_LIST) {
       // a collection list is produced by WITH a, b, c
       // or by traversal declarations
-      // we do not want to descend further, in order to not track
-      // the collections in collectionsFirstSeen
       return false;
-    } else if (node->type == NODE_TYPE_COLLECTION) {
-      // note the level on which we first saw a collection
-      ctx->collectionsFirstSeen.try_emplace(node->getString(), ctx->nestingLevel);
     } else if (node->type == NODE_TYPE_AGGREGATIONS) {
       ++ctx->stopOptimizationRequests;
     } else if (node->type == NODE_TYPE_SUBQUERY) {
@@ -2116,12 +2120,22 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       // nothing to be done in constant arrays
       return false;
     }
+    
+    if (++ctx->recursionDepth > maxExpressionNesting) {
+      // maximum nesting level for expressions/other constructs reached.
+      // we abort to prevent a potential stack overflow
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_TOO_MUCH_NESTING);
+    }
 
     return true;
   };
 
   auto postVisitor = [&](AstNode const* node) -> void {
     auto ctx = &context;
+   
+    TRI_ASSERT(ctx->recursionDepth > 0);
+    --ctx->recursionDepth;
+
     if (ctx->filterDepth >= 0) {
       --ctx->filterDepth;
     }
@@ -2141,17 +2155,6 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       auto collection = node->getMember(1);
       std::string name = collection->getString();
       ctx->writeCollectionsSeen.emplace(name);
-
-      auto it = ctx->collectionsFirstSeen.find(name);
-
-      if (it != ctx->collectionsFirstSeen.end()) {
-        if ((*it).second < ctx->nestingLevel) {
-          name = "collection '" + name;
-          name.push_back('\'');
-          THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION,
-                                        name.c_str());
-        }
-      }
     } else if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
@@ -2341,6 +2344,9 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 
   // run the optimizations
   _root = traverseAndModify(_root, preVisitor, visitor, postVisitor);
+
+  // must be back to 0 after the traversal
+  TRI_ASSERT(context.recursionDepth == 0);
 }
 
 /// @brief determines the variables referenced in an expression
@@ -2451,91 +2457,6 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node, bool& isSaf
 
     attributeName = nullptr;
     nameLength = 0;
-    return true;
-  };
-
-  traverseReadOnly(node, visitor, ::doNothingVisitor);
-
-  return result;
-}
-
-/// @brief determines the to-be-kept attributes of an INTO expression
-std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
-    AstNode const* node, Variable const* searchVariable, bool& isSafeForOptimization) {
-  auto isTargetVariable = [&searchVariable](AstNode const* node) {
-    if (node->type == NODE_TYPE_INDEXED_ACCESS) {
-      auto sub = node->getMemberUnchecked(0);
-      if (sub->type == NODE_TYPE_REFERENCE) {
-        Variable const* v = static_cast<Variable const*>(sub->getData());
-        if (v->id == searchVariable->id) {
-          return true;
-        }
-      }
-    } else if (node->type == NODE_TYPE_EXPANSION) {
-      if (node->numMembers() < 2) {
-        return false;
-      }
-      auto it = node->getMemberUnchecked(0);
-      if (it->type != NODE_TYPE_ITERATOR || it->numMembers() != 2) {
-        return false;
-      }
-
-      auto sub1 = it->getMember(0);
-      auto sub2 = it->getMember(1);
-      if (sub1->type != NODE_TYPE_VARIABLE || sub2->type != NODE_TYPE_REFERENCE) {
-        return false;
-      }
-      Variable const* v = static_cast<Variable const*>(sub2->getData());
-      if (v->id == searchVariable->id) {
-        return true;
-      }
-    }
-
-    return false;
-  };
-
-  std::unordered_set<std::string> result;
-  isSafeForOptimization = true;
-
-  auto visitor = [&isSafeForOptimization,
-                  &result, &isTargetVariable,
-                  &searchVariable](AstNode const* node) {
-    if (!isSafeForOptimization) {
-      return false;
-    }
-
-    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      while (node->getMemberUnchecked(0)->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        node = node->getMemberUnchecked(0);
-      }
-      if (isTargetVariable(node->getMemberUnchecked(0))) {
-        result.emplace(node->getString());
-        // do not descend further
-        return false;
-      }
-    } else if (node->type == NODE_TYPE_REFERENCE) {
-      Variable const* v = static_cast<Variable const*>(node->getData());
-      if (v->id == searchVariable->id) {
-        isSafeForOptimization = false;
-        return false;
-      }
-    } else if (node->type == NODE_TYPE_EXPANSION) {
-      if (isTargetVariable(node)) {
-        auto sub = node->getMemberUnchecked(1);
-        if (sub->type == NODE_TYPE_EXPANSION) {
-          sub = sub->getMemberUnchecked(0)->getMemberUnchecked(1);
-        }
-        if (sub->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          while (sub->getMemberUnchecked(0)->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-            sub = sub->getMemberUnchecked(0);
-          }
-          result.emplace(sub->getString());
-          // do not descend further
-          return false;
-        }
-      }
-    }
-
     return true;
   };
 
@@ -2998,30 +2919,33 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
   if (node->type == NODE_TYPE_OPERATOR_UNARY_PLUS) {
     // + number => number
     return const_cast<AstNode*>(converted);
-  } else {
-    // - number
-    if (converted->value.type == VALUE_TYPE_INT) {
-      // int64
-      return createNodeValueInt(-converted->getIntValue());
-    } else {
-      // double
-      double const value = -converted->getDoubleValue();
-
-      if (value != value ||  // intentional
-          value == HUGE_VAL || value == -HUGE_VAL) {
-        // IEEE754 NaN values have an interesting property that we can
-        // exploit...
-        // if the architecture does not use IEEE754 values then this shouldn't
-        // do
-        // any harm either
-        return const_cast<AstNode*>(&_specialNodes.ZeroNode);
-      }
-
-      return createNodeValueDouble(value);
-    }
+  }
+  
+  // - number
+  if (converted->value.type == VALUE_TYPE_INT) {
+    // int64
+    return createNodeValueInt(-converted->getIntValue());
   }
 
-  TRI_ASSERT(false);
+  // double
+  double value = -converted->getDoubleValue();
+
+  if (value != value ||  // intentional
+      value == HUGE_VAL || value == -HUGE_VAL) {
+    // IEEE754 NaN values have an interesting property that we can
+    // exploit...
+    // if the architecture does not use IEEE754 values then this shouldn't
+    // do
+    // any harm either
+    return const_cast<AstNode*>(&_specialNodes.ZeroNode);
+  }
+
+  if (value == -0.0) {
+    // unify +0.0 and -0.0
+    value = 0.0;
+  }
+
+  return createNodeValueDouble(value);
 }
 
 /// @brief optimizes the unary operator NOT
@@ -3458,8 +3382,9 @@ AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
     auto args = node->getMember(0);
     if (args->numMembers() == 1) {
       // replace IS_NULL(x) function call with `x == null`
-      return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
-                                      args->getMemberUnchecked(0), createNodeValueNull());
+      return this->optimizeBinaryOperatorRelational(trx, aqlFunctionsInternalCache, 
+                                                    createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                                             args->getMemberUnchecked(0), createNodeValueNull()));
     }
 #if 0
   } else if (func->name == "LIKE") {
@@ -3572,7 +3497,7 @@ AstNode* Ast::optimizeReference(AstNode* node) {
   }
 
   // constant propagation
-  if (variable->constValue() == nullptr) {
+  if (variable->getConstAstNode() == nullptr) {
     return node;
   }
 
@@ -3583,7 +3508,7 @@ AstNode* Ast::optimizeReference(AstNode* node) {
     return node;
   }
 
-  return static_cast<AstNode*>(variable->constValue());
+  return variable->getConstAstNode();
 }
 
 /// @brief optimizes indexed access, e.g. a[0] or a['foo']
@@ -3636,7 +3561,7 @@ AstNode* Ast::optimizeLet(AstNode* node) {
     // e.g.
     // LET a = 1 LET b = a + 1, c = b + a can be optimized to LET a = 1 LET b =
     // 2 LET c = 4
-    v->constValue(static_cast<void*>(expression));
+    v->setConstAstNode(expression);
   }
 
   return node;
@@ -3685,10 +3610,10 @@ AstNode* Ast::optimizeFor(AstNode* node) {
     // right-hand operand to FOR statement is no array
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_ARRAY_EXPECTED,
-        std::string("collection or ") + TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
-            std::string(" as operand to FOR loop; you specified type '") +
-            expression->getValueTypeString() + std::string("' with content '") +
-            expression->toString() + std::string("'"));
+        StringUtils::concatT("collection or ", TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED),
+                             " as operand to FOR loop; you specified type '",
+                             expression->getValueTypeString(),
+                             "' with content '", expression->toString(), "'"));
   }
 
   // no real optimizations will be done here
@@ -4025,11 +3950,13 @@ AstNode* Ast::createNode(AstNodeType type) {
 /// in case validation fails, will throw an exception
 void Ast::validateDataSourceName(arangodb::velocypack::StringRef const& name,
                                  bool validateStrict) {
+  bool extendedNames = _query.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+
   // common validation
   if (name.empty() ||
       (validateStrict &&
-       !TRI_vocbase_t::IsAllowedName(
-           true, arangodb::velocypack::StringRef(name.data(), name.size())))) {
+       !CollectionNameValidator::isAllowedName(
+           /*allowSystem*/ true, extendedNames, name))) {
     // will throw    
     std::string errorMessage(TRI_errno_string(TRI_ERROR_ARANGO_ILLEGAL_NAME));
     errorMessage.append(": ");
@@ -4159,6 +4086,12 @@ bool Ast::containsModificationNode() const noexcept { return _containsModificati
 
 void Ast::setContainsModificationNode() noexcept {
   _containsModificationNode = true;
+}
+
+bool Ast::containsUpsertNode() const noexcept { return _containsUpsertNode; }
+
+void Ast::setContainsUpsertNode() noexcept {
+  _containsUpsertNode = true;
 }
 
 void Ast::setContainsParallelNode() noexcept {

@@ -21,8 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_PATH_STORE_H
-#define ARANGOD_GRAPH_PATH_STORE_H 1
+#pragma once
 
 #include <queue>
 #include <unordered_set>
@@ -71,17 +70,26 @@ class PathStore {
   // returns the index of inserted element
   size_t append(Step step);
 
+  // @briefs Method returns a step at given position
+  Step getStep(size_t position) const;
+
+  // @briefs Method returns a step reference at given position
+  Step& getStepReference(size_t position);
+
   // @brief returns the current vector size
   size_t size() const { return _schreier.size(); }
 
   auto visitReversePath(Step const& step,
                         std::function<bool(Step const&)> const& visitor) const -> bool;
 
-  template <class ProviderType>
-  auto buildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> void;
+  auto modifyReversePath(Step& step, std::function<bool(Step&)> const& visitor) -> bool;
+
+  template <class PathResultType>
+  auto buildPath(Step const& vertex, PathResultType& path) const -> void;
 
   template <class ProviderType>
-  auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const -> void;
+  auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const
+      -> void;
 
  private:
   /// @brief schreier vector to store the visited vertices
@@ -92,5 +100,3 @@ class PathStore {
 
 }  // namespace graph
 }  // namespace arangodb
-
-#endif  // ARANGOD_GRAPH_QUEUE_H

@@ -42,7 +42,7 @@
     return {
       setUpAll : function () {
         db._useDatabase("_system");
-        try { db._dropDatabase(newDbName); } catch {}
+        try { db._dropDatabase(newDbName); } catch (err) {}
         db._createDatabase(newDbName, dbArgs);
         db._useDatabase(newDbName);
         
@@ -380,6 +380,34 @@
         });
         assertEqual(0, expected.size);
       },
+      testConstrainedSortOnDbServer() {
+        let query = "FOR d IN " + vn  + " SEARCH d.value > 9 SORT BM25(d) LIMIT 10 RETURN {key: d._key, value: d.value}";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let materializeNodeFound = false;
+        let nodeDependency = null;
+        plan.nodes.forEach(function(node) {
+          if( node.type === "MaterializeNode") {
+            assertFalse(materializeNodeFound);
+            // FIXME: temporary relaxed assertion
+            // We need to fix node placement in oneshard mode
+            // first. And than we indeed will get expected node placement
+            // assertEqual(nodeDependency.type, isCluster ? "SortNode" : "LimitNode");
+            assertTrue(nodeDependency.type === "SortNode" ||  nodeDependency.type === "LimitNode");
+            materializeNodeFound = true;
+          }
+          nodeDependency = node;
+        });
+        assertTrue(materializeNodeFound);
+        let result = AQL_EXECUTE(query);
+        assertEqual(4, result.json.length);
+        let expected = new Set(['c_0', 'c_1', 'c_2', 'c_3']);
+        result.json.forEach(function(doc) {
+          assertTrue(expected.has(doc.key));
+          expected.delete(doc.key);
+        });
+        assertEqual(0, expected.size);
+      }
     };
   };
 }());

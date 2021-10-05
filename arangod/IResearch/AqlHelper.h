@@ -22,18 +22,18 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "VelocyPackHelper.h"
+#include "IResearch/IResearchFilterOptimization.h"
 
 #include "search/sort.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 #include "Cluster/ClusterInfo.h"
-
-#ifndef ARANGOD_IRESEARCH__AQL_HELPER_H
-#define ARANGOD_IRESEARCH__AQL_HELPER_H 1
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -242,6 +242,8 @@ struct QueryContext {
   aql::ExpressionContext* ctx;
   irs::index_reader const* index;
   aql::Variable const* ref;
+  /// @brief allow optimize away/modify some conditions during filter building
+  FilterOptimization  filterOptimization {FilterOptimization::MAX};
 };  // QueryContext
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -523,9 +525,3 @@ aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
-
-#endif  // ARANGOD_IRESEARCH__AQL_HELPER_H
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

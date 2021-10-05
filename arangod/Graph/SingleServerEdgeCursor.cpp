@@ -102,7 +102,7 @@ void SingleServerEdgeCursor::getDocAndRunCallback(IndexIterator* cursor, EdgeCur
           callback(std::move(etkn), edgeDoc, _currentCursor);
         }
         return true;
-      });
+      }, ReadOwnWrites::no);
 }
 
 bool SingleServerEdgeCursor::advanceCursor(IndexIterator*& cursor,
@@ -127,7 +127,7 @@ bool SingleServerEdgeCursor::advanceCursor(IndexIterator*& cursor,
 
 bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
   // fills callback with next EdgeDocumentToken and Slice that contains the
-  // ohter side of the edge (we are standing on a node and want to iterate all
+  // other side of the edge (we are standing on a node and want to iterate all
   // connected edges
   TRI_ASSERT(!_cursors.empty());
 
@@ -225,6 +225,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
             return false;
           }
 #endif
+          _opts->cache()->increaseCounter();
           callback(EdgeDocumentToken(cid, token), edge, cursorId);
           return true;
         });
@@ -244,7 +245,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
             _opts->cache()->increaseCounter();
             callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
             return true;
-          });
+          }, ReadOwnWrites::no).ok();
         });
       }
     }
@@ -295,7 +296,7 @@ void SingleServerEdgeCursor::rearm(arangodb::velocypack::StringRef vertex, uint6
       } else {
         // rearming not supported - we need to throw away the index iterator
         // and create a new one
-        cursor = _trx->indexScanForCondition(it, node, _tmpVar, defaultIndexIteratorOptions);
+        cursor = _trx->indexScanForCondition(it, node, _tmpVar, defaultIndexIteratorOptions, ReadOwnWrites::no);
       }
       ++j;
     }
@@ -344,6 +345,6 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
   auto& csrs = _cursors.back();
   csrs.reserve(info.idxHandles.size());
   for (std::shared_ptr<Index> const& index : info.idxHandles) {
-    csrs.emplace_back(_trx->indexScanForCondition(index, node, _tmpVar, defaultIndexIteratorOptions));
+    csrs.emplace_back(_trx->indexScanForCondition(index, node, _tmpVar, defaultIndexIteratorOptions, ReadOwnWrites::no));
   }
 }

@@ -23,19 +23,19 @@
 
 #include "QueryExpressionContext.h"
 
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlValue.h"
 #include "Aql/QueryContext.h"
-#include "Aql/AqlFunctionsInternalCache.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-void QueryExpressionContext::registerWarning(int errorCode, char const* msg) {
+void QueryExpressionContext::registerWarning(ErrorCode errorCode, char const* msg) {
   _query.warnings().registerWarning(errorCode, msg);
 }
 
-void QueryExpressionContext::registerError(int errorCode, char const* msg) {
+void QueryExpressionContext::registerError(ErrorCode errorCode, char const* msg) {
   _query.warnings().registerError(errorCode, msg);
 }
 
@@ -63,10 +63,8 @@ TRI_vocbase_t& QueryExpressionContext::vocbase() const {
   return _trx.vocbase();
 }
 
-transaction::Methods& QueryExpressionContext::trx() const {
-  return _trx;
-}
+transaction::Methods& QueryExpressionContext::trx() const { return _trx; }
 
-bool QueryExpressionContext::killed() const  {
-  return _query.killed();
-}
+bool QueryExpressionContext::killed() const { return _query.killed(); }
+
+QueryContext& QueryExpressionContext::query() { return _query; }

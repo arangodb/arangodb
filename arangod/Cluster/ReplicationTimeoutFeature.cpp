@@ -54,8 +54,6 @@ ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::Appli
 }
 
 void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("cluster", "Configure the cluster");
-
   options->addOption("--cluster.synchronous-replication-timeout-minimum",
                      "all synchronous replication timeouts will be at least "
                      "this value (in seconds)",

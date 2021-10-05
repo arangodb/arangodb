@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+ulimit -H -n 131072 || true
+ulimit -S -n 131072 || true
+
 function help() {
   echo "USAGE: scripts/startStandAloneAgency.sh [options]"
   echo ""
@@ -244,6 +247,7 @@ for aid in "${aaid[@]}"; do
     --log.force-direct false \
     $LOG_LEVEL \
     --log.use-microtime $USE_MICROTIME \
+    --server.descriptors-minimum 0 \
     --server.authentication false \
     --server.endpoint $TRANSPORT://[::]:$port \
     --server.statistics false \

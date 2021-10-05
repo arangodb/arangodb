@@ -32,13 +32,12 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
+#include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
@@ -72,14 +71,43 @@ static std::string const UNKNOWN = "UNKNOWN";
 
 std::string const LogThreadName("Logging");
 
-class DefaultLogGroup : public LogGroup {
+class DefaultLogGroup final : public LogGroup {
   std::size_t id() const override { return 0; }
 };
 DefaultLogGroup defaultLogGroupInstance;
 
 }  // namespace
+  
+LogMessage::LogMessage(char const* function, char const* file, int line,
+                       LogLevel level, size_t topicId, std::string&& message, 
+                       uint32_t offset, bool shrunk) noexcept
+    : _function(function),
+      _file(file),
+      _line(line),
+      _level(level),
+      _topicId(topicId),
+      _message(std::move(message)),
+      _offset(offset),
+      _shrunk(shrunk) {}
+  
+void LogMessage::shrink(std::size_t maxLength) {
+  // no need to shrink an already shrunk message
+  if (!_shrunk && _message.size() > maxLength) {
+    _message.resize(maxLength);
 
-Mutex Logger::_initializeMutex;
+    // normally, offset should be around 20 to 30 bytes,
+    // whereas the minimum for maxLength should be around 256 bytes.
+    TRI_ASSERT(maxLength > _offset);
+    if (_offset > _message.size()) {
+      // we need to make sure that the offset is not outside of the message
+      // after shrinking
+      _offset = static_cast<uint32_t>(_message.size());
+    }
+    _message.append("...", 3);
+    _shrunk = true;
+  }
+}
+
 
 std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
@@ -91,19 +119,34 @@ bool Logger::_shortenFilenames(true);
 bool Logger::_showProcessIdentifier(true);
 bool Logger::_showThreadIdentifier(false);
 bool Logger::_showThreadName(false);
-bool Logger::_threaded(false);
 bool Logger::_useColor(true);
-bool Logger::_useEscaped(true);
+bool Logger::_useControlEscaped(true);
+bool Logger::_useUnicodeEscaped(false);
 bool Logger::_keepLogRotate(false);
 bool Logger::_logRequestParameters(true);
 bool Logger::_showRole(false);
 bool Logger::_useJson(false);
 char Logger::_role('\0');
 TRI_pid_t Logger::_cachedPid(0);
-std::string Logger::_outputPrefix("");
+std::string Logger::_outputPrefix;
+std::string Logger::_hostname;
 
-std::unique_ptr<LogThread> Logger::_loggingThread(nullptr);
+std::atomic<std::size_t> Logger::_loggingThreadRefs(0);
+std::atomic<LogThread*> Logger::_loggingThread(nullptr);
 
+Logger::ThreadRef::ThreadRef() {
+  // (1) - this acquire-fetch-add synchronizes with the release-fetch-add (5)
+  Logger::_loggingThreadRefs.fetch_add(1, std::memory_order_acquire);
+  // (2) - this acquire-load synchronizes with the release-store (4)
+  _thread = Logger::_loggingThread.load(std::memory_order_acquire);
+}
+
+Logger::ThreadRef::~ThreadRef() {
+  // (3) - this relaxed-fetch-add is potentially part of a release-sequence
+  //       headed by (5)
+  Logger::_loggingThreadRefs.fetch_sub(1, std::memory_order_relaxed);
+}
+  
 LogGroup& Logger::defaultLogGroup() { return ::defaultLogGroupInstance; }
 
 LogLevel Logger::logLevel() { return _level.load(std::memory_order_relaxed); }
@@ -141,22 +184,9 @@ void Logger::setLogLevel(std::string const& levelName) {
   }
 
   LogLevel level;
+  bool isValid = translateLogLevel(l, isGeneral, level);
 
-  if (l == "fatal") {
-    level = LogLevel::FATAL;
-  } else if (l == "error" || l == "err") {
-    level = LogLevel::ERR;
-  } else if (l == "warning" || l == "warn") {
-    level = LogLevel::WARN;
-  } else if (l == "info") {
-    level = LogLevel::INFO;
-  } else if (l == "debug") {
-    level = LogLevel::DEBUG;
-  } else if (l == "trace") {
-    level = LogLevel::TRACE;
-  } else if (!isGeneral && (l.empty() || l == "default")) {
-    level = LogLevel::DEFAULT;
-  } else {
+  if (!isValid) {
     if (!isGeneral) {
       LOG_TOPIC("05367", WARN, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
       return;
@@ -167,11 +197,21 @@ void Logger::setLogLevel(std::string const& levelName) {
   }
 
   if (isGeneral) {
+    // set the log level globally (e.g. `--log.level info`). note that
+    // this does not set the log level for all log topics, but only the
+    // log level for the "general" log topic.
     Logger::setLogLevel(level);
     // setting the log level for topic "general" is required here, too,
     // as "fixme" is the previous general log topic...
     LogTopic::setLogLevel(std::string("general"), level);
+  } else if (v[0] == LogTopic::ALL) {
+    // handle pseudo log-topic "all": this will set the log level for
+    // all existing topics
+    for (auto const& it : logLevelTopics()) {
+      LogTopic::setLogLevel(it.first, level);
+    }
   } else {
+    // handle a topic-specific request (e.g. `--log.level requests=info`).
     LogTopic::setLogLevel(v[0], level);
   }
 }
@@ -192,6 +232,20 @@ void Logger::setOutputPrefix(std::string const& prefix) {
   }
 
   _outputPrefix = prefix;
+}
+
+// NOTE: this function should not be called if the logging is active.
+void Logger::setHostname(std::string const& hostname) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
+  }
+
+  if (hostname == "auto") {
+    _hostname = utilities::hostname();
+  } else {
+    _hostname = hostname;
+  }
 }
 
 // NOTE: this function should not be called if the logging is active.
@@ -255,14 +309,22 @@ void Logger::setUseColor(bool value) {
 }
 
 // NOTE: this function should not be called if the logging is active.
-void Logger::setUseEscaped(bool value) {
+void Logger::setUseControlEscaped(bool value) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
+    }
+    _useControlEscaped = value;
+  }
+  // NOTE: this function should not be called if the logging is active.
+  void Logger::setUseUnicodeEscaped(bool value) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
+    }
+    _useUnicodeEscaped = value;
   }
 
-  _useEscaped = value;
-}
 
 // NOTE: this function should not be called if the logging is active.
 void Logger::setShowRole(bool show) {
@@ -314,6 +376,28 @@ void Logger::setUseJson(bool value) {
   _useJson = value;
 }
 
+bool Logger::translateLogLevel(std::string const& l, bool isGeneral, LogLevel& level) noexcept {
+  if (l == "fatal") {
+    level = LogLevel::FATAL;
+  } else if (l == "error" || l == "err") {
+    level = LogLevel::ERR;
+  } else if (l == "warning" || l == "warn") {
+    level = LogLevel::WARN;
+  } else if (l == "info") {
+    level = LogLevel::INFO;
+  } else if (l == "debug") {
+    level = LogLevel::DEBUG;
+  } else if (l == "trace") {
+    level = LogLevel::TRACE;
+  } else if (!isGeneral && (l.empty() || l == "default")) {
+    level = LogLevel::DEFAULT;
+  } else {
+    return false;
+  }
+
+  return true;
+}
+
 std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
   switch (level) {
     case LogLevel::ERR:
@@ -351,7 +435,8 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
   std::string out;
   out.reserve(256 + message.size());
 
-  size_t offset = 0;
+  uint32_t offset = 0;
+  bool shrunk = false;
 
   if (Logger::_useJson) {
     // construct JSON output
@@ -388,7 +473,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     // tid
     if (_showThreadIdentifier) {
       out.append(",\"tid\":");
-      StringUtils::itoa(uint64_t(Thread::currentThreadNumber), out);
+      StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
     }
 
     // thread name
@@ -457,14 +542,48 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       dumper.appendString(logid, strlen(logid));
     }
 
+    // hostname
+    if (!_hostname.empty()) {
+      out.append(",\"hostname\":");
+      dumper.appendString(_hostname.data(), _hostname.size());
+    }
+
     // the message itself
     {
       out.append(",\"message\":");
-      dumper.appendString(message.c_str(), message.size());
+  
+      // the log message can be really large, and it can lead to 
+      // truncation of the log message further down the road.
+      // however, as we are supposed to produce valid JSON log
+      // entries even with the truncation in place, we need to make
+      // sure that the dynamic text part is truncated and not the
+      // entries JSON thing
+      size_t maxMessageLength = defaultLogGroup().maxLogEntryLength();
+      // cut of prologue, the quotes ('"' --- ' '") and the final '}'
+      if (maxMessageLength >= out.size() + 3) {
+        maxMessageLength -= out.size() + 3;
+      }
+      if (maxMessageLength > message.size()) {
+        maxMessageLength = message.size();
+      }
+      dumper.appendString(message.c_str(), maxMessageLength);
+  
+      // this tells the logger to not shrink our (potentially already
+      // shrunk) message once more - if it would shrink the message again,
+      // it may produce invalid JSON
+      shrunk = true;
     }
 
     out.push_back('}');
+
+    TRI_ASSERT(offset == 0);
   } else {
+    // hostname
+    if (!_hostname.empty()) {
+      out.append(_hostname);
+      out.push_back(' ');
+    }
+
     // human readable format
     LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
     out.push_back(' ');
@@ -539,7 +658,8 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     // the offset is used by the in-memory logger, and it cuts off everything from the start
     // of the concatenated log string until the offset. only what's after the offset gets
     // displayed in the web UI
-    offset = out.size();
+    TRI_ASSERT(out.size() < static_cast<size_t>(UINT32_MAX));
+    offset = static_cast<uint32_t>(out.size());
 
     if (::arangodb::Logger::getShowIds()) {
       out.push_back('[');
@@ -557,7 +677,9 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     out.append(message);
   }
 
-  auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId, std::move(out), offset);
+  TRI_ASSERT(offset == 0 || !_useJson);
+
+  auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId, std::move(out), offset, shrunk);
 
   append(defaultLogGroup(), msg, false, [level, topicId](std::unique_ptr<LogMessage>& msg) -> void {
     LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
@@ -568,22 +690,33 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
   // logging itself must never cause an exeption to escape
 }
 
-void Logger::append(LogGroup& group, std::unique_ptr<LogMessage>& msg,
+void Logger::append(LogGroup& group, 
+                    std::unique_ptr<LogMessage>& msg,
                     bool forceDirect,
                     std::function<void(std::unique_ptr<LogMessage>&)> const& inactive) {
+  // check if we need to shrink the message here
+  if (!msg->shrunk()) {
+    msg->shrink(group.maxLogEntryLength());
+  }
+
   // first log to all "global" appenders, which are the in-memory ring buffer logger plus
   // some Windows-specifc appenders for the debug output window and the Windows event log.
   // note that these loggers do not require any configuration so we can always and safely invoke them.
   LogAppender::logGlobal(group, *msg);
 
-  if (!_active.load(std::memory_order_relaxed)) {
+  if (!_active.load(std::memory_order_acquire)) {
     // logging is still turned off. now use hard-coded to-stderr logging
     inactive(msg);
   } else {
     // now either queue or output the message
     bool handled = false;
-    if (_threaded && !forceDirect) {
-      handled = _loggingThread->log(group, msg);
+    if (!forceDirect) {
+      // check if we have a logging thread
+      ThreadRef loggingThread;
+
+      if (loggingThread) {
+        handled = loggingThread->log(group, msg);
+      }
     }
 
     if (!handled) {
@@ -604,27 +737,23 @@ void Logger::append(LogGroup& group, std::unique_ptr<LogMessage>& msg,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Logger::initialize(application_features::ApplicationServer& server, bool threaded) {
-  MUTEX_LOCKER(locker, _initializeMutex);
-
-  if (_active.exchange(true)) {
+  if (_active.exchange(true, std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Logger already initialized");
   }
 
   // logging is now active
-  TRI_ASSERT(_active);
-  
   if (threaded) {
-    _loggingThread = std::make_unique<LogThread>(server, ::LogThreadName);
-    if (!_loggingThread->start()) {
-      LOG_TOPIC("28bd9", FATAL, arangodb::Logger::STATISTICS)
+    auto loggingThread = std::make_unique<LogThread>(server, ::LogThreadName);
+    if (!loggingThread->start()) {
+      LOG_TOPIC("28bd9", FATAL, arangodb::Logger::FIXME)
           << "could not start logging thread";
       FATAL_ERROR_EXIT();
     }
-  }
   
-  // generate threaded logging?
-  _threaded = threaded;
+    // (4) - this release-store synchronizes with the acquire-load (2)
+    _loggingThread.store(loggingThread.release(), std::memory_order_release);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -632,36 +761,45 @@ void Logger::initialize(application_features::ApplicationServer& server, bool th
 ////////////////////////////////////////////////////////////////////////////////
 
 void Logger::shutdown() {
-  MUTEX_LOCKER(locker, _initializeMutex);
-
-  if (!_active.exchange(false)) {
-    // if logging not activated or already shutdown, then we can abort here
+  if (!_active.exchange(false, std::memory_order_acquire)) {
+    // if logging not activated or already shut down, then we can abort here
     return;
   }
+  // logging is now inactive
 
-  TRI_ASSERT(!_active);
-
+  // reset the instance variable in Logger, so that others won't see it anymore
+  std::unique_ptr<LogThread> loggingThread(_loggingThread.exchange(nullptr, std::memory_order_relaxed));
+  
   // logging is now inactive (this will terminate the logging thread)
   // join with the logging thread
-  if (_threaded) {
-    _threaded = false;
-
+  if (loggingThread != nullptr) {
+    // (5) - this release-fetch-add synchronizes with the acquire-fetch-add (1)
+    // Even though a fetch-add with 0 is essentially a noop, this is necessary to
+    // ensure that threads which try to get a reference to the _loggingThread
+    // actually see the new nullptr value.
+    _loggingThreadRefs.fetch_add(0, std::memory_order_release);
+    
+    // wait until all threads have dropped their reference to the logging thread
+    while (_loggingThreadRefs.load(std::memory_order_relaxed)) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    
     char const* currentThreadName = Thread::currentThreadName();
     if (currentThreadName != nullptr && ::LogThreadName == currentThreadName) {
       // oops, the LogThread itself crashed...
       // so we need to flush the log messages here ourselves - if we waited for
       // the LogThread to flush them, we would wait forever.
-      _loggingThread->processPendingMessages();
-      _loggingThread->beginShutdown();
+      loggingThread->processPendingMessages();
+      loggingThread->beginShutdown();
     } else {
       int tries = 0;
-      while (_loggingThread->hasMessages() && ++tries < 10) {
-        _loggingThread->wakeup();
+      while (loggingThread->hasMessages() && ++tries < 10) {
+        loggingThread->wakeup();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
-      _loggingThread->beginShutdown();
+      loggingThread->beginShutdown();
       // wait until logging thread has logged all active messages
-      while (_loggingThread->isRunning()) {
+      while (loggingThread->isRunning()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
     }
@@ -673,23 +811,18 @@ void Logger::shutdown() {
   _cachedPid = 0;
 }
 
-void Logger::shutdownLogThread() {
-  _loggingThread.reset();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to flush the logging
 ////////////////////////////////////////////////////////////////////////////////
 
 void Logger::flush() noexcept {
-  MUTEX_LOCKER(locker, _initializeMutex);
-
-  if (!_active) {
+  if (!_active.load(std::memory_order_acquire)) {
     // logging not (or not yet) initialized
     return;
   }
-
-  if (_threaded && _loggingThread != nullptr) {
-    _loggingThread->flush();
+  
+  ThreadRef loggingThread;
+  if (loggingThread) {
+    loggingThread->flush();
   }
 }

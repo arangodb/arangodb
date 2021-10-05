@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_SPIN_UNLOCKER_H
-#define ARANGO_SPIN_UNLOCKER_H 1
+#pragma once
 
 #include <cstdint>
 
@@ -76,4 +75,3 @@ class SpinUnlocker {
 
 }  // namespace arangodb::basics
 
-#endif

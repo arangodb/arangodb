@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.8.2 FATAL_ERROR)
 
+# we use of xxx_ROOT variables for modules sources search
+if (POLICY CMP0074)
+  cmake_policy(SET CMP0074 OLD)
+endif()
+
 ################################################################################
 ### set required standard version
 ################################################################################
@@ -82,8 +87,8 @@ option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 option(USE_CCACHE "Use CCACHE if present" ON)
-
-set(SUPPRESS_EXTERNAL_WARNINGS OFF CACHE INTERNAL "Suppress warnings originating in 3rd party code.")
+option(USE_MICROBENCH "Build micro-benchmark project" OFF)
+option(SUPPRESS_EXTERNAL_WARNINGS "Suppress warnings originating in 3rd party code" ON) 
 
 add_option_gprof(FALSE)
 
@@ -96,6 +101,15 @@ if (MSVC)
   # MSVC2017.1 - MSVC2018.7 does not correctly support alignas()
   # MSVC2017.8 requires the following define
   add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+  
+  add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+
+  # min/max macros interferes with our codebase
+  add_definitions(-DNOMINMAX)
+  
+  # we don't want obvious warning
+  add_compile_options(/wd4324)
 
   if (MSVC_BUILD_THREADS)
     set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
@@ -156,21 +170,17 @@ endif()
 ### setup platform dependent optimizations
 ################################################################################
 
-if (USE_SIMDCOMP)
-  include(OptimizeForArchitecture)
-  OptimizeForArchitecture()
+include(OptimizeForArchitecture)
+OptimizeForArchitecture()
 
-  add_definitions(${Vc_ARCHITECTURE_FLAGS})
-endif()
+add_definitions(${Vc_ARCHITECTURE_FLAGS})
 
 ################################################################################
 ### find 3rd party libraries
 ################################################################################
 
 # find Boost
-find_package(BoostLocal
-  REQUIRED
-)
+find_package(BoostLocal REQUIRED)
 
 # set pthread library
 if (NOT MSVC)
@@ -185,10 +195,7 @@ endif()
 # set sanitizers
 find_package(Sanitizers)
 
-#find BFD
-find_package(BFD
-  #OPTIONAL
-)
+find_package(BFD) # optional
 
 if (BFD_FOUND)
   add_definitions(-DUSE_LIBBFD)
@@ -199,25 +206,10 @@ else()
   set(BFD_SHARED_LIB_RESOURCES "")
 endif()
 
-# find LZ4
-find_package(Lz4
-  REQUIRED
-)
-
-# find ICU
-find_package(ICU
-  REQUIRED
-)
-
-# find Snowball
-find_package(Snowball
-  REQUIRED
-)
-
-# find Unwind
-find_package(Unwind
-  #OPTIONAL
-)
+find_package(Lz4 REQUIRED)
+find_package(ICU REQUIRED)
+find_package(Snowball REQUIRED)
+find_package(Unwind) # optional
 
 if (Unwind_FOUND)
   add_definitions(-DUSE_LIBUNWIND)
@@ -331,6 +323,10 @@ if (USE_PVS_STUDIO)
     PROPERTIES
     COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
+endif()
+
+if (USE_MICROBENCH)
+  add_subdirectory(microbench)
 endif()
 
 if (USE_TESTS)

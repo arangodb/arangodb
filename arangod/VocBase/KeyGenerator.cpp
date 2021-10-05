@@ -35,6 +35,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -43,6 +44,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include <array>
+#include <string_view>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -237,8 +239,8 @@ class TraditionalKeyGenerator : public KeyGenerator {
   }
 
   /// @brief validate a key
-  int validate(char const* p, size_t length, bool isRestore) override {
-    int res = KeyGenerator::validate(p, length, isRestore);
+  ErrorCode validate(char const* p, size_t length, bool isRestore) override {
+    auto res = KeyGenerator::validate(p, length, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
       track(p, length);
@@ -397,8 +399,8 @@ class PaddedKeyGenerator : public KeyGenerator {
   }
 
   /// @brief validate a key
-  int validate(char const* p, size_t length, bool isRestore) override {
-    int res = KeyGenerator::validate(p, length, isRestore);
+  ErrorCode validate(char const* p, size_t length, bool isRestore) override {
+    auto res = KeyGenerator::validate(p, length, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
       track(p, length);
@@ -513,8 +515,8 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
   }
 
   /// @brief validate a key
-  int validate(char const* p, size_t length, bool isRestore) override {
-    int res = KeyGenerator::validate(p, length, isRestore);
+  ErrorCode validate(char const* p, size_t length, bool isRestore) override {
+    auto res = KeyGenerator::validate(p, length, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
       char const* s = p;
@@ -795,12 +797,12 @@ KeyGenerator* KeyGenerator::factory(application_features::ApplicationServer& ser
 }
 
 /// @brief validate a key
-int KeyGenerator::validate(char const* p, size_t length, bool isRestore) {
+ErrorCode KeyGenerator::validate(char const* p, size_t length, bool isRestore) {
   return globalCheck(p, length, isRestore);
 }
 
 /// @brief check global key attributes
-int KeyGenerator::globalCheck(char const* p, size_t length, bool isRestore) {
+ErrorCode KeyGenerator::globalCheck(char const* p, size_t length, bool isRestore) {
   // user has specified a key
   if (length > 0 && !_allowUserKeys && !isRestore && !_isDBServer) {
     // we do not allow user-generated keys
@@ -839,56 +841,40 @@ bool KeyGenerator::validateKey(char const* key, size_t len) {
 }
 
 /// @brief validate a document id (collection name + / + document key)
-bool KeyGenerator::validateId(char const* key, size_t len, size_t* split) {
-  if (len < 3) {
-    // 3 bytes is the minimum length for any document id
+bool KeyGenerator::validateId(char const* key, size_t len, bool extendedNames, size_t& split) {
+  // look for split character
+  char const* found = static_cast<char const*>(memchr(key, '/', len));
+  if (found == nullptr) {
+    split = 0;
     return false;
   }
 
+  split = found - key;
+  if (split == 0 || split + 1 == len) {
+    return false;
+  }
+
+  TRI_ASSERT(found != nullptr && split > 0);
+  // check for numeric collection id
   char const* p = key;
-  char c = *p;
-  size_t pos = 0;
-
-  // extract collection name
-  if (!(c == '_' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
-        (c >= 'A' && c <= 'Z'))) {
-    return false;
+  char const* e = key + split;
+  TRI_ASSERT(p != e);
+  while (p < e && *p >= '0' && *p <= '9') {
+    ++p;
   }
-
-  ++p;
-  ++pos;
-
-  while (true) {
-    if (pos >= len) {
+  if (p == key) {
+    // non-numeric id
+    if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames,
+                                                std::string_view(key, split))) {
       return false;
     }
-
-    c = *p;
-    if (c == '_' || c == '-' || (c >= '0' && c <= '9') ||
-        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
-      ++p;
-      ++pos;
-      continue;
+  } else {
+    // numeric id. now check if it is all-numeric
+    if (p != key + split) {
+      return false;
     }
-
-    if (c == '/') {
-      break;
-    }
-
-    return false;
   }
-
-  if (pos > LogicalCollection::maxNameLength) {
-    return false;
-  }
-
-  // store split position
-  if (split != nullptr) {
-    *split = pos;
-  }
-  ++p;
-  ++pos;
 
   // validate document key
-  return KeyGenerator::validateKey(p, len - pos);
+  return KeyGenerator::validateKey(key + split + 1, len - split - 1);
 }

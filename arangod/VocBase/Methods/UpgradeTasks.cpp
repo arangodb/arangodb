@@ -195,14 +195,6 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
   systemCollections.push_back(StaticStrings::FrontendCollection);
 
-  if (vocbase.server().getFeature<arangodb::DatabaseFeature>().useOldSystemCollections()) {
-    // the following collections are only created on demand...
-    // in v3.6, they will be created by default, but this will
-    // change in later versions.
-    systemCollections.push_back(StaticStrings::ModulesCollection);
-    systemCollections.push_back(StaticStrings::FishbowlCollection);
-  }
-
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
     VPackBuilder testOptions;
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> testBuffers;
@@ -336,7 +328,7 @@ static Result createIndex(std::string const& name, Index::IndexType type,
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "Collection " + name + " not found");
   }
-  return methods::Indexes::createIndex(colIt->get(), type, fields, unique, sparse);
+  return methods::Indexes::createIndex(colIt->get(), type, fields, unique, sparse, false /*estimates*/);
 }
 
 Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
@@ -584,7 +576,7 @@ bool UpgradeTasks::renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
         << "copying replication applier file '" << source << "' to '" << dest << "'";
 
     std::string error;
-    if (!TRI_CopyFile(source.c_str(), dest.c_str(), error)) {
+    if (!TRI_CopyFile(source, dest, error)) {
       LOG_TOPIC("6c90c", WARN, Logger::STARTUP)
           << "could not copy replication applier file '" << source << "' to '"
           << dest << "'";

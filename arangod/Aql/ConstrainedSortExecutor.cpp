@@ -42,14 +42,13 @@ namespace {
 
 void eraseRow(SharedAqlItemBlockPtr& block, size_t row) {
   auto const nrRegs = block->numRegisters();
-  for (arangodb::aql::RegisterId i = 0; i < nrRegs; i++) {
+  for (arangodb::aql::RegisterId::value_t i = 0; i < nrRegs; i++) {
     block->destroyValue(row, i);
   }
 }
 
 }  // namespace
 
-/// @brief OurLessThan
 class arangodb::aql::ConstrainedLessThan {
  public:
   ConstrainedLessThan(velocypack::Options const* options,
@@ -83,11 +82,7 @@ class arangodb::aql::ConstrainedLessThan {
   std::vector<arangodb::aql::SortRegister> const& _sortRegisters;
 };  // ConstrainedLessThan
 
-arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow const& input) {
-  using arangodb::aql::AqlItemBlock;
-  using arangodb::aql::AqlValue;
-  using arangodb::aql::RegisterId;
-
+void ConstrainedSortExecutor::pushRow(InputAqlItemRow const& input) {
   size_t dRow = _rowsPushed;
 
   if (dRow >= _infos.limit()) {
@@ -112,11 +107,9 @@ arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow const& input) 
 
   // now restore heap condition
   std::push_heap(_rows.begin(), _rows.end(), *_cmpHeap);
-
-  return TRI_ERROR_NO_ERROR;
 }
 
-bool ConstrainedSortExecutor::compareInput(size_t const& rowPos,
+bool ConstrainedSortExecutor::compareInput(size_t rowPos,
                                            InputAqlItemRow const& row) const {
   for (auto const& reg : _infos.sortRegisters()) {
     auto const& lhs = _heapBuffer->getValueReference(rowPos, reg.reg);
@@ -139,7 +132,7 @@ namespace {
 auto initRegsToKeep(RegisterCount size) -> RegIdFlatSetStack {
   auto regsToKeepStack = RegIdFlatSetStack{};
   auto& regsToKeep = regsToKeepStack.emplace_back();
-  for (RegisterId i = 0; i < size; i++) {
+  for (RegisterId::value_t i = 0; i < size; i++) {
     regsToKeep.emplace(i);
   }
   return regsToKeepStack;
@@ -274,15 +267,14 @@ auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   }
 
   while (call.needSkipMore() && !doneSkipping()) {
-    // unlikely, but for backwardscompatibility.
+    auto const rowsLeftToSkip = _rowsRead - (_rows.size() + _skippedAfter);
+    // unlikely, but for backwards compatibility.
     if (call.getOffset() > 0) {
-      auto const rowsLeftToSkip = _rowsRead - (_rows.size() + _skippedAfter);
       auto const skipNum = (std::min)(call.getOffset(), rowsLeftToSkip);
       call.didSkip(skipNum);
       _skippedAfter += skipNum;
     } else {
       // Fullcount
-      auto const rowsLeftToSkip = _rowsRead - (_rows.size() + _skippedAfter);
       call.didSkip(rowsLeftToSkip);
       _skippedAfter += rowsLeftToSkip;
       TRI_ASSERT(doneSkipping());

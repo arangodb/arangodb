@@ -36,41 +36,34 @@ TEST(scorers_tests, duplicate_register) {
 
   // check required for tests with repeat (static maps are not cleared between runs)
   if (initial_expected) {
-    ASSERT_FALSE(irs::scorers::exists(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::csv>::get()));
+    ASSERT_FALSE(irs::scorers::exists(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::vpack>::get()));
     ASSERT_FALSE(irs::scorers::exists(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::json>::get()));
     ASSERT_FALSE(irs::scorers::exists(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::text>::get()));
-    ASSERT_FALSE(irs::scorers::exists(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::xml>::get()));
-    ASSERT_EQ(nullptr, irs::scorers::get(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::csv>::get(), irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::scorers::get(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::vpack>::get(), irs::string_ref::NIL));
     ASSERT_EQ(nullptr, irs::scorers::get(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
     ASSERT_EQ(nullptr, irs::scorers::get(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::text>::get(), irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::scorers::get(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::xml>::get(), irs::string_ref::NIL));
 
-    irs::scorer_registrar initial0(irs::type<dummy_scorer>::get(), irs::type<irs::text_format::csv>::get(), &dummy_scorer::make);
+    irs::scorer_registrar initial0(irs::type<dummy_scorer>::get(), irs::type<irs::text_format::vpack>::get(), &dummy_scorer::make);
     irs::scorer_registrar initial1(irs::type<dummy_scorer>::get(), irs::type<irs::text_format::json>::get(), &dummy_scorer::make);
     irs::scorer_registrar initial2(irs::type<dummy_scorer>::get(), irs::type<irs::text_format::text>::get(), &dummy_scorer::make);
-    irs::scorer_registrar initial3(irs::type<dummy_scorer>::get(), irs::type<irs::text_format::xml>::get(), &dummy_scorer::make);
+
     ASSERT_EQ(!initial_expected, !initial0);
     ASSERT_EQ(!initial_expected, !initial1);
     ASSERT_EQ(!initial_expected, !initial2);
-    ASSERT_EQ(!initial_expected, !initial3);
   }
 
   initial_expected = false; // next test iteration will not be able to register the same scorer
-  irs::scorer_registrar duplicate0(irs::type<dummy_scorer>::get(), irs::type<irs::text_format::csv>::get(), &dummy_scorer::make);
+  irs::scorer_registrar duplicate0(irs::type<dummy_scorer>::get(), irs::type<irs::text_format::vpack>::get(), &dummy_scorer::make);
   irs::scorer_registrar duplicate1(irs::type<dummy_scorer>::get(), irs::type<irs::text_format::json>::get(), &dummy_scorer::make);
   irs::scorer_registrar duplicate2(irs::type<dummy_scorer>::get(), irs::type<irs::text_format::text>::get(), &dummy_scorer::make);
-  irs::scorer_registrar duplicate3(irs::type<dummy_scorer>::get(), irs::type<irs::text_format::xml>::get(), &dummy_scorer::make);
   ASSERT_TRUE(!duplicate0);
   ASSERT_TRUE(!duplicate1);
   ASSERT_TRUE(!duplicate2);
-  ASSERT_TRUE(!duplicate3);
 
-  ASSERT_TRUE(irs::scorers::exists(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::csv>::get()));
+  ASSERT_TRUE(irs::scorers::exists(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::vpack>::get()));
   ASSERT_TRUE(irs::scorers::exists(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::json>::get()));
   ASSERT_TRUE(irs::scorers::exists(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::text>::get()));
-  ASSERT_TRUE(irs::scorers::exists(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::xml>::get()));
-  ASSERT_NE(nullptr, irs::scorers::get(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::csv>::get(), irs::string_ref::NIL));
+  ASSERT_NE(nullptr, irs::scorers::get(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::vpack>::get(), irs::string_ref::NIL));
   ASSERT_NE(nullptr, irs::scorers::get(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
   ASSERT_NE(nullptr, irs::scorers::get(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::text>::get(), irs::string_ref::NIL));
-  ASSERT_NE(nullptr, irs::scorers::get(irs::type<dummy_scorer>::name(), irs::type<irs::text_format::xml>::get(), irs::string_ref::NIL));
 }

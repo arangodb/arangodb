@@ -7,18 +7,17 @@
 The name of the user as a string. This is mandatory.
 
 @RESTBODYPARAM{passwd,string,required,string}
-The user password as a string. If no password is specified, the empty string
-will be used. If you pass the special value *ARANGODB_DEFAULT_ROOT_PASSWORD*,
-then the password will be set the value stored in the environment variable
-`ARANGODB_DEFAULT_ROOT_PASSWORD`. This can be used to pass an instance
-variable into ArangoDB. For example, the instance identifier from Amazon.
+The user password as a string. If not specified, it will default to an empty
+string.
 
 @RESTBODYPARAM{active,boolean,optional,}
-An optional flag that specifies whether the user is active.  If not
-specified, this will default to true
+An optional flag that specifies whether the user is active. If not
+specified, this will default to *true*.
 
 @RESTBODYPARAM{extra,object,optional,}
-An optional JSON object with arbitrary extra data about the user.
+A JSON object with extra user information. It is used by the web interface
+to store graph viewer settings and saved queries. Should not be set or
+modified by end users, as custom attributes will not be preserved.
 
 @RESTDESCRIPTION
 Create a new user. You need server access level *Administrate* in order to
@@ -482,23 +481,25 @@ users.remove(theUser);
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{user,string,required}
-The name of the user
+The name of the user.
 
 @RESTBODYPARAM{passwd,string,required,string}
-The user password as a string. Specifying a password is mandatory, but
-the empty string is allowed for passwords
+The user password as a string. If not specified, it will default to an empty
+string.
 
 @RESTBODYPARAM{active,boolean,optional,}
-An optional flag that specifies whether the user is active.  If not
-specified, this will default to true
+An optional flag that specifies whether the user is active. If not
+specified, this will default to *true*.
 
 @RESTBODYPARAM{extra,object,optional,}
-An optional JSON object with arbitrary extra data about the user.
+A JSON object with extra user information. It is used by the web interface
+to store graph viewer settings and saved queries. Should not be set or
+modified by end users, as custom attributes will not be preserved.
 
 @RESTDESCRIPTION
-Replaces the data of an existing user. The name of an existing user must be
-specified in *user*. You need server access level *Administrate* in order to
-execute this REST call. Additionally, a user can change his/her own data.
+Replaces the data of an existing user. You need server access level
+*Administrate* in order to execute this REST call. Additionally, a user can
+change his/her own data.
 
 @RESTRETURNCODES
 
@@ -546,24 +547,23 @@ The specified user does not exist
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{user,string,required}
-The name of the user
+The name of the user.
 
 @RESTBODYPARAM{passwd,string,required,string}
-The user password as a string. Specifying a password is mandatory, but
-the empty string is allowed for passwords
+The user password as a string.
 
 @RESTBODYPARAM{active,boolean,optional,}
-An optional flag that specifies whether the user is active.  If not
-specified, this will default to true
+An optional flag that specifies whether the user is active.
 
 @RESTBODYPARAM{extra,object,optional,}
-An optional JSON object with arbitrary extra data about the user.
+A JSON object with extra user information. It is used by the web interface
+to store graph viewer settings and saved queries. Should not be set or
+modified by end users, as custom attributes will not be preserved.
 
 @RESTDESCRIPTION
-Partially updates the data of an existing user. The name of an existing user
-must be specified in *user*. You need server access level *Administrate* in
-order to execute this REST call. Additionally, a user can change his/her own
-data.
+Partially updates the data of an existing user. You need server access level
+*Administrate* in order to execute this REST call. Additionally, a user can
+change his/her own data.
 
 @RESTRETURNCODES
 
@@ -716,7 +716,8 @@ attributes on success:
 
 - *user*: The name of the user as a string.
 - *active*: An optional flag that specifies whether the user is active.
-- *extra*: An optional JSON object with arbitrary extra data about the user.
+- *extra*: A JSON object with extra user information. It is used by the web
+  interface to store graph viewer settings and saved queries.
 
 @RESTRETURNCODES
 

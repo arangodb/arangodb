@@ -5760,6 +5760,169 @@ function ahuacatlNumericFunctionsTestSuite () {
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "[ ], 1"))); 
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "{ }, 1"))); 
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test DECAY_GAUSS function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDecayGauss : function () {
+        var data = [
+          [1, 0, 10, 0, 0.2, 0.9840344433634576],
+          [-10, 40, 5, 0, 0.1, 1.0000000000000458e-100],
+          [41, 40, 5, 5, 0.7, 1]
+        ];
+
+        var valgrind = require("internal").valgrind;
+
+        data.forEach(function (value) {
+          var arg = JSON.stringify(value[0]);
+          var origin = JSON.stringify(value[1]);
+          var scale = JSON.stringify(value[2]);
+          var offset = JSON.stringify(value[3]);
+          var decay = JSON.stringify(value[4]);
+
+          var query = "RETURN DECAY_GAUSS(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay + ")";
+          var actual = getQueryResults(query);
+          assertAlmostEqual(value[5], actual[0], query + " " + JSON.stringify(value));
+
+          actual = getQueryResults("RETURN NOOPT(DECAY_GAUSS(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay +"))");
+          assertAlmostEqual(value[5], actual[0], value, query + " " + JSON.stringify(value));
+        });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test DECAY_EXP function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDecayExp : function () {
+        var data = [
+          [1, 0, 10, 0, 0.2, 0.8513399225207846],
+          [0, 0, 0.001, 10, 0.2, 1],
+          [41, 40, 5, 5, 0.7, 1]
+        ];
+
+        var valgrind = require("internal").valgrind;
+
+        data.forEach(function (value) {
+          var arg = JSON.stringify(value[0]);
+          var origin = JSON.stringify(value[1]);
+          var scale = JSON.stringify(value[2]);
+          var offset = JSON.stringify(value[3]);
+          var decay = JSON.stringify(value[4]);
+
+          var query = "RETURN DECAY_EXP(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay + ")";
+          var actual = getQueryResults(query);
+          assertAlmostEqual(value[5], actual[0], query + " " + JSON.stringify(value));
+
+          actual = getQueryResults("RETURN NOOPT(DECAY_EXP(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay +"))");
+          assertAlmostEqual(value[5], actual[0], value, query + " " + JSON.stringify(value));
+        });
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test DECAY_LINEAR function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDecayLin : function () {
+        var data = [
+          [41, 40, 5, 5, 0.5, 1],
+          [1, 0, 10, 0, 0.2, 0.92],
+          [-10, 40, 5, 0, 0.1, 0]
+        ];
+
+        var valgrind = require("internal").valgrind;
+
+        data.forEach(function (value) {
+          var arg = JSON.stringify(value[0]);
+          var origin = JSON.stringify(value[1]);
+          var scale = JSON.stringify(value[2]);
+          var offset = JSON.stringify(value[3]);
+          var decay = JSON.stringify(value[4]);
+
+          var query = "RETURN DECAY_LINEAR(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay + ")";
+          var actual = getQueryResults(query);
+          assertAlmostEqual(value[5], actual[0], query + " " + JSON.stringify(value));
+
+          actual = getQueryResults("RETURN NOOPT(DECAY_LINEAR(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay +"))");
+          assertAlmostEqual(value[5], actual[0], value, query + " " + JSON.stringify(value));
+        });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test COSINE_SIMILARITY function
+////////////////////////////////////////////////////////////////////////////////
+
+    testCosineSimilarity : function () {
+      var data = [
+        [[1,-1], [-1,-1], 0],
+        [[1, 1], [1, 1], 1],
+        [[0.5, -1.23, 0.33], [1.0,-3.015,0.1231], 0.9769856305801876]
+      ];
+    
+      var valgrind = require("internal").valgrind;
+    
+      data.forEach(function (value) {
+        var x = JSON.stringify(value[0]);
+        var y = JSON.stringify(value[1]);
+      
+        var query = "RETURN COSINE_SIMILARITY(" + x + ", " + y + ")";
+        var actual = getQueryResults(query);
+        assertAlmostEqual(value[2], actual[0], query + " " + JSON.stringify(value));
+      
+        actual = getQueryResults("RETURN NOOPT(COSINE_SIMILARITY(" + x + ", " + y + "))");
+        assertAlmostEqual(value[2], actual[0], value, query + " " + JSON.stringify(value));
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test L1_DISTANCE function
+////////////////////////////////////////////////////////////////////////////////
+
+    testL1Distance : function () {
+      var data = [
+        [[1,1,1,1], [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]], [4,4,4,4]],
+        [[1.5], [3], 1.5],
+        [[-1,0,-1], [0,-1,0], 3]
+      ];
+    
+      var valgrind = require("internal").valgrind;
+    
+      data.forEach(function (value) {
+        var x = JSON.stringify(value[0]);
+        var y = JSON.stringify(value[1]);
+      
+        var query = "RETURN L1_DISTANCE(" + x + ", " + y + ")";
+        var actual = getQueryResults(query);
+        assertAlmostEqual(value[2], actual[0], query + " " + JSON.stringify(value));
+      
+        actual = getQueryResults("RETURN NOOPT(L1_DISTANCE(" + x + ", " + y + "))");
+        assertAlmostEqual(value[2], actual[0], value, query + " " + JSON.stringify(value));
+      });
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test L2_DISTANCE function
+////////////////////////////////////////////////////////////////////////////////
+
+    testL2Distance : function () {
+      var data = [
+        [[1,1], [5,2], 4.1231056256176606],
+        [[0,1], [1,0], 1.4142135623730951],
+        [[0,1,0,0,1], [2,0,0,0,0], 2.449489742783178]
+      ];
+    
+      var valgrind = require("internal").valgrind;
+    
+      data.forEach(function (value) {
+        var x = JSON.stringify(value[0]);
+        var y = JSON.stringify(value[1]);
+      
+        var query = "RETURN L2_DISTANCE(" + x + ", " + y + ")";
+        var actual = getQueryResults(query);
+        assertAlmostEqual(value[2], actual[0], query + " " + JSON.stringify(value));
+      
+        actual = getQueryResults("RETURN NOOPT(L2_DISTANCE(" + x + ", " + y + "))");
+        assertAlmostEqual(value[2], actual[0], value, query + " " + JSON.stringify(value));
+      });
     }
   };
 }

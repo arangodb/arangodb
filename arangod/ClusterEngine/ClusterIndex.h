@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H
-#define ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H 1
+#pragma once
 
 #include <velocypack/Builder.h>
 #include <velocypack/StringRef.h>
@@ -78,8 +77,6 @@ class ClusterIndex : public Index {
   void unload() override {}
   size_t memory() const override { return 0; }
   
-  bool isPersistent() const override;
-
   Result drop() override { return Result(TRI_ERROR_NOT_IMPLEMENTED); }
 
   bool hasCoveringIterator() const override;
@@ -108,6 +105,7 @@ class ClusterIndex : public Index {
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
   velocypack::Builder _info;
+  bool _estimates;
   double _clusterSelectivity;
 
   // Only used in RocksDB edge index.
@@ -115,4 +113,3 @@ class ClusterIndex : public Index {
 };
 }  // namespace arangodb
 
-#endif

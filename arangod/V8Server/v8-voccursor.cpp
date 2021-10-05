@@ -98,22 +98,17 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_ASSERT(builder.get() != nullptr);
 
-  try {
-    arangodb::Cursor* cursor =
-        cursors->createFromQueryResult(std::move(result),
-                                       static_cast<size_t>(batchSize), ttl, true);
+  arangodb::Cursor* cursor =
+      cursors->createFromQueryResult(std::move(result),
+                                     static_cast<size_t>(batchSize), ttl, true);
+  TRI_ASSERT(cursor != nullptr);
+  auto sg = arangodb::scopeGuard([&]() noexcept { cursors->release(cursor); });
 
-    TRI_ASSERT(cursor != nullptr);
-    TRI_DEFER(cursors->release(cursor));
+  // need to fetch id before release() as release() might delete the cursor
+  CursorId id = cursor->id();
 
-    // need to fetch id before release() as release() might delete the cursor
-    CursorId id = cursor->id();
-
-    auto result = TRI_V8UInt64String<TRI_voc_tick_t>(isolate, id);
-    TRI_V8_RETURN(result);
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
+  auto result2 = TRI_V8UInt64String<TRI_voc_tick_t>(isolate, id);
+  TRI_V8_RETURN(result2);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -140,7 +135,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool busy;
   Cursor* cursor = cursors->find(cursorId, busy);
-  TRI_DEFER(cursors->release(cursor));
+  auto sg = arangodb::scopeGuard([&]() noexcept { cursors->release(cursor); });
 
   if (cursor == nullptr) {
     if (busy) {
@@ -155,6 +150,8 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   builder.openObject(true);  // conversion uses sequential iterator, no indexing
   Result r = cursor->dumpSync(builder);
   if (r.fail()) {
+    // On any error the cursor needs to be deleted
+    TRI_ASSERT(cursor->isDeleted());
     TRI_V8_THROW_EXCEPTION_MEMORY();  // for compatibility
   }
   builder.close();
@@ -226,7 +223,7 @@ struct V8Cursor final {
         TRI_V8_SET_ERROR(TRI_errno_string(TRI_ERROR_CURSOR_BUSY));
         return false;  // someone else is using it
       }
-      TRI_DEFER(cc->release());
+      auto sg = arangodb::scopeGuard([&]() noexcept { cc->release(); });
 
       Result r = fetchData(cc);
       if (r.fail()) {
@@ -250,6 +247,8 @@ struct V8Cursor final {
     _tmpResult.openObject();
     Result r = cursor->dumpSync(_tmpResult);
     if (r.fail()) {
+      // On any error the cursor needs to be deleted
+      TRI_ASSERT(cursor->isDeleted());
       return r;
     }
     _tmpResult.close();
@@ -328,19 +327,28 @@ struct V8Cursor final {
     auto* cursors = vocbase->cursorRepository();  // create a cursor
     double ttl = std::numeric_limits<double>::max();
         
-    auto ctx = transaction::V8Context::CreateWhenRequired(*vocbase, true);
-    auto q = std::make_unique<aql::Query>(ctx,
-                                          aql::QueryString(queryString), std::move(bindVars),
-                                          options.slice());
+    auto q = aql::Query::create(transaction::V8Context::CreateWhenRequired(*vocbase, true),
+                                aql::QueryString(queryString), std::move(bindVars),
+                                aql::QueryOptions(options.slice()));
     
     // specify ID 0 so it uses the external V8 context
-    auto cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
-    TRI_DEFER(cc->release());
+    Cursor* cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
+    // a soft shutdown will throw here!
+ 
+    arangodb::ScopeGuard releaseCursorGuard([&]() noexcept {
+      cc->release();
+    });
     // args.Holder() is supposedly better than args.This()
     auto self = std::make_unique<V8Cursor>(isolate, args.Holder(), *vocbase, cc->id());
-    Result r = self->fetchData(cc);
-    self.release();  // args.Holder() owns the pointer
+    V8Cursor* v8Cursor = self.release();  // args.Holder() owns the pointer
+    Result r = v8Cursor->fetchData(cc);
     if (r.fail()) {
+      // Try to free the cursor from cursor repository.
+      // We are in NEW so the caller has no chance to do this operation
+      // as neither the cursor nor the id is known.
+      cursors->release(cc);
+      // cursors->release does cc->release() for us.
+      releaseCursorGuard.cancel();
       TRI_V8_THROW_EXCEPTION(r);
     } else {
       TRI_V8_RETURN(args.This());

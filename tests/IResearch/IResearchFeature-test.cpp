@@ -30,6 +30,7 @@
 #include "utils/thread_utils.hpp"
 #include "utils/utf8_path.hpp"
 #include "utils/version_defines.hpp"
+#include "utils/file_utils.hpp"
 
 #include "IResearch/AgencyMock.h"
 #include "IResearch/common.h"
@@ -45,8 +46,8 @@
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "Cluster/ClusterTypes.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
@@ -57,6 +58,7 @@
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -71,6 +73,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/Methods/Upgrade.h"
+#include "VocBase/Methods/Version.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -1576,7 +1579,7 @@ TEST_F(IResearchFeatureTest, test_start) {
     { "MIN_MATCH", { ".,.|.+", FunctionType::FILTER } },
     { "LIKE", { ".,.|.", FunctionType::FILTER } },
     { "NGRAM_MATCH", { ".,.|.,.", FunctionType::FILTER } },
-    { "LEVENSHTEIN_MATCH", { ".,.,.|.,.", FunctionType::FILTER } },
+    { "LEVENSHTEIN_MATCH", { ".,.,.|.,.,.", FunctionType::FILTER } },
     { "IN_RANGE", { ".,.,.,.,.", FunctionType::FILTER } },
     { "GEO_IN_RANGE", { ".,.,.,.|.,.,.", FunctionType::FILTER } },
     { "GEO_CONTAINS", { ".,.", FunctionType::FILTER } },
@@ -1668,8 +1671,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
-  ASSERT_TRUE(irs::utf8_path(dbPathFeature.directory()).mkdir());
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -1689,9 +1692,9 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link0);
-  EXPECT_TRUE(linkDataPath.remove());  // remove link directory
+  EXPECT_TRUE(irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView0);
-  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure no view directory
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure no view directory
   arangodb::velocypack::Builder builder;
   builder.openObject();
   EXPECT_TRUE(logicalView0
@@ -1705,13 +1708,13 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
   auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView1);
-  EXPECT_FALSE(!link1);                 // ensure link present after upgrade
+  ASSERT_NE(nullptr, link1); // ensure link present after upgrade
   EXPECT_NE(link0->id(), link1->id());  // ensure new link
   linkDataPath = getPersistedPath1(*link1);
-  EXPECT_TRUE(linkDataPath.exists(result) && result);  // ensure link directory created after upgrade
-  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory not present
+  EXPECT_TRUE(irs::file_utils::exists(result, linkDataPath.c_str()) && result);  // ensure link directory created after upgrade
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory not present
   viewDataPath = getPersistedPath0(*logicalView1);
-  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory not created
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory not created
   builder.clear();
   builder.openObject();
   EXPECT_TRUE(logicalView1
@@ -1752,8 +1755,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
-  ASSERT_TRUE(irs::utf8_path(dbPathFeature.directory()).mkdir());
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -1773,11 +1776,11 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link0);
-  EXPECT_TRUE(linkDataPath.remove());  // remove link directory
+  EXPECT_TRUE(irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView0);
-  EXPECT_TRUE(viewDataPath.exists(result) && !result);
-  EXPECT_TRUE(viewDataPath.mkdir());  // create view directory
-  EXPECT_TRUE(viewDataPath.exists(result) && result);
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);
+  EXPECT_TRUE(irs::file_utils::mkdir(viewDataPath.c_str(), true));  // create view directory
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && result);
   arangodb::velocypack::Builder builder;
   builder.openObject();
   EXPECT_TRUE(logicalView0
@@ -1794,10 +1797,10 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   EXPECT_FALSE(!link1);                 // ensure link present after upgrade
   EXPECT_NE(link0->id(), link1->id());  // ensure new link
   linkDataPath = getPersistedPath1(*link1);
-  EXPECT_TRUE(linkDataPath.exists(result) && result);  // ensure link directory created after upgrade
-  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory removed after upgrade
+  EXPECT_TRUE(irs::file_utils::exists(result, linkDataPath.c_str()) && result);  // ensure link directory created after upgrade
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory removed after upgrade
   viewDataPath = getPersistedPath0(*logicalView1);
-  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory not created
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory not created
   builder.clear();
   builder.openObject();
   EXPECT_TRUE(logicalView1
@@ -2414,7 +2417,7 @@ class IResearchFeatureTestDBServer
     return dataPath;
   }
 
-  
+
   void createTestDatabase(TRI_vocbase_t*& vocbase, std::string const name = "testDatabase") {
     vocbase = server.createDatabase(name);
     ASSERT_NE(nullptr, vocbase);
@@ -2446,8 +2449,8 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
-  ASSERT_TRUE(irs::utf8_path(dbPathFeature.directory()).mkdir());
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -2478,9 +2481,9 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link);
-  EXPECT_TRUE(linkDataPath.remove());  // remove link directory
+  EXPECT_TRUE(irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView);
-  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure no view directory
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure no view directory
   arangodb::velocypack::Builder builder;
   builder.openObject();
   EXPECT_TRUE(logicalView
@@ -2492,7 +2495,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false).ok());  // run upgrade
   logicalView = vocbase.lookupView(logicalView->name());
   EXPECT_FALSE(logicalView);  // ensure view removed after upgrade
-  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory not present
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory not present
 }
 
 TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
@@ -2517,8 +2520,8 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
-  ASSERT_TRUE(irs::utf8_path(dbPathFeature.directory()).mkdir());
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -2553,11 +2556,11 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link);
-  EXPECT_TRUE(linkDataPath.remove());  // remove link directory
+  EXPECT_TRUE(irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView);
-  EXPECT_TRUE(viewDataPath.exists(result) && !result);
-  EXPECT_TRUE(viewDataPath.mkdir());  // create view directory
-  EXPECT_TRUE(viewDataPath.exists(result) && result);
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);
+  EXPECT_TRUE(irs::file_utils::mkdir(viewDataPath.c_str(), true));  // create view directory
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && result);
   arangodb::velocypack::Builder builder;
   builder.openObject();
   EXPECT_TRUE(logicalView
@@ -2570,7 +2573,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   //    EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(vocbase).ok()); // run upgrade
   logicalView = vocbase.lookupView(logicalView->name());
   EXPECT_FALSE(logicalView);  // ensure view removed after upgrade
-  EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory removed after upgrade
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory removed after upgrade
 }
 
 TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
@@ -2586,7 +2589,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
       "\"includeAllFields\": true }");
   // assume step 1 already finished
   auto versionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"version\": 1, \"tasks\": {\"upgradeArangoSearch0_1\":true} }");
+      std::string("{ \"version\": ") + std::to_string(arangodb::methods::Version::current()) + ", \"tasks\": {\"upgradeArangoSearch0_1\":true} }");
 
   server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
 
@@ -2597,10 +2600,8 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").utf8();
-  ASSERT_TRUE(irs::utf8_path(dbPathFeature.directory()).mkdir());
-  ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
-      StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
 
   auto& engine = *static_cast<StorageEngineMock*>(
       &server.getFeature<arangodb::EngineSelectorFeature>().engine());
@@ -2608,6 +2609,11 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
 
   TRI_vocbase_t* vocbase;
   createTestDatabase(vocbase);
+
+  // rewrite file so upgrade task was not executed
+  ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
+      StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
+
   auto& clusterInfo =
       vocbase->server().getFeature<arangodb::ClusterFeature>().clusterInfo();
 
@@ -2645,7 +2651,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
     }
   }
 
-  EXPECT_TRUE(arangodb::methods::Upgrade::startup(*vocbase, true, false).ok());  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(*vocbase, false, false).ok());  // run upgrade
 
   {
     auto indexes = logicalCollection->getIndexes();

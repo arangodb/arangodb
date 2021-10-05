@@ -1,96 +1,99 @@
-
-  <div id="nodesContent" class="innerContent">
+<div id="nodesContent" class="innerContent">
 
   <% if (Object.keys(coords).length > 0) { %>
 
-    <% var disabled = ''; %>
+  <% var disabled = ''; %>
 
-    <div class="pure-g">
+  <div class="pure-g">
 
     <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-2">
 
-    <div class="sectionHeader pure-g">
-      <div class="pure-u-1-5">
-        <div class="title">
-          Coordinators
-        </div>
-      </div>
-
-
-      <div class="pure-u-4-5">
-
-        <% if (scaling === true && frontendConfig.db === '_system') { %>
-          <div class="scaleGroup" id="scaleCoords">
-            <div style="text-align: -webkit-right;">
-            <span class="left" id="removeCoord"><i class="fa fa-minus"></i></span>
-            <input id="plannedCoords" type="text" value="<%= plannedCoords %>"/>
-            <span class="right" id="addCoord"><i class="fa fa-plus"></i></span>
-            </div>
+      <div class="sectionHeader pure-g">
+        <div class="pure-u-1-5">
+          <div class="title">
+            Coordinators
           </div>
-        <% } %>
-
-        <div class="information" id="infoCoords">
-          <span class="positive"><span> <%= scaleProperties.coordsOk %> </span><i class="fa fa-check-circle"></i></span>
-          <% if (scaleProperties.coordsError) { %>
-            <span class="negative"><span> <%= scaleProperties.coordsError %> </span><i class="fa fa-exclamation-circle"></i></span>
-          <% } %>
-          <% if (scaleProperties.coordsPending && scaling === true && frontendConfig.db === '_system') { %>
-            <span class="warning"><span> <%= scaleProperties.coordsPending %> </span><i class="fa fa-circle-o-notch fa-spin"></i></span>
-            <button class="abortClusterPlan button-navbar button-default">Abort</button>
-          <% } %>
         </div>
-      </div>
 
-    </div>
 
-    <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title" style="clear: both">
-      <div class="pure-table-row">
-        <div class="pure-u-9-24 left">Name</div>
-        <div class="pure-u-9-24 left">Endpoint</div>
-        <div class="pure-u-3-24">Version</div>
-        <div class="pure-u-2-24 mid hide-small">Since</div>
-        <div class="pure-u-1-24 mid"></div>
-      </div>
-    </div>
+        <div class="pure-u-4-5">
 
-    <div class="pure-g cluster-nodes coords-nodes pure-table pure-table-body">
-      <% _.each(coords, function(node, key) { %>
-        <% var id = node.id + "-node"; %>
+          <% if (scaling === true && frontendConfig.db === '_system') { %>
+            <div class="scaleGroup" id="scaleCoords">
+              <div style="text-align: -webkit-right;">
+                <span class="left" id="removeCoord"><i class="fa fa-minus"></i></span>
+                <input id="plannedCoords" type="text" value="<%= plannedCoords %>"/>
+                <span class="right" id="addCoord"><i class="fa fa-plus"></i></span>
+              </div>
+            </div>
+          <% } %>
 
-        <div class="pure-table-row <%= disabled %>" node="<%= id %>">
-
-          <div class="pure-u-9-24 left" title="<%= node.id %>">
-            <%= node.ShortName %>
-            <i class="fa fa-bar-chart"></i>
-            <% if (node.CanBeDeleted && frontendConfig.db === '_system') { %>
-              <i class="fa fa-trash-o"></i>
+          <div class="information" id="infoCoords">
+            <span class="positive"><span> <%= scaleProperties.coordsOk %> </span><i
+                class="fa fa-check-circle"></i></span>
+            <% if (scaleProperties.coordsError) { %>
+              <span class="negative"><span> <%= scaleProperties.coordsError %> </span><i
+                  class="fa fa-exclamation-circle"></i></span>
+            <% } %>
+            <% if (scaleProperties.coordsPending && scaling === true && frontendConfig.db === '_system') { %>
+              <span class="warning"><span> <%= scaleProperties.coordsPending %> </span><i
+                  class="fa fa-circle-o-notch fa-spin"></i></span>
+              <button class="abortClusterPlan button-navbar button-default">Abort</button>
             <% } %>
           </div>
-          <div class="pure-u-9-24 left"><%= node.Endpoint %></div>
-
-          <div class="pure-u-3-24"><%= node.Version %></div>
-
-          <% var formatted = node.LastAckedTime.substr(11, 18); %>
-          <% var full = node.LastAckedTime; %>
-          <div class="pure-u-2-24 hide-small mid" title="<%= full %>"><%= formatted %></div>
-
-          <% if (node.Status === 'GOOD') { %>
-            <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i></div>
-          <% } else { %>
-            <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div>
-          <% } %>
-
         </div>
 
-      <% }); %>
+      </div>
+
+      <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title" style="clear: both">
+        <div class="pure-table-row">
+          <div class="pure-u-9-24 left">Name</div>
+          <div class="pure-u-9-24 left">Endpoint</div>
+          <div class="pure-u-3-24">Version</div>
+          <div class="pure-u-2-24 mid hide-small">Since</div>
+          <div class="pure-u-1-24 mid"></div>
+        </div>
+      </div>
+
+      <div class="pure-g cluster-nodes coords-nodes pure-table pure-table-body">
+        <% _.each(coords, function(node, key) { %>
+          <% var id = node.id + "-node"; %>
+
+          <div class="pure-table-row <%= disabled %>" node="<%= id %>">
+
+            <div class="pure-u-9-24 left" title="<%= node.id %>">
+              <%= node.ShortName %>
+              <i class="fa fa-bar-chart"></i>
+              <% if (node.CanBeDeleted && frontendConfig.db === '_system') { %>
+                <i class="fa fa-trash-o"></i>
+              <% } %>
+            </div>
+            <div class="pure-u-9-24 left"><%= node.Endpoint %></div>
+
+            <div class="pure-u-3-24"><%= node.Version %></div>
+
+            <% var formatted = node.LastAckedTime.substr(11, 18); %>
+            <% var full = node.LastAckedTime; %>
+            <div class="pure-u-2-24 hide-small mid" title="<%= full %>"><%= formatted %></div>
+
+            <div class="pure-u-1-24 right state">
+            <% if (node.Status === 'GOOD') { %>
+              <i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i>
+            <% } else { %>
+              <i class="fa fa-exclamation-circle"></i>
+            <% } %>
+            </div>
+          </div>
+
+        <% }); %>
+      </div>
     </div>
-  </div>
 
-  <% } %>
+    <% } %>
 
-  <% if (Object.keys(dbs).length > 0) { %>
-    <% var disabled = ''; %>
-    <% disabled = " dbserver"; %>
+    <% if (Object.keys(dbs).length > 0) { %>
+      <% var disabled = ''; %>
+      <% disabled = " dbserver"; %>
     <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-2">
       <div class="sectionHeader pure-g">
         <div class="pure-u-1-5">
@@ -104,9 +107,9 @@
           <% if (scaling === true && frontendConfig.db === '_system') { %>
             <div class="scaleGroup" id="scaleCoords">
               <div style="text-align: -webkit-right;">
-              <span class="left" id="removeDBs"><i class="fa fa-minus"></i></span>
-              <input id="plannedDBs" value="<%= plannedDBs %>" type="text"/>
-              <span class="right" id="addDBs"><i class="fa fa-plus"></i></span>
+                <span class="left" id="removeDBs"><i class="fa fa-minus"></i></span>
+                <input id="plannedDBs" value="<%= plannedDBs %>" type="text"/>
+                <span class="right" id="addDBs"><i class="fa fa-plus"></i></span>
               </div>
             </div>
           <% } %>
@@ -114,10 +117,12 @@
           <div class="information" id="infoDBs">
             <span class="positive"><span> <%= scaleProperties.dbsOk %> </span><i class="fa fa-check-circle"></i></span>
             <% if (scaleProperties.dbsError) { %>
-              <span class="negative"><span> <%= scaleProperties.dbsError %> </span><i class="fa fa-exclamation-circle"></i></span>
+              <span class="negative"><span> <%= scaleProperties.dbsError %> </span><i
+                  class="fa fa-exclamation-circle"></i></span>
             <% } %>
             <% if (scaleProperties.dbsPending && scaling === true && frontendConfig.db === '_system') { %>
-              <span class="warning"><span> <%= scaleProperties.dbsPending %> </span><i class="fa fa-circle-o-notch fa-spin"></i></span>
+              <span class="warning"><span> <%= scaleProperties.dbsPending %> </span><i
+                  class="fa fa-circle-o-notch fa-spin"></i></span>
               <button class="abortClusterPlan button-navbar button-default">Abort</button>
             <% } %>
           </div>
@@ -126,50 +131,137 @@
 
       </div>
 
-    <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title" style="clear: both">
-      <div class="pure-table-row">
-        <div class="pure-u-9-24 left">Name</div>
-        <div class="pure-u-9-24 left">Endpoint</div>
-        <div class="pure-u-3-24">Version</div>
-        <div class="pure-u-2-24 mid hide-small">Since</div>
-        <div class="pure-u-1-24 mid"></div>
-      </div>
-    </div>
-
-  <% } %>
-
-    <div class="pure-g cluster-nodes dbs-nodes pure-table pure-table-body">
-      <% _.each(dbs, function(node, key) { %>
-        <% var id = node.id + "-node"; %>
-
-        <div class="pure-table-row <%= disabled %>" node="<%= id %>">
-
-          <div class="pure-u-9-24 left" title="<%= node.id %>">
-            <%= node.ShortName %>
-            <i class="fa fa-bar-chart"></i>
-            <% if (node.CanBeDeleted && frontendConfig.db === '_system') { %>
-              <i class="fa fa-trash-o"></i>
-            <% } %>
-          </div>
-          <div class="pure-u-9-24 left"><%= node.Endpoint %></div>
-
-          <div class="pure-u-3-24"><%= node.Version %></div>
-
-          <% var formatted = node.LastAckedTime.substr(11, 18); %>
-          <% var full = node.LastAckedTime; %>
-          <div class="pure-u-2-24 hide-small mid" title="<%= full %>"><%= formatted %></div>
-          
-          <% if (node.Status === 'GOOD') { %>
-            <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i></div>
-          <% } else { %>
-            <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div>
-          <% } %>
-
+      <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title" style="clear: both">
+        <div class="pure-table-row">
+          <div class="pure-u-9-24 left">Name</div>
+          <div class="pure-u-9-24 left">Endpoint</div>
+          <div class="pure-u-3-24">Version</div>
+          <div class="pure-u-2-24 mid hide-small">Since</div>
+          <div class="pure-u-1-24 mid"></div>
         </div>
-      <% }); %>
+      </div>
+
+      <% } %>
+
+      <div class="pure-g cluster-nodes dbs-nodes pure-table pure-table-body">
+        <% _.each(dbs, function(node, key) { %>
+          <% var id = node.id + "-node"; %>
+
+          <div class="pure-table-row <%= disabled %>" node="<%= id %>">
+
+            <div class="pure-u-9-24 left" title="<%= node.id %>">
+              <%= node.ShortName %>
+              <i class="fa fa-bar-chart"></i>
+              <% if (node.CanBeDeleted && frontendConfig.db === '_system') { %>
+                <i class="fa fa-trash-o"></i>
+              <% } %>
+            </div>
+            <div class="pure-u-9-24 left"><%= node.Endpoint %></div>
+
+            <div class="pure-u-3-24"><%= node.Version %></div>
+
+            <% var formatted = node.LastAckedTime.substr(11, 18); %>
+            <% var full = node.LastAckedTime; %>
+            <div class="pure-u-2-24 hide-small mid" title="<%= full %>"><%= formatted %></div>
+
+            <div class="pure-u-1-24 right state">
+            <% if (node.Status === 'GOOD') { %>
+              <i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i>
+            <% } else { %>
+              <i class="fa fa-exclamation-circle"></i>
+            <% } %>
+            </div>
+
+          </div>
+        <% }); %>
+      </div>
+
     </div>
-  </div>
+
+    <% if (Object.keys(agents).length > 0) { %>
+      <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1">
+        <div class="sectionHeader pure-g">
+          <div class="pure-u-1-5">
+            <div class="title">
+              Agents
+            </div>
+          </div>
+
+          <div class="pure-u-4-5">
+            <div class="information" id="infoAgents">
+            <span class="positive"><span> <%= scaleProperties.agentsOk %> </span><i
+                class="fa fa-check-circle"></i></span>
+              <% if (scaleProperties.coordsError) { %>
+                <span class="negative"><span> <%= scaleProperties.agentError %> </span><i
+                    class="fa fa-exclamation-circle"></i></span>
+              <% } %>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title" style="clear: both">
+          <div class="pure-table-row">
+            <div class="pure-u-9-24 left">Name</div>
+            <div class="pure-u-3-24 left" style="text-align: center">Leading</div>
+            <div class="pure-u-6-24 left">Endpoint</div>
+            <div class="pure-u-3-24">Version</div>
+            <!--div class="pure-u-2-24 mid hide-small">Since</div-->
+            <div class="pure-u-3-24 mid"></div>
+          </div>
+        </div>
+
+        <div class="pure-g cluster-nodes agents-nodes pure-table pure-table-body">
+          <% _.each(agents, function(node, key) { %>
+            <% var id = node.id + "-node"; %>
+
+            <div class="pure-table-row disabled" node="<%= id %>">
+
+              <div class="pure-u-9-24 left" title="<%= node.id %>">
+                <%= node.id %>
+              </div>
+              <% if (node.Leading) { %>
+                <div class="pure-u-3-24 left" style="text-align: center">
+                  <i class="fa fa-check-circle tippy" title="The current leading agent!"></i>
+                </div>
+              <% } else { %>
+                <div class="pure-u-3-24 left" style="text-align: center">
+                  <i style="color: rgba(0,0,0,.2); font-size: 16px;" class="fa fa-circle-o tippy"
+                     title="This agent is not leading."></i>
+                </div>
+              <% } %>
+
+              <div class="pure-u-6-24 left"><%= node.Endpoint %></div>
+
+              <div class="pure-u-3-24"><%= node.Version %></div>
+
+              <%
+                let formatted;
+                let full;
+                try {
+                  formatted = node.LastAckedTime.substr(11, 18);
+                  full = node.LastAckedTime;
+                } catch (ignore) {
+                  formatted = 'n/A';
+                  full = 'n/A';
+                }
+              %>
+              <!--div class="pure-u-2-24 hide-small mid" title="<%= full %>"><%= formatted %></div-->
+
+              <div class="pure-u-3-24 right state">
+              <% if (node.Status === 'GOOD') { %>
+                <i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i>
+              <% } else { %>
+                <i class="fa fa-exclamation-circle"></i>
+              <% } %>
+              </div>
+
+            </div>
+          <% }); %>
+        </div>
+      </div>
+    <% } %>
 
   </div>
-  </div>
+</div>
 

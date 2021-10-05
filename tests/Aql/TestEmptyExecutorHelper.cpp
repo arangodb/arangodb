@@ -26,13 +26,12 @@
 
 #include "TestEmptyExecutorHelper.h"
 
-#include "Basics/Common.h"
-
 #include "Aql/AqlValue.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Logger/LogMacros.h"
+#include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 
 #include <utility>
 

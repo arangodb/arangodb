@@ -286,22 +286,22 @@ class ArcLookAheadMatcher : public LookAheadMatcherBase<typename M::FST::Arc> {
 
   MatchType Type(bool test) const override { return matcher_.Type(test); }
 
-  void SetState(StateId s) override final {
+  void SetState(StateId s) final {
     state_ = s;
     matcher_.SetState(s);
   }
 
-  bool Find(Label label) override final { return matcher_.Find(label); }
+  bool Find(Label label) final { return matcher_.Find(label); }
 
-  bool Done() const override final { return matcher_.Done(); }
+  bool Done() const final { return matcher_.Done(); }
 
-  const Arc &Value() const override final { return matcher_.Value(); }
+  const Arc &Value() const final { return matcher_.Value(); }
 
-  void Next() override final { matcher_.Next(); }
+  void Next() final { matcher_.Next(); }
 
-  Weight Final(StateId s) const override final { return matcher_.Final(s); }
+  Weight Final(StateId s) const final { return matcher_.Final(s); }
 
-  ssize_t Priority(StateId s) override final { return matcher_.Priority(s); }
+  ssize_t Priority(StateId s) final { return matcher_.Priority(s); }
 
   const FST &GetFst() const override { return fst_; }
 
@@ -330,7 +330,7 @@ class ArcLookAheadMatcher : public LookAheadMatcherBase<typename M::FST::Arc> {
   // at (state_, s).
   bool LookAheadFst(const Fst<Arc> &, StateId) final;
 
-  bool LookAheadLabel(Label label) const override final { return matcher_.Find(label); }
+  bool LookAheadLabel(Label label) const final { return matcher_.Find(label); }
 
  private:
   mutable M matcher_;
@@ -483,14 +483,14 @@ class LabelLookAheadMatcher
 
   MatchType Type(bool test) const override { return matcher_.Type(test); }
 
-  void SetState(StateId s) override final {
+  void SetState(StateId s) final {
     if (state_ == s) return;
     state_ = s;
     match_set_state_ = false;
     reach_set_state_ = false;
   }
 
-  bool Find(Label label) override final {
+  bool Find(Label label) final {
     if (!match_set_state_) {
       matcher_.SetState(state_);
       match_set_state_ = true;
@@ -498,15 +498,15 @@ class LabelLookAheadMatcher
     return matcher_.Find(label);
   }
 
-  bool Done() const override final { return matcher_.Done(); }
+  bool Done() const final { return matcher_.Done(); }
 
-  const Arc &Value() const override final { return matcher_.Value(); }
+  const Arc &Value() const final { return matcher_.Value(); }
 
-  void Next() override final { matcher_.Next(); }
+  void Next() final { matcher_.Next(); }
 
-  Weight Final(StateId s) const override final { return matcher_.Final(s); }
+  Weight Final(StateId s) const final { return matcher_.Final(s); }
 
-  ssize_t Priority(StateId s) override final { return matcher_.Priority(s); }
+  ssize_t Priority(StateId s) final { return matcher_.Priority(s); }
 
   const FST &GetFst() const override { return matcher_.GetFst(); }
 
@@ -542,7 +542,7 @@ class LabelLookAheadMatcher
   bool LookAheadFst(const LFST &fst, StateId s);
 
   // Required to make class concrete.
-  bool LookAheadFst(const Fst<Arc> &fst, StateId s) override final {
+  bool LookAheadFst(const Fst<Arc> &fst, StateId s) final {
     return LookAheadFst<Fst<Arc>>(fst, s);
   }
 
@@ -563,7 +563,7 @@ class LabelLookAheadMatcher
     }
   }
 
-  bool LookAheadLabel(Label label) const override final {
+  bool LookAheadLabel(Label label) const final {
     if (label == 0) return true;
     if (label_reachable_) {
       if (!reach_set_state_) {

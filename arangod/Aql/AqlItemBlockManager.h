@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H
-#define ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H 1
+#pragma once
 
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/types.h"
@@ -64,6 +63,12 @@ class AqlItemBlockManager {
   TEST_VIRTUAL arangodb::ResourceMonitor& resourceMonitor() const noexcept;
 
   SerializationFormat getFormatType() const { return _format; }
+
+  void initializeConstValueBlock(RegisterCount nrRegs);
+
+  AqlItemBlock* getConstValueBlock() {
+    return _constValueBlock;
+  }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Only used for the mocks in the catch tests. Other code should always use
@@ -110,9 +115,12 @@ class AqlItemBlockManager {
   };
 
   Bucket _buckets[numBuckets];
+
+  /// @brief the AqlItemBlock used to store the values of const variables
+  // Note: we are using a raw pointer here, because the AqlItemBlock destructor is protected.
+  AqlItemBlock* _constValueBlock = nullptr;
 };
 
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

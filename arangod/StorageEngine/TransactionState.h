@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_TRANSACTION_STATE_H
-#define ARANGOD_STORAGE_ENGINE_TRANSACTION_STATE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
@@ -173,7 +172,7 @@ class TransactionState {
   }
 
   /// @brief update the status of a transaction
-  void updateStatus(transaction::Status status);
+  void updateStatus(transaction::Status status) noexcept;
 
   /// @brief whether or not a specific hint is set for the transaction
   bool hasHint(transaction::Hints::Hint hint) const { return _hints.has(hint); }
@@ -194,6 +193,9 @@ class TransactionState {
   virtual uint64_t numCommits() const = 0;
 
   virtual bool hasFailedOperations() const = 0;
+
+  virtual void beginQuery(bool /*isModificationQuery*/) {}
+  virtual void endQuery(bool /*isModificationQuery*/) noexcept {}
 
   TransactionCollection* findCollection(DataSourceId cid) const;
 
@@ -233,9 +235,7 @@ class TransactionState {
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
   ///       transaction is committed
-  TRI_voc_tick_t lastOperationTick() const noexcept {
-    return _lastWrittenOperationTick;
-  }
+  virtual TRI_voc_tick_t lastOperationTick() const noexcept { return 0; }
 
   void acceptAnalyzersRevision(QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
@@ -273,12 +273,13 @@ class TransactionState {
   /// @brief check if current user can access this collection
   Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
                                    AccessMode::Type);
+  
+  /// @brief helper function for addCollection
+  Result addCollectionInternal(DataSourceId cid, std::string const& cname,
+                               AccessMode::Type accessType, bool lockUsage);
 
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
-
-  /// @brief tick of last added & written operation
-  TRI_voc_tick_t _lastWrittenOperationTick;
 
   /// @brief access type (read|write)
   AccessMode::Type _type;
@@ -310,4 +311,3 @@ class TransactionState {
 
 }  // namespace arangodb
 
-#endif

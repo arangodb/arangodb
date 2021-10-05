@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_GLOBAL_REPLICATION_APPLIER_H
-#define ARANGOD_REPLICATION_GLOBAL_REPLICATION_APPLIER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Replication/ReplicationApplier.h"
@@ -63,4 +62,3 @@ class GlobalReplicationApplier final : public ReplicationApplier {
 
 }  // namespace arangodb
 
-#endif

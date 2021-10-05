@@ -46,6 +46,9 @@ class StringRef {
  public:
   /// @brief create an empty StringRef
   constexpr StringRef() noexcept : _data(""), _length(0) {}
+  
+  /// @brief create a StringRef from an std::string_view
+  explicit StringRef(std::string_view sv) noexcept : StringRef(sv.data(), sv.size()) {}
 
   /// @brief create a StringRef from an std::string
   explicit StringRef(std::string const& str) noexcept : StringRef(str.data(), str.size()) {}
@@ -54,11 +57,7 @@ class StringRef {
   constexpr StringRef(char const* data, std::size_t length) noexcept : _data(data), _length(length) {}
   
   /// @brief create a StringRef from a null-terminated C string
-#if __cplusplus >= 201703
   constexpr explicit StringRef(char const* data) noexcept : StringRef(data, std::char_traits<char>::length(data)) {}
-#else
-  explicit StringRef(char const* data) noexcept : StringRef(data, std::strlen(data)) {}
-#endif
    
   /// @brief create a StringRef from a VPack slice (must be of type String)
   explicit StringRef(Slice slice);
@@ -73,6 +72,10 @@ class StringRef {
   /// @brief move a StringRef from another StringRef
   constexpr StringRef(StringRef&& other) noexcept
       : _data(other._data), _length(other._length) {}
+
+  constexpr operator std::string_view() const noexcept { 
+    return std::string_view(_data, _length); 
+  }
   
   /// @brief create a StringRef from another StringRef
   StringRef& operator=(StringRef const& other) noexcept {
@@ -218,7 +221,7 @@ namespace std {
 template <>
 struct hash<arangodb::velocypack::StringRef> {
   std::size_t operator()(arangodb::velocypack::StringRef const& value) const noexcept {
-    return VELOCYPACK_HASH(value.data(), value.size(), 0xdeadbeef); 
+    return VELOCYPACK_HASH_WYHASH(value.data(), value.size(), 0xdeadbeef); 
   }
 };
 

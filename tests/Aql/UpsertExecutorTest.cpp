@@ -607,7 +607,6 @@ TEST_P(UpsertExecutorIntegrationTest, upsert_in_subquery_multi_access) {
       expected.add(VPackValue(i));
     }
   }
-  AssertQueryFailsWith(vocbase, query, TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 

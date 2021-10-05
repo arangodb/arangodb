@@ -36,6 +36,8 @@
 
 #include "Agency/Node.h"
 
+#include <vector>
+
 using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace fakeit;
@@ -43,6 +45,167 @@ using namespace fakeit;
 namespace arangodb {
 namespace tests {
 namespace node_test {
+
+TEST(SmallBufferTest, defaultConstructor) {
+  SmallBuffer sb;
+  ASSERT_EQ(nullptr, sb.data());
+  ASSERT_EQ(0, sb.size());
+  ASSERT_TRUE(sb.empty());
+}
+
+TEST(SmallBufferTest, sizeConstructor) {
+  for (size_t i : std::vector<size_t>({10, 123, 2049, 65536, 1237235})) {
+    SmallBuffer sb(i);
+    ASSERT_NE(sb.data(), nullptr);
+    ASSERT_EQ(i, sb.size());
+    ASSERT_FALSE(sb.empty());
+  }
+}
+
+TEST(SmallBufferTest, memcpyConstructor) {
+  char const* x = "The quick brown fox jumps over the lazy dog.";
+  size_t s = strlen(x);
+  SmallBuffer sb((uint8_t const*) x, s);
+  ASSERT_NE(sb.data(), nullptr);
+  ASSERT_EQ(s, sb.size());
+  ASSERT_FALSE(sb.empty());
+  ASSERT_EQ(0, strncmp(x, (char const*) sb.data(), s));
+}
+
+TEST(SmallBufferTest, copyConstructor) {
+  SmallBuffer sb1(123);
+  for (size_t i = 0; i < 123; ++i) {
+    sb1.data()[i] = (uint8_t)i;
+  }
+  SmallBuffer sb2(sb1);
+  ASSERT_NE(sb2.data(), nullptr);
+  ASSERT_NE(sb2.data(), sb1.data());
+  ASSERT_FALSE(sb2.empty());
+  ASSERT_EQ(123, sb2.size());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb2.data()[i]);
+  }
+}
+
+TEST(SmallBufferTest, moveConstructor) {
+  SmallBuffer sb1(123);
+  for (size_t i = 0; i < 123; ++i) {
+    sb1.data()[i] = (uint8_t)i;
+  }
+  uint8_t* p = sb1.data();
+  SmallBuffer sb2(std::move(sb1));
+
+  ASSERT_EQ(nullptr, sb1.data());
+  ASSERT_EQ(0, sb1.size());
+  ASSERT_TRUE(sb1.empty());
+
+  ASSERT_EQ(p, sb2.data());
+  ASSERT_EQ(123, sb2.size());
+  ASSERT_FALSE(sb2.empty());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb2.data()[i]);
+  }
+}
+
+TEST(SmallBufferTest, copyAssignment) {
+  SmallBuffer sb1(123);
+  for (size_t i = 0; i < 123; ++i) {
+    sb1.data()[i] = (uint8_t)i;
+  }
+  SmallBuffer sb2;
+  sb2 = sb1;
+  ASSERT_NE(sb2.data(), nullptr);
+  ASSERT_NE(sb2.data(), sb1.data());
+  ASSERT_FALSE(sb2.empty());
+  ASSERT_EQ(123, sb2.size());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb2.data()[i]);
+  }
+  SmallBuffer sb3(147);
+  sb3 = sb1;
+  ASSERT_NE(sb3.data(), nullptr);
+  ASSERT_NE(sb3.data(), sb1.data());
+  ASSERT_FALSE(sb3.empty());
+  ASSERT_EQ(123, sb3.size());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb3.data()[i]);
+  }
+}
+
+TEST(SmallBufferTest, copySelfAssignment) {
+  SmallBuffer sb1(123);
+  for (size_t i = 0; i < 123; ++i) {
+    sb1.data()[i] = (uint8_t)i;
+  }
+
+  // we want a self-assignment here, but we have
+  // to make it look complicated so compilers don't 
+  // detect it too easily
+  SmallBuffer* target = &sb1;
+  *target = sb1;
+  
+  ASSERT_NE(sb1.data(), nullptr);
+  ASSERT_FALSE(sb1.empty());
+  ASSERT_EQ(123, sb1.size());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb1.data()[i]);
+  }
+}
+
+TEST(SmallBufferTest, moveAssignment) {
+  SmallBuffer sb1(123);
+  for (size_t i = 0; i < 123; ++i) {
+    sb1.data()[i] = (uint8_t)i;
+  }
+  uint8_t* p = sb1.data();
+  SmallBuffer sb2;
+  sb2 = std::move(sb1);
+
+  ASSERT_EQ(nullptr, sb1.data());
+  ASSERT_EQ(0, sb1.size());
+  ASSERT_TRUE(sb1.empty());
+
+  ASSERT_EQ(p, sb2.data());
+  ASSERT_EQ(123, sb2.size());
+  ASSERT_FALSE(sb2.empty());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb2.data()[i]);
+  }
+
+  SmallBuffer sb3(147);
+  sb3 = std::move(sb2);
+
+  ASSERT_EQ(nullptr, sb2.data());
+  ASSERT_EQ(0, sb2.size());
+  ASSERT_TRUE(sb2.empty());
+
+  ASSERT_EQ(p, sb3.data());
+  ASSERT_EQ(123, sb3.size());
+  ASSERT_FALSE(sb3.empty());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb3.data()[i]);
+  }
+}
+
+TEST(SmallBufferTest, moveSelfAssignment) {
+  SmallBuffer sb1(123);
+  for (size_t i = 0; i < 123; ++i) {
+    sb1.data()[i] = (uint8_t)i;
+  }
+
+  // we want a self-move assignment here, but we have
+  // to make it look complicated so compilers don't 
+  // detect it too easily
+  SmallBuffer* target = &sb1;
+  *target = std::move(sb1);
+
+  ASSERT_NE(nullptr, sb1.data());
+  ASSERT_EQ(123, sb1.size());
+  ASSERT_FALSE(sb1.empty());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb1.data()[i]);
+  }
+}
 
 class NodeTest
   : public ::testing::Test,
@@ -69,8 +232,8 @@ TEST_F(NodeTest, node_assign_string_slice) {
   auto b = std::make_shared<VPackBuilder>();
   
   b->add(VPackValue(val));
-  n(path) = b->slice();
-  EXPECT_EQ(n(path).getString(), val);
+  n.getOrCreate(path) = b->slice();
+  EXPECT_EQ(n.getOrCreate(path).getString(), val);
    
 }
 
@@ -83,8 +246,8 @@ TEST_F(NodeTest, node_assign_double_slice) {
   auto b = std::make_shared<VPackBuilder>();
   
   b->add(VPackValue(val));
-  n(path) = b->slice();
-  EXPECT_DOUBLE_EQ(n(path).getDouble(), val);
+  n.getOrCreate(path) = b->slice();
+  EXPECT_DOUBLE_EQ(n.getOrCreate(path).getDouble().value(), val);
    
 }
 
@@ -96,8 +259,8 @@ TEST_F(NodeTest, node_assign_int_slice) {
   auto b = std::make_shared<VPackBuilder>();
   
   b->add(VPackValue(val));
-  n(path) = b->slice();
-  EXPECT_EQ(n(path).getInt(), val);
+  n.getOrCreate(path) = b->slice();
+  EXPECT_EQ(n.getOrCreate(path).getInt(), val);
    
 }
 
@@ -111,8 +274,8 @@ TEST_F(NodeTest, node_assign_array_slice) {
     b->add(VPackValue(3.14159265359));
     b->add(VPackValue(64)); }
 
-  n(path) = b->slice();
-  EXPECT_EQ(n(path).getArray().binaryEquals(b->slice()), true);
+  n.getOrCreate(path) = b->slice();
+  EXPECT_EQ(n.getOrCreate(path).getArray()->binaryEquals(b->slice()), true);
    
 }
 
@@ -128,26 +291,26 @@ TEST_F(NodeTest, node_applyOp_set) {
     b->add("op", VPackValue("set"));
     b->add("new", VPackValue(pi)); }
 
-  auto ret = n(path).applyOp(b->slice());
+  auto ret = n.getOrCreate(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), true);
   EXPECT_EQ(ret.get(), nullptr);
-  EXPECT_DOUBLE_EQ(n(path).getDouble(), pi);
+  EXPECT_DOUBLE_EQ(n.getOrCreate(path).getDouble().value(), pi);
 
   b = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder a(b.get());
     b->add("op", VPackValue("set"));
     b->add("new", VPackValue(eleven)); }
 
-  ret = n(path).applyOp(b->slice());
+  ret = n.getOrCreate(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), true);
-  EXPECT_EQ(n(path).getInt(), eleven);
+  EXPECT_EQ(n.getOrCreate(path).getInt(), eleven);
 
   b = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder a(b.get());
     b->add("op", VPackValue("set"));
     b->add("val", VPackValue(eleven)); }
 
-  ret = n(path).applyOp(b->slice());
+  ret = n.getOrCreate(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), false);
   // std::cout << ret.errorMessage() << std::endl;
 
@@ -155,7 +318,7 @@ TEST_F(NodeTest, node_applyOp_set) {
   { VPackObjectBuilder a(b.get());
     b->add("op", VPackValue("set")); }
 
-  ret = n(path).applyOp(b->slice());
+  ret = n.getOrCreate(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), false);
   // std::cout << ret.errorMessage() << std::endl;
 }
@@ -171,14 +334,14 @@ TEST_F(NodeTest, node_applyOp_delete) {
     b.add("op", VPackValue("set"));
     b.add("new", VPackValue(pi)); }
 
-  auto ret = n(path).applyOp(b.slice());
+  auto ret = n.getOrCreate(path).applyOp(b.slice());
   EXPECT_EQ(ret.ok(), true);
 
   b.clear();
   { VPackObjectBuilder a(&b);
     b.add("op", VPackValue("delete")); }
 
-  ret = n(path).applyOp(b.slice());
+  ret = n.getOrCreate(path).applyOp(b.slice());
   EXPECT_EQ(ret.ok(), true);
   EXPECT_NE(ret.get(), nullptr);
   EXPECT_EQ(ret.get()->getDouble(), pi);
@@ -196,7 +359,7 @@ TEST_F(NodeTest, node_applyOp_bs) {
   { VPackObjectBuilder a(&b);
     b.add("op", VPackValue(oper)); }
 
-  auto ret = n(path).applyOp(b.slice());
+  auto ret = n.getOrCreate(path).applyOp(b.slice());
   EXPECT_EQ(ret.ok(), false);
   EXPECT_EQ(ret.errorMessage(), error);
 
@@ -244,47 +407,47 @@ TEST_F(NodeTest, node_applyOp_lock) {
     ulck3.add("by", VPackValue(caller3)); }
 
   // caller1 unlock -> reject (no locks yet)
-  ret = n(path).applyOp(ulck1.slice());
+  ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
   
   // caller1 lock -> accept
-  ret = n(path).applyOp(lck1.slice());
+  ret = n.getOrCreate(path).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), true);
 
   // caller1 lock -> reject (same locker)
-  ret = n(path).applyOp(lck1.slice());
+  ret = n.getOrCreate(path).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), false);
   
   // caller2 lock -> accept
-  ret = n(path).applyOp(lck2.slice());
+  ret = n.getOrCreate(path).applyOp(lck2.slice());
   EXPECT_EQ(ret.ok(), true);
   
   // caller2 lock -> reject (same locker)
-  ret = n(path).applyOp(lck2.slice());
+  ret = n.getOrCreate(path).applyOp(lck2.slice());
   EXPECT_EQ(ret.ok(), false);
   
   // caller1 unlock -> accept
-  ret = n(path).applyOp(ulck1.slice());
+  ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), true);
   
   // caller1 lock -> accept
-  ret = n(path).applyOp(lck1.slice());
+  ret = n.getOrCreate(path).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), true);
   
   // caller1 unlock -> accept
-  ret = n(path).applyOp(ulck1.slice());
+  ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), true);
   
   // caller1 unlock -> reject (not a locker)
-  ret = n(path).applyOp(ulck1.slice());
+  ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
   
   // caller1 write lock -> reject (cannot write lock while still locked by caller2) 
-  ret = n(path).applyOp(wlck1.slice());
+  ret = n.getOrCreate(path).applyOp(wlck1.slice());
   EXPECT_EQ(ret.ok(), false);
 
   // caller2 unlock -> accept
-  ret = n(path).applyOp(ulck2.slice());
+  ret = n.getOrCreate(path).applyOp(ulck2.slice());
   EXPECT_EQ(ret.ok(), true);
 
   // Node should be gone
@@ -292,19 +455,19 @@ TEST_F(NodeTest, node_applyOp_lock) {
   EXPECT_EQ(n.has(path), false);
   
   // caller1 write lock -> accept
-  ret = n(path).applyOp(wlck1.slice());
+  ret = n.getOrCreate(path).applyOp(wlck1.slice());
   EXPECT_EQ(ret.ok(), true);
 
   // caller1 write lock -> reject (exclusive)
-  ret = n(path).applyOp(wlck1.slice());
+  ret = n.getOrCreate(path).applyOp(wlck1.slice());
   EXPECT_EQ(ret.ok(), false);
 
   // caller1 write lock -> reject (exclusive)
-  ret = n(path).applyOp(wlck2.slice());
+  ret = n.getOrCreate(path).applyOp(wlck2.slice());
   EXPECT_EQ(ret.ok(), false);
 
   // caller1 write unlock -> accept
-  ret = n(path).applyOp(wulck1.slice());
+  ret = n.getOrCreate(path).applyOp(wulck1.slice());
   EXPECT_EQ(ret.ok(), true);
 
   // Node should be gone
@@ -316,20 +479,20 @@ TEST_F(NodeTest, node_applyOp_lock) {
   { VPackObjectBuilder a(&b);
     b.add("op", VPackValue("set"));
     b.add("new", VPackValue(pi)); }
-  ret = n(pathpi).applyOp(b.slice());
+  ret = n.getOrCreate(pathpi).applyOp(b.slice());
 
   //////////////// Only lockable I
   
   // caller1 unlock -> reject (no locks yet)
-  ret = n(path).applyOp(ulck1.slice());
+  ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
   
   // caller1 lock -> accept
-  ret = n(path).applyOp(lck1.slice());
+  ret = n.getOrCreate(path).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), false);
 
   // caller1 unlock -> reject (no locks yet)
-  ret = n(path).applyOp(ulck1.slice());
+  ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
 
   // Node should not be gone (pathpi is beneath)
@@ -338,15 +501,15 @@ TEST_F(NodeTest, node_applyOp_lock) {
   //////////////// Only lockable caller1
     
   // II unlock -> reject (no locks yet)
-  ret = n(pathpi).applyOp(ulck1.slice());
+  ret = n.getOrCreate(pathpi).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
   
   // caller1 lock -> accept
-  ret = n(pathpi).applyOp(lck1.slice());
+  ret = n.getOrCreate(pathpi).applyOp(lck1.slice());
   EXPECT_EQ(ret.ok(), false);
 
   // caller1 unlock -> reject (no locks yet)
-  ret = n(pathpi).applyOp(ulck1.slice());
+  ret = n.getOrCreate(pathpi).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
 
   // Node should not be gone (pathpipi holds pi)
@@ -355,6 +518,5 @@ TEST_F(NodeTest, node_applyOp_lock) {
 }
 
 }}} //namespace
-
 
 

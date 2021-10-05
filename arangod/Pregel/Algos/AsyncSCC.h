@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_ASCC_H
-#define ARANGODB_PREGEL_ALGOS_ASCC_H 1
+#pragma once
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
@@ -69,4 +68,3 @@ struct AsyncSCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-#endif

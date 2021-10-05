@@ -12,9 +12,14 @@ include_directories(
   ${PROJECT_BINARY_DIR}/core
 )
 
-include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
-  ${FROZEN_INCLUDE_DIR}
-)
+if (SUPPRESS_EXTERNAL_WARNINGS)
+  include_directories(SYSTEM
+                      ${EXTERNAL_INCLUDE_DIRS}
+                      ${FROZEN_INCLUDE_DIR})
+else ()
+  include_directories(${EXTERNAL_INCLUDE_DIRS}
+                      ${FROZEN_INCLUDE_DIR})
+endif ()
 
 ################################################################################
 ### iresearch-util
@@ -34,6 +39,7 @@ add_executable(${IResearchUtil_TARGET_NAME}
   ./main.cpp
 )
 
+add_sanitizers(${IResearchUtil_TARGET_NAME})
 set_ipo(${IResearchUtil_TARGET_NAME})
 
 set_target_properties(${IResearchUtil_TARGET_NAME}
@@ -85,6 +91,7 @@ add_executable(${IResearchBencmarks_TARGET_NAME}
   ./main.cpp
 )
 
+add_sanitizers(${IResearchBencmarks_TARGET_NAME})
 set_ipo(${IResearchBencmarks_TARGET_NAME})
 
 add_dependencies(${IResearchBencmarks_TARGET_NAME}
@@ -141,6 +148,7 @@ add_executable(${IResearchPDD_TARGET_NAME}
   ./main.cpp
 )
 
+add_sanitizers(${IResearchPDD_TARGET_NAME})
 set_ipo(${IResearchPDD_TARGET_NAME})
 
 add_dependencies(${IResearchPDD_TARGET_NAME}

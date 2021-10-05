@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <cstring>
 #include <iostream>
+#include <memory>
 
 #include "Basics/operating-system.h"
 
@@ -58,35 +59,33 @@ LogAppenderStream::LogAppenderStream(std::string const& filename, int fd)
       _bufferSize(0),
       _fd(fd),
       _useColors(false),
-      _escape(Logger::getUseEscaped()) {}
+      _controlEscape(Logger::getUseControlEscaped()),
+      _unicodeEscape(Logger::getUseUnicodeEscaped()) {
+  if (_controlEscape) {
+    if (_unicodeEscape) {
+      _escaper = std::make_unique<Escaper<ControlCharsEscaper, UnicodeCharsEscaper>>();
+    } else {
+      _escaper = std::make_unique<Escaper<ControlCharsEscaper, UnicodeCharsRetainer>>();
+    }
+  } else {
+    if (_unicodeEscape) {
+      _escaper = std::make_unique<Escaper<ControlCharsSuppressor, UnicodeCharsEscaper>>();
+    } else {
+      _escaper = std::make_unique<Escaper<ControlCharsSuppressor, UnicodeCharsRetainer>>();
+    }
+  }
+}
 
 size_t LogAppenderStream::determineOutputBufferSize(std::string const& message) const {
-  if (_escape) {
-    return TRI_MaxLengthEscapeControlsCString(message.size());
-  }
-  return message.size() + 2;
+  return _escaper->determineOutputBufferSize(message)+ 2; //+2 bytes because it needs to end with '\n' and '\0'
 }
 
 size_t LogAppenderStream::writeIntoOutputBuffer(std::string const& message) {
-  if (_escape) {
-    size_t escapedLength = 0;
-    // this is guaranteed to succeed given that we already have a buffer
-    TRI_EscapeControlsCString(message.data(), message.size(), _buffer.get(),
-                              &escapedLength, true);
-    return escapedLength;
-  }
-
-  unsigned char const* p = reinterpret_cast<unsigned char const*>(message.data());
-  unsigned char const* e = p + message.size();
-  char* s = _buffer.get();
-  char* q = s;
-  while (p < e) {
-    unsigned char c = *p++;
-    *q++ = c < 0x20 ? ' ' : c;
-  }
-  *q++ = '\n';
-  *q = '\0';
-  return q - s;
+  char* output = _buffer.get();
+  _escaper->writeIntoOutputBuffer(message, output);
+  *output++ = '\n';
+  *output = '\0';
+  return (output - _buffer.get());
 }
 
 void LogAppenderStream::logMessage(LogMessage const& message) {
@@ -239,7 +238,7 @@ void LogAppenderFile::reopenAll() {
     std::string backup(filename);
     backup.append(".old");
 
-    FileUtils::remove(backup);
+    std::ignore = FileUtils::remove(backup);
     TRI_RenameFile(filename.c_str(), backup.c_str());
 
     // open new log file
@@ -263,7 +262,7 @@ void LogAppenderFile::reopenAll() {
 #endif
 
     if (!Logger::_keepLogRotate) {
-      FileUtils::remove(backup);
+      std::ignore = FileUtils::remove(backup);
     }
 
     // and also tell the appender of the file descriptor change

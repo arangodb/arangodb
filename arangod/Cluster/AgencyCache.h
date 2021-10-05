@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_AGENCY_CACHE
-#define ARANGOD_CLUSTER_AGENCY_CACHE 1
+#pragma once
 
 #include "Agency/Store.h"
 #include "Basics/Result.h"
@@ -46,18 +45,16 @@ class AgencyCache final : public arangodb::Thread {
     uint64_t version;        // Plan / Current version
     databases_t dbs; // touched databases
     consensus::query_t rest; // Plan / Current rest
-    change_set_t (consensus::index_t const& i, uint64_t const& v, databases_t const& d,
-                  consensus::query_t const& r) :
+    change_set_t(consensus::index_t const& i, uint64_t const& v, databases_t const& d,
+                 consensus::query_t const& r) :
       ind(i), version(v), dbs(d), rest(r) {}
-    change_set_t (consensus::index_t&& i, uint64_t&& v, databases_t&& d, consensus::query_t&& r) :
+    change_set_t(consensus::index_t&& i, uint64_t&& v, databases_t&& d, consensus::query_t&& r) :
       ind(std::move(i)), version(std::move(v)), dbs(std::move(d)), rest(std::move(r)) {}
   };
 
   /// @brief start off with our server
-  explicit AgencyCache(
-    application_features::ApplicationServer& server,
-    AgencyCallbackRegistry& callbackRegistry,
-    int shutdownCode);
+  explicit AgencyCache(application_features::ApplicationServer& server,
+                       AgencyCallbackRegistry& callbackRegistry, ErrorCode shutdownCode);
 
   ~AgencyCache();
 
@@ -97,7 +94,7 @@ class AgencyCache final : public arangodb::Thread {
   void unregisterCallback(std::string const& key, uint64_t const& id);
 
   /// @brief Wait to be notified, when a Raft index has arrived.
-  futures::Future<Result> waitFor(consensus::index_t index);
+  [[nodiscard]] futures::Future<Result> waitFor(consensus::index_t index);
 
   /// @brief Cache has these path? AgencyCommHelper::path is prepended
   bool has(std::string const& path) const;
@@ -174,7 +171,7 @@ class AgencyCache final : public arangodb::Thread {
   /// @brief shut down code for futures that are unresolved.
   /// this should be TRI_ERROR_SHUTTING_DOWN normally, but can be overridden
   /// during testing
-  int const _shutdownCode;
+  ErrorCode const _shutdownCode;
 
   /// @brief Make sure, that we have seen in the beginning a snapshot
   std::atomic<bool> _initialized;
@@ -209,4 +206,3 @@ ostream& operator<<(ostream& o, arangodb::AgencyCache::databases_t const& d);
 }
 
 
-#endif

@@ -1262,10 +1262,6 @@ function geoFunctionsTestSuite() {
       assertEqual(getQueryResults(query, {"polygon": polygon, "cc": [3.0, 3.0]}), [false]);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
     testIntersectsMultiPolygon1: function () {
       let multipoly = {"type": "MultiPolygon", "coordinates": [[[[0,0], [1,0], [0,1], [0,0]]],[[[2,2], [3,2], [2,3], [2,2]]]] };
       let valid = [[0.01, 0.01], [0.01, 0.99], [0.99, 0.01], [0.49, 0.49],
@@ -1279,11 +1275,6 @@ function geoFunctionsTestSuite() {
       assertEqual(getQueryResults(query, {"polygon": multipoly, "cc": [3.0, 3.0]}), [false]);
     },
 
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
     testIntersectsMultiPolygon2: function () {
       let multipoly = {"type": "MultiPolygon", "coordinates": [[[[0,0], [1,0], [0,1], [0,0]]],[[[2,2], [3,2], [2,3], [2,2]]]] };
       let valid = [{"type": "Polygon","coordinates": [[[2.5,2],[3,2.0],[3,2.5],[2.5,2.5],[2.5,2]]]},
@@ -1296,6 +1287,26 @@ function geoFunctionsTestSuite() {
       });
       assertEqual(getQueryResults(query, {"polygon": multipoly, "other": {"type": "LineString","coordinates": [[2.5,1],[3,0.05]]}}), [false]);
     },
+
+    testIntersectionSymmetry: function() {
+      let poly = { "type": "Polygon", "coordinates": [
+        [[ 37.614323, 55.705898 ],
+          [ 37.615825, 55.705898 ],
+          [ 37.615825, 55.70652  ],
+          [ 37.614323, 55.70652  ],
+          [ 37.614323, 55.705898 ]]
+      ]};
+
+      assertEqual(getQueryResults(
+        `LET point = GEO_POINT(37.615, 55.706)
+         RETURN GEO_INTERSECTS(@poly, GEO_POINT(37.615, 55.706))`, { "poly" : poly }),
+        [true]);
+
+      assertEqual(getQueryResults(
+        `LET point = GEO_POINT(37.615, 55.706)
+         RETURN GEO_INTERSECTS(GEO_POINT(37.615, 55.706), @poly)`, { "poly" : poly }),
+        [true]);
+    }
   };
 }
 

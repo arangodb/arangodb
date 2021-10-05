@@ -40,6 +40,7 @@
 
 #include <chrono>
 #include <thread>
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -135,16 +136,16 @@ void GeneralServer::stopConnections() {
 }
 
 void GeneralServer::stopWorking() {
-  auto now = std::chrono::system_clock::now();
+  auto const started {std::chrono::system_clock::now()};
+  constexpr auto timeout {std::chrono::seconds(5)};
   do {
-    std::unique_lock<std::recursive_mutex> guard(_tasksLock);
-    bool done = _commTasks.empty();
-    guard.unlock();
-    if (done) {
-      break;
+    {
+      std::unique_lock<std::recursive_mutex> guard(_tasksLock);
+      if (_commTasks.empty())
+        break;
     }
     std::this_thread::yield();
-  } while((std::chrono::system_clock::now() - now) < std::chrono::seconds(5));
+  } while((std::chrono::system_clock::now() - started) < timeout);
   {
     std::lock_guard<std::recursive_mutex> guard(_tasksLock);
     _commTasks.clear();
@@ -169,18 +170,8 @@ bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
 }
 
 IoContext& GeneralServer::selectIoContext() {
-  unsigned low = _contexts[0].clients();
-  size_t lowpos = 0;
-
-  for (size_t i = 1; i < _contexts.size(); ++i) {
-    unsigned x = _contexts[i].clients();
-    if (x < low) {
-      low = x;
-      lowpos = i;
-    }
-  }
-
-  return _contexts[lowpos];
+  return *std::min_element(_contexts.begin(), _contexts.end(), 
+    [](auto const &a, auto const &b) { return a.clients() < b.clients(); });
 }
 
 #ifdef USE_ENTERPRISE

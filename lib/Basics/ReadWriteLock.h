@@ -22,8 +22,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_READ_WRITE_LOCK_H
-#define ARANGODB_BASICS_READ_WRITE_LOCK_H 1
+#pragma once
 
 #include <atomic>
 #include <chrono>
@@ -123,4 +122,3 @@ class ReadWriteLock {
 };
 }  // namespace arangodb::basics
 
-#endif

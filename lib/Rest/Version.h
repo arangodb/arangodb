@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_VERSION_H
-#define ARANGODB_REST_VERSION_H 1
+#pragma once
 
 #include <map>
 #include <string>
@@ -79,71 +78,76 @@ namespace rest {
 
 class Version {
  private:
-  /// @brief create the version information
+  // create the version information
   Version() = delete;
   Version(Version const&) = delete;
   Version& operator=(Version const&) = delete;
 
  public:
-  /// @brief parse a version string into major, minor
+  // parse a version string into major, minor
   /// returns -1, -1 when the version string has an invalid format
   static std::pair<int, int> parseVersionString(std::string const&);
 
-  /// @brief initialize
+  // initialize
   static void initialize();
 
-  /// @brief get numeric server version
+  // get numeric server version
   static int32_t getNumericServerVersion();
 
-  /// @brief get server version
+  // get server version
   static std::string getServerVersion();
 
-  /// @brief get BOOST version
+  // get BOOST version
   static std::string getBoostVersion();
 
-  /// @brief get boost reactor type
+  // get boost reactor type
   static std::string getBoostReactorType();
 
-  /// @brief get RocksDB version
+  // get RocksDB version
   static std::string getRocksDBVersion();
 
-  /// @brief get V8 version
+  // get V8 version
   static std::string getV8Version();
 
-  /// @brief get OpenSSL version
+  // get OpenSSL version
   static std::string getOpenSSLVersion(bool compileTime);
 
-  /// @brief get vpack version
+  // get vpack version
   static std::string getVPackVersion();
 
-  /// @brief get zlib version
+  // get zlib version
   static std::string getZLibVersion();
 
-  /// @brief get ICU version
+  // get ICU version
   static std::string getICUVersion();
 
-  /// @brief get IResearch version
+  // get IResearch version
   static std::string getIResearchVersion();
 
-  /// @brief get compiler
+  // get compiler
   static std::string getCompiler();
 
-  /// @brief get endianness
+  // get endianness
   static std::string getEndianness();
 
-  /// @brief get build date
+  // get plaform
+  static std::string getPlatform();
+
+  // get build date
   static std::string getBuildDate();
 
-  /// @brief get build repository
+  // get build repository
   static std::string getBuildRepository();
+  static std::string getEnterpriseBuildRepository();
+  static std::string getOskarBuildRepository();
 
-  /// @brief return a server version string
+  // return a server version string
   static std::string getVerboseVersionString();
 
-  /// @brief get detailed version information as a (multi-line) string
+  // get detailed version information as a (multi-line) string
   static std::string getDetailed();
 
-  /// @brief VelocyPack all data
+  // VelocyPack all data
   static void getVPack(arangodb::velocypack::Builder&);
 
  public:
@@ -152,4 +156,3 @@ class Version {
 }  // namespace rest
 }  // namespace arangodb
 
-#endif

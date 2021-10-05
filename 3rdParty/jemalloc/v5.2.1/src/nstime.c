@@ -152,19 +152,65 @@ nstime_monotonic_impl(void) {
 }
 nstime_monotonic_t *JET_MUTABLE nstime_monotonic = nstime_monotonic_impl;
 
-static bool
+prof_time_res_t opt_prof_time_res =
+	prof_time_res_default;
+
+const char *prof_time_res_mode_names[] = {
+	"default",
+	"high",
+};
+
+
+static void
+nstime_get_realtime(nstime_t *time) {
+#if defined(JEMALLOC_HAVE_CLOCK_REALTIME) && !defined(_WIN32)
+	struct timespec ts;
+
+	clock_gettime(CLOCK_REALTIME, &ts);
+	nstime_init2(time, ts.tv_sec, ts.tv_nsec);
+#else
+	unreachable();
+#endif
+}
+
+static void
+nstime_prof_update_impl(nstime_t *time) {
+	nstime_t old_time;
+
+	nstime_copy(&old_time, time);
+
+	if (opt_prof_time_res == prof_time_res_high) {
+		nstime_get_realtime(time);
+	} else {
+		nstime_get(time);
+	}
+}
+nstime_prof_update_t *JET_MUTABLE nstime_prof_update = nstime_prof_update_impl;
+
+static void
 nstime_update_impl(nstime_t *time) {
 	nstime_t old_time;
 
 	nstime_copy(&old_time, time);
-	nstime_get(time);
+  nstime_get(time);
 
 	/* Handle non-monotonic clocks. */
 	if (unlikely(nstime_compare(&old_time, time) > 0)) {
 		nstime_copy(time, &old_time);
-		return true;
 	}
-
-	return false;
 }
 nstime_update_t *JET_MUTABLE nstime_update = nstime_update_impl;
+
+void
+nstime_init_update(nstime_t *time) {
+	nstime_init_zero(time);
+	nstime_update(time);
+}
+
+void
+nstime_prof_init_update(nstime_t *time) {
+	nstime_init_zero(time);
+	nstime_prof_update(time);
+}
+
+

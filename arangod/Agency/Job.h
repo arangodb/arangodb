@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_JOB_H
-#define ARANGOD_CONSENSUS_JOB_H 1
+#pragma once
 
 #include <stddef.h>
 #include <algorithm>
@@ -49,6 +48,7 @@ namespace consensus {
 class Node;
 
 enum JOB_STATUS { TODO, PENDING, FINISHED, FAILED, NOTFOUND };
+const std::vector<std::string> jobStatus {"ToDo", "Pending", "Finished", "Failed"};
 const std::vector<std::string> pos({"/Target/ToDo/", "/Target/Pending/",
                                     "/Target/Finished/", "/Target/Failed/"});
 extern std::string const mapUniqueToShortID;
@@ -60,6 +60,7 @@ extern std::string const cleanedPrefix;
 extern std::string const toBeCleanedPrefix;
 extern std::string const failedServersPrefix;
 extern std::string const planColPrefix;
+extern std::string const planRepLogPrefix;
 extern std::string const curColPrefix;
 extern std::string const planDBPrefix;
 extern std::string const curServersKnown;
@@ -87,6 +88,8 @@ struct Job {
   virtual ~Job();
 
   virtual void run(bool& aborts) = 0;
+
+  bool considerCancellation();
 
   void runHelper(std::string const& server, std::string const& shard, bool& aborts) {
     if (_status == FAILED) {  // happens when the constructor did not work
@@ -371,4 +374,3 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

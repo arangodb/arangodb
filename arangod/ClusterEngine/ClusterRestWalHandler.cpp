@@ -139,7 +139,7 @@ void ClusterRestWalHandler::flush() {
   }
 
   auto& feature = server().getFeature<ClusterFeature>();
-  int res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
+  auto res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }

@@ -40,9 +40,6 @@ static const char* collectionName2 = "collection_2";
 
 static const char* viewName1 = "view_1";
 static const char* viewName2 = "view_2";
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
 
 class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
  protected:
@@ -52,10 +49,12 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
     auto updateJson = VPackParser::fromJson(
       std::string("{") +
         "\"links\": {"
-        "\"" + collectionName1 + "\": {\"includeAllFields\": true},"
-        "\"" + collectionName2 + "\": {\"includeAllFields\": true}"
+        "\"" + collectionName1 + "\": {\"includeAllFields\": true, \"version\": "
+          + std::to_string(static_cast<uint32_t>(linkVersion())) + "},"
+        "\"" + collectionName2 + "\": {\"includeAllFields\": true, \"version\": "
+          + std::to_string(static_cast<uint32_t>(linkVersion())) + "}"
       "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -230,7 +229,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(IResearchQueryLateMaterializationTest, test_1) {
+TEST_P(IResearchQueryLateMaterializationTest, test_1) {
   auto const query = std::string("FOR d IN ") + viewName2 +
       " SEARCH d.value IN [1, 2, 11, 12] LET a = NOOPT(d.foo) LET e = SUM(FOR c IN " + viewName1 +
       " LET p = CONCAT(c.foo, c.foo) RETURN p) SORT CONCAT(a, e) LIMIT 10 RETURN d";
@@ -245,7 +244,7 @@ TEST_F(IResearchQueryLateMaterializationTest, test_1) {
   executeAndCheck(query, expectedDocs, false);
 }
 
-TEST_F(IResearchQueryLateMaterializationTest, test_2) {
+TEST_P(IResearchQueryLateMaterializationTest, test_2) {
   auto const query = std::string("FOR d IN ") + viewName2 +
       " FILTER d.value IN [1, 2] SORT d.foo DESC LIMIT 10 RETURN d";
 
@@ -257,7 +256,7 @@ TEST_F(IResearchQueryLateMaterializationTest, test_2) {
   executeAndCheck(query, expectedDocs, false);
 }
 
-TEST_F(IResearchQueryLateMaterializationTest, test_3) {
+TEST_P(IResearchQueryLateMaterializationTest, test_3) {
   auto const query = std::string("FOR d IN ") + viewName2 +
       " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LET c = BM25(d) * 2 SORT CONCAT(BM25(d), c, d.value) LIMIT 10 RETURN d";
 
@@ -271,14 +270,14 @@ TEST_F(IResearchQueryLateMaterializationTest, test_3) {
   executeAndCheck(query, expectedDocs, false);
 }
 
-TEST_F(IResearchQueryLateMaterializationTest, test_4) {
+TEST_P(IResearchQueryLateMaterializationTest, test_4) {
   auto const query = std::string("FOR d IN ") + viewName2 +
       " SEARCH d.value IN [1, 2, 11, 12] SORT RAND(), d.value DESC LIMIT 10 RETURN d";
 
   executeAndCheck(query, std::vector<arangodb::velocypack::Slice>{}, true);
 }
 
-TEST_F(IResearchQueryLateMaterializationTest, test_5) {
+TEST_P(IResearchQueryLateMaterializationTest, test_5) {
   auto const query = std::string("FOR d IN ") + viewName2 +
       " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC, d.foo LIMIT 10 RETURN d";
 
@@ -292,7 +291,7 @@ TEST_F(IResearchQueryLateMaterializationTest, test_5) {
   executeAndCheck(query, expectedDocs, false);
 }
 
-TEST_F(IResearchQueryLateMaterializationTest, test_6) {
+TEST_P(IResearchQueryLateMaterializationTest, test_6) {
   auto const query = std::string("FOR d IN ") + viewName2 +
       " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 10 RETURN d";
 
@@ -306,7 +305,7 @@ TEST_F(IResearchQueryLateMaterializationTest, test_6) {
   executeAndCheck(query, expectedDocs, false);
 }
 
-TEST_F(IResearchQueryLateMaterializationTest, test_7) {
+TEST_P(IResearchQueryLateMaterializationTest, test_7) {
   auto const query = std::string("FOR d IN ") + viewName2 +
       " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 10 SORT NOOPT(d.value) ASC RETURN d";
 
@@ -320,21 +319,21 @@ TEST_F(IResearchQueryLateMaterializationTest, test_7) {
   executeAndCheck(query, expectedDocs, false);
 }
 
-TEST_F(IResearchQueryLateMaterializationTest, test_8) {
+TEST_P(IResearchQueryLateMaterializationTest, test_8) {
   auto const query = std::string("FOR d IN ") + viewName2 +
       " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 10 SORT TFIDF(d) DESC LIMIT 4 RETURN d";
 
    executeAndCheck(query, std::vector<arangodb::velocypack::Slice>{}, true);
 }
 
-TEST_F(IResearchQueryLateMaterializationTest, test_9) {
+TEST_P(IResearchQueryLateMaterializationTest, test_9) {
   auto const query = std::string("FOR d IN ") + viewName2 +
       " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 10 LET c = CONCAT(NOOPT(d._key), '-C') RETURN c";
 
    executeAndCheck(query, std::vector<arangodb::velocypack::Slice>{}, true);
 }
 
-TEST_F(IResearchQueryLateMaterializationTest, test_10) {
+TEST_P(IResearchQueryLateMaterializationTest, test_10) {
   auto const query = std::string("FOR d IN ") + viewName2 +
       " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 3, 1 RETURN d";
 
@@ -345,14 +344,14 @@ TEST_F(IResearchQueryLateMaterializationTest, test_10) {
   executeAndCheck(query, expectedDocs, false);
 }
 
-TEST_F(IResearchQueryLateMaterializationTest, test_11) {
+TEST_P(IResearchQueryLateMaterializationTest, test_11) {
   auto const query = std::string("FOR d IN ") + viewName2 +
       " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 5, 10 RETURN d";
 
   executeAndCheck(query, std::vector<arangodb::velocypack::Slice>{}, false);
 }
 
-TEST_F(IResearchQueryLateMaterializationTest, test_12) {
+TEST_P(IResearchQueryLateMaterializationTest, test_12) {
   auto const query = std::string("FOR c IN ") + viewName1 +
       " SEARCH c.value == 1 FOR d IN " + viewName2 +
       " SEARCH d.value IN [c.value, c.value + 1] SORT d.value DESC LIMIT 10 RETURN d";
@@ -364,3 +363,8 @@ TEST_F(IResearchQueryLateMaterializationTest, test_12) {
 
   executeAndCheck(query, expectedDocs, false);
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryLateMaterializationTest,
+  IResearchQueryLateMaterializationTest,
+  GetLinkVersions());

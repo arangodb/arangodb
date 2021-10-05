@@ -235,7 +235,7 @@ class TtlThread final : public Thread {
     
     // mark ourselves as busy
     _working = true;
-    auto guard = scopeGuard([this]() { _working = false; });
+    auto guard = scopeGuard([this]() noexcept { _working = false; });
   
     LOG_TOPIC("139af", TRACE, Logger::TTL) << "ttl thread work()";
 
@@ -260,7 +260,7 @@ class TtlThread final : public Thread {
       }
           
       // make sure we decrease the reference counter later
-      TRI_DEFER(vocbase->release());
+      auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
       
       LOG_TOPIC("ec905", TRACE, Logger::TTL) << "TTL thread going to process database '" << vocbase->name() << "'";
 
@@ -314,10 +314,10 @@ class TtlThread final : public Thread {
           bindVars->add("limit", VPackValue(std::min(properties.maxCollectionRemoves, limitLeft)));
           bindVars->close();
 
-          aql::Query query(transaction::StandaloneContext::Create(*vocbase),
-                           aql::QueryString(::removeQuery), bindVars);
-          query.collections().add(collection->name(), AccessMode::Type::WRITE, aql::Collection::Hint::Shard);
-          aql::QueryResult queryResult = query.executeSync();
+          auto query = aql::Query::create(transaction::StandaloneContext::Create(*vocbase),
+                                          aql::QueryString(::removeQuery), std::move(bindVars));
+          query->collections().add(collection->name(), AccessMode::Type::WRITE, aql::Collection::Hint::Shard);
+          aql::QueryResult queryResult = query->executeSync();
 
           if (queryResult.result.fail()) {
             // we can probably live with an error here...
@@ -401,7 +401,7 @@ TtlFeature::~TtlFeature() {
 }
 
 void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("ttl", "TTL options");
+  options->addSection("ttl", "TTL index options");
 
   options->addOption("ttl.frequency", "frequency (in milliseconds) for the TTL background thread invocation. "
                      "a value of 0 turns the TTL background thread off entirely",

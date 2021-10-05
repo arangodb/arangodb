@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPH_CONSTANT_WEIGHT_SHORTEST_PATH_FINDER_H
-#define ARANGODB_GRAPH_CONSTANT_WEIGHT_SHORTEST_PATH_FINDER_H 1
+#pragma once
 
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -33,6 +32,7 @@
 #include <memory>
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace velocypack {
 class Slice;
@@ -45,14 +45,21 @@ struct ShortestPathOptions;
 class ConstantWeightShortestPathFinder : public ShortestPathFinder {
  private:
   struct PathSnippet {
-    arangodb::velocypack::StringRef const _pred;
-    graph::EdgeDocumentToken _path;
+    PathSnippet() noexcept;
+    PathSnippet(arangodb::velocypack::StringRef pred, graph::EdgeDocumentToken&& path) noexcept;
+    PathSnippet(PathSnippet&& other) noexcept = default;
+    PathSnippet& operator=(PathSnippet&& other) ARANGODB_NOEXCEPT_ASSIGN_OP = default;
+    
+    bool empty() const noexcept {
+      return _pred.empty();
+    }
 
-    PathSnippet(arangodb::velocypack::StringRef& pred, graph::EdgeDocumentToken&& path);
+    arangodb::velocypack::StringRef _pred;
+    graph::EdgeDocumentToken _path;
   };
 
-  typedef std::deque<arangodb::velocypack::StringRef> Closure;
-  typedef std::unordered_map<arangodb::velocypack::StringRef, PathSnippet*> Snippets;
+  typedef std::vector<arangodb::velocypack::StringRef> Closure;
+  typedef std::unordered_map<arangodb::velocypack::StringRef, PathSnippet> Snippets;
 
  public:
   explicit ConstantWeightShortestPathFinder(ShortestPathOptions& options);
@@ -66,32 +73,48 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
   void clear() override;
 
  private:
+  // side-effect: populates _neighbors
   void expandVertex(bool backward, arangodb::velocypack::StringRef vertex);
 
   void clearVisited();
 
-  bool expandClosure(Closure& sourceClosure, Snippets& sourceSnippets, Snippets& targetSnippets,
+  bool expandClosure(Closure& sourceClosure, Snippets& sourceSnippets, Snippets const& targetSnippets,
                      bool direction, arangodb::velocypack::StringRef& result);
 
-  void fillResult(arangodb::velocypack::StringRef& n,
+  void fillResult(arangodb::velocypack::StringRef n,
                   arangodb::graph::ShortestPathResult& result);
 
+  size_t pathSnippetMemoryUsage() const noexcept;
+
  private:
+  arangodb::ResourceMonitor& _resourceMonitor;
+
   Snippets _leftFound;
   Closure _leftClosure;
 
   Snippets _rightFound;
   Closure _rightClosure;
-
-  Closure _nextClosure;
-
-  std::vector<arangodb::velocypack::StringRef> _neighbors;
-  std::vector<graph::EdgeDocumentToken> _edges;
-
+  
   std::unique_ptr<EdgeCursor> _forwardCursor;
   std::unique_ptr<EdgeCursor> _backwardCursor;
+
+  // temp values, only used inside expandClosure()
+  Closure _nextClosure;
+
+  struct Neighbor {
+    arangodb::velocypack::StringRef vertex;
+    graph::EdgeDocumentToken edge;
+
+    Neighbor(arangodb::velocypack::StringRef v, graph::EdgeDocumentToken e) noexcept
+      : vertex(v), edge(e) {};
+    
+    static constexpr size_t itemMemoryUsage() {
+      return sizeof(decltype(vertex)) + sizeof(decltype(edge));
+    }
+  };
+    
+  std::vector<Neighbor> _neighbors;
 };
 
 }  // namespace graph
 }  // namespace arangodb
-#endif

@@ -120,6 +120,12 @@ void arangodb::basics::TRI_ParseAttributeString(std::string const& input,
   TRI_ParseAttributeString(arangodb::velocypack::StringRef(input), result, allowExpansion);
 }
 
+void arangodb::basics::TRI_ParseAttributeString(std::string_view input,
+                                                std::vector<AttributeName>& result,
+                                                bool allowExpansion) {
+  TRI_ParseAttributeString(arangodb::velocypack::StringRef(input.data(), input.size()), result, allowExpansion);
+}
+
 void arangodb::basics::TRI_ParseAttributeString(arangodb::velocypack::StringRef const& input,
                                                 std::vector<AttributeName>& result,
                                                 bool allowExpansion) {
@@ -189,7 +195,8 @@ bool arangodb::basics::TRI_AttributeNamesHaveExpansion(std::vector<AttributeName
 /// @brief append the attribute name to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 
-std::ostream& operator<<(std::ostream& stream, arangodb::basics::AttributeName const& name) {
+std::ostream& arangodb::basics::operator<<(std::ostream& stream,
+                                           arangodb::basics::AttributeName const& name) {
   stream << name.name;
   if (name.shouldExpand) {
     stream << "[*]";
@@ -201,8 +208,8 @@ std::ostream& operator<<(std::ostream& stream, arangodb::basics::AttributeName c
 /// @brief append the attribute names to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 
-std::ostream& operator<<(std::ostream& stream,
-                         std::vector<arangodb::basics::AttributeName> const& attributes) {
+std::ostream& arangodb::basics::operator<<(std::ostream& stream,
+                                           std::vector<arangodb::basics::AttributeName> const& attributes) {
   size_t const n = attributes.size();
   for (size_t i = 0; i < n; ++i) {
     if (i > 0) {

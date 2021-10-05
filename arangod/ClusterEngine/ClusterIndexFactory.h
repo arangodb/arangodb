@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_INDEX_FACTORY_H
-#define ARANGOD_CLUSTER_CLUSTER_INDEX_FACTORY_H 1
+#pragma once
 
 #include "Indexes/IndexFactory.h"
 
@@ -30,28 +29,29 @@ namespace arangodb {
 
 class ClusterIndexFactory final : public IndexFactory {
  public:
+  static void linkIndexFactories(application_features::ApplicationServer& server,
+                                 IndexFactory& factory);
   explicit ClusterIndexFactory(application_features::ApplicationServer&);
   ~ClusterIndexFactory() = default;
 
-  Result enhanceIndexDefinition( // normalize definition
-    velocypack::Slice const definition, // source definition
-    velocypack::Builder& normalized, // normalized definition (out-param)
-    bool isCreation, // definition for index creation
-    TRI_vocbase_t const& vocbase // index vocbase
+  Result enhanceIndexDefinition(           // normalize definition
+      velocypack::Slice const definition,  // source definition
+      velocypack::Builder& normalized,     // normalized definition (out-param)
+      bool isCreation,                     // definition for index creation
+      TRI_vocbase_t const& vocbase         // index vocbase
   ) const override;
 
-  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" => "hash")
-  /// used to display storage engine capabilities
+  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
+  /// "hash") used to display storage engine capabilities
   std::unordered_map<std::string, std::string> indexAliases() const override;
 
-  void fillSystemIndexes(arangodb::LogicalCollection& col,
-                         std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const override;
+  void fillSystemIndexes(LogicalCollection& col,
+                         std::vector<std::shared_ptr<Index>>& systemIndexes) const override;
 
   /// @brief create indexes from a list of index definitions
-  void prepareIndexes(LogicalCollection& col, arangodb::velocypack::Slice const& indexesSlice,
-                      std::vector<std::shared_ptr<arangodb::Index>>& indexes) const override;
+  void prepareIndexes(LogicalCollection& col, velocypack::Slice indexesSlice,
+                      std::vector<std::shared_ptr<Index>>& indexes) const override;
 };
 
 }  // namespace arangodb
 
-#endif

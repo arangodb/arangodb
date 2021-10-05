@@ -90,7 +90,11 @@ inline int openFile(std::string const& path, int flags) {
 /// @brief Closes an open file and sets the status
 inline void closeFile(int& fd, arangodb::Result& status) {
   TRI_ASSERT(fd >= 0);
-  status = arangodb::Result{TRI_CLOSE(fd)};
+  if (0 != TRI_CLOSE(fd)) {
+    status = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  } else {
+    status = arangodb::Result{};
+  }
   fd = -1;
 }
 
@@ -254,7 +258,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
     // path exists, but is a file, not a directory
     if (!isDirectory) {
       _status.reset(TRI_ERROR_FILE_EXISTS,
-                    "path specified already exists as a non-directory file");
+                    std::string("the specified path '") + _path + "' already exists as a non-directory file");
       return;
     }
 
@@ -263,7 +267,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
       // directory exists, has files, and we aren't allowed to overwrite
       if (requireEmpty) {
         _status.reset(TRI_ERROR_CANNOT_OVERWRITE_FILE,
-                      "path specified is a non-empty directory");
+                      std::string("the specified path '") + _path + "' is a non-empty directory");
         return;
       }
 
@@ -279,7 +283,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
     if (create) {
       long systemError;
       std::string errorMessage;
-      int res = TRI_CreateDirectory(_path.c_str(), systemError, errorMessage);
+      auto res = TRI_CreateDirectory(_path.c_str(), systemError, errorMessage);
       if (res != TRI_ERROR_NO_ERROR) {
         if (res == TRI_ERROR_SYS_ERROR) {
           res = TRI_ERROR_CANNOT_CREATE_DIRECTORY;
@@ -464,19 +468,8 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
 
   if (isGzip) {
-    char const* gzFlags = nullptr;
-
-    // gzip is going to perform a redundant close,
-    //  simpler code to give it redundant handle
-    _gzfd = TRI_DUP(_fd);
-
-    if (O_WRONLY & flags) {
-      gzFlags = "wb";
-    } else {
-      gzFlags = "rb";
-    } // else
-    _gzFile = gzdopen(_gzfd, gzFlags);
-  } // if
+    prepareGzip((O_WRONLY & _flags) ? "wb" : "rb");
+  }
 }
 
 ManagedDirectory::File::File(ManagedDirectory const& directory,
@@ -498,19 +491,8 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
 
   if (isGzip) {
-    char const* gzFlags = nullptr;
-
-    // gzip is going to perform a redundant close,
-    //  simpler code to give it redundant handle
-    _gzfd = TRI_DUP(_fd);
-
-    if (0 /*O_WRONLY & flags*/) {
-      gzFlags = "wb";
-    } else {
-      gzFlags = "rb";
-    } // else
-    _gzFile = gzdopen(_gzfd, gzFlags);
-  } // if
+    prepareGzip("rb");
+  }
 }
 
 ManagedDirectory::File::~File() {
@@ -526,6 +508,28 @@ ManagedDirectory::File::~File() {
       ::closeFile(_fd, _status);
     }
   } catch (...) {
+  }
+}
+
+void ManagedDirectory::File::prepareGzip(char const* gzFlags) {
+  TRI_ASSERT(_gzFile == nullptr);
+
+  if (_fd >= 0) {
+    // gzip is going to perform a redundant close,
+    //  simpler code to give it redundant handle
+    _gzfd = TRI_DUP(_fd);
+  }
+    
+  _gzFile = gzdopen(_gzfd, gzFlags);
+
+  if (_gzFile != nullptr) {
+    // allocate a larger buffer for decompression.
+    // 128kb seems to be enough here... larger buffers didn't
+    // really improve speed during testing
+    int r = gzbuffer(_gzFile, 128 * 1024); 
+    if (r != 0) {
+      _status.reset(TRI_ERROR_OUT_OF_MEMORY, "unable to allocate gzip buffer");
+    }
   }
 }
 
@@ -553,7 +557,10 @@ void ManagedDirectory::File::writeNoLock(char const* data, size_t length) {
   }
 #endif
   if (isGzip()) {
-    gzwrite(_gzFile, data, static_cast<unsigned int>(length));
+    int const written = gzwrite(_gzFile, data, static_cast<unsigned int>(length));
+    if (written < (int)length) {
+      _status = ::genericError(_path, _flags);
+    }
   } else {
     ::rawWrite(_fd, data, length, _status, _path, _flags);
   }
@@ -645,15 +652,15 @@ Result const& ManagedDirectory::File::close() {
 }
 
 
-TRI_read_return_t ManagedDirectory::File::offset() const {
+std::int64_t ManagedDirectory::File::offset() const {
   MUTEX_LOCKER(lock, _mutex);
 
-  TRI_read_return_t fileBytesRead = -1;
+  std::int64_t fileBytesRead = -1;
 
   if (isGzip()) {
     fileBytesRead = gzoffset(_gzFile);
   } else {
-    fileBytesRead = (TRI_read_return_t)TRI_LSEEK(_fd, 0L, SEEK_CUR);
+    fileBytesRead = TRI_LSEEK(_fd, 0L, SEEK_CUR);
   } // else
 
   return fileBytesRead;

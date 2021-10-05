@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_TERMINAL__UTILS_H
-#define ARANGODB_BASICS_TERMINAL__UTILS_H 1
+#pragma once
 
 #include "Basics/operating-system.h"
 
@@ -51,6 +50,5 @@ TRI_TerminalSize TRI_DefaultTerminalSize();
 /// @brief set the visibility of stdin inputs (turn off for password entry etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetStdinVisibility(bool);
+void TRI_SetStdinVisibility(bool) noexcept;
 
-#endif

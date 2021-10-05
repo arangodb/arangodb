@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_THREAD_H
-#define ARANGODB_BASICS_THREAD_H 1
+#pragma once
 
 #include <atomic>
 
@@ -158,7 +157,7 @@ class Thread {
   static void startThread(void* arg);
   void markAsStopped() noexcept;
   void runMe();
-  void releaseRef();
+  void releaseRef() noexcept;
  
  protected:
   application_features::ApplicationServer& _server;
@@ -187,4 +186,3 @@ class Thread {
 };
 }  // namespace arangodb
 
-#endif

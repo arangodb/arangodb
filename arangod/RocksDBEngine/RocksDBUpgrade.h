@@ -21,15 +21,18 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_UPGRADE_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_UPGRADE_H 1
+#pragma once
 
 namespace rocksdb {
 class TransactionDB;
 }
 
 namespace arangodb {
-void rocksdbStartupVersionCheck(rocksdb::TransactionDB*, bool dbExisted);
+namespace application_features {
+class ApplicationServer;
+}
+
+void rocksdbStartupVersionCheck(application_features::ApplicationServer& server,
+                                rocksdb::TransactionDB*, bool dbExisted);
 }  // namespace arangodb
 
-#endif

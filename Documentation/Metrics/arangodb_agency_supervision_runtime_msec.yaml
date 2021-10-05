@@ -1,0 +1,16 @@
+name: arangodb_agency_supervision_runtime_msec
+introducedIn: "3.7.1"
+help: |
+  Agency supervision runtime histogram.
+unit: ms
+type: histogram
+category: Agency
+complexity: simple
+exposedBy:
+  - agent
+description: |
+  Agency supervision runtime histogram. A new value is recorded for each
+  run of the supervision.
+threshold: |
+  The supervision runtime goes up linearly with the number of collections
+  and shards.

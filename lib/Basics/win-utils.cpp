@@ -65,21 +65,29 @@
 
 using namespace arangodb::basics;
 
-// .............................................................................
-// Some global variables which may be required later
-// .............................................................................
-
-_invalid_parameter_handler oldInvalidHandleHandler;
-_invalid_parameter_handler newInvalidHandleHandler;
-
-
 ////////////////////////////////////////////////////////////////////////////////
-// Sets up a handler when invalid (win) handles are passed to a windows
-// function.
-// This is not of much use since no values can be returned. All we can do
-// for now is to ignore error and hope it goes away!
+// Callback function that is called when invalid parameters are passed to a CRT
+// function. The MS documentations states:
+//   > When the runtime calls the invalid parameter function, it usually means
+//   > that a nonrecoverable error occurred. The invalid parameter handler
+//   > function you supply should save any data it can and then abort. It should
+//   > not return control to the main function unless you're confident that the
+//   > error is recoverable.
+// https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/set-invalid-parameter-handler-set-thread-local-invalid-parameter-handler
+//
+// The behavior of the default invalid_parameter_handler is to simulate an
+// unhandled SEH exception and let the Windows Error Reporting take over.
+// However, there are potentially some cases that would trigger this callback.
+// For example, ManagedDirectory::File::File has previously called TRI_DUP
+// with an invalid file descriptor, which would result in a call to the
+// invalid_parameter_handler.
+//
+// Since we cannot be sure whether there are some other cases, we use a custom
+// callback that does _NOT_ follow the MS recommendation to abort the process,
+// but simply hope that it is safe to ignore the error.
+// However, we do log a message and that message should be taken VERY seriously!
 ////////////////////////////////////////////////////////////////////////////////
-static void InvalidParameterHandler(const wchar_t* expression,  // expression sent to function - NULL
+static void invalidParameterHandler(const wchar_t* expression,  // expression sent to function - NULL
                                     const wchar_t* function,  // name of function - NULL
                                     const wchar_t* file,  // file where code resides - NULL
                                     unsigned int line,  // line within file - NULL
@@ -95,9 +103,9 @@ static void InvalidParameterHandler(const wchar_t* expression,  // expression se
 
   LOG_TOPIC("e4644", ERR, arangodb::Logger::FIXME)
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      << "Invalid handle parameter passed: " << buf;
+      << "Invalid parameter passed: " << buf;
 #else
-      << "Invalid handle parameter passed";
+      << "Invalid parameter passed";
 #endif
 }
 
@@ -110,33 +118,6 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
   switch (initializeWhat) {
     case TRI_WIN_INITIAL_SET_DEBUG_FLAG: {
       _CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF) | _CRTDBG_CHECK_ALWAYS_DF);
-      return 0;
-    }
-
-      // ...........................................................................
-      // Assign a handler for invalid handles
-      // ...........................................................................
-
-    case TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER: {
-#if 0
-      // currently disabled. TODO: make this code work properly
-
-      DWORD error;
-      HANDLE hProcess;
-
-      SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
-
-      hProcess = GetCurrentProcess();
-
-      if (!SymInitialize(hProcess, NULL, true)) {
-        // SymInitialize failed
-        error = GetLastError();
-        LOG_TOPIC("62b0a", ERR, arangodb::Logger::FIXME)
-            << "SymInitialize returned error :" << error;
-      }
-#endif
-      newInvalidHandleHandler = InvalidParameterHandler;
-      oldInvalidHandleHandler = _set_invalid_parameter_handler(newInvalidHandleHandler);
       return 0;
     }
 
@@ -277,6 +258,22 @@ TRI_read_return_t TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
   return static_cast<TRI_read_return_t>(length);
 }
 
+bool TRI_WRITE_POINTER(HANDLE fd, void const* buffer, size_t length) {
+  char const* ptr = static_cast<char const*>(buffer);
+  while (0 < length) {
+    DWORD len = static_cast<DWORD>(length);
+    DWORD written = 0;
+    if (!WriteFile(fd, ptr, len, &written, nullptr)) {
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      LOG_TOPIC("420b2", ERR, arangodb::Logger::FIXME) << "cannot write: " << TRI_LAST_ERROR_STR;
+      return false;
+    }
+    ptr += written;
+    length -= written;
+  }
+
+  return true;
+}
 
 FILE* TRI_FOPEN(char const* filename, char const* mode) {
   icu::UnicodeString fn(filename);
@@ -337,12 +334,14 @@ int TRI_UNLINK(char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::Result translateWindowsError(DWORD error) {
-  return {TRI_MapSystemError(error), windowsErrorToUTF8(error)};
+  errno = TRI_MapSystemError(error);
+  auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  return {res, windowsErrorToUTF8(error)};
 }
 
 std::string windowsErrorToUTF8(DWORD errorNum) {
   LPWSTR buffer = nullptr;
-  TRI_DEFER(::LocalFree(buffer);)
+  auto sg = arangodb::scopeGuard([&]() noexcept { ::LocalFree(buffer); });
   size_t size =
       FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
                          FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -609,11 +608,7 @@ void ADB_WindowsEntryFunction() {
   // ...........................................................................
   // res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
 
-  res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
-
-  if (res != 0) {
-    _exit(EXIT_FAILURE);
-  }
+  _set_invalid_parameter_handler(invalidParameterHandler);
 
   res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO, (char const*)(&maxOpenFiles));
 

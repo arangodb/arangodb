@@ -109,6 +109,13 @@ class V8GcThread : public Thread {
 };
 }  // namespace
 
+DECLARE_COUNTER(arangodb_v8_context_created_total, "V8 contexts created");
+DECLARE_COUNTER(arangodb_v8_context_creation_time_msec_total, "Total time for creating V8 contexts [ms]");
+DECLARE_COUNTER(arangodb_v8_context_destroyed_total, "V8 contexts destroyed");
+DECLARE_COUNTER(arangodb_v8_context_enter_failures_total, "V8 context enter failures");
+DECLARE_COUNTER(arangodb_v8_context_entered_total, "V8 context enter events");
+DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
+
 V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "V8Dealer"),
       _gcFrequency(60.0),
@@ -128,18 +135,17 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
       _gcFinished(false),
       _dynamicContextCreationBlockers(0),
       _contextsCreationTime(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_creation_time_msec", 0, "Total time for creating V8 contexts [ms]")),
-      _contextsCreated(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_created", 0, "V8 contexts created")),
-      _contextsDestroyed(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_destroyed", 0, "V8 contexts destroyed")),
-      _contextsEntered(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_entered", 0, "V8 context enter events")),
-      _contextsExited(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_exited", 0, "V8 context exit events")),
-      _contextsEnterFailures(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_enter_failures", 0, "V8 context enter failures")) {
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_creation_time_msec_total{})),
+      _contextsCreated(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_created_total{})),
+      _contextsDestroyed(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_destroyed_total{})),
+      _contextsEntered(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_entered_total{})),
+      _contextsExited(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_exited_total{})),
+      _contextsEnterFailures(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_enter_failures_total{})) {
   setOptional(true);
   startsAfter<ClusterFeaturePhase>();
 
@@ -149,7 +155,7 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the JavaScript engine");
+  options->addSection("javascript", "JavaScript engine and execution");
 
   options->addOption(
       "--javascript.gc-frequency",
@@ -290,8 +296,6 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ProgramOptions::ProcessingResult const& result = options->processingResult();
 
-  V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
-
   // a bit of duck typing here to check if we are an agent.
   // the problem is that the server role may be still unclear in this early
   // phase, so we are also looking for startup options that identify an agent
@@ -334,38 +338,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
-  v8security.addToInternalAllowList(_startupDirectory, FSAccessType::READ);
-
   ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
-
-  // try to append the current version name to the startup directory,
-  // so instead of "/path/to/js" we will get "/path/to/js/3.4.0"
-  std::string const versionAppendix =
-      std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"),
-                         "");
-  std::string versionedPath =
-      basics::FileUtils::buildFilename(_startupDirectory, versionAppendix);
-
-  LOG_TOPIC("604da", DEBUG, Logger::V8)
-      << "checking for existence of version-specific startup-directory '"
-      << versionedPath << "'";
-  if (basics::FileUtils::isDirectory(versionedPath)) {
-    // version-specific js path exists!
-    _startupDirectory = versionedPath;
-  }
-
-  for (auto& it : _moduleDirectories) {
-    versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
-
-    LOG_TOPIC("8e21a", DEBUG, Logger::V8)
-        << "checking for existence of version-specific module-directory '"
-        << versionedPath << "'";
-    if (basics::FileUtils::isDirectory(versionedPath)) {
-      // version-specific js path exists!
-      it = versionedPath;
-    }
-    v8security.addToInternalAllowList(it, FSAccessType::READ);
-  }
 
   // check whether app-path was specified
   if (_appPath.empty()) {
@@ -377,9 +350,6 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // Tests if this path is either a directory (ok) or does not exist (we create
   // it in ::start) If it is something else this will throw an error.
   ctx->normalizePath(_appPath, "javascript.app-path", false);
-  v8security.addToInternalAllowList(_appPath, FSAccessType::READ);
-  v8security.addToInternalAllowList(_appPath, FSAccessType::WRITE);
-  v8security.dumpAccessLists();
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
@@ -403,26 +373,51 @@ void V8DealerFeature::start() {
     // now check if we have a js directory inside the database directory, and if
     // it looks good
     auto& dbPathFeature = server().getFeature<DatabasePathFeature>();
-    const std::string dbJSPath =
+    std::string const dbJSPath =
         FileUtils::buildFilename(dbPathFeature.directory(), "js");
-    const std::string checksumFile =
+    std::string const checksumFile =
         FileUtils::buildFilename(dbJSPath, StaticStrings::checksumFileJs);
-    const std::string serverPath = FileUtils::buildFilename(dbJSPath, "server");
-    const std::string commonPath = FileUtils::buildFilename(dbJSPath, "common");
+    std::string const serverPath = FileUtils::buildFilename(dbJSPath, "server");
+    std::string const commonPath = FileUtils::buildFilename(dbJSPath, "common");
+    std::string const nodeModulesPath = FileUtils::buildFilename(dbJSPath, "node", "node_modules");
     if (FileUtils::isDirectory(dbJSPath) && FileUtils::exists(checksumFile) &&
         FileUtils::isDirectory(serverPath) && FileUtils::isDirectory(commonPath)) {
-      // only load node modules from original startup path
-      _nodeModulesDirectory = _startupDirectory;
       // js directory inside database directory looks good. now use it!
       _startupDirectory = dbJSPath;
+      // older versions didn't copy node_modules. so check if it exists inside the
+      // database directory or not. 
+      if (FileUtils::isDirectory(nodeModulesPath)) {
+        _nodeModulesDirectory = nodeModulesPath;
+      } else {
+        _nodeModulesDirectory = _startupDirectory;
+      }
     }
   }
-
+  
   LOG_TOPIC("77c97", DEBUG, Logger::V8)
       << "effective startup-directory: " << _startupDirectory
       << ", effective module-directories: " << _moduleDirectories
       << ", node-modules-directory: " << _nodeModulesDirectory;
+  
+  // add all paths to allowlists
+  V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
+  TRI_ASSERT(!_startupDirectory.empty());
+  v8security.addToInternalAllowList(_startupDirectory, FSAccessType::READ);
 
+  if (!_nodeModulesDirectory.empty()) {
+    v8security.addToInternalAllowList(_nodeModulesDirectory, FSAccessType::READ);
+  }
+  for (auto const& it : _moduleDirectories) {
+    if (!it.empty()) {
+      v8security.addToInternalAllowList(it, FSAccessType::READ);
+    }
+  }
+
+  TRI_ASSERT(!_appPath.empty());
+  v8security.addToInternalAllowList(_appPath, FSAccessType::READ);
+  v8security.addToInternalAllowList(_appPath, FSAccessType::WRITE);
+  v8security.dumpAccessLists();
+  
   _startupLoader.setDirectory(_startupDirectory);
 
   // dump paths
@@ -444,7 +439,7 @@ void V8DealerFeature::start() {
         std::string systemErrorStr;
         long errorNo;
 
-        int res = TRI_CreateRecursiveDirectory(_appPath.c_str(), errorNo, systemErrorStr);
+        auto res = TRI_CreateRecursiveDirectory(_appPath.c_str(), errorNo, systemErrorStr);
 
         if (res == TRI_ERROR_NO_ERROR) {
           LOG_TOPIC("86aa0", INFO, arangodb::Logger::FIXME)
@@ -551,9 +546,9 @@ void V8DealerFeature::copyInstallationFiles() {
 
   _nodeModulesDirectory = _startupDirectory;
 
-  const std::string checksumFile =
+  std::string const checksumFile =
       FileUtils::buildFilename(_startupDirectory, StaticStrings::checksumFileJs);
-  const std::string copyChecksumFile =
+  std::string const copyChecksumFile =
       FileUtils::buildFilename(copyJSPath, StaticStrings::checksumFileJs);
 
   bool overwriteCopy = false;
@@ -563,7 +558,7 @@ void V8DealerFeature::copyInstallationFiles() {
   } else {
     try {
       overwriteCopy =
-          (FileUtils::slurp(copyChecksumFile) != FileUtils::slurp(checksumFile));
+          (StringUtils::trim(FileUtils::slurp(copyChecksumFile)) != StringUtils::trim(FileUtils::slurp(checksumFile)));
     } catch (basics::Exception const& e) {
       LOG_TOPIC("efa47", ERR, Logger::V8) << "Error reading '" << StaticStrings::checksumFileJs
                                  << "' from disk: " << e.what();
@@ -572,7 +567,7 @@ void V8DealerFeature::copyInstallationFiles() {
   }
 
   if (overwriteCopy) {
-    // basics security checks before removing an existing directory:
+    // basic security checks before removing an existing directory:
     // check if for some reason we will be trying to remove the entire database
     // directory...
     if (FileUtils::exists(FileUtils::buildFilename(copyJSPath, "ENGINE"))) {
@@ -581,14 +576,16 @@ void V8DealerFeature::copyInstallationFiles() {
       FATAL_ERROR_EXIT();
     }
 
-    LOG_TOPIC("dd1c0", DEBUG, Logger::V8) << "Copying JS installation files from '"
-                                 << _startupDirectory << "' to '" << copyJSPath << "'";
-    int res = TRI_ERROR_NO_ERROR;
+    LOG_TOPIC("dd1c0", INFO, Logger::V8)
+        << "Copying JS installation files from '" << _startupDirectory
+        << "' to '" << copyJSPath << "'";
+    auto res = TRI_ERROR_NO_ERROR;
     if (FileUtils::exists(copyJSPath)) {
       res = TRI_RemoveDirectory(copyJSPath.c_str());
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC("1a20d", FATAL, Logger::V8) << "Error cleaning JS installation path '"
-                                     << copyJSPath << "': " << TRI_errno_string(res);
+        LOG_TOPIC("1a20d", FATAL, Logger::V8)
+            << "Error cleaning JS installation path '" << copyJSPath
+            << "': " << TRI_errno_string(res);
         FATAL_ERROR_EXIT();
       }
     }
@@ -598,39 +595,45 @@ void V8DealerFeature::copyInstallationFiles() {
       FATAL_ERROR_EXIT();
     }
 
-    // intentionally do not copy js/node/node_modules...
+    // intentionally do not copy js/node/node_modules/estlint!
     // we avoid copying this directory because it contains 5000+ files at the
-    // moment, and copying them one by one is darn slow at least on Windows...
+    // moment, and copying them one by one is slow. In addition, eslint is not
+    // needed in release builds
     std::string const versionAppendix =
         std::regex_replace(rest::Version::getServerVersion(),
                            std::regex("-.*$"), "");
-    std::string const nodeModulesPath =
-        FileUtils::buildFilename("js", "node", "node_modules");
-    std::string const nodeModulesPathVersioned =
-        basics::FileUtils::buildFilename("js", versionAppendix, "node",
-                                         "node_modules");
+    std::string const eslintPath =
+        FileUtils::buildFilename("js", "node", "node_modules", "eslint");
 
-    std::regex const binRegex("[/\\\\]\\.bin[/\\\\]", std::regex::ECMAScript);
+    // .bin directories could be harmful, and .map files are large and unnecessary
+    std::string const binDirectory = std::string(TRI_DIR_SEPARATOR_STR) + ".bin" + TRI_DIR_SEPARATOR_STR;
 
-    auto filter = [&nodeModulesPath, &nodeModulesPathVersioned, &binRegex](std::string const& filename) -> bool {
-      if (std::regex_search(filename, binRegex)) {
+    size_t copied = 0;
+
+    auto filter = [&eslintPath, &binDirectory, &copied](std::string const& filename) -> bool {
+      if (filename.size() >= 4 && filename.compare(filename.size() - 4, 4, ".map") == 0) {
+        // filename ends with ".map". filter it out!
+        return true;
+      } 
+      if (filename.find(binDirectory) != std::string::npos) {
         // don't copy files in .bin
         return true;
       }
+
       std::string normalized = filename;
       FileUtils::normalizePath(normalized);
-      if ((!nodeModulesPath.empty() && 
-           normalized.size() >= nodeModulesPath.size() &&
-           normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath) ||
-          (!nodeModulesPathVersioned.empty() &&
-           normalized.size() >= nodeModulesPathVersioned.size() &&
-           normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned)) {
+      if ((normalized.size() >= eslintPath.size() &&
+           normalized.compare(normalized.size() - eslintPath.size(), eslintPath.size(), eslintPath) == 0)) {
         // filter it out!
         return true;
       }
+
       // let the file/directory pass through
+      ++copied;
       return false;
     };
+
+    double start = TRI_microtime();
 
     std::string error;
     if (!FileUtils::copyRecursive(_startupDirectory, copyJSPath, filter, error)) {
@@ -654,8 +657,14 @@ void V8DealerFeature::copyInstallationFiles() {
             << copyJSPath << "': " << error;
       }
     }
+
+    LOG_TOPIC("38e1e", INFO, Logger::V8) 
+      << "copying " << copied << " JS installation file(s) took " << Logger::FIXED(TRI_microtime() - start, 6) << "s";
   }
+
+  // finally switch over the paths
   _startupDirectory = copyJSPath;
+  _nodeModulesDirectory = basics::FileUtils::buildFilename(copyJSPath, "node", "node_modules");
 }
 
 V8Context* V8DealerFeature::addContext() {
@@ -896,7 +905,7 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
     ++_dynamicContextCreationBlockers;
   }
 
-  TRI_DEFER(unblockDynamicContextCreation());
+  auto sg = arangodb::scopeGuard([&]() noexcept { unblockDynamicContextCreation(); });
 
   LOG_TOPIC("1364d", TRACE, Logger::V8) << "loading JavaScript file '" << file << "' in all ("
                                << contexts.size() << ") V8 contexts";
@@ -1158,7 +1167,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
 }
 
 void V8DealerFeature::exitContextInternal(V8Context* context) {
-  TRI_DEFER(context->unlockAndExit());
+  auto sg = arangodb::scopeGuard([&]() noexcept { context->unlockAndExit(); });
   cleanupLockedContext(context);
 }
 
@@ -1658,7 +1667,7 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
 
   context->lockAndEnter();
   prepareLockedContext(vocbase, context, securityContext);
-  TRI_DEFER(exitContextInternal(context));
+  auto sg = arangodb::scopeGuard([&]() noexcept { exitContextInternal(context); });
 
   try {
     loadJavaScriptFileInternal(file, context, builder);

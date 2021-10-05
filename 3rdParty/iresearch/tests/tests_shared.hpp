@@ -24,13 +24,14 @@
 #ifndef IRESEARCH_TESTS_SHARED_H
 #define IRESEARCH_TESTS_SHARED_H
 
-#include "gtest/gtest.h"
-
-#include "../core/shared.hpp"
 #include <memory>
 #include <cstdio>
 
+#include <gtest/gtest.h>
+
+#include "shared.hpp"
 #include "utils/utf8_path.hpp"
+
 
 namespace cmdline {
 class parser;
@@ -48,7 +49,7 @@ class test_env {
   static const irs::utf8_path& test_results_dir() { return res_dir_; }
 
   // returns path to resource with the specified name
-  static std::string resource( const std::string& name );
+  static irs::utf8_path resource(const std::string& name);
 
   static uint32_t iteration();
 
@@ -89,7 +90,6 @@ class test_base : public test_env, public ::testing::Test {
 }; // test_info
 
 template<typename T>
-class test_param_base : public test_base, public ::testing::WithParamInterface<T> {
-};
+class test_param_base : public test_base, public ::testing::WithParamInterface<T> { };
 
 #endif

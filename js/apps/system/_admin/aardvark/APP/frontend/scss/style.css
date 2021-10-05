@@ -3802,60 +3802,6 @@ pre.gv-object-view {
   font-weight: 400;
   width: 397px !important; }
 
-.shell_workspace {
-  margin-top: 13px; }
-
-.replShell {
-  background-color: white;
-  float: left;
-  height: 100%;
-  min-width: 100px;
-  position: relative;
-  width: 100%; }
-  .replShell pre {
-    border-bottom: 0;
-    border-left: 0;
-    border-right: 1px solid #a0a0a0;
-    border-top: 1px solid #a0a0a0; }
-
-.jqconsole {
-  background-color: black;
-  border-radius: 0;
-  padding: 10px; }
-
-.jqconsole-header {
-  color: white; }
-
-.jserror {
-  color: #ff0066;
-  margin-left: -10px; }
-
-.jssuccess {
-  color: #66ff00; }
-
-.jqconsole-cursor {
-  background-color: gray; }
-
-.jqconsole-blurred .jqconsole-header .jqconsole-cursor {
-  color: #c4cccc; }
-
-.jqconsole-prompt {
-  color: #bb9911; }
-
-.jqconsole-old-prompt {
-  color: #ff6600;
-  font-weight: normal; }
-
-.jqconsole-input {
-  color: #dddd00; }
-
-.jqconsole-old-input {
-  color: #bbbb00;
-  font-weight: normal; }
-
-.jqconsole-output {
-  color: white; }
-
 .query-output .ace_gutter-cell {
   background-color: #f0f0f0; }
 

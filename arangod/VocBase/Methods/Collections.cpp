@@ -54,6 +54,7 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
@@ -290,16 +291,9 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
     helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
-    bool isSystem = vocbase.IsSystemName(info.name);
     if (addUseRevs) {
       helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
                  arangodb::velocypack::Value(useRevs));
-      bool isSmartChild =
-          Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
-      RevisionId minRev =
-          (isSystem || isSmartChild) ? RevisionId::none() : RevisionId::create();
-      helper.add(arangodb::StaticStrings::MinRevision,
-                 arangodb::velocypack::Value(minRev.toString()));
     }
 
     // If the PlanId is not set, we either are on a single server, or this is
@@ -309,7 +303,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
         (!ServerState::instance()->isCoordinator() &&
          Helper::stringUInt64(info.properties.get(StaticStrings::DataSourcePlanId)) == 0);
 
-    bool const isSystemName = TRI_vocbase_t::IsSystemName(info.name);
+    bool const isSystemName = NameValidator::isSystemName(info.name);
 
     // All collections on a single server should be local collections.
     // A Coordinator should never have local collections.
@@ -590,50 +584,16 @@ void Collections::createSystemCollectionProperties(std::string const& collection
   return res;
 }
 
-Result Collections::load(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
-  TRI_ASSERT(coll != nullptr);
-
-  if (ServerState::instance()->isCoordinator()) {
-#ifdef USE_ENTERPRISE
-    auto& feature = vocbase.server().getFeature<ClusterFeature>();
-    return ULColCoordinatorEnterprise(feature, coll->vocbase().name(),
-                                      std::to_string(coll->id().id()),
-                                      TRI_VOC_COL_STATUS_LOADED);
-#else
-    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-    return ci.setCollectionStatusCoordinator(coll->vocbase().name(),
-                                             std::to_string(coll->id().id()),
-                                             TRI_VOC_COL_STATUS_LOADED);
-#endif
-  }
-
-  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-  SingleCollectionTransaction trx(ctx, *coll, AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    return res;
-  }
-
-  return trx.finish(res);
+Result Collections::load(TRI_vocbase_t& /*vocbase*/, LogicalCollection* /*coll*/) {
+  // load doesn't do anything from ArangoDB 3.9 onwards, and the method
+  // may be deleted in a future version
+  return {};
 }
 
-Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
-  if (ServerState::instance()->isCoordinator()) {
-#ifdef USE_ENTERPRISE
-    auto& feature = vocbase->server().getFeature<ClusterFeature>();
-    return ULColCoordinatorEnterprise(feature, vocbase->name(),
-                                      std::to_string(coll->id().id()),
-                                      TRI_VOC_COL_STATUS_UNLOADED);
-#else
-    auto& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-    return ci.setCollectionStatusCoordinator(vocbase->name(),
-                                             std::to_string(coll->id().id()),
-                                             TRI_VOC_COL_STATUS_UNLOADED);
-#endif
-  }
-
-  return vocbase->unloadCollection(coll, false);
+Result Collections::unload(TRI_vocbase_t* /*vocbase*/, LogicalCollection* /*coll*/) {
+  // unload doesn't do anything from ArangoDB 3.9 onwards, and the method
+  // may be deleted in a future version
+  return {};
 }
 
 Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
@@ -654,7 +614,8 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
     ignoreKeys.insert({StaticStrings::DistributeShardsLike, StaticStrings::IsSmart,
                        StaticStrings::NumberOfShards, StaticStrings::ReplicationFactor,
                        StaticStrings::MinReplicationFactor,
-                       StaticStrings::ShardKeys, StaticStrings::ShardingStrategy});
+                       StaticStrings::ShardKeys, StaticStrings::ShardingStrategy,
+                       StaticStrings::IsDisjoint});
 
     // this transaction is held longer than the following if...
     auto trx = ctxt.trx(AccessMode::Type::READ, true, false);
@@ -747,8 +708,8 @@ Result Collections::updateProperties(LogicalCollection& collection,
 /// @brief helper function to rename collections in _graphs as well
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RenameGraphCollections(TRI_vocbase_t& vocbase, std::string const& oldName,
-                                  std::string const& newName) {
+static ErrorCode RenameGraphCollections(TRI_vocbase_t& vocbase, std::string const& oldName,
+                                        std::string const& newName) {
   ExecContextSuperuserScope exscope;
 
   graph::GraphManager gmngr{vocbase};
@@ -783,21 +744,18 @@ Result Collections::rename(LogicalCollection& collection,
   }
 
   if (!doOverride) {
-    auto isSystem = TRI_vocbase_t::IsSystemName(collection.name());
+    bool const isSystem = NameValidator::isSystemName(collection.name());
 
-    if (isSystem && !TRI_vocbase_t::IsSystemName(newName)) {
+    if (isSystem != NameValidator::isSystemName(newName)) {
       // a system collection shall not be renamed to a non-system collection
-      // name
+      // name or vice versa
       return arangodb::Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
                               "a system collection shall not be renamed to a "
-                              "non-system collection name");
-    } else if (!isSystem && TRI_vocbase_t::IsSystemName(newName)) {
-      return arangodb::Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
-                              "a non-system collection shall not be renamed to "
-                              "a system collection name");
+                              "non-system collection name or vice versa");
     }
 
-    if (!TRI_vocbase_t::IsAllowedName(isSystem, arangodb::velocypack::StringRef(newName))) {
+    bool extendedNames = collection.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections(); 
+    if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames, newName)) {
       return TRI_ERROR_ARANGO_ILLEGAL_NAME;
     }
   }
@@ -920,7 +878,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return futures::makeFuture(res);
   }
 
-  auto poster = [](std::function<void()> fn) -> bool {
+  auto poster = [](std::function<void()> fn) -> void {
     return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
   };
 
@@ -970,9 +928,9 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt,
     binds->openObject();
     binds->add("@coll", VPackValue(cname));
     binds->close();
-    arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
-                               aql::QueryString(q), binds);
-    aql::QueryResult queryResult = query.executeSync();
+    auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(vocbase),
+                                              aql::QueryString(q), std::move(binds));
+    aql::QueryResult queryResult = query->executeSync();
 
     Result res = queryResult.result;
     if (queryResult.result.ok()) {
@@ -992,7 +950,7 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt,
     }
 
     // We directly read the entire cursor. so batchsize == limit
-    auto iterator = trx.indexScan(cname, transaction::Methods::CursorType::ALL);
+    auto iterator = trx.indexScan(cname, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
     iterator->allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
       cb(doc.resolveExternal());
@@ -1031,7 +989,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   checksum = 0;
 
   // We directly read the entire cursor. so batchsize == limit
-  auto iterator = trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL);
+  auto iterator = trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments([&](LocalDocumentId const& /*token*/, VPackSlice slice) {
     uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString();

@@ -21,9 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
 #include "analysis/text_token_stemming_stream.hpp"
+
+#include "gtest/gtest.h"
 #include "utils/locale_utils.hpp"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
 
 namespace {
 
@@ -186,7 +189,19 @@ TEST_F(text_token_stemming_stream_tests, test_make_config_json) {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"invalid_parameter\":true}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "stem", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\"}", actual);
+    ASSERT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\"}")->toString(), actual);
+  }
+
+  // test vpack
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"invalid_parameter\":true}";
+    auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
+    std::string in_str;
+    in_str.assign(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
+    std::string out_str;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "stem", irs::type<irs::text_format::vpack>::get(), in_str));
+    VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
+    ASSERT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\"}")->toString(), out_slice.toString());
   }
 }
 
@@ -202,10 +217,4 @@ TEST_F(text_token_stemming_stream_tests, test_make_config_text) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "stem", irs::type<irs::text_format::text>::get(), config));
   ASSERT_EQ("ru", actual);
-}
-
-TEST_F(text_token_stemming_stream_tests, test_make_config_invalid_format) {
-  std::string config = "ru_RU.utfF-8";
-  std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "stem", irs::type<irs::text_format::csv>::get(), config));
 }

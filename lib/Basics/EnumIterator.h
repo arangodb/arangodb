@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ENUM_ITERATOR_H
-#define ARANGODB_BASICS_ENUM_ITERATOR_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -69,4 +68,3 @@ class EnumIterator {
 
 }  // namespace arangodb
 
-#endif

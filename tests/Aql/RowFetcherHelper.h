@@ -36,6 +36,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/VelocyPackHelper.h"
 #include "Basics/Common.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 
 #include <velocypack/Buffer.h>
@@ -139,7 +140,8 @@ class AllRowsFetcherHelper : public arangodb::aql::AllRowsFetcher {
   arangodb::velocypack::Slice _data;
   uint64_t _nrItems;
   arangodb::aql::RegisterCount _nrRegs;
-  arangodb::ResourceMonitor _resourceMonitor;
+  arangodb::GlobalResourceMonitor _global{};
+  arangodb::ResourceMonitor _resourceMonitor{_global};
   arangodb::aql::AqlItemBlockManager _itemBlockManager;
   std::unique_ptr<arangodb::aql::AqlItemMatrix> _matrix;
 };

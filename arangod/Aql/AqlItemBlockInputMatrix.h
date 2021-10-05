@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQLITEMBLOCKMATRIXITERATOR_H
-#define ARANGOD_AQL_AQLITEMBLOCKMATRIXITERATOR_H
+#pragma once
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlItemMatrix.h"
@@ -38,13 +37,14 @@ class AqlItemBlockInputMatrix {
  public:
   explicit AqlItemBlockInputMatrix(ExecutorState state);
 
-  AqlItemBlockInputMatrix(arangodb::aql::SharedAqlItemBlockPtr const&);
-
   AqlItemBlockInputMatrix(ExecutorState state, AqlItemMatrix* aqlItemMatrix);
 
   std::pair<ExecutorState, ShadowAqlItemRow> nextShadowRow();
   ShadowAqlItemRow peekShadowRow() const;
 
+  void reset() noexcept { _lastRange.reset(); }
+  bool hasBlock() const noexcept { return _lastRange.hasBlock(); }
+  
   bool hasShadowRow() const noexcept;
   bool hasDataRow() const noexcept;
   bool hasValidRow() const noexcept;
@@ -62,7 +62,6 @@ class AqlItemBlockInputMatrix {
   size_t skipAllRemainingDataRows();
 
   size_t skipAllShadowRowsOfDepth(size_t depth);
-
 
   // Will return HASMORE if we were able to increase the row index.
   // Otherwise will return DONE.
@@ -89,7 +88,6 @@ class AqlItemBlockInputMatrix {
   void advanceBlockIndexAndShadowRow() noexcept;
 
  private:
-  arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
   ExecutorState _finalState{ExecutorState::HASMORE};
 
   // Only if _aqlItemMatrix is set (and NOT a nullptr), we have a valid and
@@ -102,4 +100,3 @@ class AqlItemBlockInputMatrix {
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H

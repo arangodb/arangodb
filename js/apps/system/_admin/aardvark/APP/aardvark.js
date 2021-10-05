@@ -34,7 +34,6 @@ const db = require('@arangodb').db;
 const actions = require('@arangodb/actions');
 const errors = require('@arangodb').errors;
 const ArangoError = require('@arangodb').ArangoError;
-const notifications = require('@arangodb/configuration').notifications;
 const examples = require('@arangodb/graph-examples/example-graph');
 const createRouter = require('@arangodb/foxx/router');
 const users = require('@arangodb/users');
@@ -48,8 +47,6 @@ const fs = require('fs');
 const _ = require('lodash');
 
 const ERROR_USER_NOT_FOUND = errors.ERROR_USER_NOT_FOUND.code;
-const API_DOCS = require(module.context.fileName('api-docs.json'));
-API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
 
 const router = createRouter();
 module.exports = router;
@@ -89,13 +86,18 @@ router.get('/config.js', function (req, res) {
       isCluster: cluster.isCluster(),
       engine: db._engine().name,
       statisticsEnabled: internal.enabledStatistics(),
+      metricsEnabled: internal.enabledMetrics(),
+      statisticsInAllDatabases: internal.enabledStatisticsInAllDatabases(),
       foxxStoreEnabled: !internal.isFoxxStoreDisabled(),
       foxxApiEnabled: !internal.isFoxxApiDisabled(),
+      clusterApiJwtPolicy: internal.clusterApiJwtPolicy(),
       minReplicationFactor: internal.minReplicationFactor,
       maxReplicationFactor: internal.maxReplicationFactor,
       defaultReplicationFactor: internal.defaultReplicationFactor,
       maxNumberOfShards: internal.maxNumberOfShards,
-      forceOneShard: internal.forceOneShard 
+      forceOneShard: internal.forceOneShard,
+      sessionTimeout: internal.sessionTimeout,
+      showMaintenanceStatus: true
     })}`
   );
 })
@@ -124,6 +126,8 @@ authRouter.use((req, res, next) => {
 
 router.get('/api/*', module.context.apiDocumentation({
   swaggerJson (req, res) {
+    const API_DOCS = require(module.context.fileName('api-docs.json'));
+    API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
     res.json(API_DOCS);
   }
 }))
@@ -291,7 +295,8 @@ authRouter.get('/query/download/:user', function (req, res) {
     res.throw('not found');
   }
 
-  res.attachment(`queries-${db._name()}-${user.user}.json`);
+  const namePart = `${db._name()}-${user.user}`.replace(/[^-_a-z0-9]/gi, "_");
+  res.attachment(`queries-${namePart}.json`);
   res.json(user.extra.queries || []);
 })
 .pathParam('user', joi.string().required(), 'Username. Ignored if authentication is enabled.')
@@ -311,7 +316,8 @@ authRouter.get('/query/result/download/:query', function (req, res) {
   }
 
   const result = db._query(query.query, query.bindVars).toArray();
-  res.attachment(`results-${db._name()}.json`);
+  const namePart = `${db._name()}`.replace(/[^-_a-z0-9]/gi, "_");
+  res.attachment(`results-${namePart}.json`);
   res.json(result);
 })
 .pathParam('query', joi.string().required(), 'Base64 encoded query.')
@@ -324,7 +330,7 @@ authRouter.get('/query/result/download/:query', function (req, res) {
 authRouter.post('/graph-examples/create/:name', function (req, res) {
   const name = req.pathParams.name;
 
-  if (['knows_graph', 'social', 'routeplanner', 'traversalGraph', 'kShortestPathsGraph', 'mps_graph', 'worldCountry'].indexOf(name) === -1) {
+  if (['knows_graph', 'social', 'routeplanner', 'traversalGraph', 'kShortestPathsGraph', 'mps_graph', 'worldCountry', 'connectedComponentsGraph'].indexOf(name) === -1) {
     res.throw('not found');
   }
   if (generalGraph._list().indexOf(name) !== -1) {
@@ -398,7 +404,7 @@ authRouter.delete('/job/:id', function (req, res) {
   if (frontend) {
     // get the job result and return before deletion
     let resp = request.put({
-      url: '/_api/job/' + encodeURIComponent(req.pathParams.id),
+      url: '/_db/' + encodeURIComponent(db._name()) + '/_api/job/' + encodeURIComponent(req.pathParams.id),
       json: true,
       headers: {
         'Authorization': req.headers.authorization

@@ -22,8 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_MUTEX_LOCKER_H
-#define ARANGODB_BASICS_MUTEX_LOCKER_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Basics/Locking.h"
@@ -52,8 +51,7 @@
   arangodb::basics::MutexLocker<typename std::decay<decltype(lock)>::type> obj( \
       &(lock), arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
 
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 
 /// @brief mutex locker
 /// A MutexLocker locks a mutex during its lifetime und unlocks the mutex
@@ -66,7 +64,7 @@ class MutexLocker {
  public:
   /// @brief acquires a mutex
   /// The constructor acquires the mutex, the destructor unlocks the mutex.
-  MutexLocker(LockType* mutex, LockerType type, bool condition, char const* file, int line)
+  MutexLocker(LockType* mutex, LockerType type, bool condition, char const* file, int line) noexcept
       : _mutex(mutex),
         _file(file),
         _line(line),
@@ -115,7 +113,7 @@ class MutexLocker {
 #endif
   }
 
-  bool isLocked() const { return _isLocked; }
+  bool isLocked() const noexcept { return _isLocked; }
 
   /// @brief eventually acquire the read lock
   void lockEventual() {
@@ -127,21 +125,21 @@ class MutexLocker {
 
   bool tryLock() {
     TRI_ASSERT(!_isLocked);
-    if (_mutex->tryLock()) {
+    if (_mutex->try_lock()) {
       _isLocked = true;
     }
     return _isLocked;
   }
 
   /// @brief acquire the mutex, blocking
-  void lock() {
+  void lock() noexcept {
     TRI_ASSERT(!_isLocked);
     _mutex->lock();
     _isLocked = true;
   }
 
   /// @brief unlocks the mutex if we own it
-  bool unlock() {
+  bool unlock() noexcept {
     if (_isLocked) {
       _isLocked = false;
       _mutex->unlock();
@@ -151,7 +149,7 @@ class MutexLocker {
   }
 
   /// @brief steals the lock, but does not unlock it
-  bool steal() {
+  bool steal() noexcept {
     if (_isLocked) {
       _isLocked = false;
       return true;
@@ -178,7 +176,4 @@ class MutexLocker {
 #endif
 };
 
-}  // namespace basics
-}  // namespace arangodb
-
-#endif
+}  // namespace arangodb::basics

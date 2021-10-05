@@ -33,25 +33,20 @@
 
 #include <velocypack/Iterator.h>
 
+#include "utils/string_utils.hpp"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
 
 class IResearchQueryOrTest : public IResearchQueryTest {};
 
 }  // namespace
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-TEST_F(IResearchQueryOrTest, test) {
+TEST_P(IResearchQueryOrTest, test) {
   static std::vector<std::string> const EMPTY;
 
   auto createJson = VPackParser::fromJson(
@@ -87,15 +82,29 @@ TEST_F(IResearchQueryOrTest, test) {
 
   // add link to collection
   {
-    auto updateJson = VPackParser::fromJson(
-        "{ \"links\": {"
-        "\"collection_1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
-        "], \"includeAllFields\": true, \"trackListPositions\": true, "
-        "\"storeValues\":\"id\" },"
-        "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
-        "], \"includeAllFields\": true, \"storeValues\":\"id\" }"
-        "}}");
-    EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
+    auto viewDefinitionTemplate = R"({
+      "links": {
+        "collection_1": {
+          "analyzers": [ "test_analyzer", "identity" ],
+          "includeAllFields": true,
+          "trackListPositions": true,
+          "version": %u,
+          "storeValues":"id" },
+        "collection_2": {
+          "analyzers": [ "test_analyzer", "identity" ],
+          "includeAllFields": true,
+          "version": %u,
+          "storeValues":"id" }
+      }})";
+
+    auto viewDefinition = irs::string_utils::to_string(
+      viewDefinitionTemplate,
+      static_cast<uint32_t>(linkVersion()),
+      static_cast<uint32_t>(linkVersion()));
+
+    auto updateJson = VPackParser::fromJson(viewDefinition);
+
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
@@ -127,11 +136,11 @@ TEST_F(IResearchQueryOrTest, test) {
     // insert into collections
     {
       irs::utf8_path resource;
-      resource /= irs::string_ref(arangodb::tests::testResourceDir);
-      resource /= irs::string_ref("simple_sequential.json");
+      resource /= std::string_view(arangodb::tests::testResourceDir);
+      resource /= std::string_view("simple_sequential.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
@@ -583,3 +592,8 @@ TEST_F(IResearchQueryOrTest, test) {
     EXPECT_EQ(i, expected.size());
   }
 }
+
+INSTANTIATE_TEST_CASE_P(
+  IResearchQueryOrTest,
+  IResearchQueryOrTest,
+  GetLinkVersions());

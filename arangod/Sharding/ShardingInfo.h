@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_SHARDING_INFO_H
-#define ARANGOD_CLUSTER_SHARDING_INFO_H 1
+#pragma once
 
 #include "Basics/Result.h"
 
@@ -30,6 +29,7 @@
 #include <velocypack/Slice.h>
 #include <unordered_map>
 #include <unordered_set>
+#include <atomic>
 
 namespace arangodb {
 class LogicalCollection;
@@ -57,7 +57,7 @@ class ShardingInfo {
   LogicalCollection* collection() const;
   void toVelocyPack(arangodb::velocypack::Builder& result, bool translateCids) const;
 
-  std::string distributeShardsLike() const;
+  std::string const& distributeShardsLike() const;
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   std::vector<std::string> const& avoidServers() const;
@@ -100,9 +100,9 @@ class ShardingInfo {
   std::shared_ptr<ShardMap> shardIds(std::unordered_set<std::string> const& includedShards) const;
   void setShardMap(std::shared_ptr<ShardMap> const& map);
 
-  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
-                          ShardID& shardID, bool& usesDefaultShardKeys,
-                          arangodb::velocypack::StringRef const&);
+  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
+                                ShardID& shardID, bool& usesDefaultShardKeys,
+                                arangodb::velocypack::StringRef const& key);
 
   static void sortShardNamesNumerically(std::vector<ShardID>& list);
 
@@ -113,12 +113,17 @@ class ShardingInfo {
   // @brief number of shards
   size_t _numberOfShards;
 
+  // _replicationFactor and _writeConcern are set in setWriteConcernAndReplicationFactor,
+  // but there are places that might read these values before they are set (e.g.,
+  // LogicalCollection::appendVelocyPack), and since these can be executed by a different
+  // thread _replicationFactor and _writeConcern must both be atomic to avoid data races.
+  
   // @brief replication factor (1 = no replication, 0 = smart edge collection)
-  size_t _replicationFactor;
+  std::atomic<size_t> _replicationFactor;
 
   // @brief write concern (_writeConcern <= _replicationFactor)
   // Writes will be disallowed if we know we cannot fulfill minReplicationFactor.
-  size_t _writeConcern;
+  std::atomic<size_t> _writeConcern;
 
   // @brief name of other collection this collection's shards should be
   // distributed like
@@ -138,4 +143,3 @@ class ShardingInfo {
 };
 }  // namespace arangodb
 
-#endif

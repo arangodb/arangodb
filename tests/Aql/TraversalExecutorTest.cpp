@@ -31,6 +31,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/TraversalExecutor.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Traverser.h"
@@ -265,9 +266,10 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   ExecutorState state;
   mocks::MockAqlServer server;
 
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
 
-  arangodb::ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
 
@@ -443,9 +445,10 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
   ExecutorState state;
   mocks::MockAqlServer server;
 
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
 
-  arangodb::ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
 

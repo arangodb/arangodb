@@ -49,7 +49,7 @@ struct consolidate_bytes_accum {
 /// @param threshold merge first {threshold} segments
 ////////////////////////////////////////////////////////////////////////////////
 struct consolidate_count {
-  size_t threshold = integer_traits<size_t>::const_max;
+  size_t threshold = std::numeric_limits<size_t>::max();
 };
 
 ////////////////////////////////////////////////////////////////////////////////

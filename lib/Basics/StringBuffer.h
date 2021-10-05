@@ -21,8 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_STRING_BUFFER_H
-#define ARANGODB_BASICS_STRING_BUFFER_H 1
+#pragma once
 
 #include <stddef.h>
 #include <cstdint>
@@ -75,10 +74,10 @@ void TRI_AnnihilateStringBuffer(TRI_string_buffer_t*);
 void TRI_FreeStringBuffer(TRI_string_buffer_t*);
 
 /// @brief compress the string buffer using deflate
-int TRI_DeflateStringBuffer(TRI_string_buffer_t*, size_t);
+ErrorCode TRI_DeflateStringBuffer(TRI_string_buffer_t*, size_t);
 
 /// @brief ensure the string buffer has a specific capacity
-int TRI_ReserveStringBuffer(TRI_string_buffer_t*, size_t const);
+ErrorCode TRI_ReserveStringBuffer(TRI_string_buffer_t*, size_t const);
 
 /// @brief swaps content with another string buffer
 void TRI_SwapStringBuffer(TRI_string_buffer_t*, TRI_string_buffer_t*);
@@ -111,22 +110,23 @@ void TRI_ResetStringBuffer(TRI_string_buffer_t*);
 char* TRI_StealStringBuffer(TRI_string_buffer_t*);
 
 /// @brief copies the string buffer
-int TRI_CopyStringBuffer(TRI_string_buffer_t*, TRI_string_buffer_t const*);
+ErrorCode TRI_CopyStringBuffer(TRI_string_buffer_t* self, TRI_string_buffer_t const* source);
 
 /// @brief removes the first characters
 void TRI_EraseFrontStringBuffer(TRI_string_buffer_t*, size_t);
 
 /// @brief replaces characters
-int TRI_ReplaceStringStringBuffer(TRI_string_buffer_t*, char const*, size_t);
+ErrorCode TRI_ReplaceStringStringBuffer(TRI_string_buffer_t* self, char const* str, size_t len);
 
 /// @brief appends character
-int TRI_AppendCharStringBuffer(TRI_string_buffer_t* self, char chr);
+ErrorCode TRI_AppendCharStringBuffer(TRI_string_buffer_t* self, char chr);
 
 /// @brief appends characters
-int TRI_AppendStringStringBuffer(TRI_string_buffer_t* self, char const* str);
+ErrorCode TRI_AppendStringStringBuffer(TRI_string_buffer_t* self, char const* str);
 
 /// @brief appends characters
-int TRI_AppendString2StringBuffer(TRI_string_buffer_t* self, char const* str, size_t len);
+ErrorCode TRI_AppendString2StringBuffer(TRI_string_buffer_t* self,
+                                        char const* str, size_t len);
 
 /// @brief appends characters but does not check buffer bounds
 static inline void TRI_AppendCharUnsafeStringBuffer(TRI_string_buffer_t* self, char chr) {
@@ -165,56 +165,57 @@ static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self,
 }
 
 /// @brief appends characters but json-encode the string
-int TRI_AppendJsonEncodedStringStringBuffer(TRI_string_buffer_t* self,
-                                            char const* str, size_t, bool);
+ErrorCode TRI_AppendJsonEncodedStringStringBuffer(TRI_string_buffer_t* self,
+                                                  char const* src, size_t length,
+                                                  bool escapeSlash);
 
 /// @brief appends integer with 8 bits
-int TRI_AppendInt8StringBuffer(TRI_string_buffer_t* self, int8_t attr);
+ErrorCode TRI_AppendInt8StringBuffer(TRI_string_buffer_t* self, int8_t attr);
 
 /// @brief appends unsigned integer with 8 bits
-int TRI_AppendUInt8StringBuffer(TRI_string_buffer_t* self, uint8_t attr);
+ErrorCode TRI_AppendUInt8StringBuffer(TRI_string_buffer_t* self, uint8_t attr);
 
 /// @brief appends integer with 16 bits
-int TRI_AppendInt16StringBuffer(TRI_string_buffer_t* self, int16_t attr);
+ErrorCode TRI_AppendInt16StringBuffer(TRI_string_buffer_t* self, int16_t attr);
 
 /// @brief appends unsigned integer with 32 bits
-int TRI_AppendUInt16StringBuffer(TRI_string_buffer_t* self, uint16_t attr);
+ErrorCode TRI_AppendUInt16StringBuffer(TRI_string_buffer_t* self, uint16_t attr);
 
 /// @brief appends integer with 32 bits
-int TRI_AppendInt32StringBuffer(TRI_string_buffer_t* self, int32_t attr);
+ErrorCode TRI_AppendInt32StringBuffer(TRI_string_buffer_t* self, int32_t attr);
 
 /// @brief appends unsigned integer with 32 bits
-int TRI_AppendUInt32StringBuffer(TRI_string_buffer_t* self, uint32_t attr);
+ErrorCode TRI_AppendUInt32StringBuffer(TRI_string_buffer_t* self, uint32_t attr);
 
 /// @brief appends integer with 64 bits
-int TRI_AppendInt64StringBuffer(TRI_string_buffer_t* self, int64_t attr);
+ErrorCode TRI_AppendInt64StringBuffer(TRI_string_buffer_t* self, int64_t attr);
 
 /// @brief appends unsigned integer with 64 bits
-int TRI_AppendUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t attr);
+ErrorCode TRI_AppendUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t attr);
 
 /// @brief appends unsigned integer with 32 bits in hex
-int TRI_AppendUInt32HexStringBuffer(TRI_string_buffer_t* self, uint32_t attr);
+ErrorCode TRI_AppendUInt32HexStringBuffer(TRI_string_buffer_t* self, uint32_t attr);
 
 /// @brief appends unsigned integer with 64 bits in hex
-int TRI_AppendUInt64HexStringBuffer(TRI_string_buffer_t* self, uint64_t attr);
+ErrorCode TRI_AppendUInt64HexStringBuffer(TRI_string_buffer_t* self, uint64_t attr);
 
 /// @brief appends floating point number with 8 bits
-int TRI_AppendDoubleStringBuffer(TRI_string_buffer_t* self, double attr);
+ErrorCode TRI_AppendDoubleStringBuffer(TRI_string_buffer_t* self, double attr);
 
 /// @brief appends csv 32-bit integer
-int TRI_AppendCsvInt32StringBuffer(TRI_string_buffer_t* self, int32_t i);
+ErrorCode TRI_AppendCsvInt32StringBuffer(TRI_string_buffer_t* self, int32_t i);
 
 /// @brief appends csv unisgned 32-bit integer
-int TRI_AppendCsvUInt32StringBuffer(TRI_string_buffer_t* self, uint32_t i);
+ErrorCode TRI_AppendCsvUInt32StringBuffer(TRI_string_buffer_t* self, uint32_t i);
 
 /// @brief appends csv 64-bit integer
-int TRI_AppendCsvInt64StringBuffer(TRI_string_buffer_t* self, int64_t i);
+ErrorCode TRI_AppendCsvInt64StringBuffer(TRI_string_buffer_t* self, int64_t i);
 
 /// @brief appends csv unsigned 64-bit integer
-int TRI_AppendCsvUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t i);
+ErrorCode TRI_AppendCsvUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t i);
 
 /// @brief appends csv double
-int TRI_AppendCsvDoubleStringBuffer(TRI_string_buffer_t* self, double d);
+ErrorCode TRI_AppendCsvDoubleStringBuffer(TRI_string_buffer_t* self, double d);
 
 // -----------------------------------------------------------------------------
 // string buffer with formatting routines
@@ -264,21 +265,21 @@ class StringBuffer {
   void annihilate() { TRI_AnnihilateStringBuffer(&_buffer); }
 
   /// @brief ensure the string buffer has a specific capacity
-  int reserve(size_t length) {
+  ErrorCode reserve(size_t length) {
     return TRI_ReserveStringBuffer(&_buffer, length);
   }
 
   /// @brief compress the buffer using deflate
-  int deflate(size_t bufferSize) {
+  ErrorCode deflate(size_t bufferSize) {
     return TRI_DeflateStringBuffer(&_buffer, bufferSize);
   }
 
   /// @brief uncompress the buffer into stringstream out, using zlib-inflate
-  int inflate(std::stringstream& out, size_t bufferSize = 16384, size_t skip = 0);
+  ErrorCode inflate(std::stringstream& out, size_t bufferSize = 16384, size_t skip = 0);
 
   /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
-  int inflate(arangodb::basics::StringBuffer& out, size_t bufferSize = 16384,
-              size_t skip = 0);
+  ErrorCode inflate(arangodb::basics::StringBuffer& out,
+                    size_t bufferSize = 16384, size_t skip = 0);
 
   /// @brief returns the low level buffer
   TRI_string_buffer_t* stringBuffer() { return &_buffer; }
@@ -577,4 +578,3 @@ class StringBuffer {
 
 std::ostream& operator<<(std::ostream&, arangodb::basics::StringBuffer const&);
 
-#endif

@@ -38,26 +38,37 @@
 #include "Network/Utils.h"
 #include "ShardDistributionReporter.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
 
 struct SyncCountInfo {
   bool insync;
+
+  // number of followers _currently_ performing syncing operations
+  uint32_t followersSyncing;
+
+  // number of documents on leader
   uint64_t total;
+  // number of documents on follower(s). 
+  // if there is more than one follower, then this contains the
+  // minimum value from all followers
   uint64_t current;
+  // percent value (max. value 100) as leader progress, calculated as
+  // 100.0 * (sum(num docs on followers) / num followers) / num docs on leader
+  // a negative value will mean that the value has not been calculated, or
+  // cannot be calculated (e.g. because of division by zero)
+  double followerPercent;
   std::vector<ServerID> followers;
 
-  SyncCountInfo() : insync(false), total(1), current(0) {}
+  SyncCountInfo() 
+    : insync(false), 
+      followersSyncing(0),
+      total(1), 
+      current(0),
+      followerPercent(-1.0) {}
   ~SyncCountInfo() = default;
 };
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief the pointer to the singleton instance
-//////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<ShardDistributionReporter> arangodb::cluster::ShardDistributionReporter::_theInstance;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Static helper functions
@@ -125,7 +136,9 @@ static void ReportShardNoProgress(std::string const& shardId,
 static void ReportShardProgress(std::string const& shardId,
                                 std::vector<ServerID> const& respServers,
                                 std::unordered_map<ServerID, std::string> const& aliases,
-                                uint64_t total, uint64_t current, VPackBuilder& result) {
+                                uint64_t total, uint64_t current, 
+                                double followerPercent, uint32_t followersSyncing,
+                                VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
   result.add(VPackValue(shardId));
   result.openObject();
@@ -155,7 +168,7 @@ static void ReportShardProgress(std::string const& shardId,
 
   result.add(VPackValue("progress"));
 
-  // We have somehow invalid, mostlikely no shard has responded in time
+  // We have somehow invalid, most likely no shard has responded in time
   if (total == current) {
     // Reset current
     current = 0;
@@ -163,6 +176,14 @@ static void ReportShardProgress(std::string const& shardId,
   result.openObject();
   result.add("total", VPackValue(total));
   result.add("current", VPackValue(current));
+  if (followerPercent >= 0.0) {
+    result.add("followerPercent", VPackValue(followerPercent));
+  } else {
+    result.add("followerPercent", VPackSlice::nullSlice());
+  }
+  // number of followers _currently_ syncing this shard
+  result.add("followersSyncing", VPackValue(followersSyncing));
+
   result.close();  // progress
 
   result.close();  // shard
@@ -235,14 +256,12 @@ static void ReportOffSync(LogicalCollection const* col, ShardMap const* shardIds
       TRI_ASSERT(counters.find(s.first) != counters.end());
       auto const& c = counters[s.first];
 
-      if (c.insync) {
+      if (c.insync || !progress) {
         ReportShardNoProgress(s.first, s.second, aliases, result);
       } else {
-        if (progress) {
-          ReportShardProgress(s.first, s.second, aliases, c.total, c.current, result);
-        } else {
-          ReportShardNoProgress(s.first, s.second, aliases, result);
-        }
+        TRI_ASSERT(!c.insync);
+        TRI_ASSERT(progress);
+        ReportShardProgress(s.first, s.second, aliases, c.total, c.current, c.followerPercent, c.followersSyncing, result);
       }
     }
     result.close();
@@ -275,19 +294,16 @@ ShardDistributionReporter::~ShardDistributionReporter() = default;
 
 std::shared_ptr<ShardDistributionReporter> ShardDistributionReporter::instance(
     application_features::ApplicationServer& server) {
-  if (_theInstance == nullptr) {
-    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-    auto& nf = server.getFeature<NetworkFeature>();
-    auto* pool = nf.pool();
-    _theInstance = std::make_shared<ShardDistributionReporter>(
-        &ci,
-        [pool](network::DestinationId const& d, arangodb::fuerte::RestVerb v,
-               std::string const& u, velocypack::Buffer<uint8_t> b,
-               network::RequestOptions const& opts, network::Headers h) -> network::FutureRes {
-          return sendRequest(pool, d, v, u, std::move(b), opts, std::move(h));
-        });
-  }
-  return _theInstance;
+  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  auto& nf = server.getFeature<NetworkFeature>();
+  auto* pool = nf.pool();
+  return std::make_shared<ShardDistributionReporter>(
+      &ci,
+      [pool](network::DestinationId const& d, arangodb::fuerte::RestVerb v,
+             std::string const& u, velocypack::Buffer<uint8_t> b,
+             network::RequestOptions const& opts, network::Headers h) -> network::FutureRes {
+        return sendRequestRetry(pool, d, v, u, std::move(b), opts, std::move(h));
+      });
 }
 
 void ShardDistributionReporter::helperDistributionForDatabase(
@@ -325,7 +341,9 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             VPackBuffer<uint8_t> body;
             network::RequestOptions reqOpts;
             reqOpts.database = dbName;
-            reqOpts.timeout = network::Timeout(timeleft);
+            // make sure we have at least 1s for the timeout value. otherwise
+            // other parts of the code may fail when seeing a 0s timeout.
+            reqOpts.timeout = network::Timeout(std::max<double>(1.0, timeleft));
 
             // First Ask the leader
             network::Headers headers;
@@ -347,6 +365,11 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             }
 
             // Ask them
+
+            // do not only query the collection counts, but also query the shard sync job status
+            // from the maintenance. note older versions will simply ignore the URL parameter and
+            // will not report the sync status. the code here is prepared for this.
+            reqOpts.param("checkSyncStatus", "true");
             std::vector<network::FutureRes> futures;
             futures.reserve(serversToAsk.size());
             for (auto const& server : serversToAsk) {
@@ -382,9 +405,18 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
               entry.total = response.getNumber<uint64_t>();
               entry.current = entry.total;  // << We use this to flip around min/max test
+              entry.followerPercent = -1.0; // negative values mean "unknown"
+              entry.followersSyncing = 0;
             }
 
             {
+              // for in-sync followers, pretend that they have the correct number of docs
+              TRI_ASSERT(!s.second.empty());
+              TRI_ASSERT((s.second.size() - 1) >= serversToAsk.size());
+              uint64_t followersInSync = (s.second.size() - 1) - serversToAsk.size();
+              uint64_t followerResponses = followersInSync;
+              uint64_t followerTotal = followersInSync * entry.total;
+
               auto responses = futures::collectAll(futures).get();
               for (futures::Try<network::Response> const& response : responses) {
                 if (!response.hasValue() || response.get().fail()) {
@@ -410,8 +442,11 @@ void ShardDistributionReporter::helperDistributionForDatabase(
                       << "distribution inaccurate";
                   continue;
                 }
-
+              
                 uint64_t other = answer.getNumber<uint64_t>();
+                followerTotal += other;
+                ++followerResponses;
+
                 if (other < entry.total) {
                   // If we have more in total we need the minimum of other
                   // counts
@@ -425,6 +460,23 @@ void ShardDistributionReporter::helperDistributionForDatabase(
                     entry.current = other;
                   }
                 }
+               
+                // check if the follower is actively working on replicating the shard.
+                // note: 3.7 will not provide the "syncing" attribute. it must there
+                // be treated as optional in 3.8.
+                if (VPackSlice syncing = slice.get("syncing"); syncing.isBoolean() && syncing.getBoolean()) {
+                  ++entry.followersSyncing;
+                }
+              }
+
+              // if leader has documents and at least one follower has documents, report
+              // the average percentage of follower docs / leader docs
+
+              if (followerResponses > 0 && entry.total > 0) {
+                entry.followerPercent = std::min<double>(
+                    100.0, 
+                    100.0 * static_cast<double>(followerTotal) / static_cast<double>(followerResponses) / static_cast<double>(entry.total)
+                );
               }
             }
           }
@@ -437,40 +489,31 @@ void ShardDistributionReporter::helperDistributionForDatabase(
   }
 }
 
+/// @brief fetch distribution for a single collection in db
 void ShardDistributionReporter::getCollectionDistributionForDatabase(
     std::string const& dbName, std::string const& colName, VPackBuilder& result) {
-  double endtime = TRI_microtime() + 2.0;  // We add two seconds
-
-  result.openObject();
-
-  auto aliases = _ci->getServerAliases();
-  auto col = _ci->getCollection(dbName, colName);
-
-  std::queue<std::shared_ptr<LogicalCollection>> todoSyncStateCheck;
-
-  auto allShards = col->shardIds();
-  if (testAllShardsInSync(dbName, col.get(), allShards.get())) {
-    ReportInSync(col.get(), allShards.get(), aliases, result);
-  } else {
-    todoSyncStateCheck.push(col);
-  }
-
-  const bool progress = true;
-  helperDistributionForDatabase(dbName, result, todoSyncStateCheck, endtime, aliases, progress);
-  result.close();
+  std::vector<std::shared_ptr<LogicalCollection>> cols{ _ci->getCollection(dbName, colName) };
+  getCollectionDistribution(dbName, cols, result, true);
 }
 
+/// @brief fetch distributions for all collections in db
 void ShardDistributionReporter::getDistributionForDatabase(std::string const& dbName,
                                                            VPackBuilder& result) {
+  auto cols = _ci->getCollections(dbName);
+  getCollectionDistribution(dbName, cols, result, false);
+}
+
+/// @brief internal helper function to fetch distributions
+void ShardDistributionReporter::getCollectionDistribution(
+    std::string const& dbName, std::vector<std::shared_ptr<LogicalCollection>> const& cols, 
+    VPackBuilder& result, bool progress) {
+
   double endtime = TRI_microtime() + 2.0;  // We add two seconds
 
-  result.openObject();
-
   auto aliases = _ci->getServerAliases();
-  auto cols = _ci->getCollections(dbName);
-
   std::queue<std::shared_ptr<LogicalCollection>> todoSyncStateCheck;
 
+  result.openObject();
   for (auto col : cols) {
     auto allShards = col->shardIds();
     if (testAllShardsInSync(dbName, col.get(), allShards.get())) {
@@ -480,7 +523,6 @@ void ShardDistributionReporter::getDistributionForDatabase(std::string const& db
     }
   }
 
-  const bool progress = false;
   helperDistributionForDatabase(dbName, result, todoSyncStateCheck, endtime, aliases, progress);
   result.close();
 }

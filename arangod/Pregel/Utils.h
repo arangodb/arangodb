@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_UTILS_H
-#define ARANGODB_PREGEL_UTILS_H 1
+#pragma once
 
 #include <cstdint>
 
@@ -135,11 +134,10 @@ class Utils {
 
   static int64_t countDocuments(TRI_vocbase_t* vocbase, std::string const& collection);
 
-  static int resolveShard(ClusterInfo& ci, WorkerConfig const* config,
-                          std::string const& collectionName, std::string const& shardKey,
-                          arangodb::velocypack::StringRef vertexKey,
-                          std::string& responsibleShard);
+  static ErrorCode resolveShard(ClusterInfo& ci, WorkerConfig const* config,
+                                std::string const& collectionName, std::string const& shardKey,
+                                arangodb::velocypack::StringRef vertexKey,
+                                std::string& responsibleShard);
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

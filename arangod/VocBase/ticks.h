@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_TICKS_H
-#define ARANGOD_VOC_BASE_TICKS_H 1
+#pragma once
 
 #include <cstdint>
 
@@ -54,4 +53,3 @@ TRI_voc_tick_t TRI_NewServerSpecificTickMod4();
 /// @brief extracts the server id from a server-specific tick
 uint32_t TRI_ExtractServerIdFromTick(TRI_voc_tick_t);
 
-#endif

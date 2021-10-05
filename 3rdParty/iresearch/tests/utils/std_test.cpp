@@ -36,8 +36,8 @@ TEST(std_test, input_output_iterator) {
     66094,47660,27789,30110,50809,
     90418,49504,49175,50150,2151,
     1, 18, 5, 128, 9000, 782, 8974,
-    irs::integer_traits<uint32_t>::const_max,
-    irs::integer_traits<uint32_t>::const_min
+    std::numeric_limits<uint32_t>::max(),
+    std::numeric_limits<uint32_t>::min()
   };
 
   // write data

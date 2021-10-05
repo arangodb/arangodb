@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_INCEPTION_H
-#define ARANGOD_CONSENSUS_INCEPTION_H 1
+#pragma once
 
 #include <memory>
 
@@ -82,4 +81,3 @@ class Inception : public Thread {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

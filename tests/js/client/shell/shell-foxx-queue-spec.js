@@ -36,15 +36,11 @@ const fs = require('fs');
 const internal = require('internal');
 const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
 const download = internal.download;
-const request = require('@arangodb/request');
 
 const arangodb = require('@arangodb');
 const arango = require('@arangodb').arango;
-const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 const aql = arangodb.aql;
 const db = internal.db;
-
-require("@arangodb/test-helper").waitForFoxxInitialized();
 
 describe('Foxx service', () => {
   const mount = '/queue_test_mount';
@@ -56,9 +52,7 @@ describe('Foxx service', () => {
   });
   afterEach(() => {
     waitForJob();
-    download(`${origin}/${mount}`, '', {
-      method: 'delete'
-    });
+    arango.DELETE_RAW(mount, '');
     if (db._collection('foxx_queue_test')) {
       db.foxx_queue_test.truncate({ compact: false });
     }
@@ -68,9 +62,7 @@ describe('Foxx service', () => {
       FOR queue IN _queues
       RETURN queue
     `).toArray();
-    const res = download(`${origin}/${mount}`, '', {
-      method: 'post'
-    });
+    const res = arango.POST_RAW(mount, '');
     expect(res.code).to.equal(204);
     const queuesAfter = db._query(aql`
       FOR queue IN _queues
@@ -83,14 +75,10 @@ describe('Foxx service', () => {
       FOR queue IN _queues
       RETURN queue
     `).toArray();
-    let res = download(`${origin}/${mount}`, '', {
-      method: 'post'
-    });
+    let res = arango.POST_RAW(mount, '');
     expect(res.code).to.equal(204);
     waitForJob();
-    res = download(`${origin}/${mount}`, '', {
-      method: 'post'
-    });
+    res = arango.POST_RAW(mount, '');
     expect(res.code).to.equal(204);
     const queuesAfter = db._query(aql`
       FOR queue IN _queues
@@ -99,9 +87,7 @@ describe('Foxx service', () => {
     expect(queuesAfter.length - queuesBefore.length).to.equal(1);
   });
   it('should support jobs running in the queue', () => {
-    let res = download(`${origin}/${mount}`, '', {
-      method: 'post'
-    });
+    let res = arango.POST_RAW(mount, '');
     expect(res.code).to.equal(204);
     expect(waitForJob()).to.equal(true);
     const jobResult = db._query(aql`
@@ -112,10 +98,8 @@ describe('Foxx service', () => {
     expect(jobResult.length).to.equal(1);
   });
   it('should support repeating job running in the queue', () => {
-    let res = request.post(`${origin}/${mount}`, {
-      body: JSON.stringify({repeatTimes: 2})
-    });
-    expect(res.statusCode).to.equal(204);
+    let res = arango.POST_RAW(mount, JSON.stringify({repeatTimes: 2}));
+    expect(res.code).to.equal(204);
     expect(waitForJob(2)).to.equal(true);
     const jobResult = db._query(aql`
       FOR i IN foxx_queue_test

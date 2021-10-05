@@ -90,7 +90,7 @@ TRI_edge_direction_e parseDirection(AstNode const* node) {
   return uint64ToDirection(dirNode->getIntValue());
 }
 
-}
+}  // namespace
 
 GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
                      TRI_vocbase_t* vocbase, AstNode const* direction,
@@ -300,9 +300,10 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _defaultDirection(uint64ToDirection(arangodb::basics::VelocyPackHelper::stringUInt64(
           base.get("defaultDirection")))),
       _optionsBuilt(false),
-      _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isSmart", false)),
-      _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isDisjoint", false)) {
-
+      _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(base, StaticStrings::IsSmart,
+                                                                   false)),
+      _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(base, StaticStrings::IsDisjoint,
+                                                                      false)) {
   if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
@@ -356,7 +357,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   auto getAqlCollectionFromName = [&](std::string const& name) -> aql::Collection& {
     // if the collection was already existent in the query, addCollection will
     // just return it.
-    return *query.collections().add(name, AccessMode::Type::READ, aql::Collection::Hint::Collection);
+    return *query.collections().add(name, AccessMode::Type::READ,
+                                    aql::Collection::Hint::Collection);
   };
 
   auto vPackDirListIter = VPackArrayIterator(dirList);
@@ -466,12 +468,14 @@ void GraphNode::setGraphInfoAndCopyColls(std::vector<Collection*> const& edgeCol
                                          std::vector<Collection*> const& vertexColls) {
   _graphInfo.openArray();
   for (auto& it : edgeColls) {
+    TRI_ASSERT(it != nullptr);
     _edgeColls.emplace_back(it);
     _graphInfo.add(VPackValue(it->name()));
   }
   _graphInfo.close();
 
   for (auto& it : vertexColls) {
+    TRI_ASSERT(it != nullptr);
     addVertexCollection(*it);
   }
 }
@@ -508,15 +512,15 @@ std::string const& GraphNode::collectionToShardName(std::string const& collName)
   }
 
   auto found = _collectionToShard.find(collName);
-  TRI_ASSERT(found != _collectionToShard.cend());
+  if (found == _collectionToShard.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                   "unable to find shard '" + collName +
+                                       "' in query shard map");
+  }
   return found->second;
 }
 
-void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                   std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // Vocbase
   nodes.add("database", VPackValue(_vocbase->name()));
 
@@ -549,7 +553,14 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& e : _edgeColls) {
-      nodes.add(VPackValue(collectionToShardName(e->name())));
+      TRI_ASSERT(e != nullptr);
+      auto const& shard = collectionToShardName(e->name());
+      // if the mapped shard for a collection is empty, it means that
+      // we have an edge collection that is only relevant on some of the
+      // target servers
+      if (!shard.empty()) {
+        nodes.add(VPackValue(shard));
+      }
     }
   }
 
@@ -557,7 +568,14 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& v : _vertexColls) {
-      nodes.add(VPackValue(collectionToShardName(v->name())));
+      TRI_ASSERT(v != nullptr);
+      // if the mapped shard for a collection is empty, it means that
+      // we have a vertex collection that is only relevant on some of the
+      // target servers
+      auto const& shard = collectionToShardName(v->name());
+      if (!shard.empty()) {
+        nodes.add(VPackValue(shard));
+      }
     }
   }
 
@@ -604,6 +622,11 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   _options->toVelocyPackIndexes(nodes);
 }
 
+void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone, bool) const {
+  clone._isSmart = _isSmart;
+  clone._isDisjoint = _isDisjoint;
+}
+
 CostEstimate GraphNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
   size_t incoming = estimate.estimatedNrItems;
@@ -616,6 +639,7 @@ CostEstimate GraphNode::estimateCost() const {
     double baseCost = 1;
     size_t baseNumItems = 0;
     for (auto& e : _edgeColls) {
+      TRI_ASSERT(e != nullptr);
       auto count = e->count(_options->trx(), transaction::CountType::TryCache);
       // Assume an estimate if 10% hit rate
       baseCost *= count / 10;
@@ -672,6 +696,18 @@ void GraphNode::getConditionVariables(std::vector<Variable const*>& res) const {
 Collection const* GraphNode::collection() const {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   TRI_ASSERT(!_edgeColls.empty());
+  for (auto const* c : _edgeColls) {
+    // We are required to valuate non-satellites above
+    // satellites, as the collection is used as the protoype
+    // for this graphs sharding.
+    // The Satellite collection does not have sharding.
+    TRI_ASSERT(c != nullptr);
+    if (!c->isSatellite()) {
+      return c;
+    }
+  }
+  // We have not found any non-satellite Collection
+  // just return the first satellite then.
   TRI_ASSERT(_edgeColls.front() != nullptr);
   return _edgeColls.front();
 }
@@ -699,8 +735,8 @@ void GraphNode::enhanceEngineInfo(VPackBuilder& builder) const {
 }
 #endif
 
-void GraphNode::addEdgeCollection(Collections const& collections, std::string const& name,
-                                  TRI_edge_direction_e dir) {
+void GraphNode::addEdgeCollection(Collections const& collections,
+                                  std::string const& name, TRI_edge_direction_e dir) {
   auto aqlCollection = collections.get(name);
   if (aqlCollection != nullptr) {
     addEdgeCollection(*aqlCollection, dir);
@@ -768,18 +804,22 @@ void GraphNode::addVertexCollection(Collections const& collections, std::string 
   }
 }
 
+#ifndef USE_ENTERPRISE
 void GraphNode::addVertexCollection(aql::Collection& collection) {
   _vertexColls.emplace_back(&collection);
 }
+#endif
 
 std::vector<aql::Collection const*> GraphNode::collections() const {
   std::unordered_set<aql::Collection const*> set;
   set.reserve(_edgeColls.size() + _vertexColls.size());
 
   for (auto const& collPointer : _edgeColls) {
+    TRI_ASSERT(collPointer != nullptr);
     set.emplace(collPointer);
   }
   for (auto const& collPointer : _vertexColls) {
+    TRI_ASSERT(collPointer != nullptr);
     set.emplace(collPointer);
   }
 

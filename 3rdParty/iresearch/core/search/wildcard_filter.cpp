@@ -36,7 +36,7 @@ namespace {
 
 using namespace irs;
 
-inline bytes_ref unescape(const bytes_ref& in, bstring& out) {
+bytes_ref unescape(const bytes_ref& in, bstring& out) {
   out.reserve(in.size());
 
   bool copy = true;
@@ -54,9 +54,9 @@ inline bytes_ref unescape(const bytes_ref& in, bstring& out) {
 }
 
 template<typename Invalid, typename Term, typename Prefix, typename WildCard>
-inline auto executeWildcard(
+auto executeWildcard(
     bstring& buf, bytes_ref term,
-    Invalid inv, Term t, Prefix p, WildCard w) {
+    Invalid&& inv, Term&& t, Prefix&& p, WildCard&& w) {
   switch (wildcard_type(term)) {
     case WildcardType::INVALID:
       return inv();
@@ -137,14 +137,13 @@ field_visitor by_wildcard::visitor(const bytes_ref& term) {
         automaton_table_matcher matcher;
       };
 
-      // FIXME
       auto ctx = memory::make_shared<automaton_context>(term);
 
       if (!validate(ctx->acceptor)) {
         return [](const sub_reader&, const term_reader&, filter_visitor&) { };
       }
 
-      return [ctx](
+      return [ctx = std::move(ctx)](
           const sub_reader& segment,
           const term_reader& field,
           filter_visitor& visitor) mutable {

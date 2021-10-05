@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_MOVE_SHARD_FROM_FOLLOWER_H
-#define ARANGOD_CONSENSUS_MOVE_SHARD_FROM_FOLLOWER_H 1
+#pragma once
 
 #include "Job.h"
 #include "Supervision.h"
@@ -86,4 +85,3 @@ struct MoveShard : public Job {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SINGLE_ROW_FETCHER_H
-#define ARANGOD_AQL_SINGLE_ROW_FETCHER_H
+#pragma once
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionBlock.h"
@@ -82,4 +81,3 @@ class SingleRowFetcher {
 };
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_SINGLE_ROW_FETCHER_H

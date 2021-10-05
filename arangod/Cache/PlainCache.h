@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_PLAIN_CACHE_H
-#define ARANGODB_CACHE_PLAIN_CACHE_H
+#pragma once
 
 #include <atomic>
 #include <chrono>
@@ -122,4 +121,3 @@ class PlainCache final : public Cache {
 };  // end namespace cache
 };  // end namespace arangodb
 
-#endif

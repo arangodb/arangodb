@@ -23,8 +23,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_H
-#define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_H 1
+#pragma once
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
@@ -86,4 +85,3 @@ struct ProgrammablePregelAlgorithm : public algorithm {
 };
 
 }  // namespace arangodb
-#endif

@@ -21,6 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Basics/ErrorCode.h>
 #include <string>
 
 struct TRI_vocbase_t;
@@ -55,7 +56,8 @@ void AssertQueryHasResult(TRI_vocbase_t& database, std::string const& queryStrin
 
 /// @brief Tests if executing the given query on the given database results in the given error
 ///        Requires the query to error. Testing of no-error (TRI_ERROR_NO_ERROR) is not possible.
-void AssertQueryFailsWith(TRI_vocbase_t& database, std::string const& query, int errorNumber);
+void AssertQueryFailsWith(TRI_vocbase_t& database, std::string const& query,
+                          ErrorCode errorNumber);
 
 }  // namespace aql
 }  // namespace tests

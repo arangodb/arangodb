@@ -34,6 +34,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
@@ -920,14 +921,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       break;
 
       case Endpoint::TransportType::VST: {
-        VPackBuffer<uint8_t> buffer;
-        VPackBuilder builder(buffer);
-        builder.add(VPackValuePair(reinterpret_cast<uint8_t const*>(content), length));
+        response->addRawPayload(velocypack::StringRef(content, length));
         TRI_FreeString(content);
-
-        // create vpack from file
-        response->setContentType(rest::ContentType::VPACK);
-        response->setPayload(std::move(buffer));
       }
       break;
 
@@ -1025,7 +1020,7 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
   v8::Handle<v8::Value> args[2] = {req, res};
 
   // handle C++ exceptions that happen during dynamic script execution
-  int errorCode;
+  ErrorCode errorCode = TRI_ERROR_NO_ERROR;
   std::string errorMessage;
 
   try {
@@ -1514,14 +1509,15 @@ void TRI_InitV8Actions(v8::Isolate* isolate) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-static int clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbname,
-                                   std::string const& path,  // Note: Has to be properly encoded!
-                                   arangodb::rest::RequestType const& method,
-                                   std::string const& body) {
+static ErrorCode clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbname,
+                                         std::string const& path,  // Note: Has to be properly encoded!
+                                         arangodb::rest::RequestType const& method,
+                                         std::string const& body) {
   TRI_GET_GLOBALS();
   network::ConnectionPool* pool = v8g->_server.getFeature<NetworkFeature>().pool();
   if (!pool || !pool->config().clusterInfo) {
-    LOG_TOPIC("98fc7", ERR, Logger::COMMUNICATION) << "Network pool unavailable.";
+    LOG_TOPIC("98fc7", ERR, Logger::COMMUNICATION)
+        << "Network pool unavailable.";
     return TRI_ERROR_SHUTTING_DOWN;
   }
   ClusterInfo& ci = *pool->config().clusterInfo;
@@ -1543,14 +1539,14 @@ static int clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbna
   for (auto const& sid : DBServers) {
     VPackBuffer<uint8_t> buffer(body.size());
     buffer.append(body);
-    auto f = network::sendRequest(pool, "server:" + sid, verb, path,
+    auto f = network::sendRequestRetry(pool, "server:" + sid, verb, path,
                                   std::move(buffer), reqOpts, headers);
     futures.emplace_back(std::move(f));
   }
 
   for (auto& f : futures) {
     network::Response const& res = f.get();  // throws exceptions upwards
-    int commError = network::fuerteToArangoErrorCode(res);
+    auto commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
       return commError;
     }
@@ -1618,9 +1614,9 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_AddFailurePointDebugging(point.c_str());
 
   if (ServerState::instance()->isCoordinator()) {
-    int res = clusterSendToAllServers(isolate, dbname,
-                                      "_admin/debug/failat/" + StringUtils::urlEncode(point),
-                                      arangodb::rest::RequestType::PUT, "");
+    auto res = clusterSendToAllServers(isolate, dbname,
+                                       "_admin/debug/failat/" + StringUtils::urlEncode(point),
+                                       arangodb::rest::RequestType::PUT, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1693,7 +1689,7 @@ static void JS_DebugRemoveFailAt(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_RemoveFailurePointDebugging(point.c_str());
 
   if (ServerState::instance()->isCoordinator()) {
-    int res =
+    auto res =
         clusterSendToAllServers(isolate, dbname,
                                 "_admin/debug/failat/" + StringUtils::urlEncode(point),
                                 arangodb::rest::RequestType::DELETE_REQ, "");
@@ -1736,7 +1732,7 @@ static void JS_DebugClearFailAt(v8::FunctionCallbackInfo<v8::Value> const& args)
     }
     std::string dbname(v8g->_vocbase->name());
 
-    int res =
+    auto res =
         clusterSendToAllServers(isolate, dbname, "_admin/debug/failat",
                                 arangodb::rest::RequestType::DELETE_REQ, "");
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1747,6 +1743,19 @@ static void JS_DebugClearFailAt(v8::FunctionCallbackInfo<v8::Value> const& args)
 #endif
 
   TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_ClusterApiJwtPolicy(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  TRI_GET_GLOBALS();
+    
+  ClusterFeature const& cf = v8g->_server.getFeature<ClusterFeature>();
+  std::string const& policy = cf.apiJwtPolicy();
+  TRI_V8_RETURN_STD_STRING(policy);
+
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1796,7 +1805,7 @@ static void JS_RunInRestrictedContext(v8::FunctionCallbackInfo<v8::Value> const&
     v8g->_securityContext = JavaScriptSecurityContext::createRestrictedContext();
 
     // make sure the old context will be restored
-    auto guard = scopeGuard([&oldContext, &v8g]() {
+    auto guard = scopeGuard([&oldContext, &v8g]() noexcept {
       v8g->_securityContext = oldContext;
     });
 
@@ -1843,6 +1852,8 @@ static void JS_CreateHotbackup(v8::FunctionCallbackInfo<v8::Value> const& args) 
 }
 
 void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_CLUSTER_API_JWT_POLICY"), JS_ClusterApiJwtPolicy, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_API_DISABLED"), JS_IsFoxxApiDisabled, true);
   TRI_AddGlobalFunctionVocbase(isolate,

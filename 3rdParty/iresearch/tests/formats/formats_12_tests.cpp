@@ -23,6 +23,7 @@
 
 #include "tests_shared.hpp"
 #include "formats_test_case_base.hpp"
+#include "index/norm.hpp"
 #include "store/directory_attributes.hpp"
 
 namespace {
@@ -31,19 +32,17 @@ namespace {
 // --SECTION--                                          format 12 specific tests
 // -----------------------------------------------------------------------------
 
-class format_12_test_case : public tests::directory_test_case_base {
-};
+class format_12_test_case : public tests::directory_test_case_base<> { };
 
 TEST_P(format_12_test_case, read_zero_block_encryption) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory
-  );
+    &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
 
   // replace encryption
-  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+  ASSERT_NE(nullptr, dir().attributes().encryption());
 
   // write segment with format10
   {
@@ -54,15 +53,14 @@ TEST_P(format_12_test_case, read_zero_block_encryption) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     writer->commit();
   }
 
-  // replace encryption
-  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
-  dir().attributes().emplace<tests::rot13_encryption>(6);
+  // replace encryption (hack)
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(6)};
 
   // can't open encrypted index without encryption
   ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
@@ -71,14 +69,15 @@ TEST_P(format_12_test_case, read_zero_block_encryption) {
 TEST_P(format_12_test_case, write_zero_block_encryption) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory
-  );
+    &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
 
-  // replace encryption
-  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
-  dir().attributes().emplace<tests::rot13_encryption>(0);
+  ASSERT_NE(nullptr, dir().attributes().encryption());
+
+  // replace encryption (hack)
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(0)};
 
   // write segment with format10
   auto codec = irs::formats::get("1_2", "1_0");
@@ -88,8 +87,7 @@ TEST_P(format_12_test_case, write_zero_block_encryption) {
 
   ASSERT_THROW(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
-    doc1->stored.begin(), doc1->stored.end()
-  ), irs::index_error);
+    doc1->stored.begin(), doc1->stored.end()), irs::index_error);
 }
 
 TEST_P(format_12_test_case, fields_read_write_wrong_encryption) {
@@ -101,11 +99,12 @@ TEST_P(format_12_test_case, fields_read_write_wrong_encryption) {
 
   tests::json_doc_generator gen(
     resource("fst_prefixes.json"),
-    [&sorted_terms, &unsorted_terms] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [&sorted_terms, &unsorted_terms](
+        tests::document& doc,
+        const std::string& name,
+        const tests::json_doc_generator::json_value& data) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
-        data.str
-      ));
+        name, data.str));
 
       auto ref = irs::ref_cast<irs::byte_type>((doc.indexed.end() - 1).as<tests::templates::string_field>().value());
       sorted_terms.emplace(ref);
@@ -115,29 +114,31 @@ TEST_P(format_12_test_case, fields_read_write_wrong_encryption) {
   // define field
   irs::field_meta field;
   field.name = "field";
-  field.norm = 5;
+  field.features[irs::type<irs::norm>::id()] = 5;
 
   auto codec = irs::formats::get("1_2", "1_0");
   ASSERT_NE(nullptr, codec);
-  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+  ASSERT_NE(nullptr, dir().attributes().encryption());
 
   // write fields
   {
+    const irs::feature_set_t features{irs::type<irs::norm>::id()};
+
     irs::flush_state state;
     state.dir = &dir();
     state.doc_count = 100;
     state.name = "segment_name";
-    state.features = &field.features;
+    state.index_features = field.index_features;
+    state.features = &features;
 
     // should use sorted terms on write
     tests::format_test_case::terms<sorted_terms_t::iterator> terms(
-      sorted_terms.begin(), sorted_terms.end()
-    );
+      sorted_terms.begin(), sorted_terms.end());
 
     auto writer = codec->get_field_writer(false);
     ASSERT_NE(nullptr, writer);
     writer->prepare(state);
-    writer->write(field.name, field.norm, field.features, terms);
+    writer->write(field.name, field.index_features, field.features, terms);
     writer->end();
   }
 
@@ -149,11 +150,12 @@ TEST_P(format_12_test_case, fields_read_write_wrong_encryption) {
   ASSERT_NE(nullptr, reader);
 
   // can't open encrypted index without encryption
-  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
+  dir().attributes() = irs::directory_attributes{ 0, nullptr };
   ASSERT_THROW(reader->prepare(dir(), meta, docs_mask), irs::index_error);
 
   // can't open encrypted index with wrong encryption
-  dir().attributes().emplace<tests::rot13_encryption>(6);
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(6) };
   ASSERT_THROW(reader->prepare(dir(), meta, docs_mask), irs::index_error);
 }
 
@@ -161,7 +163,7 @@ TEST_P(format_12_test_case, column_meta_read_write_wrong_encryption) {
   auto codec = irs::formats::get("1_2", "1_0");
   ASSERT_NE(nullptr, codec);
 
-  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+  ASSERT_NE(nullptr, dir().attributes().encryption());
 
   irs::segment_meta meta;
   meta.name = "_1";
@@ -185,24 +187,25 @@ TEST_P(format_12_test_case, column_meta_read_write_wrong_encryption) {
   auto reader = codec->get_column_meta_reader();
   ASSERT_NE(nullptr, reader);
 
+  // replace encryption (hack)
   // can't open encrypted index without encryption
-  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
+  dir().attributes() = irs::directory_attributes{ 0, nullptr };
   ASSERT_THROW(reader->prepare(dir(), meta, count, max_id), irs::index_error);
 
   // can't open encrypted index with wrong encryption
-  dir().attributes().emplace<tests::rot13_encryption>(6);
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(6) };
   ASSERT_THROW(reader->prepare(dir(), meta, count, max_id), irs::index_error);
 }
 
 TEST_P(format_12_test_case, open_ecnrypted_with_wrong_encryption) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory
-  );
+    &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
 
-  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+  ASSERT_NE(nullptr, dir().attributes().encryption());
 
   // write segment with format10
   {
@@ -213,27 +216,25 @@ TEST_P(format_12_test_case, open_ecnrypted_with_wrong_encryption) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     writer->commit();
   }
 
   // can't open encrypted index with wrong encryption
-  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
-  dir().attributes().emplace<tests::rot13_encryption>(6);
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(6) };
   ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
 }
 
 TEST_P(format_12_test_case, open_ecnrypted_with_non_encrypted) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory
-  );
+    &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
 
-  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+  ASSERT_NE(nullptr, dir().attributes().encryption());
 
   // write segment with format11
   {
@@ -244,14 +245,13 @@ TEST_P(format_12_test_case, open_ecnrypted_with_non_encrypted) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     writer->commit();
   }
 
-  // remove encryption
-  dir().attributes().remove<tests::rot13_encryption>();
+  // remove encryption (hack)
+  dir().attributes() = irs::directory_attributes{ 0, nullptr };
 
   // can't open encrypted index without encryption
   ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
@@ -260,12 +260,13 @@ TEST_P(format_12_test_case, open_ecnrypted_with_non_encrypted) {
 TEST_P(format_12_test_case, open_non_ecnrypted_with_encrypted) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory
-  );
+    &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
 
-  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
+  ASSERT_NE(nullptr, dir().attributes().encryption());
+  dir().attributes() = irs::directory_attributes{ 0, nullptr };
+  ASSERT_EQ(nullptr, dir().attributes().encryption());
 
   // write segment with format11
   {
@@ -276,14 +277,14 @@ TEST_P(format_12_test_case, open_non_ecnrypted_with_encrypted) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     writer->commit();
   }
 
   // add cipher
-  dir().attributes().emplace<tests::rot13_encryption>(7);
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(7) };
 
   // check index
   auto index = irs::directory_reader::open(dir());
@@ -306,11 +307,11 @@ TEST_P(format_12_test_case, open_non_ecnrypted_with_encrypted) {
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
-    for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
@@ -322,8 +323,7 @@ TEST_P(format_12_test_case, open_non_ecnrypted_with_encrypted) {
 TEST_P(format_12_test_case, open_10_with_12) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory
-  );
+    &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
 
@@ -365,11 +365,11 @@ TEST_P(format_12_test_case, open_10_with_12) {
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
-    for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
@@ -381,8 +381,7 @@ TEST_P(format_12_test_case, open_10_with_12) {
 TEST_P(format_12_test_case, formats_10_12) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    &tests::generic_json_field_factory
-  );
+    &tests::generic_json_field_factory);
 
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
@@ -396,8 +395,7 @@ TEST_P(format_12_test_case, formats_10_12) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     writer->commit();
   }
@@ -438,11 +436,11 @@ TEST_P(format_12_test_case, formats_10_12) {
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
-    for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
@@ -464,11 +462,11 @@ TEST_P(format_12_test_case, formats_10_12) {
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator();
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
     irs::bytes_ref actual_value;
-    for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
     }
@@ -477,15 +475,14 @@ TEST_P(format_12_test_case, formats_10_12) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   format_12_test,
   format_12_test_case,
   ::testing::Values(
-    &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-    &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-    &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
-  ),
-  tests::directory_test_case_base::to_string
+    &tests::rot13_directory<&tests::memory_directory, 16>,
+    &tests::rot13_directory<&tests::fs_directory, 16>,
+    &tests::rot13_directory<&tests::mmap_directory, 16>),
+  tests::directory_test_case_base<>::to_string
 );
 
 // -----------------------------------------------------------------------------
@@ -494,21 +491,19 @@ INSTANTIATE_TEST_CASE_P(
 
 using tests::format_test_case;
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
   format_12_test,
   format_test_case,
   ::testing::Combine(
     ::testing::Values(
-      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>,
-      &tests::rot13_cipher_directory<&tests::memory_directory, 7>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 7>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 7>
-    ),
-    ::testing::Values(tests::format_info{"1_2", "1_0"})
-  ),
-  tests::to_string
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::fs_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>,
+      &tests::rot13_directory<&tests::memory_directory, 7>,
+      &tests::rot13_directory<&tests::fs_directory, 7>,
+      &tests::rot13_directory<&tests::mmap_directory, 7>),
+    ::testing::Values(tests::format_info{"1_2", "1_0"})),
+  format_test_case::to_string
 );
 
 }

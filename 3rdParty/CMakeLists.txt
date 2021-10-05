@@ -31,16 +31,28 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 ## SNAPPY
 ################################################################################
 
-set(SNAPPY_VERSION "1.1.8")
-set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+function (add_snappy)
+    # use the function to open a scope so CMAKE_CXX_FLAGS is only changed for
+    # snappy
+    add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-suggest-override -Wno-sign-compare)
+    add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-suggest-override -Wno-sign-compare)
+    set(SNAPPY_VERSION "1.1.9")
+    set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+    set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
+    set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}" PARENT_SCOPE)
+    set(SNAPPY_LIB "snappy" PARENT_SCOPE)
+    set(SNAPPY_FUZZING_BUILD OFF CACHE BOOL "build Snappy for fuzzing")
+    set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "disable Snappy tests" FORCE)
+    set(SNAPPY_BUILD_BENCHMARKS OFF CACHE BOOL "disable Snappy benchmarks" FORCE)
+    set(SNAPPY_INSTALL OFF CACHE BOOL "disable Snappy installation")
+    set(SNAPPY_REQUIRE_AVX ON CACHE BOOL "target processors with AVX support" FORCE)
+    set(SNAPPY_REQUIRE_AVX2 OFF CACHE BOOL "target processors with AVX2 support" FORCE)
+    add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
+endfunction ()
+add_snappy()
 set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
-set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}")
 set(SNAPPY_BUILD_DIR "${SNAPPY_BUILD_DIR}" PARENT_SCOPE)
-set(SNAPPY_LIB "snappy")
 set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
-set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "disable Snappy tests")
-set(SNAPPY_INSTALL OFF CACHE BOOL "disable Snappy installation")
-add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
 
 ################################################################################
 ## LIBUNWIND
@@ -108,6 +120,16 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
 set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 
 ################################################################################
+## Velocypack
+################################################################################
+
+set(HashType "xxhash" CACHE STRING "Hash type (fasthash, xxhash)" FORCE)
+set(BuildVelocyPackExamples OFF CACHE BOOL "Build VelocyPack Examples" FORCE)
+set(BuildTools OFF CACHE BOOL "Build VelocyPack Tools" FORCE)
+
+add_subdirectory(velocypack EXCLUDE_FROM_ALL)
+
+################################################################################
 ## IResearch
 ################################################################################
 
@@ -138,7 +160,6 @@ set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib" PARENT_SCOPE)
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")
-
 find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
 
 set(CMAKE_MACOSX_RPATH ON) # suppress cmake warning (use same value as cmake default)
@@ -251,10 +272,6 @@ target_include_directories(fuerte SYSTEM PRIVATE
 
 set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 
-if(NOT TARGET velocypack)
-add_library(velocypack INTERFACE)
-target_include_directories(velocypack INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/velocypack/include")
-endif()
 
 set(TAOCPP_JSON_BUILD_TESTS    OFF CACHE BOOL "Build taocpp::json test programs"    FORCE)
 set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build taocpp::json example programs" FORCE)

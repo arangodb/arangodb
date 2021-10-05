@@ -21,20 +21,20 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
-#include "directory_attributes.hpp"
 #include "fs_directory.hpp"
+
+#include "shared.hpp"
+#include "store/directory_attributes.hpp"
+#include "store/directory_cleaner.hpp"
 #include "error/error.hpp"
-#include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/object_pool.hpp"
 #include "utils/string_utils.hpp"
-#include "utils/utf8_path.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/crc.hpp"
 
 #ifdef _WIN32
-  #include <Windows.h> // for GetLastError()
+#include <Windows.h> // for GetLastError()
 #endif
 
 namespace {
@@ -42,7 +42,7 @@ namespace {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief converts the specified IOAdvice to corresponding posix fadvice
 //////////////////////////////////////////////////////////////////////////////
-inline int get_posix_fadvice(irs::IOAdvice advice) {
+inline int get_posix_fadvice(irs::IOAdvice advice) noexcept {
   switch (advice) {
     case irs::IOAdvice::NORMAL:
       return IR_FADVICE_NORMAL;
@@ -65,7 +65,6 @@ inline int get_posix_fadvice(irs::IOAdvice advice) {
   return IR_FADVICE_NORMAL;
 }
 
-
 }
 
 namespace iresearch {
@@ -78,8 +77,8 @@ MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprec
 
 class fs_lock : public index_lock {
  public:
-  fs_lock(const std::string& dir, const std::string& file)
-    : dir_(dir), file_(file) {
+  fs_lock(const irs::utf8_path& dir, const std::string& file)
+    : dir_{dir}, file_{file} {
   }
 
   virtual bool lock() override {
@@ -89,22 +88,24 @@ class fs_lock : public index_lock {
     }
 
     bool exists;
-    utf8_path path;
 
-    if (!(path/=dir_).exists(exists)) {
+
+    if (!file_utils::exists(exists, dir_.c_str())) {
       IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
       return false;
-    }
+    } 
 
     // create directory if it is not exists
-    if (!exists && !path.mkdir()) {
+    if (!exists && !file_utils::mkdir(dir_.c_str(), true)) {
       IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
       return false;
     }
 
+    const auto path = dir_ / file_;
+
     // create lock file
-    if (!file_utils::verify_lock_file((path/=file_).c_str())) {
-      if (!path.exists(exists) || (exists && !path.remove())) {
+    if (!file_utils::verify_lock_file(path.c_str())) {
+      if (!file_utils::exists(exists, path.c_str()) || (exists && !file_utils::remove(path.c_str()))) {
         IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
         return false;
       }
@@ -122,11 +123,9 @@ class fs_lock : public index_lock {
     }
 
     try {
-      utf8_path path;
+      const auto path = dir_ / file_;
 
-      (path/=dir_)/=file_;
       result = file_utils::verify_lock_file(path.c_str());
-
       return true;
     } catch (...) {
     }
@@ -141,7 +140,9 @@ class fs_lock : public index_lock {
       // file will be automatically removed on close
       return true;
 #else
-      return ((utf8_path()/=dir_)/=file_).remove();
+      const auto path = dir_ / file_;
+
+      return file_utils::remove(path.c_str());
 #endif
     }
 
@@ -149,7 +150,7 @@ class fs_lock : public index_lock {
   }
 
  private:
-  std::string dir_;
+  irs::utf8_path dir_;
   std::string file_;
   file_utils::lock_handle_t handle_;
 }; // fs_lock
@@ -169,16 +170,12 @@ class fs_index_output : public buffered_index_output {
                                                  IR_FADVICE_NORMAL));
 
     if (nullptr == handle) {
-      typedef std::remove_pointer<file_path_t>::type char_t;
-      auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-      std::string path;
-
-      irs::locale_utils::append_external<char_t>(path, name, locale);
-
 #ifdef _WIN32
-      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", GetLastError(), path.c_str());
+      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
+                    GetLastError(), irs::utf8_path{name}.c_str());
 #else
-      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno, path.c_str());
+      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
+                    errno, irs::utf8_path{name}.c_str());
 #endif
 
       return nullptr;
@@ -237,11 +234,12 @@ class fs_index_input : public buffered_index_input {
 
   virtual int64_t checksum(size_t offset) const override final {
     // "read_internal" modifies pos_
-    auto restore_position = make_finally([pos = this->pos_, this]() noexcept {
+    auto restore_position = make_finally(
+        [pos = this->pos_, this]() noexcept {
       const_cast<fs_index_input*>(this)->pos_ = pos;
     });
 
-    const auto begin = handle_->pos;
+    const auto begin = pos_;
     const auto end = (std::min)(begin + offset, handle_->size);
 
     crc32c crc;
@@ -269,16 +267,12 @@ class fs_index_input : public buffered_index_input {
     handle->handle = irs::file_utils::open(name, irs::file_utils::OpenMode::Read, handle->posix_open_advice);
 
     if (nullptr == handle->handle) {
-      typedef std::remove_pointer<file_path_t>::type char_t;
-      auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-      std::string path;
-
-      irs::locale_utils::append_external<char_t>(path, name, locale);
-
 #ifdef _WIN32
-      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", GetLastError(), path.c_str());
+      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s",
+                    GetLastError(), irs::utf8_path{name}.c_str());
 #else
-      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", errno, path.c_str());
+      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s",
+                    errno, irs::utf8_path{name}.c_str());
 #endif
 
       return nullptr;
@@ -286,19 +280,14 @@ class fs_index_input : public buffered_index_input {
 
     uint64_t size;
     if (!file_utils::byte_size(size, *handle)) {
-      typedef std::remove_pointer<file_path_t>::type char_t;
-      auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
-      std::string path;
-
-      irs::locale_utils::append_external<char_t>(path, name, locale);
-
       #ifdef _WIN32
         auto error = GetLastError();
       #else
         auto error = errno;
       #endif
 
-      IR_FRMT_ERROR("Failed to get stat for input file, error: %d, path: %s", error, path.c_str());
+      IR_FRMT_ERROR("Failed to get stat for input file, error: %d, path: %s",
+                    error, irs::utf8_path{name}.c_str());
 
       return nullptr;
     }
@@ -323,7 +312,7 @@ class fs_index_input : public buffered_index_input {
 
  protected:
   virtual void seek_internal(size_t pos) override final {
-    if (pos >= handle_->size) {
+    if (pos > handle_->size) {
       throw io_error(string_utils::to_string(
         "seek out of range for input file, length '" IR_SIZE_T_SPECIFIER "', position '" IR_SIZE_T_SPECIFIER "'",
         handle_->size, pos));
@@ -347,21 +336,8 @@ class fs_index_input : public buffered_index_input {
       handle_->pos = pos_;
     }
 
-    size_t read = irs::file_utils::fread(fd, b, sizeof(byte_type) * len);
+    const size_t read = irs::file_utils::fread(fd, b, sizeof(byte_type) * len);
     pos_ = handle_->pos += read;
-
-    if (read != len) {
-      if (0 == read) {
-        //eof(true);
-        // read past eof
-        throw eof_error();
-      }
-
-      // read error
-      throw io_error(string_utils::to_string(
-        "failed to read from input file, read '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes, error '%d'",
-        read, len, irs::file_utils::ferror(fd)));
-    }
 
     assert(handle_->pos == pos_);
     return read;
@@ -422,7 +398,15 @@ class pooled_fs_index_input final : public fs_index_input {
   virtual index_input::ptr reopen() const override;
 
  private:
-  typedef unbounded_object_pool<file_handle> fd_pool_t;
+  struct builder {
+    using ptr = std::unique_ptr<file_handle>;
+
+    static std::unique_ptr<file_handle> make() {
+      return memory::make_unique<file_handle>();
+    }
+  };
+
+  using fd_pool_t = unbounded_object_pool<builder>;
   std::shared_ptr<fd_pool_t> fd_pool_;
 
   pooled_fs_index_input(const pooled_fs_index_input& in) = default;
@@ -498,19 +482,18 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(const file_handle
 // --SECTION--                                       fs_directory implementation
 // -----------------------------------------------------------------------------
 
-fs_directory::fs_directory(const std::string& dir)
-  : dir_(dir) {
-}
-
-attribute_store& fs_directory::attributes() noexcept {
-  return attributes_;
+fs_directory::fs_directory(
+    irs::utf8_path dir,
+    directory_attributes attrs,
+    size_t fd_pool_size)
+  : attrs_{std::move(attrs)},
+    dir_{std::move(dir)},
+    fd_pool_size_{fd_pool_size} {
 }
 
 index_output::ptr fs_directory::create(const std::string& name) noexcept {
   try {
-    utf8_path path;
-
-    (path/=dir_)/=name;
+    const irs::utf8_path path = dir_ / name;
 
     auto out = fs_index_output::open(path.c_str());
 
@@ -525,20 +508,22 @@ index_output::ptr fs_directory::create(const std::string& name) noexcept {
   return nullptr;
 }
 
-const std::string& fs_directory::directory() const noexcept {
+const irs::utf8_path& fs_directory::directory() const noexcept {
   return dir_;
 }
 
 bool fs_directory::exists(
-  bool& result, const std::string& name
-) const noexcept {
-  return ((utf8_path()/=dir_)/=name).exists(result);
+    bool& result, const std::string& name) const noexcept {
+  const auto path = dir_ / name;
+
+  return file_utils::exists(result, path.c_str());
 }
 
 bool fs_directory::length(
-  uint64_t& result, const std::string& name
-) const noexcept {
-  return ((utf8_path()/=dir_)/=name).file_size(result);
+    uint64_t& result, const std::string& name) const noexcept {
+  const auto path = dir_ / name;
+
+  return file_utils::byte_size(result, path.c_str());
 }
 
 index_lock::ptr fs_directory::make_lock(const std::string& name) noexcept {
@@ -546,18 +531,18 @@ index_lock::ptr fs_directory::make_lock(const std::string& name) noexcept {
 }
 
 bool fs_directory::mtime(
-  std::time_t& result, const std::string& name
-) const noexcept {
-  return ((utf8_path()/=dir_)/=name).mtime(result);
+    std::time_t& result,
+    const std::string& name) const noexcept {
+  const auto path = dir_ / name;
+
+  return file_utils::mtime(result, path.c_str());
 }
 
 bool fs_directory::remove(const std::string& name) noexcept {
   try {
-    utf8_path path;
+    const auto path = dir_ / name;
 
-    (path/=dir_)/=name;
-
-    return path.remove();
+    return file_utils::remove(path.c_str());
   } catch (...) {
   }
 
@@ -568,13 +553,9 @@ index_input::ptr fs_directory::open(
     const std::string& name,
     IOAdvice advice) const noexcept {
   try {
-    utf8_path path;
-    auto pool_size =
-      const_cast<attribute_store&>(attributes()).emplace<fd_pool_size>()->size;
+    const auto path = dir_ / name;
 
-    (path/=dir_)/=name;
-
-    return fs_index_input::open(path.c_str(), pool_size, advice);
+    return fs_index_input::open(path.c_str(), fd_pool_size_, advice);
   } catch(...) {
   }
 
@@ -582,16 +563,13 @@ index_input::ptr fs_directory::open(
 }
 
 bool fs_directory::rename(
-  const std::string& src, const std::string& dst
-) noexcept {
+    const std::string& src,
+    const std::string& dst) noexcept {
   try {
-    utf8_path src_path;
-    utf8_path dst_path;
+    const auto src_path = dir_ / src;
+    const auto dst_path = dir_ / dst;
 
-    (src_path/=dir_)/=src;
-    (dst_path/=dir_)/=dst;
-
-    return src_path.rename(dst_path);
+    return file_utils::move(src_path.c_str(), dst_path.c_str());
   } catch (...) {
   }
 
@@ -599,20 +577,18 @@ bool fs_directory::rename(
 }
 
 bool fs_directory::visit(const directory::visitor_f& visitor) const {
-  auto directory = (utf8_path()/=dir_).native();
   bool exists;
 
-  if (!file_utils::exists_directory(exists, directory.c_str()) || !exists) {
+  if (!file_utils::exists_directory(exists, dir_.c_str()) || !exists) {
     return false;
   }
 
 #ifdef _WIN32
-  utf8_path path;
-  auto dir_visitor = [&path, &visitor] (const file_path_t name) {
-    path.clear();
-    path /= name;
+  irs::utf8_path path;
+  auto dir_visitor = [&path, &visitor](const file_path_t name) {
+    path = name;
 
-    auto filename = path.utf8();
+    auto filename = path.u8string();
     return visitor(filename);
   };
 #else
@@ -623,14 +599,12 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
   };
 #endif
 
-  return file_utils::visit_directory(directory.c_str(), dir_visitor, false);
+  return file_utils::visit_directory(dir_.c_str(), dir_visitor, false);
 }
 
 bool fs_directory::sync(const std::string& name) noexcept {
   try {
-    utf8_path path;
-
-    (path/=dir_)/=name;
+    const auto path = dir_ / name;
 
     if (file_utils::file_sync(path.c_str())) {
       return true;
@@ -642,7 +616,7 @@ bool fs_directory::sync(const std::string& name) noexcept {
       auto error = errno;
     #endif
 
-    IR_FRMT_ERROR("Failed to sync file, error: %d, path: %s", error, path.utf8().c_str());
+    IR_FRMT_ERROR("Failed to sync file, error: %d, path: %s", error, path.u8string().c_str());
   } catch (...) {
     IR_FRMT_ERROR("Failed to sync file, name : %s", name.c_str());
   }
@@ -651,4 +625,5 @@ bool fs_directory::sync(const std::string& name) noexcept {
 }
 
 MSVC_ONLY(__pragma(warning(pop)))
+
 }

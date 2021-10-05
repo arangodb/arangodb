@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SSL__HELPER_H
-#define ARANGODB_BASICS_SSL__HELPER_H 1
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -78,4 +77,3 @@ std::string lastSSLError();
 
 }  // namespace arangodb
 
-#endif

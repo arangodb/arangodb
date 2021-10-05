@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_OPTION_H
-#define ARANGODB_PROGRAM_OPTIONS_OPTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "ProgramOptions/Parameters.h"
@@ -71,6 +70,9 @@ enum class Flags : uint16_t {
   
   DefaultNoOs = Default & ~OsAll,         // default, but not specifying any OSes
   DefaultNoComponents = Default & ~OnAll, // default, but not specifying any components
+
+  // experimental flag
+  Experimental = 8192,
 };
 
 static constexpr inline std::underlying_type<Flags>::type makeFlags() {
@@ -197,4 +199,3 @@ struct Option {
 }  // namespace options
 }  // namespace arangodb
 
-#endif

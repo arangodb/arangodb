@@ -22,8 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_DUMP_DUMP_FEATURE_H
-#define ARANGODB_DUMP_DUMP_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -65,6 +64,7 @@ class DumpFeature final : public application_features::ApplicationFeature {
   /// @brief Holds configuration data to pass between methods
   struct Options {
     std::vector<std::string> collections{};
+    std::vector<std::string> shards{};
     std::string outputPath{};
     std::string maskingsFile{};
     uint64_t initialChunkSize{1024 * 1024 * 8};
@@ -81,7 +81,7 @@ class DumpFeature final : public application_features::ApplicationFeature {
     bool overwrite{false};
     bool progress{true};
     bool useGzip{true};
-    bool useEnvelope{true};
+    bool useEnvelope{false};
   };
 
   /// @brief Stores stats about the overall dump progress
@@ -168,8 +168,8 @@ class DumpFeature final : public application_features::ApplicationFeature {
 
   Result storeDumpJson(VPackSlice body, std::string const& dbName) const;
   Result storeViews(velocypack::Slice const&) const;
+
 };
 
 }  // namespace arangodb
 
-#endif

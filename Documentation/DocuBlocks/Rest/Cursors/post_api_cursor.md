@@ -23,10 +23,13 @@ not set, a server-controlled default value will be used. A *batchSize* value of
 *0* is disallowed.
 
 @RESTBODYPARAM{ttl,integer,optional,int64}
-The time-to-live for the cursor (in seconds). The cursor will be
-removed on the server automatically after the specified amount of time. This
-is useful to ensure garbage collection of cursors that are not fully fetched
-by clients. If not set, a server-defined value will be used (default: 30 seconds).
+The time-to-live for the cursor (in seconds). If the result set is small enough
+(less than or equal to `batchSize`) then results are returned right away.
+Otherwise they are stored in memory and will be accessible via the cursor with
+respect to the `ttl`. The cursor will be removed on the server automatically
+after the specified amount of time. This is useful to ensure garbage collection
+of cursors that are not fully fetched by clients. If not set, a server-defined
+value will be used (default: 30 seconds).
 
 @RESTBODYPARAM{cache,boolean,optional,}
 flag to determine whether the AQL query results cache
@@ -59,8 +62,22 @@ and thus make queries run longer. Note that the *fullCount* attribute may only
 be present in the result if the query has a top-level LIMIT clause and the LIMIT
 clause is actually used in the query.
 
+@RESTSTRUCT{fillBlockCache,post_api_cursor_opts,boolean,optional,}
+if set to *true* or not specified, this will make the query store the data it 
+reads via the RocksDB storage engine in the RocksDB block cache. This is usually 
+the desired behavior. The option can be set to *false* for queries that are
+known to either read a lot of data which would thrash the block cache, or for queries
+that read data which are known to be outside of the hot set. By setting the option
+to *false*, data read by the query will not make it into the RocksDB block cache if
+not already in there, thus leaving more room for the actual hot set.
+
 @RESTSTRUCT{maxPlans,post_api_cursor_opts,integer,optional,int64}
 Limits the maximum number of plans that are created by the AQL query optimizer.
+
+@RESTSTRUCT{maxNodesPerCallstack,post_api_cursor_opts,integer,optional,int64}
+The number of execution nodes in the query plan after that stack splitting is
+performed to avoid a potential stack overflow. Defaults to the configured value
+of the startup option `--query.max-nodes-per-callstack`.
 
 @RESTSTRUCT{maxWarningCount,post_api_cursor_opts,integer,optional,int64}
 Limits the maximum number of warnings a query will return. The number of warnings
@@ -76,17 +93,37 @@ There is also a server configuration option `--query.fail-on-warning` for settin
 default value for *failOnWarning* so it does not need to be set on a per-query level.
 
 @RESTSTRUCT{stream,post_api_cursor_opts,boolean,optional,}
-Specify *true* and the query will be executed in a **streaming** fashion. The query result is
-not stored on the server, but calculated on the fly. *Beware*: long-running queries will
-need to hold the collection locks for as long as the query cursor exists.
-When set to *false* a query will be executed right away in its entirety.
-In that case query results are either returned right away (if the result set is small enough),
-or stored on the arangod instance and accessible via the cursor API (with respect to the `ttl`).
-It is advisable to *only* use this option on short-running queries or without exclusive locks
-(write-locks on MMFiles).
-Please note that the query options `cache`, `count` and `fullCount` will not work on streaming queries.
-Additionally query statistics, warnings and profiling data will only be available after the query is finished.
-The default value is *false*
+Can be enabled to execute the query lazily. If set to *true*, then the query is
+executed as long as necessary to produce up to `batchSize` results. These
+results are returned immediately and the query is suspended until the client
+asks for the next batch (if there are more results). Depending on the query
+this can mean that the first results will be available much faster and that
+less memory is needed because the server only needs to store a subset of
+results at a time. Read-only queries can benefit the most, unless `SORT`
+without index or `COLLECT` are involved that make it necessary to process all
+documents before a partial result can be returned. It is advisable to only use
+this option for queries without exclusive locks.
+
+Remarks:
+- The query will hold resources until it ends (such as RocksDB snapshots, which
+  prevents compaction to some degree). Writes will be in memory until the query
+  is committed.
+- If existing documents are modified, then write locks are held on these
+  documents and other queries trying to modify the same documents will fail
+  because of this conflict.
+- A streaming query may fail late because of a conflict or for other reasons
+  after some batches were already returned successfully, possibly rendering the
+  results up to that point meaningless.
+- The query options `cache`, `count` and `fullCount` are not supported for
+  streaming queries.
+- Query statistics, profiling data and warnings are delivered as part of the
+  last batch.
+
+If the `stream` option is *false* (default), then the complete result of the
+query is calculated before any of it is returned to the client. The server
+stores the full result in memory (on the contacted Coordinator if in a cluster).
+All other resources are freed immediately (locks, RocksDB snapshots). The query
+will fail before it returns results in case of a conflict.
 
 @RESTSTRUCT{optimizer,post_api_cursor_opts,object,optional,post_api_cursor_opts_optimizer}
 Options related to the query optimizer.
@@ -115,15 +152,15 @@ The query has to be executed within the given runtime or it will be killed.
 The value is specified in seconds. The default value is *0.0* (no timeout).
 
 @RESTSTRUCT{maxTransactionSize,post_api_cursor_opts,integer,optional,int64}
-Transaction size limit in bytes. Honored by the RocksDB storage engine only.
+Transaction size limit in bytes.
 
 @RESTSTRUCT{intermediateCommitSize,post_api_cursor_opts,integer,optional,int64}
 Maximum total size of operations after which an intermediate commit is performed
-automatically. Honored by the RocksDB storage engine only.
+automatically.
 
 @RESTSTRUCT{intermediateCommitCount,post_api_cursor_opts,integer,optional,int64}
 Maximum number of operations after which an intermediate commit is performed
-automatically. Honored by the RocksDB storage engine only.
+automatically.
 
 @RESTSTRUCT{skipInaccessibleCollections,post_api_cursor_opts,boolean,optional,}
 AQL queries (especially graph traversals) will treat collection to which a user has no access rights as if these collections were empty. Instead of returning a forbidden access error, your queries will execute normally. This is intended to help with certain use-cases: A graph contains several collections and different users execute AQL queries on that graph. You can now naturally limit the accessible results by changing the access rights of users on collections. This feature is only available in the Enterprise Edition.
@@ -194,8 +231,7 @@ the server error number
 a descriptive error message<br>
 If the query specification is complete, the server will process the query. If an
 error occurs during query processing, the server will respond with *HTTP 400*.
-Again, the body of the response will contain details about the error.<br>
-A [list of query errors can be found here](../../Manual/Appendix/ErrorCodes.html).
+Again, the body of the response will contain details about the error.
 
 @RESTRETURNCODE{404}
 The server will respond with *HTTP 404* in case a non-existing collection is

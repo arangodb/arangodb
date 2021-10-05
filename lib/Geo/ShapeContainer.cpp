@@ -55,6 +55,24 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
+namespace {
+
+S2Polygon latLngRectToPolygon(S2LatLngRect const* rect) {
+  // Construct polygon from rect:
+  std::vector<S2Point> v;
+  v.reserve(5);
+  v.emplace_back(rect->GetVertex(0).ToPoint());
+  v.emplace_back(rect->GetVertex(1).ToPoint());
+  v.emplace_back(rect->GetVertex(2).ToPoint());
+  v.emplace_back(rect->GetVertex(3).ToPoint());
+  v.emplace_back(rect->GetVertex(0).ToPoint());
+  std::unique_ptr<S2Loop> loop;
+  loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
+  return S2Polygon{std::move(loop), S2Debug::DISABLE};
+}
+
+}
+
 Result ShapeContainer::parseCoordinates(VPackSlice const& json, bool geoJson) {
   if (!json.isArray() || json.length() < 2) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
@@ -550,6 +568,7 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
 
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
+      return _data == cc->_data;
   }
   return false;
 }
@@ -557,27 +576,17 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
 bool ShapeContainer::intersects(S2Polyline const* other) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT: {
-      S2Point const& p = static_cast<S2PointRegion*>(_data)->point();
-      // containment is only numerically defined on the endpoints
-      for (int k = 0; k < other->num_vertices(); k++) {
-        if (other->vertex(k) == p) {
-          return true;
-        }
-      }
-      return false;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+          "The case GEO_INTERSECTS(<point>, <polyline>) is numerically instable and thus not supported.");
     }
     case ShapeContainer::Type::S2_POLYLINE: {
       S2Polyline const* ll = static_cast<S2Polyline const*>(_data);
       return ll->Intersects(other);
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
-      S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
-      for (int k = 0; k < other->num_vertices(); k++) {
-        if (rect->Contains(other->vertex(k))) {
-          return true;
-        }
-      }
-      return false;
+      auto rectPoly = ::latLngRectToPolygon(static_cast<S2LatLngRect const*>(_data));
+      auto cuts = rectPoly.IntersectWithPolyline(*other);
+      return !cuts.empty();
     }
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
@@ -585,18 +594,52 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
       return !cuts.empty();
     }
     case ShapeContainer::Type::S2_MULTIPOINT:
-    case ShapeContainer::Type::S2_MULTIPOLYLINE:
+    case ShapeContainer::Type::S2_MULTIPOLYLINE: {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+          "The case GEO_INTERSECTS(<multipoint or multipolyline>, <polyline>) is not yet implemented.");
+    }
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
   }
   return false;
 }
 
+namespace {
+bool intersectRectPolygon(S2LatLngRect const* rect, S2Polygon const* poly) {
+  if (rect->is_full()) {
+    return true;  // rectangle spans entire sphere
+  } else if (rect->is_point()) {
+    return poly->Contains(rect->lo().ToPoint());  // easy case
+  } else if (!rect->Intersects(poly->GetRectBound())) {
+    return false;  // cheap rejection
+  }
+  auto rectPoly = ::latLngRectToPolygon(rect);
+  return poly->Intersects(&rectPoly);
+}
+
+bool insersectMultiPointsRegion(S2MultiPointRegion const* points, S2Region const* region) {
+  for (int i = 0; i < points->num_points(); ++i) {
+    if (region->Contains(points->point(i))) {
+      return true;
+    }
+  }
+  return false;
+}
+}
+
 bool ShapeContainer::intersects(S2LatLngRect const* other) const {
   switch (_type) {
-    case ShapeContainer::Type::S2_POINT:
-    case ShapeContainer::Type::S2_POLYLINE:
-      return contains(other);  // same
+    case ShapeContainer::Type::S2_POINT: {
+      S2PointRegion const* self = static_cast<S2PointRegion const*>(_data);
+      return other->Contains(self->point());  // same
+    }
+
+    case ShapeContainer::Type::S2_POLYLINE: {
+      auto rectPoly = ::latLngRectToPolygon(static_cast<S2LatLngRect const*>(other));
+      S2Polyline const* self = static_cast<S2Polyline const*>(_data);
+      auto cuts = rectPoly.IntersectWithPolyline(*self);
+      return !cuts.empty();
+    }
 
     case ShapeContainer::Type::S2_LATLNGRECT: {
       S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
@@ -605,22 +648,17 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
 
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* self = static_cast<S2Polygon const*>(_data);
-      if (other->is_full()) {
-        return true;  // rectangle spans entire sphere
-      } else if (other->is_point()) {
-        return self->Contains(other->lo().ToPoint());  // easy case
-      } else if (!other->Intersects(self->GetRectBound())) {
-        return false;  // cheap rejection
-      }
-      // construct bounding polyline of rect
-      S2Polyline rectBound({other->GetVertex(0), other->GetVertex(1),
-                            other->GetVertex(2), other->GetVertex(3)});
-      return self->Intersects(rectBound);
+      return intersectRectPolygon(other, self);
     }
 
-    case ShapeContainer::Type::S2_MULTIPOINT:
+    case ShapeContainer::Type::S2_MULTIPOINT: {
+      S2MultiPointRegion* self = static_cast<S2MultiPointRegion*>(_data);
+      return insersectMultiPointsRegion(self, other);
+    }
+
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
-      return contains(other);  // same
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+          "The case GEO_INTERSECTS(<multiline>, <latlngrect>) is not yet implemented.");
     }
 
     case ShapeContainer::Type::EMPTY:
@@ -636,31 +674,24 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
       return other->Contains(p);
     }
     case ShapeContainer::Type::S2_POLYLINE: {
-      LOG_TOPIC("2cb3c", ERR, Logger::FIXME)
-          << "intersection with polyline is not well defined";
-      return false;  // numerically not well defined
+      S2Polyline* line = static_cast<S2Polyline*>(_data);
+      auto cuts = other->IntersectWithPolyline(*line);
+      return !cuts.empty();
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
       S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
-      if (self->is_full()) {
-        return true;  // rectangle spans entire sphere
-      } else if (self->is_point()) {
-        return other->Contains(self->lo().ToPoint());  // easy case
-      } else if (!self->Intersects(other->GetRectBound())) {
-        return false;  // cheap rejection
-      }
-      // construct bounding polyline of rect
-      S2Polyline rectBound({self->GetVertex(0), self->GetVertex(1),
-                            self->GetVertex(2), self->GetVertex(3)});
-      return other->Intersects(rectBound);
+      return intersectRectPolygon(self, other);
     }
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* self = static_cast<S2Polygon const*>(_data);
       return self->Intersects(other);
     }
-    case ShapeContainer::Type::EMPTY:
     case ShapeContainer::Type::S2_MULTIPOINT:
-    case ShapeContainer::Type::S2_MULTIPOLYLINE:
+    case ShapeContainer::Type::S2_MULTIPOLYLINE: {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+          "The case GEO_INTERSECTS(<multipoint or multipolyline>, <polygon>) is not yet implemented.");
+    }
+    case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
   }
   return false;
@@ -669,6 +700,11 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
 bool ShapeContainer::intersects(ShapeContainer const* cc) const {
   switch (cc->_type) {
     case ShapeContainer::Type::S2_POINT: {
+      if (_type == ShapeContainer::Type::S2_POLYLINE ||
+          _type == ShapeContainer::Type::S2_MULTIPOLYLINE) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+            "The case GEO_INTERSECTS(<polyline>, <point>) is numerically instable and thus not supported.");
+      }
       S2Point const& p = static_cast<S2PointRegion*>(cc->_data)->point();
       return _data->Contains(p);  // same
     }
@@ -682,13 +718,13 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
       return intersects(static_cast<S2LatLngRect const*>(cc->_data));
     }
     case ShapeContainer::Type::S2_MULTIPOINT: {
-      auto pts = static_cast<S2MultiPointRegion const*>(cc->_data);
-      for (int k = 0; k < pts->num_points(); k++) {
-        if (_data->Contains(pts->point(k))) {
-          return true;
-        }
+      if (_type == ShapeContainer::Type::S2_POLYLINE ||
+          _type == ShapeContainer::Type::S2_MULTIPOLYLINE) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+            "The case GEO_INTERSECTS(<polyline>, <multipoint>) is numerically instable and thus not supported.");
       }
-      return false;
+      auto pts = static_cast<S2MultiPointRegion const*>(cc->_data);
+      return insersectMultiPointsRegion(pts, _data);
     }
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       auto lines = static_cast<S2MultiPolyline const*>(cc->_data);

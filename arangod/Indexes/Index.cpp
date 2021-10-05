@@ -27,6 +27,7 @@
 #include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
+#include <velocypack/Utf8Helper.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Index.h"
@@ -46,6 +47,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -191,12 +193,12 @@ Index::FilterCosts Index::FilterCosts::zeroCosts() {
   return costs;
 }
     
-Index::FilterCosts Index::FilterCosts::defaultCosts(size_t itemsInIndex) {
+Index::FilterCosts Index::FilterCosts::defaultCosts(size_t itemsInIndex, size_t numLookups) {
   Index::FilterCosts costs;
   costs.supportsCondition = false;
   costs.coveredAttributes = 0;
-  costs.estimatedItems = itemsInIndex;
-  costs.estimatedCosts = static_cast<double>(itemsInIndex);
+  costs.estimatedItems = itemsInIndex * numLookups;
+  costs.estimatedCosts = static_cast<double>(costs.estimatedItems);
   return costs;
 }
 
@@ -208,16 +210,13 @@ Index::SortCosts Index::SortCosts::zeroCosts(size_t coveredAttributes) {
   return costs;
 }
     
-Index::SortCosts Index::SortCosts::defaultCosts(size_t itemsInIndex, bool isPersistent) {
+Index::SortCosts Index::SortCosts::defaultCosts(size_t itemsInIndex) {
   Index::SortCosts costs;
   TRI_ASSERT(!costs.supportsCondition);
   costs.coveredAttributes = 0;
-  costs.estimatedCosts = itemsInIndex > 0 ? (itemsInIndex * std::log2(static_cast<double>(itemsInIndex))) : 0.0;
-  if (isPersistent) {
-    // slightly penalize this type of index against other indexes which
-    // are in memory
-    costs.estimatedCosts *= 1.05;
-  }
+  costs.estimatedCosts = 
+      100.0 + /*for sort setup*/
+      1.05 * (itemsInIndex > 0 ? (static_cast<double>(itemsInIndex) * std::log2(static_cast<double>(itemsInIndex))) : 0.0);
   return costs;
 }
 
@@ -335,6 +334,9 @@ Index::IndexType Index::type(char const* type, size_t len) {
   if (::typeMatch(type, len, "geo2")) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
+  if (::typeMatch(type, len, "zkd")) {
+    return TRI_IDX_TYPE_ZKD_INDEX;
+  }
   std::string const& tmp = arangodb::iresearch::DATA_SOURCE_TYPE.name();
   if (::typeMatch(type, len, tmp.c_str())) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
@@ -377,6 +379,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return arangodb::iresearch::DATA_SOURCE_TYPE.name().c_str();
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
+    case TRI_IDX_TYPE_ZKD_INDEX:
+      return "zkd";
     case TRI_IDX_TYPE_UNKNOWN: {
     }
   }
@@ -384,68 +388,43 @@ char const* Index::oldtypeName(Index::IndexType type) {
   return "";
 }
 
-/// @brief validate an index id
-bool Index::validateId(char const* key) {
-  char const* p = key;
-
-  while (1) {
-    char const c = *p;
-
-    if (c == '\0') {
-      return (p - key) > 0;
-    }
-    if (c >= '0' && c <= '9') {
-      ++p;
-      continue;
-    }
-
-    return false;
-  }
+/// @brief validate an index id (i.e. ^[0-9]+$)
+bool Index::validateId(std::string_view id) {
+  // totally empty id string is not allowed
+  return !id.empty() && std::all_of(id.begin(), id.end(), [](char c) {
+    return c >= '0' && c <= '9';
+  });
 }
-
-/// @brief validate an index name
-bool Index::validateName(char const* key) {
-  return TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(key, strlen(key)));
-}
-
-namespace {
-bool validatePrefix(char const* key, size_t* split) {
-  char const* p = key;
-
-  // find divider
-  while (1) {
-    char c = *p;
-
-    if (c == '\0') {
-      return false;
-    }
-
-    if (c == '/') {
-      break;
-    }
-
-    p++;
-  }
-
-  // store split position
-  *split = p - key;
-
-  return TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(key, *split));
-}
-}  // namespace
 
 /// @brief validate an index handle (collection name + / + index id)
-bool Index::validateHandle(char const* key, size_t* split) {
-  bool ok = validatePrefix(key, split);
-  // validate index id
-  return ok && validateId(key + *split + 1);
+bool Index::validateHandle(bool extendedNames, arangodb::velocypack::StringRef handle) noexcept {
+  std::size_t pos = handle.find('/');
+  if (pos == std::string::npos) {
+    // no prefix
+    return false;
+  }
+  // check collection name part
+  if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames, handle.substr(0, pos))) {
+    return false;
+  }
+  // check remainder (index id)
+  handle = handle.substr(pos + 1);
+  return validateId(std::string_view(handle.data(), handle.size()));
 }
 
 /// @brief validate an index handle (collection name + / + index name)
-bool Index::validateHandleName(char const* key, size_t* split) {
-  bool ok = validatePrefix(key, split);
-  // validate index id
-  return ok && validateName(key + *split + 1);
+bool Index::validateHandleName(bool extendedNames, arangodb::velocypack::StringRef name) noexcept {
+  std::size_t pos = name.find('/');
+  if (pos == std::string::npos) {
+    // no prefix
+    return false;
+  }
+  // check collection name part
+  if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames, name.substr(0, pos))) {
+    return false;
+  }
+  // check remainder (index name)
+  return IndexNameValidator::isAllowedName(extendedNames, name.substr(pos + 1));
 }
 
 /// @brief generate a new index id
@@ -548,16 +527,6 @@ void Index::toVelocyPack(VPackBuilder& builder,
     toVelocyPackFigures(builder);
     builder.close();
   }
-}
-
-/// @brief create a VelocyPack representation of the index figures
-/// base functionality (called from derived classes)
-std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures() const {
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject(/*unindexed*/ true);
-  toVelocyPackFigures(*builder);
-  builder->close();
-  return builder;
 }
 
 /// @brief create a VelocyPack representation of the index figures
@@ -681,7 +650,7 @@ Index::SortCosts Index::supportsSortCondition(arangodb::aql::SortCondition const
                                               arangodb::aql::Variable const* /* node */, 
                                               size_t itemsInIndex) const {
   // by default no sort conditions are supported
-  return Index::SortCosts::defaultCosts(itemsInIndex, this->isPersistent());
+  return Index::SortCosts::defaultCosts(itemsInIndex);
 }
   
 arangodb::aql::AstNode* Index::specializeCondition(arangodb::aql::AstNode* /* node */,
@@ -694,7 +663,8 @@ arangodb::aql::AstNode* Index::specializeCondition(arangodb::aql::AstNode* /* no
 std::unique_ptr<IndexIterator> Index::iteratorForCondition(transaction::Methods* /* trx */,
                                                            aql::AstNode const* /* node */,
                                                            aql::Variable const* /* reference */,
-                                                           IndexIteratorOptions const& /* opts */) {
+                                                           IndexIteratorOptions const& /* opts */,
+                                                           ReadOwnWrites /* readOwnWrites */) {
   // the default implementation should never be called
   TRI_ASSERT(false); 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("no default implementation for iteratorForCondition. index type: ") + typeName());
@@ -1015,11 +985,11 @@ void Index::warmup(arangodb::transaction::Methods*, std::shared_ptr<basics::Loca
 
 /// @brief generate error message
 /// @param key the conflicting key
-Result& Index::addErrorMsg(Result& r, std::string const& key) {
+Result& Index::addErrorMsg(Result& r, std::string const& key) const {
   return r.withError([this, &key](result::Error& err) { addErrorMsg(err, key); });
 }
 
-void Index::addErrorMsg(result::Error& r, std::string const& key) {
+void Index::addErrorMsg(result::Error& r, std::string const& key) const {
   // now provide more context based on index
   r.appendErrorMessage(" - in index ");
   r.appendErrorMessage(name());

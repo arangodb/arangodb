@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SHARDING_SHARDING_FEATURE_H
-#define ARANGOD_SHARDING_SHARDING_FEATURE_H 1
+#pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
@@ -62,4 +61,3 @@ class ShardingFeature : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

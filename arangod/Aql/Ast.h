@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AST_H
-#define ARANGOD_AQL_AST_H 1
+#pragma once
 
 #include <functional>
 #include <iterator>
@@ -88,6 +87,9 @@ class Ast {
   /// @brief destroy the AST
   ~Ast();
 
+  /// @brief maximum nesting level for expressions
+  static constexpr uint64_t maxExpressionNesting = 500;
+
   /// @brief return the query
   QueryContext& query() const { return _query; }
   
@@ -127,6 +129,8 @@ class Ast {
   /// @brief whether or not query contains any modification operations
   bool containsModificationNode() const noexcept;
   void setContainsModificationNode() noexcept;
+  bool containsUpsertNode() const noexcept;
+  void setContainsUpsertNode() noexcept;
   void setContainsParallelNode() noexcept;
   bool willUseV8() const noexcept;
   void setWillUseV8() noexcept;
@@ -406,7 +410,12 @@ class Ast {
                             arangodb::CollectionNameResolver const& resolver);
 
   /// @brief replace variables
-  static AstNode* replaceVariables(AstNode*, std::unordered_map<VariableId, Variable const*> const&);
+  ///        the unlock parameter will unlock the variable node before it replaces the variable.
+  ///        This unlock is potentially dangerous if the Node is linked somewhere else, so use with care
+  ///        and only if you are sure that you hold the ONLY reference to this node.
+  static AstNode* replaceVariables(AstNode* node,
+                                   std::unordered_map<VariableId, Variable const*> const&,
+                                   bool unlockNodes = false);
 
   /// @brief replace a variable reference in the expression with another
   /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the
@@ -440,9 +449,6 @@ class Ast {
   /// specified variable
   static bool getReferencedAttributesRecursive(AstNode const*, Variable const*,
                                                std::unordered_set<arangodb::aql::AttributeNamePath>&);
-
-  static std::unordered_set<std::string> getReferencedAttributesForKeep(
-      AstNode const*, Variable const* searchVariable, bool&);
 
   /// @brief replace an attribute access with just the variable
   static AstNode* replaceAttributeAccess(AstNode* node, Variable const* variable,
@@ -485,6 +491,11 @@ class Ast {
   /// isValid is set to false, then the returned value is not to be trued and the
   /// the result is equivalent to an AQL `null` value
   static AstNode const* resolveConstAttributeAccess(AstNode const*, bool& isValid);
+  
+  /// @brief optimizes the unary operators + and -
+  /// the unary plus will be converted into a simple value node if the operand
+  /// of the operation is a constant number
+  AstNode* optimizeUnaryOperatorArithmetic(AstNode*);
 
  private:
   /// @brief make condition from example
@@ -495,11 +506,6 @@ class Ast {
 
   /// @brief create a number node for an arithmetic result, double
   AstNode* createArithmeticResultNode(double);
-
-  /// @brief optimizes the unary operators + and -
-  /// the unary plus will be converted into a simple value node if the operand
-  /// of the operation is a constant number
-  AstNode* optimizeUnaryOperatorArithmetic(AstNode*);
 
   /// @brief optimizes the unary operator NOT with a non-constant expression
   AstNode* optimizeNotExpression(AstNode*);
@@ -640,6 +646,8 @@ class Ast {
   /// @brief contains INSERT / UPDATE / REPLACE / REMOVE
   bool _containsModificationNode;
   
+  bool _containsUpsertNode{false};
+
   /// @brief contains a parallel traversal
   bool _containsParallelNode;
   
@@ -682,4 +690,3 @@ class Ast {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

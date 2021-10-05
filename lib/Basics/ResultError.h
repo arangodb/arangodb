@@ -21,12 +21,12 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-// Note that error.h uses ARANGODB_BASICS_ERROR_H!
-#ifndef ARANGODB_BASICS_RESULT_ERROR_H
-#define ARANGODB_BASICS_RESULT_ERROR_H
+#pragma once
 
 #include <string>
 #include <string_view>
+
+#include "Basics/ErrorCode.h"
 
 namespace arangodb::result {
 
@@ -34,10 +34,10 @@ namespace arangodb::result {
 
 class Error final {
  public:
-  explicit Error(int errorNumber) noexcept(noexcept(std::string::allocator_type()));
+  explicit Error(ErrorCode errorNumber) noexcept(noexcept(std::string::allocator_type()));
 
-  Error(int errorNumber, std::string_view errorMessage);
-  [[nodiscard]] auto errorNumber() const noexcept -> int;
+  Error(ErrorCode errorNumber, std::string_view errorMessage);
+  [[nodiscard]] auto errorNumber() const noexcept -> ErrorCode;
   [[nodiscard]] auto errorMessage() const& noexcept -> std::string_view;
   [[nodiscard]] auto errorMessage() && noexcept -> std::string;
 
@@ -48,14 +48,15 @@ class Error final {
 
   template <typename S>
   void appendErrorMessage(S&& msg) {
+    if (_errorMessage.empty()) {
+      _errorMessage += errorMessage();
+    }
     _errorMessage += std::forward<S>(msg);
   }
 
  private:
-  int _errorNumber;
+  ErrorCode _errorNumber;
   std::string _errorMessage;
 };
 
 }  // namespace arangodb::result
-
-#endif  // ARANGODB_BASICS_RESULT_ERROR_H

@@ -21,17 +21,19 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_H
-#define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
+#pragma once
 
 #include "Aql/AqlValue.h"
 #include "Basics/ResourceUsage.h"
 #include "Containers/SmallVector.h"
 
 #include <limits>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include <absl/container/flat_hash_map.h>
 
 namespace arangodb {
 namespace aql {
@@ -122,23 +124,33 @@ class AqlItemBlock {
   /// @brief getValue, get the value of a register
   AqlValue getValue(size_t index, RegisterId varNr) const;
 
+  /// @brief getValue, get the value of a register
+  AqlValue getValue(size_t index, RegisterId::value_t column) const;
+  
   /// @brief getValue, get the value of a register by reference
   AqlValue const& getValueReference(size_t index, RegisterId varNr) const;
 
+  /// @brief getValue, get the value of a register by reference
+  AqlValue const& getValueReference(size_t index, RegisterId::value_t column) const;
+  
   /// @brief setValue, set the current value of a register
   void setValue(size_t index, RegisterId varNr, AqlValue const& value);
+  
+  /// @brief setValue, set the current value of a register
+  void setValue(size_t index, RegisterId::value_t column, AqlValue const& value);
 
   /// @brief emplaceValue, set the current value of a register, constructing
   /// it in place
   template <typename... Args>
   // std::enable_if_t<!(std::is_same<AqlValue,std::decay_t<Args>>::value || ...), void>
-  void emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
-    auto address = getAddress(index, varNr);
+  void emplaceValue(size_t index, RegisterId::value_t column, Args&&... args) {
+    auto address = getAddress(index, column);
     AqlValue* p = &_data[address];
     TRI_ASSERT(p->isEmpty());
     // construct the AqlValue in place
     AqlValue* value;
     try {
+    // cppcheck-suppress uninitvar
       value = new (p) AqlValue(std::forward<Args>(args)...);
     } catch (...) {
       // clean up the cell
@@ -171,6 +183,7 @@ class AqlItemBlock {
   /// use with caution only in special situations when it can be ensured that
   /// no one else will be pointing to the same value
   void destroyValue(size_t index, RegisterId varNr);
+  void destroyValue(size_t index, RegisterId::value_t column);
 
   /// @brief eraseValue, erase the current value of a register not freeing it
   /// this is used if the value is stolen and later released from elsewhere
@@ -286,7 +299,7 @@ class AqlItemBlock {
 
   /// @brief test if the given row is a shadow row and conveys subquery
   /// information only. It should not be handed to any non-subquery executor.
-  bool isShadowRow(size_t row) const;
+  bool isShadowRow(size_t row) const noexcept;
 
   /// @brief get the ShadowRowDepth 
   /// Does only work if this row is a shadow row
@@ -316,9 +329,9 @@ class AqlItemBlock {
   size_t moveOtherBlockHere(size_t targetRow, AqlItemBlock& source);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-// MaintainerMode method to validate if ShadowRows organization are consistent.
-// e.g. If a block always follows this pattern:
-// ((Data* Shadow(0))* Shadow(1))* ...
+  // MaintainerMode method to validate if ShadowRows organization are consistent.
+  // e.g. If a block always follows this pattern:
+  // ((Data* Shadow(0))* Shadow(1))* ...
   void validateShadowRowConsistency() const;
 #endif
 
@@ -341,7 +354,7 @@ class AqlItemBlock {
                                        size_t sourceRow, bool forceShadowRow);
 
   /// @brief get the computed address within the data vector
-  size_t getAddress(size_t index, RegisterId varNr) const noexcept;
+  size_t getAddress(size_t index, RegisterId::value_t reg) const noexcept;
 
   void copySubqueryDepth(size_t currentRow, size_t fromRow);
 
@@ -358,7 +371,7 @@ class AqlItemBlock {
   /// count with valueCount.
   /// note: only AqlValues that point to dynamically allocated memory
   /// should be added to this map. Other types (VPACK_INLINE) are not supported.
-  std::unordered_map<void const*, ValueInfo> _valueCount;
+  ::iresearch_absl::flat_hash_map<void const*, ValueInfo> _valueCount;
 
   /// @brief _numRows, number of rows
   size_t _numRows = 0;
@@ -375,6 +388,29 @@ class AqlItemBlock {
   /// @brief number of SharedAqlItemBlockPtr instances. shall be returned to
   /// the _manager when it reaches 0.
   mutable size_t _refCount = 0;
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // The _refCount is intentionally not atomic since this would be significantly more
+  // expensive and it should actually not be necessary since no block should ever be
+  // used by multiple threads concurrently.
+  // However, in the past we had some issues where two threads (unintentionally) accessed
+  // the same block, potentially corrupting the _refCount. This OwnershipChecker is used
+  // in incRefCount/decRefCount and adds some (limited) verification that those methods
+  // are not called concurrently.
+  mutable std::atomic<std::thread::id> _owner{std::thread::id()};
+    
+  struct OwnershipChecker {
+    explicit OwnershipChecker(std::atomic<std::thread::id>& v) : _v(v) {
+      auto old = _v.exchange(std::this_thread::get_id(), std::memory_order_relaxed);
+      TRI_ASSERT(old == std::thread::id());
+    }
+    ~OwnershipChecker() {
+      auto old = _v.exchange(std::thread::id(), std::memory_order_relaxed);
+      TRI_ASSERT(old == std::this_thread::get_id());
+    }
+    std::atomic<std::thread::id>& _v;
+  };
+#endif
 
   /// @brief current row index we want to read from. This will be increased
   /// after getRelevantRange function will be called, which will return a tuple
@@ -438,4 +474,3 @@ class AqlItemBlock {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

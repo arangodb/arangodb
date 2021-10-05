@@ -21,8 +21,7 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_COLLECTION_H
-#define ARANGODB_MASKINGS_COLLECTION_H 1
+#pragma once
 
 #include "Basics/Common.h"
 
@@ -61,4 +60,3 @@ class Collection {
 }  // namespace maskings
 }  // namespace arangodb
 
-#endif

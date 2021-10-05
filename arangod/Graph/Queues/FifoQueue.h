@@ -21,11 +21,11 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_QUEUE_H
-#define ARANGOD_GRAPH_QUEUE_H 1
+#pragma once
 
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 
 #include <queue>
 
@@ -35,25 +35,29 @@ namespace graph {
 template <class StepType>
 class FifoQueue {
  public:
+  static constexpr bool RequiresWeight = false;
   using Step = StepType;
   // TODO: Add Sorting (Performance - will be implemented in the future - cluster relevant)
-  // -> loose ends to the end
+  // -> loose ends to the front
 
-  FifoQueue(arangodb::ResourceMonitor& resourceMonitor)
+  explicit FifoQueue(arangodb::ResourceMonitor& resourceMonitor)
       : _resourceMonitor{resourceMonitor} {}
   ~FifoQueue() { this->clear(); }
 
   void clear() {
-    if (_queue.size() > 0) {
+    if (!_queue.empty()) {
       _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));
       _queue.clear();
     }
-  };
+  }
 
   void append(Step step) {
-    _resourceMonitor.increaseMemoryUsage(sizeof(Step));
+    arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
+    // if push_front() throws, no harm is done, and the memory usage increase
+    // will be rolled back
     _queue.push_back(std::move(step));
-  };
+    guard.steal();  // now we are responsible for tracking the memory
+  }
 
   bool hasProcessableElement() const {
     if (!isEmpty()) {
@@ -62,9 +66,9 @@ class FifoQueue {
     }
 
     return false;
-  };
+  }
 
-  size_t size() const { return _queue.size(); };
+  size_t size() const { return _queue.size(); }
 
   bool isEmpty() const { return _queue.empty(); }
 
@@ -79,16 +83,16 @@ class FifoQueue {
     }
 
     return steps;
-  };
+  }
 
   Step pop() {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());
-    _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     LOG_TOPIC("9cd65", TRACE, Logger::GRAPHS) << "<FifoQueue> Pop: " << first.toString();
+    _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_front();
     return first;
-  };
+  }
 
  private:
   /// @brief queue datastore
@@ -101,4 +105,3 @@ class FifoQueue {
 }  // namespace graph
 }  // namespace arangodb
 
-#endif  // ARANGOD_GRAPH_QUEUE_H

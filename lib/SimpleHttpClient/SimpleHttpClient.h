@@ -23,12 +23,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
+#pragma once
 
 #include <string.h>
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -45,6 +45,10 @@
 #include "Rest/GeneralRequest.h"
 
 namespace arangodb {
+namespace application_features {
+class CommunicationFeaturePhase;
+}
+
 namespace httpclient {
 
 class SimpleHttpResult;
@@ -91,6 +95,10 @@ struct SimpleHttpClientParams {
   uint64_t getRetryWaitTime() { return _retryWaitTime; }
 
   void setRetryMessage(std::string const& m) { _retryMessage = m; }
+  
+  double getRequestTimeout() const { return _requestTimeout; }
+  
+  void setRequestTimeout(double value) noexcept { _requestTimeout = value; }
 
   void setMaxPacketSize(size_t ms) { _maxPacketSize = ms; }
 
@@ -129,10 +137,10 @@ struct SimpleHttpClientParams {
   static void setDefaultMaxPacketSize(size_t value) { MaxPacketSize = value; }
 
  private:
+  double _requestTimeout;
+  
   // flag whether or not we keep the connection on destruction
   bool _keepConnectionOnDestruction = false;
-
-  double _requestTimeout;
 
   bool _warn;
 
@@ -146,13 +154,13 @@ struct SimpleHttpClientParams {
 
   uint64_t _retryWaitTime = 1 * 1000 * 1000;
 
-  std::string _retryMessage = "";
+  std::string _retryMessage;
 
   size_t _maxPacketSize = SimpleHttpClientParams::MaxPacketSize;
 
   std::string _basicAuth;
 
-  std::string _jwt = "";
+  std::string _jwt;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief struct for rewriting location URLs
@@ -198,8 +206,13 @@ class SimpleHttpClient {
   SimpleHttpClient(GeneralClientConnection*, SimpleHttpClientParams const&);
   ~SimpleHttpClient();
 
- public:
+  /// @brief allow the SimpleHttpClient to reuse/recycle the result. 
+  /// the SimpleHttpClient will assume ownership for it
+  void recycleResult(std::unique_ptr<SimpleHttpResult> result);
+
   void setInterrupted(bool value);
+
+  request_state state() const { return _state; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidates the connection used by the client
@@ -297,7 +310,7 @@ class SimpleHttpClient {
   /// @brief register an error message
   //////////////////////////////////////////////////////////////////////////////
 
-  void setErrorMessage(std::string_view message, int error) {
+  void setErrorMessage(std::string_view message, ErrorCode error) {
     if (error != TRI_ERROR_NO_ERROR) {
       _errorMessage = basics::StringUtils::concatT(message, ": ", TRI_errno_string(error));
     } else {
@@ -315,15 +328,16 @@ class SimpleHttpClient {
   /// @brief fetch the version from the server
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getServerVersion(int* errorCode = nullptr);
+  std::string getServerVersion(ErrorCode* errorCode = nullptr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract an error message from a response
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getHttpErrorMessage(SimpleHttpResult const*, int* errorCode = nullptr);
+  std::string getHttpErrorMessage(SimpleHttpResult const* result,
+                                  ErrorCode* errorCode = nullptr);
 
-  SimpleHttpClientParams& params() { return _params; };
+  SimpleHttpClientParams& params() { return _params; }
 
   /// @brief Thread-safe check abortion status
   bool isAborted() const noexcept {
@@ -368,11 +382,10 @@ class SimpleHttpClient {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the result
-  /// the caller has to delete the result object
+  /// @brief set the type of the result
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* getResult(bool haveSentRequest);
+  void setResultType(bool haveSentRequest);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the request
@@ -489,14 +502,17 @@ class SimpleHttpClient {
 
   rest::RequestType _method;
 
-  SimpleHttpResult* _result;
+  std::unique_ptr<SimpleHttpResult> _result;
 
   std::atomic<bool> _aborted;
 
-  // empty map, used for headers
-  static std::unordered_map<std::string, std::string> const NO_HEADERS;
+  std::string _hostname;
+  
+  // reference to communication feature phase (populated only once for
+  // the entire lifetime of the SimpleHttpClient, as the repeated feature
+  // lookup may be expensive otherwise)
+  application_features::CommunicationFeaturePhase& _comm;
 };
 }  // namespace httpclient
 }  // namespace arangodb
 
-#endif

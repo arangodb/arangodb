@@ -21,8 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_TRYEMPLACEHELPER_H
-#define ARANGODB_BASICS_TRYEMPLACEHELPER_H 1
+#pragma once
 
 #include <type_traits>
 #include <memory>
@@ -38,4 +37,3 @@ struct lazyConstruct {
   Lambda factory_;
 };
 }
-#endif

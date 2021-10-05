@@ -24,6 +24,9 @@
 #ifndef IRESEARCH_HASH_UTILS_H
 #define IRESEARCH_HASH_UTILS_H
 
+#include <absl/hash/hash.h>
+#include <frozen/string.h>
+
 #include "shared.hpp"
 #include "string.hpp"
 
@@ -115,21 +118,49 @@ typedef hashed_basic_string_ref<char> hashed_string_ref;
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 frozen extensions
+// -----------------------------------------------------------------------------
+
+namespace frozen {
+
+template<>
+struct elsa<irs::string_ref> {
+  constexpr size_t operator()(irs::string_ref value) const noexcept {
+    return elsa<frozen::string>{}({value.c_str(), value.size()});
+  }
+  constexpr std::size_t operator()(irs::string_ref value, std::size_t seed) const {
+    return elsa<frozen::string>{}({value.c_str(), value.size()}, seed);
+  }
+};
+
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   absl extensions
+// -----------------------------------------------------------------------------
+
+namespace iresearch_absl {
+namespace hash_internal {
+
+template<typename Char>
+struct HashImpl<::iresearch::hashed_basic_string_ref<Char>> {
+  size_t operator()(const ::iresearch::hashed_basic_string_ref<Char>& value) const {
+    return value.hash();
+  }
+};
+
+}
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    std extensions
 // -----------------------------------------------------------------------------
 
 namespace std {
 
-template<>
-struct hash<::iresearch::hashed_bytes_ref> {
-  size_t operator()(const ::iresearch::hashed_bytes_ref& value) const {
-    return value.hash();
-  }
-};
-
-template<>
-struct hash<::iresearch::hashed_string_ref> {
-  size_t operator()(const ::iresearch::hashed_string_ref& value) const {
+template<typename Char>
+struct hash<::iresearch::hashed_basic_string_ref<Char>> {
+  size_t operator()(const ::iresearch::hashed_basic_string_ref<Char>& value) const {
     return value.hash();
   }
 };

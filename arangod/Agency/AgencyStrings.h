@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AGENCY_AGENCY_STRINGS_H
-#define ARANGOD_AGENCY_AGENCY_STRINGS_H
+#pragma once
 
 #include <string>
 
@@ -33,6 +32,7 @@ namespace consensus {
 
 constexpr char const* ANALYZERS = "Analyzers";
 constexpr char const* COLLECTIONS = "Collections";
+constexpr char const* REPLICATED_LOGS = "ReplicatedLogs";
 constexpr char const* DATABASES = "Databases";
 constexpr char const* VIEWS = "Views";
 constexpr char const* RECONFIGURE = ".agency";
@@ -41,11 +41,14 @@ constexpr char const* VERSION = "Version";
 constexpr char const* CURRENT = "Current";
 constexpr char const* CURRENT_VERSION = "Current/Version";
 constexpr char const* CURRENT_COLLECTIONS = "Current/Collections/";
+constexpr char const* CURRENT_REPLICATED_LOGS = "Current/ReplicatedLogs/";
 constexpr char const* CURRENT_DATABASES = "Current/Databases/";
 
 constexpr char const* PLAN = "Plan";
 constexpr char const* PLAN_VERSION = "Plan/Version";
 constexpr char const* PLAN_COLLECTIONS = "Plan/Collections/";
+constexpr char const* PLAN_REPLICATED_LOGS = "Plan/ReplicatedLogs/";
+constexpr char const* PLAN_COLLECTION_GROUPS = "Plan/CollectionGroups/";
 constexpr char const* PLAN_DATABASES = "Plan/Databases/";
 constexpr char const* PLAN_VIEWS = "Plan/Views/";
 constexpr char const* PLAN_ANALYZERS = "Plan/Analyzers/";
@@ -68,4 +71,3 @@ constexpr char const* OP_CMP = "cmp";
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

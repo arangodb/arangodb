@@ -151,7 +151,7 @@ function runArangodRecovery (params) {
 
     argv = toArgv(Object.assign(params.args, additionalParams));
   } else {
-    additionalParams['javascript.script-parameter'] = 'recory';
+    additionalParams['javascript.script-parameter'] = 'recovery';
     argv = toArgv(Object.assign(params.args, additionalParams));
     
     if (params.options.rr) {
@@ -161,6 +161,7 @@ function runArangodRecovery (params) {
   }
     
   process.env["crash-log"] = crashLog;
+  process.env["isAsan"] = params.options.isAsan;
   params.instanceInfo.pid = pu.executeAndWait(
     binary,
     argv,

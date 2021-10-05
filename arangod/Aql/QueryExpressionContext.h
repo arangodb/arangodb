@@ -21,9 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_EXPRESSION_CONTEXT_H
-#define ARANGOD_AQL_QUERY_EXPRESSION_CONTEXT_H 1
+#pragma once
 
+#include <Basics/ErrorCode.h>
 #include "ExpressionContext.h"
 
 namespace arangodb {
@@ -34,20 +34,19 @@ class AqlFunctionsInternalCache;
 
 class QueryExpressionContext : public ExpressionContext {
  public:
-  explicit QueryExpressionContext(transaction::Methods& trx,
-                                  QueryContext& query,
+  explicit QueryExpressionContext(transaction::Methods& trx, QueryContext& query,
                                   AqlFunctionsInternalCache& cache) noexcept
-      : ExpressionContext(),
-        _trx(trx), _query(query), _aqlFunctionsInternalCache(cache) {}
+      : ExpressionContext(), _trx(trx), _query(query), _aqlFunctionsInternalCache(cache) {}
 
-  void registerWarning(int errorCode, char const* msg) override final;
-  void registerError(int errorCode, char const* msg) override final;
+  void registerWarning(ErrorCode errorCode, char const* msg) override final;
+  void registerError(ErrorCode errorCode, char const* msg) override final;
 
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
                                        bool caseInsensitive) override final;
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
                                       bool caseInsensitive) override final;
-  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, velocypack::Options const* opts,
+  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression,
+                                       velocypack::Options const* opts,
                                        bool& isEmptyExpression) override final;
 
   arangodb::ValidatorBase* buildValidator(arangodb::velocypack::Slice const&) override final;
@@ -56,6 +55,7 @@ class QueryExpressionContext : public ExpressionContext {
   /// may be inaccessible on some platforms
   transaction::Methods& trx() const override final;
   bool killed() const override final;
+  QueryContext& query();
 
  private:
   transaction::Methods& _trx;
@@ -64,4 +64,3 @@ class QueryExpressionContext : public ExpressionContext {
 };
 }  // namespace aql
 }  // namespace arangodb
-#endif

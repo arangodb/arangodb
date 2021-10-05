@@ -902,22 +902,18 @@ Status CTREncryptionProvider::CreateCipherStream(
   Slice iv;
   decodeCTRParameters(prefix.data(), blockSize, initialCounter, iv);
 
-  // If the prefix is smaller than twice the block size, we would below read a
-  // very large chunk of the file (and very likely read over the bounds)
-  if (prefix.size() < 2 * blockSize) {
-    if (prefix.size() == 0) {
-      return CreateCipherStreamFromPrefix(fname, options, 0, rocksdb::Slice(), prefix, result);
-    }
-
-    return Status::Corruption("Unable to read from file " + fname +
-                              ": read attempt would read beyond file bounds");
-  }
-  
-  assert(prefix.size() >= 2 * blockSize);
-
   // Decrypt the encrypted part of the prefix, starting from block 2 (block 0, 1 with initial counter & IV are unencrypted)
   CTRCipherStream cipherStream(cipher_, iv.data(), initialCounter);
-  auto status = cipherStream.Decrypt(0, (char*)prefix.data() + (2 * blockSize), prefix.size() - (2 * blockSize));
+  Status status;
+  if (!prefix.empty()) {
+    // If the prefix is smaller than twice the block size, we would below read a
+    // very large chunk of the file (and very likely read over the bounds)
+    if (prefix.size() < 2 * blockSize) {
+      return Status::Corruption("Unable to read from file " + fname +
+                                ": read attempt would read beyond file bounds");
+    }
+    status = cipherStream.Decrypt(0, (char*)prefix.data() + (2 * blockSize), prefix.size() - (2 * blockSize));
+  }
   if (!status.ok()) {
     return status;
   }

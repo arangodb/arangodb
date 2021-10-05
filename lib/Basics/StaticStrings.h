@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_STATIC_STRINGS_H
-#define ARANGODB_BASICS_STATIC_STRINGS_H 1
+#pragma once
 
 #include <string>
 
@@ -49,6 +48,8 @@ class StaticStrings {
   static std::string const AttachmentString;
   static std::string const IdString;
   static std::string const KeyString;
+  static std::string const PrefixOfKeyString;
+  static std::string const PostfixOfKeyString;
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
@@ -70,7 +71,6 @@ class StaticStrings {
   static std::string const Prefix;
   static std::string const Overwrite;
   static std::string const OverwriteMode;
-  static std::string const PreserveRevisionIds;
   static std::string const Compact;
 
   // replication headers
@@ -131,6 +131,7 @@ class StaticStrings {
   static std::string const IndexSparse;        // index sparsity marker
   static std::string const IndexType;          // index type
   static std::string const IndexUnique;        // index uniqueness marker
+  static std::string const IndexEstimates;     // index estimates flag
 
   // static index names
   static std::string const IndexNameEdge;
@@ -201,6 +202,7 @@ class StaticStrings {
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
   static std::string const XArangoFrontend;
+  static std::string const XArangoQueueTimeSeconds;
 
   // mime types
   static std::string const MimeTypeDump;
@@ -215,6 +217,10 @@ class StaticStrings {
   static std::string const EncodingIdentity;
   static std::string const EncodingDeflate;
 
+  // arangosh result body
+  static std::string const Body;
+  static std::string const ParsedBody;
+
   // collection attributes
   static std::string const CacheEnabled;
   static std::string const DistributeShardsLike;
@@ -222,7 +228,6 @@ class StaticStrings {
   static std::string const IsSmart;
   static std::string const IsSmartChild;
   static std::string const MinReplicationFactor;
-  static std::string const MinRevision;
   static std::string const NumberOfShards;
   static std::string const ObjectId;
   static std::string const ReplicationFactor;
@@ -234,14 +239,19 @@ class StaticStrings {
   static std::string const SyncByRevision;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Schema;
+  static std::string const InternalValidatorTypes;
   static std::string const Version;
   static std::string const WriteConcern;
   static std::string const ShardingSingle;
+  static std::string const ReplicationVersion;
+  static std::string const ReplicatedLogs;
 
   // graph attribute names
   static std::string const GraphCollection;
   static std::string const IsDisjoint;
+  static std::string const IsHybrid;
   static std::string const GraphIsSatellite;
+  static std::string const GraphSatellites;
   static std::string const GraphIsSmart;
   static std::string const GraphFrom;
   static std::string const GraphTo;
@@ -249,9 +259,9 @@ class StaticStrings {
   static std::string const GraphSmartGraphAttribute;
   static std::string const GraphDropCollections;
   static std::string const GraphDropCollection;
-  static std::string const GraphCreateCollections;
   static std::string const GraphCreateCollection;
   static std::string const GraphEdgeDefinitions;
+  static std::string const GraphEdgeDefinitionType;
   static std::string const GraphOrphans;
   static std::string const GraphInitial;
   static std::string const GraphInitialCid;
@@ -299,16 +309,32 @@ class StaticStrings {
   // Replication
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
-  static std::string const RevisionTreeBranchingFactor;
   static std::string const RevisionTreeCount;
   static std::string const RevisionTreeHash;
   static std::string const RevisionTreeMaxDepth;
   static std::string const RevisionTreeNodes;
   static std::string const RevisionTreeRangeMax;
   static std::string const RevisionTreeRangeMin;
+  static std::string const RevisionTreeInitialRangeMin;
   static std::string const RevisionTreeRanges;
   static std::string const RevisionTreeResume;
   static std::string const RevisionTreeVersion;
+  static std::string const FollowingTermId;
+
+  // Replication 2.0
+  static std::string const Config;
+  static std::string const CurrentTerm;
+  static std::string const Follower;
+  static std::string const Id;
+  static std::string const Index;
+  static std::string const Leader;
+  static std::string const LocalStatus;
+  static std::string const Participants;
+  static std::string const ServerId;
+  static std::string const Spearhead;
+  static std::string const TargetConfig;
+  static std::string const Term;
+  static std::string const CommitIndex;
 
   // generic attribute names
   static std::string const AttrCoordinator;
@@ -328,6 +354,7 @@ class StaticStrings {
 
   // aql api strings
   static std::string const SerializationFormat;
+  static std::string const AqlDocumentCall;
   static std::string const AqlRemoteExecute;
   static std::string const AqlRemoteCallStack;
   static std::string const AqlRemoteLimit;
@@ -361,51 +388,10 @@ class StaticStrings {
   static std::string const ValidationParameterMessage;
   static std::string const ValidationParameterLevel;
   static std::string const ValidationParameterRule;
-
-  // metrics prometheus labels
-  static std::string const HeartbeatSendTimeMs;
-  static std::string const HeartbeatFailureCounter;
-
-  static std::string const MaintenancePhaseOneRuntimeMs;
-  static std::string const MaintenancePhaseTwoRuntimeMs;
-  static std::string const MaintenanceAgencySyncRuntimeMs;
-
-  static std::string const MaintenanceActionRuntimeMs;
-  static std::string const MaintenanceActionAccumRuntimeMs;
-  static std::string const MaintenanceActionFailureCounter;
-  static std::string const MaintenanceActionQueueTimeMs;
-  static std::string const MaintenanceActionAccumQueueTimeMs;
-
-  static std::string const MaintenancePhaseOneAccumRuntimeMs;
-  static std::string const MaintenancePhaseTwoAccumRuntimeMs;
-  static std::string const MaintenanceAgencySyncAccumRuntimeMs;
-
-  static std::string const ActionDuplicateCounter;
-  static std::string const ActionRegisteredCounter;
-  static std::string const ActionDoneCounter;
-
-  static std::string const ShardsOutOfSync;
-  static std::string const ShardsTotalCount;
-  static std::string const ShardsLeaderCount;
-  static std::string const ShardsNotReplicated;
-
-  static std::string const AgencyCommRequestTimeMs;
-
-  static std::string const SchedulerQueueLength;
-  static std::string const SchedulerAwakeWorkers;
-  static std::string const SchedulerNumWorker;
-
-  static std::string const DroppedFollowerCount;
-
-  static std::string const SupervisionRuntimeMs;
-  static std::string const SupervisionRuntimeWaitForSyncMs;
-  static std::string const SupervisionAccumRuntimeMs;
-  static std::string const SupervisionAccumRuntimeWaitForSyncMs;
-  static std::string const SupervisionFailedServerCount;
+  static std::string const ValidationParameterType;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;
 };
 }  // namespace arangodb
 
-#endif

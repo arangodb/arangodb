@@ -67,16 +67,16 @@ namespace arangodb {
 
 ExportFeature::ExportFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "Export"),
-      _collections(),
-      _graphName(),
       _xgmmlLabelAttribute("label"),
       _typeExport("json"),
+      _queryMaxRuntime(0.0),
+      _useMaxRuntime(false),
       _xgmmlLabelOnly(false),
-      _outputDirectory(),
       _overwrite(false),
       _progress(true),
       _useGzip(false),
       _firstLine(true),
+      _documentsPerBatch(1000),
       _skippedDeepNested(0),
       _httpRequestsDone(0),
       _currentCollection(),
@@ -97,6 +97,10 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       new VectorParameter<StringParameter>(&_collections));
 
   options->addOption("--query", "AQL query to run", new StringParameter(&_query));
+  
+  options->addOption("--query-max-runtime", "runtime threshold for AQL queries (in seconds, 0 = no limit)", 
+                     new DoubleParameter(&_queryMaxRuntime))
+                     .setIntroducedIn(30800);
 
   options->addOption("--graph-name", "name of a graph to export",
                      new StringParameter(&_graphName));
@@ -110,6 +114,10 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 
   options->addOption("--output-directory", "output directory",
                      new StringParameter(&_outputDirectory));
+  
+  options->addOption("--documents-per-batch", "number of documents to return in each batch",
+                     new UInt64Parameter(&_documentsPerBatch))
+                     .setIntroducedIn(30800);
 
   options->addOption("--overwrite", "overwrite data in output directory",
                      new BooleanParameter(&_overwrite));
@@ -187,18 +195,21 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
     _csvFields = StringUtils::split(_csvFieldOptions, ',');
   }
+  
+  // we will use _maxRuntime only if the option was set by the user
+  _useMaxRuntime = options->processingResult().touched("--query-max-runtime");
 }
 
 void ExportFeature::prepare() {
   _directory = std::make_unique<ManagedDirectory>(server(), _outputDirectory,
                                                   !_overwrite, true, _useGzip);
   if (_directory->status().fail()) {
-    switch (_directory->status().errorNumber()) {
-      case TRI_ERROR_FILE_EXISTS:
+    switch (static_cast<int>(_directory->status().errorNumber())) {
+      case static_cast<int>(TRI_ERROR_FILE_EXISTS):
         LOG_TOPIC("72723",FATAL, Logger::FIXME) << "cannot write to output directory '"
                                         << _outputDirectory << "'";
         break;
-      case TRI_ERROR_CANNOT_OVERWRITE_FILE:
+      case static_cast<int>(TRI_ERROR_CANNOT_OVERWRITE_FILE):
         LOG_TOPIC("81812",FATAL, Logger::FIXME)
             << "output directory '" << _outputDirectory
             << "' already exists. use \"--overwrite true\" to "
@@ -293,8 +304,10 @@ void ExportFeature::start() {
     }
   }
 
-  std::cout << "Processed " << _collections.size() << " collection(s), wrote " << exportedSize
-            << " byte(s), " << _httpRequestsDone << " HTTP request(s)" << std::endl;
+  using arangodb::basics::StringUtils::formatSize;
+
+  std::cout << "Processed " << _collections.size() << " collection(s), wrote " << formatSize(exportedSize)
+            << ", " << _httpRequestsDone << " HTTP request(s)" << std::endl;
 
   *_result = ret;
 }
@@ -318,6 +331,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
     post.add("@collection", VPackValue(collection));
     post.close();
     post.add("ttl", VPackValue(::ttlValue));
+    post.add("batchSize", VPackValue(_documentsPerBatch));
     post.add("options", VPackValue(VPackValueType::Object));
     post.add("stream", VPackSlice::trueSlice());
     post.close();
@@ -342,7 +356,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
 
     while (body.hasKey("id")) {
       std::string const url = "/_api/cursor/" + body.get("id").copyString();
-      parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
+      parsedBody = httpCall(httpClient, url, rest::RequestType::POST);
       body = parsedBody->slice();
 
       writeBatch(*fd, VPackArrayIterator(body.get("result")), fileName);
@@ -371,7 +385,11 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   post.openObject();
   post.add("query", VPackValue(_query));
   post.add("ttl", VPackValue(::ttlValue));
+  post.add("batchSize", VPackValue(_documentsPerBatch));
   post.add("options", VPackValue(VPackValueType::Object));
+  if (_useMaxRuntime) {
+    post.add("maxRuntime", VPackValue(_queryMaxRuntime));
+  }
   post.add("stream", VPackSlice::trueSlice());
   post.close();
   post.close();
@@ -395,7 +413,7 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
 
   while (body.hasKey("id")) {
     std::string const url = "/_api/cursor/" + body.get("id").copyString();
-    parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
+    parsedBody = httpCall(httpClient, url, rest::RequestType::POST);
     body = parsedBody->slice();
 
     writeBatch(*fd, VPackArrayIterator(body.get("result")), fileName);
@@ -540,6 +558,10 @@ void ExportFeature::writeBatch(ManagedDirectory::File & fd, VPackArrayIterator i
 
 void ExportFeature::writeToFile(ManagedDirectory::File & fd, std::string const& line) {
   fd.write(line.c_str(), line.size());
+  auto res = fd.status();
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(std::move(res));
+  }
 }
 
 std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClient,
@@ -662,6 +684,7 @@ directed="1">
     post.add("@collection", VPackValue(collection));
     post.close();
     post.add("ttl", VPackValue(::ttlValue));
+    post.add("batchSize", VPackValue(_documentsPerBatch));
     post.add("options", VPackValue(VPackValueType::Object));
     post.add("stream", VPackSlice::trueSlice());
     post.close();
@@ -675,7 +698,7 @@ directed="1">
 
     while (body.hasKey("id")) {
       std::string const url = "/_api/cursor/" + body.get("id").copyString();
-      parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
+      parsedBody = httpCall(httpClient, url, rest::RequestType::POST);
       body = parsedBody->slice();
 
       writeGraphBatch(*fd, VPackArrayIterator(body.get("result")), fileName);

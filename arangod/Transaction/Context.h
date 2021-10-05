@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_CONTEXT_H
-#define ARANGOD_TRANSACTION_CONTEXT_H 1
+#pragma once
 
 #include <memory>
 
@@ -47,7 +46,6 @@ struct CustomTypeHandler;
 }  // namespace velocypack
 
 class CollectionNameResolver;
-class LogicalCollection;
 class TransactionState;
 
 namespace transaction {
@@ -120,7 +118,7 @@ class Context {
   /// @brief whether or not the transaction is embeddable
   virtual bool isEmbeddable() const = 0;
 
-  virtual CollectionNameResolver const& resolver() = 0;
+  CollectionNameResolver const& resolver();
 
   /// @brief unregister the transaction
   virtual void unregisterTransaction() noexcept = 0;
@@ -137,14 +135,10 @@ class Context {
   static TransactionId makeTransactionId();
 
  protected:
-  /// @brief create a resolver
-  CollectionNameResolver const* createResolver();
-  
   std::shared_ptr<TransactionState> createState(transaction::Options const& options);
 
  protected:
   TRI_vocbase_t& _vocbase;
-  CollectionNameResolver const* _resolver;
   std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
   using BuilderList = containers::SmallVector<arangodb::velocypack::Builder*, 32>;
@@ -159,16 +153,15 @@ class Context {
   arangodb::velocypack::Options _options;
   
  private:
+  std::unique_ptr<CollectionNameResolver> _resolver;
+  
   struct {
     TransactionId id;
     bool isReadOnlyTransaction;
     bool isFollowerTransaction;
   } _transaction;
-
-  bool _ownsResolver;
 };
 
 }  // namespace transaction
 }  // namespace arangodb
 
-#endif

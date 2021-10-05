@@ -24,6 +24,7 @@
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/CrashHandler.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
@@ -44,7 +45,7 @@ TempFeature::TempFeature(application_features::ApplicationServer& server,
 void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("temp-path", "temp.path");
 
-  options->addSection("temp", "Configure temporary files");
+  options->addSection("temp", "temporary files");
 
   options->addOption("--temp.path", "path for temporary files",
                      new StringParameter(&_path));
@@ -64,12 +65,9 @@ void TempFeature::prepare() {
 }
 
 void TempFeature::start() {
-  // signal that the temp path is available
-  auto context = ArangoGlobalContext::CONTEXT;
-
-  if (context != nullptr) {
-    context->createMiniDumpFilename();
-  }
+#ifdef _WIN32
+  CrashHandler::setMiniDumpDirectory(TRI_GetTempPath());
+#endif
 }
 
 }  // namespace arangodb

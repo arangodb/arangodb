@@ -1,0 +1,20 @@
+name: arangodb_agency_write_no_leader_total
+renamedFrom: arangodb_agency_write_no_leader
+introducedIn: "3.8.0"
+help: |
+  Agency write operations with no leader or on followers.
+unit: number
+type: counter
+category: Agency
+complexity: medium
+exposedBy:
+  - agent
+description: |
+  Total number of Agency write operations with no leader or on followers.
+threshold: |
+  This should normally not happen. If it happens regularly, the Agency
+  is reelecting its leader often.
+troubleshoot: |
+  The latency of the network between the Agents might be too high or
+  the Agents may be overloaded. It might help to move Agent instances
+  to separate machines.

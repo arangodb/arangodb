@@ -41,7 +41,7 @@ ScatterExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
                                                   RegisterInfos const& registerInfos)
     : _queue{}, _executor(nullptr), _executorHasMore{false} {
   // We only get shared ptrs to const data. so we need to copy here...
-  IdExecutorInfos executorInfos(false, 0, "", false);
+  IdExecutorInfos executorInfos(false, RegisterId(0), "", false);
   auto idExecutorRegisterInfos =
     RegisterInfos{{},
                   {},
@@ -82,7 +82,7 @@ auto ScatterExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
   return _executorHasMore || !_queue.empty();
 }
 
-auto ScatterExecutor::ClientBlockData::execute(AqlCallStack callStack, ExecutionState upstreamState)
+auto ScatterExecutor::ClientBlockData::execute(AqlCallStack const& callStack, ExecutionState upstreamState)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   TRI_ASSERT(_executor != nullptr);
 

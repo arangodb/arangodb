@@ -31,6 +31,9 @@
         this.upto = true;
       }
       this.loglevel = options.loglevel;
+      if (options.endpoint) {
+        this.endpoint = options.endpoint;
+      }
     },
 
     model: window.newArangoLog,
@@ -56,7 +59,11 @@
       } else {
         type = 'level';
       }
-      rtnStr = '/_admin/log?' + type + '=' + this.loglevel + '&size=' + size + '&offset=' + inverseOffset;
+      rtnStr = `/_admin/log?${encodeURIComponent(type)}=${encodeURIComponent(this.loglevel)}&size=${encodeURIComponent(size)}&offset=${encodeURIComponent(inverseOffset)}`;
+      if (this.endpoint) {
+        rtnStr += `&serverId=${encodeURIComponent(this.endpoint)}`;
+      }
+
       this.lastInverseOffset = inverseOffset;
       return arangoHelper.databaseUrl(rtnStr);
     }

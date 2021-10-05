@@ -10,10 +10,6 @@ const arango = require('@arangodb').arango;
 const aql = arangodb.aql;
 const basePath = fs.makeAbsolute(fs.join(require('internal').pathForTesting('common'), 'test-data', 'apps'));
 const expect = require('chai').expect;
-const download = require('internal').download;
-const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
-
-require("@arangodb/test-helper").waitForFoxxInitialized();
 
 describe('Foxx Manager', function () {
   describe('(CRUD operation) ', function () {
@@ -76,10 +72,10 @@ describe('Foxx Manager', function () {
 
       it('should be available', function () {
         FoxxManager.install(setupTeardownApp, mount);
-        const url = `${origin}${mount}/test`;
-        const res = download(url);
+        const url = `${mount}/test`;
+        const res = arango.GET_RAW(url);
         expect(res.code).to.equal(200);
-        expect(res.body).to.equal('true');
+        expect(res.parsedBody).to.equal(true);
       });
     });
 
@@ -238,8 +234,8 @@ describe('Foxx Manager', function () {
           FoxxManager.install(malformedSetupApp, mount);
         } catch (e) {
         }
-        const url = `${origin}${mount}/test`;
-        const res = download(url);
+        const url = `${mount}/test`;
+        const res = arango.GET_RAW(url);
         expect(res.code).to.equal(404);
       });
     });
@@ -279,8 +275,8 @@ describe('Foxx Manager', function () {
           FoxxManager.install(malformedSetupApp, mount);
         } catch (e) {
         }
-        const url = `${origin}${mount}/test`;
-        const res = download(url);
+        const url = `${mount}/test`;
+        const res = arango.GET_RAW(url);
         expect(res.code).to.equal(404);
       });
     });
@@ -325,8 +321,8 @@ describe('Foxx Manager', function () {
           FoxxManager.install(malformedSetupApp, mount);
         } catch (e) {
         }
-        const url = `${origin}${mount}/test`;
-        const res = download(url);
+        const url = `${mount}/test`;
+        const res = arango.GET_RAW(url);
         expect(res.code).to.equal(404);
       });
     });
@@ -355,45 +351,45 @@ describe('Foxx Manager', function () {
 
       it('should be available after install', function () {
         FoxxManager.install(setupHealApp, mount);
-        const url = origin + mount;
-        const res = download(url);
+        const url = mount;
+        const res = arango.GET_RAW(url);
         expect(res.code).to.equal(200);
-        expect(res.body).to.equal('true');
+        expect(res.parsedBody).to.equal(true);
       });
 
       it('should be available after replace', function () {
         { // set up some service
           FoxxManager.install(setupMinimalApp, mount);
-          const url = origin + mount;
-          const res = download(url);
+          const url = mount;
+          const res = arango.GET_RAW(url);
           expect(res.code).to.equal(200);
-          expect(JSON.parse(res.body)).to.deep.equal({hello: 'world'});
+          expect(res.parsedBody).to.deep.equal({hello: 'world'});
         }
 
         { // replace it and call heal() during setup
           FoxxManager.replace(setupHealApp, mount);
-          const url = origin + mount;
-          const res = download(url);
+          const url = mount;
+          const res = arango.GET_RAW(url);
           expect(res.code).to.equal(200);
-          expect(res.body).to.equal('true');
+          expect(res.parsedBody).to.equal(true);
         }
       });
 
       it('should be available after upgrade', function () {
         { // set up some service
           FoxxManager.install(setupMinimalApp, mount);
-          const url = origin + mount;
-          const res = download(url);
+          const url = mount;
+          const res = arango.GET_RAW(url);
           expect(res.code).to.equal(200);
-          expect(JSON.parse(res.body)).to.deep.equal({hello: 'world'});
+          expect(res.parsedBody).to.deep.equal({hello: 'world'});
         }
 
         { // upgrade it and call heal() during setup
           FoxxManager.upgrade(setupHealApp, mount);
-          const url = origin + mount;
-          const res = download(url);
+          const url = mount;
+          const res = arango.GET_RAW(url);
           expect(res.code).to.equal(200);
-          expect(res.body).to.equal('true');
+          expect(res.parsedBody).to.equal(true);
         }
       });
     });

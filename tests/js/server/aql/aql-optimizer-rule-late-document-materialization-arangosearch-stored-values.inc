@@ -40,7 +40,7 @@
     return {
       setUpAll : function () {
         db._useDatabase("_system");
-        try { db._dropDatabase(newDbName); } catch {}
+        try { db._dropDatabase(newDbName); } catch (err) {}
         db._createDatabase(newDbName, dbArgs);
         db._useDatabase(newDbName);
 

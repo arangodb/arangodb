@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global frontendConfig, arangoHelper, Joi, Backbone, window, $ */
+/* global frontendConfig, arangoHelper, Joi, Backbone, window, $, _ */
 
 (function () {
   'use strict';
@@ -26,54 +26,8 @@
 
     breadcrumb: function () {
       $('#subNavigationBar .breadcrumb').html(
-        'Collection: ' + (this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
+        'Collection: ' + _.escape(this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
       );
-    },
-
-    unloadCollection: function () {
-      if (!this.readOnly) {
-        var unloadCollectionCallback = function (error) {
-          if (error) {
-            arangoHelper.arangoError('Collection error', this.model.get('name') + ' could not be unloaded.');
-          } else if (error === undefined) {
-            this.model.set('status', 'unloading');
-            this.render();
-          } else {
-            if (window.location.hash === '#collections') {
-              this.model.set('status', 'unloaded');
-              this.render();
-            } else {
-              arangoHelper.arangoNotification('Collection ' + this.model.get('name') + ' unloaded.');
-            }
-          }
-        }.bind(this);
-
-        this.model.unloadCollection(unloadCollectionCallback);
-        window.modalView.hide();
-      }
-    },
-
-    loadCollection: function () {
-      if (!this.readOnly) {
-        var loadCollectionCallback = function (error) {
-          if (error) {
-            arangoHelper.arangoError('Collection error', this.model.get('name') + ' could not be loaded.');
-          } else if (error === undefined) {
-            this.model.set('status', 'loading');
-            this.render();
-          } else {
-            if (window.location.hash === '#collections') {
-              this.model.set('status', 'loaded');
-              this.render();
-            } else {
-              arangoHelper.arangoNotification('Collection ' + this.model.get('name') + ' loaded.');
-            }
-          }
-        }.bind(this);
-
-        this.model.loadCollection(loadCollectionCallback);
-        window.modalView.hide();
-      }
     },
 
     truncateCollection: function () {
@@ -119,72 +73,50 @@
             } else {
               newname = $('#change-collection-name').val();
             }
-            var status = this.model.get('status');
 
-            if (status === 'loaded') {
-              var self = this;
+            var self = this;
 
-              var callbackChange = function (error, data) {
-                if (error) {
-                  self.render();
-                  arangoHelper.arangoError('Collection error: ' + data.responseJSON.errorMessage);
-                } else {
-                  arangoHelper.arangoNotification('Collection: ' + 'Successfully changed.');
-                  window.App.navigate('#cSettings/' + newname, {trigger: true});
-                }
-              };
+            var callbackChange = function (error, data) {
+              if (error) {
+                self.render();
+                arangoHelper.arangoError('Collection error: ' + data.responseJSON.errorMessage);
+              } else {
+                arangoHelper.arangoNotification('Collection: ' + 'Successfully changed.');
+                window.App.navigate('#cSettings/' + newname, {trigger: true});
+              }
+            };
 
-              var callbackRename = function (error) {
-                var abort = false;
-                if (error) {
-                  arangoHelper.arangoError('Collection error: ' + error.responseText);
-                } else {
-                  var wfs = $('#change-collection-sync').val();
-                  var replicationFactor;
-                  var writeConcern;
+            var callbackRename = function (error) {
+              var abort = false;
+              if (error) {
+                arangoHelper.arangoError('Collection error: ' + error.responseText);
+              } else {
+                var wfs = $('#change-collection-sync').val();
+                var replicationFactor;
+                var writeConcern;
 
-                  if (frontendConfig.isCluster) {
-                    replicationFactor = $('#change-replication-factor').val();
-                    writeConcern = $('#change-write-concern').val();
-                    try {
-                      if (Number.parseInt(writeConcern) > Number.parseInt(replicationFactor)) {
-                        // validation here, as our Joi integration misses some core features
-                        arangoHelper.arangoError("Change Collection", "Write concern is not allowed to be greater than replication factor");
-                        abort = true;
-                      }
-                    } catch (ignore) {
+                if (frontendConfig.isCluster) {
+                  replicationFactor = $('#change-replication-factor').val();
+                  writeConcern = $('#change-write-concern').val();
+                  try {
+                    if (Number.parseInt(writeConcern) > Number.parseInt(replicationFactor)) {
+                      // validation here, as our Joi integration misses some core features
+                      arangoHelper.arangoError("Change Collection", "Write concern is not allowed to be greater than replication factor");
+                      abort = true;
                     }
-                  }
-                  if (!abort) {
-                    this.model.changeCollection(wfs, replicationFactor, writeConcern, callbackChange);
+                  } catch (ignore) {
                   }
                 }
-              }.bind(this);
-
-              if (frontendConfig.isCluster === false) {
-                this.model.renameCollection(newname, callbackRename);
-              } else {
-                callbackRename();
-              }
-            } else if (status === 'unloaded') {
-              if (this.model.get('name') !== newname) {
-                var callbackRename2 = function (error, data) {
-                  if (error) {
-                    arangoHelper.arangoError('Collection' + data.responseText);
-                  } else {
-                    arangoHelper.arangoNotification('Collection' + 'Successfully changed.');
-                    window.App.navigate('#cSettings/' + newname, {trigger: true});
-                  }
-                };
-
-                if (frontendConfig.isCluster === false) {
-                  this.model.renameCollection(newname, callbackRename2);
-                } else {
-                  callbackRename2();
+                if (!abort) {
+                  this.model.changeCollection(wfs, replicationFactor, writeConcern, callbackChange);
                 }
-              } else {
-                window.modalView.hide();
               }
+            }.bind(this);
+
+            if (frontendConfig.isCluster === false) {
+              this.model.renameCollection(newname, callbackRename);
+            } else {
+              callbackRename();
             }
           }
         }.bind(this);
@@ -210,11 +142,6 @@
         if (error) {
           arangoHelper.arangoError('Error', 'Could not get coordinator info');
         } else {
-          var collectionIsLoaded = false;
-
-          if (this.model.get('status') === 'loaded') {
-            collectionIsLoaded = true;
-          }
 
           var buttons = [];
           var tableContent = [];
@@ -309,21 +236,6 @@
                 )
               );
             }
-            if (collectionIsLoaded) {
-              buttons.push(
-                window.modalView.createNotificationButton(
-                  'Unload',
-                  this.unloadCollection.bind(this)
-                )
-              );
-            } else {
-              buttons.push(
-                window.modalView.createNotificationButton(
-                  'Load',
-                  this.loadCollection.bind(this)
-                )
-              );
-            }
 
             buttons.push(
               window.modalView.createSuccessButton(
@@ -346,92 +258,86 @@
             $($('#infoTab').children()[1]).remove();
           }.bind(this);
 
-          if (collectionIsLoaded) {
-            var callback2 = function (error, data) {
-              if (error) {
-                arangoHelper.arangoError('Collection', 'Could not fetch properties');
-              } else {
-                var wfs = data.waitForSync;
-                if (data.replicationFactor && frontendConfig.isCluster) {
-                  if (data.replicationFactor === 'satellite') {
-                    tableContent.push(
-                      window.modalView.createReadOnlyEntry(
-                        'change-replication-factor',
-                        'Replication factor',
-                        data.replicationFactor,
-                        'This collection is a SatelliteCollection. The replicationFactor is not changeable.',
-                        '',
-                        true
-                      )
-                    );
-                    tableContent.push(
-                      window.modalView.createReadOnlyEntry(
-                        'change-write-concern',
-                        'Write concern',
-                        JSON.stringify(data.writeConcern),
-                        'This collection is a SatelliteCollection. The write concern is not changeable.',
-                        '',
-                        true
-                      )
-                    );
-                  } else {
-                    tableContent.push(
-                      window.modalView.createTextEntry(
-                        'change-replication-factor',
-                        'Replication factor',
-                        data.replicationFactor,
-                        'The replicationFactor parameter is the total number of copies being kept, that is, it is one plus the number of followers. Must be a number.',
-                        '',
-                        true,
-                        [
-                          {
-                            rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                            msg: 'Must be a number.'
-                          }
-                        ]
-                      )
-                    );
-                    tableContent.push(
-                      window.modalView.createTextEntry(
-                        'change-write-concern',
-                        'Write concern',
-                        data.writeConcern,
-                        'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
-                        '',
-                        true,
-                        [
-                          {
-                            rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
-                            msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
-                          }
-                        ]
-                      )
-                    );
-                  }
+          var callback2 = function (error, data) {
+            if (error) {
+              arangoHelper.arangoError('Collection', 'Could not fetch properties');
+            } else {
+              var wfs = data.waitForSync;
+              if (data.replicationFactor && frontendConfig.isCluster) {
+                if (data.replicationFactor === 'satellite') {
+                  tableContent.push(
+                    window.modalView.createReadOnlyEntry(
+                      'change-replication-factor',
+                      'Replication factor',
+                      data.replicationFactor,
+                      'This collection is a SatelliteCollection. The replicationFactor is not changeable.',
+                      '',
+                      true
+                    )
+                  );
+                  tableContent.push(
+                    window.modalView.createReadOnlyEntry(
+                      'change-write-concern',
+                      'Write concern',
+                      JSON.stringify(data.writeConcern),
+                      'This collection is a SatelliteCollection. The write concern is not changeable.',
+                      '',
+                      true
+                    )
+                  );
+                } else {
+                  tableContent.push(
+                    window.modalView.createTextEntry(
+                      'change-replication-factor',
+                      'Replication factor',
+                      data.replicationFactor,
+                      'The replicationFactor parameter is the total number of copies being kept, that is, it is one plus the number of followers. Must be a number.',
+                      '',
+                      true,
+                      [
+                        {
+                          rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                          msg: 'Must be a number.'
+                        }
+                      ]
+                    )
+                  );
+                  tableContent.push(
+                    window.modalView.createTextEntry(
+                      'change-write-concern',
+                      'Write concern',
+                      data.writeConcern,
+                      'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
+                      '',
+                      true,
+                      [
+                        {
+                          rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                          msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
+                        }
+                      ]
+                    )
+                  );
                 }
-
-                // prevent "unexpected sync method error"
-                tableContent.push(
-                  window.modalView.createSelectEntry(
-                    'change-collection-sync',
-                    'Wait for sync',
-                    wfs,
-                    'Synchronize to disk before returning from a create or update of a document.',
-                    [{value: false, label: 'No'}, {value: true, label: 'Yes'}])
-                );
               }
-              after();
 
-              // check permissions and adjust views
-              arangoHelper.checkCollectionPermissions(self.collectionName, self.changeViewToReadOnly.bind(this));
-            };
-
-            this.model.getProperties(callback2);
-          } else {
+              // prevent "unexpected sync method error"
+              tableContent.push(
+                window.modalView.createSelectEntry(
+                  'change-collection-sync',
+                  'Wait for sync',
+                  wfs,
+                  'Synchronize to disk before returning from a create or update of a document.',
+                  [{value: false, label: 'No'}, {value: true, label: 'Yes'}])
+              );
+            }
             after();
+
             // check permissions and adjust views
             arangoHelper.checkCollectionPermissions(self.collectionName, self.changeViewToReadOnly.bind(this));
-          }
+          };
+
+          this.model.getProperties(callback2);
         }
       }.bind(this);
       window.isCoordinator(callback);

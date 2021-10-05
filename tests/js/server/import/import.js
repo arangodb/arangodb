@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for import
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,43 +26,29 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var jsunity = require("jsunity");
-var ArangoError = require("@arangodb").ArangoError; 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const internal = require("internal");
+const jsunity = require("jsunity");
+const ArangoError = require("@arangodb").ArangoError; 
+const errors = internal.errors;
 
 function importTestSuite () {
   'use strict';
-  var errors = internal.errors;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the error code from a result
-////////////////////////////////////////////////////////////////////////////////
 
   function getErrorCode (fn) {
     try {
       fn();
-    }
-    catch (e) {
+    } catch (e) {
       return e.errorNum;
     }
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a given query
-////////////////////////////////////////////////////////////////////////////////
-
   function executeQuery (query) {
-    var statement = internal.db._createStatement({"query": query});
+    let statement = internal.db._createStatement({"query": query});
     if (statement instanceof ArangoError) {
       return statement;
     }
 
-    var cursor = statement.execute();
-    return cursor;
+    return statement.execute();
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,20 +84,6 @@ function importTestSuite () {
   }
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import
@@ -355,30 +325,533 @@ function importTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportHeaders : function () {
+     let expected = [ 
+        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 }, 
+        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 }, 
+        { "a": "9999999999999999999999999999999999", "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
+        { "a": 10e4, "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
+        { "a": -1.05e2, "b": 1.05e-2, "c": true, "d": false, "id": 7 }
+      ];
+      let actual = getQueryResults("FOR i IN UnitTestsImportCsvHeaders SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+    
+    testCsvImportBrokenHeaders : function () {
+      let actual = getQueryResults("FOR i IN UnitTestsImportCsvBrokenHeaders RETURN i");
+      assertEqual([], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import with converting
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportConvert : function () {
+      var expected = [ 
+        { value1: 1 },
+        { value1: 2, value2: "null" },
+        { value1: 3, value2: false },
+        { value1: 4, value2: "false" },
+        { value1: 5, value2: true },
+        { value1: 6, value2: "true" },
+        { value1: 7, value2: 1 },
+        { value1: 8, value2: 2 },
+        { value1: 9, value2: "3" },
+        { value1: 10, value2: "a" },
+        { value1: 11, value2: "b" },
+        { value1: 12, value2: "c" },
+        { value1: 13, value2: " a" },
+        { value1: 14, value2: " b" },
+        { value1: 15, value2: -1 },
+        { value1: 16, value2: "-2" },
+        { value1: 17, value2: -0.5 },
+        { value1: 18, value2: "-.7" },
+        { value1: 19, value2: 0.8 },
+        { value1: 20, value2: ".9" },
+        { value1: 21, value2: 3.566 },
+        { value1: 22, value2: "7.899" },
+        { value1: 23, value2: 5000000 },
+        { value1: 24, value2: "5e6" },
+        { value1: 25, value2: 0 },
+        { value1: 26, value2: "0" },
+        { value1: 27 },
+        { value1: 28, value2: "" },
+        { value1: 29, value2: "       c" },
+        { value1: 30, value2: "       d" },
+        { value1: 31, value2: "       1" },
+        { value1: 32, value2: "       2" },
+        { value1: 33, value2: "e       " },
+        { value1: 34, value2: "d       " },
+        { value1: 35, value2: "       " },
+        { value1: 36, value2: "       " },
+        { value1: 37, value2: "\"true\"" }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsvConvert SORT i.value1 RETURN i");
+      assertEqual(JSON.stringify(expected), JSON.stringify(actual));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import without converting
 ////////////////////////////////////////////////////////////////////////////////
     
     testCsvImportNoConvert : function () {
       var expected = [ 
-        { value1: "1" },
-        { value1: "2", value2: false },
-        { value1: "3", value2: true },
-        { value1: "4", value2: "1" },
-        { value1: "5", value2: "2" },
-        { value1: "6", value2: "3" },
-        { value1: "7", value2: "a" },
-        { value1: "8", value2: "b" },
-        { value1: "9", value2: " a" },
-        { value1: "10", value2: "-1" },
-        { value1: "11", value2: "-.5" },
-        { value1: "12", value2: "3.566" },
-        { value1: "13", value2: "0" },
-        { value1: "14" },
-        { value1: "15", value2: "       c" },
-        { value1: "16", value2: "       1" }
+        { value1: "1", value2: "null" },
+        { value1: "2", value2: "null" },
+        { value1: "3", value2: "false" },
+        { value1: "4", value2: "false" },
+        { value1: "5", value2: "true" },
+        { value1: "6", value2: "true" },
+        { value1: "7", value2: "1" },
+        { value1: "8", value2: "2" },
+        { value1: "9", value2: "3" },
+        { value1: "10", value2: "a" },
+        { value1: "11", value2: "b" },
+        { value1: "12", value2: "c" },
+        { value1: "13", value2: " a" },
+        { value1: "14", value2: " b" },
+        { value1: "15", value2: "-1" },
+        { value1: "16", value2: "-2" },
+        { value1: "17", value2: "-.5" },
+        { value1: "18", value2: "-.7" },
+        { value1: "19", value2: ".8" },
+        { value1: "20", value2: ".9" },
+        { value1: "21", value2: "3.566" },
+        { value1: "22", value2: "7.899" },
+        { value1: "23", value2: "5e6" },
+        { value1: "24", value2: "5e6" },
+        { value1: "25", value2: "0" },
+        { value1: "26", value2: "0" },
+        { value1: "27" },
+        { value1: "28", value2: "" },
+        { value1: "29", value2: "       c" },
+        { value1: "30", value2: "       d" },
+        { value1: "31", value2: "       1" },
+        { value1: "32", value2: "       2" },
+        { value1: "33", value2: "e       " },
+        { value1: "34", value2: "d       " },
+        { value1: "35", value2: "       " },
+        { value1: "36", value2: "       " },
+        { value1: "37", value2: "\"true\"" }
       ];
 
       var actual = getQueryResults("FOR i IN UnitTestsImportCsvNoConvert SORT TO_NUMBER(i.value1) RETURN i");
+      assertEqual(JSON.stringify(expected), JSON.stringify(actual));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import with fixed types
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportTypesBoolean : function () {
+      let expected = [
+        {
+          "id" : "1",
+          "value" : false
+        },
+        {
+          "id" : "2",
+          "value" : false
+        },
+        {
+          "id" : "3",
+          "value" : true
+        },
+        {
+          "id" : "4",
+          "value" : true
+        },
+        {
+          "id" : "5",
+          "value" : false
+        },
+        {
+          "id" : "6",
+          "value" : true
+        },
+        {
+          "id" : "7",
+          "value" : true
+        },
+        {
+          "id" : "8",
+          "value" : true
+        },
+        {
+          "id" : "9",
+          "value" : true
+        },
+        {
+          "id" : "10",
+          "value" : false
+        },
+        {
+          "id" : "11",
+          "value" : true
+        },
+        {
+          "id" : "12",
+          "value" : false
+        },
+        {
+          "id" : "13",
+          "value" : true
+        },
+        {
+          "id" : "14",
+          "value" : true
+        },
+        {
+          "id" : "15",
+          "value" : true
+        },
+        {
+          "id" : "16",
+          "value" : true
+        },
+        {
+          "id" : "17",
+          "value" : true
+        },
+        {
+          "id" : "18",
+          "value" : true
+        },
+        {
+          "id" : "19",
+          "value" : true
+        },
+        {
+          "id" : "20",
+          "value" : true
+        },
+        {
+          "id" : "21",
+          "value" : false
+        },
+        {
+          "id" : "22",
+          "value" : false
+        },
+        {
+          "id" : "23",
+          "value" : true
+        }
+      ];
+
+      let actual = getQueryResults("FOR i IN UnitTestsImportCsvTypesBoolean SORT TO_NUMBER(i.id) RETURN i");
+      assertEqual(JSON.stringify(expected), JSON.stringify(actual));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import with fixed types
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportTypesNumber : function () {
+      let expected = [ 
+        { 
+          "id" : "1", 
+          "value" : 0 
+        }, 
+        { 
+          "id" : "2", 
+          "value" : 0 
+        }, 
+        { 
+          "id" : "3", 
+          "value" : 0 
+        }, 
+        { 
+          "id" : "4", 
+          "value" : -1 
+        }, 
+        { 
+          "id" : "5", 
+          "value" : 0 
+        }, 
+        { 
+          "id" : "6", 
+          "value" : 1 
+        }, 
+        { 
+          "id" : "7", 
+          "value" : 2 
+        }, 
+        { 
+          "id" : "8", 
+          "value" : 123456.43 
+        }, 
+        { 
+          "id" : "9", 
+          "value" : -13323.322 
+        }, 
+        { 
+          "id" : "10", 
+          "value" : 0 
+        }, 
+        { 
+          "id" : "11", 
+          "value" : -1 
+        }, 
+        { 
+          "id" : "12", 
+          "value" : 0 
+        }, 
+        { 
+          "id" : "13", 
+          "value" : 1 
+        }, 
+        { 
+          "id" : "14", 
+          "value" : 2 
+        }, 
+        { 
+          "id" : "15", 
+          "value" : 3 
+        }, 
+        { 
+          "id" : "16", 
+          "value" : -1443.4442 
+        }, 
+        { 
+          "id" : "17", 
+          "value" : 462.66425 
+        }, 
+        { 
+          "id" : "18", 
+          "value" : 0 
+        }, 
+        { 
+          "id" : "20", 
+          "value" : 0 
+        }, 
+        { 
+          "id" : "21", 
+          "value" : 0 
+        }, 
+        { 
+          "id" : "22", 
+          "value" : 0 
+        }, 
+        { 
+          "id" : "23", 
+          "value" : 0 
+        } 
+      ];
+
+      let actual = getQueryResults("FOR i IN UnitTestsImportCsvTypesNumber SORT TO_NUMBER(i.id) RETURN i");
+      assertEqual(JSON.stringify(expected), JSON.stringify(actual));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import with fixed types
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportTypesString : function () {
+      let expected = [
+        { 
+          "id" : "1", 
+          "value" : "null" 
+        }, 
+        { 
+          "id" : "2", 
+          "value" : "false" 
+        }, 
+        { 
+          "id" : "3", 
+          "value" : "true" 
+        }, 
+        { 
+          "id" : "4", 
+          "value" : "-1" 
+        }, 
+        { 
+          "id" : "5", 
+          "value" : "0" 
+        }, 
+        { 
+          "id" : "6", 
+          "value" : "1" 
+        }, 
+        { 
+          "id" : "7", 
+          "value" : "2" 
+        }, 
+        { 
+          "id" : "8", 
+          "value" : "123456.43" 
+        }, 
+        { 
+          "id" : "9", 
+          "value" : "-13323.322" 
+        }, 
+        { 
+          "id" : "10", 
+          "value" : "null" 
+        }, 
+        { 
+          "id" : "11", 
+          "value" : "-1" 
+        }, 
+        { 
+          "id" : "12", 
+          "value" : "0" 
+        }, 
+        { 
+          "id" : "13", 
+          "value" : "1" 
+        }, 
+        { 
+          "id" : "14", 
+          "value" : "2" 
+        }, 
+        { 
+          "id" : "15", 
+          "value" : "3" 
+        }, 
+        { 
+          "id" : "16", 
+          "value" : "-1443.4442" 
+        }, 
+        { 
+          "id" : "17", 
+          "value" : "462.664250" 
+        }, 
+        { 
+          "id" : "18", 
+          "value" : "foo" 
+        }, 
+        { 
+          "id" : "19", 
+          "value" : "" 
+        }, 
+        { 
+          "id" : "20", 
+          "value" : " " 
+        }, 
+        { 
+          "id" : "21", 
+          "value" : "null" 
+        }, 
+        { 
+          "id" : "22", 
+          "value" : "false" 
+        }, 
+        { 
+          "id" : "23", 
+          "value" : "true" 
+        } 
+      ];
+
+      let actual = getQueryResults("FOR i IN UnitTestsImportCsvTypesString SORT TO_NUMBER(i.id) RETURN i");
+      assertEqual(JSON.stringify(expected), JSON.stringify(actual));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import with fixed types, overriding --convert for value attr
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImportTypesPrecedence : function () {
+      let expected = [
+        { 
+          "id" : 1, 
+          "value" : "null" 
+        }, 
+        { 
+          "id" : 2, 
+          "value" : "false" 
+        }, 
+        { 
+          "id" : 3, 
+          "value" : "true" 
+        }, 
+        { 
+          "id" : 4, 
+          "value" : "-1" 
+        }, 
+        { 
+          "id" : 5, 
+          "value" : "0" 
+        }, 
+        { 
+          "id" : 6, 
+          "value" : "1" 
+        }, 
+        { 
+          "id" : 7, 
+          "value" : "2" 
+        }, 
+        { 
+          "id" : 8, 
+          "value" : "123456.43" 
+        }, 
+        { 
+          "id" : 9, 
+          "value" : "-13323.322" 
+        }, 
+        { 
+          "id" : 10, 
+          "value" : "null" 
+        }, 
+        { 
+          "id" : 11, 
+          "value" : "-1" 
+        }, 
+        { 
+          "id" : 12, 
+          "value" : "0" 
+        }, 
+        { 
+          "id" : 13, 
+          "value" : "1" 
+        }, 
+        { 
+          "id" : 14, 
+          "value" : "2" 
+        }, 
+        { 
+          "id" : 15, 
+          "value" : "3" 
+        }, 
+        { 
+          "id" : 16, 
+          "value" : "-1443.4442" 
+        }, 
+        { 
+          "id" : 17, 
+          "value" : "462.664250" 
+        }, 
+        { 
+          "id" : 18, 
+          "value" : "foo" 
+        }, 
+        { 
+          "id" : 19, 
+          "value" : "" 
+        }, 
+        { 
+          "id" : 20, 
+          "value" : " " 
+        }, 
+        { 
+          "id" : 21, 
+          "value" : "null" 
+        }, 
+        { 
+          "id" : 22, 
+          "value" : "false" 
+        }, 
+        { 
+          "id" : 23, 
+          "value" : "true" 
+        } 
+      ];
+
+      let actual = getQueryResults("FOR i IN UnitTestsImportCsvTypesPrecedence SORT TO_NUMBER(i.id) RETURN i");
       assertEqual(JSON.stringify(expected), JSON.stringify(actual));
     },
 
@@ -545,16 +1018,77 @@ function importTestSuite () {
         db._useDatabase("_system");
       }
     },
+    
+    testImportDatabaseUnicode : function () {
+      let db = require("@arangodb").db;
+      let dbs = ['maçã', '😀'];
+      try {
+        dbs.forEach((name) => {
+          let testdb = db._useDatabase(name);
+          let expected = [ { "id": 1,
+                             "one": 1,
+                             "three": 3,
+                             "two": 2 },
+                           { "a": 1234,
+                             "b": "the quick fox",
+                             "id": 2,
+                             "jumped":
+                             "over the fox",
+                             "null": null },
+                           { "id": 3,
+                             "not": "important",
+                             "spacing": "is" },
+                           { "  c  ": "h\"'ihi",
+                             "a": true,
+                             "b": false,
+                             "d": "",
+                             "id": 4 },
+                           { "id": 5 } ];
 
-// END OF TEST DEFINITIONS /////////////////////////////////////////////////////
+          let actual = getQueryResults("FOR i IN UnitTestsImportJson1 SORT i.id RETURN i");
+          assertEqual(expected, actual);
+        });
+      } finally {
+        db._useDatabase("_system");
+      }
+    },
+    
+    testCreateDatabaseUnicode : function () {
+      let db = require("@arangodb").db;
+      let dbs = ['ﻚﻠﺑ ﻞﻄﻴﻓ', 'abc mötor !" \' & <>'];
+      try {
+        dbs.forEach((name) => {
+          let testdb = db._useDatabase(name);
+          let expected = [ { "id": 1,
+                             "one": 1,
+                             "three": 3,
+                             "two": 2 },
+                           { "a": 1234,
+                             "b": "the quick fox",
+                             "id": 2,
+                             "jumped":
+                             "over the fox",
+                             "null": null },
+                           { "id": 3,
+                             "not": "important",
+                             "spacing": "is" },
+                           { "  c  ": "h\"'ihi",
+                             "a": true,
+                             "b": false,
+                             "d": "",
+                             "id": 4 },
+                           { "id": 5 } ];
+
+          let actual = getQueryResults("FOR i IN UnitTestsImportJson1 SORT i.id RETURN i");
+          assertEqual(expected, actual);
+        });
+      } finally {
+        db._useDatabase("_system");
+      }
+    },
+
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(importTestSuite);
-
 return jsunity.done();
-

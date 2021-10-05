@@ -30,6 +30,7 @@
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
@@ -61,7 +62,12 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     GeneralResponse* response)
     : RestReplicationHandler(server, request, response),
       _manager(
-          server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>().replicationManager()) {
+          server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>().replicationManager()),
+      _quickKeysNumDocsLimit(server.getFeature<ReplicationFeature>().quickKeysLimit())  {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  adjustQuickKeysNumDocsLimit();
+#endif
+
 }
 
 void RocksDBRestReplicationHandler::handleCommandBatch() {
@@ -186,7 +192,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     if (found) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
-      int res = TRI_ERROR_CURSOR_NOT_FOUND;
+      auto res = TRI_ERROR_CURSOR_NOT_FOUND;
       generateError(GeneralResponse::responseCode(res), res);
     }
     return;
@@ -290,7 +296,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                   result.errorNumber(), result.errorMessage());
     return;
   }
-  
+
   TRI_ASSERT(latest >= result.maxTick());
 
   bool const checkMore = (result.maxTick() > 0 && result.maxTick() < latest);
@@ -450,6 +456,9 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
 }
 
 /// @brief produce list of keys for a specific collection
+/// If the call is made with option quick=true, and more than
+/// 1 million documents are counted for keys, we'll return only
+/// the document count, else, we proceed to deliver the keys.
 void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   std::string const& collection = _request->value("collection");
   if (collection.empty()) {
@@ -457,8 +466,15 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
                   "invalid collection parameter");
     return;
   }
+
+  std::string const& quick = _request->value("quick");
+  if (!quick.empty() && !(quick == "true" || quick == "false")) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  std::string("invalid quick parameter: must be boolean, got ") + quick);
+    return;
+  }
+
   // to is ignored because the snapshot time is the latest point in time
-  
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   RocksDBReplicationContext* ctx = nullptr;
@@ -479,12 +495,20 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
 
   // bind collection to context - will initialize iterator
   Result res;
-  DataSourceId cid;
   uint64_t numDocs;
+  DataSourceId cid;
   std::tie(res, cid, numDocs) = ctx->bindCollectionIncremental(_vocbase, collection);
-
   if (res.fail()) {
     generateError(res);
+    return;
+  }
+
+  if (numDocs > _quickKeysNumDocsLimit && quick == "true") {
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("count", VPackValue(numDocs));
+    result.close();
+    generateResult(rest::ResponseCode::OK, result.slice());
     return;
   }
 
@@ -730,7 +754,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }
-  
+
   bool const useEnvelope = _request->parsedValue("useEnvelope", true);
 
   uint64_t chunkSize = determineChunkSize();
@@ -740,7 +764,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   if (_request->contentTypeResponse() == ContentType::VPACK) {
     VPackBuffer<uint8_t> buffer;
     buffer.reserve(reserve);  // avoid reallocs
-    
+
     auto trxCtx = transaction::StandaloneContext::Create(_vocbase);
 
     res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize, useEnvelope);
@@ -794,7 +818,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
                            (res.hasMore ? "true" : "false"));
     _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                            StringUtils::itoa((dump.length() == 0) ? 0 : res.includedTick));
-    
+
     if (_request->transportType() == Endpoint::TransportType::HTTP) {
       auto response = dynamic_cast<HttpResponse*>(_response.get());
       if (response == nullptr) {
@@ -813,3 +837,12 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     }
   }
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+/// @brief patch quickKeysNumDocsLimit for testing
+void RocksDBRestReplicationHandler::adjustQuickKeysNumDocsLimit() {
+  TRI_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
+    _quickKeysNumDocsLimit = 100;
+  }
+}
+#endif

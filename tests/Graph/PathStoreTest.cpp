@@ -23,10 +23,12 @@
 
 #include "gtest/gtest.h"
 
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
+#include "Basics/StringUtils.h"
 #include "Graph/PathManagement/PathStore.cpp"
 #include "Graph/Providers/BaseStep.h"
 
-#include <Basics/StringUtils.h>
 #include <ostream>
 
 using namespace arangodb;
@@ -72,7 +74,8 @@ class PathStoreTest : public ::testing::Test {
   PathStoreTest() {}
   ~PathStoreTest() {}
 
-  arangodb::ResourceMonitor _resourceMonitor{};
+  arangodb::GlobalResourceMonitor _global{};
+  arangodb::ResourceMonitor _resourceMonitor{_global};
 
   PathStore<Step> testee() { return PathStore<Step>(_resourceMonitor); }
 };
@@ -91,32 +94,32 @@ TEST_F(PathStoreTest, it_should_be_able_to_set_startVertex) {
 
 TEST_F(PathStoreTest, it_should_be_able_to_clear) {
   auto ps = testee();
-  size_t memoryUsage = _resourceMonitor.currentMemoryUsage();
+  size_t memoryUsage = _resourceMonitor.current();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
   lastIndex = ps.append({0, 1, lastIndex, false});
-  EXPECT_GT(_resourceMonitor.currentMemoryUsage(), memoryUsage);
-  memoryUsage = _resourceMonitor.currentMemoryUsage();
+  EXPECT_GT(_resourceMonitor.current(), memoryUsage);
+  memoryUsage = _resourceMonitor.current();
   lastIndex = ps.append({1, 1, lastIndex, false});
-  EXPECT_GT(_resourceMonitor.currentMemoryUsage(), memoryUsage);
-  memoryUsage = _resourceMonitor.currentMemoryUsage();
+  EXPECT_GT(_resourceMonitor.current(), memoryUsage);
+  memoryUsage = _resourceMonitor.current();
   lastIndex = ps.append({2, 1, lastIndex, false});
-  EXPECT_GT(_resourceMonitor.currentMemoryUsage(), memoryUsage);
-  memoryUsage = _resourceMonitor.currentMemoryUsage();
+  EXPECT_GT(_resourceMonitor.current(), memoryUsage);
+  memoryUsage = _resourceMonitor.current();
   lastIndex = ps.append({3, 1, lastIndex, false});
-  EXPECT_GT(_resourceMonitor.currentMemoryUsage(), memoryUsage);
-  memoryUsage = _resourceMonitor.currentMemoryUsage();
+  EXPECT_GT(_resourceMonitor.current(), memoryUsage);
+  memoryUsage = _resourceMonitor.current();
   lastIndex = ps.append({4, 1, lastIndex, false});
-  EXPECT_GT(_resourceMonitor.currentMemoryUsage(), memoryUsage);
-  memoryUsage = _resourceMonitor.currentMemoryUsage();
+  EXPECT_GT(_resourceMonitor.current(), memoryUsage);
+  memoryUsage = _resourceMonitor.current();
   EXPECT_EQ(ps.size(), 5);
 
   ps.reset();
-  memoryUsage = _resourceMonitor.currentMemoryUsage();
+  memoryUsage = _resourceMonitor.current();
 
   EXPECT_EQ(ps.size(), 0);
-  EXPECT_EQ(_resourceMonitor.currentMemoryUsage(), memoryUsage);
-  EXPECT_EQ(_resourceMonitor.currentMemoryUsage(), 0);
+  EXPECT_EQ(_resourceMonitor.current(), memoryUsage);
+  EXPECT_EQ(_resourceMonitor.current(), 0);
 }
 
 TEST_F(PathStoreTest, it_should_be_able_to_append_on_empty_clear_and_reappend) {

@@ -185,12 +185,8 @@ void IndexNode::setProjections(arangodb::aql::Projections projections) {
   dn->projections().determineIndexSupport(this->collection()->id(), _indexes);
 }
 
-/// @brief toVelocyPack, for IndexNode
-void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
-                                   std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(builder, flags, seen);
-
+/// @brief doToVelocyPack, for IndexNode
+void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // add outvariable and projections
   DocumentProducingNode::toVelocyPack(builder, flags);
 
@@ -240,9 +236,6 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
       builder.add("field", VPackValue(fieldName));  // for explainer.js
     }
   }
-
-  // And close it:
-  builder.close();
 }
 
 /// @brief adds a UNIQUE() to a dynamic IN condition
@@ -299,7 +292,7 @@ void IndexNode::initializeOnce(bool& hasV8Expression, std::vector<Variable const
       inVars.emplace_back(v);
       auto it = getRegisterPlan()->varInfo.find(v->id);
       TRI_ASSERT(it != getRegisterPlan()->varInfo.cend());
-      TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
+      TRI_ASSERT(it->second.registerId.isValid());
       inRegs.emplace_back(it->second.registerId);
     }
   };
@@ -461,8 +454,8 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                          _outVariable, isProduceResult(), this->_filter.get(),
                          this->projections(),
                          std::move(nonConstExpressions), std::move(inVars),
-                         std::move(inRegs), hasV8Expression, doCount(), _condition->root(),
-                         this->getIndexes(), _plan->getAst(), this->options(),
+                         std::move(inRegs), hasV8Expression, doCount(), canReadOwnWrites(),
+                         _condition->root(), this->getIndexes(), _plan->getAst(), this->options(),
                          _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(&engine, this,

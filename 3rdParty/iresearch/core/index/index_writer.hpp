@@ -24,14 +24,20 @@
 #ifndef IRESEARCH_INDEX_WRITER_H
 #define IRESEARCH_INDEX_WRITER_H
 
-#include "field_meta.hpp"
-#include "column_info.hpp"
-#include "index_meta.hpp"
-#include "merge_writer.hpp"
-#include "segment_reader.hpp"
-#include "segment_writer.hpp"
+#include <atomic>
+
+#include <absl/container/flat_hash_map.h>
 
 #include "formats/formats.hpp"
+
+#include "index/column_info.hpp"
+#include "index/field_meta.hpp"
+#include "index/index_features.hpp"
+#include "index/index_meta.hpp"
+#include "index/merge_writer.hpp"
+#include "index/segment_reader.hpp"
+#include "index/segment_writer.hpp"
+
 #include "search/filter.hpp"
 
 #include "utils/async_utils.hpp"
@@ -40,8 +46,6 @@
 #include "utils/object_pool.hpp"
 #include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
-
-#include <atomic>
 
 namespace iresearch {
 
@@ -55,11 +59,6 @@ class readers_cache final : util::noncopyable {
   struct key_t {
     key_t(const segment_meta& meta); // implicit constructor
 
-    bool operator<(const key_t& other) const noexcept {
-      return name < other.name
-        || (name == other.name && version < other.version);
-    }
-
     bool operator==(const key_t& other) const noexcept {
       return name == other.name && version == other.version;
     }
@@ -70,19 +69,20 @@ class readers_cache final : util::noncopyable {
 
   struct key_hash_t {
     size_t operator()(const key_t& key) const noexcept {
-      return std::hash<std::string>()(key.name);
+      return hash_utils::hash(key.name);
     }
   };
 
-  readers_cache(directory& dir): dir_(dir) {}
+  explicit readers_cache(directory& dir) noexcept
+    : dir_(dir) {}
 
   void clear() noexcept;
   segment_reader emplace(const segment_meta& meta);
-  size_t purge(const std::unordered_set<key_t, key_hash_t>& segments) noexcept;
+  size_t purge(const absl::flat_hash_set<key_t, key_hash_t>& segments) noexcept;
 
  private:
   std::mutex lock_;
-  std::unordered_map<key_t, segment_reader, key_hash_t> cache_;
+  absl::flat_hash_map<key_t, segment_reader, key_hash_t> cache_;
   directory& dir_;
 }; // readers_cache
 
@@ -112,12 +112,7 @@ ENABLE_BITMASK_ENUM(OpenMode);
 ///        the same directory simultaneously.
 ///        Thread safe.
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API index_writer
-    : private atomic_shared_ptr_helper<
-        std::pair<
-          std::shared_ptr<index_meta>, std::vector<index_file_refs::ref_t>
-      >>,
-      private util::noncopyable {
+class IRESEARCH_API index_writer : private util::noncopyable {
  private:
   struct flush_context; // forward declaration
   struct segment_context; // forward declaration
@@ -137,11 +132,10 @@ class IRESEARCH_API index_writer
    public:
     active_segment_context() = default;
     active_segment_context(
-        segment_context_ptr ctx,
-        std::atomic<size_t>& segments_active,
-        flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
-        size_t pending_segment_context_offset = integer_traits<size_t>::const_max // the segment offset in flush_ctx_->pending_segments_
-    ) noexcept;
+      segment_context_ptr ctx,
+      std::atomic<size_t>& segments_active,
+      flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
+      size_t pending_segment_context_offset = std::numeric_limits<size_t>::max()) noexcept; // the segment offset in flush_ctx_->pending_segments_
     active_segment_context(active_segment_context&&)  = default;
     ~active_segment_context();
     active_segment_context& operator=(active_segment_context&& other) noexcept;
@@ -217,8 +211,7 @@ class IRESEARCH_API index_writer
       return document(
         std::move(ctx),
         segment_.ctx(),
-        segment_.ctx()->make_update_context()
-      );
+        segment_.ctx()->make_update_context());
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -287,7 +280,8 @@ class IRESEARCH_API index_writer
         ++segment->active_count_;
       }
 
-      auto clear_busy = make_finally([ctx, segment]()->void {
+      auto clear_busy = make_finally([ctx, segment](){
+        // FIXME make me noexcept as I'm begin called from within ~finally()
         if (!--segment->active_count_) {
           auto lock = make_lock_guard(ctx->mutex_); // lock due to context modification and notification
           ctx->pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
@@ -300,8 +294,7 @@ class IRESEARCH_API index_writer
       auto uncomitted_doc_id_begin =
         segment->uncomitted_doc_id_begin_ > segment->flushed_update_contexts_.size()
         ? (segment->uncomitted_doc_id_begin_ - segment->flushed_update_contexts_.size()) // uncomitted start in 'writer_'
-        : doc_limits::min() // uncommited start in 'flushed_'
-        ;
+        : doc_limits::min(); // uncommited start in 'flushed_'
       auto update = segment->make_update_context(std::forward<Filter>(filter));
 
       try {
@@ -312,7 +305,7 @@ class IRESEARCH_API index_writer
 
           rollback.reserve(writer.docs_cached() + 1); // reserve space for rollback
 
-          if (integer_traits<doc_id_t>::const_max <= writer.docs_cached() + doc_limits::min()
+          if (std::numeric_limits<doc_id_t>::max() <= writer.docs_cached() + doc_limits::min()
               || doc_limits::eof(writer.begin(update, rollback_extra))) {
             break; // the segment cannot fit any more docs, must roll back
           }
@@ -345,7 +338,7 @@ class IRESEARCH_API index_writer
       for (auto i = rollback.size(); i && rollback.any();) {
         if (rollback.test(--i)) {
           rollback.unset(i); // if new doc_ids at end this allows to terminate 'for' earlier
-          assert(integer_traits<doc_id_t>::const_max >= i + doc_limits::min());
+          assert(std::numeric_limits<doc_id_t>::max() >= i + doc_limits::min());
           writer.remove(doc_id_t(i + doc_limits::min())); // convert to doc_id
         }
       }
@@ -443,6 +436,18 @@ class IRESEARCH_API index_writer
   //////////////////////////////////////////////////////////////////////////////
   struct init_options : public segment_options {
     ////////////////////////////////////////////////////////////////////////////
+    /// @brief a set of all allowed custom field features the index writer
+    ///        supports
+    ////////////////////////////////////////////////////////////////////////////
+    field_features_t features;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief returns column info for a feature the writer should use for
+    ///        columnstore
+    ////////////////////////////////////////////////////////////////////////////
+    feature_column_info_provider_t feature_column_info;
+
+    ////////////////////////////////////////////////////////////////////////////
     /// @brief returns column info the writer should use for columnstore
     ////////////////////////////////////////////////////////////////////////////
     column_info_provider_t column_info;
@@ -458,12 +463,6 @@ class IRESEARCH_API index_writer
     ///        empty == use default system sorting order
     ////////////////////////////////////////////////////////////////////////////
     const comparer* comparator{nullptr};
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief number of memory blocks to cache by the internal memory pool
-    ///        0 == use default from memory_allocator::global()
-    ////////////////////////////////////////////////////////////////////////////
-    size_t memory_pool_size{0};
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of free segments cached in the segment pool for reuse
@@ -493,12 +492,11 @@ class IRESEARCH_API index_writer
     }
   }; // segment_equal
 
-  // works faster than std::unordered_set<string_ref>
-  typedef std::unordered_set<
+  // segments that are under consolidation
+  using consolidating_segments_t = absl::flat_hash_set<
     const segment_meta*,
     segment_hash,
-    segment_equal
-  > consolidating_segments_t; // segments that are under consolidation
+    segment_equal>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @enum ConsolidationError
@@ -543,6 +541,11 @@ class IRESEARCH_API index_writer
   using ptr = std::shared_ptr<index_writer>;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief a set of candidates denoting an instance of consolidation
+  //////////////////////////////////////////////////////////////////////////////
+  using consolidation_t = std::vector<const segment_meta*>;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief mark consolidation candidate segments matching the current policy
   /// @param candidates the segments that should be consolidated
   ///        in: segment candidates that may be considered by this policy
@@ -553,11 +556,10 @@ class IRESEARCH_API index_writer
   ///        of consolidation
   /// @note final candidates are all segments selected by at least some policy
   //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<void(
-    std::set<const segment_meta*>& candidates,
+  using consolidation_policy_t = std::function<void(
+    consolidation_t& candidates,
     const index_meta& meta,
-    const consolidating_segments_t& consolidating_segments
-  )> consolidation_policy_t;
+    const consolidating_segments_t& consolidating_segments)>;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief name of the lock for index repository 
@@ -622,8 +624,7 @@ class IRESEARCH_API index_writer
   bool import(
     const index_reader& reader,
     format::ptr codec = nullptr,
-    const merge_writer::flush_progress_t& progress = {}
-  );
+    const merge_writer::flush_progress_t& progress = {});
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief opens new index writer
@@ -636,8 +637,7 @@ class IRESEARCH_API index_writer
     directory& dir,
     format::ptr codec,
     OpenMode mode,
-    const init_options& opts = init_options()
-  );
+    const init_options& opts = init_options());
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief modify the runtime segment options as per the specified values
@@ -701,6 +701,8 @@ class IRESEARCH_API index_writer
  private:
   typedef std::vector<index_file_refs::ref_t> file_refs_t;
 
+  static constexpr size_t NON_UPDATE_RECORD = std::numeric_limits<size_t>::max(); // non-update
+
   struct consolidation_context_t : util::noncopyable {
     consolidation_context_t() = default;
 
@@ -709,7 +711,7 @@ class IRESEARCH_API index_writer
 
     consolidation_context_t(
         std::shared_ptr<index_meta>&& consolidaton_meta,
-        std::set<const segment_meta*>&& candidates,
+        consolidation_t&& candidates,
         merge_writer&& merger) noexcept
       : consolidaton_meta(std::move(consolidaton_meta)),
         candidates(std::move(candidates)),
@@ -718,52 +720,52 @@ class IRESEARCH_API index_writer
 
     consolidation_context_t(
         std::shared_ptr<index_meta>&& consolidaton_meta,
-        std::set<const segment_meta*>&& candidates) noexcept
+        consolidation_t&& candidates) noexcept
       : consolidaton_meta(std::move(consolidaton_meta)),
         candidates(std::move(candidates)) {
     }
 
     std::shared_ptr<index_meta> consolidaton_meta;
-    std::set<const segment_meta*> candidates;
+    consolidation_t candidates;
     merge_writer merger;
   }; // consolidation_context_t
 
-  static_assert(std::is_move_constructible_v<consolidation_context_t>);
+  static_assert(std::is_nothrow_move_constructible_v<consolidation_context_t>);
 
   struct import_context {
     import_context(
         index_meta::index_segment_t&& segment,
         size_t generation,
         file_refs_t&& refs,
-        std::set<const segment_meta*>&& consolidation_candidates,
+        consolidation_t&& consolidation_candidates,
         std::shared_ptr<index_meta>&& consolidation_meta,
-        merge_writer&& merger
-    ) noexcept
+        merge_writer&& merger) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)),
-        consolidation_ctx(std::move(consolidation_meta), std::move(consolidation_candidates), std::move(merger)) {
+        consolidation_ctx(std::move(consolidation_meta),
+                          std::move(consolidation_candidates),
+                          std::move(merger)) {
     }
 
     import_context(
         index_meta::index_segment_t&& segment,
         size_t generation,
         file_refs_t&& refs,
-        std::set<const segment_meta*>&& consolidation_candidates,
-        std::shared_ptr<index_meta>&& consolidation_meta
-    ) noexcept
+        consolidation_t&& consolidation_candidates,
+        std::shared_ptr<index_meta>&& consolidation_meta) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)),
-        consolidation_ctx(std::move(consolidation_meta), std::move(consolidation_candidates)) {
+        consolidation_ctx(std::move(consolidation_meta),
+                          std::move(consolidation_candidates)) {
     }
 
     import_context(
         index_meta::index_segment_t&& segment,
         size_t generation,
         file_refs_t&& refs,
-        std::set<const segment_meta*>&& consolidation_candidates
-    ) noexcept
+        consolidation_t&& consolidation_candidates) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)),
@@ -797,7 +799,7 @@ class IRESEARCH_API index_writer
     consolidation_context_t consolidation_ctx;
   }; // import_context
 
-  static_assert(std::is_move_constructible_v<import_context>);
+  static_assert(std::is_nothrow_move_constructible_v<import_context>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the segment writer and its associated ref tracing directory
@@ -833,20 +835,20 @@ class IRESEARCH_API index_writer
   //////////////////////////////////////////////////////////////////////////////
   struct IRESEARCH_API segment_context { // IRESEARCH_API because of make_update_context(...)/remove(...) used by documents_context::replace(...)/documents_context::remove(...)
     struct flushed_t: public index_meta::index_segment_t {
-      doc_id_t docs_mask_tail_doc_id{integer_traits<doc_id_t>::max()}; // starting doc_id that should be added to docs_mask
+      doc_id_t docs_mask_tail_doc_id{std::numeric_limits<doc_id_t>::max()}; // starting doc_id that should be added to docs_mask
       flushed_t() = default;
       flushed_t(segment_meta&& meta)
         : index_meta::index_segment_t(std::move(meta)) {}
     };
     using segment_meta_generator_t = std::function<segment_meta()>;
-    using ptr = std::shared_ptr<segment_context>;
+    using ptr = std::unique_ptr<segment_context>;
 
     std::atomic<size_t> active_count_; // number of active in-progress operations (insert/replace) (e.g. document instances or replace(...))
     std::atomic<size_t> buffered_docs_; // for use with index_writer::buffered_docs() asynchronous call
     format::ptr codec_; // the codec to used for flushing a segment writer
-    bool dirty_; // true if flush_all() started processing this segment (this segment should not be used for any new operations), guarded by the flush_context::flush_mutex_
+    std::atomic<bool> dirty_; // true if flush_all() started processing this segment (this segment should not be used for any new operations), guarded by the flush_context::flush_mutex_
     ref_tracking_directory dir_; // ref tracking for segment_writer to allow for easy ref removal on segment_writer reset
-    std::recursive_mutex flush_mutex_; // guard 'flushed_', 'uncomitted_*' and 'writer_' from concurrent flush
+    std::mutex flush_mutex_; // guard 'flushed_', 'uncomitted_*' and 'writer_' from concurrent flush
     std::vector<flushed_t> flushed_; // all of the previously flushed versions of this segment, guarded by the flush_context::flush_mutex_
     std::vector<segment_writer::update_context> flushed_update_contexts_; // update_contexts to use with 'flushed_' sequentially increasing through all offsets (sequential doc_id in 'flushed_' == offset + type_limits<type_t::doc_id_t>::min(), size() == sum of all 'flushed_'.'docs_count')
     segment_meta_generator_t meta_generator_; // function to get new segment_meta from
@@ -857,8 +859,21 @@ class IRESEARCH_API index_writer
     segment_writer::ptr writer_;
     index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
 
-    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator, const column_info_provider_t& column_info, const comparer* comparator);
-    segment_context(directory& dir, segment_meta_generator_t&& meta_generator, const column_info_provider_t& column_info, const comparer* comparator);
+    static segment_context::ptr make(
+      directory& dir,
+      segment_meta_generator_t&& meta_generator,
+      const field_features_t& field_features,
+      const column_info_provider_t& column_info,
+      const feature_column_info_provider_t& feature_column_info,
+      const comparer* comparator);
+
+    segment_context(
+      directory& dir,
+      segment_meta_generator_t&& meta_generator,
+      const field_features_t& field_features,
+      const column_info_provider_t& column_info,
+      const feature_column_info_provider_t& feature_column_info,
+      const comparer* comparator);
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief flush current writer state into a materialized segment
@@ -867,7 +882,9 @@ class IRESEARCH_API index_writer
     uint64_t flush();
 
     // returns context for "insert" operation
-    segment_writer::update_context make_update_context();
+    segment_writer::update_context make_update_context() const noexcept {
+      return { uncomitted_generation_offset_, NON_UPDATE_RECORD };
+    }
 
     // returns context for "update" operation
     segment_writer::update_context make_update_context(const filter& filter);
@@ -931,16 +948,16 @@ class IRESEARCH_API index_writer
       size_t doc_id_end_; // ending segment_context::document_contexts_ for this flush_context range [pending_segment_context::doc_id_begin_, std::min(pending_segment_context::doc_id_end_, segment_context::uncomitted_doc_ids_))
       const size_t modification_offset_begin_; // starting segment_context::modification_queries_ for this flush_context range [pending_segment_context::modification_offset_begin_, std::min(pending_segment_context::::modification_offset_end_, segment_context::uncomitted_modification_queries_))
       size_t modification_offset_end_; // ending segment_context::modification_queries_ for this flush_context range [pending_segment_context::modification_offset_begin_, std::min(pending_segment_context::::modification_offset_end_, segment_context::uncomitted_modification_queries_))
-      const segment_context::ptr segment_;
+      const std::shared_ptr<segment_context> segment_;
 
       pending_segment_context(
-        const segment_context::ptr& segment,
-        size_t pending_segment_context_offset
-      ): doc_id_begin_(segment->uncomitted_doc_id_begin_),
-         doc_id_end_(integer_traits<size_t>::const_max),
-         modification_offset_begin_(segment->uncomitted_modification_queries_),
-         modification_offset_end_(integer_traits<size_t>::const_max),
-         segment_(segment) {
+          const std::shared_ptr<segment_context>& segment,
+          size_t pending_segment_context_offset)
+        : doc_id_begin_(segment->uncomitted_doc_id_begin_),
+          doc_id_end_(std::numeric_limits<size_t>::max()),
+          modification_offset_begin_(segment->uncomitted_modification_queries_),
+          modification_offset_end_(std::numeric_limits<size_t>::max()),
+          segment_(segment) {
         assert(segment);
         value = pending_segment_context_offset;
       }
@@ -948,14 +965,14 @@ class IRESEARCH_API index_writer
 
     std::atomic<size_t> generation_{ 0 }; // current modification/update generation
     ref_tracking_directory::ptr dir_; // ref tracking directory used by this context (tracks all/only refs for this context)
-    async_utils::read_write_mutex flush_mutex_; // guard for the current context during flush (write) operations vs update (read)
+    std::shared_mutex flush_mutex_; // guard for the current context during flush (write) operations vs update (read)
     std::mutex mutex_; // guard for the current context during struct update operations, e.g. pending_segments_, pending_segment_contexts_
     flush_context* next_context_; // the next context to switch to
     std::vector<import_context> pending_segments_; // complete segments to be added during next commit (import)
     std::condition_variable pending_segment_context_cond_; // notified when a segment has been freed (guarded by mutex_)
     std::deque<pending_segment_context> pending_segment_contexts_; // segment writers with data pending for next commit (all segments that have been used by this flush_context) must be std::deque to garantee that element memory location does not change for use with 'pending_segment_contexts_freelist_'
     freelist_t pending_segment_contexts_freelist_; // entries from 'pending_segment_contexts_' that are available for reuse
-    std::unordered_set<readers_cache::key_t, readers_cache::key_hash_t> segment_mask_; // set of segment names to be removed from the index upon commit
+    absl::flat_hash_set<readers_cache::key_t, readers_cache::key_hash_t> segment_mask_; // set of segment names to be removed from the index upon commit
 
     flush_context() = default;
 
@@ -1005,7 +1022,7 @@ class IRESEARCH_API index_writer
           // partial update
           assert(begin <= files.end());
 
-          if (integer_traits<size_t>::const_max == entry.second) {
+          if (std::numeric_limits<size_t>::max() == entry.second) {
             // skip invalid segments
             begin += entry.second;
             continue;
@@ -1072,10 +1089,15 @@ class IRESEARCH_API index_writer
     const segment_options& segment_limits,
     const comparer* comparator,
     const column_info_provider_t& column_info,
+    const feature_column_info_provider_t& feature_column_info,
     const payload_provider_t& meta_payload_provider,
+    const field_features_t& field_features,
     index_meta&& meta,
-    committed_state_t&& committed_state
-  );
+    committed_state_t&& committed_state);
+
+  std::pair<std::vector<std::unique_lock<std::mutex>>, uint64_t> flush_pending(
+    flush_context& ctx,
+    std::unique_lock<std::mutex>& ctx_lock);
 
   pending_context_t flush_all();
 
@@ -1087,6 +1109,8 @@ class IRESEARCH_API index_writer
   void abort(); // aborts transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  field_features_t field_features_;
+  feature_column_info_provider_t feature_column_info_;
   column_info_provider_t column_info_;
   payload_provider_t meta_payload_provider_; // provides payload for new segments
   const comparer* comparator_;

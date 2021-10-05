@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GEO_NEAR_QUERY_H
-#define ARANGOD_GEO_NEAR_QUERY_H 1
+#pragma once
 
 #include <queue>
 #include <type_traits>
@@ -223,4 +222,3 @@ class NearUtils {
 }  // namespace geo_index
 }  // namespace arangodb
 
-#endif

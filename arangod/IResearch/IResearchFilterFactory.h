@@ -22,8 +22,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_FILTER_FACTORY_H
-#define ARANGOD_IRESEARCH__IRESEARCH_FILTER_FACTORY_H 1
+#pragma once
+
+#include "IResearchFilterOptimization.h"
 
 #include "VocBase/voc-types.h"
 
@@ -69,4 +70,3 @@ struct FilterConstants {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__IRESEARCH_FILTER_FACTORY_H

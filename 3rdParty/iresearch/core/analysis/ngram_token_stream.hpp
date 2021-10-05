@@ -23,8 +23,8 @@
 #ifndef IRESEARCH_NGRAM_TOKEN_STREAM_H
 #define IRESEARCH_NGRAM_TOKEN_STREAM_H
 
-#include "analyzers.hpp"
-#include "token_attributes.hpp"
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
 
 namespace iresearch {
@@ -37,7 +37,7 @@ namespace analysis {
 ///         [min_gram;max_gram]. Can optionally preserve the original input.
 ////////////////////////////////////////////////////////////////////////////////
 class ngram_token_stream_base
-  : public frozen_attributes<3, analyzer>,
+  : public analyzer,
     private util::noncopyable {
  public:
    enum class InputType {
@@ -82,19 +82,25 @@ class ngram_token_stream_base
    explicit ngram_token_stream_base(const Options& options);
 
    virtual bool reset(const string_ref& data) noexcept override;
+   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+     return irs::get_mutable(attrs_, type);
+   }
 
    size_t min_gram() const noexcept { return options_.min_gram; }
    size_t max_gram() const noexcept { return options_.max_gram; }
    bool preserve_original() const noexcept { return options_.preserve_original; }
 
  protected:
+  using attributes = std::tuple<
+    increment,
+    offset,
+    term_attribute>;
+
    void emit_original() noexcept;
 
    Options options_;
    bytes_ref data_; // data to process
-   increment inc_;
-   offset offset_;
-   term_attribute term_;
+   attributes attrs_;
    const byte_type* begin_{};
    const byte_type* data_end_{};
    const byte_type* ngram_end_{};
@@ -125,7 +131,7 @@ class ngram_token_stream_base
 template<ngram_token_stream_base::InputType StreamType>
 class ngram_token_stream: public ngram_token_stream_base {
  public:
-  DECLARE_FACTORY(const ngram_token_stream_base::Options& options);
+  static ptr make(const ngram_token_stream_base::Options& options);
 
   ngram_token_stream(const ngram_token_stream_base::Options& options);
   

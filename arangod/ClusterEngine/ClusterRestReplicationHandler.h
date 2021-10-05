@@ -22,8 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_REST_REPLICATION_HANDLER_H
-#define ARANGOD_CLUSTER_CLUSTER_REST_REPLICATION_HANDLER_H 1
+#pragma once
 
 #include "RestHandler/RestReplicationHandler.h"
 
@@ -75,4 +74,3 @@ class ClusterRestReplicationHandler : public RestReplicationHandler {
 };
 }  // namespace arangodb
 
-#endif

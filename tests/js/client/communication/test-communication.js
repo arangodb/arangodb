@@ -1,5 +1,6 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
+/* global fail, assertTrue, assertFalse, assertEqual,
+   assertNotEqual, arango, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -22,19 +23,27 @@
 // /
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
-
+const _ = require('lodash');
 let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
-const request = require('@arangodb/request');
+
 const graphModule = require('@arangodb/general-graph');
 const { expect } = require('chai');
+const toArgv = require('internal').toArgv;
+
+let { debugCanUseFailAt,
+      debugSetFailAt,
+      debugResetRaceControl,
+      debugRemoveFailAt,
+      debugClearFailAt
+    } = require('@arangodb/test-helper');
 
 const getMetric = (name) => {
-  let res = arango.GET_RAW("/_admin/metrics");
+  let res = arango.GET_RAW("/_admin/metrics/v2");
   let re = new RegExp("^" + name + "({[^}]*})?");
   let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
   if (!matches.length) {
@@ -72,28 +81,27 @@ function getEndpointById(id) {
 
 const runShell = function (args, prefix) {
   let options = internal.options();
-  args.push('--javascript.startup-directory');
-  args.push(options['javascript.startup-directory']);
-  for (let o in options['javascript.module-directory']) {
-    args.push('--javascript.module-directory');
-    args.push(options['javascript.module-directory'][o]);
-  }
 
   let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
-  args.push('--server.endpoint');
-  args.push(endpoint);
-  args.push('--server.database');
-  args.push(arango.getDatabaseName());
-  args.push('--server.username');
-  args.push(arango.connectedUser());
-  args.push('--server.password');
-  args.push('');
-  args.push('--log.foreground-tty');
-  args.push('false');
-  args.push('--log.output');
-  args.push('file://' + prefix + '.log');
+  let moreArgs = {
+    'javascript.startup-directory': options['javascript.startup-directory'],
+    'server.endpoint': endpoint,
+    'server.database': arango.getDatabaseName(),
+    'server.username': arango.connectedUser(),
+    'server.password': '',
+    'server.request-timeout': '10',
+    'log.foreground-tty': 'false',
+    'log.output': 'file://' + prefix + '.log'
+  };
+  _.assign(args, moreArgs);
+  let argv = toArgv(args);
 
-  let result = internal.executeExternal(arangosh, args, false /*usePipes*/);
+  for (let o in options['javascript.module-directory']) {
+    argv.push('--javascript.module-directory');
+    argv.push(options['javascript.module-directory'][o]);
+  }
+
+  let result = internal.executeExternal(arangosh, argv, false /*usePipes*/);
   assertTrue(result.hasOwnProperty('pid'));
   let status = internal.statusExternal(result.pid);
   assertEqual(status.status, "RUNNING");
@@ -127,7 +135,7 @@ function CommunicationSuite() {
 })();
     `);
 
-    let args = ['--javascript.execute', file];
+    let args = {'javascript.execute': file};
     let pid = runShell(args, file);
     debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
     return { key, file, pid };
@@ -301,56 +309,6 @@ function GenericAqlSetupPathSuite(type) {
   const edgeName = "UnitTestEdges";
   const viewName = "UnitTestView";
 
-  /// @brief set failure point
-  function debugCanUseFailAt(endpoint) {
-    let res = request.get({
-      url: endpoint + '/_admin/debug/failat',
-    });
-    return res.status === 200;
-  }
-
-  /// @brief set failure point
-  function debugSetFailAt(endpoint, failAt) {
-    let res = request.put({
-      url: endpoint + '/_admin/debug/failat/' + failAt,
-      body: ""
-    });
-    if (res.status !== 200) {
-      throw "Error setting failure point";
-    }
-  }
-
-  function debugResetRaceControl(endpoint) {
-    let res = request.delete({
-      url: endpoint + '/_admin/debug/raceControl',
-      body: ""
-    });
-    if (res.status !== 200) {
-      throw "Error resetting race control.";
-    }
-  };
-
-  /// @brief remove failure point
-  function debugRemoveFailAt(endpoint, failAt) {
-    let res = request.delete({
-      url: endpoint + '/_admin/debug/failat/' + failAt,
-      body: ""
-    });
-    if (res.status !== 200) {
-      throw "Error removing failure point";
-    }
-  }
-
-  function debugClearFailAt(endpoint) {
-    let res = request.delete({
-      url: endpoint + '/_admin/debug/failat',
-      body: ""
-    });
-    if (res.status !== 200) {
-      throw "Error removing failure points";
-    }
-  }
-
   const activateShardLockingFailure = () => {
     const shardList = db[twoShardColName].shards(true);
     for (const [shard, servers] of Object.entries(shardList)) {
@@ -470,95 +428,68 @@ function GenericAqlSetupPathSuite(type) {
     });
   `;
 
-  const apiLibs = `
-    const request = require("@arangodb/request");
-    arango.getEndpoint()
-    function sendRequest(method, endpoint, body, headers) {
-
-      const endpointToURL = (endpoint) => {
-        if (endpoint.substr(0, 6) === 'ssl://') {
-          return 'https://' + endpoint.substr(6);
-        }
-        var pos = endpoint.indexOf('://');
-        if (pos === -1) {
-          return 'http://' + endpoint;
-        }
-        return 'http' + endpoint.substr(pos);
-      };
-
-      let res;
-      try {
-        const envelope = {
-          json: true,
-          method,
-          url: endpointToURL(arango.getEndpoint()) + endpoint,
-          headers,
-        };
-        if (method !== 'GET') {
-          envelope.body = body;
-        }
-        res = request(envelope);
-      } catch (err) {
-        require("console").log(err);
-        return {};
-      }
-      if (typeof res.body === "string") {
-        if (res.body === "") {
-          res.body = {};
-        } else {
-          res.body = JSON.parse(res.body);
-        }
-      }
-      return res;
-    }
-  `;
   // Note: A different test checks that the API works this way
   const apiExclusive = `
-    ${apiLibs}
     let trx;
     const obj = { collections: { exclusive: "${twoShardColName}" } };
-    let result = sendRequest('POST', "/_api/transaction/begin", obj, {}, true);
-    try {
-      trx = result.body.result.id;
+    let result = arango.POST_RAW("/_api/transaction/begin", obj);
+    if (result.code === 201) {
+      trx = result.parsedBody.result.id;
       const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
-      sendRequest('POST', "/_api/cursor", { query }, { "x-arango-trx-id": trx });
-      // Commit
-      sendRequest('PUT', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
-    } catch {
-      // Abort
-      sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
+      result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
+      if (result.code === 201) {
+        // Commit
+        result = arango.PUT_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {});
+      }
+      if (result.code !== 200) {
+        print('apiExclusive failure:');
+        print(result);
+        print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
+      }
+    } else {
+      print(result.parsedBody);
     }
   `;
   const apiWrite = `
-    ${apiLibs}
     let trx;
     const obj = { collections: { write: "${twoShardColName}" } };
-    let result = sendRequest('POST', "/_api/transaction/begin", obj, {});
-    try {
-      trx = result.body.result.id;
+    let result = arango.POST_RAW("/_api/transaction/begin", obj, {});
+    if (result.code === 201) {
+      trx = result.parsedBody.result.id;
       const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
-      sendRequest('POST', "/_api/cursor", { query }, { "x-arango-trx-id": trx });
-      // Commit
-      sendRequest('PUT', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
-    } catch {
-      // Abort
-      sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
+      result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
+      if (result.code === 201) {
+        // Commit
+        result = arango.PUT_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {});
+      }
+      if (result.code !== 200) {
+        print('apiWrite failure:');
+        print(result);
+        print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
+      }
+    } else {
+      print(result.parsedBody);
     }
   `;
   const apiRead = `
-    ${apiLibs}
     let trx;
     const obj = { collections: { read: "${twoShardColName}" } };
-    let result = sendRequest('POST', "/_api/transaction/begin", obj, {}, true);
-    try {
-      trx = result.body.result.id;
+    let result = arango.POST_RAW("/_api/transaction/begin", obj, {});
+    if (result.code === 201) {
+      trx = result.parsedBody.result.id;
       const query = "FOR x IN ${twoShardColName} RETURN x";
-      sendRequest('POST', "/_api/cursor", { query }, { "x-arango-trx-id": trx });
-      // Commit
-      sendRequest('PUT', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
-    } catch {
-      // Abort
-      sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx), {}, {}, true);
+      result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
+      if (result.code === 201) {
+        // Commit
+        result = arango.PUT_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {});
+      }
+      if (result.code !== 200) {
+        print('apiRead failure:');
+        print(result);
+        print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
+      }
+    } else {
+      print(result.parsedBody);
     }
   `;
 
@@ -578,7 +509,7 @@ function GenericAqlSetupPathSuite(type) {
     })();
     `;
 
-    let args = ['--javascript.execute-string', cmd];
+    let args = {'javascript.execute-string': cmd};
     let pid = runShell(args, key);
     debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
     return { key, pid };
@@ -762,8 +693,8 @@ function GenericAqlSetupPathSuite(type) {
 
     tearDown: function () {
       deactivateShardLockingFailure();
-      db[twoShardColName].truncate();
-      db[cn].truncate();
+      db[twoShardColName].truncate({ compact: false });
+      db[cn].truncate({ compact: false });
     },
 
     tearDownAll: function () {

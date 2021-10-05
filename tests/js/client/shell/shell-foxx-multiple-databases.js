@@ -27,17 +27,19 @@ const jsunity = require('jsunity');
 const internal = require('internal');
 const arangodb = require('@arangodb');
 const path = require('path');
+const fs = require('fs');
 const db = arangodb.db;
 const FoxxManager = require('@arangodb/foxx/manager');
 const basePath1 = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'perdb1');
 const basePath2 = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'perdb2');
-
-require("@arangodb/test-helper").waitForFoxxInitialized();
+const basePath3 = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'perdb3');
+const dbs = {"testDatabase": false, "abc123": false, "maçã": true, "mötör": true,"😀": true, "ﻚﻠﺑ ﻞﻄﻴﻓ": true, "かわいい犬": true};
 
 function multipleDatabasesSuite () {
   'use strict';
   const mount1 = '/test1';
   const mount2 = '/test2';
+  const mount3 = '/test3';
 
   return {
     setUp: function () {
@@ -190,6 +192,35 @@ function multipleDatabasesSuite () {
         FoxxManager.uninstall(mount1, {force: true});
       }
     },
+    
+    testDirectoryCreationWithDatabaseNames: function () {
+      assertEqual("_system", db._name());
+      Object.keys(dbs).forEach((databaseName) => {
+        try {
+          db._createDatabase(databaseName);
+          db._useDatabase(databaseName);
+          FoxxManager.install(basePath3, mount3);
+          let res = arango.GET(`/_db/${encodeURIComponent(databaseName)}/${mount3}/echo`);
+          assertEqual(databaseName, res.echo);
+          res = arango.GET(`/_db/${encodeURIComponent(databaseName)}/${mount3}/echo-nada`);
+          assertEqual({}, res);
+          res = arango.GET(`/_db/${encodeURIComponent(databaseName)}/${mount3}/echo-piff`);
+          assertTrue(res.error);
+          assertEqual(404, res.code);
+          assertEqual(404, res.errorNum);
+          const dirName = arango.POST("/_admin/execute", "return require('internal').appPath;");
+          if (dbs[databaseName]) {
+            assertTrue(fs.isDirectory(fs.join(dirName, "_db", db._id())));
+          } else {
+            assertTrue(fs.isDirectory(fs.join(dirName, "_db", databaseName)));
+          }
+        } finally {
+          FoxxManager.uninstall(mount3, {force: true});
+          db._useDatabase("_system");
+          db._dropDatabase(databaseName);
+        }
+      });
+    }
   };
 }
 

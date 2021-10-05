@@ -2460,33 +2460,33 @@ function ahuacatlDateFunctionsTestSuite () {
 	  const withZoneInfoToLocal = [
         [ "2021-01-01", "Europe/Berlin", {
             local: "2021-01-01T01:00:00.000",
-			zoneInfo: {
-			  name: "CET",
-			  begin: "2020-10-25T01:00:00.000Z",
-			  end: "2021-03-28T01:00:00.000Z",
-			  save: false,
-			  offset: 3600
-			}
+            zoneInfo: {
+              name: "CET",
+              begin: "2020-10-25T01:00:00.000Z",
+              end: "2021-03-28T01:00:00.000Z",
+              dst: false,
+              offset: 3600
+            }
           }
         ], [ "2021-07-01", "Europe/Berlin", {
             local: "2021-07-01T02:00:00.000",
-			zoneInfo: {
-			  name: "CEST",
-			  begin: "2021-03-28T01:00:00.000Z",
-			  end: "2021-10-31T01:00:00.000Z",
-			  save: true,
-			  offset: 7200
-			}
+            zoneInfo: {
+              name: "CEST",
+              begin: "2021-03-28T01:00:00.000Z",
+              end: "2021-10-31T01:00:00.000Z",
+              dst: true,
+              offset: 7200
+            }
           }
         ], [ "2021-01-01", "Etc/UTC", {
             local: "2021-01-01T00:00:00.000Z",
-			zoneInfo: {
-			  name: "UTC",
-			  begin: null,
-			  end: null,
-			  save: false,
-			  offset: 0
-			}
+            zoneInfo: {
+              name: "UTC",
+              begin: null,
+              end: null,
+              dst: false,
+              offset: 0
+            }
           }
         ]
       ];
@@ -2494,40 +2494,40 @@ function ahuacatlDateFunctionsTestSuite () {
       withZoneInfoToLocal.forEach(function (value) {
         var res = getQueryResults("RETURN DATE_UTCTOLOCAL(@value,@tz,@detail)", { value: value[0], tz: value[1], detail: true })[0];
         // ignore tzdata version
-		delete res.tzdb;
+        delete res.tzdb;
         assertEqual(value[2], res);
       });
-	  
-	  const withZoneInfoToUTC = [
+      
+      const withZoneInfoToUTC = [
         [ "2021-01-01T00:00:00.000Z", "America/Los_Angeles", {
             utc: "2021-01-01T08:00:00.000Z",
-			zoneInfo: {
-			  name: "PST",
-			  begin: "2020-11-01T09:00:00.000Z",
-			  end: "2021-03-14T10:00:00.000Z",
-			  save: false,
-			  offset: -28800
-			}
+            zoneInfo: {
+              name: "PST",
+              begin: "2020-11-01T09:00:00.000Z",
+              end: "2021-03-14T10:00:00.000Z",
+              dst: false,
+              offset: -28800
+            }
           }
         ], [ "2021-08-01T00:00:00.000Z", "America/Los_Angeles", {
             utc: "2021-08-01T07:00:00.000Z",
-			zoneInfo: {
-			  name: "PDT",
-			  begin: "2021-03-14T10:00:00.000Z",
-			  end: "2021-11-07T09:00:00.000Z",
-			  save: true,
-			  offset: -25200
-			}
+            zoneInfo: {
+              name: "PDT",
+              begin: "2021-03-14T10:00:00.000Z",
+              end: "2021-11-07T09:00:00.000Z",
+              dst: true,
+              offset: -25200
+            }
           }
         ], [ "2021-01-01", "Etc/UTC", {
             utc: "2021-01-01T00:00:00.000Z",
-			zoneInfo: {
-			  name: "UTC",
-			  begin: null,
-			  end: null,
-			  save: false,
-			  offset: 0
-			}
+            zoneInfo: {
+              name: "UTC",
+              begin: null,
+              end: null,
+              dst: false,
+              offset: 0
+            }
           }
         ]
       ];

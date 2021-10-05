@@ -160,6 +160,7 @@ function optimizerRuleTestSuite () {
                               "CalculationNode", 
                               "FilterNode", 
                               "CalculationNode", 
+                              "CalculationNode", 
                               "DistributeNode", 
                               "RemoteNode", 
                               "RemoveNode",

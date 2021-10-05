@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_TRANSACTION_COLLECTION_H
-#define ARANGOD_STORAGE_ENGINE_TRANSACTION_COLLECTION_H 1
+#pragma once
 
 #include <memory>
 
@@ -95,4 +94,3 @@ class TransactionCollection {
 
 }  // namespace arangodb
 
-#endif

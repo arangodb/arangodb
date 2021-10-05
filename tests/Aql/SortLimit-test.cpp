@@ -103,10 +103,10 @@ class SortLimitTest
                          std::string rules = "") {
     auto options = buildOptions(rules);
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
-                               nullptr, options->slice());
+    auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString),
+                               nullptr, arangodb::aql::QueryOptions(options->slice()));
 
-    auto result = query.explain();
+    auto result = query->explain();
     VPackSlice nodes = result.data->slice().get("nodes");
     EXPECT_TRUE(nodes.isArray());
 
@@ -129,14 +129,14 @@ class SortLimitTest
                              size_t fullCount, std::string rules = "") {
     auto options = buildOptions(rules);
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
-                               nullptr, options->slice());
+    auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString),
+                               nullptr, arangodb::aql::QueryOptions(options->slice()));
     arangodb::aql::QueryResult result;
 
     while (true) {
-      auto state = query.execute(result);
+      auto state = query->execute(result);
       if (state == arangodb::aql::ExecutionState::WAITING) {
-        query.sharedState()->waitForAsyncWakeup();
+        query->sharedState()->waitForAsyncWakeup();
       } else {
         break;
       }

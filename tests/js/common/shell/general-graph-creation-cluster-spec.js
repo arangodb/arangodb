@@ -207,13 +207,21 @@ describe('General graph creation', function () {
 
   describe("with defaults", testSuite.bind(this, {}));
 
+  let opts = { minReplicationFactor: 2 };
+  if (defaultReplicationFactor === 1) {
+    opts.replicationFactor = 2;
+  }
   describe(
     "with min replication factor startup options",
-    testSuite.bind(this, { minReplicationFactor: 2 })
+    testSuite.bind(this, opts)
   );
-  
+
+  opts = { numberOfShards: 3 };
+  if (defaultReplicationFactor === 2) {
+    opts.replicationFactor = 1;
+  }
   describe(
     "with replication factor and shards startup options",
-    testSuite.bind(this, { replciationFactor: 1, numberOfShards: 3 })
+    testSuite.bind(this, opts)
   );
 });

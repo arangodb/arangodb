@@ -443,34 +443,34 @@ class phrase_iterator final : public doc_iterator {
       const order::prepared& ord,
       boost_t boost)
     : approx_(std::move(itrs)),
-      freq_(std::move(pos), ord),
-      doc_(irs::get_mutable<document>(&approx_)),
-      attrs_{{
-        { type<document>::id(),     doc_          },
-        { type<cost>::id(),         &cost_        },
-        { type<score>::id(),        &score_       },
-        { type<frequency>::id(),    freq_.freq()  },
-        { type<filter_boost>::id(), freq_.boost() },
-      }},
-      score_(ord),
-      cost_([this](){ return cost::extract(approx_); }) { // FIXME find a better estimation
-    assert(doc_);
+      freq_(std::move(pos), ord) {
+    std::get<attribute_ptr<document>>(attrs_) = irs::get_mutable<document>(&approx_);
+    std::get<attribute_ptr<frequency>>(attrs_) = freq_.freq();
+    std::get<attribute_ptr<filter_boost>>(attrs_) = freq_.boost();
+
+    // FIXME find a better estimation
+    std::get<irs::cost>(attrs_).reset(
+      [this](){ return cost::extract(approx_); });
 
     if (!ord.empty()) {
+      auto& score = std::get<irs::score>(attrs_);
+
+      score.realloc(ord);
+
       order::prepared::scorers scorers(
         ord, segment, field, stats,
-        score_.data(), *this, boost);
+        score.data(), *this, boost);
 
-      irs::reset(score_, std::move(scorers));
+      irs::reset(score, std::move(scorers));
     }
   }
 
   virtual attribute* get_mutable(type_info::type_id type) noexcept override {
-    return attrs_.get_mutable(type);
+    return irs::get_mutable(attrs_, type);
   }
 
   virtual doc_id_t value() const override final {
-    return doc_->value;
+    return std::get<attribute_ptr<document>>(attrs_).ptr->value;
   }
 
   virtual bool next() override {
@@ -481,9 +481,11 @@ class phrase_iterator final : public doc_iterator {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
+    auto* pdoc = std::get<attribute_ptr<document>>(attrs_).ptr;
+
     // important to call freq_() in order
     // to set attribute values
-    const auto prev = doc_->value;
+    const auto prev = pdoc->value;
     const auto doc = approx_.seek(target);
 
     if (prev == doc || freq_()) {
@@ -492,16 +494,21 @@ class phrase_iterator final : public doc_iterator {
 
     next();
 
-    return doc_->value;
+    return pdoc->value;
   }
 
  private:
+  // FIXME can store only 4 attrbiutes for non-volatile boost case
+  using attributes = std::tuple<
+    attribute_ptr<document>,
+    cost,
+    score,
+    attribute_ptr<frequency>,
+    attribute_ptr<filter_boost>>;
+
   Conjunction approx_; // first approximation (conjunction over all words in a phrase)
   Frequency freq_;
-  document* doc_{}; // document itself
-  frozen_attributes<5, attribute_provider> attrs_; // FIXME can store only 4 attrbiutes for non-volatile boost case
-  score score_;
-  cost cost_;
+  attributes attrs_;
 }; // phrase_iterator
 
 } // ROOT

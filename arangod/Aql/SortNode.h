@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SORT_NODE_H
-#define ARANGOD_AQL_SORT_NODE_H 1
+#pragma once
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode.h"
@@ -43,12 +42,10 @@ class StringBuffer;
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
-class RedundantCalculationsReplacer;
 
 /// @brief class SortNode
 class SortNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
 
  public:
   enum SorterType { Standard, ConstrainedHeap };
@@ -75,10 +72,6 @@ class SortNode : public ExecutionNode {
   /// @brief whether or not the sort is stable
   inline bool isStable() const { return _stable; }
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -93,6 +86,8 @@ class SortNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+  
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -129,6 +124,10 @@ class SortNode : public ExecutionNode {
   /// to properly handle merging.
   bool _reinsertInCluster;
 
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+
  private:
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)
@@ -144,4 +143,3 @@ class SortNode : public ExecutionNode {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif

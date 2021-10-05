@@ -214,14 +214,12 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Sl
 }
 
 void ShortestPathNode::setStartInVariable(Variable const* inVariable) {
-  TRI_ASSERT(_inStartVariable == nullptr);
   _inStartVariable = inVariable;
   _startVertexId = "";
 }
 
-void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                          std::unordered_set<ExecutionNode const*>& seen) const {
-  GraphNode::toVelocyPackHelper(nodes, flags, seen);  // call base class method
+void ShortestPathNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+  GraphNode::doToVelocyPack(nodes, flags);  // call base class method
   // In variables
   if (usesStartInVariable()) {
     nodes.add(VPackValue("startInVariable"));
@@ -245,9 +243,6 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   TRI_ASSERT(_toCondition != nullptr);
   nodes.add(VPackValue("toCondition"));
   _toCondition->toVelocyPack(nodes, flags);
-
-  // And close it:
-  nodes.close();
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -328,6 +323,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencie
 
 void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPathNode& c,
                                                bool withProperties) const {
+  graphCloneHelper(plan, c, withProperties);
   if (isVertexOutVariableUsedLater()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
@@ -354,6 +350,38 @@ void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPath
   // Filter Condition Parts
   c._fromCondition = _fromCondition->clone(_plan->getAst());
   c._toCondition = _toCondition->clone(_plan->getAst());
+}
+  
+void ShortestPathNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (_inStartVariable != nullptr) {
+   _inStartVariable = Variable::replace(_inStartVariable, replacements);
+  }
+
+  if (_inTargetVariable != nullptr) {
+    _inTargetVariable = Variable::replace(_inTargetVariable, replacements);
+  }
+}
+
+/// @brief getVariablesSetHere
+std::vector<Variable const*> ShortestPathNode::getVariablesSetHere() const {
+  std::vector<Variable const*> vars;
+  if (isVertexOutVariableUsedLater()) {
+    vars.emplace_back(vertexOutVariable());
+  }
+  if (isEdgeOutVariableUsedLater()) {
+    vars.emplace_back(edgeOutVariable());
+  }
+  return vars;
+}
+
+/// @brief getVariablesUsedHere, modifying the set in-place
+void ShortestPathNode::getVariablesUsedHere(VarSet& vars) const {
+  if (_inStartVariable != nullptr) {
+    vars.emplace(_inStartVariable);
+  }
+  if (_inTargetVariable != nullptr) {
+    vars.emplace(_inTargetVariable);
+  }
 }
 
 void ShortestPathNode::prepareOptions() {

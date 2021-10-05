@@ -37,6 +37,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
@@ -56,7 +57,8 @@ using FilterExecutorInputParam = std::tuple<FilterExecutorSplitType>;
 class FilterExecutorTest : public AqlExecutorTestCaseWithParam<FilterExecutorInputParam> {
  protected:
   ExecutionState state;
-  arangodb::ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
   RegIdSet outputRegisters;

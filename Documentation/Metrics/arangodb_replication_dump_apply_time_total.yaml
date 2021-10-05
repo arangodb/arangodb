@@ -1,0 +1,18 @@
+name: arangodb_replication_dump_apply_time_total
+renamedFrom: arangodb_replication_dump_apply_time
+introducedIn: "3.8.0"
+help: |
+  Accumulated time needed to apply asynchronously replicated data on initial synchronization of shards.
+unit: ms
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Measures the time required to clone the existing leader copy of the data onto a new replica shard.
+  Will only be measured on the follower server. This time is expected to increase whenever new followers
+  are created, e.g. increasing replication factor, shard redistribution.
+troubleshoot: |
+  This metric measures as typical operation to keep the cluster resilient, so no reaction is required.
+  In a stable cluster situation (no outages, no collection modification) this metric should also be stable.

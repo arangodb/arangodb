@@ -21,14 +21,15 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_TRAVERSER_CACHE_FACTORY_H
-#define ARANGOD_GRAPH_TRAVERSER_CACHE_FACTORY_H 1
+#pragma once
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace aql {
 class QueryContext;
 }
@@ -41,7 +42,6 @@ TraverserCache* CreateCache(arangodb::aql::QueryContext& query, bool activateDoc
                             std::unordered_map<ServerID, aql::EngineId> const* engines,
                             BaseOptions* opts);
 
-}  // namespace cacheFactory
+}  // namespace CacheFactory
 }  // namespace graph
 }  // namespace arangodb
-#endif

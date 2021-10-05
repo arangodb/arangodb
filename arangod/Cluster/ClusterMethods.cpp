@@ -62,6 +62,7 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -136,7 +137,8 @@ T addFigures(VPackSlice const& v1, VPackSlice const& v2,
 template <typename ShardDocsMap>
 Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
                                              LogicalCollection const& coll,
-                                             ShardDocsMap const& shards) {
+                                             ShardDocsMap const& shards,
+                                             transaction::MethodsApi api) {
   TRI_ASSERT(state.isCoordinator());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
@@ -154,11 +156,12 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
       leaders.emplace(leader);
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(state, leaders);
+  return ClusterTrxMethods::beginTransactionOnLeaders(state, leaders, api);
 }
 
 // begin transaction on shard leaders
-Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap const& shards) {
+Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap const& shards,
+                                            transaction::MethodsApi api) {
   TRI_ASSERT(trx.state()->isCoordinator());
   TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
   ClusterTrxMethods::SortedServersSet leaders{};
@@ -168,7 +171,7 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap 
       leaders.emplace(srv);
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders);
+  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders, api);
 }
 
 /// @brief add the correct header for the shard
@@ -217,7 +220,7 @@ OperationResult handleResponsesFromAllShards(
     for (Try<arangodb::network::Response> const& tryRes : responses) {
       network::Response const& res = tryRes.get();  // throws exceptions upwards
       ShardID sId = res.destinationShard();
-      int commError = network::fuerteToArangoErrorCode(res);
+      auto commError = network::fuerteToArangoErrorCode(res);
       if (commError != TRI_ERROR_NO_ERROR) {
         result.reset(commError);
       } else {
@@ -261,7 +264,7 @@ const char* notFoundSlice =
 ///        well
 ////////////////////////////////////////////////////////////////////////////////
 void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder& resultBody,
-                           std::unordered_map<int, size_t>& errorCounter,
+                           std::unordered_map<::ErrorCode, size_t>& errorCounter,
                            VPackValueLength const expectedResults) {
   // errorCounter is not allowed to contain any NOT_FOUND entry.
   TRI_ASSERT(errorCounter.find(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ==
@@ -276,10 +279,10 @@ void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder&
       TRI_ASSERT(oneRes.isArray());
       oneRes = oneRes.at(currentIndex);
 
-      int errorNum = TRI_ERROR_NO_ERROR;
+      auto errorNum = TRI_ERROR_NO_ERROR;
       VPackSlice errorNumSlice = oneRes.get(StaticStrings::ErrorNum);
       if (errorNumSlice.isNumber()) {
-        errorNum = errorNumSlice.getNumber<int>();
+        errorNum = ::ErrorCode{errorNumSlice.getNumber<int>()};
       }
       if ((errorNum != TRI_ERROR_NO_ERROR && errorNum != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ||
           oneRes.hasKey(StaticStrings::KeyString)) {
@@ -301,13 +304,13 @@ void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder&
   }
 }
 
-/// @brief handle CRUD api shard responses, slow path
+/// @brief handle CRUD api shard responses, fast path
 template <typename F, typename CT>
 OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
                                              std::vector<Try<network::Response>> const& results) {
   std::map<ShardID, VPackSlice> resultMap;
   std::map<ShardID, int> shardError;
-  std::unordered_map<int, size_t> errorCounter;
+  std::unordered_map<::ErrorCode, size_t> errorCounter;
 
   fuerte::StatusCode code = fuerte::StatusInternalError;
   // If none of the shards responded we return a SERVER_ERROR;
@@ -316,11 +319,26 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
     network::Response const& res = tryRes.get();  // throws exceptions upwards
     ShardID sId = res.destinationShard();
 
-    int commError = network::fuerteToArangoErrorCode(res);
+    auto commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
       shardError.try_emplace(sId, commError);
     } else {
-      resultMap.try_emplace(sId, res.slice());
+      VPackSlice result = res.slice();
+      // we expect an array of baby-documents, but the response might
+      // also be an error, if the DBServer threw a hissy fit
+      if (result.isObject() && 
+          result.get(StaticStrings::Error).isBoolean() &&
+          result.get(StaticStrings::Error).getBoolean()) {
+        // an error occurred, now rethrow the error
+        auto code = ::ErrorCode{result.get(StaticStrings::ErrorNum).getNumericValue<int>()};
+        VPackSlice msg = result.get(StaticStrings::ErrorMessage);
+        if (msg.isString()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(code, msg.copyString());
+        } else {
+          THROW_ARANGO_EXCEPTION(code);
+        }
+      }
+      resultMap.try_emplace(std::move(sId), result);
       network::errorCodesFromHeaders(res.response().header.meta(), errorCounter, true);
       code = res.statusCode();
     }
@@ -341,33 +359,12 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
     if (it == resultMap.end()) { // no answer from this shard
       auto const& it2 = shardError.find(sId);
       TRI_ASSERT(it2 != shardError.end());
-
-      auto weSend = opCtx.shardMap.find(sId);
-      TRI_ASSERT(weSend != opCtx.shardMap.end());  // We send sth there earlier.
-      size_t count = weSend->second.size();
-      for (size_t i = 0; i < count; ++i) {
-        resultBody.openObject(/*unindexed*/ true);
-        resultBody.add(StaticStrings::Error, VPackValue(true));
-        resultBody.add(StaticStrings::ErrorNum, VPackValue(it2->second));
-        resultBody.close();
-      }
-
+      resultBody.openObject(/*unindexed*/ true);
+      resultBody.add(StaticStrings::Error, VPackValue(true));
+      resultBody.add(StaticStrings::ErrorNum, VPackValue(it2->second));
+      resultBody.close();
     } else {
       VPackSlice arr = it->second;
-      // we expect an array of baby-documents, but the response might
-      // also be an error, if the DBServer threw a hissy fit
-      if (arr.isObject() && arr.hasKey(StaticStrings::Error) &&
-          arr.get(StaticStrings::Error).isBoolean() &&
-          arr.get(StaticStrings::Error).getBoolean()) {
-        // an error occurred, now rethrow the error
-        int res = arr.get(StaticStrings::ErrorNum).getNumericValue<int>();
-        VPackSlice msg = arr.get(StaticStrings::ErrorMessage);
-        if (msg.isString()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(res, msg.copyString());
-        } else {
-          THROW_ARANGO_EXCEPTION(res);
-        }
-      }
       resultBody.add(arr.at(pair.second));
     }
   }
@@ -385,7 +382,7 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, Opera
     std::shared_ptr<VPackBuffer<uint8_t>> buffer;
 
     int nrok = 0;
-    int commError = TRI_ERROR_NO_ERROR;
+    auto commError = TRI_ERROR_NO_ERROR;
     fuerte::StatusCode code;
     for (size_t i = 0; i < responses.size(); i++) {
       network::Response const& res = responses[i].get();
@@ -417,7 +414,7 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, Opera
   std::vector<VPackSlice> allResults;
   allResults.reserve(responses.size());
 
-  std::unordered_map<int, size_t> errorCounter;
+  std::unordered_map<::ErrorCode, size_t> errorCounter;
   // If no server responds we return 500
   for (Try<network::Response> const& tryRes : responses) {
     network::Response const& res = tryRes.get();
@@ -450,9 +447,8 @@ struct CrudOperationCtx {
 ///        it returns sth. else this document is NOT contained in the shardMap
 ////////////////////////////////////////////////////////////////////////////////
 
-int distributeBabyOnShards(CrudOperationCtx& opCtx,
-                           LogicalCollection& collinfo,
-                           VPackSlice const value) {
+::ErrorCode distributeBabyOnShards(CrudOperationCtx& opCtx, LogicalCollection& collinfo,
+                                   VPackSlice const value) {
   TRI_ASSERT(!collinfo.isSmart() || collinfo.type() == TRI_COL_TYPE_DOCUMENT);
 
   ShardID shardID;
@@ -465,8 +461,8 @@ int distributeBabyOnShards(CrudOperationCtx& opCtx,
   } else {
     // Now find the responsible shard:
     bool usesDefaultShardingAttributes;
-    int res = collinfo.getResponsibleShard(value, /*docComplete*/false, shardID,
-                                           usesDefaultShardingAttributes);
+    auto res = collinfo.getResponsibleShard(value, /*docComplete*/ false, shardID,
+                                            usesDefaultShardingAttributes);
 
     if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       return TRI_ERROR_CLUSTER_SHARD_GONE;
@@ -502,9 +498,8 @@ struct CreateOperationCtx {
 ///        Also generates a key if necessary.
 ////////////////////////////////////////////////////////////////////////////////
 
-int distributeBabyOnShards(CreateOperationCtx& opCtx,
-                           LogicalCollection& collinfo,
-                           VPackSlice const value, bool isRestore) {
+::ErrorCode distributeBabyOnShards(CreateOperationCtx& opCtx, LogicalCollection& collinfo,
+                                   VPackSlice const value, bool isRestore) {
   ShardID shardID;
   std::string _key;
 
@@ -515,7 +510,7 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
     // We just assign it to any shard and pretend the user has given a key
     shardID = collinfo.shardingInfo()->shardListAsShardID()->at(0);
   } else {
-    int r = transaction::Methods::validateSmartJoinAttribute(collinfo, value);
+    auto r = transaction::Methods::validateSmartJoinAttribute(collinfo, value);
 
     if (r != TRI_ERROR_NO_ERROR) {
       return r;
@@ -534,13 +529,13 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
     VPackSlice keySlice = value.get(StaticStrings::KeyString);
     if (keySlice.isNone()) {
       // The user did not specify a key, let's create one:
-      _key = collinfo.keyGenerator()->generate();
+      _key = collinfo.createKey(value);
     } else {
       userSpecifiedKey = true;
       if (keySlice.isString()) {
         VPackValueLength l;
         char const* p = keySlice.getString(l);
-        int res = collinfo.keyGenerator()->validate(p, l, isRestore);
+        auto res = collinfo.keyGenerator()->validate(p, l, isRestore);
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
         }
@@ -549,7 +544,7 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
 
     // Now find the responsible shard:
     bool usesDefaultShardingAttributes;
-    int error = TRI_ERROR_NO_ERROR;
+    auto error = TRI_ERROR_NO_ERROR;
     if (userSpecifiedKey) {
       error = collinfo.getResponsibleShard(value, /*docComplete*/true, shardID,
                                            usesDefaultShardingAttributes);
@@ -972,7 +967,7 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shards) {
     auto future =
-        network::sendRequest(pool, "shard:" + p.first, fuerte::RestVerb::Get,
+        network::sendRequestRetry(pool, "shard:" + p.first, fuerte::RestVerb::Get,
                              "/_api/collection/" + StringUtils::urlEncode(p.first) + "/revision",
                              VPackBuffer<uint8_t>(), reqOpts);
     futures.emplace_back(std::move(future));
@@ -1033,7 +1028,7 @@ futures::Future<OperationResult> checksumOnCoordinator(ClusterFeature& feature,
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shards) {
     auto future =
-        network::sendRequest(pool, "shard:" + p.first, fuerte::RestVerb::Get,
+        network::sendRequestRetry(pool, "shard:" + p.first, fuerte::RestVerb::Get,
                              "/_api/collection/" + StringUtils::urlEncode(p.first) + "/checksum",
                              VPackBuffer<uint8_t>(), reqOpts);
     futures.emplace_back(std::move(future));
@@ -1122,7 +1117,7 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
     buffer.append(VPackSlice::emptyObjectSlice().begin(), 1);
 
     auto future =
-        network::sendRequest(pool, "shard:" + p.first, fuerte::RestVerb::Get,
+        network::sendRequestRetry(pool, "shard:" + p.first, fuerte::RestVerb::Get,
                              "/_api/collection/" + StringUtils::urlEncode(p.first) +
                                  "/loadIndexesIntoMemory",
                              std::move(buffer), opts);
@@ -1172,7 +1167,7 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shards) {
     auto future =
-        network::sendRequest(pool, "shard:" + p.first, fuerte::RestVerb::Get,
+        network::sendRequestRetry(pool, "shard:" + p.first, fuerte::RestVerb::Get,
                              "/_api/collection/" +
                                  StringUtils::urlEncode(p.first) + "/figures",
                              VPackBuffer<uint8_t>(), reqOpts);
@@ -1182,15 +1177,20 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
   auto cb = [details, options](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
     auto handler = [details](Result& result, VPackBuilder& builder, ShardID const&,
                              VPackSlice answer) mutable -> void {
-      if (answer.isObject()) {
-        VPackSlice figures = answer.get("figures");
-        // add to the total
-        if (figures.isObject()) {
-          aggregateClusterFigures(details, false, figures, builder);
-        }
-      } else {
+      if (!answer.isObject()) {
         // didn't get the expected response
         result.reset(TRI_ERROR_INTERNAL);
+      } else if (!result.fail()) {
+        Result r = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
+        if (r.fail()) {
+          result.reset(r);
+        } else {
+          VPackSlice figures = answer.get("figures");
+          // add to the total
+          if (figures.isObject()) {
+            aggregateClusterFigures(details, false, figures, builder);
+          }
+        }
       }
     };
     auto pre = [](Result&, VPackBuilder& builder) -> void {
@@ -1208,7 +1208,8 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
 
 futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
                                                     std::string const& cname,
-                                                    OperationOptions const& options) {
+                                                    OperationOptions const& options,
+                                                    transaction::MethodsApi api) {
   std::vector<std::pair<std::string, uint64_t>> result;
 
   // Set a few variables needed for our work:
@@ -1226,7 +1227,8 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged) {
-    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds, transaction::MethodsApi::Synchronous)
+                     .get();
     if (res.fail()) {
       return futures::makeFuture(OperationResult(res, options));
     }
@@ -1235,8 +1237,9 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
-  if (TRI_vocbase_t::IsSystemName(cname)) {
+  if (NameValidator::isSystemName(cname)) {
     // system collection (e.g. _apps, _jobs, _graphs...
     // very likely this is an internal request that should not block other processing
     // in case we don't get a timely response
@@ -1249,7 +1252,12 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shardIds) {
     network::Headers headers;
-    ClusterTrxMethods::addTransactionHeader(trx, /*leader*/ p.second[0], headers);
+    if (p.second.empty()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+    }
+    // extract leader
+    std::string const& leader = p.second[0];
+    ClusterTrxMethods::addTransactionHeader(trx, leader, headers);
 
     futures.emplace_back(network::sendRequestRetry(pool, "shard:" + p.first, fuerte::RestVerb::Get,
                                                    "/_api/collection/" + StringUtils::urlEncode(p.first) + "/count",
@@ -1314,7 +1322,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = true;
   
-  if (TRI_vocbase_t::IsSystemName(collname)) {
+  if (NameValidator::isSystemName(collname)) {
     // system collection (e.g. _apps, _jobs, _graphs...
     // very likely this is an internal request that should not block other processing
     // in case we don't get a timely response
@@ -1412,10 +1420,9 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& trx,
-                                                    LogicalCollection& coll,
-                                                    VPackSlice const slice,
-                                                    arangodb::OperationOptions const& options) {
+futures::Future<OperationResult> createDocumentOnCoordinator(
+    transaction::Methods const& trx, LogicalCollection& coll, VPackSlice const slice,
+    OperationOptions const& options, transaction::MethodsApi api) {
   const std::string collid = std::to_string(coll.id().id());
 
   // create vars used in this function
@@ -1426,13 +1433,13 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
   // create shard map
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      int res = distributeBabyOnShards(opCtx, coll, value, options.isRestore);
+      auto res = distributeBabyOnShards(opCtx, coll, value, options.isRestore);
       if (res != TRI_ERROR_NO_ERROR) {
         return makeFuture(OperationResult(res, options));
       }
     }
   } else {
-    int res = distributeBabyOnShards(opCtx, coll, slice, options.isRestore);
+    auto res = distributeBabyOnShards(opCtx, coll, slice, options.isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
       return makeFuture(OperationResult(res, options));
     }
@@ -1441,7 +1448,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
   Future<Result> f = makeFuture(Result());
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged && opCtx.shardMap.size() > 1) {  // lazily begin transactions on leaders
-    f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
+    f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
   }
 
   return std::move(f).thenValue([=, &trx, &coll, opCtx(std::move(opCtx))]
@@ -1456,6 +1463,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     reqOpts.database = trx.vocbase().name();
     reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
     reqOpts.retryNotFound = true;
+    reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
     reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
            .param(StaticStrings::ReturnNewString, (options.returnNew ? "true" : "false"))
            .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
@@ -1518,11 +1526,11 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
 
       auto cb = [options](network::Response&& res) -> OperationResult {
         if (res.error != fuerte::Error::NoError) {
-          return OperationResult(network::fuerteToArangoErrorCode(res), options);
+          return OperationResult(network::fuerteToArangoErrorCode(res), std::move(options));
         }
 
         return network::clusterResultInsert(res.statusCode(),
-                                            res.response().stealPayload(), options, {});
+                                            res.response().stealPayload(), std::move(options), {});
       };
       return std::move(futures[0]).thenValue(cb);
     }
@@ -1538,9 +1546,9 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
 /// @brief remove a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Methods& trx,
-                                                    LogicalCollection& coll, VPackSlice const slice,
-                                                    arangodb::OperationOptions const& options) {
+futures::Future<OperationResult> removeDocumentOnCoordinator(
+    transaction::Methods& trx, LogicalCollection& coll, VPackSlice const slice,
+    OperationOptions const& options, transaction::MethodsApi api) {
   // Set a few variables needed for our work:
 
   // First determine the collection ID from the name:
@@ -1553,14 +1561,14 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
   bool canUseFastPath = true;
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      int res = distributeBabyOnShards(opCtx, coll, value);
+      auto res = distributeBabyOnShards(opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
         canUseFastPath = false;
         break;
       }
     }
   } else {
-    int res = distributeBabyOnShards(opCtx, coll, slice);
+    auto res = distributeBabyOnShards(opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       canUseFastPath = false;
     }
@@ -1571,6 +1579,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
   reqOpts.database = trx.vocbase().name();
   reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
          .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
          .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
@@ -1584,7 +1593,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
     // lazily begin transactions on leaders
     Future<Result> f = makeFuture(Result());
     if (isManaged && opCtx.shardMap.size() > 1) {
-      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
+      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
     }
 
     return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))]
@@ -1627,15 +1636,15 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
           if (res.error != fuerte::Error::NoError) {
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
-          return network::clusterResultDelete(res.statusCode(),
-                                              res.response().stealPayload(), options, {});
+          return network::clusterResultRemove(res.statusCode(),
+                                              res.response().stealPayload(), std::move(options), {});
         };
         return std::move(futures[0]).thenValue(cb);
       }
 
       return futures::collectAll(std::move(futures))
           .thenValue([opCtx = std::move(opCtx)](std::vector<Try<network::Response>>&& results) -> OperationResult {
-            return handleCRUDShardResponsesFast(network::clusterResultDelete, opCtx, results);
+            return handleCRUDShardResponsesFast(network::clusterResultRemove, opCtx, results);
           });
     });
 
@@ -1647,7 +1656,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
   // lazily begin transactions on leaders
   Future<Result> f = makeFuture(Result());
   if (isManaged && shardIds->size() > 1) {
-    f = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    f = ::beginTransactionOnAllLeaders(trx, *shardIds, api);
   }
 
   return std::move(f).thenValue([=, &trx](Result&& r) mutable -> Future<OperationResult> {
@@ -1684,7 +1693,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
 
     return futures::collectAll(std::move(futures))
     .thenValue([=](std::vector<Try<network::Response>>&& responses) mutable -> OperationResult {
-      return ::handleCRUDShardResponsesSlow(network::clusterResultDelete, expectedLen,
+      return ::handleCRUDShardResponsesSlow(network::clusterResultRemove, expectedLen,
                                             std::move(options), responses);
     });
   });
@@ -1695,7 +1704,8 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> truncateCollectionOnCoordinator(
-    transaction::Methods& trx, std::string const& collname, OperationOptions const& options) {
+    transaction::Methods& trx, std::string const& collname,
+    OperationOptions const& options, transaction::MethodsApi api) {
   Result res;
   // Set a few variables needed for our work:
   ClusterInfo& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
@@ -1714,7 +1724,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
 
   // lazily begin transactions on all leader shards
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
+    res = ::beginTransactionOnAllLeaders(trx, *shardIds, transaction::MethodsApi::Synchronous)
+              .get();
     if (res.fail()) {
       return futures::makeFuture(OperationResult(res, options));
     }
@@ -1724,6 +1735,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   reqOpts.database = trx.vocbase().name();
   reqOpts.timeout = network::Timeout(600.0);
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::Compact, (options.truncateCompact ? "true" : "false"));
 
   std::vector<Future<network::Response>> futures;
@@ -1764,7 +1776,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
 
 Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
                                                  LogicalCollection& coll, VPackSlice slice,
-                                                 OperationOptions const& options) {
+                                                 OperationOptions const& options,
+                                                 transaction::MethodsApi api) {
   // Set a few variables needed for our work:
 
   const std::string collid = std::to_string(coll.id().id());
@@ -1783,27 +1796,28 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   bool canUseFastPath = true;
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      int res = distributeBabyOnShards(opCtx, coll, value);
+      auto res = distributeBabyOnShards(opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
         canUseFastPath = false;
         break;
       }
     }
   } else {
-    int res = distributeBabyOnShards(opCtx, coll, slice);
+    auto res = distributeBabyOnShards(opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       canUseFastPath = false;
     }
   }
 
   // lazily begin transactions on leaders
-  const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  bool const isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   // Some stuff to prepare cluster-internal requests:
 
   network::RequestOptions reqOpts;
   reqOpts.database = trx.vocbase().name();
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
 
   fuerte::RestVerb restVerb;
@@ -1823,7 +1837,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
     Future<Result> f = makeFuture(Result());
     if (isManaged && opCtx.shardMap.size() > 1) {  // lazily begin the transaction
-      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
+      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
     }
 
     return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))]
@@ -1840,6 +1854,9 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       for (auto const& it : opCtx.shardMap) {
         network::Headers headers;
         addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
+        if (options.documentCallFromAql) {
+          headers.try_emplace(StaticStrings::AqlDocumentCall, "true");
+        }
         std::string url;
         VPackBuffer<uint8_t> buffer;
 
@@ -1882,7 +1899,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
           return network::clusterResultDocument(res.statusCode(),
-                                                res.response().stealPayload(), options, {});
+                                                res.response().stealPayload(), std::move(options), {});
         });
       }
 
@@ -1898,7 +1915,8 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   // We contact all shards with the complete body and ignore NOT_FOUND
 
   if (isManaged) {  // lazily begin the transaction
-    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
+    Result res = ::beginTransactionOnAllLeaders(trx, *shardIds, transaction::MethodsApi::Synchronous)
+                     .get();
     if (res.fail()) {
       return makeFuture(OperationResult(res, options));
     }
@@ -1921,6 +1939,9 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
       if (addMatch) {
         headers.try_emplace("if-match", slice.get(StaticStrings::RevString).copyString());
+      }
+      if (options.documentCallFromAql) {
+        headers.try_emplace(StaticStrings::AqlDocumentCall, "true");
       }
 
       futures.emplace_back(network::sendRequestRetry(
@@ -1963,7 +1984,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
 Result fetchEdgesFromEngines(transaction::Methods& trx,
                              graph::ClusterTraverserCache& travCache,
-                             traverser::TraverserOptions const* opts,
+                             arangodb::aql::FixedVarExpressionContext const& expressionContext,
                              arangodb::velocypack::StringRef vertexId,
                              size_t depth,
                              std::vector<VPackSlice>& result) {
@@ -1981,7 +2002,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   leased->add(VPackValue("variables"));
   {
     leased->openArray();
-    opts->serializeVariables(*(leased.get()));
+    expressionContext.serializeAllVariables(trx.vpackOptions(), *(leased.get()));
     leased->close();
   }
   leased->close();
@@ -2254,9 +2275,10 @@ void fetchVerticesFromEngines(
 /// @brief modify a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Future<OperationResult> modifyDocumentOnCoordinator(
-    transaction::Methods& trx, LogicalCollection& coll, VPackSlice const& slice,
-    arangodb::OperationOptions const& options, bool const isPatch) {
+futures::Future<OperationResult> modifyDocumentOnCoordinator(
+    transaction::Methods& trx, LogicalCollection& coll,
+    arangodb::velocypack::Slice const& slice, OperationOptions const& options,
+    bool isPatch, transaction::MethodsApi api) {
   // Set a few variables needed for our work:
 
   // First determine the collection ID from the name:
@@ -2293,7 +2315,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
   bool canUseFastPath = true;
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      int res = distributeBabyOnShards(opCtx, coll, value);
+      auto res = distributeBabyOnShards(opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
         if (!isPatch) { // shard keys cannot be changed, error out early
           return makeFuture(OperationResult(res, options));
@@ -2303,7 +2325,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       }
     }
   } else {
-    int res = distributeBabyOnShards(opCtx, coll, slice);
+    auto res = distributeBabyOnShards(opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       if (!isPatch) { // shard keys cannot be changed, error out early
         return makeFuture(OperationResult(res, options));
@@ -2318,6 +2340,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
   reqOpts.database = trx.vocbase().name();
   reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
          .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"))
          .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"))
@@ -2348,7 +2371,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 
     Future<Result> f = makeFuture(Result());
     if (isManaged && opCtx.shardMap.size() > 1) {  // lazily begin transactions on leaders
-      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
+      f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
     }
 
     return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))](Result&& r) mutable -> Future<OperationResult> {
@@ -2403,7 +2426,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
             return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
           return network::clusterResultModify(res.statusCode(),
-                                              res.response().stealPayload(), options, {});
+                                              res.response().stealPayload(), std::move(options), {});
         };
         return std::move(futures[0]).thenValue(cb);
       }
@@ -2420,7 +2443,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 
   Future<Result> f = makeFuture(Result());
   if (isManaged && shardIds->size() > 1) {  // lazily begin the transaction
-    f = ::beginTransactionOnAllLeaders(trx, *shardIds);
+    f = ::beginTransactionOnAllLeaders(trx, *shardIds, api);
   }
 
   return std::move(f).thenValue([=, &trx](Result&&) mutable -> Future<OperationResult> {
@@ -2463,8 +2486,8 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
-                           bool waitForCollector) {
+::ErrorCode flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
+                                   bool waitForCollector) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -2494,7 +2517,7 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
       return network::fuerteToArangoErrorCode(r);
     }
     if (r.statusCode() != fuerte::StatusOK) {
-      int code = network::errorCodeFromBody(r.slice());
+      auto code = network::errorCodeFromBody(r.slice());
       if (code != TRI_ERROR_NO_ERROR) {
         return code;
       }
@@ -2502,7 +2525,7 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
   }
   return TRI_ERROR_NO_ERROR;
 }
- 
+
 /// @brief compact the database on all DB servers
 Result compactOnAllDBServers(ClusterFeature& feature,
                              bool changeLevel, bool compactBottomMostLevel) {
@@ -2791,7 +2814,7 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
   std::vector<Future<network::Response>> futures;
   futures.reserve(dbServers.size());
   for (auto const& dbServer : dbServers) {
-    futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
@@ -2834,8 +2857,8 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
     }
 
     if (resSlice.get(StaticStrings::Error).getBoolean()) {
-      return arangodb::Result(static_cast<int>(resSlice.get(StaticStrings::ErrorNum).getNumber<uint64_t>()),
-                              resSlice.get(StaticStrings::ErrorMessage).copyString());
+      auto res = ::ErrorCode{resSlice.get(StaticStrings::ErrorNum).getNumber<int>()};
+      return arangodb::Result(res, resSlice.get(StaticStrings::ErrorMessage).copyString());
     }
 
     if (!resSlice.hasKey("result") || !resSlice.get("result").isObject()) {
@@ -2960,8 +2983,7 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
   std::unordered_set<std::string>::iterator it;
   for (auto planned : VPackObjectIterator(planServers)) {
     auto const plannedStr = planned.key.copyString();
-    if ((it = std::find(localCopy.begin(), localCopy.end(), plannedStr)) !=
-        localCopy.end()) {
+    if ((it = localCopy.find(plannedStr)) != localCopy.end()) {
       localCopy.erase(it);
     } else {
       match.try_emplace(plannedStr, std::string());
@@ -3002,7 +3024,7 @@ arangodb::Result controlMaintenanceFeature(network::ConnectionPool* pool,
   std::string const url = "/_admin/actions";
 
   for (auto const& dbServer : dbServers) {
-    futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
@@ -3065,7 +3087,7 @@ arangodb::Result restoreOnDBServers(network::ConnectionPool* pool,
   futures.reserve(dbServers.size());
 
   for (auto const& dbServer : dbServers) {
-    futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
@@ -3387,13 +3409,13 @@ arangodb::Result lockDBServerTransactions(network::ConnectionPool* pool,
   futures.reserve(dbServers.size());
 
   for (auto const& dbServer : dbServers) {
-    futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
   // Now listen to the results and report the aggregated final result:
   arangodb::Result finalRes(TRI_ERROR_NO_ERROR);
-  auto reportError = [&](int c, std::string const& m) {
+  auto reportError = [&](::ErrorCode c, std::string const& m) {
     if (finalRes.ok()) {
       finalRes = arangodb::Result(c, m);
     } else {
@@ -3429,8 +3451,9 @@ arangodb::Result lockDBServerTransactions(network::ConnectionPool* pool,
       LOG_TOPIC("f4b8f", DEBUG, Logger::BACKUP)
           << "failed to acquire lock from " << r.destination << ": " << slc.toJson();
       auto errorNum = slc.get(StaticStrings::ErrorNum).getNumber<int>();
-      if (errorNum == TRI_ERROR_LOCK_TIMEOUT) {
-        reportError(errorNum, slc.get(StaticStrings::ErrorMessage).copyString());
+      auto err = ::ErrorCode{errorNum};
+      if (err == TRI_ERROR_LOCK_TIMEOUT) {
+        reportError(err, slc.get(StaticStrings::ErrorMessage).copyString());
         continue;
       }
       reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
@@ -3497,7 +3520,7 @@ arangodb::Result unlockDBServerTransactions(network::ConnectionPool* pool,
   futures.reserve(lockedServers.size());
 
   for (auto const& dbServer : lockedServers) {
-    futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
@@ -3537,7 +3560,7 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
   futures.reserve(dbServers.size());
 
   for (auto const& dbServer : dbServers) {
-    futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
@@ -3649,7 +3672,7 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
   futures.reserve(dbServers.size());
 
   for (auto const& dbServer : dbServers) {
-    futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
@@ -3678,9 +3701,10 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
 
     if (!resSlice.hasKey(StaticStrings::Error) || !resSlice.get(StaticStrings::Error).isBoolean() ||
         resSlice.get(StaticStrings::Error).getBoolean()) {
-      int64_t errorNum = resSlice.get(StaticStrings::ErrorNum).getNumber<int64_t>();
+      auto errorNum = resSlice.get(StaticStrings::ErrorNum).getNumber<int>();
+      auto res = ::ErrorCode{errorNum};
 
-      if (errorNum == TRI_ERROR_FILE_NOT_FOUND) {
+      if (res == TRI_ERROR_FILE_NOT_FOUND) {
         notFoundCount += 1;
         continue;
       }
@@ -3691,7 +3715,7 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
                              std::to_string(errorNum) + ")";
 
       LOG_TOPIC("9b94f", ERR, Logger::BACKUP) << errorMsg;
-      return arangodb::Result(static_cast<int>(errorNum), errorMsg);
+      return arangodb::Result(res, errorMsg);
     }
   }
 
@@ -3743,7 +3767,7 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(network::ConnectionPool
   for (auto const& dbServer : dbServers) {
     network::Headers headers;
     headers.emplace(StaticStrings::Async, "store");
-    futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body,
                                               reqOpts, std::move(headers)));
   }
@@ -3795,7 +3819,7 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
 
   VPackBufferUInt8 body; // empty body
   for (auto const& lock : dbserverLockIds) {
-    futures.emplace_back(network::sendRequest(pool, "server:" + lock.first,
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + lock.first,
                                               fuerte::RestVerb::Put, "/_api/job/" + lock.second, body,
                                               reqOpts));
   }
@@ -3826,7 +3850,7 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
     if (slc.get(StaticStrings::Error).getBoolean()) {
       LOG_TOPIC("d7a8a", DEBUG, Logger::BACKUP)
           << "failed to acquire lock from " << r.destination << ": " << slc.toJson();
-      auto errorNum = slc.get(StaticStrings::ErrorNum).getNumber<int>();
+      auto errorNum = ::ErrorCode{slc.get(StaticStrings::ErrorNum).getNumber<int>()};
       if (errorNum == TRI_ERROR_LOCK_TIMEOUT) {
         return arangodb::Result(errorNum, slc.get(StaticStrings::ErrorMessage).copyString());
       }
@@ -3884,7 +3908,7 @@ void hotbackupCancelAsyncLocks(
 
   VPackBufferUInt8 body; // empty body
   for (auto const& lock : dbserverLockIds) {
-    futures.emplace_back(network::sendRequest(pool, "server:" + lock.first,
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + lock.first,
                                               fuerte::RestVerb::Put, "/_api/job/" + lock.second + "/cancel", body,
                                               reqOpts));
   }
@@ -3972,10 +3996,15 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       return result;
     }
 
-    auto releaseAgencyLock = scopeGuard([&]{
-      LOG_TOPIC("52416", DEBUG, Logger::BACKUP)
-          << "Releasing agency lock with scope guard! backupId: " << backupId;
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+    auto releaseAgencyLock = scopeGuard([&]() noexcept {
+      try {
+        LOG_TOPIC("52416", DEBUG, Logger::BACKUP)
+            << "Releasing agency lock with scope guard! backupId: " << backupId;
+        ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      } catch (std::exception const& e) {
+        LOG_TOPIC("a163b", ERR, Logger::BACKUP)
+            << "Failed to unlock hotbackup lock: " << e.what();
+      }
     });
 
     if (end < steady_clock::now()) {
@@ -4050,9 +4079,14 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       // dbserver -> jobId
       std::unordered_map<std::string, std::string> lockJobIds;
 
-      auto releaseLocks = scopeGuard([&]{
-        hotbackupCancelAsyncLocks(pool, lockJobIds, lockedServers);
-        unlockDBServerTransactions(pool, backupId, lockedServers);
+      auto releaseLocks = scopeGuard([&]() noexcept {
+        try {
+          hotbackupCancelAsyncLocks(pool, lockJobIds, lockedServers);
+          unlockDBServerTransactions(pool, backupId, lockedServers);
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("3449d", ERR, Logger::BACKUP)
+              << "Failed to unlock hot backup: " << ex.what();
+        }
       });
 
       // we have to reset the timeout, otherwise the code below will exit too soon
@@ -4337,7 +4371,7 @@ arangodb::Result getEngineStatsFromDBServers(ClusterFeature& feature,
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
 
   network::RequestOptions reqOpts;
-  reqOpts.skipScheduler = false; 
+  reqOpts.skipScheduler = true;
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());
 

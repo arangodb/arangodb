@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GRAPH_CLUSTER_GRAPH_DATA_LAKE_H
-#define ARANGOD_GRAPH_CLUSTER_GRAPH_DATA_LAKE_H 1
+#pragma once
 
 #include "Basics/ResourceUsage.h"
 
@@ -58,7 +57,7 @@ class ClusterGraphDatalake {
   
   arangodb::velocypack::Slice operator[](size_t index) const noexcept;
 
-  arangodb::velocypack::Slice add(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>&& data);
+  arangodb::velocypack::Slice add(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> data);
 
  private:
   arangodb::ResourceMonitor& _resourceMonitor;
@@ -68,4 +67,3 @@ class ClusterGraphDatalake {
 
 }  // namespace graph
 }  // namespace arangodb
-#endif

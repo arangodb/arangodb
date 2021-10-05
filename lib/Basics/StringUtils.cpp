@@ -1699,6 +1699,10 @@ std::string encodeBase64(std::string const& str) {
   return encodeBase64(str.data(), str.size());
 }
 
+std::string encodeBase64(std::string_view str) {
+  return encodeBase64(str.data(), str.size());
+}
+
 std::string decodeBase64(std::string const& source) {
   unsigned char charArray4[4];
   unsigned char charArray3[3];
@@ -1957,6 +1961,37 @@ std::string escapeRegexParams(std::string const& in) {
   std::string out;
   escapeRegexParams(out, in.data(), in.size());
   return out;
+}
+
+std::string formatSize(uint64_t value) {
+  std::string out, label;
+  if (value < 1000) {
+    if (value == 1) {
+      out = "1";
+      label ="byte";
+    } else {
+      out = std::to_string(value);
+      label = "bytes";
+    }
+  } else if (value < 1000'000ULL) {
+    out = std::to_string((double) value / double(1000));
+    label = "KB";
+  } else if (value < 1'000'000'000ULL) {
+    out = std::to_string((double) value / 1e6);
+    label = "MB";
+  } else if (value < 1'000'000'000'000ULL) {
+    out = std::to_string((double) value / 1e9);
+    label = "GB";
+  } else if (value < 1'000'000'000'000'000ULL) {
+    out = std::to_string((double) value / 1e12);
+    label = "TB";
+  }
+  out = arangodb::basics::StringUtils::replace(out, ",", ".");
+  auto pos = out.find('.');
+  if (pos != std::string::npos) {
+    out = out.substr(0, pos + 2);
+  }
+  return out + ' ' + label;
 }
 
 }  // namespace StringUtils

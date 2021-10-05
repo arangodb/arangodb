@@ -21,8 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_OUT_MESSAGE_CACHE_H
-#define ARANGODB_OUT_MESSAGE_CACHE_H 1
+#pragma once
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
@@ -131,4 +130,3 @@ class CombiningOutCache : public OutCache<M> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-#endif

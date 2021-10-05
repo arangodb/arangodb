@@ -22,8 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GEO_GEOJSON_H
-#define ARANGOD_GEO_GEOJSON_H 1
+#pragma once
 
 #include <cstdint>
 #include <vector>
@@ -104,4 +103,3 @@ Result parseLoop(velocypack::Slice const& coords, bool geoJson, S2Loop& loop);
 }  // namespace geo
 }  // namespace arangodb
 
-#endif

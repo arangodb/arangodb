@@ -21,8 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_JOB_CONTEXT_H
-#define ARANGOD_CONSENSUS_JOB_CONTEXT_H 1
+#pragma once
 
 #include "Job.h"
 
@@ -60,4 +59,3 @@ class JobContext {
 }  // namespace consensus
 }  // namespace arangodb
 
-#endif

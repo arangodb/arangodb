@@ -32,11 +32,24 @@ namespace iresearch {
 // --SECTION--                                           postings implementation
 // -----------------------------------------------------------------------------
 
-postings::postings(writer_t& writer):
-  writer_(writer) {
+void postings::get_sorted_postings(
+    std::vector<const posting*>& postings) const {
+  postings.resize(map_.size());
+
+  auto begin = postings.begin();
+  for (auto& entry : map_) {
+    *begin = &postings_[entry.second];
+    ++begin;
+  }
+
+  std::sort(
+    postings.begin(), postings.end(),
+    [](const auto lhs, const auto rhs) {
+      return memcmp_less(lhs->term, rhs->term);
+  });
 }
 
-postings::emplace_result postings::emplace(const bytes_ref& term) {
+std::pair<posting*, bool> postings::emplace(const bytes_ref& term) {
   REGISTER_TIMER_DETAILED();
   auto& parent = writer_.parent();
  
@@ -46,7 +59,7 @@ postings::emplace_result postings::emplace(const bytes_ref& term) {
   if (writer_t::container::block_type::SIZE < max_term_len) {
     // TODO: maybe move big terms it to a separate storage
     // reject terms that do not fit in a block
-    return std::make_pair(map_.end(), false);
+    return std::make_pair(nullptr, false);
   }
 
   const auto slice_end = writer_.pool_offset() + max_term_len;
@@ -60,25 +73,35 @@ postings::emplace_result postings::emplace(const bytes_ref& term) {
   }
 
   assert(size() < doc_limits::eof()); // not larger then the static flag
+  assert(map_.size() == postings_.size());
 
-  auto generator = [&term, this](const hashed_bytes_ref& key, const posting&) {
+  const auto hashed_term = make_hashed_ref(term);
+
+  bool is_new = false;
+  const auto it = map_.lazy_emplace(
+    hashed_term,
+    [&is_new, hash = hashed_term.hash(), id = map_.size()](const map_t::constructor& ctor){
+      is_new = true;
+      ctor(hash, id);
+  });
+
+  if (is_new) {
     // for new terms also write out their value
-    writer_.write(term.c_str(), term.size());
+    try {
+      writer_.write(term.c_str(), term.size());
+      postings_.emplace_back();
+    } catch (...) {
+      // we leave some garbage in block pool
+      map_.erase(it);
+      throw;
+    }
 
-    // reuse hash but point ref at data in pool
-    return hashed_bytes_ref(
-      key.hash(),
-      (writer_.position() - term.size()).buffer(), term.size()
-    );
-  };
+    postings_.back().term = {
+      (writer_.position() - term.size()).buffer(),
+      term.size() };
+  }
 
-  // replace original reference to 'term' provided by the caller
-  // with a reference to the cached copy in 'writer_'
-  return map_utils::try_emplace_update_key(
-    map_,                  // container
-    generator,             // key generator
-    make_hashed_ref(term)  // key
-  );
+  return { &postings_[it->second], is_new };
 }
 
 }

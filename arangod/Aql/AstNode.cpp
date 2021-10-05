@@ -2638,7 +2638,7 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
   }
 }
 
-void AstNode::markFinalized(AstNode* subtreeRoot) {
+void AstNode::markFinalized(AstNode* subtreeRoot) noexcept {
   if ((nullptr == subtreeRoot) || subtreeRoot->hasFlag(AstNodeFlagType::FLAG_FINALIZED)) {
     return;
   }

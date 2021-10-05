@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_TTL_H
-#define ARANGOD_VOC_BASE_API_TTL_H 1
+#pragma once
 
 #include "Basics/Result.h"
 
@@ -50,4 +49,3 @@ struct Ttl {
 }  // namespace methods
 }  // namespace arangodb
 
-#endif

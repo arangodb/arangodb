@@ -21,14 +21,18 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_BENCH_FEATURE_H
-#define ARANGODB_BENCHMARK_BENCH_FEATURE_H 1
+#pragma once
 
 #include <atomic>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
+namespace arangobench {
+struct BenchmarkStats;
+}
 
 class ClientFeature;
 
@@ -52,7 +56,6 @@ class BenchFeature final : public application_features::ApplicationFeature {
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void start() override final;
-  void unprepare() override final;
 
   bool async() const { return _async; }
   uint64_t concurrency() const { return _concurrency; }
@@ -65,40 +68,46 @@ class BenchFeature final : public application_features::ApplicationFeature {
   bool delay() const { return _delay; }
   bool progress() const { return _progress; }
   bool verbose() const { return _verbose; }
-  bool quit() const { return _quiet; }
+  bool quiet() const { return _quiet; }
   uint64_t runs() const { return _runs; }
   std::string const& junitReportFile() const { return _junitReportFile; }
   uint64_t replicationFactor() const { return _replicationFactor; }
   uint64_t numberOfShards() const { return _numberOfShards; }
   bool waitForSync() const { return _waitForSync; }
+  
+  std::string const& customQuery() const { return _customQuery; }
+  std::string const& customQueryFile() const { return _customQueryFile; }
 
  private:
   void status(std::string const& value);
-  bool report(ClientFeature&, std::vector<BenchRunResult>, double minTime, double maxTime, double avgTime, std::string const& histogram, VPackBuilder& builder);
+  bool report(ClientFeature&, std::vector<BenchRunResult>, arangobench::BenchmarkStats const& stats, std::string const& histogram, VPackBuilder& builder);
   void printResult(BenchRunResult const& result, VPackBuilder& builder);
   bool writeJunitReport(BenchRunResult const& result);
 
-  bool _async;
   uint64_t _concurrency;
   uint64_t _operations;
   uint64_t _realOperations;
   uint64_t _batchSize;
   uint64_t _duration;
-  bool _keepAlive;
   std::string _collection;
   std::string _testCase;
   uint64_t _complexity;
+  bool _async;
+  bool _keepAlive;
   bool _createDatabase;
   bool _delay;
   bool _progress;
   bool _verbose;
   bool _quiet;
+  bool _waitForSync;
   uint64_t _runs;
   std::string _junitReportFile;
   std::string _jsonReportFile;
   uint64_t _replicationFactor;
   uint64_t _numberOfShards;
-  bool _waitForSync;
+  
+  std::string _customQuery;
+  std::string _customQueryFile;
 
   int* _result;
 
@@ -114,4 +123,3 @@ class BenchFeature final : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 
-#endif

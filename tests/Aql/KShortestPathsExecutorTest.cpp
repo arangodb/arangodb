@@ -43,6 +43,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/TraversalStats.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/GraphTestTools.h"
@@ -69,7 +70,7 @@ using Path = std::vector<std::string>;
 using PathSequence = std::vector<Path>;
 namespace {
 Vertex const constSource("vertex/source"), constTarget("vertex/target"),
-    regSource(0), regTarget(1), brokenSource{"IwillBreakYourSearch"},
+    regSource(RegisterId(0)), regTarget(1), brokenSource{"IwillBreakYourSearch"},
     brokenTarget{"I will also break your search"};
 
   MatrixBuilder<2> const noneRow{{{{}}}};
@@ -230,11 +231,12 @@ class KShortestPathsExecutorTest
 
   MockAqlServer server;
   ExecutionState state;
-  arangodb::ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
 
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  std::shared_ptr<arangodb::aql::Query> fakedQuery;
   ShortestPathOptions options;
 
   RegisterInfos registerInfos;

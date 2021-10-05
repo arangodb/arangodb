@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT_H
-#define ARANGOD_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
@@ -56,10 +55,10 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
                                      aql::QueryContext* query,
                                      aql::AqlFunctionsInternalCache* cache)
   : ExpressionContext(), _trx(trx), _query(query), _aqlFunctionsInternalCache(cache)  {}
-  
-  void registerWarning(int errorCode, char const* msg) override final;
-  void registerError(int errorCode, char const* msg) override final;
-  
+
+  void registerWarning(ErrorCode errorCode, char const* msg) override final;
+  void registerError(ErrorCode errorCode, char const* msg) override final;
+
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
                                        bool caseInsensitive) override final;
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
@@ -117,4 +116,3 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT_H 1

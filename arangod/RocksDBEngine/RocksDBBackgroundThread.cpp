@@ -73,9 +73,13 @@ void RocksDBBackgroundThread::run() {
         }
 
         double end = TRI_microtime();
-        if ((end - start) > 0.75) {
+        if (end - start > 5.0) {
           LOG_TOPIC("3ad54", WARN, Logger::ENGINES)
               << "slow background settings sync: " << Logger::FIXED(end - start, 6)
+              << " s";
+        } else {
+          LOG_TOPIC("dd9ea", DEBUG, Logger::ENGINES)
+              << "slow background settings sync took: " << Logger::FIXED(end - start, 6)
               << " s";
         }
       }
@@ -111,6 +115,9 @@ void RocksDBBackgroundThread::run() {
         _engine.pruneWalFiles();
       }
         
+      if (!isStopping()) {
+        _engine.processCompactions();
+      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("8236f", WARN, Logger::ENGINES)
           << "caught exception in rocksdb background thread: " << ex.what();

@@ -66,7 +66,7 @@ CacheManagerFeature::CacheManagerFeature(application_features::ApplicationServer
 CacheManagerFeature::~CacheManagerFeature() = default;
 
 void CacheManagerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("cache", "Configure the hash cache");
+  options->addSection("cache", "in-memory hash cache");
 
   options->addOption("--cache.size", "size of cache in bytes",
                      new UInt64Parameter(&_cacheSize),
@@ -102,7 +102,8 @@ void CacheManagerFeature::start() {
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
     try {
-      return scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
+      scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
+      return true;
     } catch (...) {
       return false;
     }

@@ -65,8 +65,6 @@ HashedStringRef& HashedStringRef::operator=(Slice slice) {
 HashedStringRef HashedStringRef::substr(std::size_t pos, std::size_t count) const {
   if (VELOCYPACK_UNLIKELY(pos > _length)) {
     throw Exception(Exception::IndexOutOfBounds, "substr index out of bounds");
-  } else if (VELOCYPACK_UNLIKELY(count > std::numeric_limits<uint32_t>::max()) && count != std::string::npos) {
-    throw Exception(Exception::IndexOutOfBounds, "substr count out of bounds");
   }
   if (count == std::string::npos || (count + pos >= _length)) {
     count = _length - pos;

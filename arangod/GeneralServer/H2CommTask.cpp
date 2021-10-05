@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
 #include "Basics/asio_ns.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
@@ -209,6 +210,7 @@ H2CommTask<T>::H2CommTask(GeneralServer& server, ConnectionInfo info,
                           std::unique_ptr<AsioSocket<T>> so)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)) {
   this->_connectionStatistics.SET_HTTP();
+  this->_generalServerFeature.countHttp2Connection();
   initNgHttp2Session();
 }
 
@@ -284,7 +286,7 @@ void H2CommTask<T>::initNgHttp2Session() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  auto cbScope = scopeGuard([&] { nghttp2_session_callbacks_del(callbacks); });
+  auto cbScope = scopeGuard([&]() noexcept { nghttp2_session_callbacks_del(callbacks); });
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, H2CommTask<T>::on_begin_headers);
   nghttp2_session_callbacks_set_on_header_callback(callbacks, H2CommTask<T>::on_header);
@@ -462,19 +464,38 @@ static void DTraceH2CommTaskProcessStream(size_t) {}
 #endif
 
 template <SocketType T>
-std::string const& H2CommTask<T>::url(HttpRequest* req) {
-  if (this->_url.empty() && req != nullptr) {
-    this->_url = std::string((req->databaseName().empty() ? "" : "/_db/" + req->databaseName())) +
+std::string H2CommTask<T>::url(HttpRequest const* req) const {
+  if (req != nullptr) {
+    return std::string((req->databaseName().empty() ? "" : "/_db/" + StringUtils::urlEncode(req->databaseName()))) +
       (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
   }
-  return this->_url;
+  return "";
 }
 
 template <SocketType T>
-void H2CommTask<T>::processStream(H2CommTask<T>::Stream& stream) {
+void H2CommTask<T>::processStream(Stream& stream) {
   DTraceH2CommTaskProcessStream((size_t)this);
 
   std::unique_ptr<HttpRequest> req = std::move(stream.request);
+  auto msgId = req->messageId();
+  auto respContentType = req->contentTypeResponse();
+  try {
+    processRequest(stream, std::move(req));
+  } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC("a78c5", WARN, Logger::REQUESTS) << "request failed with error " << ex.code()
+      << " " << ex.message();
+    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()), respContentType,
+                            msgId, ex.code(), ex.message());
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("d1e88", WARN, Logger::REQUESTS) << "request failed with error " << ex.what();
+    this->sendErrorResponse(ResponseCode::SERVER_ERROR, respContentType,
+                            msgId, ErrorCode(TRI_ERROR_FAILED), ex.what());
+  }
+}
+
+template <SocketType T>
+void H2CommTask<T>::processRequest(Stream& stream, std::unique_ptr<HttpRequest> req) {
+  
   // ensure there is a null byte termination. RestHandlers use
   // C functions like strchr that except a C string as input
   req->body().push_back('\0');
@@ -493,6 +514,7 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream& stream) {
         << HttpRequest::translateMethod(req->requestType()) << "\",\"" << url(req.get()) << "\"";
 
     VPackStringRef body = req->rawPayload();
+    this->_generalServerFeature.countHttp2Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
       LOG_TOPIC("b6dc3", TRACE, Logger::REQUESTS)
