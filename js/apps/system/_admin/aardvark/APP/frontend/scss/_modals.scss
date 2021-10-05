@@ -520,23 +520,6 @@
     width: 100%;
   }
 
-  .moveRowButton {
-    margin-left: 5px;
-    font-size: 14pt;
-
-    &:hover {
-      cursor: pointer;
-      color: rgba(0,0,0,.8);
-    }
-
-    &.disabled {
-      color: rgba(0,0,0,.3);
-
-      &:hover {
-        cursor: default;
-      }
-    }
-  }
 }
 
 .foxx-store-row {
