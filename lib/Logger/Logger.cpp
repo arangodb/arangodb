@@ -420,6 +420,10 @@ std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
   return UNKNOWN;
 }
 
+std::string_view const& toString(std::string_view const& s) { return s; }
+template <class T>
+std::string toString(T const& v) { return std::to_string(v); }
+
 void Logger::log(char const* logid, char const* function, char const* file, int line,
                  LogLevel level, size_t topicId, std::string const& message) try {
   TRI_ASSERT(logid != nullptr);
@@ -549,12 +553,13 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       out.append(",\"hostname\":");
       dumper.appendString(_hostname.data(), _hostname.size());
     }
-
+  
     // meta data from log context
-    logContext.each([&out](std::string const& key, std::string const& value) {
-      out.append(",\"", 2).append(key).append("\":\"", 3).append(value);
+    LogContext::OverloadVisitor visitor([&out](std::string_view const& key, auto&& value) {
+      out.append(",\"", 2).append(key).append("\":\"", 3).append(toString(value));
       out.push_back('"');
     });
+    logContext.visit(visitor);
     
     // the message itself
     {
@@ -681,11 +686,12 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       out.append("} ", 2);
     }
 
-    // meta data from log context
-    logContext.each([&out](std::string const& key, std::string const& value) {
+    // meta data from log 
+    LogContext::OverloadVisitor visitor([&out](std::string_view const& key, auto&& value) {
       out.push_back('[');
-      out.append(key).append(": ", 2).append(value).append("] ", 2);
+      out.append(key).append(": ", 2).append(toString(value)).append("] ", 2);
     });
+    logContext.visit(visitor);
     
     // generate the complete message
     out.append(message);

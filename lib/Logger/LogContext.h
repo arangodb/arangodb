@@ -23,43 +23,116 @@
 
 #pragma once
 
-#include <functional>
+#include <cstdint>
 #include <memory>
-#include <optional>
 #include <string>
+#include <string_view>
 #include <type_traits>
-#include <vector>
 
 namespace arangodb {
 
 class LogContext {
  private:
-  struct Impl;
+  struct Entry;
   
+  template <class Vals>
+  struct EntryImpl;
+
+  template <class Vals = std::tuple<>, const char... Keys[]>
+  struct ValuesImpl;
+
  public:
-  /// @brief sets the key/value pair in the LogContext for the current scope.
-  /// If an entry with the specified key already exists it is overwritten,
-  /// otherwise a new key/value pair is added.
-  /// Returns a `Scoped` instance that restores the previous state. That is,
-  /// if the value of an existing entry was overwritten, the old value is
-  /// restored, otherwise the key/value pair is removed.
-  struct ScopedValue {
-    ScopedValue(std::string key, std::string value);
-    ~ScopedValue();
-  private:
-    std::size_t _idx;
-    std::optional<std::string> _oldValue;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    std::string _newValue;
-#endif
+  struct Visitor {
+    virtual ~Visitor() = default;
+    virtual void visit(std::string_view const& key, std::string_view const& value) const = 0;
+    virtual void visit(std::string_view const& key, double value) const = 0;
+    virtual void visit(std::string_view const& key, std::int64_t value) const = 0;
+    virtual void visit(std::string_view const& key, std::uint64_t value) const = 0;
   };
 
-  /// @brief merges the key/value pairs from the given context into the local
-  /// LogContext for the current scope.
-  struct ScopedMerge {
-    ScopedMerge(LogContext ctx);
+  template <class Derived>
+  struct GenericVisitor : Visitor {
+    void visit(std::string_view const& key, std::string_view const& value) const override {
+      self().visit(key, value);
+    }
+    void visit(std::string_view const& key, double value) const override {
+      self().visit(key, value);
+    }
+    void visit(std::string_view const& key, std::int64_t value) const override {
+      self().visit(key, value);
+    }
+    void visit(std::string_view const& key, std::uint64_t value) const override {
+      self().visit(key, value);
+    }
+
    private:
-    std::vector<ScopedValue> _values;
+    Derived const& self() const noexcept {
+      return static_cast<Derived const&>(*this);
+    }
+  };
+
+  template <class Overloads>
+  struct OverloadVisitor : GenericVisitor<OverloadVisitor<Overloads>>, Overloads {
+    explicit OverloadVisitor(Overloads overloads) : GenericVisitor<OverloadVisitor>(), Overloads(std::move(overloads)) {}
+    template <class T>
+    void visit(std::string_view const& key, T&& value) const {
+      this->operator()(key, std::forward<T>(value));
+    }
+  };
+
+  struct Values {
+    virtual ~Values() = default;
+    virtual void visit(Visitor const&) = 0;
+  };
+
+  /// @brief helper class to create value tuples with the following syntax:
+  ///   LogContext::makeValue().with<Key1>(value1).with<Key2>(value2)
+  /// The keys must be compile time constant char pointers; the values can
+  /// be strings or numbers.
+  ///   TODO: support for arbitrary types that support operator<<
+  /// As shown, the inital ValueBuilder instance can be created via LogContext::makeValue().
+  /// The `ValueBuilder` can be passed directly to `ScopedValue`, or you
+  /// can call `share()` to create a reusable `std::shared_ptr<Values>`
+  /// which can be stored in a member and used for different `ScopedValues`.
+  template <class Values = std::tuple<>, const char... Keys[]>
+  struct ValueBuilder {
+    template <const char Key[], class Value>
+    auto with(Value v) && {
+      auto vals = std::tuple_cat(std::move(_vals), std::make_tuple(std::forward<Value>(v)));
+      return ValueBuilder<decltype(vals), Keys..., Key>(std::move(vals));
+    }
+    std::shared_ptr<Values> share() && {
+      return std::make_shared<ValuesImpl<Values, Keys...>>(std::move(_vals));
+    }
+   private:
+    friend class LogContext;
+    ValueBuilder(Values vals) : _vals(std::move(vals)) {}
+    Values _vals;
+  };
+
+  static ValueBuilder<> makeValue() { return ValueBuilder<std::tuple<>>({}); }
+
+  /// @brief adds the provided value(s) to the LogContext for the current scope,
+  /// i.e., upon destruction the value(s) are removed from the current LogContext.
+  struct ScopedValue {
+    template <class Values, const char... Keys[]>
+    ScopedValue(ValueBuilder<Values, Keys...>&& v) {
+      appendEntry(std::make_shared<EntryImpl<ValuesImpl<Values, Keys...>>>(std::move(v._vals)));
+    }
+
+    ScopedValue(std::shared_ptr<Values>&& v) {
+      appendEntry(std::make_shared<EntryImpl<std::shared_ptr<Values>>>(std::move(v)));
+    }
+
+    ~ScopedValue();
+  private:
+    void appendEntry(std::shared_ptr<Entry> e) {
+      _oldTail = e.get();
+      LogContext::current().pushEntry(std::move(e));
+    }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    Entry* _oldTail;
+#endif
   };
 
   /// @brief sets the given LogContext as the thread's current context for the
@@ -68,37 +141,71 @@ class LogContext {
     ScopedContext(LogContext ctx);
     ~ScopedContext();
    private:
-    std::shared_ptr<Impl> _oldContext;
+    std::shared_ptr<Entry> _oldTail;
   };
-  
-  LogContext();
+
+  LogContext() = default;
 
   /// @brief iterates through the local LogContext's key/value pairs and calls
-  /// the callback function for each of them.
-  void each(std::function<void(std::string const&, std::string const&)> const&) const;
-  
+  /// the visitor for each of them.
+  void visit(Visitor const&) const;
+
   /// @brief returns the local LogContext
   static LogContext& current();
-  
+
   /// @brief sets the given context as the current LogContext.
   static void setCurrent(LogContext ctx);
-  
+
  private:
-  LogContext(std::shared_ptr<Impl> impl) : _impl(std::move(impl)) {}
-  
-  auto set(std::string key, std::string value) -> std::pair<std::size_t, std::optional<std::string>>;
-  
-  void restore(std::size_t index, std::optional<std::string>&& value);
-  
-  void ensureUniqueOwner();
-  
-  std::shared_ptr<Impl> _impl;
+  template <class Vals, const char... Keys[]>
+  struct ValuesImpl : Values {
+    ValuesImpl(Vals vals) : _values(std::move(vals)) {}
+    void visit(Visitor const& visitor) override {
+     doVisit<0, Keys...>(visitor);
+    }
+    ValuesImpl* operator->() { return this; }
+   private:
+    template <std::size_t Idx, const char K[], const char... Ks[]>
+    void doVisit(Visitor const& visitor) {
+      visitor.visit(K, std::get<Idx>(_values));
+      if constexpr (Idx + 1 < std::tuple_size<Vals>()) {
+        doVisit<Idx + 1, Ks...>(visitor);
+      }
+    }
+
+    Vals _values;
+  };
+
+  struct Entry : Values {
+   private:
+    friend class LogContext;
+    std::shared_ptr<Entry> _prev; // TODO - make const?
+  };
+
+  template <class Vals>
+  struct EntryImpl : Entry {
+    explicit EntryImpl(Vals&& v) : _values(std::move(v)) {}
+    void visit(Visitor const& visitor) override {
+      _values->visit(visitor);
+    };
+   private:
+    Vals _values;
+  };
+
+  LogContext(std::shared_ptr<Entry> tail) : _tail(std::move(tail)) {}
+
+  void doVisit(Visitor const&, std::shared_ptr<Entry> const&) const;
+
+  void pushEntry(std::shared_ptr<Entry>);
+  void popTail();
+
+  std::shared_ptr<Entry> _tail{};
 };
 
 template <typename Func>
 auto withLogContext(Func&& func) {
   return [func = std::forward<Func>(func), ctx = LogContext::current()](auto&&... args) mutable {
-    LogContext::ScopedContext ctxGuard(ctx);   
+    LogContext::ScopedContext ctxGuard(ctx);
     return std::forward<Func>(func)(std::forward<decltype(args)>(args)...);
   };
 }

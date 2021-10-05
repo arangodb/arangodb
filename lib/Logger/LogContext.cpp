@@ -25,6 +25,7 @@
 
 #include "Basics/debugging.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -34,84 +35,44 @@ namespace {
   thread_local LogContext localLogContext;
 }
 
-struct LogContext::Impl {
-  std::vector<std::pair<std::string, std::string>> values;
-};
-
-LogContext::ScopedValue::ScopedValue(std::string key, std::string value) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _newValue = value;
-#endif
-  std::tie(_idx, _oldValue) = LogContext::current().set(std::move(key), std::move(value));
-}
-
 LogContext::ScopedValue::~ScopedValue() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(_idx < LogContext::current()._impl->values.size());
-  TRI_ASSERT(LogContext::current()._impl->values[_idx].second == _newValue);
+  TRI_ASSERT(_oldTail == LogContext::current()._tail.get());
 #endif
-  LogContext::current().restore(_idx, std::move(_oldValue));
-}
-
-LogContext::ScopedMerge::ScopedMerge(LogContext ctx) {
-  _values.reserve(ctx._impl->values.size());
-  for (auto const& v : ctx._impl->values) {
-    _values.emplace_back(v.first, v.second);
-  }
+  LogContext::current().popTail();
 }
 
 LogContext::ScopedContext::ScopedContext(LogContext ctx) {
-  if (ctx._impl != LogContext::current()._impl) {
-    _oldContext = ctx._impl;
+  if (ctx._tail != LogContext::current()._tail) {
+    _oldTail = ctx._tail;
     LogContext::setCurrent(std::move(ctx));
   }
 }
 
 LogContext::ScopedContext::~ScopedContext() {
-  if (_oldContext) {
-    LogContext::setCurrent(LogContext(std::move(_oldContext)));
-  }
-}
-  
-LogContext::LogContext() : _impl(std::make_shared<Impl>()) {}
-
-std::pair<std::size_t, std::optional<std::string>> LogContext::set(std::string key, std::string value) {
-  ensureUniqueOwner();
-  std::optional<std::string> result;
-  for (std::size_t i = 0; i < _impl->values.size(); ++i) {
-    auto& v = _impl->values[i];
-    if (v.first == key) {
-      std::swap(v.second, value);
-      result = std::move(value);
-      return {i, result};
-    }
-  }
-  _impl->values.emplace_back(std::move(key), std::move(value));
-  return {_impl->values.size() - 1, result};
-}
-  
-void LogContext::restore(std::size_t index, std::optional<std::string>&& value) {
-  ensureUniqueOwner();
-  TRI_ASSERT(index < _impl->values.size());
-  if (!value.has_value()) {
-    TRI_ASSERT(index == _impl->values.size() - 1);
-    _impl->values.pop_back();
-  } else {
-    _impl->values[index].second = std::move(value.value());
+  if (_oldTail) {
+    LogContext::setCurrent(LogContext(std::move(_oldTail)));
   }
 }
 
-void LogContext::ensureUniqueOwner() {
-  if (!_impl.unique()) {
-    // this is a very simple copy-on-write implementation, but we can easily switch
-    // to something more elaborate like `immer` later.
-    _impl = std::make_shared<Impl>(*_impl);
-  }
+void LogContext::pushEntry(std::shared_ptr<Entry> entry) {
+  entry->_prev = std::move(_tail);
+  _tail = std::move(entry);
 }
 
-void LogContext::each(std::function<void(std::string const&, std::string const&)> const& cb) const {
-  for (auto& v : _impl->values) {
-    cb(v.first, v.second);
+void LogContext::popTail() {
+  TRI_ASSERT(_tail != nullptr);
+  _tail = _tail->_prev;
+}
+
+void LogContext::visit(Visitor const& visitor) const {
+  doVisit(visitor, _tail);
+}
+
+void LogContext::doVisit(Visitor const& visitor, std::shared_ptr<Entry> const& entry) const {
+  if (entry != nullptr) {
+    doVisit(visitor, entry->_prev);
+    entry->visit(visitor);
   }
 }
 
