@@ -341,13 +341,9 @@ void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) 
 
 /// Push this request into the execution pipeline
 
-inline constexpr char CommTask[] = "CommTask";
-
 void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                               std::unique_ptr<GeneralResponse> response) {
   DTRACE_PROBE1(arangod, CommTaskExecuteRequest, this);
-
-  LogContext::ScopedValue commTaskGuard(LogContext::makeValue().with<::CommTask>((size_t)this));
 
   response->setContentTypeRequested(request->contentTypeResponse());
   response->setGenerateBody(request->requestType() != RequestType::HEAD);

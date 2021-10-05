@@ -29,6 +29,7 @@
 #include "Endpoint/EndpointUnixDomain.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/HttpCommTask.h"
+#include "Logger/LogContext.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -93,7 +94,7 @@ void AcceptorUnixDomain::asyncAccept() {
   };
 
   // cppcheck-suppress accessMoved
-  _acceptor.async_accept(socket, peer, withLogContext(std::move(handler))};
+  _acceptor.async_accept(socket, peer, withLogContext(std::move(handler)));
 }
 
 void AcceptorUnixDomain::close() {
