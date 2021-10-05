@@ -509,9 +509,6 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     rocksdb::SequenceNumber earliest = engine.settingsManager()->earliestSeqNeeded();
     auto minTick = std::min(earliest, engine.releasedTick());
 
-    LOG_TOPIC("fe333", DEBUG, Logger::ENGINES)
-        << "recovery scanning wal starting from seq " << minTick;
-
     if (engine.dbExisted()) {
       LOG_TOPIC("fe333", INFO, Logger::ENGINES)
           << "RocksDB recovery starting, scanning WAL starting from sequence number " << minTick;
