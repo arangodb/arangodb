@@ -113,7 +113,7 @@ Result validateAllCollectionsInfo(TRI_vocbase_t const& vocbase,
 // Returns a builder that combines the information from \p infos and cluster related information.
 VPackBuilder getBuilder(TRI_vocbase_t const& vocbase,
                         std::vector<CollectionCreationInfo> const& infos,
-                        bool isSingleServerSmartGraph, bool enforceReplicationFactor) {
+                        bool isSingleServerSmartGraph) {
   StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
   VPackBuilder helper;
@@ -426,7 +426,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
 
   // construct a builder that contains information from all elements of infos and cluster related information
   VPackBuilder builder =
-      getBuilder(vocbase, infos, isSingleServerSmartGraph, enforceReplicationFactor);
+      getBuilder(vocbase, infos, isSingleServerSmartGraph);
 
   VPackSlice const infoSlice = builder.slice();
 
@@ -435,6 +435,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
   TRI_ASSERT(infoSlice.length() >= 1);
   TRI_ASSERT(infoSlice.length() == infos.size());
   collections.reserve(infoSlice.length());
+
   try {
     if (ServerState::instance()->isCoordinator()) {
       // Here we do have a cluster setup. In that case, we will create many collections in one go (batch-wise).
