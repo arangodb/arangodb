@@ -114,7 +114,7 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
             ? null
             : <ArangoTH seq={3}>
               <button className={'button-warning'} onClick={addPrimarySort}>
-                <i className={'fa fa-plus'}/>&nbsp;Add
+                <i className={'fa fa-plus'}/>&nbsp;Add Primary Sort
               </button>
             </ArangoTH>
         }
@@ -122,65 +122,69 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
       </thead>
       <tbody>
       {
-        items.map((item, idx) => {
-          const isLast = idx === items.length - 1;
-          const itemDispatch = getWrappedDispatch(idx);
+        items.length
+          ? items.map((item, idx) => {
+            const isLast = idx === items.length - 1;
+            const itemDispatch = getWrappedDispatch(idx);
 
-          const updateField = (event: ChangeEvent<HTMLInputElement>) => {
-            itemDispatch(
-              {
-                type: 'setField',
-                field: {
-                  path: 'field',
-                  value: event.target.value
+            const updateField = (event: ChangeEvent<HTMLInputElement>) => {
+              itemDispatch(
+                {
+                  type: 'setField',
+                  field: {
+                    path: 'field',
+                    value: event.target.value
+                  }
                 }
-              }
-            );
-          };
+              );
+            };
 
-          const updateDirection = (event: ChangeEvent<HTMLSelectElement>) => {
-            itemDispatch(
-              {
-                type: 'setField',
-                field: {
-                  path: 'direction',
-                  value: event.target.value
+            const updateDirection = (event: ChangeEvent<HTMLSelectElement>) => {
+              itemDispatch(
+                {
+                  type: 'setField',
+                  field: {
+                    path: 'direction',
+                    value: event.target.value
+                  }
                 }
-              }
-            );
-          };
+              );
+            };
 
-          return <tr key={idx} style={{ borderBottom: '1px  solid #DDD' }}>
-            <ArangoTD seq={0} valign={'middle'}>{idx + 1}.</ArangoTD>
-            <ArangoTD seq={1}>
-              <Textbox type={'text'} value={item.field} onChange={updateField}
-                       disabled={disabled}/>
-            </ArangoTD>
-            <ArangoTD seq={2}>
-              <Select value={item.direction || 'asc'} onChange={updateDirection} disabled={disabled}>
-                <option key={'asc'} value={'asc'}>ASC</option>
-                <option key={'desc'} value={'desc'}>DESC</option>
-              </Select>
-            </ArangoTD>
-            {
-              disabled
-                ? null
-                : <ArangoTD seq={3}>
-                  <StyledButton className={'button-danger'} onClick={getRemover(idx)}>
-                    <StyledIcon className={'fa fa-trash-o'}/>
-                  </StyledButton>&nbsp;
-                  <StyledButton className={'button-warning'} onClick={getShifter('up', idx)}
-                                disabled={idx === 0}>
-                    <StyledIcon className={'fa fa-arrow-up'}/>
-                  </StyledButton>&nbsp;
-                  <StyledButton className={'button-warning'} onClick={getShifter('down', idx)}
-                                disabled={isLast}>
-                    <StyledIcon className={'fa fa-arrow-down'}/>
-                  </StyledButton>
-                </ArangoTD>
-            }
-          </tr>;
-        })
+            return <tr key={idx} style={{ borderBottom: '1px  solid #DDD' }}>
+              <ArangoTD seq={0} valign={'middle'}>{idx + 1}.</ArangoTD>
+              <ArangoTD seq={1}>
+                <Textbox type={'text'} value={item.field} onChange={updateField}
+                         disabled={disabled}/>
+              </ArangoTD>
+              <ArangoTD seq={2}>
+                <Select value={item.direction || 'asc'} onChange={updateDirection} disabled={disabled}>
+                  <option key={'asc'} value={'asc'}>ASC</option>
+                  <option key={'desc'} value={'desc'}>DESC</option>
+                </Select>
+              </ArangoTD>
+              {
+                disabled
+                  ? null
+                  : <ArangoTD seq={3}>
+                    <StyledButton className={'button-danger'} onClick={getRemover(idx)}>
+                      <StyledIcon className={'fa fa-trash-o'}/>
+                    </StyledButton>&nbsp;
+                    <StyledButton className={'button-warning'} onClick={getShifter('up', idx)}
+                                  disabled={idx === 0}>
+                      <StyledIcon className={'fa fa-arrow-up'}/>
+                    </StyledButton>&nbsp;
+                    <StyledButton className={'button-warning'} onClick={getShifter('down', idx)}
+                                  disabled={isLast}>
+                      <StyledIcon className={'fa fa-arrow-down'}/>
+                    </StyledButton>
+                  </ArangoTD>
+              }
+            </tr>;
+          })
+          : <tr>
+            <ArangoTD seq={0} colspan={disabled ? 3 : 4}>No primary sort definitions found.</ArangoTD>
+          </tr>
       }
       </tbody>
     </ArangoTable>

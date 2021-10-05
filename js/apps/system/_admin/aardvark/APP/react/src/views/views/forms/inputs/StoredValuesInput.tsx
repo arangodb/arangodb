@@ -115,7 +115,7 @@ const StoredValuesInput = ({ formState, dispatch, disabled }: FormProps<StoredVa
             ? null
             : <ArangoTH seq={3}>
               <button className={'button-warning'} onClick={addStoredValue}>
-                <i className={'fa fa-plus'}/>&nbsp;Add
+                <i className={'fa fa-plus'}/>&nbsp;Add Stored Value
               </button>
             </ArangoTH>
         }
@@ -123,77 +123,81 @@ const StoredValuesInput = ({ formState, dispatch, disabled }: FormProps<StoredVa
       </thead>
       <tbody>
       {
-        items.map((item, idx) => {
-          const isLast = idx === items.length - 1;
-          const itemDispatch = getWrappedDispatch(idx);
+        items.length
+          ? items.map((item, idx) => {
+            const isLast = idx === items.length - 1;
+            const itemDispatch = getWrappedDispatch(idx);
 
-          const updateFields = (event: ChangeEvent<HTMLTextAreaElement>) => {
-            const fields = event.target.value.split('\n');
+            const updateFields = (event: ChangeEvent<HTMLTextAreaElement>) => {
+              const fields = event.target.value.split('\n');
 
-            if (filter(fields, negate(isEmpty)).length) {
-              itemDispatch({
-                type: 'setField',
-                field: {
-                  path: 'fields',
-                  value: fields
-                }
-              });
-            } else {
-              itemDispatch({
-                type: 'unsetField',
-                field: {
-                  path: 'fields'
-                }
-              });
-            }
-          };
-
-          const getFields = () => {
-            return (item.fields || []).join('\n');
-          };
-
-          const updateCompression = (event: ChangeEvent<HTMLSelectElement>) => {
-            itemDispatch(
-              {
-                type: 'setField',
-                field: {
-                  path: 'compression',
-                  value: event.target.value
-                }
+              if (filter(fields, negate(isEmpty)).length) {
+                itemDispatch({
+                  type: 'setField',
+                  field: {
+                    path: 'fields',
+                    value: fields
+                  }
+                });
+              } else {
+                itemDispatch({
+                  type: 'unsetField',
+                  field: {
+                    path: 'fields'
+                  }
+                });
               }
-            );
-          };
+            };
 
-          return <tr key={idx} style={{ borderBottom: '1px  solid #DDD' }}>
-            <ArangoTD seq={0} valign={'middle'}>{idx + 1}.</ArangoTD>
-            <ArangoTD seq={1}>
-              <Textarea value={getFields()} onChange={updateFields} disabled={disabled}/>
-            </ArangoTD>
-            <ArangoTD seq={2}>
-              <Select value={item.compression || 'lz4'} onChange={updateCompression} disabled={disabled}>
-                <option key={'lz4'} value={'lz4'}>LZ4</option>
-                <option key={'none'} value={'none'}>None</option>
-              </Select>
-            </ArangoTD>
-            {
-              disabled
-                ? null
-                : <ArangoTD seq={3}>
-                  <StyledButton className={'button-danger'} onClick={getRemover(idx)}>
-                    <StyledIcon className={'fa fa-trash-o'}/>
-                  </StyledButton>&nbsp;
-                  <StyledButton className={'button-warning'} onClick={getShifter('up', idx)}
-                                disabled={idx === 0}>
-                    <StyledIcon className={'fa fa-arrow-up'}/>
-                  </StyledButton>&nbsp;
-                  <StyledButton className={'button-warning'} onClick={getShifter('down', idx)}
-                                disabled={isLast}>
-                    <StyledIcon className={'fa fa-arrow-down'}/>
-                  </StyledButton>
-                </ArangoTD>
-            }
-          </tr>;
-        })
+            const getFields = () => {
+              return (item.fields || []).join('\n');
+            };
+
+            const updateCompression = (event: ChangeEvent<HTMLSelectElement>) => {
+              itemDispatch(
+                {
+                  type: 'setField',
+                  field: {
+                    path: 'compression',
+                    value: event.target.value
+                  }
+                }
+              );
+            };
+
+            return <tr key={idx} style={{ borderBottom: '1px  solid #DDD' }}>
+              <ArangoTD seq={0} valign={'middle'}>{idx + 1}.</ArangoTD>
+              <ArangoTD seq={1}>
+                <Textarea value={getFields()} onChange={updateFields} disabled={disabled}/>
+              </ArangoTD>
+              <ArangoTD seq={2}>
+                <Select value={item.compression || 'lz4'} onChange={updateCompression} disabled={disabled}>
+                  <option key={'lz4'} value={'lz4'}>LZ4</option>
+                  <option key={'none'} value={'none'}>None</option>
+                </Select>
+              </ArangoTD>
+              {
+                disabled
+                  ? null
+                  : <ArangoTD seq={3}>
+                    <StyledButton className={'button-danger'} onClick={getRemover(idx)}>
+                      <StyledIcon className={'fa fa-trash-o'}/>
+                    </StyledButton>&nbsp;
+                    <StyledButton className={'button-warning'} onClick={getShifter('up', idx)}
+                                  disabled={idx === 0}>
+                      <StyledIcon className={'fa fa-arrow-up'}/>
+                    </StyledButton>&nbsp;
+                    <StyledButton className={'button-warning'} onClick={getShifter('down', idx)}
+                                  disabled={isLast}>
+                      <StyledIcon className={'fa fa-arrow-down'}/>
+                    </StyledButton>
+                  </ArangoTD>
+              }
+            </tr>;
+          })
+          : <tr>
+            <ArangoTD seq={0} colspan={disabled ? 3 : 4}>No stored values found.</ArangoTD>
+          </tr>
       }
       </tbody>
     </ArangoTable>
