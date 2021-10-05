@@ -522,7 +522,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   arangodb::aql::AqlCall call{};
   arangodb::aql::IResearchViewStats stats;
   arangodb::aql::ExecutorState state = arangodb::aql::ExecutorState::HASMORE;
-  arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(
+  arangodb::aql::IResearchViewMergeExecutor<false, false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(
       fetcher, executorInfos);
   arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
   inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
@@ -590,7 +590,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
   arangodb::ResourceMonitor monitor{global};
   arangodb::aql::AqlItemBlockManager itemBlockManager{monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
   arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
-  arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
+  arangodb::aql::IResearchViewMergeExecutor<false, false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
   size_t skippedLocal = 0;
   arangodb::aql::AqlCall call{};
   arangodb::aql::IResearchViewStats stats;
@@ -662,7 +662,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   arangodb::ResourceMonitor monitor{global};
   arangodb::aql::AqlItemBlockManager itemBlockManager{monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
   arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
-  arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
+  arangodb::aql::IResearchViewMergeExecutor<false, false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
   size_t skippedLocal = 0;
   arangodb::aql::AqlCall skipAllCall{0U, 0U, 0U, true};
   arangodb::aql::AqlCall call{};
