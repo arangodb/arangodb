@@ -2,7 +2,8 @@ import React, { MouseEvent, useState } from 'react';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import useSWR, { mutate } from "swr";
-import { FormState, State } from "./constants";
+import { FormState } from "./constants";
+import { State } from '../../utils/constants';
 import { Cell, Grid } from "../../components/pure-css/grid";
 import Textarea from "../../components/pure-css/form/Textarea";
 import { omit } from 'lodash';
@@ -64,7 +65,7 @@ const ViewButton = ({ view, modalCid }: ButtonProps) => {
 
   const fullView = data ? omit(data.body, 'error', 'code') : view;
 
-  const state: State = {
+  const state: State<FormState> = {
     formState: fullView as FormState,
     formCache: {},
     show: false,

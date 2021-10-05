@@ -1,12 +1,13 @@
 import { DispatchArgs, FormProps } from "../../../../utils/constants";
-import React, { ChangeEvent, Dispatch } from "react";
+import { getPath } from "../../../../utils/helpers";
+import { StoredValues } from "../../constants";
 import Fieldset from "../../../../components/pure-css/form/Fieldset";
 import { ArangoTable, ArangoTD, ArangoTH } from "../../../../components/arango/table";
-import Textbox from "../../../../components/pure-css/form/Textbox";
-import { getPath } from "../../../../utils/helpers";
+import React, { ChangeEvent, Dispatch } from "react";
+import Textarea from "../../../../components/pure-css/form/Textarea";
+import { filter, isEmpty, negate } from "lodash";
 import Select from "../../../../components/pure-css/form/Select";
 import styled from "styled-components";
-import { PrimarySort } from "../../constants";
 
 const StyledButton = styled.button`
   &&& {
@@ -19,8 +20,8 @@ const StyledIcon = styled.i`
   }
 `;
 
-const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySort>) => {
-  const items = formState.primarySort || [];
+const StoredValuesInput = ({ formState, dispatch, disabled }: FormProps<StoredValues>) => {
+  const items = formState.storedValues || [];
 
   const removeItem = (index: number) => {
     const tempItems = items.slice();
@@ -29,7 +30,7 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
     dispatch({
       type: 'setField',
       field: {
-        path: 'primarySort',
+        path: 'storedValues',
         value: tempItems
       }
     });
@@ -48,7 +49,7 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
     dispatch({
       type: 'setField',
       field: {
-        path: 'primarySort',
+        path: 'storedValues',
         value: tempItems
       }
     });
@@ -63,7 +64,7 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
     dispatch({
       type: 'setField',
       field: {
-        path: 'primarySort',
+        path: 'storedValues',
         value: tempItems
       }
     });
@@ -82,38 +83,38 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
     }
   };
 
-  const addPrimarySort = () => {
-    const primarySort = {
-      field: '',
-      direction: 'asc'
+  const addStoredValue = () => {
+    const storedValue = {
+      fields: [],
+      compression: 'lz4'
     };
 
     dispatch({
       type: 'setField',
       field: {
-        path: `primarySort[${items.length}]`,
-        value: primarySort
+        path: `storedValues[${items.length}]`,
+        value: storedValue
       }
     });
   };
 
-  const getWrappedDispatch = (index: number): Dispatch<DispatchArgs<PrimarySort>> => (action: DispatchArgs<PrimarySort>) => {
-    action.basePath = getPath(`primarySort[${index}]`, action.basePath);
-    (dispatch as unknown as Dispatch<DispatchArgs<PrimarySort>>)(action);
+  const getWrappedDispatch = (index: number): Dispatch<DispatchArgs<StoredValues>> => (action: DispatchArgs<StoredValues>) => {
+    action.basePath = getPath(`storedValues[${index}]`, action.basePath);
+    (dispatch as unknown as Dispatch<DispatchArgs<StoredValues>>)(action);
   };
 
-  return <Fieldset legend={'Primary Sort'}>
+  return <Fieldset legend={'Stored Values'}>
     <ArangoTable>
       <thead>
       <tr>
         <ArangoTH seq={0}>#</ArangoTH>
-        <ArangoTH seq={1}>Field</ArangoTH>
-        <ArangoTH seq={2}>Direction</ArangoTH>
+        <ArangoTH seq={1}>Fields</ArangoTH>
+        <ArangoTH seq={2}>Compression</ArangoTH>
         {
           disabled
             ? null
             : <ArangoTH seq={3}>
-              <button className={'button-warning'} onClick={addPrimarySort}>
+              <button className={'button-warning'} onClick={addStoredValue}>
                 <i className={'fa fa-plus'}/>&nbsp;Add
               </button>
             </ArangoTH>
@@ -126,24 +127,37 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
           const isLast = idx === items.length - 1;
           const itemDispatch = getWrappedDispatch(idx);
 
-          const updateField = (event: ChangeEvent<HTMLInputElement>) => {
-            itemDispatch(
-              {
+          const updateFields = (event: ChangeEvent<HTMLTextAreaElement>) => {
+            const fields = event.target.value.split('\n');
+
+            if (filter(fields, negate(isEmpty)).length) {
+              itemDispatch({
                 type: 'setField',
                 field: {
-                  path: 'field',
-                  value: event.target.value
+                  path: 'fields',
+                  value: fields
                 }
-              }
-            );
+              });
+            } else {
+              itemDispatch({
+                type: 'unsetField',
+                field: {
+                  path: 'fields'
+                }
+              });
+            }
           };
 
-          const updateDirection = (event: ChangeEvent<HTMLSelectElement>) => {
+          const getFields = () => {
+            return (item.fields || []).join('\n');
+          };
+
+          const updateCompression = (event: ChangeEvent<HTMLSelectElement>) => {
             itemDispatch(
               {
                 type: 'setField',
                 field: {
-                  path: 'direction',
+                  path: 'compression',
                   value: event.target.value
                 }
               }
@@ -153,13 +167,12 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
           return <tr key={idx} style={{ borderBottom: '1px  solid #DDD' }}>
             <ArangoTD seq={0} valign={'middle'}>{idx + 1}.</ArangoTD>
             <ArangoTD seq={1}>
-              <Textbox type={'text'} value={item.field} onChange={updateField}
-                       disabled={disabled}/>
+              <Textarea value={getFields()} onChange={updateFields} disabled={disabled}/>
             </ArangoTD>
             <ArangoTD seq={2}>
-              <Select value={item.direction || 'asc'} onChange={updateDirection} disabled={disabled}>
-                <option key={'asc'} value={'asc'}>ASC</option>
-                <option key={'desc'} value={'desc'}>DESC</option>
+              <Select value={item.compression || 'lz4'} onChange={updateCompression} disabled={disabled}>
+                <option key={'lz4'} value={'lz4'}>LZ4</option>
+                <option key={'none'} value={'none'}>None</option>
               </Select>
             </ArangoTD>
             {
@@ -187,4 +200,4 @@ const PrimarySortInput = ({ formState, dispatch, disabled }: FormProps<PrimarySo
   </Fieldset>;
 };
 
-export default PrimarySortInput;
+export default StoredValuesInput;

@@ -1,9 +1,10 @@
 import React, { ChangeEvent } from "react";
-import { FormProps } from "../constants";
+import { FormProps } from "../../../utils/constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Textbox from "../../../components/pure-css/form/Textbox";
+import { FormState } from "../constants";
 
-const BaseForm = ({ formState, dispatch, disabled }: FormProps) => {
+const BaseForm = ({ formState, dispatch, disabled }: FormProps<FormState>) => {
   const updateName = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',

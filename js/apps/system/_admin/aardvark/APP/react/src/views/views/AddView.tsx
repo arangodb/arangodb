@@ -1,8 +1,7 @@
-import React, { useReducer } from 'react';
-import { DispatchArgs, FormState, State } from "./constants";
-import { cloneDeep, merge, set, uniqueId, unset } from "lodash";
-import { validateAndFix } from "./helpers";
-import { getPath } from "../../utils/helpers";
+import React, { Dispatch, useReducer } from 'react';
+import { FormState, ViewProperties } from "./constants";
+import { DispatchArgs, State } from '../../utils/constants';
+import { cloneDeep, uniqueId } from "lodash";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 import { mutate } from "swr";
 import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
@@ -12,6 +11,7 @@ import JsonForm from "./forms/JsonForm";
 import BaseForm from "./forms/BaseForm";
 import LinkPropertiesForm from "./forms/LinkPropertiesForm";
 import ViewPropertiesForm from "./forms/ViewPropertiesForm";
+import { getReducer } from "../../utils/helpers";
 
 declare var arangoHelper: { [key: string]: any };
 
@@ -20,7 +20,7 @@ const initialFormState: FormState = {
   type: 'arangosearch'
 };
 
-const initialState: State = {
+const initialState: State<FormState> = {
   formState: cloneDeep(initialFormState),
   formCache: cloneDeep(initialFormState),
   show: false,
@@ -29,103 +29,12 @@ const initialState: State = {
   renderKey: uniqueId('force_re-render_')
 };
 
-const reducer = (state: State, action: DispatchArgs): State => {
-  let newState = state;
-
-  switch (action.type) {
-    case 'lockJsonForm':
-      newState = {
-        ...state,
-        lockJsonForm: true
-      };
-      break;
-
-    case 'unlockJsonForm':
-      newState = {
-        ...state,
-        lockJsonForm: false
-      };
-      break;
-
-    case 'show':
-      newState = {
-        ...state,
-        show: true
-      };
-      break;
-
-    case 'showJsonForm':
-      newState = {
-        ...state,
-        showJsonForm: true
-      };
-      break;
-
-    case 'hideJsonForm':
-      newState = {
-        ...state,
-        showJsonForm: false
-      };
-      break;
-
-    case 'regenRenderKey':
-      newState = {
-        ...state,
-        renderKey: uniqueId('force_re-render_')
-      };
-      break;
-
-    case 'setField':
-      if (action.field && action.field.value !== undefined) {
-        newState = cloneDeep(state);
-        const path = getPath(action.basePath, action.field.path);
-
-        set(newState.formCache, path, action.field.value);
-
-        if (action.field.path === 'type') {
-          const tempFormState = cloneDeep(newState.formCache);
-          validateAndFix(tempFormState);
-          newState.formState = tempFormState as FormState;
-
-          merge(newState.formCache, newState.formState);
-        } else {
-          set(newState.formState, path, action.field.value);
-        }
-      }
-      break;
-
-    case 'unsetField':
-      if (action.field) {
-        newState = cloneDeep(state);
-        const path = getPath(action.basePath, action.field.path);
-
-        unset(newState.formState, path);
-        unset(newState.formCache, path);
-      }
-      break;
-
-    case 'setFormState':
-      if (action.formState) {
-        newState = cloneDeep(state);
-        newState.formState = action.formState;
-        merge(newState.formCache, newState.formState);
-      }
-      break;
-
-    case 'reset':
-      newState = initialState;
-      break;
-  }
-
-  return newState;
-};
-
 interface AddViewProps {
   views: FormState[];
 }
 
 const AddView = ({ views }: AddViewProps) => {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(getReducer<FormState>(initialState), initialState);
 
   const formState = state.formState;
 
@@ -200,7 +109,8 @@ const AddView = ({ views }: AddViewProps) => {
                 <Cell size={'1'}>
                   <fieldset>
                     <legend style={{ fontSize: '12pt' }}>View Properties</legend>
-                    <ViewPropertiesForm formState={formState} dispatch={dispatch}/>
+                    <ViewPropertiesForm formState={formState as ViewProperties}
+                                        dispatch={dispatch as Dispatch<DispatchArgs<ViewProperties>>}/>
                   </fieldset>
                 </Cell>
               </>

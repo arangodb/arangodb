@@ -1,18 +1,21 @@
 import { JSONSchemaType } from 'ajv';
-import { Dispatch } from 'react';
 
 type Compression = 'lz4' | 'none';
 
 type Direction = 'asc' | 'desc';
 
-type StoredValue = {
-  fields: string[];
-  compression: Compression;
+export type StoredValues = {
+  storedValues?: {
+    fields: string[];
+    compression: Compression;
+  }[]
 };
 
-type PrimarySort = {
-  field: string;
-  direction: Direction;
+export type PrimarySort = {
+  primarySort?: {
+    field: string;
+    direction: Direction;
+  }[]
 };
 
 type BytesAccumConsolidationPolicy = {
@@ -30,10 +33,8 @@ type TierConsolidationPolicy = {
 
 type ConsolidationPolicy = BytesAccumConsolidationPolicy | TierConsolidationPolicy;
 
-type ViewProperties = {
-  primarySort?: PrimarySort[];
+export type ViewProperties = PrimarySort & StoredValues & {
   primarySortCompression?: Compression;
-  storedValues?: StoredValue[];
   cleanupIntervalStep?: number;
   commitIntervalMsec?: number;
   consolidationIntervalMsec?: number;
@@ -297,29 +298,4 @@ export const formSchema: JSONSchemaType<FormState> = {
   },
   required: ['name', 'type'],
   additionalProperties: false
-};
-
-export type State = {
-  formState: FormState;
-  formCache: object;
-  show: boolean;
-  showJsonForm: boolean;
-  lockJsonForm: boolean;
-  renderKey: string;
-};
-
-export type DispatchArgs = {
-  type: string;
-  field?: {
-    path: string;
-    value?: any;
-  };
-  basePath?: string;
-  formState?: FormState;
-};
-
-export type FormProps = {
-  formState: FormState;
-  dispatch: Dispatch<DispatchArgs>;
-  disabled?: boolean;
 };
