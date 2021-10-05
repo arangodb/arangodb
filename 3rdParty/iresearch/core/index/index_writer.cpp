@@ -852,6 +852,7 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
     );
 
     try {
+      auto segment_flush_lock = make_unique_lock(segment.flush_mutex_);
       segment.flush();
     } catch (...) {
       IR_FRMT_ERROR(
