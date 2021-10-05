@@ -140,7 +140,7 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
       <i className="fa fa-plus-circle"/> Add Analyzer
     </button>
     <Modal show={state.show} setShow={(show) => dispatch({ type: show ? 'show' : 'reset' })}
-           key={`${analyzers.length}-${state.show}`}>
+           key={`${analyzers.length}-${state.show}`} cid={'modal-content-add-analyzer'}>
       <ModalHeader title={'Create Analyzer'}>
         <Grid>
           <Cell size={'2-3'}>
